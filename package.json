@@ -4,7 +4,16 @@
   "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
   "author": "Nicolás Venturo <nico@balancer.finance>",
   "license": "GPL-3.0-only",
+  "scripts": {
+    "compile": "yarn buidler compile",
+    "lint": "yarn lint:solidity",
+    "lint:solidity": "solhint contracts/**/*.sol"
+  },
   "devDependencies": {
-    "@nomiclabs/buidler": "^1.4.4"
+    "@nomiclabs/buidler": "^1.4.4",
+    "prettier": "^2.0.5",
+    "prettier-plugin-solidity": "^1.0.0-alpha.56",
+    "solhint": "^3.2.0",
+    "solhint-plugin-prettier": "^0.0.4"
   }
 }
