@@ -3,5 +3,8 @@
   "version": "0.1.0",
   "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
   "author": "Nicolás Venturo <nico@balancer.finance>",
-  "license": "GPL v3.0"
+  "license": "GPL-3.0-only",
+  "devDependencies": {
+    "@nomiclabs/buidler": "^1.4.4"
+  }
 }
