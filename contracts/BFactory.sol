@@ -17,7 +17,7 @@ pragma solidity 0.5.12;
 
 import "./BPool.sol";
 
-contract BFactory is BBronze {
+contract BFactory {
     event LOG_NEW_POOL(
         address indexed caller,
         address indexed pool
@@ -69,7 +69,7 @@ contract BFactory is BBronze {
     }
 
     function collect(BPool pool)
-        external 
+        external
     {
         require(msg.sender == _blabs, "ERR_NOT_BLABS");
         uint collected = IERC20(pool).balanceOf(address(this));

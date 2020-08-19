@@ -13,27 +13,15 @@
 
 pragma solidity 0.5.12;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./BNum.sol";
 
-// Highly opinionated token implementation
-
-interface IERC20 {
-    event Approval(address indexed src, address indexed dst, uint amt);
-    event Transfer(address indexed src, address indexed dst, uint amt);
-
-    function totalSupply() external view returns (uint);
-    function balanceOf(address whom) external view returns (uint);
-    function allowance(address src, address dst) external view returns (uint);
-
-    function approve(address dst, uint amt) external returns (bool);
-    function transfer(address dst, uint amt) external returns (bool);
-    function transferFrom(
-        address src, address dst, uint amt
-    ) external returns (bool);
-}
+// Highly opinionated token implementation. This diverges from a 'standard'
+// implementation in that:
+//  - transferFrom doesn't require setting allowance if src is msg.sender
+//  - an allowance of 0xff.ff is infinite (transferFrom doesn't decrease it)
 
 contract BTokenBase is BNum {
-
     mapping(address => uint)                   internal _balance;
     mapping(address => mapping(address=>uint)) internal _allowance;
     uint internal _totalSupply;
@@ -71,7 +59,6 @@ contract BTokenBase is BNum {
 }
 
 contract BToken is BTokenBase, IERC20 {
-
     string  private _name     = "Balancer Pool Token";
     string  private _symbol   = "BPT";
     uint8   private _decimals = 18;
