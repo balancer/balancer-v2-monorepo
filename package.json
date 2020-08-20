@@ -6,9 +6,11 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "compile": "buidler compile",
+    "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity",
     "lint:solidity": "solhint contracts/**/*.sol",
-    "test": "buidler test"
+    "test": "buidler test --no-compile",
+    "test:watch": "nodemon --ext js,ts --exec yarn test"
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.4.4",
@@ -21,6 +23,8 @@
     "chai": "^4.2.0",
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.8",
+    "mocha": "^8.1.1",
+    "nodemon": "^2.0.4",
     "prettier": "^2.0.5",
     "prettier-plugin-solidity": "^1.0.0-alpha.56",
     "solhint": "^3.2.0",

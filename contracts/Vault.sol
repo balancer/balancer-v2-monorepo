@@ -16,7 +16,7 @@ pragma solidity 0.5.12;
 import "./BToken.sol";
 import "./BMath.sol";
 
-contract BPool is BToken, BMath {
+contract Vault is BToken, BMath {
 
     struct Record {
         bool bound;   // is token bound to pool
@@ -70,7 +70,7 @@ contract BPool is BToken, BMath {
 
     bool private _mutex;
 
-    address private _factory;    // BFactory address to push token exitFee to
+    address private _feeCollector; // Address to push token exitFee to
     address private _controller; // has CONTROL role
     bool private _publicSwap; // true if PUBLIC can call SWAP functions
 
@@ -85,10 +85,14 @@ contract BPool is BToken, BMath {
 
     constructor() public {
         _controller = msg.sender;
-        _factory = msg.sender;
+        _feeCollector = msg.sender;
         _swapFee = MIN_FEE;
         _publicSwap = false;
         _finalized = false;
+    }
+
+    function getFeeCollector() external view returns (address) {
+        return _feeCollector;
     }
 
     function isPublicSwap()
@@ -293,7 +297,7 @@ contract BPool is BToken, BMath {
             uint tokenBalanceWithdrawn = bsub(oldBalance, balance);
             uint tokenExitFee = bmul(tokenBalanceWithdrawn, EXIT_FEE);
             _pushUnderlying(token, msg.sender, bsub(tokenBalanceWithdrawn, tokenExitFee));
-            _pushUnderlying(token, _factory, tokenExitFee);
+            _pushUnderlying(token, _feeCollector, tokenExitFee);
         }
     }
 
@@ -327,7 +331,7 @@ contract BPool is BToken, BMath {
         });
 
         _pushUnderlying(token, msg.sender, bsub(tokenBalance, tokenExitFee));
-        _pushUnderlying(token, _factory, tokenExitFee);
+        _pushUnderlying(token, _feeCollector, tokenExitFee);
     }
 
     // Absorb any tokens that have been sent to this contract into the pool
@@ -403,7 +407,7 @@ contract BPool is BToken, BMath {
         require(ratio != 0, "ERR_MATH_APPROX");
 
         _pullPoolShare(msg.sender, poolAmountIn);
-        _pushPoolShare(_factory, exitFee);
+        _pushPoolShare(_feeCollector, exitFee);
         _burnPoolShare(pAiAfterExitFee);
 
         for (uint i = 0; i < _tokens.length; i++) {
@@ -649,7 +653,7 @@ contract BPool is BToken, BMath {
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(bsub(poolAmountIn, exitFee));
-        _pushPoolShare(_factory, exitFee);
+        _pushPoolShare(_feeCollector, exitFee);
         _pushUnderlying(tokenOut, msg.sender, tokenAmountOut);
 
         return tokenAmountOut;
@@ -687,7 +691,7 @@ contract BPool is BToken, BMath {
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(bsub(poolAmountIn, exitFee));
-        _pushPoolShare(_factory, exitFee);
+        _pushPoolShare(_feeCollector, exitFee);
         _pushUnderlying(tokenOut, msg.sender, tokenAmountOut);
 
         return poolAmountIn;
