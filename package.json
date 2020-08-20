@@ -5,10 +5,10 @@
   "author": "Nicolás Venturo <nico@balancer.finance>",
   "license": "GPL-3.0-only",
   "scripts": {
-    "compile": "yarn buidler compile",
+    "compile": "buidler compile",
     "lint": "yarn lint:solidity",
     "lint:solidity": "solhint contracts/**/*.sol",
-    "test": "yarn buidler test"
+    "test": "buidler test"
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.4.4",
