@@ -16,7 +16,7 @@
     "@nomiclabs/buidler": "^1.4.4",
     "@nomiclabs/buidler-ethers": "^2.0.0",
     "@nomiclabs/buidler-waffle": "^2.0.0",
-    "@openzeppelin/contracts": "v2.5",
+    "@openzeppelin/contracts": "v2.*",
     "@types/chai": "^4.2.12",
     "@types/mocha": "^8.0.3",
     "@types/node": "^14.6.0",
