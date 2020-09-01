@@ -108,45 +108,6 @@ contract Vault is PoolRegistry {
         return calcSpotPrice(inRecord.balance, inRecord.denorm, outRecord.balance, outRecord.denorm, 0);
     }
 
-    // TODO: controller only
-    function joinPool(uint256 poolId, uint poolAmountOut, uint[] calldata maxAmountsIn) external _logs_ _lock_ {
-        uint poolTotal = totalSupply();
-        uint ratio = bdiv(poolAmountOut, poolTotal);
-
-        require(ratio != 0, "ERR_MATH_APPROX");
-
-        for (uint i = 0; i < _pools[poolId]._tokens.length; i++) {
-            address t = _pools[poolId]._tokens[i];
-            uint bal = _pools[poolId]._records[t].balance;
-            uint tokenAmountIn = bmul(ratio, bal);
-            require(tokenAmountIn != 0, "ERR_MATH_APPROX");
-            require(tokenAmountIn <= maxAmountsIn[i], "ERR_LIMIT_IN");
-            _pools[poolId]._records[t].balance = badd(_pools[poolId]._records[t].balance, tokenAmountIn);
-            emit LOG_JOIN(msg.sender, t, tokenAmountIn);
-            _pullUnderlying(t, msg.sender, tokenAmountIn);
-        }
-    }
-
-    // TODO: controller only
-    function exitPool(uint256 poolId, uint poolAmountIn, uint[] calldata minAmountsOut) external _logs_ _lock_ {
-        uint poolTotal = totalSupply();
-        uint ratio = bdiv(poolAmountIn, poolTotal);
-        require(ratio != 0, "ERR_MATH_APPROX");
-
-        // TODO: charge exit fee
-
-        for (uint i = 0; i < _pools[poolId]._tokens.length; i++) {
-            address t = _pools[poolId]._tokens[i];
-            uint bal = _pools[poolId]._records[t].balance;
-            uint tokenAmountOut = bmul(ratio, bal);
-            require(tokenAmountOut != 0, "ERR_MATH_APPROX");
-            require(tokenAmountOut >= minAmountsOut[i], "ERR_LIMIT_OUT");
-            _pools[poolId]._records[t].balance = bsub(_pools[poolId]._records[t].balance, tokenAmountOut);
-            emit LOG_EXIT(msg.sender, t, tokenAmountOut);
-            _pushUnderlying(t, msg.sender, tokenAmountOut);
-        }
-    }
-
     function swapExactAmountIn(
         uint256 poolId,
         address tokenIn,
