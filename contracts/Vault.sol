@@ -16,8 +16,9 @@ pragma solidity 0.5.12;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./PoolRegistry.sol";
+import "./IVault.sol";
 
-contract Vault is PoolRegistry {
+contract Vault is IVault, PoolRegistry {
     // Bind does not lock because it jumps to `rebind`, which does
     function bind(uint256 poolId, address token, uint balance, uint denorm) external _logs_ {
         require(msg.sender == _pools[poolId]._controller, "ERR_NOT_CONTROLLER");
@@ -66,7 +67,6 @@ contract Vault is PoolRegistry {
         require(_pools[poolId]._records[token].bound, "ERR_NOT_BOUND");
 
         uint tokenBalance = _pools[poolId]._records[token].balance;
-        uint tokenExitFee = bmul(tokenBalance, EXIT_FEE);
 
         _pools[poolId]._totalWeight = bsub(_pools[poolId]._totalWeight, _pools[poolId]._records[token].denorm);
 
@@ -121,7 +121,8 @@ contract Vault is PoolRegistry {
         _lock_
         returns (uint tokenAmountOut, uint spotPriceAfter)
     {
-        require(_pools[poolId]._paused, "ERR_SWAP_NOT_PUBLIC");
+        Pool memory pool = _pools[poolId];
+        require(pool._paused, "ERR_SWAP_NOT_PUBLIC");
 
         Record storage inRecord = _pools[poolId]._records[address(tokenIn)];
         Record storage outRecord = _pools[poolId]._records[address(tokenOut)];
@@ -136,7 +137,7 @@ contract Vault is PoolRegistry {
                                     inRecord.denorm,
                                     outRecord.balance,
                                     outRecord.denorm,
-                                    _pools[poolId]._swapFee
+                                    pool._swapFee
                                 );
         require(spotPriceBefore <= maxPrice, "ERR_BAD_LIMIT_PRICE");
 
@@ -146,7 +147,7 @@ contract Vault is PoolRegistry {
                             outRecord.balance,
                             outRecord.denorm,
                             tokenAmountIn,
-                            _pools[poolId]._swapFee
+                            pool._swapFee
                         );
         require(tokenAmountOut >= minAmountOut, "ERR_LIMIT_OUT");
 
@@ -158,7 +159,7 @@ contract Vault is PoolRegistry {
                                 inRecord.denorm,
                                 outRecord.balance,
                                 outRecord.denorm,
-                                _pools[poolId]._swapFee
+                                pool._swapFee
                             );
         require(spotPriceAfter >= spotPriceBefore, "ERR_MATH_APPROX");
         require(spotPriceAfter <= maxPrice, "ERR_LIMIT_PRICE");
@@ -185,7 +186,8 @@ contract Vault is PoolRegistry {
         _lock_
         returns (uint tokenAmountIn, uint spotPriceAfter)
     {
-        require(_pools[poolId]._paused, "ERR_SWAP_NOT_PUBLIC");
+        Pool memory pool = _pools[poolId];
+        require(pool._paused, "ERR_SWAP_NOT_PUBLIC");
 
         Record storage inRecord = _pools[poolId]._records[address(tokenIn)];
         Record storage outRecord = _pools[poolId]._records[address(tokenOut)];
@@ -195,13 +197,7 @@ contract Vault is PoolRegistry {
 
         require(tokenAmountOut <= bmul(outRecord.balance, MAX_OUT_RATIO), "ERR_MAX_OUT_RATIO");
 
-        uint spotPriceBefore = calcSpotPrice(
-                                    inRecord.balance,
-                                    inRecord.denorm,
-                                    outRecord.balance,
-                                    outRecord.denorm,
-                                    _pools[poolId]._swapFee
-                                );
+        uint spotPriceBefore = calcSpotPrice(inRecord.balance, inRecord.denorm, outRecord.balance, outRecord.denorm, pool._swapFee);
         require(spotPriceBefore <= maxPrice, "ERR_BAD_LIMIT_PRICE");
 
         tokenAmountIn = calcInGivenOut(
@@ -210,7 +206,7 @@ contract Vault is PoolRegistry {
                             outRecord.balance,
                             outRecord.denorm,
                             tokenAmountOut,
-                            _pools[poolId]._swapFee
+                            pool._swapFee
                         );
         require(tokenAmountIn <= maxAmountIn, "ERR_LIMIT_IN");
 
@@ -222,7 +218,7 @@ contract Vault is PoolRegistry {
                                 inRecord.denorm,
                                 outRecord.balance,
                                 outRecord.denorm,
-                                _pools[poolId]._swapFee
+                                pool._swapFee
                             );
         require(spotPriceAfter >= spotPriceBefore, "ERR_MATH_APPROX");
         require(spotPriceAfter <= maxPrice, "ERR_LIMIT_PRICE");
