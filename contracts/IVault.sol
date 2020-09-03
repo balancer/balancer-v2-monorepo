@@ -13,7 +13,7 @@
 
 pragma solidity 0.5.12;
 
-interface Vault {
+interface IVault {
     function newPool() external returns (uint256);
 
     // Pool config queries
