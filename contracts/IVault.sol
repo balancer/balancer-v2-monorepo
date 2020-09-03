@@ -59,22 +59,4 @@ interface IVault {
     // Trading interface
 
     // Swap interfaces are TBD
-
-    function swapExactAmountIn(
-        uint256 poolId,
-        address tokenIn,
-        uint tokenAmountIn,
-        address tokenOut,
-        uint minAmountOut,
-        uint maxPrice
-    ) external returns (uint tokenAmountOut, uint spotPriceAfter);
-
-    function swapExactAmountOut(
-        uint256 poolId,
-        address tokenIn,
-        uint maxAmountIn,
-        address tokenOut,
-        uint tokenAmountOut,
-        uint maxPrice
-    ) external returns (uint tokenAmountIn, uint spotPriceAfter);
 }
