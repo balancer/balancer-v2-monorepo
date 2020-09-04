@@ -41,14 +41,19 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     Pool[] internal _pools;
 
+    event PoolCreated(uint256 poolId);
+
     function newPool() external returns (uint256) {
-        uint256 poolId = _pools.push(Pool({
-             controller: msg.sender,
+        uint256 totalPools = _pools.push(Pool({
+            controller: msg.sender,
             swapFee: MIN_FEE,
             paused: true,
             tokens: new address[](0),
             totalWeight: 0
         }));
+
+        uint256 poolId = totalPools - 1; // The index of the last added item
+        emit PoolCreated(poolId);
 
         return poolId;
     }
