@@ -65,13 +65,12 @@ contract Vault is IVault, PoolRegistry {
         uint oldBalance = _pools[poolId].records[token].balance;
         _pools[poolId].records[token].balance = balance;
 
-        // TODO: charge exit fee if applicable (i.e. if balance < oldBalance)
-        uint256 toPull = bsub(balance, oldBalance);
-        _pullUnderlying(token, msg.sender, toPull);
-
-        // TODO: What assumptions do we make when pulling? Should we check token.balanceOf(this)
-        // increased by toPull?
-        _tokenBalances[token] += toPull;
+        if (balance > oldBalance) {
+            _pullUnderlying(token, msg.sender, bsub(balance, oldBalance));
+        } else if (balance < oldBalance) {
+            // TODO: charge exit fee
+            _pushUnderlying(token, msg.sender, bsub(oldBalance, balance));
+        }
     }
 
     function unbind(uint256 poolId, address token) external _logs_ _lock_ {
@@ -98,10 +97,6 @@ contract Vault is IVault, PoolRegistry {
 
         // TODO: charge exit fee
         _pushUnderlying(token, msg.sender, tokenBalance);
-
-        // TODO: What assumptions do we make when pulling? Should we check token.balanceOf(this)
-        // decreased by toPull?
-        _tokenBalances[token] -= tokenBalance;
     }
 
     function getSpotPrice(uint256 poolId, address tokenIn, address tokenOut) external view _viewlock_ returns (uint spotPrice) {
@@ -228,11 +223,6 @@ contract Vault is IVault, PoolRegistry {
                 uint256 amount = uint256(-diff.vaultDelta);
 
                 _pushUnderlying(diff.token, msg.sender, amount);
-
-                // TODO: assert new token balance (token.balanceOf()) is what is actually expected (see Statera bug)
-
-                // Update token balance
-                _tokenBalances[diff.token] -= amount;
             }
         }
     }
@@ -260,10 +250,18 @@ contract Vault is IVault, PoolRegistry {
     function _pullUnderlying(address erc20, address from, uint amount) internal {
         bool xfer = IERC20(erc20).transferFrom(from, address(this), amount);
         require(xfer, "ERR_ERC20_FALSE");
+
+        // TODO: What assumptions do we make when pulling? Should we check token.balanceOf(this)
+        // increased by toPull?
+        _tokenBalances[erc20] += amount;
     }
 
     function _pushUnderlying(address erc20, address to, uint amount) internal {
         bool xfer = IERC20(erc20).transfer(to, amount);
         require(xfer, "ERR_ERC20_FALSE");
+
+        // TODO: What assumptions do we make when pushing? Should we check token.balanceOf(this)
+        // decreased by toPull?
+        _tokenBalances[erc20] -= amount;
     }
 }
