@@ -129,4 +129,77 @@ describe('Vault', () => {
       // console.log('Gas:', receipt.gasUsed.toString());
     });
   });
+
+  describe('flash swap arbitrage', () => {
+    const totalPools = 5;
+
+    beforeEach('setup unbalanced pools & mint tokens', async () => {
+      // Mint and approve controller liquidity
+      await Promise.all(['DAI', 'MKR'].map(async token => {
+        await tokens[token].mint(await controller.getAddress(), 100e18.toString());
+        await tokens[token].connect(controller).approve(vault.address, MAX_UINT256);
+      }));
+
+      for (let poolId = 0; poolId < totalPools; ++poolId) {
+        const receipt: ContractReceipt = await (await vault.connect(controller).newPool()).wait();
+        expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
+
+        // 50-50 DAI-MKR pool with a 1 to 4 DAI:MKR ratio
+        await vault.connect(controller).bind(poolId, tokens['DAI'].address, 0.5e18.toString(), 1e18.toString());
+        await vault.connect(controller).bind(poolId, tokens['MKR'].address, 2e18.toString(), 1e18.toString());
+      }
+
+      // Move the first pool to a difference price point (1 to 10 DAI:MKR) by withdrawing DAI
+      await vault.connect(controller).rebind(0, tokens['DAI'].address, 0.2e18.toString(), 1e18.toString());
+    });
+
+    it('works', async () => {
+      const diffs = [{
+        token: tokens['DAI'].address,
+        vaultDelta: 0
+      }, {
+        token: tokens['MKR'].address,
+        vaultDelta: 0
+      }];
+
+      // Move the unbalanced pool to a 1:7 ratio (this is not the optimal ratio)
+
+      const swaps = [
+        {
+          poolId: 0,
+          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.2391e18.toString() },
+          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 1.673e18.toString() },
+        },{
+          poolId: 1,
+          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
+          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
+        },{
+          poolId: 2,
+          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
+          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
+        },{
+          poolId: 3,
+          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
+          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
+        },{
+          poolId: 4,
+          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
+          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
+        },
+      ];
+
+      const preDAI = await tokens['DAI'].balanceOf(await trader.getAddress());
+      const preMKR = await tokens['MKR'].balanceOf(await trader.getAddress());
+
+      // Swap
+      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps)).wait();
+
+      const postDAI = await tokens['DAI'].balanceOf(await trader.getAddress());
+      const postMKR = await tokens['MKR'].balanceOf(await trader.getAddress());
+
+      // The trader got MKR without spending DAI
+      expect(postMKR).to.be.gt(preMKR);
+      expect(postDAI).to.be.gte(preDAI);
+    });
+  });
 });
