@@ -133,7 +133,7 @@ contract Vault is IVault, PoolRegistry {
 
     // A batched swap is made up of a number of Swaps. Each swap indicates a change in the
     // balances of a token pair in a pool.
-    struct Swaps {
+    struct Swap {
         uint256 poolId;
 
         TokenData tokenA;
@@ -151,7 +151,7 @@ contract Vault is IVault, PoolRegistry {
         uint256 tokenDiffIndex;
     }
 
-    function batchSwap(Diff[] memory diffs, Swaps[] memory swaps) public {
+    function batchSwap(Diff[] memory diffs, Swap[] memory swaps) public {
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
         // indexes pointing to the same token.
         // A simple way to implement this is to require the addresses to be sorted, and require strict
@@ -171,7 +171,7 @@ contract Vault is IVault, PoolRegistry {
         //  - update pool balances
 
         for (uint256 i = 0; i < swaps.length; ++i) {
-            Swaps memory swap = swaps[i];
+            Swap memory swap = swaps[i];
             Pool storage pool = _pools[swap.poolId];
 
             // TODO: account for swap fees
