@@ -28,89 +28,89 @@ contract PoolRegistry is BMath, Lock, Logs {
     }
 
     struct Pool {
-        address _controller; // has CONTROL role
-        bool _paused;
+        address controller; // has CONTROL role
+        bool paused;
 
         // `setSwapFee` requires CONTROL
-        uint _swapFee;
+        uint swapFee;
 
-        address[] _tokens;
-        mapping (address => Record) _records;
-        uint _totalWeight;
+        address[] tokens;
+        mapping (address => Record) records;
+        uint totalWeight;
     }
 
-    Pool[] internal _pools;
+    Pool[] internal pools;
 
     function newPool() external returns (uint256) {
-        uint256 poolId = _pools.push(Pool({
-             _controller: msg.sender,
-            _swapFee: MIN_FEE,
-            _paused: true,
-            _tokens: new address[](0),
-            _totalWeight: 0
+        uint256 poolId = pools.push(Pool({
+             controller: msg.sender,
+            swapFee: MIN_FEE,
+            paused: true,
+            tokens: new address[](0),
+            totalWeight: 0
         }));
 
         return poolId;
     }
 
     function isPaused(uint256 poolId) external view returns (bool) {
-        return _pools[poolId]._paused;
+        return pools[poolId].paused;
     }
 
     function isTokenBound(uint256 poolId, address token) external view returns (bool) {
-        return _pools[poolId]._records[token].bound;
+        return pools[poolId].records[token].bound;
     }
 
     function getNumTokens(uint256 poolId) external view returns (uint) {
-        return _pools[poolId]._tokens.length;
+        return pools[poolId].tokens.length;
     }
 
     function getTokens(uint256 poolId) external view _viewlock_ returns (address[] memory tokens) {
-        return _pools[poolId]._tokens;
+        return pools[poolId].tokens;
     }
 
     function getTokenDenormalizedWeight(uint256 poolId, address token) external view _viewlock_ returns (uint) {
-        require(_pools[poolId]._records[token].bound, "ERR_NOT_BOUND");
-        return _pools[poolId]._records[token].denorm;
+        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
+        return pools[poolId].records[token].denorm;
     }
 
     function getTotalDenormalizedWeight(uint256 poolId) external view _viewlock_ returns (uint) {
-        return _pools[poolId]._totalWeight;
+        return pools[poolId].totalWeight;
     }
 
     function getTokenNormalizedWeight(uint256 poolId, address token) external view _viewlock_ returns (uint) {
-        require(_pools[poolId]._records[token].bound, "ERR_NOT_BOUND");
-        uint denorm = _pools[poolId]._records[token].denorm;
-        return bdiv(denorm, _pools[poolId]._totalWeight);
+        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
+        uint denorm = pools[poolId].records[token].denorm;
+        return bdiv(denorm, pools[poolId].totalWeight);
     }
 
     function getTokenBalance(uint256 poolId, address token) external view _viewlock_ returns (uint) {
-        require(_pools[poolId]._records[token].bound, "ERR_NOT_BOUND");
-        return _pools[poolId]._records[token].balance;
+        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
+        return pools[poolId].records[token].balance;
     }
 
     function getSwapFee(uint256 poolId) external view _viewlock_ returns (uint) {
-        return _pools[poolId]._swapFee;
+        return pools[poolId].swapFee;
     }
 
     function getController(uint256 poolId) external view _viewlock_ returns (address) {
-        return _pools[poolId]._controller;
+        return pools[poolId].controller;
     }
 
     function setSwapFee(uint256 poolId, uint swapFee) external _logs_ _lock_ {
-        require(msg.sender == _pools[poolId]._controller, "ERR_NOT_CONTROLLER");
+        require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
         require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
-        _pools[poolId]._swapFee = swapFee;
+        pools[poolId].swapFee = swapFee;
     }
 
     function setController(uint256 poolId, address manager) external _logs_ _lock_ {
-        require(msg.sender == _pools[poolId]._controller, "ERR_NOT_CONTROLLER");
-        _pools[poolId]._controller = manager;
+        require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
+        pools[poolId].controller = manager;
     }
 
     function setPaused(uint256 poolId, bool paused) external _logs_ _lock_ {
-        require(msg.sender == _pools[poolId]._controller, "ERR_NOT_CONTROLLER");
-        _pools[poolId]._paused = paused;
+        require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
+        pools[poolId].paused = paused;
     }
 }
