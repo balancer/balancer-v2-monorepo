@@ -212,8 +212,8 @@ contract Vault is IVault, PoolRegistry {
 
             // 3: update pool balances
 
-            pool._records[tokenA].balance = swap.tokenA.balance;
-            pool._records[tokenB].balance = swap.tokenB.balance;
+            pool.records[tokenA].balance = swap.tokenA.balance;
+            pool.records[tokenB].balance = swap.tokenB.balance;
         }
 
         // Step 4: check tokens have been received
