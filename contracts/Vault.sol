@@ -150,7 +150,7 @@ contract Vault is IVault, PoolRegistry {
         // TODO: check each pool only appears in a single swap. Might be overly restrictive, but easy
         // to implement (require swaps array to be sorted by poolId).
 
-        // Steps 1 & 2:
+        // Steps 1, 2 & 3:
         //  - validate hints
         //  - check new pool balances are valid
         //  - accumulate token diffs
@@ -195,9 +195,14 @@ contract Vault is IVault, PoolRegistry {
 
             int256 balanceBDelta = int256(swap.tokenB.balance - recordB.balance); // TODO: check overflow
             diffs[swap.tokenB.tokenDiffIndex].vaultDelta += balanceBDelta;
+
+            // 3: update pool balances
+
+            pool._records[tokenA].balance = swap.tokenA.balance;
+            pool._records[tokenB].balance = swap.tokenB.balance;
         }
 
-        // Step 3: check tokens have been received
+        // Step 4: check tokens have been received
 
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
@@ -213,7 +218,7 @@ contract Vault is IVault, PoolRegistry {
             }
         }
 
-        // Step 4: send out tokens to send
+        // Step 5: send out tokens to send
 
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
