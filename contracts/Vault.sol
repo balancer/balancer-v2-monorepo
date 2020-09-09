@@ -21,63 +21,63 @@ import "./IVault.sol";
 contract Vault is IVault, PoolRegistry {
     // Bind does not lock because it jumps to `rebind`, which does
     function bind(uint256 poolId, address token, uint balance, uint denorm) external _logs_ {
-        require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
-        require(!pools[poolId].records[token].bound, "ERR_IS_BOUND");
+        require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
+        require(!_pools[poolId].records[token].bound, "ERR_IS_BOUND");
 
-        require(pools[poolId].tokens.length < MAX_BOUND_TOKENS, "ERR_MAX_TOKENS");
+        require(_pools[poolId].tokens.length < MAX_BOUND_TOKENS, "ERR_MAX_TOKENS");
 
-        pools[poolId].records[token] = Record({
+        _pools[poolId].records[token] = Record({
             bound: true,
-            index: pools[poolId].tokens.length,
+            index: _pools[poolId].tokens.length,
             denorm: 0,    // balance and denorm will be validated
             balance: 0   // and set by `rebind`
         });
-        pools[poolId].tokens.push(token);
+        _pools[poolId].tokens.push(token);
         rebind(poolId, token, balance, denorm);
     }
 
     function rebind(uint256 poolId, address token, uint balance, uint denorm) public _logs_ _lock_ {
-        require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
-        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
+        require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
+        require(_pools[poolId].records[token].bound, "ERR_NOT_BOUND");
 
         require(denorm >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
         require(denorm <= MAX_WEIGHT, "ERR_MAX_WEIGHT");
         require(balance >= MIN_BALANCE, "ERR_MIN_BALANCE");
 
         // Adjust the denorm and totalWeight
-        uint oldWeight = pools[poolId].records[token].denorm;
+        uint oldWeight = _pools[poolId].records[token].denorm;
         if (denorm > oldWeight) {
-            pools[poolId].totalWeight = badd(pools[poolId].totalWeight, bsub(denorm, oldWeight));
-            require(pools[poolId].totalWeight <= MAX_TOTAL_WEIGHT, "ERR_MAX_TOTAL_WEIGHT");
+            _pools[poolId].totalWeight = badd(_pools[poolId].totalWeight, bsub(denorm, oldWeight));
+            require(_pools[poolId].totalWeight <= MAX_TOTAL_WEIGHT, "ERR_MAX_TOTAL_WEIGHT");
         } else if (denorm < oldWeight) {
-            pools[poolId].totalWeight = bsub(pools[poolId].totalWeight, bsub(oldWeight, denorm));
+            _pools[poolId].totalWeight = bsub(_pools[poolId].totalWeight, bsub(oldWeight, denorm));
         }
-        pools[poolId].records[token].denorm = denorm;
+        _pools[poolId].records[token].denorm = denorm;
 
         // Adjust the balance record and actual token balance
-        uint oldBalance = pools[poolId].records[token].balance;
-        pools[poolId].records[token].balance = balance;
+        uint oldBalance = _pools[poolId].records[token].balance;
+        _pools[poolId].records[token].balance = balance;
 
         // TODO: charge exit fee if applicable (i.e. if balance < oldBalance)
         _pullUnderlying(token, msg.sender, bsub(balance, oldBalance));
     }
 
     function unbind(uint256 poolId, address token) external _logs_ _lock_ {
-        require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
-        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
+        require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
+        require(_pools[poolId].records[token].bound, "ERR_NOT_BOUND");
 
-        uint tokenBalance = pools[poolId].records[token].balance;
+        uint tokenBalance = _pools[poolId].records[token].balance;
 
-        pools[poolId].totalWeight = bsub(pools[poolId].totalWeight, pools[poolId].records[token].denorm);
+        _pools[poolId].totalWeight = bsub(_pools[poolId].totalWeight, _pools[poolId].records[token].denorm);
 
         // Swap the token-to-unbind with the last token,
         // then delete the last token
-        uint index = pools[poolId].records[token].index;
-        uint last = pools[poolId].tokens.length - 1;
-        pools[poolId].tokens[index] = pools[poolId].tokens[last];
-        pools[poolId].records[pools[poolId].tokens[index]].index = index;
-        pools[poolId].tokens.pop();
-        pools[poolId].records[token] = Record({
+        uint index = _pools[poolId].records[token].index;
+        uint last = _pools[poolId].tokens.length - 1;
+        _pools[poolId].tokens[index] = _pools[poolId].tokens[last];
+        _pools[poolId].records[_pools[poolId].tokens[index]].index = index;
+        _pools[poolId].tokens.pop();
+        _pools[poolId].records[token] = Record({
             bound: false,
             index: 0,
             denorm: 0,
@@ -89,18 +89,18 @@ contract Vault is IVault, PoolRegistry {
     }
 
     function getSpotPrice(uint256 poolId, address tokenIn, address tokenOut) external view _viewlock_ returns (uint spotPrice) {
-        Record storage inRecord = pools[poolId].records[tokenIn];
-        Record storage outRecord = pools[poolId].records[tokenOut];
+        Record storage inRecord = _pools[poolId].records[tokenIn];
+        Record storage outRecord = _pools[poolId].records[tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
 
-        return calcSpotPrice(inRecord.balance, inRecord.denorm, outRecord.balance, outRecord.denorm, pools[poolId].swapFee);
+        return calcSpotPrice(inRecord.balance, inRecord.denorm, outRecord.balance, outRecord.denorm, _pools[poolId].swapFee);
     }
 
     function getSpotPriceSansFee(uint256 poolId, address tokenIn, address tokenOut) external view _viewlock_ returns (uint spotPrice) {
-        Record storage inRecord = pools[poolId].records[tokenIn];
-        Record storage outRecord = pools[poolId].records[tokenOut];
+        Record storage inRecord = _pools[poolId].records[tokenIn];
+        Record storage outRecord = _pools[poolId].records[tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
@@ -121,11 +121,11 @@ contract Vault is IVault, PoolRegistry {
         _lock_
         returns (uint tokenAmountOut, uint spotPriceAfter)
     {
-        Pool memory pool = pools[poolId];
+        Pool memory pool = _pools[poolId];
         require(pool.paused, "ERR_SWAP_NOT_PUBLIC");
 
-        Record storage inRecord = pools[poolId].records[address(tokenIn)];
-        Record storage outRecord = pools[poolId].records[address(tokenOut)];
+        Record storage inRecord = _pools[poolId].records[address(tokenIn)];
+        Record storage outRecord = _pools[poolId].records[address(tokenOut)];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
@@ -186,11 +186,11 @@ contract Vault is IVault, PoolRegistry {
         _lock_
         returns (uint tokenAmountIn, uint spotPriceAfter)
     {
-        Pool memory pool = pools[poolId];
+        Pool memory pool = _pools[poolId];
         require(pool.paused, "ERR_SWAP_NOT_PUBLIC");
 
-        Record storage inRecord = pools[poolId].records[address(tokenIn)];
-        Record storage outRecord = pools[poolId].records[address(tokenOut)];
+        Record storage inRecord = _pools[poolId].records[address(tokenIn)];
+        Record storage outRecord = _pools[poolId].records[address(tokenOut)];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
