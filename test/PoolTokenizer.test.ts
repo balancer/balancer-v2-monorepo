@@ -3,10 +3,10 @@ const { expect } = require("chai");
 import { ContractFactory, Contract, Signer } from "ethers";
 
 const { BigNumber } = ethers;
-const TTOKEN_DECIMALS = 3
+const TEST_TOKEN_DECIMALS = 3
 
 const fromTokenUnits = (num: string) => {
-  const power = BigNumber.from(10).pow(TTOKEN_DECIMALS)
+  const power = BigNumber.from(10).pow(TEST_TOKEN_DECIMALS)
   const scaled = parseFloat(num)
   return BigNumber.from(scaled).mul(BigNumber.from(power))
 }
@@ -65,9 +65,9 @@ describe("PoolTokenizer", function() {
     let weth: Contract, dai: Contract;
     let WETH: string, DAI: string;
     beforeEach(async () => {
-      const TToken: ContractFactory = await ethers.getContractFactory("TToken");
-      weth = await TToken.deploy('Wrapped Ether', 'WETH', TTOKEN_DECIMALS);
-      dai = await TToken.deploy('Dai Stablecoin', 'DAI', TTOKEN_DECIMALS);
+      const TestToken: ContractFactory = await ethers.getContractFactory("TestToken");
+      weth = await TestToken.deploy('Wrapped Ether', 'WETH', TEST_TOKEN_DECIMALS);
+      dai = await TestToken.deploy('Dai Stablecoin', 'DAI', TEST_TOKEN_DECIMALS);
 
       await weth.deployed()
       await dai.deployed()
