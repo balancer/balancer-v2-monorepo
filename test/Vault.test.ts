@@ -34,13 +34,14 @@ describe('Vault', () => {
   });
 
   describe('pool management', () => {
-    let poolId: BigNumber;
+    let poolId: String;
 
     beforeEach('add pool', async () => {
-      const receipt: ContractReceipt = await (await vault.connect(controller).newPool()).wait();
+      poolId = ethers.utils.id('Test')
+      const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId)).wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
-      poolId = event.args!.poolId;
+      //poolId = event.args!.poolId;
     });
 
     it('has the correct controller', async () => {
@@ -59,8 +60,10 @@ describe('Vault', () => {
       }));
 
 
-      for (let poolId = 0; poolId < totalPools; ++poolId) {
-        const receipt: ContractReceipt = await (await vault.connect(controller).newPool()).wait();
+      for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
+        let poolId: String = ethers.utils.id('batch' + poolIdIdx)
+
+        const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId)).wait();
         expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
 
         // 50-50 DAI-MKR pool with 1e18 tokens in each
@@ -86,7 +89,7 @@ describe('Vault', () => {
 
       const swaps = [
         {
-          poolId: 0,
+          poolId: ethers.utils.id('batch0'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.51e18.toString() }, // Math isn't 100% accurate
           tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2e18.toString() },
         }
@@ -112,11 +115,11 @@ describe('Vault', () => {
 
       const swaps = [
         {
-          poolId: 0,
+          poolId: ethers.utils.id('batch0'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.75e18.toString() },
           tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 1.34e18.toString() },
         },{
-          poolId: 1,
+          poolId: ethers.utils.id('batch1'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.75e18.toString() },
           tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 1.34e18.toString() },
         }
@@ -140,8 +143,9 @@ describe('Vault', () => {
         await tokens[token].connect(controller).approve(vault.address, MAX_UINT256);
       }));
 
-      for (let poolId = 0; poolId < totalPools; ++poolId) {
-        const receipt: ContractReceipt = await (await vault.connect(controller).newPool()).wait();
+      for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
+        let poolId = ethers.utils.id('unbalanced' + poolIdIdx)
+        const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId)).wait();
         expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
 
         // 50-50 DAI-MKR pool with a 1 to 4 DAI:MKR ratio
@@ -150,7 +154,8 @@ describe('Vault', () => {
       }
 
       // Move the first pool to a difference price point (1 to 10 DAI:MKR) by withdrawing DAI
-      await vault.connect(controller).rebind(0, tokens['DAI'].address, 0.2e18.toString(), 1e18.toString());
+      let firstPoolId = ethers.utils.id('unbalanced0')
+      await vault.connect(controller).rebind(firstPoolId, tokens['DAI'].address, 0.2e18.toString(), 1e18.toString());
     });
 
     it('works', async () => {
@@ -166,23 +171,23 @@ describe('Vault', () => {
 
       const swaps = [
         {
-          poolId: 0,
+          poolId: ethers.utils.id('unbalanced0'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.2391e18.toString() },
           tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 1.673e18.toString() },
         },{
-          poolId: 1,
+          poolId: ethers.utils.id('unbalanced1'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
           tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
         },{
-          poolId: 2,
+          poolId: ethers.utils.id('unbalanced2'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
           tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
         },{
-          poolId: 3,
+          poolId: ethers.utils.id('unbalanced3'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
           tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
         },{
-          poolId: 4,
+          poolId: ethers.utils.id('unbalanced4'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
           tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
         },

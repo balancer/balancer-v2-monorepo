@@ -27,7 +27,7 @@ contract Vault is IVault, PoolRegistry {
     mapping (address => uint256) private _tokenBalances;
 
     // Bind does not lock because it jumps to `rebind`, which does
-    function bind(uint256 poolId, address token, uint balance, uint denorm) external _logs_ {
+    function bind(bytes32 poolId, address token, uint balance, uint denorm) external _logs_ {
         require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(!_pools[poolId].records[token].bound, "ERR_IS_BOUND");
 
@@ -36,14 +36,13 @@ contract Vault is IVault, PoolRegistry {
         _pools[poolId].records[token] = Record({
             bound: true,
             index: _pools[poolId].tokens.length,
-            denorm: 0,    // balance and denorm will be validated
-            balance: 0    // and set by `rebind`
+            denorm: 0  // denorm will be validated by rebind()
         });
         _pools[poolId].tokens.push(token);
         rebind(poolId, token, balance, denorm);
     }
 
-    function rebind(uint256 poolId, address token, uint balance, uint denorm) public _logs_ _lock_ {
+    function rebind(bytes32 poolId, address token, uint balance, uint denorm) public _logs_ _lock_ {
         require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(_pools[poolId].records[token].bound, "ERR_NOT_BOUND");
 
@@ -62,8 +61,8 @@ contract Vault is IVault, PoolRegistry {
         _pools[poolId].records[token].denorm = denorm;
 
         // Adjust the balance record and actual token balance
-        uint oldBalance = _pools[poolId].records[token].balance;
-        _pools[poolId].records[token].balance = balance;
+        uint oldBalance = _balances[poolId][token];
+        _balances[poolId][token] = balance;
 
         if (balance > oldBalance) {
             _pullUnderlying(token, msg.sender, bsub(balance, oldBalance));
@@ -73,11 +72,11 @@ contract Vault is IVault, PoolRegistry {
         }
     }
 
-    function unbind(uint256 poolId, address token) external _logs_ _lock_ {
+    function unbind(bytes32 poolId, address token) external _logs_ _lock_ {
         require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(_pools[poolId].records[token].bound, "ERR_NOT_BOUND");
 
-        uint tokenBalance = _pools[poolId].records[token].balance;
+        uint tokenBalance = _balances[poolId][token];
 
         _pools[poolId].totalWeight = bsub(_pools[poolId].totalWeight, _pools[poolId].records[token].denorm);
 
@@ -91,32 +90,35 @@ contract Vault is IVault, PoolRegistry {
         _pools[poolId].records[token] = Record({
             bound: false,
             index: 0,
-            denorm: 0,
-            balance: 0
+            denorm: 0
         });
 
         // TODO: charge exit fee
         _pushUnderlying(token, msg.sender, tokenBalance);
     }
 
-    function getSpotPrice(uint256 poolId, address tokenIn, address tokenOut) external view _viewlock_ returns (uint spotPrice) {
+    function getSpotPrice(bytes32 poolId, address tokenIn, address tokenOut) external view _viewlock_ returns (uint spotPrice) {
         Record storage inRecord = _pools[poolId].records[tokenIn];
+        uint256 inRecordBalance = _balances[poolId][tokenIn];
         Record storage outRecord = _pools[poolId].records[tokenOut];
+        uint256 outRecordBalance = _balances[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
 
-        return calcSpotPrice(inRecord.balance, inRecord.denorm, outRecord.balance, outRecord.denorm, _pools[poolId].swapFee);
+        return calcSpotPrice(inRecordBalance, inRecord.denorm, outRecordBalance, outRecord.denorm, _pools[poolId].swapFee);
     }
 
-    function getSpotPriceSansFee(uint256 poolId, address tokenIn, address tokenOut) external view _viewlock_ returns (uint spotPrice) {
+    function getSpotPriceSansFee(bytes32 poolId, address tokenIn, address tokenOut) external view _viewlock_ returns (uint spotPrice) {
         Record storage inRecord = _pools[poolId].records[tokenIn];
+        uint256 inRecordBalance = _balances[poolId][tokenIn];
         Record storage outRecord = _pools[poolId].records[tokenOut];
+        uint256 outRecordBalance = _balances[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
 
-        return calcSpotPrice(inRecord.balance, inRecord.denorm, outRecord.balance, outRecord.denorm, 0);
+        return calcSpotPrice(inRecordBalance, inRecord.denorm, outRecordBalance, outRecord.denorm, 0);
     }
 
     // batchSwap helper data structures
@@ -134,7 +136,7 @@ contract Vault is IVault, PoolRegistry {
     // A batched swap is made up of a number of Swaps. Each swap indicates a change in the
     // balances of a token pair in a pool.
     struct Swap {
-        uint256 poolId;
+        bytes32 poolId;
 
         TokenData tokenA;
         TokenData tokenB;
@@ -183,9 +185,10 @@ contract Vault is IVault, PoolRegistry {
 
             require(pool.tokens[swap.tokenA.tokenPoolIndex] == tokenA, "Bad token A index hint");
             Record memory recordA = pool.records[tokenA];
+            uint recordABalance = _balances[swap.poolId][tokenA];
 
             // Validate swap alters pool's balance for token A
-            require(swap.tokenA.balance != recordA.balance, "NOOP");
+            require(swap.tokenA.balance != recordABalance, "NOOP");
 
             // 1.1.b: Validate hints and new balance for token B
 
@@ -194,26 +197,27 @@ contract Vault is IVault, PoolRegistry {
 
             require(pool.tokens[swap.tokenB.tokenPoolIndex] == tokenB, "Bad token B index hint");
             Record memory recordB = pool.records[tokenB];
+            uint recordBBalance = _balances[swap.poolId][tokenB];
 
             // Validate swap alters pool's balance for token B
-            require(swap.tokenB.balance != recordB.balance, "NOOP");
+            require(swap.tokenB.balance != recordBBalance, "NOOP");
 
             // 1.2: Validate new balances are valid
 
-            require(validateBalances(recordA.balance, recordB.balance, swap.tokenA.balance, swap.tokenB.balance, recordA.denorm, recordB.denorm), "ERR_INVALID_SWAP");
+            require(validateBalances(recordABalance, recordBBalance, swap.tokenA.balance, swap.tokenB.balance, recordA.denorm, recordB.denorm), "ERR_INVALID_SWAP");
 
             // 2: Accumulate token diffs
 
-            int256 balanceADelta = int256(swap.tokenA.balance - recordA.balance); // TODO: check overflow
+            int256 balanceADelta = int256(swap.tokenA.balance - recordABalance); // TODO: check overflow
             diffs[swap.tokenA.tokenDiffIndex].vaultDelta += balanceADelta;
 
-            int256 balanceBDelta = int256(swap.tokenB.balance - recordB.balance); // TODO: check overflow
+            int256 balanceBDelta = int256(swap.tokenB.balance - recordBBalance); // TODO: check overflow
             diffs[swap.tokenB.tokenDiffIndex].vaultDelta += balanceBDelta;
 
             // 3: update pool balances
 
-            pool.records[tokenA].balance = swap.tokenA.balance;
-            pool.records[tokenB].balance = swap.tokenB.balance;
+            _balances[swap.poolId][tokenA] = swap.tokenA.balance;
+            _balances[swap.poolId][tokenB] = swap.tokenB.balance;
         }
 
         // Step 4: check tokens have been received
@@ -262,6 +266,94 @@ contract Vault is IVault, PoolRegistry {
         // Require value to remain or increase, even if this means the trader is not being optimal
         return newValue >= oldValue;
     }
+
+  function addInitialLiquidity(bytes32 poolId, address[] calldata initialTokens, uint[] calldata initialBalances) external {
+    Pool memory pool = _pools[poolId];
+    require(pool.controller == msg.sender);
+    _pools[poolId].tokens = initialTokens;
+
+    for (uint i = 0; i < initialTokens.length; ++i) {
+      address t = initialTokens[i];
+      uint tokenAmountIn = initialBalances[i];
+      require(tokenAmountIn != 0, "ERR_MATH_APPROX");
+      require(bsub(IERC20(t).balanceOf(address(this)), _allocatedBalances[t]) >= tokenAmountIn, "INSUFFICIENT UNALLOCATED BALANCE");
+
+      _balances[poolId][t] = tokenAmountIn;
+      _allocatedBalances[t] = badd(_allocatedBalances[t], tokenAmountIn);
+    }
+  }
+
+  function addLiquidity(bytes32 poolId, uint[] calldata amountsIn)
+  external
+  {
+    Pool memory pool = _pools[poolId];
+    require(pool.controller == msg.sender);
+
+    for (uint i = 0; i < pool.tokens.length; ++i) {
+      address t = pool.tokens[i];
+      uint bal = _balances[poolId][t];
+      uint tokenAmountIn = amountsIn[i];
+      require(tokenAmountIn != 0, "ERR_MATH_APPROX");
+      require(bsub(IERC20(t).balanceOf(address(this)), _allocatedBalances[t]) >= tokenAmountIn, "INSUFFICIENT UNALLOCATED BALANCE");
+
+      _balances[poolId][t] = badd(bal, tokenAmountIn);
+      _allocatedBalances[t] = badd(_allocatedBalances[t], tokenAmountIn);
+    }
+  }
+
+  function removeLiquidity(bytes32 poolId, address recipient, uint[] calldata amountsOut)
+  external
+  {
+    Pool memory pool = _pools[poolId];
+    require(pool.controller == msg.sender);
+
+    for (uint i = 0; i < pool.tokens.length; ++i) {
+      address t = pool.tokens[i];
+      uint bal = _balances[poolId][t];
+      uint tokenAmountOut = amountsOut[i];
+      require(tokenAmountOut != 0, "ERR_MATH_APPROX");
+      require(_allocatedBalances[t] >= tokenAmountOut, "INSUFFICIENT BALANCE TO WITHDRAW");
+
+      bool xfer = IERC20(t).transfer(recipient, tokenAmountOut);
+      require(xfer, "ERR_ERC20_FALSE");
+
+      _balances[poolId][t] = bsub(bal, tokenAmountOut);
+      _allocatedBalances[t] = bsub(_allocatedBalances[t], tokenAmountOut);
+    }
+  }
+
+  function getTokenAmountsIn(bytes32 poolId, uint ratio, uint[] calldata maxAmountsIn) external returns (uint[] memory) {
+    Pool memory pool = _pools[poolId];
+    require(pool.tokens.length == maxAmountsIn.length, "MAX AMOUNTS IN DOES NOT MATCH TOKENS LENGTH");
+    uint[] memory tokenAmountsIn = new uint[](pool.tokens.length);
+    for (uint i = 0; i < pool.tokens.length; ++i) {
+      address t = pool.tokens[i];
+      uint bal = _balances[poolId][t];
+      uint tokenAmountIn = bmul(ratio, bal);
+      require(tokenAmountIn <= maxAmountsIn[i], "ERR_LIMIT_IN");
+      tokenAmountsIn[i] = tokenAmountIn;
+    }
+    return tokenAmountsIn;
+  }
+
+  function getTokenAmountsOut(bytes32 poolId, uint ratio, uint[] calldata minAmountsOut) external returns (uint[] memory) {
+    Pool memory pool = _pools[poolId];
+    require(pool.tokens.length == minAmountsOut.length, "MAX AMOUNTS IN DOES NOT MATCH TOKENS LENGTH");
+    uint[] memory tokenAmountsOut = new uint[](pool.tokens.length);
+
+    for (uint i = 0; i < pool.tokens.length; ++i) {
+      address t = pool.tokens[i];
+      uint bal = _balances[poolId][t];
+
+      uint tokenAmountOut = bmul(ratio, bal);
+      require(tokenAmountOut != 0, "ERR_MATH_APPROX");
+      require(tokenAmountOut <= minAmountsOut[i], "ERR_LIMIT_OUT");
+
+      tokenAmountsOut[i] = tokenAmountOut;
+    }
+    return tokenAmountsOut;
+  }
+
 
     // 'Underlying' token-manipulation functions make external calls but are NOT locked
     // You must `_lock_` or otherwise ensure reentry-safety
