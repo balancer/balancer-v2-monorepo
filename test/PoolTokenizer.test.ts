@@ -17,7 +17,7 @@ describe("PoolTokenizer", function() {
   let user1: Signer
   let user2: Signer
   let adminAddress: string, user1Address: string, user2Address: string;
-  let poolID: string
+  let poolId: string
   let vault: Contract
   let tokenizer: Contract;
 
@@ -28,37 +28,37 @@ describe("PoolTokenizer", function() {
     user1Address = await user1.getAddress()
     user2Address = await user2.getAddress()
 
-    const Vault: ContractFactory = await ethers.getContractFactory("MockVault");
-    const Tokenizer: ContractFactory = await ethers.getContractFactory("PoolTokenizer");
+    const VaultFactory: ContractFactory = await ethers.getContractFactory("Vault");
+    const TokenizerFactory: ContractFactory = await ethers.getContractFactory("PoolTokenizer");
 
     // returns bytes32 hash of string, alternatively use keccax256(binaryData)
-    poolID = ethers.utils.id('Test')
+    poolId = ethers.utils.id('Test')
 
-    vault = await Vault.deploy();
+    vault = await VaultFactory.deploy();
     await vault.deployed();
 
-    tokenizer = await Tokenizer.deploy(vault.address, poolID);
+    tokenizer = await TokenizerFactory.deploy(vault.address, poolId);
     await tokenizer.deployed();
     await tokenizer.setOwner(adminAddress)
     tokenizer = tokenizer.connect(admin)
     vault = vault.connect(admin)
 
-    await vault.createPool(poolID)
+    await vault.newPool(poolId)
   })
 
   it("Should give your Tokenizer sole proprietorship", async function() {
-    let [returnedController, returnedSwapFee, returnedSwapPublic] = await vault.pools(poolID);
+    let [returnedController, returnedPaused, returnedSwapFee] = await vault._pools(poolId);
     expect(returnedController).to.equal(await admin.getAddress());
 
-    await vault.setController(poolID, tokenizer.address)
+    await vault.setController(poolId, tokenizer.address)
 
-    let [returnedController2, returnedSwapFee2, returnedSwapPublic2] = await vault.pools(poolID)
+    let [returnedController2, returnedPaused2, returnedSwapFee2] = await vault._pools(poolId)
     expect(returnedController2).to.equal(tokenizer.address);
 
     // can now set swap fee through tokenizer
-    await tokenizer.setSwapFee(123)
-    let [returnedController3, returnedSwapFee3, returnedSwapPublic3] = await vault.pools(poolID)
-    expect(returnedSwapFee3).to.equal(123);
+    await tokenizer.setSwapFee(123e14.toString())
+    let [returnedController3, returnedPaused3, returnedSwapFee3] = await vault._pools(poolId)
+    expect(returnedSwapFee3).to.equal(123e14.toString());
   });
 
   describe("with tokens and a tokenizer", () => {
@@ -87,7 +87,7 @@ describe("PoolTokenizer", function() {
       await weth.mint(user2Address, fromTokenUnits('12'));
       await dai.mint(user2Address, fromTokenUnits('0'));
 
-      await vault.setController(poolID, tokenizer.address)
+      await vault.setController(poolId, tokenizer.address)
 
       weth = weth.connect(admin)
       await weth.approve(tokenizer.address, fromTokenUnits('1000'));
