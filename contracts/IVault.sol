@@ -11,6 +11,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+pragma experimental ABIEncoderV2;
+
 pragma solidity 0.5.12;
 
 interface IVault {
@@ -69,5 +71,35 @@ interface IVault {
 
     // Trading interface
 
-    // Swap interfaces are TBD
+    function batchSwap(Diff[] calldata diffs, Swap[] calldata swaps, address recipient) external;
+
+    // batchSwap helper data structures
+
+    // An array of Diffs with unique token addresses will store the net effect of a trade
+    // on the entire Vault. Callers provide this array pre-populated with the address of
+    // each token involved in the swap, and an initial vaultDelta value of 0.
+    // This saves the contract from having to compute the list of tokens that need to be
+    // sent or received as part of the trade.
+    struct Diff {
+        address token;
+        int256 vaultDelta; // Positive delta means the vault receives tokens
+    }
+
+    // A batched swap is made up of a number of Swaps. Each swap indicates a change in the
+    // balances of a token pair in a pool.
+    struct Swap {
+        bytes32 poolId;
+
+        TokenData tokenA;
+        TokenData tokenB;
+    }
+
+    // For each token involved in a Swap, TokenData indicates the new balance for that
+    // token in the associated pool. If TokenData also included the token address, then
+    // the swap function would need to look up the index of this token in the Diffs array.
+    // Instead, the caller provides the indices for the Diffs array, leading to gas savings.
+    struct TokenData {
+        uint256 balance;
+        uint256 tokenDiffIndex;
+    }
 }

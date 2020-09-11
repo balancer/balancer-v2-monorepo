@@ -97,7 +97,7 @@ describe('Vault', () => {
 
       // Send tokens & swap - would normally happen in the same tx
       await tokens['MKR'].connect(trader).transfer(vault.address, 1e18.toString());
-      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps)).wait();
+      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress())).wait();
 
       // console.log('Gas:', receipt.gasUsed.toString());
     });
@@ -127,7 +127,7 @@ describe('Vault', () => {
 
       // Send tokens & swap - would normally happen in the same tx
       await tokens['MKR'].connect(trader).transfer(vault.address, 0.68e18.toString());
-      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps)).wait();
+      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress())).wait();
 
       // console.log('Gas:', receipt.gasUsed.toString());
     });
@@ -197,7 +197,7 @@ describe('Vault', () => {
       const preMKR = await tokens['MKR'].balanceOf(await trader.getAddress());
 
       // Swap
-      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps)).wait();
+      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress())).wait();
 
       const postDAI = await tokens['DAI'].balanceOf(await trader.getAddress());
       const postMKR = await tokens['MKR'].balanceOf(await trader.getAddress());
