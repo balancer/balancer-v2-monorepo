@@ -11,7 +11,7 @@ const fromTokenUnits = (num: string) => {
   return BigNumber.from(scaled).mul(BigNumber.from(power));
 };
 
-describe('PoolTokenizer', function () {
+describe("OwnablePoolTokenizer", function() {
   let admin: Signer;
   let user1: Signer;
   let user2: Signer;
@@ -28,7 +28,7 @@ describe('PoolTokenizer', function () {
     user2Address = await user2.getAddress();
 
     const VaultFactory: ContractFactory = await ethers.getContractFactory('Vault');
-    const TokenizerFactory: ContractFactory = await ethers.getContractFactory('PoolTokenizer');
+    const TokenizerFactory: ContractFactory = await ethers.getContractFactory('OwnablePoolTokenizer');
 
     // returns bytes32 hash of string, alternatively use keccax256(binaryData)
     poolId = ethers.utils.id('Test');
