@@ -149,7 +149,6 @@ contract Vault is IVault, PoolRegistry {
     // array, leading to gas savings.
     struct TokenData {
         uint256 balance;
-        uint256 tokenPoolIndex;
         uint256 tokenDiffIndex;
     }
 
@@ -183,7 +182,6 @@ contract Vault is IVault, PoolRegistry {
             // Validate Pool has Token A and diff index is correct
             address tokenA = diffs[swap.tokenA.tokenDiffIndex].token;
 
-            require(pool.tokens[swap.tokenA.tokenPoolIndex] == tokenA, "Bad token A index hint");
             Record memory recordA = pool.records[tokenA];
             uint recordABalance = _balances[swap.poolId][tokenA];
 
@@ -195,7 +193,6 @@ contract Vault is IVault, PoolRegistry {
             // Validate Pool has Token B and diff index is correct
             address tokenB = diffs[swap.tokenB.tokenDiffIndex].token;
 
-            require(pool.tokens[swap.tokenB.tokenPoolIndex] == tokenB, "Bad token B index hint");
             Record memory recordB = pool.records[tokenB];
             uint recordBBalance = _balances[swap.poolId][tokenB];
 

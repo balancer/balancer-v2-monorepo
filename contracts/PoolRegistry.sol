@@ -33,14 +33,14 @@ contract PoolRegistry is BMath, Lock, Logs {
         // `setSwapFee` requires CONTROL
         uint swapFee;
 
-        address[] tokens;
+        address[] tokens; // For simpler pool configuration querying, not used internally
         mapping (address => Record) records;
         uint totalWeight;
     }
 
     mapping (bytes32 => Pool) public _pools; // temporarily making this public, keeping the underline prefix
     mapping (bytes32 => bool) _poolExists;
-    mapping (bytes32 => mapping (address => uint)) _balances;
+    mapping (bytes32 => mapping (address => uint)) _balances; // All tokens in a pool have non-zero balances
     mapping (address => uint) _allocatedBalances;
 
     modifier ensurePoolExists(bytes32 poolId) {
@@ -117,7 +117,7 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     function setSwapFee(bytes32 poolId, uint swapFee) external
     _logs_
-    _lock_ 
+    _lock_
     ensurePoolExists(poolId)
     {
         require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");

@@ -90,8 +90,8 @@ describe('Vault', () => {
       const swaps = [
         {
           poolId: ethers.utils.id('batch0'),
-          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.51e18.toString() }, // Math isn't 100% accurate
-          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2e18.toString() },
+          tokenA: { tokenDiffIndex: 0, balance: 0.51e18.toString() }, // Math isn't 100% accurate
+          tokenB: { tokenDiffIndex: 1, balance: 2e18.toString() },
         }
       ];
 
@@ -116,12 +116,12 @@ describe('Vault', () => {
       const swaps = [
         {
           poolId: ethers.utils.id('batch0'),
-          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.75e18.toString() },
-          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 1.34e18.toString() },
+          tokenA: { tokenDiffIndex: 0, balance: 0.75e18.toString() },
+          tokenB: { tokenDiffIndex: 1, balance: 1.34e18.toString() },
         },{
           poolId: ethers.utils.id('batch1'),
-          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.75e18.toString() },
-          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 1.34e18.toString() },
+          tokenA: { tokenDiffIndex: 0, balance: 0.75e18.toString() },
+          tokenB: { tokenDiffIndex: 1, balance: 1.34e18.toString() },
         }
       ];
 
@@ -172,24 +172,24 @@ describe('Vault', () => {
       const swaps = [
         {
           poolId: ethers.utils.id('unbalanced0'),
-          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.2391e18.toString() },
-          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 1.673e18.toString() },
+          tokenA: { tokenDiffIndex: 0, balance: 0.2391e18.toString() },
+          tokenB: { tokenDiffIndex: 1, balance: 1.673e18.toString() },
         },{
           poolId: ethers.utils.id('unbalanced1'),
-          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
-          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
+          tokenA: { tokenDiffIndex: 0, balance: 0.4902e18.toString() },
+          tokenB: { tokenDiffIndex: 1, balance: 2.04e18.toString() },
         },{
           poolId: ethers.utils.id('unbalanced2'),
-          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
-          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
+          tokenA: { tokenDiffIndex: 0, balance: 0.4902e18.toString() },
+          tokenB: { tokenDiffIndex: 1, balance: 2.04e18.toString() },
         },{
           poolId: ethers.utils.id('unbalanced3'),
-          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
-          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
+          tokenA: { tokenDiffIndex: 0, balance: 0.4902e18.toString() },
+          tokenB: { tokenDiffIndex: 1, balance: 2.04e18.toString() },
         },{
           poolId: ethers.utils.id('unbalanced4'),
-          tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0.4902e18.toString() },
-          tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 1, balance: 2.04e18.toString() },
+          tokenA: { tokenDiffIndex: 0, balance: 0.4902e18.toString() },
+          tokenB: { tokenDiffIndex: 1, balance: 2.04e18.toString() },
         },
       ];
 
