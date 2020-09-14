@@ -10,7 +10,7 @@
     "lint": "yarn lint:solidity",
     "lint:solidity": "solhint contracts/**/*.sol",
     "test": "buidler test --no-compile",
-    "test:watch": "nodemon --ext js,ts --exec yarn test"
+    "test:watch": "nodemon --ext js,ts --watch test --watch cache/solc-output.json --exec 'clear && yarn test'"
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.4.4",
