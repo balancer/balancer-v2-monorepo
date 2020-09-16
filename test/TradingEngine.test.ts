@@ -113,7 +113,7 @@ describe('TradingEngine', () => {
       const postMKR = await tokens['MKR'].balanceOf(await trader.getAddress());
 
       expect(postDAI).to.be.lt(preDAI);
-      expect(postMKR).to.be.gte(preMKR.add(1000));
+      expect(postMKR.sub(preMKR)).to.be.gte(2000);
     });
 
     it('multihop DAI for MKR', async () => {
@@ -172,7 +172,7 @@ describe('TradingEngine', () => {
         },
       ];
 
-      // Put in 1200 DAI, 0 SNX (3rd value is ignored by engine regardless)
+      // Put in 1800 DAI, 0 SNX (3rd value is ignored by engine regardless)
       const amounts = [ 600, 600, 0, 0, 600];
 
       const preDAI = await tokens['DAI'].balanceOf(await trader.getAddress());
@@ -193,7 +193,7 @@ describe('TradingEngine', () => {
       const postMKR = await tokens['MKR'].balanceOf(await trader.getAddress());
 
       expect(postDAI).to.be.lt(preDAI);
-      expect(postMKR).to.be.gte(preMKR.add(1000));
+      expect(postMKR.sub(preMKR)).to.be.gte(1000);
     });
   });
 });
