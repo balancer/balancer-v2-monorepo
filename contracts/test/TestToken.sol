@@ -17,10 +17,13 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 
 contract TestToken is ERC20, ERC20Detailed {
-    constructor (string memory name, string memory symbol, uint8 decimals)
-        public
-        ERC20Detailed(name, symbol, decimals)
-    { }
+    constructor(
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) public ERC20Detailed(name, symbol, decimals) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function mint(address destinatary, uint256 amount) external {
         _mint(destinatary, amount);

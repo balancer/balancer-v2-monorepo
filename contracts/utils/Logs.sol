@@ -14,34 +14,30 @@
 pragma solidity 0.5.12;
 
 contract Logs {
-    event LOG_SWAP(
+    event LogSwap(
         address indexed caller,
         address indexed tokenIn,
         address indexed tokenOut,
-        uint256         tokenAmountIn,
-        uint256         tokenAmountOut
+        uint256 tokenAmountIn,
+        uint256 tokenAmountOut
     );
 
-    event LOG_JOIN(
+    event LogJoin(
         address indexed caller,
         address indexed tokenIn,
-        uint256         tokenAmountIn
+        uint256 tokenAmountIn
     );
 
-    event LOG_EXIT(
+    event LogExit(
         address indexed caller,
         address indexed tokenOut,
-        uint256         tokenAmountOut
+        uint256 tokenAmountOut
     );
 
-    event LOG_CALL(
-        bytes4  indexed sig,
-        address indexed caller,
-        bytes           data
-    ) anonymous;
+    event LogCall(bytes4 indexed sig, address indexed caller, bytes data);
 
     modifier _logs_() {
-        emit LOG_CALL(msg.sig, msg.sender, msg.data);
+        emit LogCall(msg.sig, msg.sender, msg.data);
         _;
     }
 }
