@@ -40,7 +40,7 @@ contract TradingEngine is ConstantWeightedProduct {
         uint256 swapFee;
     }
 
-    function getPoolData(uint256 poolId, address tokenIn, address tokenOut) private view returns (PoolData memory) {
+    function getPoolData(bytes32 poolId, address tokenIn, address tokenOut) private view returns (PoolData memory) {
         // TODO: reduce to a single contract call
         return PoolData({
             tokenInBalance: _vault.getTokenBalance(poolId, tokenIn),

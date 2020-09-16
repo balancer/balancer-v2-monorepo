@@ -51,8 +51,9 @@ describe('TradingEngine', () => {
         await tokens[token].connect(controller).approve(vault.address, MAX_UINT256);
       }));
 
-      for (let poolId = 0; poolId < totalPools; ++poolId) {
-        const receipt: ContractReceipt = await (await vault.connect(controller).newPool()).wait();
+      for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
+        const poolId = ethers.utils.id('pool' + poolIdIdx);
+        const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId)).wait();
         expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
 
         // Create even pools with all tokens, initial balance of 20e18 for each
@@ -69,8 +70,8 @@ describe('TradingEngine', () => {
 
     it('double pool DAI for MKR', async () => {
       // Move the first two pools to a different price point (DAI:MKR becomes 1:2) by withdrawing DAI
-      await vault.connect(controller).rebind(0, tokens['DAI'].address, 10e18.toString(), 1e18.toString());
-      await vault.connect(controller).rebind(1, tokens['DAI'].address, 10e18.toString(), 1e18.toString());
+      await vault.connect(controller).rebind(ethers.utils.id('pool0'), tokens['DAI'].address, 10e18.toString(), 1e18.toString());
+      await vault.connect(controller).rebind(ethers.utils.id('pool1'), tokens['DAI'].address, 10e18.toString(), 1e18.toString());
 
       const diffs = [{
           token: tokens['DAI'].address,
@@ -82,12 +83,12 @@ describe('TradingEngine', () => {
 
       const swaps = [
         {
-          poolId: 0,
+          poolId: ethers.utils.id('pool0'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0 },
           tokenB: { tokenPoolIndex: 4, tokenDiffIndex: 1, balance: 0 },
         },
         {
-          poolId: 1,
+          poolId: ethers.utils.id('pool1'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0 },
           tokenB: { tokenPoolIndex: 4, tokenDiffIndex: 1, balance: 0 },
         },
@@ -118,17 +119,17 @@ describe('TradingEngine', () => {
 
     it('multihop DAI for MKR', async () => {
       // Move the first and second pools to a different price point (DAI:SNX becomes 1:2) by withdrawing DAI
-      await vault.connect(controller).rebind(0, tokens['DAI'].address, 10e18.toString(), 1e18.toString());
-      await vault.connect(controller).rebind(1, tokens['DAI'].address, 10e18.toString(), 1e18.toString());
+      await vault.connect(controller).rebind(ethers.utils.id('pool0'), tokens['DAI'].address, 10e18.toString(), 1e18.toString());
+      await vault.connect(controller).rebind(ethers.utils.id('pool1'), tokens['DAI'].address, 10e18.toString(), 1e18.toString());
 
       // Move the third pool to a different price point (SNX:BAT becomes 1:2) by withdrawing SNX
-      await vault.connect(controller).rebind(2, tokens['SNX'].address, 10e18.toString(), 1e18.toString());
+      await vault.connect(controller).rebind(ethers.utils.id('pool2'), tokens['SNX'].address, 10e18.toString(), 1e18.toString());
 
       // Move the fourth pool to a different price point (BAT:MKR becomes 1:2) by withdrawing BAT
-      await vault.connect(controller).rebind(3, tokens['BAT'].address, 10e18.toString(), 1e18.toString());
+      await vault.connect(controller).rebind(ethers.utils.id('pool3'), tokens['BAT'].address, 10e18.toString(), 1e18.toString());
 
       // Move the fifth pool to a different price point (DAI:MKR becomes 1:2) by withdrawing DAI
-      await vault.connect(controller).rebind(4, tokens['DAI'].address, 10e18.toString(), 1e18.toString());
+      await vault.connect(controller).rebind(ethers.utils.id('pool4'), tokens['DAI'].address, 10e18.toString(), 1e18.toString());
 
       const diffs = [{
         token: tokens['DAI'].address,
@@ -146,27 +147,27 @@ describe('TradingEngine', () => {
 
       const swaps = [
         { // DAI for SNX on pool 0
-          poolId: 0,
+          poolId: ethers.utils.id('pool0'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0 },
           tokenB: { tokenPoolIndex: 3, tokenDiffIndex: 2, balance: 0 },
         },
         { // DAI for SNX on pool 1
-          poolId: 1,
+          poolId: ethers.utils.id('pool1'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0 },
           tokenB: { tokenPoolIndex: 3, tokenDiffIndex: 2, balance: 0 },
         },
         { // SNX for BAT on pool 2
-          poolId: 2,
+          poolId: ethers.utils.id('pool2'),
           tokenA: { tokenPoolIndex: 3, tokenDiffIndex: 2, balance: 0 },
           tokenB: { tokenPoolIndex: 1, tokenDiffIndex: 3, balance: 0 },
         },
         { // BAT for MKR on pool 3
-          poolId: 3,
+          poolId: ethers.utils.id('pool3'),
           tokenA: { tokenPoolIndex: 1, tokenDiffIndex: 3, balance: 0 },
           tokenB: { tokenPoolIndex: 4, tokenDiffIndex: 1, balance: 0 },
         },
         { // DAI for MKR on pool 4
-          poolId: 4,
+          poolId: ethers.utils.id('pool4'),
           tokenA: { tokenPoolIndex: 0, tokenDiffIndex: 0, balance: 0 },
           tokenB: { tokenPoolIndex: 4, tokenDiffIndex: 1, balance: 0 },
         },
