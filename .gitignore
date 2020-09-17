@@ -109,3 +109,5 @@ artifacts/
 
 # only typescript is allowed
 *.js
+
+!.eslintrc.js

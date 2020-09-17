@@ -15,6 +15,9 @@ pragma solidity 0.5.12;
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
+
+/* solhint-disable private-vars-leading-underscore */
+
 contract FixedPoint {
     uint256 internal constant ONE = 10**18; // 18 decimal places
 
@@ -22,40 +25,29 @@ contract FixedPoint {
     uint256 internal constant MAX_POW_BASE = (2 * ONE) - 1 wei;
     uint256 internal constant POW_PRECISION = ONE / 10**10;
 
-    function btoi(uint256 a)
-        internal pure
-        returns (uint256)
-    {
+    function btoi(uint256 a) internal pure returns (uint256) {
         return a / ONE;
     }
 
-    function floor(uint256 a)
-        internal pure
-        returns (uint256)
-    {
+    function floor(uint256 a) internal pure returns (uint256) {
         return btoi(a) * ONE;
     }
 
-    function add(uint256 a, uint256 b)
-        internal pure
-        returns (uint256)
-    {
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c = a + b;
         require(c >= a, "ERR_ADD_OVERFLOW");
         return c;
     }
 
-    function sub(uint256 a, uint256 b)
-        internal pure
-        returns (uint256)
-    {
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
         (uint256 c, bool flag) = subSign(a, b);
         require(!flag, "ERR_SUB_UNDERFLOW");
         return c;
     }
 
     function subSign(uint256 a, uint256 b)
-        internal pure
+        internal
+        pure
         returns (uint256, bool)
     {
         if (a >= b) {
@@ -65,10 +57,7 @@ contract FixedPoint {
         }
     }
 
-    function mul(uint256 a, uint256 b)
-        internal pure
-        returns (uint256)
-    {
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c0 = a * b;
         require(a == 0 || c0 / a == b, "ERR_MUL_OVERFLOW");
         uint256 c1 = c0 + (ONE / 2);
@@ -77,10 +66,7 @@ contract FixedPoint {
         return c2;
     }
 
-    function div(uint256 a, uint256 b)
-        internal pure
-        returns (uint256)
-    {
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
         require(b != 0, "ERR_DIV_ZERO");
         uint256 c0 = a * ONE;
         require(a == 0 || c0 / a == ONE, "ERR_DIV_INTERNAL"); // mul overflow
@@ -91,10 +77,7 @@ contract FixedPoint {
     }
 
     // DSMath.wpow
-    function powi(uint256 a, uint256 n)
-        internal pure
-        returns (uint256)
-    {
+    function powi(uint256 a, uint256 n) internal pure returns (uint256) {
         uint256 z = n % 2 != 0 ? a : ONE;
 
         for (n /= 2; n != 0; n /= 2) {
@@ -110,14 +93,11 @@ contract FixedPoint {
     // Compute b^(e.w) by splitting it into (b^e)*(b^0.w).
     // Use `powi` for `b^e` and `powK` for k iterations
     // of approximation of b^0.w
-    function pow(uint256 base, uint256 exp)
-        internal pure
-        returns (uint256)
-    {
+    function pow(uint256 base, uint256 exp) internal pure returns (uint256) {
         require(base >= MIN_POW_BASE, "ERR_POW_BASE_TOO_LOW");
         require(base <= MAX_POW_BASE, "ERR_POW_BASE_TOO_HIGH");
 
-        uint256 whole  = floor(exp);
+        uint256 whole = floor(exp);
         uint256 remain = sub(exp, whole);
 
         uint256 wholePow = powi(base, btoi(whole));
@@ -130,17 +110,17 @@ contract FixedPoint {
         return mul(wholePow, partialResult);
     }
 
-    function powApprox(uint256 base, uint256 exp, uint256 precision)
-        internal pure
-        returns (uint256)
-    {
+    function powApprox(
+        uint256 base,
+        uint256 exp,
+        uint256 precision
+    ) internal pure returns (uint256) {
         // term 0:
-        uint256 a     = exp;
-        (uint256 x, bool xneg)  = subSign(base, ONE);
+        uint256 a = exp;
+        (uint256 x, bool xneg) = subSign(base, ONE);
         uint256 term = ONE;
-        uint256 sum   = term;
+        uint256 sum = term;
         bool negative = false;
-
 
         // term(k) = numer / denom
         //         = (product(a - i - 1, i=1-->k) * x^k) / (k!)

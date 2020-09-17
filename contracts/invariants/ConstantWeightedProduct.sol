@@ -17,6 +17,9 @@ import "../math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
+
+/* solhint-disable private-vars-leading-underscore */
+
 contract ConstantWeightedProduct is FixedPoint {
     // Computes the spot price for a given pair (see https://balancer.finance/whitepaper/#spot-price)
     function spotPrice(
@@ -25,10 +28,7 @@ contract ConstantWeightedProduct is FixedPoint {
         uint256 tokenBalanceOut,
         uint256 tokenWeightOut,
         uint256 swapFee
-    )
-        internal pure
-        returns (uint256)
-    {
+    ) internal pure returns (uint256) {
         /**********************************************************************************************
         // spotPrice                                                                                 //
         // sP = spotPrice                                                                            //
@@ -58,10 +58,7 @@ contract ConstantWeightedProduct is FixedPoint {
         uint256 tokenWeightOut,
         uint256 tokenAmountIn,
         uint256 swapFee
-    )
-        internal pure
-        returns (uint256)
-    {
+    ) internal pure returns (uint256) {
         /**********************************************************************************************
         // outGivenIn                                                                                //
         // aO = tokenAmountOut                                                                       //
