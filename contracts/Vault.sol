@@ -121,38 +121,7 @@ contract Vault is IVault, PoolRegistry {
         return calcSpotPrice(inRecordBalance, inRecord.denorm, outRecordBalance, outRecord.denorm, 0);
     }
 
-    // batchSwap helper data structures
-
-    // An array of Diffs with unique token addresses will store the net effect of a trade
-    // on the entire Vault. Callers provide this array pre-populated with the address of
-    // each token involved in the swap, and an initial vaultDelta value of 0.
-    // This saves the contract from having to compute the list of tokens that need to be
-    // sent or received as part of the trade.
-    struct Diff {
-        address token;
-        int256 vaultDelta; // Positive delta means the vault receives tokens
-    }
-
-    // A batched swap is made up of a number of Swaps. Each swap indicates a change in the
-    // balances of a token pair in a pool.
-    struct Swap {
-        bytes32 poolId;
-
-        TokenData tokenA;
-        TokenData tokenB;
-    }
-
-    // For each token involved in a Swap, TokenData indicates the new balance for that
-    // token in the associated pool. If TokenData also included the token address, then
-    // the swap function would need to look up the index of this token in the Diffs array.
-    // Instead, the caller provides the indices for both the Diffs array and the pool's token
-    // array, leading to gas savings.
-    struct TokenData {
-        uint256 balance;
-        uint256 tokenDiffIndex;
-    }
-
-    function batchSwap(Diff[] memory diffs, Swap[] memory swaps) public {
+    function batchSwap(Diff[] memory diffs, Swap[] memory swaps, address recipient) public {
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
         // indexes pointing to the same token.
         // A simple way to implement this is to require the addresses to be sorted, and require strict
@@ -242,7 +211,7 @@ contract Vault is IVault, PoolRegistry {
                 // Make delta positive
                 uint256 amount = uint256(-diff.vaultDelta);
 
-                _pushUnderlying(diff.token, msg.sender, amount);
+                _pushUnderlying(diff.token, recipient, amount);
             }
         }
     }

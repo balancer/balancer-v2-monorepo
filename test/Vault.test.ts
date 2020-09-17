@@ -54,7 +54,7 @@ describe('Vault', () => {
       );
 
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-        const poolId: string = ethers.utils.id('batch' + poolIdIdx);
+        const poolId = ethers.utils.id('batch' + poolIdIdx);
 
         const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId)).wait();
         expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
@@ -94,7 +94,7 @@ describe('Vault', () => {
         async () => {
           // Send tokens & swap - would normally happen in the same tx
           await tokens['MKR'].connect(trader).transfer(vault.address, (1e18).toString());
-          await vault.connect(trader).batchSwap(diffs, swaps);
+          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
         },
         trader,
         tokens,
@@ -133,7 +133,7 @@ describe('Vault', () => {
         async () => {
           // Send tokens & swap - would normally happen in the same tx
           await tokens['MKR'].connect(trader).transfer(vault.address, (0.68e18).toString());
-          await vault.connect(trader).batchSwap(diffs, swaps);
+          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
         },
         trader,
         tokens,
@@ -216,7 +216,7 @@ describe('Vault', () => {
       await expectBalanceChange(
         async () => {
           // The trader gets MKR without spending DAI
-          await vault.connect(trader).batchSwap(diffs, swaps);
+          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
         },
         trader,
         tokens,
