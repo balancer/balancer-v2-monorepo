@@ -1,58 +1,60 @@
 import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 
-// Ported from @openzeppelin/test-helpers to use with Ethers
+// Ported from @openzeppelin/test-helpers to use with Ethers. The Test Helpers don't
+// yet have Typescript typings, so we're being lax about them here.
+// See https://github.com/OpenZeppelin/openzeppelin-test-helpers/issues/122
 
-export function inReceipt (receipt: ContractReceipt, eventName: string, eventArgs = {}) {
-    if (receipt.events == undefined) {
-        throw new Error('No events found in receipt');
-    }
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-    const events = receipt.events.filter(e => e.event === eventName);
-    expect(events.length > 0).to.equal(true, `No '${eventName}' events found`);
+export function inReceipt(receipt: ContractReceipt, eventName: string, eventArgs = {}): any {
+  if (receipt.events == undefined) {
+    throw new Error('No events found in receipt');
+  }
 
-    const exceptions: Array<string> = [];
-    const event = events.find(function (e) {
-        for (const [k, v] of Object.entries(eventArgs)) {
-            try {
-                if (e.args == undefined) {
-                    throw new Error('Event has no arguments');
-                }
+  const events = receipt.events.filter((e) => e.event === eventName);
+  expect(events.length > 0).to.equal(true, `No '${eventName}' events found`);
 
-                contains(e.args, k, v);
-            } catch (error) {
-                exceptions.push(error);
-                return false;
-            }
+  const exceptions: Array<string> = [];
+  const event = events.find(function (e) {
+    for (const [k, v] of Object.entries(eventArgs)) {
+      try {
+        if (e.args == undefined) {
+          throw new Error('Event has no arguments');
         }
-        return true;
-    });
 
-    if (event === undefined) {
-        // Each event entry may have failed to match for different reasons,
-        // throw the first one
-        throw exceptions[0];
+        contains(e.args, k, v);
+      } catch (error) {
+        exceptions.push(error);
+        return false;
+      }
     }
+    return true;
+  });
 
-    return event;
+  if (event === undefined) {
+    // Each event entry may have failed to match for different reasons,
+    // throw the first one
+    throw exceptions[0];
+  }
+
+  return event;
 }
 
-function contains (args: { [key: string]: any | undefined }, key: string, value: any) {
-    expect(key in args).to.equal(true, `Event argument '${key}' not found`);
+function contains(args: { [key: string]: any | undefined }, key: string, value: any) {
+  expect(key in args).to.equal(true, `Event argument '${key}' not found`);
 
-    if (value === null) {
-      expect(args[key]).to.equal(null,
-        `expected event argument '${key}' to be null but got ${args[key]}`);
+  if (value === null) {
+    expect(args[key]).to.equal(null, `expected event argument '${key}' to be null but got ${args[key]}`);
+  } else if (BigNumber.isBigNumber(args[key]) || BigNumber.isBigNumber(value)) {
+    const actual = BigNumber.isBigNumber(args[key]) ? args[key].toString() : args[key];
+    const expected = BigNumber.isBigNumber(value) ? value.toString() : value;
 
-    } else if (BigNumber.isBigNumber(args[key]) || BigNumber.isBigNumber(value)) {
-      const actual = BigNumber.isBigNumber(args[key]) ? args[key].toString() : args[key];
-      const expected = BigNumber.isBigNumber(value) ? value.toString() : value;
-
-      expect(args[key]).to.equal(value,
-        `expected event argument '${key}' to have value ${expected} but got ${actual}`);
-
-    } else {
-      expect(args[key]).to.be.deep.equal(value,
-        `expected event argument '${key}' to have value ${value} but got ${args[key]}`);
-    }
+    expect(args[key]).to.equal(value, `expected event argument '${key}' to have value ${expected} but got ${actual}`);
+  } else {
+    expect(args[key]).to.be.deep.equal(
+      value,
+      `expected event argument '${key}' to have value ${value} but got ${args[key]}`
+    );
+  }
 }
