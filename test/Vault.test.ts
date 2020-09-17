@@ -3,6 +3,8 @@ import { expect } from 'chai';
 import { ContractFactory, Contract, Signer, BigNumber, ContractReceipt } from 'ethers';
 import * as expectEvent from './helpers/expectEvent';
 import { MAX_UINT256 } from './helpers/constants';
+import { balanceTracker, expectBalanceChange } from './helpers/tokenBalance';
+import { TokenList, deployTokens } from './helpers/tokens';
 
 describe('Vault', () => {
   let controller: Signer;
@@ -11,22 +13,14 @@ describe('Vault', () => {
   let VaultFactory: ContractFactory;
   let vault: Contract;
 
-  let TestTokenFactory: ContractFactory;
-  let tokens: { [symbol: string]: Contract } = {};
-
-  async function deployToken(symbol: string, decimals?: Number) {
-    const token = await (await TestTokenFactory.deploy(symbol, symbol, decimals ?? 18)).deployed();
-    tokens[symbol] = token;
-  }
+  let tokens: TokenList = {};
 
   before('setup', async () => {
     [, controller, trader] = await ethers.getSigners();
 
     VaultFactory = await ethers.getContractFactory('Vault');
-    TestTokenFactory = await ethers.getContractFactory('TestToken');
 
-    await deployToken('DAI');
-    await deployToken('MKR');
+    tokens = await deployTokens(['DAI', 'MKR']);
   });
 
   beforeEach('deploy vault', async () => {
@@ -78,7 +72,6 @@ describe('Vault', () => {
 
     it('single pair single pool swap', async () => {
       // Trade 1e18 MKR for 0.5e18 DAI
-
       const diffs = [{
         token: tokens['DAI'].address,
         vaultDelta: 0
@@ -95,11 +88,11 @@ describe('Vault', () => {
         }
       ];
 
-      // Send tokens & swap - would normally happen in the same tx
-      await tokens['MKR'].connect(trader).transfer(vault.address, 1e18.toString());
-      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps)).wait();
-
-      // console.log('Gas:', receipt.gasUsed.toString());
+      await expectBalanceChange(async () => {
+        // Send tokens & swap - would normally happen in the same tx
+        await tokens['MKR'].connect(trader).transfer(vault.address, 1e18.toString());
+        await vault.connect(trader).batchSwap(diffs, swaps);
+      }, trader, tokens, { DAI: 0.49e18, MKR: -1e18 });
     });
 
     it('single pair multi pool (batch) swap', async () => {
@@ -125,11 +118,11 @@ describe('Vault', () => {
         }
       ];
 
-      // Send tokens & swap - would normally happen in the same tx
-      await tokens['MKR'].connect(trader).transfer(vault.address, 0.68e18.toString());
-      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps)).wait();
-
-      // console.log('Gas:', receipt.gasUsed.toString());
+      await expectBalanceChange(async () => {
+        // Send tokens & swap - would normally happen in the same tx
+        await tokens['MKR'].connect(trader).transfer(vault.address, 0.68e18.toString());
+        await vault.connect(trader).batchSwap(diffs, swaps);
+      }, trader, tokens, { DAI: 0.5e18, MKR: -0.68e18 });
     });
   });
 
@@ -193,18 +186,10 @@ describe('Vault', () => {
         },
       ];
 
-      const preDAI = await tokens['DAI'].balanceOf(await trader.getAddress());
-      const preMKR = await tokens['MKR'].balanceOf(await trader.getAddress());
-
-      // Swap
-      const receipt = await (await vault.connect(trader).batchSwap(diffs, swaps)).wait();
-
-      const postDAI = await tokens['DAI'].balanceOf(await trader.getAddress());
-      const postMKR = await tokens['MKR'].balanceOf(await trader.getAddress());
-
-      // The trader got MKR without spending DAI
-      expect(postMKR).to.be.gt(preMKR);
-      expect(postDAI).to.be.gte(preDAI);
+      await expectBalanceChange(async () => {
+        // The trader gets MKR without spending DAI
+        await vault.connect(trader).batchSwap(diffs, swaps);
+      }, trader, tokens, { DAI: [ 'gt', 0], MKR: [ 'gte', 0] });
     });
   });
 });
