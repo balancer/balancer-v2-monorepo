@@ -103,8 +103,7 @@ describe('PoolTokenizer', function () {
       // Admin inits pool
       tokenizer = tokenizer.connect(admin);
       await tokenizer.initPool(100, [WETH, DAI], [fromTokenUnits('20'), fromTokenUnits('30')]);
-      const bpt = await tokenizer.balanceOf(adminAddress);
-      expect(bpt.toNumber()).to.equal(100);
+      expect(await tokenizer.balanceOf(adminAddress)).to.equal(100);
     });
     describe('with an initialized pool', () => {
       beforeEach(async () => {
@@ -122,8 +121,7 @@ describe('PoolTokenizer', function () {
         // User 1 joins pool
         tokenizer = tokenizer.connect(user1);
         await tokenizer.joinPool(50, [fromTokenUnits('15'), fromTokenUnits('25')]);
-        const bpt = await tokenizer.balanceOf(user1Address);
-        expect(bpt.toNumber()).to.equal(50);
+        expect(await tokenizer.balanceOf(user1Address)).to.equal(50);
       });
 
       it('Should not allow you to join a pool when maxAmountIn is too low', async () => {
@@ -137,8 +135,7 @@ describe('PoolTokenizer', function () {
         it('Should allow you to exit a pool', async () => {
           // admin withdraws half their balance
           await tokenizer.exitPool(50, [fromTokenUnits('10'), fromTokenUnits('15')]);
-          const bpt = await tokenizer.balanceOf(adminAddress);
-          expect(bpt.toNumber()).to.equal(50);
+          expect(await tokenizer.balanceOf(adminAddress)).to.equal(50);
         });
       });
     });
