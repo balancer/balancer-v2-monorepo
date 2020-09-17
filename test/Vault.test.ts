@@ -5,26 +5,22 @@ import * as expectEvent from './helpers/expectEvent';
 import { MAX_UINT256 } from './helpers/constants';
 import { expectBalanceChange } from './helpers/tokenBalance';
 import { TokenList, deployTokens } from './helpers/tokens';
+import { deploy } from '../scripts/helpers/deploy';
 
 describe('Vault', () => {
   let controller: Signer;
   let trader: Signer;
 
-  let VaultFactory: ContractFactory;
   let vault: Contract;
-
   let tokens: TokenList = {};
 
   before('setup', async () => {
     [, controller, trader] = await ethers.getSigners();
-
-    VaultFactory = await ethers.getContractFactory('Vault');
-
-    tokens = await deployTokens(['DAI', 'MKR']);
   });
 
   beforeEach('deploy vault', async () => {
-    vault = await (await VaultFactory.deploy()).deployed();
+    vault = await deploy('Vault');
+    tokens = await deployTokens(['DAI', 'MKR']);
   });
 
   describe('pool management', () => {
