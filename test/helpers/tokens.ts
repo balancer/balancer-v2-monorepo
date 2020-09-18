@@ -1,4 +1,4 @@
-import { Contract } from 'ethers';
+import { Contract, Signer } from 'ethers';
 import { fromPairs, Dictionary } from 'lodash';
 import { deploy } from '../../scripts/helpers/deploy';
 
@@ -13,4 +13,13 @@ export async function deployToken(symbol: string, decimals?: number): Promise<Co
 // Deploys multiple tokens and returns a symbol -> token dictionary, which can be used in other helpers
 export async function deployTokens(symbols: Array<string>): Promise<TokenList> {
   return fromPairs(await Promise.all(symbols.map(async (symbol) => [symbol, await deployToken(symbol)])));
+}
+
+export async function mintTokens(
+  tokens: TokenList,
+  symbol: string,
+  recipient: Signer | string,
+  amount: number | string
+): Promise<void> {
+  await tokens[symbol].mint(typeof recipient == 'string' ? recipient : await recipient.getAddress(), amount.toString());
 }
