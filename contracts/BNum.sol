@@ -21,6 +21,10 @@ import "./BConst.sol";
 /* solhint-disable private-vars-leading-underscore */
 
 contract BNum is BConst {
+    function abs(int256 a) internal pure returns (uint256) {
+        return a >= 0 ? uint256(a) : uint256(0 - a);
+    }
+
     function btoi(uint256 a) internal pure returns (uint256) {
         return a / BONE;
     }

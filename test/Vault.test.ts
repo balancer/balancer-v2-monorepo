@@ -59,6 +59,9 @@ describe('Vault', () => {
         const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId)).wait();
         expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
 
+        //Set fee to 5%
+        await vault.connect(controller).setSwapFee(poolId, (5e16).toString());
+
         // 50-50 DAI-MKR pool with 1e18 tokens in each
         await vault.connect(controller).bind(poolId, tokens['DAI'].address, (1e18).toString(), (1e18).toString());
         await vault.connect(controller).bind(poolId, tokens['MKR'].address, (1e18).toString(), (1e18).toString());
@@ -66,7 +69,7 @@ describe('Vault', () => {
 
       // Mint tokens for trader
       await tokens['DAI'].mint(await trader.getAddress(), (1e18).toString());
-      await tokens['MKR'].mint(await trader.getAddress(), (1e18).toString());
+      await tokens['MKR'].mint(await trader.getAddress(), (2e18).toString());
     });
 
     it('single pair single pool swap', async () => {
@@ -82,29 +85,30 @@ describe('Vault', () => {
         },
       ];
 
+      const fee = 1e18 * 0.05; //5% fee
+
       const swaps = [
         {
           poolId: ethers.utils.id('batch0'),
-          tokenA: { tokenDiffIndex: 0, balance: (0.51e18).toString() }, // Math isn't 100% accurate
-          tokenB: { tokenDiffIndex: 1, balance: (2e18).toString() },
+          tokenA: { tokenDiffIndex: 1, balance: (2e18 + fee).toString() }, //Math isn't 100% accurate
+          tokenB: { tokenDiffIndex: 0, balance: (0.51e18).toString() },
         },
       ];
 
       await expectBalanceChange(
         async () => {
           // Send tokens & swap - would normally happen in the same tx
-          await tokens['MKR'].connect(trader).transfer(vault.address, (1e18).toString());
+          await tokens['MKR'].connect(trader).transfer(vault.address, (1e18 + fee).toString());
           await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
         },
         trader,
         tokens,
-        { DAI: 0.49e18, MKR: -1e18 }
+        { DAI: 0.49e18, MKR: -1e18 - fee }
       );
     });
 
     it('single pair multi pool (batch) swap', async () => {
       // Trade 0.68e18 MKR for 0.5e18 DAI
-
       const diffs = [
         {
           token: tokens['DAI'].address,
@@ -116,28 +120,30 @@ describe('Vault', () => {
         },
       ];
 
+      const fee = 0.34e18 * 0.05; //5% fee
+
       const swaps = [
         {
           poolId: ethers.utils.id('batch0'),
-          tokenA: { tokenDiffIndex: 0, balance: (0.75e18).toString() },
-          tokenB: { tokenDiffIndex: 1, balance: (1.34e18).toString() },
+          tokenA: { tokenDiffIndex: 1, balance: (1.34e18 + fee).toString() },
+          tokenB: { tokenDiffIndex: 0, balance: (0.75e18).toString() },
         },
         {
           poolId: ethers.utils.id('batch1'),
-          tokenA: { tokenDiffIndex: 0, balance: (0.75e18).toString() },
-          tokenB: { tokenDiffIndex: 1, balance: (1.34e18).toString() },
+          tokenA: { tokenDiffIndex: 1, balance: (1.34e18 + fee).toString() },
+          tokenB: { tokenDiffIndex: 0, balance: (0.75e18).toString() },
         },
       ];
 
       await expectBalanceChange(
         async () => {
           // Send tokens & swap - would normally happen in the same tx
-          await tokens['MKR'].connect(trader).transfer(vault.address, (0.68e18).toString());
+          await tokens['MKR'].connect(trader).transfer(vault.address, (0.68e18 + 2 * fee).toString());
           await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
         },
         trader,
         tokens,
-        { DAI: 0.5e18, MKR: -0.68e18 }
+        { DAI: 0.5e18, MKR: -0.68e18 - 2 * fee }
       );
     });
   });
@@ -185,6 +191,7 @@ describe('Vault', () => {
 
       // Move the unbalanced pool to a 1:7 ratio (this is not the optimal ratio)
 
+      // Has min fee: 0.000001%
       const swaps = [
         {
           poolId: ethers.utils.id('unbalanced0'),
