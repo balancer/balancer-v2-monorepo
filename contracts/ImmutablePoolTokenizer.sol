@@ -6,10 +6,12 @@ import "./IPoolGovernance.sol";
 import "./BasePoolTokenizer.sol";
 
 contract ImmutablePoolTokenizer is BasePoolTokenizer {
-    address creator;
+    address public creator;
 
-    constructor(address _vault, bytes32 _poolID) public // swap fee etc
-    {
+    constructor(
+        address _vault,
+        bytes32 _poolID // swap fee etc
+    ) public {
         vault = IPoolGovernance(_vault);
         poolID = _poolID;
         creator = msg.sender;

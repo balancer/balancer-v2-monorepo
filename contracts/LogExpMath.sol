@@ -1,5 +1,9 @@
 pragma solidity 0.5.12;
 
+// There's plenty of linter errors caused by this file, we'll eventually
+// revisit it to make it more readable, verfiable and testable.
+/* solhint-disable */
+
 library LogExpMath {
     int256 constant DECIMALS = 10**18;
     int256 constant DOUBLE_DECIMALS = DECIMALS * DECIMALS;

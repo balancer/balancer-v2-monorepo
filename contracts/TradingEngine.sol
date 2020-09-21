@@ -38,7 +38,7 @@ contract TradingEngine is ConstantWeightedProduct {
         uint256 swapFee;
     }
 
-    function getPoolData(
+    function _getPoolData(
         bytes32 poolId,
         address tokenIn,
         address tokenOut
@@ -89,13 +89,14 @@ contract TradingEngine is ConstantWeightedProduct {
             address tokenIn = diffs[swaps[i].tokenA.tokenDiffIndex].token;
             address tokenOut = diffs[swaps[i].tokenB.tokenDiffIndex].token;
 
-            PoolData memory poolData = getPoolData(
+            PoolData memory poolData = _getPoolData(
                 swaps[i].poolId,
                 tokenIn,
                 tokenOut
             );
 
-            // If not equal, we could add a require check for tokenIn == lasToken and amountsIn[i] == 0 as a sanity check
+            // If not equal, we could add a sanity check by requiring
+            // tokenIn == lasToken && amountsIn[i] == 0
             uint256 amountIn = (tokenIn == overallTokenIn)
                 ? amountsIn[i]
                 : helper.accumOut;

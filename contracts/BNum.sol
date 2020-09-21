@@ -15,6 +15,11 @@ pragma solidity 0.5.12;
 
 import "./BConst.sol";
 
+// This contract is being slowly phased out in favor of FixedPoint,
+// which will be a library after migrating to Solidity 0.7.
+
+/* solhint-disable private-vars-leading-underscore */
+
 contract BNum is BConst {
     function btoi(uint256 a) internal pure returns (uint256) {
         return a / BONE;

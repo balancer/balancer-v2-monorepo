@@ -33,20 +33,20 @@ contract Vault is IVault, PoolRegistry {
         uint256 balance,
         uint256 denorm
     ) external _logs_ {
-        require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
-        require(!_pools[poolId].records[token].bound, "ERR_IS_BOUND");
+        require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
+        require(!pools[poolId].records[token].bound, "ERR_IS_BOUND");
 
         require(
-            _pools[poolId].tokens.length < MAX_BOUND_TOKENS,
+            pools[poolId].tokens.length < MAX_BOUND_TOKENS,
             "ERR_MAX_TOKENS"
         );
 
-        _pools[poolId].records[token] = Record({
+        pools[poolId].records[token] = Record({
             bound: true,
-            index: _pools[poolId].tokens.length,
+            index: pools[poolId].tokens.length,
             denorm: 0 // denorm will be validated by rebind()
         });
-        _pools[poolId].tokens.push(token);
+        pools[poolId].tokens.push(token);
         rebind(poolId, token, balance, denorm);
     }
 
@@ -56,31 +56,31 @@ contract Vault is IVault, PoolRegistry {
         uint256 balance,
         uint256 denorm
     ) public _logs_ _lock_ {
-        require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
-        require(_pools[poolId].records[token].bound, "ERR_NOT_BOUND");
+        require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
+        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
 
         require(denorm >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
         require(denorm <= MAX_WEIGHT, "ERR_MAX_WEIGHT");
         require(balance >= MIN_BALANCE, "ERR_MIN_BALANCE");
 
         // Adjust the denorm and totalWeight
-        uint256 oldWeight = _pools[poolId].records[token].denorm;
+        uint256 oldWeight = pools[poolId].records[token].denorm;
         if (denorm > oldWeight) {
-            _pools[poolId].totalWeight = badd(
-                _pools[poolId].totalWeight,
+            pools[poolId].totalWeight = badd(
+                pools[poolId].totalWeight,
                 bsub(denorm, oldWeight)
             );
             require(
-                _pools[poolId].totalWeight <= MAX_TOTAL_WEIGHT,
+                pools[poolId].totalWeight <= MAX_TOTAL_WEIGHT,
                 "ERR_MAX_TOTAL_WEIGHT"
             );
         } else if (denorm < oldWeight) {
-            _pools[poolId].totalWeight = bsub(
-                _pools[poolId].totalWeight,
+            pools[poolId].totalWeight = bsub(
+                pools[poolId].totalWeight,
                 bsub(oldWeight, denorm)
             );
         }
-        _pools[poolId].records[token].denorm = denorm;
+        pools[poolId].records[token].denorm = denorm;
 
         // Adjust the balance record and actual token balance
         uint256 oldBalance = _balances[poolId][token];
@@ -95,24 +95,24 @@ contract Vault is IVault, PoolRegistry {
     }
 
     function unbind(bytes32 poolId, address token) external _logs_ _lock_ {
-        require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
-        require(_pools[poolId].records[token].bound, "ERR_NOT_BOUND");
+        require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
+        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
 
         uint256 tokenBalance = _balances[poolId][token];
 
-        _pools[poolId].totalWeight = bsub(
-            _pools[poolId].totalWeight,
-            _pools[poolId].records[token].denorm
+        pools[poolId].totalWeight = bsub(
+            pools[poolId].totalWeight,
+            pools[poolId].records[token].denorm
         );
 
         // Swap the token-to-unbind with the last token,
         // then delete the last token
-        uint256 index = _pools[poolId].records[token].index;
-        uint256 last = _pools[poolId].tokens.length - 1;
-        _pools[poolId].tokens[index] = _pools[poolId].tokens[last];
-        _pools[poolId].records[_pools[poolId].tokens[index]].index = index;
-        _pools[poolId].tokens.pop();
-        _pools[poolId].records[token] = Record({
+        uint256 index = pools[poolId].records[token].index;
+        uint256 last = pools[poolId].tokens.length - 1;
+        pools[poolId].tokens[index] = pools[poolId].tokens[last];
+        pools[poolId].records[pools[poolId].tokens[index]].index = index;
+        pools[poolId].tokens.pop();
+        pools[poolId].records[token] = Record({
             bound: false,
             index: 0,
             denorm: 0
@@ -127,9 +127,9 @@ contract Vault is IVault, PoolRegistry {
         address tokenIn,
         address tokenOut
     ) external view _viewlock_ returns (uint256 spotPrice) {
-        Record storage inRecord = _pools[poolId].records[tokenIn];
+        Record storage inRecord = pools[poolId].records[tokenIn];
         uint256 inRecordBalance = _balances[poolId][tokenIn];
-        Record storage outRecord = _pools[poolId].records[tokenOut];
+        Record storage outRecord = pools[poolId].records[tokenOut];
         uint256 outRecordBalance = _balances[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
@@ -141,7 +141,7 @@ contract Vault is IVault, PoolRegistry {
                 inRecord.denorm,
                 outRecordBalance,
                 outRecord.denorm,
-                _pools[poolId].swapFee
+                pools[poolId].swapFee
             );
     }
 
@@ -150,9 +150,9 @@ contract Vault is IVault, PoolRegistry {
         address tokenIn,
         address tokenOut
     ) external view _viewlock_ returns (uint256 spotPrice) {
-        Record storage inRecord = _pools[poolId].records[tokenIn];
+        Record storage inRecord = pools[poolId].records[tokenIn];
         uint256 inRecordBalance = _balances[poolId][tokenIn];
-        Record storage outRecord = _pools[poolId].records[tokenOut];
+        Record storage outRecord = pools[poolId].records[tokenOut];
         uint256 outRecordBalance = _balances[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
@@ -193,7 +193,7 @@ contract Vault is IVault, PoolRegistry {
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             Swap memory swap = swaps[i];
-            Pool storage pool = _pools[swap.poolId];
+            Pool storage pool = pools[swap.poolId];
 
             // TODO: account for swap fees
 
@@ -222,7 +222,7 @@ contract Vault is IVault, PoolRegistry {
             // 1.2: Validate new balances are valid
 
             require(
-                validateBalances(
+                _validateBalances(
                     recordABalance,
                     recordBBalance,
                     swap.tokenA.balance,
@@ -286,7 +286,7 @@ contract Vault is IVault, PoolRegistry {
         }
     }
 
-    function validateBalances(
+    function _validateBalances(
         uint256 oldBalanceA,
         uint256 oldBalanceB,
         uint256 newBalanceA,
@@ -314,10 +314,8 @@ contract Vault is IVault, PoolRegistry {
         bytes32 poolId,
         address[] calldata initialTokens,
         uint256[] calldata initialBalances
-    ) external {
-        Pool memory pool = _pools[poolId];
-        require(pool.controller == msg.sender);
-        _pools[poolId].tokens = initialTokens;
+    ) external onlyPoolController(poolId) {
+        pools[poolId].tokens = initialTokens;
 
         for (uint256 i = 0; i < initialTokens.length; ++i) {
             address t = initialTokens[i];
@@ -338,9 +336,9 @@ contract Vault is IVault, PoolRegistry {
 
     function addLiquidity(bytes32 poolId, uint256[] calldata amountsIn)
         external
+        onlyPoolController(poolId)
     {
-        Pool memory pool = _pools[poolId];
-        require(pool.controller == msg.sender);
+        Pool memory pool = pools[poolId];
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
@@ -364,9 +362,8 @@ contract Vault is IVault, PoolRegistry {
         bytes32 poolId,
         address recipient,
         uint256[] calldata amountsOut
-    ) external {
-        Pool memory pool = _pools[poolId];
-        require(pool.controller == msg.sender);
+    ) external onlyPoolController(poolId) {
+        Pool memory pool = pools[poolId];
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
@@ -391,7 +388,7 @@ contract Vault is IVault, PoolRegistry {
         uint256 ratio,
         uint256[] calldata maxAmountsIn
     ) external returns (uint256[] memory) {
-        Pool memory pool = _pools[poolId];
+        Pool memory pool = pools[poolId];
         require(
             pool.tokens.length == maxAmountsIn.length,
             "MAX AMOUNTS IN DOES NOT MATCH TOKENS LENGTH"
@@ -412,7 +409,7 @@ contract Vault is IVault, PoolRegistry {
         uint256 ratio,
         uint256[] calldata minAmountsOut
     ) external returns (uint256[] memory) {
-        Pool memory pool = _pools[poolId];
+        Pool memory pool = pools[poolId];
         require(
             pool.tokens.length == minAmountsOut.length,
             "MAX AMOUNTS IN DOES NOT MATCH TOKENS LENGTH"
@@ -453,11 +450,11 @@ contract Vault is IVault, PoolRegistry {
         address to,
         uint256 amount
     ) internal {
-        bool xfer = IERC20(erc20).transfer(to, amount);
-        require(xfer, "ERR_ERC20_FALSE");
-
         // TODO: What assumptions do we make when pushing? Should we check token.balanceOf(this)
         // decreased by toPull?
         _tokenBalances[erc20] -= amount;
+
+        bool xfer = IERC20(erc20).transfer(to, amount);
+        require(xfer, "ERR_ERC20_FALSE");
     }
 }

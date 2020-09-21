@@ -5,7 +5,7 @@ pragma solidity 0.5.12;
 import "./BasePoolTokenizer.sol";
 
 contract OwnablePoolTokenizer is BasePoolTokenizer {
-    address owner;
+    address public owner;
 
     constructor(address _vault, bytes32 _poolID) public {
         vault = IPoolGovernance(_vault);

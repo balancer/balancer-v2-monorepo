@@ -129,7 +129,8 @@ interface IVault {
         uint256[] calldata amountsOut
     ) external;
 
-    // Updates a token's config in a pool, with new (denorm) weight and balance (depositing or withdrawing depending on current state)
+    // Updates a token's config in a pool, with new (denorm) weight and
+    // balance (depositing or withdrawing depending on current state)
     function rebind(
         bytes32 poolId,
         address token,

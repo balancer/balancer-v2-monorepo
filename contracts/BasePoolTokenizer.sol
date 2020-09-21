@@ -6,7 +6,7 @@ import "./IPoolGovernance.sol";
 import "./BToken.sol";
 
 contract BasePoolTokenizer is BToken {
-    IPoolGovernance vault;
+    IPoolGovernance public vault;
     bytes32 public poolID;
 
     modifier _lock_() {
