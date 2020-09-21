@@ -46,17 +46,17 @@ describe('OwnablePoolTokenizer', function () {
   });
 
   it('Should give your Tokenizer sole proprietorship', async function () {
-    const [returnedController] = await vault._pools(poolId);
+    const [returnedController] = await vault.pools(poolId);
     expect(returnedController).to.equal(await admin.getAddress());
 
     await vault.setController(poolId, tokenizer.address);
 
-    const [returnedController2] = await vault._pools(poolId);
+    const [returnedController2] = await vault.pools(poolId);
     expect(returnedController2).to.equal(tokenizer.address);
 
     // can now set swap fee through tokenizer
     await tokenizer.setSwapFee((123e14).toString());
-    const [, , returnedSwapFee] = await vault._pools(poolId);
+    const [, , returnedSwapFee] = await vault.pools(poolId);
     expect(returnedSwapFee).to.equal((123e14).toString());
   });
 

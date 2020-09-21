@@ -8,7 +8,7 @@
     "compile": "buidler compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
-    "lint:solidity": "solhint contracts/**/*.sol",
+    "lint:solidity": "solhint 'contracts/**/*.sol'",
     "lint:typescript": "eslint . --ext .ts",
     "test": "buidler test --no-compile",
     "test:watch": "nodemon --ext js,ts --watch test --watch cache/solc-output.json --exec 'clear && yarn test'"

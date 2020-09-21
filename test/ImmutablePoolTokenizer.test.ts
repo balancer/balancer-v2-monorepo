@@ -1,5 +1,5 @@
 import { ethers } from '@nomiclabs/buidler';
-import { expect } from'chai';
+import { expect } from 'chai';
 import { ContractFactory, Contract, Signer } from 'ethers';
 
 const { BigNumber } = ethers;

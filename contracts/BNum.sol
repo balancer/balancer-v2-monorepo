@@ -15,43 +15,36 @@ pragma solidity 0.5.12;
 
 import "./BConst.sol";
 
-contract BNum is BConst {
+// This contract is being slowly phased out in favor of FixedPoint,
+// which will be a library after migrating to Solidity 0.7.
 
-    function btoi(uint a)
-        internal pure
-        returns (uint)
-    {
+/* solhint-disable private-vars-leading-underscore */
+
+contract BNum is BConst {
+    function btoi(uint256 a) internal pure returns (uint256) {
         return a / BONE;
     }
 
-    function bfloor(uint a)
-        internal pure
-        returns (uint)
-    {
+    function bfloor(uint256 a) internal pure returns (uint256) {
         return btoi(a) * BONE;
     }
 
-    function badd(uint a, uint b)
-        internal pure
-        returns (uint)
-    {
-        uint c = a + b;
+    function badd(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
         require(c >= a, "ERR_ADD_OVERFLOW");
         return c;
     }
 
-    function bsub(uint a, uint b)
-        internal pure
-        returns (uint)
-    {
-        (uint c, bool flag) = bsubSign(a, b);
+    function bsub(uint256 a, uint256 b) internal pure returns (uint256) {
+        (uint256 c, bool flag) = bsubSign(a, b);
         require(!flag, "ERR_SUB_UNDERFLOW");
         return c;
     }
 
-    function bsubSign(uint a, uint b)
-        internal pure
-        returns (uint, bool)
+    function bsubSign(uint256 a, uint256 b)
+        internal
+        pure
+        returns (uint256, bool)
     {
         if (a >= b) {
             return (a - b, false);
@@ -60,37 +53,28 @@ contract BNum is BConst {
         }
     }
 
-    function bmul(uint a, uint b)
-        internal pure
-        returns (uint)
-    {
-        uint c0 = a * b;
+    function bmul(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c0 = a * b;
         require(a == 0 || c0 / a == b, "ERR_MUL_OVERFLOW");
-        uint c1 = c0 + (BONE / 2);
+        uint256 c1 = c0 + (BONE / 2);
         require(c1 >= c0, "ERR_MUL_OVERFLOW");
-        uint c2 = c1 / BONE;
+        uint256 c2 = c1 / BONE;
         return c2;
     }
 
-    function bdiv(uint a, uint b)
-        internal pure
-        returns (uint)
-    {
+    function bdiv(uint256 a, uint256 b) internal pure returns (uint256) {
         require(b != 0, "ERR_DIV_ZERO");
-        uint c0 = a * BONE;
+        uint256 c0 = a * BONE;
         require(a == 0 || c0 / a == BONE, "ERR_DIV_INTERNAL"); // bmul overflow
-        uint c1 = c0 + (b / 2);
+        uint256 c1 = c0 + (b / 2);
         require(c1 >= c0, "ERR_DIV_INTERNAL"); //  badd require
-        uint c2 = c1 / b;
+        uint256 c2 = c1 / b;
         return c2;
     }
 
     // DSMath.wpow
-    function bpowi(uint a, uint n)
-        internal pure
-        returns (uint)
-    {
-        uint z = n % 2 != 0 ? a : BONE;
+    function bpowi(uint256 a, uint256 n) internal pure returns (uint256) {
+        uint256 z = n % 2 != 0 ? a : BONE;
 
         for (n /= 2; n != 0; n /= 2) {
             a = bmul(a, a);
@@ -105,45 +89,42 @@ contract BNum is BConst {
     // Compute b^(e.w) by splitting it into (b^e)*(b^0.w).
     // Use `bpowi` for `b^e` and `bpowK` for k iterations
     // of approximation of b^0.w
-    function bpow(uint base, uint exp)
-        internal pure
-        returns (uint)
-    {
+    function bpow(uint256 base, uint256 exp) internal pure returns (uint256) {
         require(base >= MIN_BPOW_BASE, "ERR_BPOW_BASE_TOO_LOW");
         require(base <= MAX_BPOW_BASE, "ERR_BPOW_BASE_TOO_HIGH");
 
-        uint whole  = bfloor(exp);
-        uint remain = bsub(exp, whole);
+        uint256 whole = bfloor(exp);
+        uint256 remain = bsub(exp, whole);
 
-        uint wholePow = bpowi(base, btoi(whole));
+        uint256 wholePow = bpowi(base, btoi(whole));
 
         if (remain == 0) {
             return wholePow;
         }
 
-        uint partialResult = bpowApprox(base, remain, BPOW_PRECISION);
+        uint256 partialResult = bpowApprox(base, remain, BPOW_PRECISION);
         return bmul(wholePow, partialResult);
     }
 
-    function bpowApprox(uint base, uint exp, uint precision)
-        internal pure
-        returns (uint)
-    {
+    function bpowApprox(
+        uint256 base,
+        uint256 exp,
+        uint256 precision
+    ) internal pure returns (uint256) {
         // term 0:
-        uint a     = exp;
-        (uint x, bool xneg)  = bsubSign(base, BONE);
-        uint term = BONE;
-        uint sum   = term;
+        uint256 a = exp;
+        (uint256 x, bool xneg) = bsubSign(base, BONE);
+        uint256 term = BONE;
+        uint256 sum = term;
         bool negative = false;
-
 
         // term(k) = numer / denom
         //         = (product(a - i - 1, i=1-->k) * x^k) / (k!)
         // each iteration, multiply previous term by (a-(k-1)) * x / k
         // continue until term is less than precision
-        for (uint i = 1; term >= precision; i++) {
-            uint bigK = i * BONE;
-            (uint c, bool cneg) = bsubSign(a, bsub(bigK, BONE));
+        for (uint256 i = 1; term >= precision; i++) {
+            uint256 bigK = i * BONE;
+            (uint256 c, bool cneg) = bsubSign(a, bsub(bigK, BONE));
             term = bmul(term, bmul(c, x));
             term = bdiv(term, bigK);
             if (term == 0) break;
@@ -159,5 +140,4 @@ contract BNum is BConst {
 
         return sum;
     }
-
 }
