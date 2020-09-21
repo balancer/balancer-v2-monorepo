@@ -33,22 +33,31 @@ contract TradingEngine is ConstantWeightedProduct {
     struct PoolData {
         uint256 tokenInBalance;
         uint256 tokenInDenorm;
-
         uint256 tokenOutBalance;
         uint256 tokenOutDenorm;
-
         uint256 swapFee;
     }
 
-    function getPoolData(bytes32 poolId, address tokenIn, address tokenOut) private view returns (PoolData memory) {
+    function getPoolData(
+        bytes32 poolId,
+        address tokenIn,
+        address tokenOut
+    ) private view returns (PoolData memory) {
         // TODO: reduce to a single contract call
-        return PoolData({
-            tokenInBalance: _vault.getTokenBalance(poolId, tokenIn),
-            tokenInDenorm: _vault.getTokenDenormalizedWeight(poolId, tokenIn),
-            tokenOutBalance: _vault.getTokenBalance(poolId, tokenOut),
-            tokenOutDenorm: _vault.getTokenDenormalizedWeight(poolId, tokenOut),
-            swapFee: _vault.getSwapFee(poolId)
-        });
+        return
+            PoolData({
+                tokenInBalance: _vault.getTokenBalance(poolId, tokenIn),
+                tokenInDenorm: _vault.getTokenDenormalizedWeight(
+                    poolId,
+                    tokenIn
+                ),
+                tokenOutBalance: _vault.getTokenBalance(poolId, tokenOut),
+                tokenOutDenorm: _vault.getTokenDenormalizedWeight(
+                    poolId,
+                    tokenOut
+                ),
+                swapFee: _vault.getSwapFee(poolId)
+            });
     }
 
     // Used to store data in memory and avoid stack-too-deep errors
@@ -73,19 +82,23 @@ contract TradingEngine is ConstantWeightedProduct {
         IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
         uint256[] memory amountsIn
-    )
-        public
-    {
+    ) public {
         Helper memory helper;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             address tokenIn = diffs[swaps[i].tokenA.tokenDiffIndex].token;
             address tokenOut = diffs[swaps[i].tokenB.tokenDiffIndex].token;
 
-            PoolData memory poolData = getPoolData(swaps[i].poolId, tokenIn, tokenOut);
+            PoolData memory poolData = getPoolData(
+                swaps[i].poolId,
+                tokenIn,
+                tokenOut
+            );
 
             // If not equal, we could add a require check for tokenIn == lasToken and amountsIn[i] == 0 as a sanity check
-            uint256 amountIn = (tokenIn == overallTokenIn) ? amountsIn[i] : helper.accumOut;
+            uint256 amountIn = (tokenIn == overallTokenIn)
+                ? amountsIn[i]
+                : helper.accumOut;
 
             uint256 tokenAmountOut = outGivenIn(
                 poolData.tokenInBalance,
@@ -116,13 +129,23 @@ contract TradingEngine is ConstantWeightedProduct {
 
             // Configure pool end state
             swaps[i].tokenA.balance = add(poolData.tokenInBalance, amountIn);
-            swaps[i].tokenB.balance = sub(poolData.tokenOutBalance, tokenAmountOut);
+            swaps[i].tokenB.balance = sub(
+                poolData.tokenOutBalance,
+                tokenAmountOut
+            );
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");
-        require(div(helper.toSend, helper.toReceive) <= maxPrice, "Price too high");
+        require(
+            div(helper.toSend, helper.toReceive) <= maxPrice,
+            "Price too high"
+        );
 
-        IERC20(overallTokenIn).transferFrom(msg.sender, address(_vault), helper.toSend);
+        IERC20(overallTokenIn).transferFrom(
+            msg.sender,
+            address(_vault),
+            helper.toSend
+        );
 
         _vault.batchSwap(diffs, swaps, msg.sender);
 

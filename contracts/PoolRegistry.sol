@@ -21,31 +21,29 @@ import "./BMath.sol";
 
 contract PoolRegistry is BMath, Lock, Logs {
     struct Record {
-        bool bound;   // is token bound to pool
-        uint index;   // private
-        uint denorm;  // denormalized weight
+        bool bound; // is token bound to pool
+        uint256 index; // private
+        uint256 denorm; // denormalized weight
     }
 
     struct Pool {
         address controller; // has CONTROL role
         bool paused;
-
         // `setSwapFee` requires CONTROL
-        uint swapFee;
-
+        uint256 swapFee;
         address[] tokens; // For simpler pool configuration querying, not used internally
-        mapping (address => Record) records;
-        uint totalWeight;
+        mapping(address => Record) records;
+        uint256 totalWeight;
     }
 
-    mapping (bytes32 => Pool) public _pools; // temporarily making this public, keeping the underline prefix
-    mapping (bytes32 => bool) _poolExists;
-    mapping (bytes32 => mapping (address => uint)) _balances; // All tokens in a pool have non-zero balances
-    mapping (address => uint) _allocatedBalances;
+    mapping(bytes32 => Pool) public _pools; // temporarily making this public, keeping the underline prefix
+    mapping(bytes32 => bool) _poolExists;
+    mapping(bytes32 => mapping(address => uint256)) _balances; // All tokens in a pool have non-zero balances
+    mapping(address => uint256) _allocatedBalances;
 
     modifier ensurePoolExists(bytes32 poolId) {
-      require(_poolExists[poolId]);
-      _;
+        require(_poolExists[poolId]);
+        _;
     }
 
     event PoolCreated(bytes32 poolId);
@@ -71,54 +69,98 @@ contract PoolRegistry is BMath, Lock, Logs {
         return _pools[poolId].paused;
     }
 
-    function isTokenBound(bytes32 poolId, address token) external view returns (bool) {
+    function isTokenBound(bytes32 poolId, address token)
+        external
+        view
+        returns (bool)
+    {
         return _pools[poolId].records[token].bound;
     }
 
-    function getNumPoolTokens(bytes32 poolId) external view returns (uint) {
+    function getNumPoolTokens(bytes32 poolId) external view returns (uint256) {
         return _pools[poolId].tokens.length;
     }
 
-    function getPoolTokens(bytes32 poolId) external view _viewlock_ returns (address[] memory tokens) {
+    function getPoolTokens(bytes32 poolId)
+        external
+        view
+        _viewlock_
+        returns (address[] memory tokens)
+    {
         return _pools[poolId].tokens;
     }
 
-    function getPoolTokenBalance(bytes32 poolId, address token) external view returns (uint) {
+    function getPoolTokenBalance(bytes32 poolId, address token)
+        external
+        view
+        returns (uint256)
+    {
         return _balances[poolId][token];
     }
 
-    function getTokenDenormalizedWeight(bytes32 poolId, address token) external view _viewlock_ returns (uint) {
+    function getTokenDenormalizedWeight(bytes32 poolId, address token)
+        external
+        view
+        _viewlock_
+        returns (uint256)
+    {
         require(_pools[poolId].records[token].bound, "ERR_NOT_BOUND");
         return _pools[poolId].records[token].denorm;
     }
 
-    function getTotalDenormalizedWeight(bytes32 poolId) external view _viewlock_ returns (uint) {
+    function getTotalDenormalizedWeight(bytes32 poolId)
+        external
+        view
+        _viewlock_
+        returns (uint256)
+    {
         return _pools[poolId].totalWeight;
     }
 
-    function getTokenNormalizedWeight(bytes32 poolId, address token) external view _viewlock_ returns (uint) {
+    function getTokenNormalizedWeight(bytes32 poolId, address token)
+        external
+        view
+        _viewlock_
+        returns (uint256)
+    {
         require(_pools[poolId].records[token].bound, "ERR_NOT_BOUND");
-        uint denorm = _pools[poolId].records[token].denorm;
+        uint256 denorm = _pools[poolId].records[token].denorm;
         return bdiv(denorm, _pools[poolId].totalWeight);
     }
 
-    function getTokenBalance(bytes32 poolId, address token) external view _viewlock_ returns (uint) {
+    function getTokenBalance(bytes32 poolId, address token)
+        external
+        view
+        _viewlock_
+        returns (uint256)
+    {
         require(_pools[poolId].records[token].bound, "ERR_NOT_BOUND");
         return _balances[poolId][token];
     }
 
-    function getSwapFee(bytes32 poolId) external view _viewlock_ returns (uint) {
+    function getSwapFee(bytes32 poolId)
+        external
+        view
+        _viewlock_
+        returns (uint256)
+    {
         return _pools[poolId].swapFee;
     }
 
-    function getController(bytes32 poolId) external view _viewlock_ returns (address) {
+    function getController(bytes32 poolId)
+        external
+        view
+        _viewlock_
+        returns (address)
+    {
         return _pools[poolId].controller;
     }
 
-    function setSwapFee(bytes32 poolId, uint swapFee) external
-    _logs_
-    _lock_
-    ensurePoolExists(poolId)
+    function setSwapFee(bytes32 poolId, uint256 swapFee)
+        external
+        _logs_
+        _lock_
+        ensurePoolExists(poolId)
     {
         require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
@@ -126,10 +168,11 @@ contract PoolRegistry is BMath, Lock, Logs {
         _pools[poolId].swapFee = swapFee;
     }
 
-    function setController(bytes32 poolId, address controller) external
-    _logs_
-    _lock_
-    ensurePoolExists(poolId)
+    function setController(bytes32 poolId, address controller)
+        external
+        _logs_
+        _lock_
+        ensurePoolExists(poolId)
     {
         require(msg.sender == _pools[poolId].controller, "ERR_NOT_CONTROLLER");
         _pools[poolId].controller = controller;
