@@ -11,7 +11,7 @@ const fromTokenUnits = (num: string) => {
   return BigNumber.from(scaled).mul(BigNumber.from(power));
 };
 
-describe("OwnablePoolTokenizer", function() {
+describe('OwnablePoolTokenizer', function () {
   let admin: Signer;
   let user1: Signer;
   let user2: Signer;
