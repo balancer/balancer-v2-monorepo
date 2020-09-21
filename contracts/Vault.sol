@@ -227,8 +227,8 @@ contract Vault is IVault, PoolRegistry {
                     recordBBalance,
                     swap.tokenA.balance,
                     swap.tokenB.balance,
-                    recordA.denorm,
-                    recordB.denorm
+                    bdiv(recordA.denorm, pool.totalWeight),
+                    bdiv(recordB.denorm, pool.totalWeight)
                 ),
                 "ERR_INVALID_SWAP"
             );
@@ -291,23 +291,40 @@ contract Vault is IVault, PoolRegistry {
         uint256 oldBalanceB,
         uint256 newBalanceA,
         uint256 newBalanceB,
-        uint256 denormA,
-        uint256 denormB
+        uint256 normalizedWeightA,
+        uint256 normalizedWeightB
     ) private pure returns (bool) {
         require(newBalanceA > 0 && newBalanceB > 0, "ERR_INVALID_BALANCE"); //Balances should never be zero
 
         uint256 oldValue = bmul(
-            uint256(LogExpMath.exp(int256(oldBalanceA), int256(denormA))),
-            uint256(LogExpMath.exp(int256(oldBalanceB), int256(denormB)))
+            uint256(
+                LogExpMath.exp(int256(oldBalanceA), int256(normalizedWeightA))
+            ),
+            uint256(
+                LogExpMath.exp(int256(oldBalanceB), int256(normalizedWeightB))
+            )
         );
 
         uint256 newValue = bmul(
-            uint256(LogExpMath.exp(int256(newBalanceA), int256(denormA))),
-            uint256(LogExpMath.exp(int256(newBalanceB), int256(denormB)))
+            uint256(
+                LogExpMath.exp(int256(newBalanceA), int256(normalizedWeightA))
+            ),
+            uint256(
+                LogExpMath.exp(int256(newBalanceB), int256(normalizedWeightB))
+            )
         );
 
         // Require value to remain or increase, even if this means the trader is not being optimal
-        return newValue >= oldValue;
+        if (newValue >= oldValue) {
+            return true;
+        } else {
+            // We can't use strict comparison due to the different approximations involved. For
+            // the values to be 'equal', their difference should be less than exp error
+            // multiplied. 137*10^(-17) * 137*10^(-17).
+
+            // TODO: this value is actually much lower - make the check stricter
+            return bsub(BONE, bdiv(newValue, oldValue)) < 1876900;
+        }
     }
 
     function addInitialLiquidity(
