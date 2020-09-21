@@ -233,10 +233,15 @@ contract Vault is IVault, PoolRegistry {
 
             require(
                 _validateBalances(
-                    recordABalance,
-                    recordBBalance,
-                    tokenABalanceMinusFee,
-                    swap.tokenB.balance,
+                    // Temporary in-memory struct to reduce stack usage (stack-too-deep error),
+                    // we'll regardless need such an abstraction once we extract the curves from
+                    // the vault
+                    PoolStateTransition({
+                        oldBalanceA: recordABalance,
+                        oldBalanceB: recordBBalance,
+                        newBalanceA: tokenABalanceMinusFee,
+                        newBalanceB: swap.tokenB.balance
+                    }),
                     bdiv(recordA.denorm, pool.totalWeight),
                     bdiv(recordB.denorm, pool.totalWeight)
                 ),
@@ -287,31 +292,51 @@ contract Vault is IVault, PoolRegistry {
         }
     }
 
+    struct PoolStateTransition {
+        uint256 oldBalanceA;
+        uint256 oldBalanceB;
+        uint256 newBalanceA;
+        uint256 newBalanceB;
+    }
+
     function _validateBalances(
-        uint256 oldBalanceA,
-        uint256 oldBalanceB,
-        uint256 newBalanceA,
-        uint256 newBalanceB,
+        PoolStateTransition memory transition,
         uint256 normalizedWeightA,
         uint256 normalizedWeightB
     ) private pure returns (bool) {
-        require(newBalanceA > 0 && newBalanceB > 0, "ERR_INVALID_BALANCE"); //Balances should never be zero
+        //Balances should never be zero
+        require(
+            transition.newBalanceA > 0 && transition.newBalanceB > 0,
+            "ERR_INVALID_BALANCE"
+        );
 
         uint256 oldValue = bmul(
             uint256(
-                LogExpMath.exp(int256(oldBalanceA), int256(normalizedWeightA))
+                LogExpMath.exp(
+                    int256(transition.oldBalanceA),
+                    int256(normalizedWeightA)
+                )
             ),
             uint256(
-                LogExpMath.exp(int256(oldBalanceB), int256(normalizedWeightB))
+                LogExpMath.exp(
+                    int256(transition.oldBalanceB),
+                    int256(normalizedWeightB)
+                )
             )
         );
 
         uint256 newValue = bmul(
             uint256(
-                LogExpMath.exp(int256(newBalanceA), int256(normalizedWeightA))
+                LogExpMath.exp(
+                    int256(transition.newBalanceA),
+                    int256(normalizedWeightA)
+                )
             ),
             uint256(
-                LogExpMath.exp(int256(newBalanceB), int256(normalizedWeightB))
+                LogExpMath.exp(
+                    int256(transition.newBalanceB),
+                    int256(normalizedWeightB)
+                )
             )
         );
 
