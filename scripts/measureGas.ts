@@ -4,8 +4,8 @@ import { setupPool } from './helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../test/helpers/tokens';
 import { toFixedPoint } from './helpers/fixedPoint';
 import { Contract, Signer } from 'ethers';
-import { getDiffsAndSwaps } from './helpers/trading';
-import { times, range } from 'lodash';
+import { getDiffsSwapsAndAmounts } from './helpers/trading';
+import { range } from 'lodash';
 
 let vault: Contract;
 let engine: Contract;
@@ -39,6 +39,8 @@ async function main() {
 async function batchedSwap() {
   console.log('# Batched swap: multiple batched pools for the same pair');
 
+  // 50-50 DAI-MKR pools
+
   const pools: Array<string> = [];
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
@@ -49,26 +51,30 @@ async function batchedSwap() {
     );
   }
 
+  // Trade DAI for MKR, putting 500 DAI into each pool
+
   for (let poolAmount = 1; poolAmount <= BATCHED_SWAP_TOTAL_POOLS; ++poolAmount) {
-    const [diffs, swaps] = getDiffsAndSwaps(
+    const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
       tokens,
       range(poolAmount)
         .map((i) => pools[i])
         .map((poolId) => {
-          return { poolId, tokenIn: 'DAI', tokenOut: 'MKR' };
+          return { poolId, tokenIn: 'DAI', tokenOut: 'MKR', amount: 500 };
         })
     );
 
     const receipt = await (
-      await engine.connect(trader).swapExactAmountIn(
-        tokens['DAI'].address,
-        tokens['MKR'].address,
-        500 * poolAmount,
-        toFixedPoint(1),
-        diffs,
-        swaps,
-        times(poolAmount, () => 500)
-      )
+      await engine
+        .connect(trader)
+        .swapExactAmountIn(
+          tokens['DAI'].address,
+          tokens['MKR'].address,
+          500 * poolAmount,
+          toFixedPoint(1),
+          diffs,
+          swaps,
+          amounts
+        )
     ).wait();
 
     console.log(

@@ -2,7 +2,7 @@ import { ethers } from '@nomiclabs/buidler';
 import { Contract, Signer } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from './helpers/tokens';
 import { deploy } from '../scripts/helpers/deploy';
-import { getDiffsAndSwaps } from '../scripts/helpers/trading';
+import { getDiffsSwapsAndAmounts } from '../scripts/helpers/trading';
 import { expectBalanceChange } from './helpers/tokenBalance';
 import { setupPool } from '../scripts/helpers/pools';
 
@@ -63,12 +63,10 @@ describe('TradingEngine', () => {
         .connect(controller)
         .rebind(pools[1], tokens['DAI'].address, (0.5e18).toString(), (12.5e18).toString());
 
-      const [diffs, swaps] = getDiffsAndSwaps(tokens, [
-        { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR' },
-        { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR' },
+      const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 },
+        { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 },
       ]);
-
-      const amounts = [600, 600];
 
       await expectBalanceChange(
         async () => {
@@ -105,16 +103,13 @@ describe('TradingEngine', () => {
       // Move the fifth pool to a different price point (DAI:MKR becomes 1:2) by withdrawing DAI
       await vault.connect(controller).rebind(pools[4], tokens['DAI'].address, (0.5e18).toString(), (5e18).toString());
 
-      const [diffs, swaps] = getDiffsAndSwaps(tokens, [
-        { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX' },
-        { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'SNX' },
+      const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX', amount: 600 },
+        { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'SNX', amount: 600 },
         { poolId: pools[2], tokenIn: 'SNX', tokenOut: 'BAT' },
         { poolId: pools[3], tokenIn: 'BAT', tokenOut: 'MKR' },
-        { poolId: pools[4], tokenIn: 'DAI', tokenOut: 'MKR' },
+        { poolId: pools[4], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 },
       ]);
-
-      // Put in 1800 DAI, 0 SNX (3rd value is ignored by engine regardless)
-      const amounts = [600, 600, 0, 0, 600];
 
       await expectBalanceChange(
         async () => {
