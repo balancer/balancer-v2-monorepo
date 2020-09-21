@@ -5,6 +5,7 @@
   "author": "Nicolás Venturo <nico@balancer.finance>",
   "license": "GPL-3.0-only",
   "scripts": {
+    "benchmark": "buidler run scripts/measureGas.ts",
     "compile": "buidler compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
@@ -30,6 +31,8 @@
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.8",
     "lodash.frompairs": "^4.0.1",
+    "lodash.range": "^3.2.0",
+    "lodash.times": "^4.3.2",
     "mocha": "^8.1.1",
     "nodemon": "^2.0.4",
     "prettier": "^2.1.2",
