@@ -1,5 +1,5 @@
 import { ethers } from '@nomiclabs/buidler';
-import { expect } from 'chai';
+import { expect } from'chai';
 import { ContractFactory, Contract, Signer } from 'ethers';
 
 const { BigNumber } = ethers;
@@ -11,53 +11,34 @@ const fromTokenUnits = (num: string) => {
   return BigNumber.from(scaled).mul(BigNumber.from(power));
 };
 
-describe('PoolTokenizer', function () {
-  let admin: Signer;
+describe('ImmutablePoolTokenizer', function () {
+  let deployer: Signer;
   let user1: Signer;
   let user2: Signer;
-  let adminAddress: string, user1Address: string, user2Address: string;
-  let poolId: string;
+  let deployerAddress: string, user1Address: string, user2Address: string;
+  let poolID: string;
   let vault: Contract;
   let tokenizer: Contract;
 
   beforeEach(async function () {
-    [, admin, user1, user2] = await ethers.getSigners();
+    [deployer, user1, user2] = await ethers.getSigners();
 
-    adminAddress = await admin.getAddress();
+    deployerAddress = await deployer.getAddress();
     user1Address = await user1.getAddress();
     user2Address = await user2.getAddress();
 
     const VaultFactory: ContractFactory = await ethers.getContractFactory('Vault');
-    const TokenizerFactory: ContractFactory = await ethers.getContractFactory('PoolTokenizer');
+    const TokenizerFactory: ContractFactory = await ethers.getContractFactory('ImmutablePoolTokenizer');
 
     // returns bytes32 hash of string, alternatively use keccax256(binaryData)
-    poolId = ethers.utils.id('Test');
+    poolID = ethers.utils.id('Test');
 
     vault = await VaultFactory.deploy();
     await vault.deployed();
 
-    tokenizer = await TokenizerFactory.deploy(vault.address, poolId);
+    tokenizer = await TokenizerFactory.deploy(vault.address, poolID);
     await tokenizer.deployed();
-    await tokenizer.setOwner(adminAddress);
-    tokenizer = tokenizer.connect(admin);
-    vault = vault.connect(admin);
-
-    await vault.newPool(poolId);
-  });
-
-  it('Should give your Tokenizer sole proprietorship', async function () {
-    const [returnedController] = await vault._pools(poolId);
-    expect(returnedController).to.equal(await admin.getAddress());
-
-    await vault.setController(poolId, tokenizer.address);
-
-    const [returnedController2] = await vault._pools(poolId);
-    expect(returnedController2).to.equal(tokenizer.address);
-
-    // can now set swap fee through tokenizer
-    await tokenizer.setSwapFee((123e14).toString());
-    const [, , returnedSwapFee] = await vault._pools(poolId);
-    expect(returnedSwapFee).to.equal((123e14).toString());
+    await vault.newPool(poolID);
   });
 
   describe('with tokens and a tokenizer', () => {
@@ -74,9 +55,9 @@ describe('PoolTokenizer', function () {
       WETH = weth.address;
       DAI = dai.address;
 
-      //Admin balances
-      await weth.mint(adminAddress, fromTokenUnits('100'));
-      await dai.mint(adminAddress, fromTokenUnits('100'));
+      // Deployer balances
+      await weth.mint(deployerAddress, fromTokenUnits('100'));
+      await dai.mint(deployerAddress, fromTokenUnits('100'));
 
       // User1 balances
       await weth.mint(user1Address, fromTokenUnits('25'));
@@ -86,29 +67,24 @@ describe('PoolTokenizer', function () {
       await weth.mint(user2Address, fromTokenUnits('12'));
       await dai.mint(user2Address, fromTokenUnits('0'));
 
-      await vault.setController(poolId, tokenizer.address);
+      await vault.setController(poolID, tokenizer.address);
 
-      weth = weth.connect(admin);
       await weth.approve(tokenizer.address, fromTokenUnits('1000'));
-      dai = dai.connect(admin);
       await dai.approve(tokenizer.address, fromTokenUnits('1000'));
     });
 
     it('Should let you initialize a pool', async () => {
-      weth = weth.connect(admin);
       await weth.approve(tokenizer.address, fromTokenUnits('1000'));
-      dai = dai.connect(admin);
       await dai.approve(tokenizer.address, fromTokenUnits('1000'));
 
       // Admin inits pool
-      tokenizer = tokenizer.connect(admin);
       await tokenizer.initPool(100, [WETH, DAI], [fromTokenUnits('20'), fromTokenUnits('30')]);
-      expect(await tokenizer.balanceOf(adminAddress)).to.equal(100);
+      expect(await tokenizer.balanceOf(deployerAddress)).to.equal(100);
     });
+
     describe('with an initialized pool', () => {
       beforeEach(async () => {
-        // Admin inits pool
-        tokenizer = tokenizer.connect(admin);
+        // Deployer inits pool
         await tokenizer.initPool(100, [WETH, DAI], [fromTokenUnits('20'), fromTokenUnits('30')]);
       });
 
@@ -133,9 +109,9 @@ describe('PoolTokenizer', function () {
 
       describe('as a member of an initialized pool', async () => {
         it('Should allow you to exit a pool', async () => {
-          // admin withdraws half their balance
+          // deployer withdraws half their balance
           await tokenizer.exitPool(50, [fromTokenUnits('10'), fromTokenUnits('15')]);
-          expect(await tokenizer.balanceOf(adminAddress)).to.equal(50);
+          expect(await tokenizer.balanceOf(deployerAddress)).to.equal(50);
         });
       });
     });
