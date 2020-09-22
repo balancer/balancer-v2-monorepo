@@ -100,12 +100,18 @@ contract PoolRegistry is BMath, Lock, Logs {
         return pools[poolId].tokens;
     }
 
-    function getPoolTokenBalance(bytes32 poolId, address token)
+    function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
         view
-        returns (uint256)
+        returns (uint256[] memory)
     {
-        return _balances[poolId][token];
+        uint256[] memory balances = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            balances[i] = _balances[poolId][tokens[i]];
+        }
+
+        return balances;
     }
 
     function getTokenDenormalizedWeight(bytes32 poolId, address token)
@@ -136,16 +142,6 @@ contract PoolRegistry is BMath, Lock, Logs {
         require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
         uint256 denorm = pools[poolId].records[token].denorm;
         return bdiv(denorm, pools[poolId].totalWeight);
-    }
-
-    function getTokenBalance(bytes32 poolId, address token)
-        external
-        view
-        _viewlock_
-        returns (uint256)
-    {
-        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
-        return _balances[poolId][token];
     }
 
     function getSwapFee(bytes32 poolId)
