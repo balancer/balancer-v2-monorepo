@@ -64,8 +64,8 @@ async function batchedSwap() {
       await engine
         .connect(trader)
         .swapExactAmountIn(
-          tokens['DAI'].address,
-          tokens['MKR'].address,
+          tokens.DAI.address,
+          tokens.MKR.address,
           500 * poolAmount,
           toFixedPoint(1),
           diffs,
