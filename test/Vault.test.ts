@@ -98,7 +98,7 @@ describe('Vault', () => {
       await expectBalanceChange(
         async () => {
           // Send tokens & swap - would normally happen in the same tx
-          await tokens['MKR'].connect(trader).transfer(vault.address, (1e18 + fee).toString());
+          await tokens['MKR'].connect(trader).approve(vault.address, (1e18 + fee).toString());
           await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
         },
         trader,
@@ -138,7 +138,7 @@ describe('Vault', () => {
       await expectBalanceChange(
         async () => {
           // Send tokens & swap - would normally happen in the same tx
-          await tokens['MKR'].connect(trader).transfer(vault.address, (0.68e18 + 2 * fee).toString());
+          await tokens['MKR'].connect(trader).approve(vault.address, (0.68e18 + 2 * fee).toString());
           await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
         },
         trader,

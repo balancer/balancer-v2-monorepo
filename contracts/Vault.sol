@@ -259,6 +259,19 @@ contract Vault is IVault, PoolRegistry {
             Diff memory diff = diffs[i];
 
             if (diff.vaultDelta > 0) {
+                //Saves initial token balance
+                uint256 initialBalance = IERC20(diff.token).balanceOf(
+                    address(this)
+                );
+
+                //Transfer tokens from the caller to the vault
+                IERC20(diff.token).transferFrom(
+                    msg.sender,
+                    address(this),
+                    uint256(diff.vaultDelta)
+                );
+
+                //Saves final token balance
                 uint256 newBalance = IERC20(diff.token).balanceOf(
                     address(this)
                 );
@@ -266,10 +279,7 @@ contract Vault is IVault, PoolRegistry {
                 // TODO: check strict equality? Might not be feasible due to approximations
                 require(
                     newBalance >=
-                        badd(
-                            _tokenBalances[diff.token],
-                            uint256(diff.vaultDelta)
-                        ),
+                        badd(initialBalance, uint256(diff.vaultDelta)),
                     "ERR_INVALID_DEPOSIT"
                 );
 
