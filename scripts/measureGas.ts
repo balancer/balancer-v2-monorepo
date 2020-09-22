@@ -5,7 +5,6 @@ import { deployTokens, mintTokens, TokenList } from '../test/helpers/tokens';
 import { toFixedPoint } from './helpers/fixedPoint';
 import { Contract, Signer } from 'ethers';
 import { getDiffsSwapsAndAmounts } from './helpers/trading';
-import { range } from 'lodash';
 
 let vault: Contract;
 let engine: Contract;
@@ -56,11 +55,9 @@ async function batchedSwap() {
   for (let poolAmount = 1; poolAmount <= BATCHED_SWAP_TOTAL_POOLS; ++poolAmount) {
     const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
       tokens,
-      range(poolAmount)
-        .map((i) => pools[i])
-        .map((poolId) => {
-          return { poolId, tokenIn: 'DAI', tokenOut: 'MKR', amount: 500 };
-        })
+      pools.slice(0, poolAmount).map((poolId) => {
+        return { poolId, tokenIn: 'DAI', tokenOut: 'MKR', amount: 500 };
+      })
     );
 
     const receipt = await (

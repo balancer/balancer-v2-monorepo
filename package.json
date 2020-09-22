@@ -31,7 +31,6 @@
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.8",
     "lodash.frompairs": "^4.0.1",
-    "lodash.range": "^3.2.0",
     "mocha": "^8.1.1",
     "nodemon": "^2.0.4",
     "prettier": "^2.1.2",
