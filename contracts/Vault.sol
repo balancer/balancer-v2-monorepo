@@ -21,6 +21,8 @@ import "@nomiclabs/buidler/console.sol";
 import "./PoolRegistry.sol";
 import "./IVault.sol";
 
+import "./ICallee.sol";
+
 import "./LogExpMath.sol";
 
 contract Vault is IVault, PoolRegistry {
@@ -171,8 +173,11 @@ contract Vault is IVault, PoolRegistry {
     function batchSwap(
         Diff[] memory diffs,
         Swap[] memory swaps,
-        address recipient
+        address recipient,
+        bytes memory callbackData
     ) public {
+        //TODO: avoid reentrancy
+
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
         // indexes pointing to the same token.
         // A simple way to implement this is to require the addresses to be sorted, and require strict
@@ -253,7 +258,27 @@ contract Vault is IVault, PoolRegistry {
             _balances[swap.poolId][tokenB] = swap.tokenB.balance;
         }
 
-        // Step 4: check tokens have been received
+        // Step 4: send out tokens to send
+
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            Diff memory diff = diffs[i];
+
+            if (diff.vaultDelta < 0) {
+                // Make delta positive
+                uint256 amount = uint256(-diff.vaultDelta);
+
+                _pushUnderlying(diff.token, recipient, amount);
+            } else if (diff.vaultDelta > 0) {
+                //Adds current balance to delta creating final expected balance
+                diff.vaultDelta += int256(
+                    IERC20(diff.token).balanceOf(address(this))
+                ); //TODO: check overflows
+            }
+        }
+        
+        ICallee(msg.sender).callback(recipient, callbackData); //TODO: check if more data is needed to be passed when used as external flashswap
+
+        // Step 5: check tokens have been received
 
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
@@ -265,29 +290,12 @@ contract Vault is IVault, PoolRegistry {
 
                 // TODO: check strict equality? Might not be feasible due to approximations
                 require(
-                    newBalance >=
-                        badd(
-                            _tokenBalances[diff.token],
-                            uint256(diff.vaultDelta)
-                        ),
+                    newBalance >= uint256(diff.vaultDelta),
                     "ERR_INVALID_DEPOSIT"
                 );
 
                 // Update token balance
                 _tokenBalances[diff.token] = newBalance;
-            }
-        }
-
-        // Step 5: send out tokens to send
-
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            Diff memory diff = diffs[i];
-
-            if (diff.vaultDelta < 0) {
-                // Make delta positive
-                uint256 amount = uint256(-diff.vaultDelta);
-
-                _pushUnderlying(diff.token, recipient, amount);
             }
         }
     }

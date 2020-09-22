@@ -22,7 +22,9 @@ import "./invariants/ConstantWeightedProduct.sol";
 
 import "./IVault.sol";
 
-contract TradingEngine is ConstantWeightedProduct {
+import "./ICallee.sol";
+
+contract TradingEngine is ConstantWeightedProduct, ICallee {
     IVault private _vault;
 
     constructor(IVault vault) public {
@@ -142,14 +144,19 @@ contract TradingEngine is ConstantWeightedProduct {
             "Price too high"
         );
 
-        IERC20(overallTokenIn).transferFrom(
-            msg.sender,
-            address(_vault),
-            helper.toSend
-        );
+        bytes memory callbackData = abi.encode(overallTokenIn, helper.toSend);
 
-        _vault.batchSwap(diffs, swaps, msg.sender);
+        _vault.batchSwap(diffs, swaps, msg.sender, callbackData);
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
+    }
+
+    //Callback to send tokens to the Vault
+    function callback(address sender, bytes calldata callbackData) external {
+        (address overallTokenIn, uint256 toSend) = abi.decode(
+            callbackData,
+            (address, uint256)
+        );
+        IERC20(overallTokenIn).transferFrom(sender, address(_vault), toSend);
     }
 }
