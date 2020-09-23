@@ -5,13 +5,14 @@
   "author": "Nicolás Venturo <nico@balancer.finance>",
   "license": "GPL-3.0-only",
   "scripts": {
+    "benchmark": "buidler run scripts/measureGas.ts",
     "compile": "buidler compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "solhint 'contracts/**/*.sol'",
     "lint:typescript": "eslint . --ext .ts",
     "test": "buidler test --no-compile",
-    "test:watch": "nodemon --ext js,ts --watch test --watch cache/solc-output.json --exec 'clear && yarn test'"
+    "test:watch": "nodemon --ext js,ts --watch test --watch scripts --watch cache/solc-output.json --exec 'clear && yarn test'"
   },
   "devDependencies": {
     "@nomiclabs/buidler": "^1.4.4",
