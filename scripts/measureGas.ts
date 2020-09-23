@@ -19,6 +19,9 @@ async function main() {
   [, controller, trader] = await ethers.getSigners();
 
   vault = await deploy('Vault');
+
+  await vaultStats();
+
   engine = await deploy('TradingEngine', vault.address);
 
   tokens = await deployTokens(['DAI', 'MKR', 'BAT']);
@@ -33,6 +36,18 @@ async function main() {
   }
 
   await batchedSwap();
+}
+
+async function vaultStats() {
+  console.log('# Vault');
+
+  const deployReceipt = await ethers.provider.getTransactionReceipt(vault.deployTransaction.hash);
+  console.log(`Deployment costs ${printGas(deployReceipt.gasUsed.toNumber())}`);
+
+  const deployedBytecode = await ethers.provider.getCode(vault.address);
+  const bytecodeSizeKb = deployedBytecode.slice(2).length / 2 / 1024;
+
+  console.log(`Deployed bytecode size is ${bytecodeSizeKb} kB`);
 }
 
 async function batchedSwap() {
