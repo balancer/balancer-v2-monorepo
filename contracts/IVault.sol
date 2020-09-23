@@ -44,10 +44,10 @@ interface IVault {
         uint256[] calldata minAmountsOut
     ) external returns (uint256[] memory);
 
-    function getPoolTokenBalance(bytes32 poolId, address token)
+    function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
         view
-        returns (uint256);
+        returns (uint256[] memory);
 
     function getPoolTokens(bytes32 poolId)
         external
@@ -58,11 +58,6 @@ interface IVault {
         external
         view
         returns (bool);
-
-    function getTokenBalance(bytes32 poolId, address token)
-        external
-        view
-        returns (uint256);
 
     function getTokenNormalizedWeight(bytes32 poolId, address token)
         external

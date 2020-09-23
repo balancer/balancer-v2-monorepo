@@ -45,15 +45,25 @@ contract TradingEngine is ConstantWeightedProduct, ICallee {
         address tokenIn,
         address tokenOut
     ) private view returns (PoolData memory) {
-        // TODO: reduce to a single contract call
+        // TODO: reduce to a single contract call - will depend on the curve abstraction
+
+        address[] memory addresses = new address[](2);
+        addresses[0] = tokenIn;
+        addresses[1] = tokenOut;
+
+        uint256[] memory tokenBalances = _vault.getPoolTokenBalances(
+            poolId,
+            addresses
+        );
+
         return
             PoolData({
-                tokenInBalance: _vault.getTokenBalance(poolId, tokenIn),
+                tokenInBalance: tokenBalances[0],
                 tokenInDenorm: _vault.getTokenDenormalizedWeight(
                     poolId,
                     tokenIn
                 ),
-                tokenOutBalance: _vault.getTokenBalance(poolId, tokenOut),
+                tokenOutBalance: tokenBalances[1],
                 tokenOutDenorm: _vault.getTokenDenormalizedWeight(
                     poolId,
                     tokenOut
