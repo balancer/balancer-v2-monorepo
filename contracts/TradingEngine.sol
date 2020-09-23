@@ -38,6 +38,13 @@ contract TradingEngine is ConstantWeightedProduct {
         uint256 swapFee;
     }
 
+    //Proactively approves tokens to the vault. Anybody can call it.
+    function approveVault(address[] calldata tokens) external {
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20(tokens[i]).approve(address(_vault), uint256(-1));
+        }
+    }
+
     function _getPoolData(
         bytes32 poolId,
         address tokenIn,

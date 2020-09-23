@@ -65,6 +65,9 @@ async function batchedSwap() {
     );
   }
 
+  // Approve transfer of DAI and MKR tokens from TradingEngine to Vault
+  await (await engine.connect(trader).approveVault([tokens.DAI.address, tokens.MKR.address])).wait();
+
   // Trade DAI for MKR, putting 500 DAI into each pool
 
   for (let poolAmount = 1; poolAmount <= BATCHED_SWAP_TOTAL_POOLS; ++poolAmount) {
