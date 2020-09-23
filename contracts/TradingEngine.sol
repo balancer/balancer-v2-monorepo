@@ -163,6 +163,8 @@ contract TradingEngine is ConstantWeightedProduct, ICallee {
 
     //Callback to send tokens to the Vault
     function callback(address sender, bytes calldata callbackData) external {
+        require(msg.sender == address(_vault), "Invalid callback caller");
+
         (address overallTokenIn, uint256 toSend) = abi.decode(
             callbackData,
             (address, uint256)
