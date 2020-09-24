@@ -139,11 +139,10 @@ contract TradingEngine is ConstantWeightedProduct {
             }
 
             // Configure pool end state
-            swaps[i].tokenA.balance = add(poolData.tokenInBalance, amountIn);
-            swaps[i].tokenB.balance = sub(
-                poolData.tokenOutBalance,
-                tokenAmountOut
-            );
+
+            // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
+            swaps[i].tokenA.delta = int256(amountIn);
+            swaps[i].tokenB.delta = -int256(tokenAmountOut);
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");
