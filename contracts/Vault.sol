@@ -168,6 +168,91 @@ contract Vault is IVault, PoolRegistry {
             );
     }
 
+    function swap(
+        bytes32 poolId,
+        address tokenA,
+        address tokenB,
+        uint256 balanceA,
+        uint256 balanceB,
+        address recipient
+    ) public {
+        Pool memory pool = pools[poolId];
+        Record memory recordA = pools[poolId].records[tokenA];
+        uint256 recordABalance = _balances[poolId][tokenA];
+
+        // Validate swap alters pool's balance for token A
+        require(balanceA != recordABalance, "NOOP");
+
+        Record memory recordB = pools[poolId].records[tokenB];
+        uint256 recordBBalance = _balances[poolId][tokenB];
+
+        // Validate swap alters pool's balance for token B
+        require(balanceB != recordBBalance, "NOOP");
+
+        int256 balanceADelta = int256(balanceA - recordABalance); // TODO: check overflow
+        int256 balanceBDelta = int256(balanceB - recordBBalance); // TODO: check overflow
+
+        {
+            uint256 tokenABalanceMinusFee = balanceA -
+                bmul(abs(balanceADelta), pool.swapFee);
+
+            require(
+                _validateBalances(
+                    // Temporary in-memory struct to reduce stack usage (stack-too-deep error),
+                    // we'll regardless need such an abstraction once we extract the curves from
+                    // the vault
+                    PoolStateTransition({
+                        oldBalanceA: recordABalance,
+                        oldBalanceB: recordBBalance,
+                        newBalanceA: tokenABalanceMinusFee,
+                        newBalanceB: balanceB
+                    }),
+                    bdiv(recordA.denorm, pool.totalWeight),
+                    bdiv(recordB.denorm, pool.totalWeight)
+                ),
+                "ERR_INVALID_SWAP"
+            );
+        }
+
+        // 3: update pool balances
+        _balances[poolId][tokenA] = balanceA;
+        _balances[poolId][tokenB] = balanceB;
+
+        if (balanceADelta > 0) {
+            uint256 newBalance = IERC20(tokenA).balanceOf(address(this));
+
+            // TODO: check strict equality? Might not be feasible due to approximations
+            require(
+                newBalance >=
+                    badd(_tokenBalances[tokenA], uint256(balanceADelta)),
+                "ERR_INVALID_DEPOSIT"
+            );
+
+            // Update token balance
+            _tokenBalances[tokenA] = newBalance;
+        } else {
+            uint256 amount = uint256(-balanceADelta);
+            _pushUnderlying(tokenA, recipient, amount);
+        }
+
+        if (balanceBDelta > 0) {
+            uint256 newBalance = IERC20(tokenB).balanceOf(address(this));
+
+            // TODO: check strict equality? Might not be feasible due to approximations
+            require(
+                newBalance >=
+                    badd(_tokenBalances[tokenB], uint256(balanceBDelta)),
+                "ERR_INVALID_DEPOSIT"
+            );
+
+            // Update token balance
+            _tokenBalances[tokenB] = newBalance;
+        } else {
+            uint256 amount = uint256(-balanceBDelta);
+            _pushUnderlying(tokenB, recipient, amount);
+        }
+    }
+
     function batchSwap(
         Diff[] memory diffs,
         Swap[] memory swaps,

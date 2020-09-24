@@ -35,6 +35,7 @@ async function main() {
     await tokens[symbol].connect(trader).approve(engine.address, (100e18).toString());
   }
 
+  await simpleSwap();
   await batchedSwap();
 }
 
@@ -48,6 +49,25 @@ async function vaultStats() {
   const bytecodeSizeKb = deployedBytecode.slice(2).length / 2 / 1024;
 
   console.log(`Deployed bytecode size is ${bytecodeSizeKb} kB`);
+}
+
+async function simpleSwap() {
+  console.log('# Simple swap: single pair in a single pool');
+
+  // 50-50 DAI-MKR pool
+
+  const pool = await setupPool(vault, tokens, controller, [
+    ['DAI', 50],
+    ['MKR', 50],
+  ]);
+
+  // Trade DAI for MKR, putting in 500 DAI
+
+  const receipt = await (
+    await engine.connect(trader).swapExactAmountInSingle(pool, tokens.DAI.address, tokens.MKR.address, 500, 500)
+  ).wait();
+
+  console.log(`${printGas(receipt.gasUsed)} gas`);
 }
 
 async function batchedSwap() {

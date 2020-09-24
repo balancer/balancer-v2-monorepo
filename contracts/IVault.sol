@@ -135,6 +135,15 @@ interface IVault {
 
     // Trading interface
 
+    function swap(
+        bytes32 poolId,
+        address tokenA,
+        address tokenB,
+        uint256 balanceA,
+        uint256 balanceB,
+        address recipient
+    ) external;
+
     function batchSwap(
         Diff[] calldata diffs,
         Swap[] calldata swaps,
