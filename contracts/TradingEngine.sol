@@ -20,6 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@nomiclabs/buidler/console.sol";
 
 import "./invariants/ConstantWeightedProduct.sol";
+import "./curves/ICWPCurve.sol";
 
 import "./IVault.sol";
 
@@ -56,19 +57,21 @@ contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
             poolId,
             addresses
         );
+        address invariantAddress = _vault.getInvariant(poolId);
+        ICWPCurve inv = ICWPCurve(invariantAddress);
+
+        uint8 tokenInIdx = _vault.getTokenIndex(poolId, tokenIn);
+        uint8 tokenOutIdx = _vault.getTokenIndex(poolId, tokenOut);
+
+        uint256 tokenInDenormalizedWeight = inv.getWeight(tokenInIdx);
+        uint256 tokenOutDenormalizedWeight = inv.getWeight(tokenOutIdx);
 
         return
             PoolData({
                 tokenInBalance: tokenBalances[0],
-                tokenInDenorm: _vault.getTokenDenormalizedWeight(
-                    poolId,
-                    tokenIn
-                ),
+                tokenInDenorm: tokenInDenormalizedWeight,
                 tokenOutBalance: tokenBalances[1],
-                tokenOutDenorm: _vault.getTokenDenormalizedWeight(
-                    poolId,
-                    tokenOut
-                ),
+                tokenOutDenorm: tokenOutDenormalizedWeight,
                 swapFee: _vault.getSwapFee(poolId)
             });
     }

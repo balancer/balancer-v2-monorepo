@@ -18,29 +18,6 @@ import "./BNum.sol";
 
 contract BMath is BConst, BNum {
     /**********************************************************************************************
-    // calcSpotPrice                                                                             //
-    // sP = spotPrice                                                                            //
-    // bI = tokenBalanceIn                ( bI / wI )         1                                  //
-    // bO = tokenBalanceOut         sP =  -----------  *  ----------                             //
-    // wI = tokenWeightIn                 ( bO / wO )     ( 1 - sF )                             //
-    // wO = tokenWeightOut                                                                       //
-    // sF = swapFee                                                                              //
-    **********************************************************************************************/
-    function calcSpotPrice(
-        uint256 tokenBalanceIn,
-        uint256 tokenWeightIn,
-        uint256 tokenBalanceOut,
-        uint256 tokenWeightOut,
-        uint256 swapFee
-    ) public pure returns (uint256 spotPrice) {
-        uint256 numer = bdiv(tokenBalanceIn, tokenWeightIn);
-        uint256 denom = bdiv(tokenBalanceOut, tokenWeightOut);
-        uint256 ratio = bdiv(numer, denom);
-        uint256 scale = bdiv(BONE, bsub(BONE, swapFee));
-        return (spotPrice = bmul(ratio, scale));
-    }
-
-    /**********************************************************************************************
     // calcOutGivenIn                                                                            //
     // aO = tokenAmountOut                                                                       //
     // bO = tokenBalanceOut                                                                      //

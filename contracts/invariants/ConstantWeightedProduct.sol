@@ -29,7 +29,7 @@ contract ConstantWeightedProduct is FixedPoint {
         uint256 tokenBalanceOut,
         uint256 tokenWeightOut,
         uint256 swapFee
-    ) internal pure returns (uint256) {
+    ) public pure returns (uint256) {
         /**********************************************************************************************
         // spotPrice                                                                                 //
         // sP = spotPrice                                                                            //
@@ -38,7 +38,7 @@ contract ConstantWeightedProduct is FixedPoint {
         // wI = tokenWeightIn                 ( bO / wO )     ( 1 - sF )                             //
         // wO = tokenWeightOut                                                                       //
         // sF = swapFee                                                                              //
-        **********************************************************************************************/
+        /**********************************************************************************************/
 
         uint256 numerator = div(tokenBalanceIn, tokenWeightIn);
         uint256 denominator = div(tokenBalanceOut, tokenWeightOut);

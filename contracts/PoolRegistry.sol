@@ -25,8 +25,7 @@ import "./IVault.sol";
 abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
     struct Record {
         bool bound; // is token bound to pool
-        uint256 index; // private
-        uint256 denorm; // denormalized weight
+        uint8 index; // private
     }
 
     struct Pool {
@@ -34,7 +33,7 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         // `setSwapFee` requires CONTROL
         uint256 swapFee;
         address[] tokens; // For simpler pool configuration querying, not used internally
-        uint256 totalWeight;
+        address invariant;
     }
 
     mapping(bytes32 => mapping(address => Record)) public poolRecords;
@@ -62,15 +61,20 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
 
     event PoolCreated(bytes32 poolId);
 
-    function newPool(bytes32 poolId) external override returns (bytes32) {
+    function newPool(bytes32 poolId, address invariant)
+        external
+        override
+        returns (bytes32)
+    {
         require(!_poolExists[poolId], "Pool ID already exists");
+        require(invariant != address(0), "Invariant must be set");
         _poolExists[poolId] = true;
 
         pools[poolId] = Pool({
             controller: msg.sender,
             swapFee: DEFAULT_SWAP_FEE,
             tokens: new address[](0),
-            totalWeight: 0
+            invariant: invariant
         });
 
         emit PoolCreated(poolId);
@@ -121,39 +125,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         return balances;
     }
 
-    function getTokenDenormalizedWeight(bytes32 poolId, address token)
-        external
-        override
-        view
-        _viewlock_
-        returns (uint256)
-    {
-        require(poolRecords[poolId][token].bound, "ERR_NOT_BOUND");
-        return poolRecords[poolId][token].denorm;
-    }
-
-    function getTotalDenormalizedWeight(bytes32 poolId)
-        external
-        override
-        view
-        _viewlock_
-        returns (uint256)
-    {
-        return pools[poolId].totalWeight;
-    }
-
-    function getTokenNormalizedWeight(bytes32 poolId, address token)
-        external
-        override
-        view
-        _viewlock_
-        returns (uint256)
-    {
-        require(poolRecords[poolId][token].bound, "ERR_NOT_BOUND");
-        uint256 denorm = poolRecords[poolId][token].denorm;
-        return bdiv(denorm, pools[poolId].totalWeight);
-    }
-
     function getSwapFee(bytes32 poolId)
         external
         override
@@ -172,6 +143,26 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         returns (address)
     {
         return pools[poolId].controller;
+    }
+
+    function getInvariant(bytes32 poolId)
+        external
+        override
+        view
+        _viewlock_
+        returns (address)
+    {
+        return pools[poolId].invariant;
+    }
+
+    function getTokenIndex(bytes32 poolId, address token)
+        external
+        override
+        view
+        _viewlock_
+        returns (uint8)
+    {
+        return poolRecords[poolId][token].index;
     }
 
     function setSwapFee(bytes32 poolId, uint256 swapFee)

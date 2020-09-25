@@ -17,13 +17,15 @@ pragma experimental ABIEncoderV2;
 pragma solidity ^0.7.1;
 
 interface IVault {
-    function newPool(bytes32) external returns (bytes32);
+    function newPool(bytes32, address) external returns (bytes32);
 
     // Pool config queries
 
     // Trading with a pool requires either trusting the controller, or going through
     // a proxy that enforces expected conditions (such as pool make up and fees)
     function getController(bytes32 poolId) external view returns (address);
+
+    function getInvariant(bytes32 poolId) external view returns (address);
 
     function getSwapFee(bytes32 poolId) external view returns (uint256);
 
@@ -57,22 +59,6 @@ interface IVault {
         view
         returns (bool);
 
-    function getTokenNormalizedWeight(bytes32 poolId, address token)
-        external
-        view
-        returns (uint256);
-
-    // do we need these two?
-    function getTokenDenormalizedWeight(bytes32 poolId, address token)
-        external
-        view
-        returns (uint256);
-
-    function getTotalDenormalizedWeight(bytes32 poolId)
-        external
-        view
-        returns (uint256);
-
     // TBD if we expose these as-is, or provide lower-level primitives (possibly accounting for multiple curves)
     function getSpotPrice(
         bytes32 poolId,
@@ -93,12 +79,11 @@ interface IVault {
     function setSwapFee(bytes32 poolId, uint256 swapFee) external;
 
     // TODO rework bind functions to minimize trust of controllers
-    // Adds a new token to a pool, with initial balance and (denorm) weight
+    // Adds a new token to a pool, with initial balance
     function bind(
         bytes32 poolId,
         address token,
-        uint256 balance,
-        uint256 denorm
+        uint256 balance
     ) external;
 
     // Removes a token from a pool, withdrawing all balance
@@ -120,13 +105,12 @@ interface IVault {
         uint256[] calldata amountsOut
     ) external;
 
-    // Updates a token's config in a pool, with new (denorm) weight and
+    // Updates a token's config in a pool with new balance
     // balance (depositing or withdrawing depending on current state)
     function rebind(
         bytes32 poolId,
         address token,
-        uint256 balance,
-        uint256 denorm
+        uint256 balance
     ) external;
 
     // Trading interface
@@ -181,4 +165,9 @@ interface IVault {
         int256 delta;
         uint256 tokenDiffIndex;
     }
+
+    function getTokenIndex(bytes32 poolId, address token)
+        external
+        view
+        returns (uint8);
 }

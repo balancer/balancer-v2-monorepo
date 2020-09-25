@@ -25,6 +25,7 @@ import "./PoolRegistry.sol";
 import "./ISwapCaller.sol";
 
 import "./LogExpMath.sol";
+import "./curves/ICurve.sol";
 
 contract Vault is IVault, PoolRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -144,8 +145,7 @@ contract Vault is IVault, PoolRegistry {
     function bind(
         bytes32 poolId,
         address token,
-        uint256 balance,
-        uint256 denorm
+        uint256 balance
     ) external override _logs_ {
         require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(!poolRecords[poolId][token].bound, "ERR_IS_BOUND");
@@ -157,44 +157,22 @@ contract Vault is IVault, PoolRegistry {
 
         poolRecords[poolId][token] = Record({
             bound: true,
-            index: pools[poolId].tokens.length,
-            denorm: 0 // denorm will be validated by rebind()
+            index: uint8(pools[poolId].tokens.length)
         });
         pools[poolId].tokens.push(token);
-        rebind(poolId, token, balance, denorm);
+        rebind(poolId, token, balance);
     }
 
     function rebind(
         bytes32 poolId,
         address token,
-        uint256 balance,
-        uint256 denorm
+        uint256 balance
     ) public override _logs_ _lock_ {
         require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(poolRecords[poolId][token].bound, "ERR_NOT_BOUND");
 
-        require(denorm >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
-        require(denorm <= MAX_WEIGHT, "ERR_MAX_WEIGHT");
         require(balance >= MIN_BALANCE, "ERR_MIN_BALANCE");
 
-        // Adjust the denorm and totalWeight
-        uint256 oldWeight = poolRecords[poolId][token].denorm;
-        if (denorm > oldWeight) {
-            pools[poolId].totalWeight = badd(
-                pools[poolId].totalWeight,
-                bsub(denorm, oldWeight)
-            );
-            require(
-                pools[poolId].totalWeight <= MAX_TOTAL_WEIGHT,
-                "ERR_MAX_TOTAL_WEIGHT"
-            );
-        } else if (denorm < oldWeight) {
-            pools[poolId].totalWeight = bsub(
-                pools[poolId].totalWeight,
-                bsub(oldWeight, denorm)
-            );
-        }
-        poolRecords[poolId][token].denorm = denorm;
 
         // Adjust the balance record and actual token balance
         uint256 oldBalance = _poolTokenBalance[poolId][token];
@@ -219,22 +197,16 @@ contract Vault is IVault, PoolRegistry {
 
         uint256 tokenBalance = _poolTokenBalance[poolId][token];
 
-        pools[poolId].totalWeight = bsub(
-            pools[poolId].totalWeight,
-            poolRecords[poolId][token].denorm
-        );
-
         // Swap the token-to-unbind with the last token,
         // then delete the last token
-        uint256 index = poolRecords[poolId][token].index;
-        uint256 last = pools[poolId].tokens.length - 1;
+        uint8 index = poolRecords[poolId][token].index;
+        uint last = pools[poolId].tokens.length - 1;
         pools[poolId].tokens[index] = pools[poolId].tokens[last];
         poolRecords[poolId][pools[poolId].tokens[index]].index = index;
         pools[poolId].tokens.pop();
         poolRecords[poolId][token] = Record({
             bound: false,
-            index: 0,
-            denorm: 0
+            index: 0
         });
 
         // TODO: charge exit fee
@@ -250,17 +222,19 @@ contract Vault is IVault, PoolRegistry {
         uint256 inRecordBalance = _poolTokenBalance[poolId][tokenIn];
         Record storage outRecord = poolRecords[poolId][tokenOut];
         uint256 outRecordBalance = _poolTokenBalance[poolId][tokenOut];
+        ICurve inv = ICurve(pools[poolId].invariant);
+        uint256 swapFee = pools[poolId].swapFee;
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
 
         return
-            calcSpotPrice(
+            inv.spotPrice(
+                inRecord.index,
+                outRecord.index,
                 inRecordBalance,
-                inRecord.denorm,
                 outRecordBalance,
-                outRecord.denorm,
-                pools[poolId].swapFee
+                swapFee
             );
     }
 
@@ -273,16 +247,17 @@ contract Vault is IVault, PoolRegistry {
         uint256 inRecordBalance = _poolTokenBalance[poolId][tokenIn];
         Record storage outRecord = poolRecords[poolId][tokenOut];
         uint256 outRecordBalance = _poolTokenBalance[poolId][tokenOut];
+        ICurve inv = ICurve(pools[poolId].invariant);
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
 
         return
-            calcSpotPrice(
+            inv.spotPrice(
+                inRecord.index,
+                outRecord.index,
                 inRecordBalance,
-                inRecord.denorm,
                 outRecordBalance,
-                outRecord.denorm,
                 0
             );
     }
@@ -369,22 +344,21 @@ contract Vault is IVault, PoolRegistry {
                     bmul(uint256(-swap.tokenA.delta), bsub(BONE, pool.swapFee))
                 );
 
-            require(
-                _validateBalances(
-                    // Temporary in-memory struct to reduce stack usage (stack-too-deep error),
-                    // we'll regardless need such an abstraction once we extract the curves from
-                    // the vault
-                    PoolStateTransition({
-                        oldBalanceA: poolTokenABalance,
-                        oldBalanceB: poolTokenBBalance,
-                        newBalanceA: tokenABalanceMinusFee,
-                        newBalanceB: poolTokenBBalanceNew
-                    }),
-                    bdiv(recordA.denorm, pool.totalWeight),
-                    bdiv(recordB.denorm, pool.totalWeight)
-                ),
-                "ERR_INVALID_SWAP"
-            );
+            {
+              uint256[] memory oldBalances = new uint256[](pool.tokens.length);
+              uint256[] memory newBalances = new uint256[](pool.tokens.length);
+
+              (oldBalances, newBalances) = balancesOldNew(
+                pool,
+                swap.poolId,
+                tokenA,
+                tokenB,
+                tokenABalanceMinusFee,
+                poolTokenBBalanceNew
+              );
+              ICurve inv = ICurve(pools[swap.poolId].invariant);
+              require(inv.validateBalances(oldBalances, newBalances));
+            }
 
             // 3: update pool balances
             _poolTokenBalance[swap.poolId][tokenA] = poolTokenABalanceNew;
@@ -460,65 +434,30 @@ contract Vault is IVault, PoolRegistry {
         }
     }
 
-    struct PoolStateTransition {
-        uint256 oldBalanceA;
-        uint256 oldBalanceB;
-        uint256 newBalanceA;
-        uint256 newBalanceB;
-    }
+    function balancesOldNew(
+      Pool storage pool,
+      bytes32 poolId,
+      address tokenA,
+      address tokenB,
+      uint256 poolTokenABalanceNew,
+      uint256 poolTokenBBalanceNew
+    ) internal returns (uint256[] memory oldBalances, uint256[] memory newBalances)
+    {
+      uint256[] memory oldBalances = new uint256[](pool.tokens.length);
+      uint256[] memory newBalances = new uint256[](pool.tokens.length);
+      for (uint256 j = 0; j < pool.tokens.length; j++) {
+        address t = pool.tokens[j];
 
-    function _validateBalances(
-        PoolStateTransition memory transition,
-        uint256 normalizedWeightA,
-        uint256 normalizedWeightB
-    ) private pure returns (bool) {
-        //Balances should never be zero
-        require(
-            transition.newBalanceA > 0 && transition.newBalanceB > 0,
-            "ERR_INVALID_BALANCE"
-        );
-
-        uint256 oldValue = bmul(
-            uint256(
-                LogExpMath.exp(
-                    int256(transition.oldBalanceA),
-                    int256(normalizedWeightA)
-                )
-            ),
-            uint256(
-                LogExpMath.exp(
-                    int256(transition.oldBalanceB),
-                    int256(normalizedWeightB)
-                )
-            )
-        );
-
-        uint256 newValue = bmul(
-            uint256(
-                LogExpMath.exp(
-                    int256(transition.newBalanceA),
-                    int256(normalizedWeightA)
-                )
-            ),
-            uint256(
-                LogExpMath.exp(
-                    int256(transition.newBalanceB),
-                    int256(normalizedWeightB)
-                )
-            )
-        );
-
-        // Require value to remain or increase, even if this means the trader is not being optimal
-        if (newValue >= oldValue) {
-            return true;
+        oldBalances[j] = _poolTokenBalance[poolId][t];
+        if (tokenA == t) {
+          newBalances[j] = poolTokenABalanceNew;
+        } else if (tokenB == t) {
+          newBalances[j] = poolTokenBBalanceNew;
         } else {
-            // We can't use strict comparison due to the different approximations involved. For
-            // the values to be 'equal', their difference should be less than exp error
-            // multiplied. 137*10^(-17) * 137*10^(-17).
-
-            // TODO: this value is actually much lower - make the check stricter
-            return bsub(BONE, bdiv(newValue, oldValue)) < 1876900;
+          newBalances[j] = oldBalances[j];
         }
+      }
+      return (oldBalances, newBalances);
     }
 
     function addInitialLiquidity(
