@@ -4,18 +4,20 @@ import { Contract, Signer, ContractReceipt } from 'ethers';
 import * as expectEvent from './helpers/expectEvent';
 import { MAX_UINT256 } from './helpers/constants';
 import { expectBalanceChange } from './helpers/tokenBalance';
-import { TokenList, deployTokens } from './helpers/tokens';
+import { TokenList, deployTokens, mintTokens } from './helpers/tokens';
 import { deploy } from '../scripts/helpers/deploy';
 
 describe('Vault', () => {
   let controller: Signer;
   let trader: Signer;
+  let creditor: Signer;
+  let other: Signer;
 
   let vault: Contract;
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, controller, trader] = await ethers.getSigners();
+    [, controller, trader, creditor, other] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault', async () => {
@@ -34,6 +36,79 @@ describe('Vault', () => {
 
     it('has the correct controller', async () => {
       expect(await vault.getController(poolId)).to.equal(await controller.getAddress());
+    });
+  });
+
+  describe('user credit', () => {
+    const amount = ethers.BigNumber.from(500);
+
+    beforeEach(async () => {
+      await mintTokens(tokens, 'DAI', trader, 1e18);
+    });
+
+    it('user can deposit tokens', async () => {
+      await tokens.DAI.connect(trader).approve(vault.address, amount);
+      await vault.connect(trader).deposit(tokens.DAI.address, amount, await creditor.getAddress());
+    });
+
+    it('user must approve before depositing tokens', async () => {
+      await expect(
+        vault.connect(trader).deposit(tokens.DAI.address, amount, await creditor.getAddress())
+      ).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
+    });
+
+    context('with deposited tokens', () => {
+      beforeEach(async () => {
+        await tokens.DAI.connect(trader).approve(vault.address, amount);
+        await vault.connect(trader).deposit(tokens.DAI.address, amount, await creditor.getAddress());
+      });
+
+      it('credit can be queried', async () => {
+        expect(await vault.getUserTokenBalance(await creditor.getAddress(), tokens.DAI.address)).to.equal(amount);
+      });
+
+      it('tokens are not credited to the account that deposits', async () => {
+        expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.DAI.address)).to.equal(0);
+      });
+
+      it('creditor can withdraw partial tokens', async () => {
+        await expectBalanceChange(
+          async () => {
+            await vault.connect(creditor).withdraw(tokens.DAI.address, amount.sub(1), await other.getAddress());
+          },
+          other,
+          tokens,
+          { DAI: amount.sub(1) }
+        );
+      });
+
+      it('creditor can withdraw all tokens', async () => {
+        await expectBalanceChange(
+          async () => {
+            await vault.connect(creditor).withdraw(tokens.DAI.address, amount, await other.getAddress());
+          },
+          other,
+          tokens,
+          { DAI: amount }
+        );
+      });
+
+      it('balance is updated', async () => {
+        await vault.connect(creditor).withdraw(tokens.DAI.address, amount.sub(1), await other.getAddress());
+        expect(await vault.getUserTokenBalance(await creditor.getAddress(), tokens.DAI.address)).to.equal(1);
+      });
+
+      it('creditor cannot overwithdraw', async () => {
+        await expect(
+          vault.connect(creditor).withdraw(tokens.DAI.address, amount.add(1), await other.getAddress())
+        ).to.be.revertedWith('Vault: withdraw amount exceeds balance');
+      });
+
+      it('depositor cannot withdraw tokens', async () => {
+        await expect(
+          vault.connect(trader).withdraw(tokens.DAI.address, amount, await other.getAddress())
+        ).to.be.revertedWith('Vault: withdraw amount exceeds balance');
+      });
     });
   });
 

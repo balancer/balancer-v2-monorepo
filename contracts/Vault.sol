@@ -24,7 +24,48 @@ import "./IVault.sol";
 import "./LogExpMath.sol";
 
 contract Vault is IVault, PoolRegistry {
-    mapping(address => uint256) private _tokenBalances;
+    // The vault's accounted-for balance for each token. These include:
+    //  * tokens in pools
+    //  * tokens stored as user balance
+    mapping(address => uint256) private _vaultTotalTokenBalances; // token -> vault balance
+
+    mapping(address => mapping(address => uint256)) private _userTokenBalances; // user -> token -> user balance
+
+    function getUserTokenBalance(address user, address token)
+        public
+        view
+        returns (uint256)
+    {
+        return _userTokenBalances[user][token];
+    }
+
+    function deposit(
+        address token,
+        uint256 amount,
+        address creditor
+    ) public {
+        // TODO: check overflow
+        _userTokenBalances[creditor][token] += amount;
+        _vaultTotalTokenBalances[token] += amount;
+
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+    }
+
+    function withdraw(
+        address token,
+        uint256 amount,
+        address recipient
+    ) public {
+        require(
+            _userTokenBalances[msg.sender][token] >= amount,
+            "Vault: withdraw amount exceeds balance"
+        );
+
+        _userTokenBalances[msg.sender][token] -= amount;
+        _vaultTotalTokenBalances[token] -= amount;
+
+        IERC20(token).transfer(recipient, amount);
+    }
 
     // Bind does not lock because it jumps to `rebind`, which does
     function bind(
@@ -267,14 +308,14 @@ contract Vault is IVault, PoolRegistry {
                 require(
                     newBalance >=
                         badd(
-                            _tokenBalances[diff.token],
+                            _vaultTotalTokenBalances[diff.token],
                             uint256(diff.vaultDelta)
                         ),
                     "ERR_INVALID_DEPOSIT"
                 );
 
                 // Update token balance
-                _tokenBalances[diff.token] = newBalance;
+                _vaultTotalTokenBalances[diff.token] = newBalance;
             }
         }
 
@@ -485,7 +526,7 @@ contract Vault is IVault, PoolRegistry {
 
         // TODO: What assumptions do we make when pulling? Should we check token.balanceOf(this)
         // increased by toPull?
-        _tokenBalances[erc20] += amount;
+        _vaultTotalTokenBalances[erc20] += amount;
     }
 
     function _pushUnderlying(
@@ -495,7 +536,7 @@ contract Vault is IVault, PoolRegistry {
     ) internal {
         // TODO: What assumptions do we make when pushing? Should we check token.balanceOf(this)
         // decreased by toPull?
-        _tokenBalances[erc20] -= amount;
+        _vaultTotalTokenBalances[erc20] -= amount;
 
         bool xfer = IERC20(erc20).transfer(to, amount);
         require(xfer, "ERR_ERC20_FALSE");
