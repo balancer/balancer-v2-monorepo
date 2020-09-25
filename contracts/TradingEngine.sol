@@ -158,7 +158,7 @@ contract TradingEngine is ConstantWeightedProduct {
             helper.toSend
         );
 
-        _vault.batchSwap(diffs, swaps, msg.sender);
+        _vault.batchSwap(diffs, swaps, msg.sender, false);
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
     }

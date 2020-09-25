@@ -212,7 +212,8 @@ contract Vault is IVault, PoolRegistry {
     function batchSwap(
         Diff[] memory diffs,
         Swap[] memory swaps,
-        address recipient
+        address recipient,
+        bool useUserBalance
     ) public {
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
         // indexes pointing to the same token.
@@ -300,22 +301,32 @@ contract Vault is IVault, PoolRegistry {
             Diff memory diff = diffs[i];
 
             if (diff.vaultDelta > 0) {
-                uint256 newBalance = IERC20(diff.token).balanceOf(
-                    address(this)
-                );
+                if (!useUserBalance) {
+                    // Check tokens have been received
 
-                // TODO: check strict equality? Might not be feasible due to approximations
-                require(
-                    newBalance >=
-                        badd(
-                            _vaultTotalTokenBalances[diff.token],
-                            uint256(diff.vaultDelta)
-                        ),
-                    "ERR_INVALID_DEPOSIT"
-                );
+                    uint256 newBalance = IERC20(diff.token).balanceOf(
+                        address(this)
+                    );
 
-                // Update token balance
-                _vaultTotalTokenBalances[diff.token] = newBalance;
+                    // TODO: check strict equality? Might not be feasible due to approximations
+                    require(
+                        newBalance >=
+                            badd(
+                                _vaultTotalTokenBalances[diff.token],
+                                uint256(diff.vaultDelta)
+                            ),
+                        "ERR_INVALID_DEPOSIT"
+                    );
+
+                    // Update token balance
+                    _vaultTotalTokenBalances[diff.token] = newBalance;
+                } else {
+                    // Remove balance from user - the vault's balance doesn't change
+                    _userTokenBalances[msg.sender][diff.token] = bsub(
+                        _userTokenBalances[msg.sender][diff.token],
+                        uint256(diff.vaultDelta)
+                    );
+                }
             }
         }
 
@@ -328,7 +339,16 @@ contract Vault is IVault, PoolRegistry {
                 // Make delta positive
                 uint256 amount = uint256(-diff.vaultDelta);
 
-                _pushUnderlying(diff.token, recipient, amount);
+                if (!useUserBalance) {
+                    // Send tokens
+                    _pushUnderlying(diff.token, recipient, amount);
+                } else {
+                    // Allocate tokens to recipient - the vault's balance doesn't change
+                    _userTokenBalances[recipient][diff.token] = badd(
+                        _userTokenBalances[recipient][diff.token],
+                        amount
+                    );
+                }
             }
         }
     }

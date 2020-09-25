@@ -138,7 +138,8 @@ interface IVault {
     function batchSwap(
         Diff[] calldata diffs,
         Swap[] calldata swaps,
-        address recipient
+        address recipient,
+        bool useUserBalance
     ) external;
 
     // batchSwap helper data structures

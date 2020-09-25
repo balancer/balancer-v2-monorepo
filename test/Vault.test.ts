@@ -170,7 +170,7 @@ describe('Vault', () => {
         async () => {
           // Send tokens & swap - would normally happen in the same tx
           await tokens.MKR.connect(trader).transfer(vault.address, (1e18 + fee).toString());
-          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
+          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress(), false);
         },
         trader,
         tokens,
@@ -210,7 +210,7 @@ describe('Vault', () => {
         async () => {
           // Send tokens & swap - would normally happen in the same tx
           await tokens.MKR.connect(trader).transfer(vault.address, (0.68e18 + 2 * fee).toString());
-          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
+          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress(), false);
         },
         trader,
         tokens,
@@ -292,7 +292,7 @@ describe('Vault', () => {
       await expectBalanceChange(
         async () => {
           // The trader gets MKR without spending DAI
-          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
+          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress(), false);
         },
         trader,
         tokens,
