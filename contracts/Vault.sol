@@ -168,89 +168,67 @@ contract Vault is IVault, PoolRegistry {
             );
     }
 
-    function swap(
+    function outGivenIn(
+        address tokenIn,
+        address tokenOut,
+        uint256 tokenBalanceIn,
+        uint256 tokenBalanceOut,
+        uint256 tokenAmountIn
+    ) public view returns (uint256) {
+        uint256 quotient = bdiv(
+            tokenBalanceIn,
+            badd(tokenBalanceIn, tokenAmountIn)
+        );
+        uint256 weightRatio = 1000000000000000000; //Same weights for this example
+
+        uint256 ratio = bsub(
+            BONE,
+            uint256(LogExpMath.exp(int256(quotient), int256(weightRatio)))
+        );
+
+        return bmul(tokenBalanceOut, ratio);
+    }
+
+    function swapExactAmountInSingle(
         bytes32 poolId,
-        address tokenA,
-        address tokenB,
-        uint256 balanceA,
-        uint256 balanceB,
-        address recipient
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 minAmountOut
     ) public {
-        Pool memory pool = pools[poolId];
-        Record memory recordA = pools[poolId].records[tokenA];
-        uint256 recordABalance = _balances[poolId][tokenA];
+        Pool storage pool = pools[poolId];
 
-        // Validate swap alters pool's balance for token A
-        require(balanceA != recordABalance, "NOOP");
+        //Substract feee
+        uint256 adjustedAmountIn = amountIn - bmul(amountIn, pool.swapFee);
 
-        Record memory recordB = pools[poolId].records[tokenB];
-        uint256 recordBBalance = _balances[poolId][tokenB];
+        //Calculate out given in
+        //TODO: This will be on the external invariant of course!
+        uint256 amountOut = outGivenIn(
+            tokenIn, //TODO: We can use indexes or addresses
+            tokenOut,
+            _balances[poolId][tokenIn],
+            _balances[poolId][tokenOut],
+            adjustedAmountIn
+        );
 
-        // Validate swap alters pool's balance for token B
-        require(balanceB != recordBBalance, "NOOP");
+        require(amountOut >= minAmountOut, "Insufficient amount out");
 
-        int256 balanceADelta = int256(balanceA - recordABalance); // TODO: check overflow
-        int256 balanceBDelta = int256(balanceB - recordBBalance); // TODO: check overflow
+        //Pull amount in and check correct increment
+        uint256 oldBalance = IERC20(tokenIn).balanceOf(address(this));
+        IERC20(tokenIn).transferFrom(msg.sender, address(this), adjustedAmountIn);
+        uint256 newBalance = IERC20(tokenIn).balanceOf(address(this));
+        require(
+            bsub(newBalance, oldBalance) == adjustedAmountIn,
+            "Insufficient amount in "
+        );
 
-        {
-            uint256 tokenABalanceMinusFee = balanceA -
-                bmul(abs(balanceADelta), pool.swapFee);
+        //Update balances
+        _balances[poolId][tokenIn] += amountIn;
+        _balances[poolId][tokenOut] -= amountOut;
 
-            require(
-                _validateBalances(
-                    // Temporary in-memory struct to reduce stack usage (stack-too-deep error),
-                    // we'll regardless need such an abstraction once we extract the curves from
-                    // the vault
-                    PoolStateTransition({
-                        oldBalanceA: recordABalance,
-                        oldBalanceB: recordBBalance,
-                        newBalanceA: tokenABalanceMinusFee,
-                        newBalanceB: balanceB
-                    }),
-                    bdiv(recordA.denorm, pool.totalWeight),
-                    bdiv(recordB.denorm, pool.totalWeight)
-                ),
-                "ERR_INVALID_SWAP"
-            );
-        }
-
-        // 3: update pool balances
-        _balances[poolId][tokenA] = balanceA;
-        _balances[poolId][tokenB] = balanceB;
-
-        if (balanceADelta > 0) {
-            uint256 newBalance = IERC20(tokenA).balanceOf(address(this));
-
-            // TODO: check strict equality? Might not be feasible due to approximations
-            require(
-                newBalance >=
-                    badd(_tokenBalances[tokenA], uint256(balanceADelta)),
-                "ERR_INVALID_DEPOSIT"
-            );
-
-            // Update token balance
-            _tokenBalances[tokenA] = newBalance;
-        } else {
-            uint256 amount = uint256(-balanceADelta);
-            _pushUnderlying(tokenA, recipient, amount);
-        }
-
-        if (balanceBDelta > 0) {
-            uint256 newBalance = IERC20(tokenB).balanceOf(address(this));
-
-            // TODO: check strict equality? Might not be feasible due to approximations
-            require(
-                newBalance >=
-                    badd(_tokenBalances[tokenB], uint256(balanceBDelta)),
-                "ERR_INVALID_DEPOSIT"
-            );
-
-            // Update token balance
-            _tokenBalances[tokenB] = newBalance;
-        } else {
-            uint256 amount = uint256(-balanceBDelta);
-            _pushUnderlying(tokenB, recipient, amount);
-        }
+        //Push amount out to the caller  
+        bool xfer = IERC20(tokenOut).transfer(msg.sender, amountOut);
+        require(xfer, "ERR_ERC20_FALSE");
     }
 
     function batchSwap(

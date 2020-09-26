@@ -78,43 +78,6 @@ contract TradingEngine is ConstantWeightedProduct {
         uint256 accumOut;
     }
 
-    function swapExactAmountInSingle(
-        bytes32 poolId,
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 minAmountOut
-    ) public {
-        PoolData memory poolData = _getPoolData(poolId, tokenIn, tokenOut);
-
-        uint256 tokenAmountOut = outGivenIn(
-            poolData.tokenInBalance,
-            poolData.tokenInDenorm,
-            poolData.tokenOutBalance,
-            poolData.tokenOutDenorm,
-            amountIn,
-            poolData.swapFee
-        );
-
-        uint256 tokenABalance = add(poolData.tokenInBalance, amountIn);
-        uint256 tokenBBalance = sub(poolData.tokenOutBalance, tokenAmountOut);
-
-        require(tokenAmountOut >= minAmountOut, "Insufficient amount out");
-
-        IERC20(tokenIn).transferFrom(msg.sender, address(_vault), amountIn);
-
-        _vault.swap(
-            poolId,
-            tokenIn,
-            tokenOut,
-            tokenABalance,
-            tokenBBalance,
-            msg.sender
-        );
-
-        // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
-    }
-
     // Trades overallTokenIn for overallTokenOut, possibly going through intermediate tokens.
     // At least minAmountOut overallTokenOut tokens will be obtained, with a maximum effective
     // of maxPrice (including trading fees). The amount of overallTokenIn to be sent for each

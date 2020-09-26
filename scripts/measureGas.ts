@@ -61,10 +61,13 @@ async function simpleSwap() {
     ['MKR', 50],
   ]);
 
+  //Approve vault directly
+  await tokens.DAI.connect(trader).approve(vault.address, (100e18).toString());
+
   // Trade DAI for MKR, putting in 500 DAI
 
   const receipt = await (
-    await engine.connect(trader).swapExactAmountInSingle(pool, tokens.DAI.address, tokens.MKR.address, 500, 500)
+    await vault.connect(trader).swapExactAmountInSingle(pool, tokens.DAI.address, tokens.MKR.address, 500, 500)
   ).wait();
 
   console.log(`${printGas(receipt.gasUsed)} gas`);

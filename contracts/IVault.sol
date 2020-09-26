@@ -135,13 +135,12 @@ interface IVault {
 
     // Trading interface
 
-    function swap(
+    function swapExactAmountInSingle(
         bytes32 poolId,
-        address tokenA,
-        address tokenB,
-        uint256 balanceA,
-        uint256 balanceB,
-        address recipient
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 minAmountOut
     ) external;
 
     function batchSwap(
