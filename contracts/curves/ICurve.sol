@@ -14,24 +14,29 @@
 pragma solidity 0.5.12;
 
 interface ICurve {
-    function outGivenIn(
+    function calculateOutGivenIn(
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn
-    ) external view returns (uint256);
+    ) external returns (uint256);
 
     function calculateInvariant(uint256[] calldata balances)
         external
-        view
         returns (uint256);
+
+    function validateOutGivenIn(
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenBalanceIn,
+        uint256 tokenBalanceOut,
+        uint256 tokenAmountIn,
+        uint256 tokenAmountOut
+    ) external returns (bool);
 
     function validateBalances(
         uint256[] calldata oldBalances,
         uint256[] calldata newBalances
-    ) external view returns (bool);
-
-    //TODO: for invariants that need storage writing we can define different interfaces
-    //or just a one function named updateInvariant that is called just before
+    ) external returns (bool);
 }

@@ -25,20 +25,19 @@ contract ConstantSumProdCurve is ICurve, FixedPoint {
     //TODO: make amplification param inmutable with v0.7.1
     int256 internal constant amp = 100;
 
-    function outGivenIn(
+    function calculateOutGivenIn(
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn
-    ) public view returns (uint256) {
+    ) public returns (uint256) {
         //TODO: implement out given in for this invariant
         revert("Not implemented yet");
     }
 
     function calculateInvariant(uint256[] memory balances)
         public
-        view
         returns (uint256)
     {
         int256 sum = 0;
@@ -75,10 +74,30 @@ contract ConstantSumProdCurve is ICurve, FixedPoint {
         return uint256(c - (p * CONST_1) / (3 * c));
     }
 
+    function validateOutGivenIn(
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenBalanceIn,
+        uint256 tokenBalanceOut,
+        uint256 tokenAmountIn,
+        uint256 tokenAmountOut
+    ) external returns (bool) {
+        //Calculate out amount out
+        uint256 _tokenAmountOut = calculateOutGivenIn(
+            tokenIndexIn,
+            tokenIndexOut,
+            tokenBalanceIn,
+            tokenBalanceOut,
+            tokenAmountIn
+        );
+
+        return _tokenAmountOut >= tokenAmountOut;
+    }
+
     function validateBalances(
         uint256[] calldata oldBalances,
         uint256[] calldata newBalances
-    ) external view returns (bool) {
+    ) external returns (bool) {
         //Calculate old invariant
         uint256 oldInvariant = calculateInvariant(oldBalances);
 

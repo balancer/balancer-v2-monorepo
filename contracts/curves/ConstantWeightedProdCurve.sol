@@ -24,13 +24,13 @@ contract ConstantWeightedProdCurve is ICurve, FixedPoint {
         _weights = weights;
     }
 
-    function outGivenIn(
+    function calculateOutGivenIn(
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn
-    ) public view returns (uint256) {
+    ) public returns (uint256) {
         uint256 quotient = div(
             tokenBalanceIn,
             add(tokenBalanceIn, tokenAmountIn)
@@ -47,7 +47,6 @@ contract ConstantWeightedProdCurve is ICurve, FixedPoint {
 
     function calculateInvariant(uint256[] memory balances)
         public
-        view
         returns (uint256 invariant)
     {
         uint256 length = _weights.length;
@@ -64,10 +63,30 @@ contract ConstantWeightedProdCurve is ICurve, FixedPoint {
         }
     }
 
+    function validateOutGivenIn(
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenBalanceIn,
+        uint256 tokenBalanceOut,
+        uint256 tokenAmountIn,
+        uint256 tokenAmountOut
+    ) external returns (bool) {
+        //Calculate out amount out
+        uint256 _tokenAmountOut = calculateOutGivenIn(
+            tokenIndexIn,
+            tokenIndexOut,
+            tokenBalanceIn,
+            tokenBalanceOut,
+            tokenAmountIn
+        );
+
+        return _tokenAmountOut >= tokenAmountOut;
+    }
+
     function validateBalances(
         uint256[] calldata oldBalances,
         uint256[] calldata newBalances
-    ) external view returns (bool) {
+    ) external returns (bool) {
         //Calculate old invariant
         uint256 oldInvariant = calculateInvariant(oldBalances);
 
