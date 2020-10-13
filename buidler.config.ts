@@ -4,7 +4,7 @@ usePlugin('@nomiclabs/buidler-waffle');
 
 const config: BuidlerConfig = {
   solc: {
-    version: '0.5.12',
+    version: '0.7.1',
     optimizer: {
       enabled: true,
       runs: 9999,

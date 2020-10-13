@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity 0.5.12;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -19,11 +20,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@nomiclabs/buidler/console.sol";
 
 import "./PoolRegistry.sol";
-import "./IVault.sol";
 
 import "./LogExpMath.sol";
 
-contract Vault is IVault, PoolRegistry {
+contract Vault is PoolRegistry {
     mapping(address => uint256) private _tokenBalances;
 
     // Bind does not lock because it jumps to `rebind`, which does
@@ -32,16 +32,16 @@ contract Vault is IVault, PoolRegistry {
         address token,
         uint256 balance,
         uint256 denorm
-    ) external _logs_ {
+    ) external override _logs_ {
         require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
-        require(!pools[poolId].records[token].bound, "ERR_IS_BOUND");
+        require(!poolRecords[poolId][token].bound, "ERR_IS_BOUND");
 
         require(
             pools[poolId].tokens.length < MAX_BOUND_TOKENS,
             "ERR_MAX_TOKENS"
         );
 
-        pools[poolId].records[token] = Record({
+        poolRecords[poolId][token] = Record({
             bound: true,
             index: pools[poolId].tokens.length,
             denorm: 0 // denorm will be validated by rebind()
@@ -55,16 +55,16 @@ contract Vault is IVault, PoolRegistry {
         address token,
         uint256 balance,
         uint256 denorm
-    ) public _logs_ _lock_ {
+    ) public override _logs_ _lock_ {
         require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
-        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
+        require(poolRecords[poolId][token].bound, "ERR_NOT_BOUND");
 
         require(denorm >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
         require(denorm <= MAX_WEIGHT, "ERR_MAX_WEIGHT");
         require(balance >= MIN_BALANCE, "ERR_MIN_BALANCE");
 
         // Adjust the denorm and totalWeight
-        uint256 oldWeight = pools[poolId].records[token].denorm;
+        uint256 oldWeight = poolRecords[poolId][token].denorm;
         if (denorm > oldWeight) {
             pools[poolId].totalWeight = badd(
                 pools[poolId].totalWeight,
@@ -80,7 +80,7 @@ contract Vault is IVault, PoolRegistry {
                 bsub(oldWeight, denorm)
             );
         }
-        pools[poolId].records[token].denorm = denorm;
+        poolRecords[poolId][token].denorm = denorm;
 
         // Adjust the balance record and actual token balance
         uint256 oldBalance = _balances[poolId][token];
@@ -94,25 +94,30 @@ contract Vault is IVault, PoolRegistry {
         }
     }
 
-    function unbind(bytes32 poolId, address token) external _logs_ _lock_ {
+    function unbind(bytes32 poolId, address token)
+        external
+        override
+        _logs_
+        _lock_
+    {
         require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
-        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
+        require(poolRecords[poolId][token].bound, "ERR_NOT_BOUND");
 
         uint256 tokenBalance = _balances[poolId][token];
 
         pools[poolId].totalWeight = bsub(
             pools[poolId].totalWeight,
-            pools[poolId].records[token].denorm
+            poolRecords[poolId][token].denorm
         );
 
         // Swap the token-to-unbind with the last token,
         // then delete the last token
-        uint256 index = pools[poolId].records[token].index;
+        uint256 index = poolRecords[poolId][token].index;
         uint256 last = pools[poolId].tokens.length - 1;
         pools[poolId].tokens[index] = pools[poolId].tokens[last];
-        pools[poolId].records[pools[poolId].tokens[index]].index = index;
+        poolRecords[poolId][pools[poolId].tokens[index]].index = index;
         pools[poolId].tokens.pop();
-        pools[poolId].records[token] = Record({
+        poolRecords[poolId][token] = Record({
             bound: false,
             index: 0,
             denorm: 0
@@ -126,10 +131,10 @@ contract Vault is IVault, PoolRegistry {
         bytes32 poolId,
         address tokenIn,
         address tokenOut
-    ) external view _viewlock_ returns (uint256 spotPrice) {
-        Record storage inRecord = pools[poolId].records[tokenIn];
+    ) external override view _viewlock_ returns (uint256 spotPrice) {
+        Record storage inRecord = poolRecords[poolId][tokenIn];
         uint256 inRecordBalance = _balances[poolId][tokenIn];
-        Record storage outRecord = pools[poolId].records[tokenOut];
+        Record storage outRecord = poolRecords[poolId][tokenOut];
         uint256 outRecordBalance = _balances[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
@@ -149,10 +154,10 @@ contract Vault is IVault, PoolRegistry {
         bytes32 poolId,
         address tokenIn,
         address tokenOut
-    ) external view _viewlock_ returns (uint256 spotPrice) {
-        Record storage inRecord = pools[poolId].records[tokenIn];
+    ) external override view _viewlock_ returns (uint256 spotPrice) {
+        Record storage inRecord = poolRecords[poolId][tokenIn];
         uint256 inRecordBalance = _balances[poolId][tokenIn];
-        Record storage outRecord = pools[poolId].records[tokenOut];
+        Record storage outRecord = poolRecords[poolId][tokenOut];
         uint256 outRecordBalance = _balances[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
@@ -172,7 +177,7 @@ contract Vault is IVault, PoolRegistry {
         Diff[] memory diffs,
         Swap[] memory swaps,
         address recipient
-    ) public {
+    ) public override {
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
         // indexes pointing to the same token.
         // A simple way to implement this is to require the addresses to be sorted, and require strict
@@ -202,7 +207,7 @@ contract Vault is IVault, PoolRegistry {
             // Validate Pool has Token A and diff index is correct
             address tokenA = diffs[swap.tokenA.tokenDiffIndex].token;
 
-            Record memory recordA = pool.records[tokenA];
+            Record memory recordA = poolRecords[swap.poolId][tokenA];
             uint256 recordABalance = _balances[swap.poolId][tokenA];
 
             // Validate swap alters pool's balance for token A
@@ -213,7 +218,7 @@ contract Vault is IVault, PoolRegistry {
             // Validate Pool has Token B and diff index is correct
             address tokenB = diffs[swap.tokenB.tokenDiffIndex].token;
 
-            Record memory recordB = pool.records[tokenB];
+            Record memory recordB = poolRecords[swap.poolId][tokenB];
             uint256 recordBBalance = _balances[swap.poolId][tokenB];
 
             // Validate swap alters pool's balance for token B
@@ -357,7 +362,7 @@ contract Vault is IVault, PoolRegistry {
         bytes32 poolId,
         address[] calldata initialTokens,
         uint256[] calldata initialBalances
-    ) external onlyPoolController(poolId) {
+    ) external override onlyPoolController(poolId) {
         pools[poolId].tokens = initialTokens;
 
         for (uint256 i = 0; i < initialTokens.length; ++i) {
@@ -379,6 +384,7 @@ contract Vault is IVault, PoolRegistry {
 
     function addLiquidity(bytes32 poolId, uint256[] calldata amountsIn)
         external
+        override
         onlyPoolController(poolId)
     {
         Pool memory pool = pools[poolId];
@@ -405,7 +411,7 @@ contract Vault is IVault, PoolRegistry {
         bytes32 poolId,
         address recipient,
         uint256[] calldata amountsOut
-    ) external onlyPoolController(poolId) {
+    ) external override onlyPoolController(poolId) {
         Pool memory pool = pools[poolId];
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
@@ -430,7 +436,7 @@ contract Vault is IVault, PoolRegistry {
         bytes32 poolId,
         uint256 ratio,
         uint256[] calldata maxAmountsIn
-    ) external returns (uint256[] memory) {
+    ) external override view returns (uint256[] memory) {
         Pool memory pool = pools[poolId];
         require(
             pool.tokens.length == maxAmountsIn.length,
@@ -451,7 +457,7 @@ contract Vault is IVault, PoolRegistry {
         bytes32 poolId,
         uint256 ratio,
         uint256[] calldata minAmountsOut
-    ) external returns (uint256[] memory) {
+    ) external override view returns (uint256[] memory) {
         Pool memory pool = pools[poolId];
         require(
             pool.tokens.length == minAmountsOut.length,

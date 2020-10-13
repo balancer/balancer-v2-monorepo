@@ -7,6 +7,8 @@
     "func-param-name-mixedcase": "error",
     "modifier-name-mixedcase": "error",
     "private-vars-leading-underscore": "error",
-    "reason-string": ["error", {"maxLength": 64}]
+    "reason-string": ["error", {"maxLength": 64}],
+    "func-visibility": ["error", {"ignoreConstructors": true}],
+    "compiler-version": ["off"]
   }
 }
