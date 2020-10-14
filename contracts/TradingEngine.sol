@@ -166,14 +166,6 @@ contract TradingEngine is ConstantWeightedProduct {
             helper.toSend
         );
 
-        //Approve vault to get tokens if it does not have enough allowance
-        if (
-            IERC20(overallTokenIn).allowance(address(this), address(_vault)) <
-            helper.toSend
-        ) {
-            IERC20(overallTokenIn).approve(address(_vault), uint256(-1));
-        }
-
         _vault.batchSwap(diffs, swaps, msg.sender);
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
