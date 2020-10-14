@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -13,7 +14,7 @@
 
 pragma experimental ABIEncoderV2;
 
-pragma solidity 0.5.12;
+pragma solidity ^0.7.1;
 
 interface IVault {
     function newPool(bytes32) external returns (bytes32);
@@ -36,13 +37,13 @@ interface IVault {
         bytes32 poolId,
         uint256 ratio,
         uint256[] calldata maxAmountsIn
-    ) external returns (uint256[] memory);
+    ) external view returns (uint256[] memory);
 
     function getTokenAmountsOut(
         bytes32 poolId,
         uint256 ratio,
         uint256[] calldata minAmountsOut
-    ) external returns (uint256[] memory);
+    ) external view returns (uint256[] memory);
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external

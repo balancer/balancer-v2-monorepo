@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,43 +12,25 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity 0.5.12;
+pragma solidity ^0.7.1;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BNum.sol";
 
 // Highly opinionated token implementation
-
-interface IERC20 {
-    event Approval(address indexed src, address indexed dst, uint256 amt);
-    event Transfer(address indexed src, address indexed dst, uint256 amt);
-
-    function totalSupply() external view returns (uint256);
-
-    function balanceOf(address whom) external view returns (uint256);
-
-    function allowance(address src, address dst)
-        external
-        view
-        returns (uint256);
-
-    function approve(address dst, uint256 amt) external returns (bool);
-
-    function transfer(address dst, uint256 amt) external returns (bool);
-
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 amt
-    ) external returns (bool);
-}
-
-contract BTokenBase is BNum {
+// * It includes functions to increase and decrease allowance as a workaround
+//   for the well-known issue with 'approve':
+//   https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+// * It allows for 'infinite allowance', where an allowance of 0xff..ff is not
+//   decreased by calls to transferFrom
+// * It lets a token holder use 'transferFrom' to send their own tokens,
+//   without first setting allowance
+// * It emits 'Approval' events whenever allowance is changed by 'transferFrom'
+abstract contract BTokenBase is BNum, IERC20 {
     mapping(address => uint256) internal _balance;
     mapping(address => mapping(address => uint256)) internal _allowance;
     uint256 internal _totalSupply;
-
-    event Approval(address indexed src, address indexed dst, uint256 amt);
-    event Transfer(address indexed src, address indexed dst, uint256 amt);
 
     function _mint(uint256 amt) internal {
         _balance[address(this)] = badd(_balance[address(this)], amt);
@@ -82,7 +65,7 @@ contract BTokenBase is BNum {
     }
 }
 
-contract BToken is BTokenBase, IERC20 {
+contract BToken is BTokenBase {
     string private _name = "Balancer Pool Token";
     string private _symbol = "BPT";
     uint8 private _decimals = 18;
@@ -101,21 +84,26 @@ contract BToken is BTokenBase, IERC20 {
 
     function allowance(address src, address dst)
         external
+        override
         view
         returns (uint256)
     {
         return _allowance[src][dst];
     }
 
-    function balanceOf(address whom) external view returns (uint256) {
+    function balanceOf(address whom) external override view returns (uint256) {
         return _balance[whom];
     }
 
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() public override view returns (uint256) {
         return _totalSupply;
     }
 
-    function approve(address dst, uint256 amt) external returns (bool) {
+    function approve(address dst, uint256 amt)
+        external
+        override
+        returns (bool)
+    {
         _allowance[msg.sender][dst] = amt;
         emit Approval(msg.sender, dst, amt);
         return true;
@@ -144,7 +132,11 @@ contract BToken is BTokenBase, IERC20 {
         return true;
     }
 
-    function transfer(address dst, uint256 amt) external returns (bool) {
+    function transfer(address dst, uint256 amt)
+        external
+        override
+        returns (bool)
+    {
         _move(msg.sender, dst, amt);
         return true;
     }
@@ -153,7 +145,7 @@ contract BToken is BTokenBase, IERC20 {
         address src,
         address dst,
         uint256 amt
-    ) external returns (bool) {
+    ) external override returns (bool) {
         require(
             msg.sender == src || amt <= _allowance[src][msg.sender],
             "ERR_BTOKEN_BAD_CALLER"

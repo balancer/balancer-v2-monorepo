@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity 0.5.12;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -27,7 +28,7 @@ import "./ICallee.sol";
 contract TradingEngine is ConstantWeightedProduct, ICallee {
     IVault private _vault;
 
-    constructor(IVault vault) public {
+    constructor(IVault vault) {
         _vault = vault;
     }
 
@@ -162,7 +163,10 @@ contract TradingEngine is ConstantWeightedProduct, ICallee {
     }
 
     //Callback to send tokens to the Vault
-    function callback(address sender, bytes calldata callbackData) external {
+    function callback(address sender, bytes calldata callbackData)
+        external
+        override
+    {
         require(msg.sender == address(_vault), "Invalid callback caller");
 
         (address overallTokenIn, uint256 toSend) = abi.decode(
