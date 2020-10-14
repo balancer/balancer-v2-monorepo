@@ -200,41 +200,57 @@ contract Vault is PoolRegistry {
             Swap memory swap = swaps[i];
             Pool storage pool = pools[swap.poolId];
 
-            // TODO: account for swap fees
-
             // 1.1.a: Validate hints and new balance for token A
 
-            // Validate Pool has Token A and diff index is correct
             address tokenA = diffs[swap.tokenA.tokenDiffIndex].token;
 
             Record memory recordA = poolRecords[swap.poolId][tokenA];
-            uint256 recordABalance = _balances[swap.poolId][tokenA];
+            uint256 poolTokenABalance = _balances[swap.poolId][tokenA];
 
+            // Validate Pool has Token A and diff index is correct
+            require(poolTokenABalance > 0, "Token A not in pool");
             // Validate swap alters pool's balance for token A
-            require(swap.tokenA.balance != recordABalance, "NOOP");
+            require(swap.tokenA.delta != 0, "Token A NOOP");
 
             // 1.1.b: Validate hints and new balance for token B
 
-            // Validate Pool has Token B and diff index is correct
             address tokenB = diffs[swap.tokenB.tokenDiffIndex].token;
 
             Record memory recordB = poolRecords[swap.poolId][tokenB];
-            uint256 recordBBalance = _balances[swap.poolId][tokenB];
+            uint256 poolTokenBBalance = _balances[swap.poolId][tokenB];
 
+            // Validate Pool has Token B and diff index is correct
+            require(poolTokenBBalance > 0, "Token B not in pool");
             // Validate swap alters pool's balance for token B
-            require(swap.tokenB.balance != recordBBalance, "NOOP");
+            require(swap.tokenB.delta != 0, "Token B NOOP");
 
             // 1.2: Accumulate token diffs
-            int256 balanceADelta = int256(swap.tokenA.balance - recordABalance); // TODO: check overflow
-            diffs[swap.tokenA.tokenDiffIndex].vaultDelta += balanceADelta;
-
-            int256 balanceBDelta = int256(swap.tokenB.balance - recordBBalance); // TODO: check overflow
-            diffs[swap.tokenB.tokenDiffIndex].vaultDelta += balanceBDelta;
+            diffs[swap.tokenA.tokenDiffIndex].vaultDelta += swap.tokenA.delta;
+            diffs[swap.tokenB.tokenDiffIndex].vaultDelta += swap.tokenB.delta;
 
             // 2: Check new balances are valid without considering fee.
             // Fees are always charged from tokenA regardless if is a token entering or exiting the pool.
-            uint256 tokenABalanceMinusFee = swap.tokenA.balance -
-                bmul(abs(balanceADelta), pool.swapFee);
+
+            // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
+            // Also maybe handle int-uint arithmetic more concisely
+
+            uint256 poolTokenABalanceNew = swap.tokenA.delta > 0
+                ? badd(poolTokenABalance, uint256(swap.tokenA.delta))
+                : bsub(poolTokenABalance, uint256(-swap.tokenA.delta));
+
+            uint256 poolTokenBBalanceNew = swap.tokenB.delta > 0
+                ? badd(poolTokenBBalance, uint256(swap.tokenB.delta))
+                : bsub(poolTokenBBalance, uint256(-swap.tokenB.delta));
+
+            uint256 tokenABalanceMinusFee = (swap.tokenA.delta > 0)
+                ? badd(
+                    poolTokenABalance,
+                    bmul(uint256(swap.tokenA.delta), bsub(BONE, pool.swapFee))
+                )
+                : bsub(
+                    poolTokenABalance,
+                    bmul(uint256(-swap.tokenA.delta), bsub(BONE, pool.swapFee))
+                );
 
             require(
                 _validateBalances(
@@ -242,10 +258,10 @@ contract Vault is PoolRegistry {
                     // we'll regardless need such an abstraction once we extract the curves from
                     // the vault
                     PoolStateTransition({
-                        oldBalanceA: recordABalance,
-                        oldBalanceB: recordBBalance,
+                        oldBalanceA: poolTokenABalance,
+                        oldBalanceB: poolTokenBBalance,
                         newBalanceA: tokenABalanceMinusFee,
-                        newBalanceB: swap.tokenB.balance
+                        newBalanceB: poolTokenBBalanceNew
                     }),
                     bdiv(recordA.denorm, pool.totalWeight),
                     bdiv(recordB.denorm, pool.totalWeight)
@@ -253,9 +269,9 @@ contract Vault is PoolRegistry {
                 "ERR_INVALID_SWAP"
             );
 
-            // 3: update pool balances
-            _balances[swap.poolId][tokenA] = swap.tokenA.balance;
-            _balances[swap.poolId][tokenB] = swap.tokenB.balance;
+            // 3: Update pool balances
+            _balances[swap.poolId][tokenA] = poolTokenABalanceNew;
+            _balances[swap.poolId][tokenB] = poolTokenBBalanceNew;
         }
 
         // Step 4: check tokens have been received
