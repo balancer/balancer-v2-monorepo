@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity 0.5.12;
+pragma solidity ^0.7.1;
 
 import "./BNum.sol";
 
@@ -114,7 +115,7 @@ contract BMath is BConst, BNum {
         uint256 swapFee
     ) public pure returns (uint256 poolAmountOut) {
         // Charge the trading fee for the proportion of tokenAi
-        ///  which is implicitly traded to the other pool tokens.
+        // which is implicitly traded to the other pool tokens.
         // That proportion is (1- weightTokenIn)
         // tokenAiAfterFee = tAi * (1 - (1-weightTi) * poolFee);
         uint256 normalizedWeight = bdiv(tokenWeightIn, totalWeight);
