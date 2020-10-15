@@ -21,7 +21,7 @@ import "@nomiclabs/buidler/console.sol";
 
 import "./PoolRegistry.sol";
 
-import "./ICallee.sol";
+import "./ISwapCaller.sol";
 
 import "./LogExpMath.sol";
 
@@ -263,28 +263,22 @@ contract Vault is PoolRegistry {
             _balances[swap.poolId][tokenB] = swap.tokenB.balance;
         }
 
-        // Step 4: send out tokens to send
-
+        // Step 4: measure current balance for tokens that need to be received
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 
-            if (diff.vaultDelta < 0) {
-                // Make delta positive
-                uint256 amount = uint256(-diff.vaultDelta);
-
-                _pushUnderlying(diff.token, recipient, amount);
-            } else if (diff.vaultDelta > 0) {
-                //Adds current balance to delta creating final expected balance
+            if (diff.vaultDelta > 0) {
+                // Change positive deltas into expected final balances
                 diff.vaultDelta += int256(
                     IERC20(diff.token).balanceOf(address(this))
                 ); //TODO: check overflows
             }
         }
 
-        ICallee(msg.sender).callback(recipient, callbackData); //TODO: check if more data is needed to be passed when used as external flashswap
+        // Call into sender to trigger token receipt
+        ISwapCaller(msg.sender).sendTokens(callbackData);
 
         // Step 5: check tokens have been received
-
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 
@@ -301,6 +295,18 @@ contract Vault is PoolRegistry {
 
                 // Update token balance
                 _tokenBalances[diff.token] = newBalance;
+            }
+        }
+
+        // Step 6: send out tokens to send
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            Diff memory diff = diffs[i];
+
+            if (diff.vaultDelta < 0) {
+                // Make delta positive
+                uint256 amount = uint256(-diff.vaultDelta);
+
+                _pushUnderlying(diff.token, recipient, amount);
             }
         }
     }

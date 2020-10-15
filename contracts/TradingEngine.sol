@@ -23,9 +23,9 @@ import "./invariants/ConstantWeightedProduct.sol";
 
 import "./IVault.sol";
 
-import "./ICallee.sol";
+import "./ISwapCaller.sol";
 
-contract TradingEngine is ConstantWeightedProduct, ICallee {
+contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
     IVault private _vault;
 
     constructor(IVault vault) {
@@ -155,23 +155,24 @@ contract TradingEngine is ConstantWeightedProduct, ICallee {
             "Price too high"
         );
 
-        bytes memory callbackData = abi.encode(overallTokenIn, helper.toSend);
+        bytes memory callbackData = abi.encode(
+            msg.sender,
+            overallTokenIn,
+            helper.toSend
+        );
 
         _vault.batchSwap(diffs, swaps, msg.sender, callbackData);
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
     }
 
-    //Callback to send tokens to the Vault
-    function callback(address sender, bytes calldata callbackData)
-        external
-        override
-    {
+    // Callback to send tokens to the Vault
+    function sendTokens(bytes calldata callbackData) external override {
         require(msg.sender == address(_vault), "Invalid callback caller");
 
-        (address overallTokenIn, uint256 toSend) = abi.decode(
+        (address sender, address overallTokenIn, uint256 toSend) = abi.decode(
             callbackData,
-            (address, uint256)
+            (address, address, uint256)
         );
         IERC20(overallTokenIn).transferFrom(sender, address(_vault), toSend);
     }
