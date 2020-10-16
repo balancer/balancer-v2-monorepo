@@ -14,20 +14,15 @@
 
 pragma solidity ^0.7.1;
 
-import "./IStrategy.sol";
+import "./IPairTradingStrategy.sol";
 import "../math/FixedPoint.sol";
-import "../LogExpMath.sol";
 
-contract ConstantWeightedProdStrategy is IStrategy, FixedPoint {
+contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
     //TODO: cannot be immutable. Make one strategy for each total of tokens
     uint256[] public weights;
 
     constructor(uint256[] memory _weights) {
         weights = _weights;
-    }
-
-    function hasPairValidation() external override pure returns (bool) {
-        return true;
     }
 
     function calculateOutGivenIn(
@@ -51,24 +46,8 @@ contract ConstantWeightedProdStrategy is IStrategy, FixedPoint {
         return mul(tokenBalanceOut, ratio);
     }
 
-    function calculateInvariant(uint256[] memory balances)
-        internal
-        view
-        returns (uint256 invariant)
-    {
-        uint256 length = weights.length;
-        require(balances.length == length, "ERR_INVALID_BALANCES");
-        invariant = ONE;
-        for (uint8 i = 0; i < length; i++) {
-            require(balances[i] > 0, "ERR_INVALID_BALANCE"); //Balance should never be zero
-            invariant = mul(
-                invariant,
-                uint256(LogExpMath.exp(int256(balances[i]), int256(weights[i])))
-            );
-        }
-    }
-
     function validatePair(
+        bytes32 poolId,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenBalanceIn,
@@ -86,18 +65,5 @@ contract ConstantWeightedProdStrategy is IStrategy, FixedPoint {
         );
 
         return _tokenAmountOut >= tokenAmountOut;
-    }
-
-    function validateAll(
-        uint256[] calldata oldBalances,
-        uint256[] calldata newBalances
-    ) external override view returns (bool) {
-        //Calculate old invariant
-        uint256 oldInvariant = calculateInvariant(oldBalances);
-
-        //Calculate new invariant
-        uint256 newInvariant = calculateInvariant(newBalances);
-
-        return newInvariant >= oldInvariant;
     }
 }

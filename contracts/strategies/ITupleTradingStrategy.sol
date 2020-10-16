@@ -14,19 +14,9 @@
 
 pragma solidity ^0.7.1;
 
-interface IStrategy {
-    function hasPairValidation() external pure returns (bool);
-
-    function validatePair(
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint256 tokenBalanceIn,
-        uint256 tokenBalanceOut,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
-    ) external returns (bool);
-
+interface ITupleTradingStrategy {
     function validateAll(
+        bytes32 poolId,
         uint256[] calldata oldBalances,
         uint256[] calldata newBalances
     ) external returns (bool);

@@ -3,10 +3,13 @@ import { expect } from 'chai';
 import { ContractFactory, Contract } from 'ethers';
 
 describe('ConstantWeightedProdStrategy', function () {
+  let poolID: string;
   let twoTokensStrategy: Contract;
   let threeTokensStrategy: Contract;
 
   beforeEach(async function () {
+    poolID = ethers.utils.id('Test');
+
     const ConstantWeightedProdStrategyFactory: ContractFactory = await ethers.getContractFactory(
       'ConstantWeightedProdStrategy'
     );
@@ -24,6 +27,7 @@ describe('ConstantWeightedProdStrategy', function () {
   describe('Pair balances validation', () => {
     it('should validate correctly two tokens', async () => {
       const result = await twoTokensStrategy.validatePair(
+        poolID,
         0,
         1,
         (100e18).toString(),
@@ -35,28 +39,13 @@ describe('ConstantWeightedProdStrategy', function () {
     });
     it('should validate correctly three tokens', async () => {
       const result = await threeTokensStrategy.validatePair(
+        poolID,
         0,
         1,
         (100e18).toString(),
         (200e18).toString(),
         (15e18).toString(),
         (26.08695652e18).toString()
-      );
-      expect(result).to.be.true;
-    });
-  });
-  describe('All balances validation', () => {
-    it('should validate correctly two tokens', async () => {
-      const result = await twoTokensStrategy.validateAll(
-        [(100e18).toString(), (200e18).toString()],
-        [(115e18).toString(), (114.35065e18).toString()]
-      );
-      expect(result).to.be.true;
-    });
-    it('should validate correctly three tokens', async () => {
-      const result = await threeTokensStrategy.validateAll(
-        [(100e18).toString(), (200e18).toString(), (300e18).toString()],
-        [(115e18).toString(), (173.91304348e18).toString(), (300e18).toString()]
       );
       expect(result).to.be.true;
     });

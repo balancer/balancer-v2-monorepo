@@ -14,19 +14,15 @@
 
 pragma solidity ^0.7.1;
 
-import "./IStrategy.sol";
+import "./ITupleTradingStrategy.sol";
 import "../math/FixedPoint.sol";
 import "../LogExpMath.sol";
 
-contract ConstantSumProdStrategy is IStrategy, FixedPoint {
+contract ConstantSumProdStrategy is ITupleTradingStrategy, FixedPoint {
     uint256 public immutable amp;
 
     constructor(uint256 _amp) {
         amp = _amp;
-    }
-
-    function hasPairValidation() external override pure returns (bool) {
-        return false;
     }
 
     function calculateInvariant(uint256[] memory balances)
@@ -45,6 +41,7 @@ contract ConstantSumProdStrategy is IStrategy, FixedPoint {
         uint256 Dprev = 0;
         uint256 D = S;
         uint256 Ann = amp * N_COINS;
+        //TODO: make calculations to test and document this approximation. Compare it with math approx.
         for (uint256 i = 0; i < 255; i++) {
             uint256 D_P = D;
             for (uint256 j = 0; j < N_COINS; j++) {
@@ -66,18 +63,8 @@ contract ConstantSumProdStrategy is IStrategy, FixedPoint {
         return D;
     }
 
-    function validatePair(
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint256 tokenBalanceIn,
-        uint256 tokenBalanceOut,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
-    ) external override pure returns (bool) {
-        revert("ERR_NOT_OPTIMIZED");
-    }
-
     function validateAll(
+        bytes32 poolId,
         uint256[] calldata oldBalances,
         uint256[] calldata newBalances
     ) external override view returns (bool) {
