@@ -14,13 +14,15 @@ describe('ConstantWeightedProdStrategy', function () {
       'ConstantWeightedProdStrategy'
     );
 
-    twoTokensStrategy = await ConstantWeightedProdStrategyFactory.deploy([(0.8e18).toString(), (0.2e18).toString()]);
+    //weights: [8, 2]
+    twoTokensStrategy = await ConstantWeightedProdStrategyFactory.deploy(
+      '0x0000000000000000000000000000000000000000000000000000000200000008'
+    );
     await twoTokensStrategy.deployed();
-    threeTokensStrategy = await ConstantWeightedProdStrategyFactory.deploy([
-      (0.4e18).toString(),
-      (0.4e18).toString(),
-      (0.2e18).toString(),
-    ]);
+    //weights: [4, 4, 2]
+    threeTokensStrategy = await ConstantWeightedProdStrategyFactory.deploy(
+      '0x0000000000000000000000000000000000000000000000020000000400000004'
+    );
     await threeTokensStrategy.deployed();
   });
 

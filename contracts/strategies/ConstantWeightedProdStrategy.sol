@@ -18,16 +18,20 @@ import "./IPairTradingStrategy.sol";
 import "../math/FixedPoint.sol";
 
 contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
-    //TODO: cannot be immutable. Make one strategy for each total of tokens
-    uint256[] public weights;
+    uint256 immutable weights; // 8 32-byte weights packed together. index 0 is LSB and index 7 is MSB
 
-    constructor(uint256[] memory _weights) {
+    constructor(uint256 _weights) {
         weights = _weights;
     }
 
+    function getWeight(uint8 index) public view returns (uint256) {
+        uint8 shift = index * 32;
+        return (uint256)((weights & (0xFF << shift)) >> shift) * ONE;
+    }
+
     function calculateOutGivenIn(
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
+        uint8 tokenIndexIn,
+        uint8 tokenIndexOut,
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn
@@ -37,19 +41,17 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
             add(tokenBalanceIn, tokenAmountIn)
         );
         uint256 weightRatio = div(
-            weights[tokenIndexIn],
-            weights[tokenIndexOut]
+            getWeight(tokenIndexIn),
+            getWeight(tokenIndexOut)
         );
-
         uint256 ratio = sub(ONE, pow(quotient, weightRatio));
-
         return mul(tokenBalanceOut, ratio);
     }
 
     function validatePair(
         bytes32 poolId,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
+        uint8 tokenIndexIn,
+        uint8 tokenIndexOut,
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn,
