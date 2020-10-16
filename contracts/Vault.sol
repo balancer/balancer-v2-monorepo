@@ -21,6 +21,8 @@ import "@nomiclabs/buidler/console.sol";
 
 import "./PoolRegistry.sol";
 
+import "./ISwapCaller.sol";
+
 import "./LogExpMath.sol";
 
 contract Vault is PoolRegistry {
@@ -176,8 +178,11 @@ contract Vault is PoolRegistry {
     function batchSwap(
         Diff[] memory diffs,
         Swap[] memory swaps,
-        address recipient
+        address recipient,
+        bytes memory callbackData
     ) public override {
+        //TODO: avoid reentrancy
+
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
         // indexes pointing to the same token.
         // A simple way to implement this is to require the addresses to be sorted, and require strict
@@ -274,8 +279,22 @@ contract Vault is PoolRegistry {
             _balances[swap.poolId][tokenB] = poolTokenBBalanceNew;
         }
 
-        // Step 4: check tokens have been received
+        // Step 4: measure current balance for tokens that need to be received
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            Diff memory diff = diffs[i];
 
+            if (diff.vaultDelta > 0) {
+                // Change positive deltas into expected final balances
+                diff.vaultDelta += int256(
+                    IERC20(diff.token).balanceOf(address(this))
+                ); // TODO: check overflows
+            }
+        }
+
+        // Call into sender to trigger token receipt
+        ISwapCaller(msg.sender).sendTokens(callbackData);
+
+        // Step 5: check tokens have been received
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 
@@ -286,11 +305,7 @@ contract Vault is PoolRegistry {
 
                 // TODO: check strict equality? Might not be feasible due to approximations
                 require(
-                    newBalance >=
-                        badd(
-                            _tokenBalances[diff.token],
-                            uint256(diff.vaultDelta)
-                        ),
+                    newBalance >= uint256(diff.vaultDelta),
                     "ERR_INVALID_DEPOSIT"
                 );
 
@@ -299,8 +314,7 @@ contract Vault is PoolRegistry {
             }
         }
 
-        // Step 5: send out tokens to send
-
+        // Step 6: send out tokens to send
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 

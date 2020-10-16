@@ -9,17 +9,18 @@ import { deploy } from '../scripts/helpers/deploy';
 
 describe('Vault', () => {
   let controller: Signer;
-  let trader: Signer;
 
   let vault: Contract;
+  let tradeScript: Contract;
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, controller, trader] = await ethers.getSigners();
+    [, controller] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault', async () => {
     vault = await deploy('Vault');
+    tradeScript = await deploy('MockTradeScript');
     tokens = await deployTokens(['DAI', 'MKR']);
   });
 
@@ -63,9 +64,9 @@ describe('Vault', () => {
         await vault.connect(controller).bind(poolId, tokens.MKR.address, (1e18).toString(), (1e18).toString());
       }
 
-      // Mint tokens for trader
-      await tokens.DAI.mint(await trader.getAddress(), (1e18).toString());
-      await tokens.MKR.mint(await trader.getAddress(), (2e18).toString());
+      // Mint tokens for trade script
+      await tokens.DAI.mint(tradeScript.address, (1e18).toString());
+      await tokens.MKR.mint(tradeScript.address, (2e18).toString());
     });
 
     it('single pair single pool swap', async () => {
@@ -94,10 +95,16 @@ describe('Vault', () => {
       await expectBalanceChange(
         async () => {
           // Send tokens & swap - would normally happen in the same tx
-          await tokens.MKR.connect(trader).transfer(vault.address, (1e18 + fee).toString());
-          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
+          await tradeScript.batchSwap(
+            vault.address,
+            [tokens.MKR.address],
+            [(1e18 + fee).toString()],
+            diffs,
+            swaps,
+            tradeScript.address
+          );
         },
-        trader,
+        tradeScript.address,
         tokens,
         { DAI: 0.49e18, MKR: -1e18 - fee }
       );
@@ -133,11 +140,16 @@ describe('Vault', () => {
 
       await expectBalanceChange(
         async () => {
-          // Send tokens & swap - would normally happen in the same tx
-          await tokens.MKR.connect(trader).transfer(vault.address, (0.68e18 + 2 * fee).toString());
-          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
+          await tradeScript.batchSwap(
+            vault.address,
+            [tokens.MKR.address],
+            [(0.68e18 + 2 * fee).toString()],
+            diffs,
+            swaps,
+            tradeScript.address
+          );
         },
-        trader,
+        tradeScript.address,
         tokens,
         { DAI: 0.5e18, MKR: -0.68e18 - 2 * fee }
       );
@@ -220,9 +232,9 @@ describe('Vault', () => {
       await expectBalanceChange(
         async () => {
           // The trader gets MKR without spending DAI
-          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
+          await tradeScript.batchSwap(vault.address, [], [], diffs, swaps, tradeScript.address);
         },
-        trader,
+        tradeScript.address,
         tokens,
         { MKR: (140e15).toString() }
       );
