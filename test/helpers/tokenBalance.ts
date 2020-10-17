@@ -8,11 +8,11 @@ import { expect } from 'chai';
 class ERC20BalanceTracker {
   private prev: BigNumber | undefined;
 
-  constructor(private account: Signer, private token: Contract) {}
+  constructor(private address: string, private token: Contract) {}
 
   // returns the current token balance
   async get(): Promise<BigNumber> {
-    this.prev = await currentBalance(this.account, this.token);
+    this.prev = await currentBalance(this.address, this.token);
 
     return this.prev;
   }
@@ -20,7 +20,7 @@ class ERC20BalanceTracker {
   // returns the balance difference between the current one and the
   // last call to get or delta
   async delta(): Promise<BigNumber> {
-    const balance = await currentBalance(this.account, this.token);
+    const balance = await currentBalance(this.address, this.token);
 
     if (this.prev == undefined) {
       throw new Error('Tracker.get must be called before Tracker.delta');
@@ -33,17 +33,23 @@ class ERC20BalanceTracker {
   }
 }
 
+type Account = string | Signer;
+
+async function accountToAddress(account: Account): Promise<string> {
+  return typeof account == 'string' ? account : await account.getAddress();
+}
+
 // Creates an initializes a balance tracker. Constructors cannot be async (and therefore get cannot
 // be called there), so we have this helper method.
-export async function balanceTracker(account: Signer, token: Contract): Promise<ERC20BalanceTracker> {
-  const tracker = new ERC20BalanceTracker(account, token);
+export async function balanceTracker(account: Account, token: Contract): Promise<ERC20BalanceTracker> {
+  const tracker = new ERC20BalanceTracker(await accountToAddress(account), token);
   await tracker.get();
   return tracker;
 }
 
 // Returns an account's balance in a token
-export async function currentBalance(account: Signer, token: Contract): Promise<BigNumber> {
-  return token.balanceOf(await account.getAddress());
+export async function currentBalance(account: Account, token: Contract): Promise<BigNumber> {
+  return token.balanceOf(await accountToAddress(account));
 }
 
 type BigNumberish = string | number | BigNumber;
@@ -71,7 +77,7 @@ type Comparison = [CompareFunction, BigNumberish];
 // });
 export async function expectBalanceChange(
   promise: () => Promise<void>,
-  account: Signer,
+  account: Account,
   tokens: TokenList,
   balanceChanges: Dictionary<BigNumberish | Comparison>
 ): Promise<void> {

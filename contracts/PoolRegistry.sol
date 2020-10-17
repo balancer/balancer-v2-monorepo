@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,15 +12,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity 0.5.12;
+pragma solidity ^0.7.1;
+pragma experimental ABIEncoderV2;
 
 import "./utils/Lock.sol";
 import "./utils/Logs.sol";
 import "./BConst.sol";
 import "./BNum.sol";
 import "./BMath.sol";
+import "./IVault.sol";
 
-contract PoolRegistry is BMath, Lock, Logs {
+abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
     struct Record {
         bool bound; // is token bound to pool
         uint256 index; // private
@@ -32,9 +35,10 @@ contract PoolRegistry is BMath, Lock, Logs {
         // `setSwapFee` requires CONTROL
         uint256 swapFee;
         address[] tokens; // For simpler pool configuration querying, not used internally
-        mapping(address => Record) records;
         uint256 totalWeight;
     }
+
+    mapping(bytes32 => mapping(address => Record)) public poolRecords;
 
     // temporarily making this public, we might want to provide a better API later on
     mapping(bytes32 => Pool) public pools;
@@ -59,7 +63,7 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     event PoolCreated(bytes32 poolId);
 
-    function newPool(bytes32 poolId) external returns (bytes32) {
+    function newPool(bytes32 poolId) external override returns (bytes32) {
         require(!_poolExists[poolId], "Pool ID already exists");
         _poolExists[poolId] = true;
 
@@ -76,24 +80,31 @@ contract PoolRegistry is BMath, Lock, Logs {
         return poolId;
     }
 
-    function isPaused(bytes32 poolId) external view returns (bool) {
+    function isPaused(bytes32 poolId) public override view returns (bool) {
         return pools[poolId].paused;
     }
 
     function isTokenBound(bytes32 poolId, address token)
         external
+        override
         view
         returns (bool)
     {
-        return pools[poolId].records[token].bound;
+        return poolRecords[poolId][token].bound;
     }
 
-    function getNumPoolTokens(bytes32 poolId) external view returns (uint256) {
+    function getNumPoolTokens(bytes32 poolId)
+        external
+        override
+        view
+        returns (uint256)
+    {
         return pools[poolId].tokens.length;
     }
 
     function getPoolTokens(bytes32 poolId)
         external
+        override
         view
         _viewlock_
         returns (address[] memory tokens)
@@ -103,6 +114,7 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
+        override
         view
         returns (uint256[] memory)
     {
@@ -117,16 +129,18 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     function getTokenDenormalizedWeight(bytes32 poolId, address token)
         external
+        override
         view
         _viewlock_
         returns (uint256)
     {
-        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
-        return pools[poolId].records[token].denorm;
+        require(poolRecords[poolId][token].bound, "ERR_NOT_BOUND");
+        return poolRecords[poolId][token].denorm;
     }
 
     function getTotalDenormalizedWeight(bytes32 poolId)
         external
+        override
         view
         _viewlock_
         returns (uint256)
@@ -136,17 +150,19 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     function getTokenNormalizedWeight(bytes32 poolId, address token)
         external
+        override
         view
         _viewlock_
         returns (uint256)
     {
-        require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
-        uint256 denorm = pools[poolId].records[token].denorm;
+        require(poolRecords[poolId][token].bound, "ERR_NOT_BOUND");
+        uint256 denorm = poolRecords[poolId][token].denorm;
         return bdiv(denorm, pools[poolId].totalWeight);
     }
 
     function getSwapFee(bytes32 poolId)
         external
+        override
         view
         _viewlock_
         returns (uint256)
@@ -156,6 +172,7 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     function getController(bytes32 poolId)
         external
+        override
         view
         _viewlock_
         returns (address)
@@ -165,6 +182,7 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     function setSwapFee(bytes32 poolId, uint256 swapFee)
         external
+        override
         _logs_
         _lock_
         ensurePoolExists(poolId)
@@ -177,6 +195,7 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     function setController(bytes32 poolId, address controller)
         external
+        override
         _logs_
         _lock_
         ensurePoolExists(poolId)
@@ -187,6 +206,7 @@ contract PoolRegistry is BMath, Lock, Logs {
 
     function setPaused(bytes32 poolId, bool paused)
         external
+        override
         _logs_
         _lock_
         onlyPoolController(poolId)

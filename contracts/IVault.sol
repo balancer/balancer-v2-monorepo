@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -13,7 +14,7 @@
 
 pragma experimental ABIEncoderV2;
 
-pragma solidity 0.5.12;
+pragma solidity ^0.7.1;
 
 interface IVault {
     function newPool(bytes32) external returns (bytes32);
@@ -36,13 +37,13 @@ interface IVault {
         bytes32 poolId,
         uint256 ratio,
         uint256[] calldata maxAmountsIn
-    ) external returns (uint256[] memory);
+    ) external view returns (uint256[] memory);
 
     function getTokenAmountsOut(
         bytes32 poolId,
         uint256 ratio,
         uint256[] calldata minAmountsOut
-    ) external returns (uint256[] memory);
+    ) external view returns (uint256[] memory);
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
@@ -139,7 +140,8 @@ interface IVault {
         Diff[] calldata diffs,
         Swap[] calldata swaps,
         address recipient,
-        bool useUserBalance
+        bool useUserBalance,
+        bytes calldata callbackData
     ) external;
 
     // batchSwap helper data structures
@@ -162,12 +164,13 @@ interface IVault {
         TokenData tokenB;
     }
 
-    // For each token involved in a Swap, TokenData indicates the new balance for that
-    // token in the associated pool. If TokenData also included the token address, then
-    // the swap function would need to look up the index of this token in the Diffs array.
-    // Instead, the caller provides the indices for the Diffs array, leading to gas savings.
+    // For each token involved in a Swap, TokenData indicates by how much the balance for
+    // that token in the associated pool should change. If TokenData also included the token
+    // address, then the swap function would need to look up the index of this token in the
+    // Diffs array. Instead, the caller provides the indices for the Diffs array, leading to
+    // gas savings.
     struct TokenData {
-        uint256 balance;
+        int256 delta;
         uint256 tokenDiffIndex;
     }
 }

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -11,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity 0.5.12;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -22,10 +23,12 @@ import "./invariants/ConstantWeightedProduct.sol";
 
 import "./IVault.sol";
 
-contract TradingEngine is ConstantWeightedProduct {
+import "./ISwapCaller.sol";
+
+contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
     IVault private _vault;
 
-    constructor(IVault vault) public {
+    constructor(IVault vault) {
         _vault = vault;
     }
 
@@ -140,11 +143,10 @@ contract TradingEngine is ConstantWeightedProduct {
             }
 
             // Configure pool end state
-            swaps[i].tokenA.balance = add(poolData.tokenInBalance, amountIn);
-            swaps[i].tokenB.balance = sub(
-                poolData.tokenOutBalance,
-                tokenAmountOut
-            );
+
+            // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
+            swaps[i].tokenA.delta = int256(amountIn);
+            swaps[i].tokenB.delta = -int256(tokenAmountOut);
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");
@@ -153,16 +155,31 @@ contract TradingEngine is ConstantWeightedProduct {
             "Price too high"
         );
 
-        if (!useUserBalance) {
-            IERC20(overallTokenIn).transferFrom(
-                msg.sender,
-                address(_vault),
-                helper.toSend
-            );
-        }
+        bytes memory callbackData = abi.encode(
+            msg.sender,
+            overallTokenIn,
+            helper.toSend
+        );
 
-        _vault.batchSwap(diffs, swaps, msg.sender, useUserBalance);
+        _vault.batchSwap(
+            diffs,
+            swaps,
+            msg.sender,
+            useUserBalance,
+            callbackData
+        );
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
+    }
+
+    // Callback to send tokens to the Vault
+    function sendTokens(bytes calldata callbackData) external override {
+        require(msg.sender == address(_vault), "Invalid callback caller");
+
+        (address sender, address overallTokenIn, uint256 toSend) = abi.decode(
+            callbackData,
+            (address, address, uint256)
+        );
+        IERC20(overallTokenIn).transferFrom(sender, address(_vault), toSend);
     }
 }

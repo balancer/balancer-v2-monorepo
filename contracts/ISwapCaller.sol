@@ -14,31 +14,12 @@
 
 pragma solidity ^0.7.1;
 
-contract Logs {
-    event LogSwap(
-        address indexed caller,
-        address indexed tokenIn,
-        address indexed tokenOut,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
-    );
-
-    event LogJoin(
-        address indexed caller,
-        address indexed tokenIn,
-        uint256 tokenAmountIn
-    );
-
-    event LogExit(
-        address indexed caller,
-        address indexed tokenOut,
-        uint256 tokenAmountOut
-    );
-
-    event LogCall(bytes4 indexed sig, address indexed caller, bytes data);
-
-    modifier _logs_() {
-        emit LogCall(msg.sig, msg.sender, msg.data);
-        _;
-    }
+// Interface contracts calling Vault's batchSwap function must implement.
+interface ISwapCaller {
+    // The Vault guarantees that this function will only ever be called back by the Vault in the context of the contract
+    // having called batchSwap. The callbackData argument will be the equal to its namesake in batchSwap.
+    //
+    // The Vault will measure the balance of all tokens it expects to receive before and after calling sendTokens. This
+    // is the only moment where tokens can be sent to the Vault in order for them to be acknowledged for a swap.
+    function sendTokens(bytes calldata callbackData) external;
 }
