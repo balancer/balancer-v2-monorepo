@@ -91,7 +91,8 @@ contract TradingEngine is ConstantWeightedProduct {
         uint256 maxPrice,
         IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
-        uint256[] memory amountsIn
+        uint256[] memory amountsIn,
+        bool useUserBalance
     ) public {
         Helper memory helper;
 
@@ -152,13 +153,15 @@ contract TradingEngine is ConstantWeightedProduct {
             "Price too high"
         );
 
-        IERC20(overallTokenIn).transferFrom(
-            msg.sender,
-            address(_vault),
-            helper.toSend
-        );
+        if (!useUserBalance) {
+            IERC20(overallTokenIn).transferFrom(
+                msg.sender,
+                address(_vault),
+                helper.toSend
+            );
+        }
 
-        _vault.batchSwap(diffs, swaps, msg.sender, false);
+        _vault.batchSwap(diffs, swaps, msg.sender, useUserBalance);
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
     }

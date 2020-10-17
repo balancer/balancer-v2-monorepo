@@ -39,7 +39,7 @@ describe('Vault', () => {
     });
   });
 
-  describe('user credit', () => {
+  describe('user balance', () => {
     const amount = ethers.BigNumber.from(500);
 
     beforeEach(async () => {
@@ -175,6 +175,48 @@ describe('Vault', () => {
         trader,
         tokens,
         { DAI: 0.49e18, MKR: -1e18 - fee }
+      );
+    });
+
+    it('single pair single pool user balance', async () => {
+      // Trade 1e18 MKR for 0.5e18 DAI
+      const diffs = [
+        {
+          token: tokens.DAI.address,
+          vaultDelta: 0,
+        },
+        {
+          token: tokens.MKR.address,
+          vaultDelta: 0,
+        },
+      ];
+
+      const fee = 1e18 * 0.05; //5% fee
+
+      const swaps = [
+        {
+          poolId: ethers.utils.id('batch0'),
+          tokenA: { tokenDiffIndex: 1, balance: (2e18 + fee).toString() }, //Math isn't 100% accurate
+          tokenB: { tokenDiffIndex: 0, balance: (0.51e18).toString() },
+        },
+      ];
+
+      // Deposit tokens & swap
+      await tokens.MKR.connect(trader).approve(vault.address, (1e18 + fee).toString());
+      await vault.connect(trader).deposit(tokens.MKR.address, (1e18 + fee).toString(), await trader.getAddress());
+
+      await expectBalanceChange(
+        async () => {
+          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress(), true);
+        },
+        trader,
+        tokens,
+        {}
+      );
+
+      expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.MKR.address)).to.equal(0);
+      expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.DAI.address)).to.equal(
+        (0.49e18).toString()
       );
     });
 

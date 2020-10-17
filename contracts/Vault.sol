@@ -27,16 +27,16 @@ contract Vault is IVault, PoolRegistry {
     // The vault's accounted-for balance for each token. These include:
     //  * tokens in pools
     //  * tokens stored as user balance
-    mapping(address => uint256) private _vaultTotalTokenBalances; // token -> vault balance
+    mapping(address => uint256) private _vaultTokenBalance; // token -> vault balance
 
-    mapping(address => mapping(address => uint256)) private _userTokenBalances; // user -> token -> user balance
+    mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
 
     function getUserTokenBalance(address user, address token)
         public
         view
         returns (uint256)
     {
-        return _userTokenBalances[user][token];
+        return _userTokenBalance[user][token];
     }
 
     function deposit(
@@ -45,8 +45,8 @@ contract Vault is IVault, PoolRegistry {
         address creditor
     ) public {
         // TODO: check overflow
-        _userTokenBalances[creditor][token] += amount;
-        _vaultTotalTokenBalances[token] += amount;
+        _userTokenBalance[creditor][token] += amount;
+        _vaultTokenBalance[token] += amount;
 
         IERC20(token).transferFrom(msg.sender, address(this), amount);
     }
@@ -57,12 +57,12 @@ contract Vault is IVault, PoolRegistry {
         address recipient
     ) public {
         require(
-            _userTokenBalances[msg.sender][token] >= amount,
+            _userTokenBalance[msg.sender][token] >= amount,
             "Vault: withdraw amount exceeds balance"
         );
 
-        _userTokenBalances[msg.sender][token] -= amount;
-        _vaultTotalTokenBalances[token] -= amount;
+        _userTokenBalance[msg.sender][token] -= amount;
+        _vaultTokenBalance[token] -= amount;
 
         IERC20(token).transfer(recipient, amount);
     }
@@ -124,8 +124,8 @@ contract Vault is IVault, PoolRegistry {
         pools[poolId].records[token].denorm = denorm;
 
         // Adjust the balance record and actual token balance
-        uint256 oldBalance = _balances[poolId][token];
-        _balances[poolId][token] = balance;
+        uint256 oldBalance = _poolTokenBalance[poolId][token];
+        _poolTokenBalance[poolId][token] = balance;
 
         if (balance > oldBalance) {
             _pullUnderlying(token, msg.sender, bsub(balance, oldBalance));
@@ -139,7 +139,7 @@ contract Vault is IVault, PoolRegistry {
         require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(pools[poolId].records[token].bound, "ERR_NOT_BOUND");
 
-        uint256 tokenBalance = _balances[poolId][token];
+        uint256 tokenBalance = _poolTokenBalance[poolId][token];
 
         pools[poolId].totalWeight = bsub(
             pools[poolId].totalWeight,
@@ -169,9 +169,9 @@ contract Vault is IVault, PoolRegistry {
         address tokenOut
     ) external view _viewlock_ returns (uint256 spotPrice) {
         Record storage inRecord = pools[poolId].records[tokenIn];
-        uint256 inRecordBalance = _balances[poolId][tokenIn];
+        uint256 inRecordBalance = _poolTokenBalance[poolId][tokenIn];
         Record storage outRecord = pools[poolId].records[tokenOut];
-        uint256 outRecordBalance = _balances[poolId][tokenOut];
+        uint256 outRecordBalance = _poolTokenBalance[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
@@ -192,9 +192,9 @@ contract Vault is IVault, PoolRegistry {
         address tokenOut
     ) external view _viewlock_ returns (uint256 spotPrice) {
         Record storage inRecord = pools[poolId].records[tokenIn];
-        uint256 inRecordBalance = _balances[poolId][tokenIn];
+        uint256 inRecordBalance = _poolTokenBalance[poolId][tokenIn];
         Record storage outRecord = pools[poolId].records[tokenOut];
-        uint256 outRecordBalance = _balances[poolId][tokenOut];
+        uint256 outRecordBalance = _poolTokenBalance[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
@@ -245,7 +245,7 @@ contract Vault is IVault, PoolRegistry {
             address tokenA = diffs[swap.tokenA.tokenDiffIndex].token;
 
             Record memory recordA = pool.records[tokenA];
-            uint256 recordABalance = _balances[swap.poolId][tokenA];
+            uint256 recordABalance = _poolTokenBalance[swap.poolId][tokenA];
 
             // Validate swap alters pool's balance for token A
             require(swap.tokenA.balance != recordABalance, "NOOP");
@@ -256,7 +256,7 @@ contract Vault is IVault, PoolRegistry {
             address tokenB = diffs[swap.tokenB.tokenDiffIndex].token;
 
             Record memory recordB = pool.records[tokenB];
-            uint256 recordBBalance = _balances[swap.poolId][tokenB];
+            uint256 recordBBalance = _poolTokenBalance[swap.poolId][tokenB];
 
             // Validate swap alters pool's balance for token B
             require(swap.tokenB.balance != recordBBalance, "NOOP");
@@ -291,8 +291,8 @@ contract Vault is IVault, PoolRegistry {
             );
 
             // 3: update pool balances
-            _balances[swap.poolId][tokenA] = swap.tokenA.balance;
-            _balances[swap.poolId][tokenB] = swap.tokenB.balance;
+            _poolTokenBalance[swap.poolId][tokenA] = swap.tokenA.balance;
+            _poolTokenBalance[swap.poolId][tokenB] = swap.tokenB.balance;
         }
 
         // Step 4: check tokens have been received
@@ -312,18 +312,18 @@ contract Vault is IVault, PoolRegistry {
                     require(
                         newBalance >=
                             badd(
-                                _vaultTotalTokenBalances[diff.token],
+                                _vaultTokenBalance[diff.token],
                                 uint256(diff.vaultDelta)
                             ),
                         "ERR_INVALID_DEPOSIT"
                     );
 
                     // Update token balance
-                    _vaultTotalTokenBalances[diff.token] = newBalance;
+                    _vaultTokenBalance[diff.token] = newBalance;
                 } else {
                     // Remove balance from user - the vault's balance doesn't change
-                    _userTokenBalances[msg.sender][diff.token] = bsub(
-                        _userTokenBalances[msg.sender][diff.token],
+                    _userTokenBalance[msg.sender][diff.token] = bsub(
+                        _userTokenBalance[msg.sender][diff.token],
                         uint256(diff.vaultDelta)
                     );
                 }
@@ -344,8 +344,8 @@ contract Vault is IVault, PoolRegistry {
                     _pushUnderlying(diff.token, recipient, amount);
                 } else {
                     // Allocate tokens to recipient - the vault's balance doesn't change
-                    _userTokenBalances[recipient][diff.token] = badd(
-                        _userTokenBalances[recipient][diff.token],
+                    _userTokenBalance[recipient][diff.token] = badd(
+                        _userTokenBalance[recipient][diff.token],
                         amount
                     );
                 }
@@ -433,7 +433,7 @@ contract Vault is IVault, PoolRegistry {
                 "INSUFFICIENT UNALLOCATED BALANCE"
             );
 
-            _balances[poolId][t] = tokenAmountIn;
+            _poolTokenBalance[poolId][t] = tokenAmountIn;
             _allocatedBalances[t] = badd(_allocatedBalances[t], tokenAmountIn);
         }
     }
@@ -446,7 +446,7 @@ contract Vault is IVault, PoolRegistry {
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _balances[poolId][t];
+            uint256 bal = _poolTokenBalance[poolId][t];
             uint256 tokenAmountIn = amountsIn[i];
             require(tokenAmountIn != 0, "ERR_MATH_APPROX");
             require(
@@ -457,7 +457,7 @@ contract Vault is IVault, PoolRegistry {
                 "INSUFFICIENT UNALLOCATED BALANCE"
             );
 
-            _balances[poolId][t] = badd(bal, tokenAmountIn);
+            _poolTokenBalance[poolId][t] = badd(bal, tokenAmountIn);
             _allocatedBalances[t] = badd(_allocatedBalances[t], tokenAmountIn);
         }
     }
@@ -471,7 +471,7 @@ contract Vault is IVault, PoolRegistry {
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _balances[poolId][t];
+            uint256 bal = _poolTokenBalance[poolId][t];
             uint256 tokenAmountOut = amountsOut[i];
             require(tokenAmountOut != 0, "ERR_MATH_APPROX");
             require(
@@ -482,7 +482,7 @@ contract Vault is IVault, PoolRegistry {
             bool xfer = IERC20(t).transfer(recipient, tokenAmountOut);
             require(xfer, "ERR_ERC20_FALSE");
 
-            _balances[poolId][t] = bsub(bal, tokenAmountOut);
+            _poolTokenBalance[poolId][t] = bsub(bal, tokenAmountOut);
             _allocatedBalances[t] = bsub(_allocatedBalances[t], tokenAmountOut);
         }
     }
@@ -500,7 +500,7 @@ contract Vault is IVault, PoolRegistry {
         uint256[] memory tokenAmountsIn = new uint256[](pool.tokens.length);
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _balances[poolId][t];
+            uint256 bal = _poolTokenBalance[poolId][t];
             uint256 tokenAmountIn = bmul(ratio, bal);
             require(tokenAmountIn <= maxAmountsIn[i], "ERR_LIMIT_IN");
             tokenAmountsIn[i] = tokenAmountIn;
@@ -522,7 +522,7 @@ contract Vault is IVault, PoolRegistry {
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _balances[poolId][t];
+            uint256 bal = _poolTokenBalance[poolId][t];
 
             uint256 tokenAmountOut = bmul(ratio, bal);
             require(tokenAmountOut != 0, "ERR_MATH_APPROX");
@@ -546,7 +546,7 @@ contract Vault is IVault, PoolRegistry {
 
         // TODO: What assumptions do we make when pulling? Should we check token.balanceOf(this)
         // increased by toPull?
-        _vaultTotalTokenBalances[erc20] += amount;
+        _vaultTokenBalance[erc20] += amount;
     }
 
     function _pushUnderlying(
@@ -556,7 +556,7 @@ contract Vault is IVault, PoolRegistry {
     ) internal {
         // TODO: What assumptions do we make when pushing? Should we check token.balanceOf(this)
         // decreased by toPull?
-        _vaultTotalTokenBalances[erc20] -= amount;
+        _vaultTokenBalance[erc20] -= amount;
 
         bool xfer = IERC20(erc20).transfer(to, amount);
         require(xfer, "ERR_ERC20_FALSE");

@@ -76,7 +76,8 @@ describe('TradingEngine', () => {
               (0.6e18).toString(),
               diffs,
               swaps,
-              amounts
+              amounts,
+              false
             );
         },
         trader,
@@ -119,7 +120,8 @@ describe('TradingEngine', () => {
               (0.6e18).toString(),
               diffs,
               swaps,
-              amounts
+              amounts,
+              false
             );
         },
         trader,
