@@ -9,17 +9,18 @@ import { deploy } from '../scripts/helpers/deploy';
 
 describe('Vault', () => {
   let controller: Signer;
-  let trader: Signer;
 
   let vault: Contract;
+  let tradeScript: Contract;
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, controller, trader] = await ethers.getSigners();
+    [, controller] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault', async () => {
     vault = await deploy('Vault');
+    tradeScript = await deploy('MockTradeScript');
     tokens = await deployTokens(['DAI', 'MKR']);
   });
 
@@ -63,9 +64,9 @@ describe('Vault', () => {
         await vault.connect(controller).bind(poolId, tokens.MKR.address, (1e18).toString(), (1e18).toString());
       }
 
-      // Mint tokens for trader
-      await tokens.DAI.mint(await trader.getAddress(), (1e18).toString());
-      await tokens.MKR.mint(await trader.getAddress(), (2e18).toString());
+      // Mint tokens for trade script
+      await tokens.DAI.mint(tradeScript.address, (1e18).toString());
+      await tokens.MKR.mint(tradeScript.address, (2e18).toString());
     });
 
     it('single pair single pool swap', async () => {
@@ -86,18 +87,24 @@ describe('Vault', () => {
       const swaps = [
         {
           poolId: ethers.utils.id('batch0'),
-          tokenA: { tokenDiffIndex: 1, balance: (2e18 + fee).toString() }, //Math isn't 100% accurate
-          tokenB: { tokenDiffIndex: 0, balance: (0.51e18).toString() },
+          tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() }, //Math isn't 100% accurate
+          tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() },
         },
       ];
 
       await expectBalanceChange(
         async () => {
           // Send tokens & swap - would normally happen in the same tx
-          await tokens.MKR.connect(trader).transfer(vault.address, (1e18 + fee).toString());
-          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
+          await tradeScript.batchSwap(
+            vault.address,
+            [tokens.MKR.address],
+            [(1e18 + fee).toString()],
+            diffs,
+            swaps,
+            tradeScript.address
+          );
         },
-        trader,
+        tradeScript.address,
         tokens,
         { DAI: 0.49e18, MKR: -1e18 - fee }
       );
@@ -121,23 +128,28 @@ describe('Vault', () => {
       const swaps = [
         {
           poolId: ethers.utils.id('batch0'),
-          tokenA: { tokenDiffIndex: 1, balance: (1.34e18 + fee).toString() },
-          tokenB: { tokenDiffIndex: 0, balance: (0.75e18).toString() },
+          tokenA: { tokenDiffIndex: 1, delta: (0.34e18 + fee).toString() },
+          tokenB: { tokenDiffIndex: 0, delta: (-0.25e18).toString() },
         },
         {
           poolId: ethers.utils.id('batch1'),
-          tokenA: { tokenDiffIndex: 1, balance: (1.34e18 + fee).toString() },
-          tokenB: { tokenDiffIndex: 0, balance: (0.75e18).toString() },
+          tokenA: { tokenDiffIndex: 1, delta: (0.34e18 + fee).toString() },
+          tokenB: { tokenDiffIndex: 0, delta: (-0.25e18).toString() },
         },
       ];
 
       await expectBalanceChange(
         async () => {
-          // Send tokens & swap - would normally happen in the same tx
-          await tokens.MKR.connect(trader).transfer(vault.address, (0.68e18 + 2 * fee).toString());
-          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
+          await tradeScript.batchSwap(
+            vault.address,
+            [tokens.MKR.address],
+            [(0.68e18 + 2 * fee).toString()],
+            diffs,
+            swaps,
+            tradeScript.address
+          );
         },
-        trader,
+        tradeScript.address,
         tokens,
         { DAI: 0.5e18, MKR: -0.68e18 - 2 * fee }
       );
@@ -187,41 +199,44 @@ describe('Vault', () => {
 
       // Has min fee: 0.000001%
       const swaps = [
+        // Withdraw 300 MKR in exchange for 36 DAI (buy at ~8)
         {
           poolId: ethers.utils.id('unbalanced0'),
-          tokenA: { tokenDiffIndex: 0, balance: (0.2391e18).toString() },
-          tokenB: { tokenDiffIndex: 1, balance: (1.673e18).toString() },
+          tokenA: { tokenDiffIndex: 0, delta: (36e15).toString() },
+          tokenB: { tokenDiffIndex: 1, delta: (-300e15).toString() },
         },
+        // Spend 40 MKR to get 9 DAI in each pool (sell at ~44)
+        // A total 160 MKR out of 300 is spent (140 profit), and all 36 gained DAI are spent
         {
           poolId: ethers.utils.id('unbalanced1'),
-          tokenA: { tokenDiffIndex: 0, balance: (0.4902e18).toString() },
-          tokenB: { tokenDiffIndex: 1, balance: (2.04e18).toString() },
+          tokenA: { tokenDiffIndex: 0, delta: (-9e15).toString() },
+          tokenB: { tokenDiffIndex: 1, delta: (40e15).toString() },
         },
         {
           poolId: ethers.utils.id('unbalanced2'),
-          tokenA: { tokenDiffIndex: 0, balance: (0.4902e18).toString() },
-          tokenB: { tokenDiffIndex: 1, balance: (2.04e18).toString() },
+          tokenA: { tokenDiffIndex: 0, delta: (-9e15).toString() },
+          tokenB: { tokenDiffIndex: 1, delta: (40e15).toString() },
         },
         {
           poolId: ethers.utils.id('unbalanced3'),
-          tokenA: { tokenDiffIndex: 0, balance: (0.4902e18).toString() },
-          tokenB: { tokenDiffIndex: 1, balance: (2.04e18).toString() },
+          tokenA: { tokenDiffIndex: 0, delta: (-9e15).toString() },
+          tokenB: { tokenDiffIndex: 1, delta: (40e15).toString() },
         },
         {
           poolId: ethers.utils.id('unbalanced4'),
-          tokenA: { tokenDiffIndex: 0, balance: (0.4902e18).toString() },
-          tokenB: { tokenDiffIndex: 1, balance: (2.04e18).toString() },
+          tokenA: { tokenDiffIndex: 0, delta: (-9e15).toString() },
+          tokenB: { tokenDiffIndex: 1, delta: (40e15).toString() },
         },
       ];
 
       await expectBalanceChange(
         async () => {
           // The trader gets MKR without spending DAI
-          await vault.connect(trader).batchSwap(diffs, swaps, await trader.getAddress());
+          await tradeScript.batchSwap(vault.address, [], [], diffs, swaps, tradeScript.address);
         },
-        trader,
+        tradeScript.address,
         tokens,
-        { DAI: ['gt', 0], MKR: ['gte', 0] }
+        { MKR: (140e15).toString() }
       );
     });
   });

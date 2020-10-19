@@ -10,8 +10,8 @@ export type Trade = {
 type Diff = { token: string; vaultDelta: number };
 type Swap = {
   poolId: string;
-  tokenA: { tokenDiffIndex: number; balance: number };
-  tokenB: { tokenDiffIndex: number; balance: number };
+  tokenA: { tokenDiffIndex: number; delta: number };
+  tokenB: { tokenDiffIndex: number; delta: number };
 };
 
 export function getDiffsSwapsAndAmounts(
@@ -40,8 +40,8 @@ export function getDiffsSwapsAndAmounts(
 
     swaps.push({
       poolId: trade.poolId,
-      tokenA: { tokenDiffIndex: inDiffIndex, balance: 0 },
-      tokenB: { tokenDiffIndex: outDiffIndex, balance: 0 },
+      tokenA: { tokenDiffIndex: inDiffIndex, delta: 0 },
+      tokenB: { tokenDiffIndex: outDiffIndex, delta: 0 },
     });
 
     amounts.push(trade.amount ?? 0);

@@ -23,7 +23,9 @@ import "./invariants/ConstantWeightedProduct.sol";
 
 import "./IVault.sol";
 
-contract TradingEngine is ConstantWeightedProduct {
+import "./ISwapCaller.sol";
+
+contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
     IVault private _vault;
 
     constructor(IVault vault) {
@@ -140,11 +142,10 @@ contract TradingEngine is ConstantWeightedProduct {
             }
 
             // Configure pool end state
-            swaps[i].tokenA.balance = add(poolData.tokenInBalance, amountIn);
-            swaps[i].tokenB.balance = sub(
-                poolData.tokenOutBalance,
-                tokenAmountOut
-            );
+
+            // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
+            swaps[i].tokenA.delta = int256(amountIn);
+            swaps[i].tokenB.delta = -int256(tokenAmountOut);
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");
@@ -153,14 +154,25 @@ contract TradingEngine is ConstantWeightedProduct {
             "Price too high"
         );
 
-        IERC20(overallTokenIn).transferFrom(
+        bytes memory callbackData = abi.encode(
             msg.sender,
-            address(_vault),
+            overallTokenIn,
             helper.toSend
         );
 
-        _vault.batchSwap(diffs, swaps, msg.sender);
+        _vault.batchSwap(diffs, swaps, msg.sender, callbackData);
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
+    }
+
+    // Callback to send tokens to the Vault
+    function sendTokens(bytes calldata callbackData) external override {
+        require(msg.sender == address(_vault), "Invalid callback caller");
+
+        (address sender, address overallTokenIn, uint256 toSend) = abi.decode(
+            callbackData,
+            (address, address, uint256)
+        );
+        IERC20(overallTokenIn).transferFrom(sender, address(_vault), toSend);
     }
 }

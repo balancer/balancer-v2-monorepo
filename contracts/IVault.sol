@@ -139,7 +139,8 @@ interface IVault {
     function batchSwap(
         Diff[] calldata diffs,
         Swap[] calldata swaps,
-        address recipient
+        address recipient,
+        bytes calldata callbackData
     ) external;
 
     // batchSwap helper data structures
@@ -162,12 +163,13 @@ interface IVault {
         TokenData tokenB;
     }
 
-    // For each token involved in a Swap, TokenData indicates the new balance for that
-    // token in the associated pool. If TokenData also included the token address, then
-    // the swap function would need to look up the index of this token in the Diffs array.
-    // Instead, the caller provides the indices for the Diffs array, leading to gas savings.
+    // For each token involved in a Swap, TokenData indicates by how much the balance for
+    // that token in the associated pool should change. If TokenData also included the token
+    // address, then the swap function would need to look up the index of this token in the
+    // Diffs array. Instead, the caller provides the indices for the Diffs array, leading to
+    // gas savings.
     struct TokenData {
-        uint256 balance;
+        int256 delta;
         uint256 tokenDiffIndex;
     }
 }
