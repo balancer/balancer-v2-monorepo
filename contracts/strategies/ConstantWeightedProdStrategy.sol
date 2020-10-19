@@ -18,15 +18,44 @@ import "./IPairTradingStrategy.sol";
 import "../math/FixedPoint.sol";
 
 contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
+    uint8 public constant MIN_TOKENS = 2;
+    uint8 public constant MAX_TOKENS = 16;
+    uint8 public constant MIN_WEIGHT = 1;
+    uint256 internal constant DECIMALS = 10**16; // 16 decimal places
+    
     uint256 immutable weights; // 8 32-byte weights packed together. index 0 is LSB and index 7 is MSB
+    uint8 immutable totalTokens;
 
-    constructor(uint256 _weights) {
+    constructor(uint256 _weights, uint8 _totalTokens) {
+        require(_totalTokens >= MIN_TOKENS, "ERR_MIN_TOKENS");
+        require(_totalTokens <= MAX_TOKENS, "ERR_MAX_TOKENS");
+        for (uint8 index = 0; index < _totalTokens; index++) {
+            uint8 shift = index * MAX_TOKENS;
+            require(
+                shiftWeights(_weights, shift) >= MIN_WEIGHT,
+                "ERR_MIN_WEIGHT"
+            );
+        }
         weights = _weights;
+        totalTokens = _totalTokens;
+    }
+
+    function getTotalTokens() external view returns (uint8) {
+        return totalTokens;
+    }
+
+    function shiftWeights(uint256 _weights, uint8 shift)
+        internal
+        pure
+        returns (uint256)
+    {
+        return ((_weights & (0xFFFF << shift)) >> shift);
     }
 
     function getWeight(uint8 index) public view returns (uint256) {
-        uint8 shift = index * 32;
-        return (uint256)((weights & (0xFF << shift)) >> shift) * ONE;
+        require(index < totalTokens, "ERR_INVALID_INDEX");
+        uint8 shift = index * MAX_TOKENS;
+        return shiftWeights(weights, shift) * DECIMALS;
     }
 
     function calculateOutGivenIn(
@@ -40,6 +69,7 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
             tokenBalanceIn,
             add(tokenBalanceIn, tokenAmountIn)
         );
+
         uint256 weightRatio = div(
             getWeight(tokenIndexIn),
             getWeight(tokenIndexOut)
