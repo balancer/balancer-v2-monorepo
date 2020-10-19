@@ -25,7 +25,7 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
         weights = _weights;
     }
 
-    function calculateOutGivenIn(
+    function _calculateOutGivenIn(
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenBalanceIn,
@@ -56,7 +56,7 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
         uint256 tokenAmountOut
     ) external override view returns (bool) {
         //Calculate out amount given in
-        uint256 _tokenAmountOut = calculateOutGivenIn(
+        uint256 _tokenAmountOut = _calculateOutGivenIn(
             tokenIndexIn,
             tokenIndexOut,
             tokenBalanceIn,
