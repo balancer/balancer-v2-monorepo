@@ -22,7 +22,7 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
     uint8 public constant MAX_TOKENS = 16;
     uint8 public constant MIN_WEIGHT = 1;
     uint256 internal constant DECIMALS = 10**16; // 16 decimal places
-    
+
     uint256 immutable weights; // 8 32-byte weights packed together. index 0 is LSB and index 7 is MSB
     uint8 immutable totalTokens;
 
@@ -30,9 +30,8 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
         require(_totalTokens >= MIN_TOKENS, "ERR_MIN_TOKENS");
         require(_totalTokens <= MAX_TOKENS, "ERR_MAX_TOKENS");
         for (uint8 index = 0; index < _totalTokens; index++) {
-            uint8 shift = index * MAX_TOKENS;
             require(
-                shiftWeights(_weights, shift) >= MIN_WEIGHT,
+                shiftWeights(_weights, index) >= MIN_WEIGHT,
                 "ERR_MIN_WEIGHT"
             );
         }
@@ -44,18 +43,18 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
         return totalTokens;
     }
 
-    function shiftWeights(uint256 _weights, uint8 shift)
+    function shiftWeights(uint256 _weights, uint8 index)
         internal
         pure
         returns (uint256)
     {
+        uint8 shift = index * 16;
         return ((_weights & (0xFFFF << shift)) >> shift);
     }
 
     function getWeight(uint8 index) public view returns (uint256) {
         require(index < totalTokens, "ERR_INVALID_INDEX");
-        uint8 shift = index * MAX_TOKENS;
-        return shiftWeights(weights, shift) * DECIMALS;
+        return shiftWeights(weights, index) * DECIMALS;
     }
 
     function calculateOutGivenIn(
