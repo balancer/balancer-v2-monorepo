@@ -1,11 +1,11 @@
 import { ethers } from '@nomiclabs/buidler';
 import { expect } from 'chai';
 import { Contract, Signer, ContractReceipt } from 'ethers';
-import * as expectEvent from './helpers/expectEvent';
-import { MAX_UINT256 } from './helpers/constants';
-import { expectBalanceChange } from './helpers/tokenBalance';
-import { TokenList, deployTokens, mintTokens } from './helpers/tokens';
-import { deploy } from '../scripts/helpers/deploy';
+import * as expectEvent from '../helpers/expectEvent';
+import { MAX_UINT256 } from '../helpers/constants';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
+import { deploy } from '../../scripts/helpers/deploy';
 
 describe('Vault', () => {
   let controller: Signer;
