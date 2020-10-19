@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "@nomiclabs/buidler/console.sol";
 
@@ -26,26 +27,32 @@ import "./ISwapCaller.sol";
 import "./LogExpMath.sol";
 
 contract Vault is IVault, PoolRegistry {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     // The vault's accounted-for balance for each token. These include:
     //  * tokens in pools
     //  * tokens stored as user balance
     mapping(address => uint256) private _vaultTokenBalance; // token -> vault balance
 
     mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
+    mapping(address => EnumerableSet.AddressSet) private _userOperators; // operators are allowed to use a user's tokens in a swap
 
     event Deposited(
         address indexed depositor,
-        address indexed creditor,
+        address indexed user,
         address indexed token,
         uint256 amount
     );
 
     event Withdrawn(
-        address indexed creditor,
+        address indexed user,
         address indexed recipient,
         address indexed token,
         uint256 amount
     );
+
+    event AuthorizedOperator(address indexed user, address indexed operator);
+    event RevokedOperator(address indexed user, address indexed operator);
 
     function getUserTokenBalance(address user, address token)
         public
@@ -58,15 +65,15 @@ contract Vault is IVault, PoolRegistry {
     function deposit(
         address token,
         uint256 amount,
-        address creditor
+        address user
     ) public {
         // TODO: check overflow
-        _userTokenBalance[creditor][token] += amount;
+        _userTokenBalance[user][token] += amount;
         _vaultTokenBalance[token] += amount;
 
         IERC20(token).transferFrom(msg.sender, address(this), amount);
 
-        emit Deposited(msg.sender, creditor, token, amount);
+        emit Deposited(msg.sender, user, token, amount);
     }
 
     function withdraw(
@@ -85,6 +92,47 @@ contract Vault is IVault, PoolRegistry {
         IERC20(token).transfer(recipient, amount);
 
         emit Withdrawn(msg.sender, recipient, token, amount);
+    }
+
+    function authorizeOperator(address operator) public {
+        if (_userOperators[msg.sender].add(operator)) {
+            emit AuthorizedOperator(msg.sender, operator);
+        }
+    }
+
+    function revokeOperator(address operator) public {
+        if (_userOperators[msg.sender].remove(operator)) {
+            emit RevokedOperator(msg.sender, operator);
+        }
+    }
+
+    function isOperatorFor(address user, address operator)
+        public
+        view
+        returns (bool)
+    {
+        return (user == operator) || _userOperators[user].contains(operator);
+    }
+
+    function getUserTotalOperators(address user) public view returns (uint256) {
+        return _userOperators[user].length();
+    }
+
+    function getUserOperators(
+        address user,
+        uint256 start,
+        uint256 end
+    ) public view returns (address[] memory) {
+        // Ideally we'd use a native implemenation: see https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
+        address[] memory operators = new address[](
+            _userOperators[user].length()
+        );
+
+        for (uint256 i = start; i < end; ++i) {
+            operators[i] = _userOperators[user].at(i);
+        }
+
+        return operators;
     }
 
     // Bind does not lock because it jumps to `rebind`, which does

@@ -118,7 +118,7 @@ describe('Vault - swaps', () => {
       );
     });
 
-    it.only('single pair single pool user balance', async () => {
+    it('single pair single pool user balance', async () => {
       // Trade 1e18 MKR for 0.5e18 DAI
       const diffs = [
         {
