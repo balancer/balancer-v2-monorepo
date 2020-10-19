@@ -33,6 +33,20 @@ contract Vault is IVault, PoolRegistry {
 
     mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
 
+    event Deposited(
+        address indexed depositor,
+        address indexed creditor,
+        address indexed token,
+        uint256 amount
+    );
+
+    event Withdrawn(
+        address indexed creditor,
+        address indexed recipient,
+        address indexed token,
+        uint256 amount
+    );
+
     function getUserTokenBalance(address user, address token)
         public
         view
@@ -51,6 +65,8 @@ contract Vault is IVault, PoolRegistry {
         _vaultTokenBalance[token] += amount;
 
         IERC20(token).transferFrom(msg.sender, address(this), amount);
+
+        emit Deposited(msg.sender, creditor, token, amount);
     }
 
     function withdraw(
@@ -67,6 +83,8 @@ contract Vault is IVault, PoolRegistry {
         _vaultTokenBalance[token] -= amount;
 
         IERC20(token).transfer(recipient, amount);
+
+        emit Withdrawn(msg.sender, recipient, token, amount);
     }
 
     // Bind does not lock because it jumps to `rebind`, which does
