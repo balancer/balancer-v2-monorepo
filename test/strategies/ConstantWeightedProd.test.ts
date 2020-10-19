@@ -2,7 +2,7 @@ import { ethers } from '@nomiclabs/buidler';
 import { expect } from 'chai';
 import { ContractFactory, Contract } from 'ethers';
 
-//Packs up to 16 weights in 16 bytes in hexa format with 4 digits precision and 2 decimals.
+//Packs up to 16 weights in 32 bytes (16 bit per weight) in hexa format with 2 decimals.
 //For example [2, 8] is packed into 0x00000000000000000000000000000000000000000000000000000000032000c8
 const packWeights = (weights: number[]) => {
   const _weights =

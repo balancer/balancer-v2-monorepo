@@ -23,7 +23,7 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
     uint8 public constant MIN_WEIGHT = 1;
     uint256 public constant DECIMALS = 10**16; // 16 decimal places
 
-    uint256 private immutable _weights; // 16 16-byte weights packed together. index 0 is LSB and index 15 is MSB
+    uint256 private immutable _weights; // 16 16-bit weights packed together. index 0 is LSB and index 15 is MSB
     uint8 private immutable _totalTokens;
 
     constructor(uint256 weights, uint8 totalTokens) {
