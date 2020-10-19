@@ -25,7 +25,7 @@ contract ConstantSumProdStrategy is ITupleTradingStrategy, FixedPoint {
         amp = _amp;
     }
 
-    function calculateInvariant(uint256[] memory balances)
+    function _calculateInvariant(uint256[] memory balances)
         internal
         view
         returns (uint256)
@@ -63,16 +63,16 @@ contract ConstantSumProdStrategy is ITupleTradingStrategy, FixedPoint {
         return D;
     }
 
-    function validateAll(
+    function validateTuple(
         bytes32 poolId,
         uint256[] calldata oldBalances,
         uint256[] calldata newBalances
     ) external override view returns (bool) {
         //Calculate old invariant
-        uint256 oldInvariant = calculateInvariant(oldBalances);
+        uint256 oldInvariant = _calculateInvariant(oldBalances);
 
         //Calculate new invariant
-        uint256 newInvariant = calculateInvariant(newBalances);
+        uint256 newInvariant = _calculateInvariant(newBalances);
 
         return newInvariant >= oldInvariant;
     }

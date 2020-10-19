@@ -17,7 +17,7 @@ describe('ConstantSumProdStrategy', function () {
 
   describe('All balances validation', () => {
     it('should validate correctly two tokens', async () => {
-      const result = await strategy.validateAll(
+      const result = await strategy.validateTuple(
         poolID,
         [(82.57e18).toString(), (82.57e18).toString()],
         [(87.6e18).toString(), (77.6e18).toString()]
@@ -25,7 +25,7 @@ describe('ConstantSumProdStrategy', function () {
       expect(result).to.be.true;
     });
     it('should validate correctly three tokens', async () => {
-      const result = await strategy.validateAll(
+      const result = await strategy.validateTuple(
         poolID,
         ['76090948022791367352564021', '153330925159873', '142105440540871'],
         ['76091048022791367352564021', '153330824271000', '142105440540871']

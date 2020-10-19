@@ -15,7 +15,7 @@
 pragma solidity ^0.7.1;
 
 interface ITupleTradingStrategy {
-    function validateAll(
+    function validateTuple(
         bytes32 poolId,
         uint256[] calldata oldBalances,
         uint256[] calldata newBalances
