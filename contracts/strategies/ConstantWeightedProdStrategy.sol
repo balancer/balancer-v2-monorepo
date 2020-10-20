@@ -25,18 +25,55 @@ contract ConstantWeightedProdStrategy is
     StrategyFee,
     FixedPoint
 {
-    //TODO: cannot be immutable. Make one strategy for each total of tokens
-    uint256[] private _weights;
+    uint8 public constant MIN_TOKENS = 2;
+    uint8 public constant MAX_TOKENS = 16;
+    uint8 public constant MIN_WEIGHT = 1;
+
+    uint256 private immutable _weights; // 16 16-bit weights packed together. index 0 is LSB and index 15 is MSB
+    uint8 private immutable _totalTokens;
     uint256 private immutable _swapFee;
 
-    constructor(uint256[] memory weights, uint256 swapFee) {
-        _weights = weights;
+    constructor(
+        uint256 weights,
+        uint8 totalTokens,
+        uint256 swapFee
+    ) {
+        require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
+        require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
         _swapFee = swapFee;
+        require(totalTokens >= MIN_TOKENS, "ERR_MIN_TOKENS");
+        require(totalTokens <= MAX_TOKENS, "ERR_MAX_TOKENS");
+        for (uint8 index = 0; index < totalTokens; index++) {
+            require(
+                _shiftWeights(weights, index) >= MIN_WEIGHT,
+                "ERR_MIN_WEIGHT"
+            );
+        }
+        _totalTokens = totalTokens;
+        _weights = weights;
+    }
+
+    function getTotalTokens() external view returns (uint8) {
+        return _totalTokens;
+    }
+
+    function _shiftWeights(uint256 weights, uint8 index)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint8 shift = index * 16;
+        return ((weights & (0xFFFF << shift)) >> shift);
+    }
+
+    function getWeight(uint8 index) public view returns (uint256) {
+        require(index < _totalTokens, "ERR_INVALID_INDEX");
+        return _shiftWeights(_weights, index);
     }
 
     function _calculateOutGivenIn(
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
+        uint8 tokenIndexIn,
+        uint8 tokenIndexOut,
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn
@@ -46,19 +83,17 @@ contract ConstantWeightedProdStrategy is
             add(tokenBalanceIn, tokenAmountIn)
         );
         uint256 weightRatio = div(
-            _weights[tokenIndexIn],
-            _weights[tokenIndexOut]
+            getWeight(tokenIndexIn),
+            getWeight(tokenIndexOut)
         );
-
         uint256 ratio = sub(ONE, pow(quotient, weightRatio));
-
         return mul(tokenBalanceOut, ratio);
     }
 
     function validatePair(
         bytes32 poolId,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
+        uint8 tokenIndexIn,
+        uint8 tokenIndexOut,
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn,
