@@ -14,12 +14,9 @@
 
 pragma solidity ^0.7.1;
 
-interface ITupleTradingStrategy {
-    function validateTuple(
-        bytes32 poolId,
-        uint256 tokenIndexIn,
-        uint256 tokenAmountIn,
-        uint256[] calldata oldBalances,
-        uint256[] calldata newBalances
-    ) external returns (bool, uint256);
+abstract contract StrategyFee {
+    uint256 public constant MIN_FEE = 10**12; //0.000001%
+    uint256 public constant MAX_FEE = 10**17; //0.1%
+
+    function getSwapFee() external virtual view returns (uint256);
 }

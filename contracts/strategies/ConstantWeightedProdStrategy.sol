@@ -14,15 +14,24 @@
 
 pragma solidity ^0.7.1;
 
+import "./StrategyFee.sol";
 import "./IPairTradingStrategy.sol";
 import "../math/FixedPoint.sol";
 
-contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
-    //TODO: cannot be immutable. Make one strategy for each total of tokens
-    uint256[] public weights;
+import "@nomiclabs/buidler/console.sol";
 
-    constructor(uint256[] memory _weights) {
-        weights = _weights;
+contract ConstantWeightedProdStrategy is
+    IPairTradingStrategy,
+    StrategyFee,
+    FixedPoint
+{
+    //TODO: cannot be immutable. Make one strategy for each total of tokens
+    uint256[] private _weights;
+    uint256 private immutable _swapFee;
+
+    constructor(uint256[] memory weights, uint256 swapFee) {
+        _weights = weights;
+        _swapFee = swapFee;
     }
 
     function _calculateOutGivenIn(
@@ -37,8 +46,8 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
             add(tokenBalanceIn, tokenAmountIn)
         );
         uint256 weightRatio = div(
-            weights[tokenIndexIn],
-            weights[tokenIndexOut]
+            _weights[tokenIndexIn],
+            _weights[tokenIndexOut]
         );
 
         uint256 ratio = sub(ONE, pow(quotient, weightRatio));
@@ -54,16 +63,23 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn,
         uint256 tokenAmountOut
-    ) external override view returns (bool) {
+    ) external override view returns (bool, uint256) {
+        //Substract fee
+        uint256 tokenAmountInMinusFee = div(tokenAmountIn, add(ONE, _swapFee));
+
         //Calculate out amount given in
         uint256 _tokenAmountOut = _calculateOutGivenIn(
             tokenIndexIn,
             tokenIndexOut,
             tokenBalanceIn,
             tokenBalanceOut,
-            tokenAmountIn
+            tokenAmountInMinusFee
         );
 
-        return _tokenAmountOut >= tokenAmountOut;
+        return (_tokenAmountOut >= tokenAmountOut, _swapFee);
+    }
+
+    function getSwapFee() external override view returns (uint256) {
+        return _swapFee;
     }
 }

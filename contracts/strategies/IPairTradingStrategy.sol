@@ -23,5 +23,5 @@ interface IPairTradingStrategy {
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn,
         uint256 tokenAmountOut
-    ) external returns (bool);
+    ) external returns (bool, uint256);
 }
