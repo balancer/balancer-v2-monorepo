@@ -128,7 +128,7 @@ contract Vault is IVault, PoolRegistry {
             _userOperators[user].length()
         );
 
-        for (uint256 i = start; i < end; ++i) {
+        for (uint256 i = start; i <= end; ++i) {
             operators[i] = _userOperators[user].at(i);
         }
 

@@ -143,6 +143,22 @@ describe.only('Vault - user balance', () => {
         await vault.connect(user).authorizeOperator(await operator.getAddress());
       });
 
+      it('operators can be listed', async () => {
+        const amount = await vault.getUserTotalOperators(await user.getAddress());
+        const operators = await vault.getUserOperators(await user.getAddress(), 0, amount);
+
+        expect(operators).to.have.members([await operator.getAddress()]);
+      });
+
+      it('new operators can be added to the list', async () => {
+        await vault.connect(user).authorizeOperator(await other.getAddress());
+
+        const amount = await vault.getUserTotalOperators(await user.getAddress());
+        const operators = await vault.getUserOperators(await user.getAddress(), 0, amount);
+
+        expect(operators).to.have.members([await operator.getAddress(), await other.getAddress()]);
+      });
+
       it('accounts can revoke operators', async () => {
         const receipt = await (await vault.connect(user).revokeOperator(await operator.getAddress())).wait();
         expectEvent.inReceipt(receipt, 'RevokedOperator', {
