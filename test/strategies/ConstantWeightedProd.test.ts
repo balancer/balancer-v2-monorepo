@@ -30,14 +30,14 @@ describe('ConstantWeightedProdStrategy', function () {
     it('Creates correctly TS', async () => {
       strategy = await ConstantWeightedProdStrategyFactory.deploy(packWeights([2, 8]), 2);
       expect(await strategy.getTotalTokens()).to.equal(2);
-      expect(await strategy.getWeight(0)).to.equal(ethers.utils.parseEther('2').toString());
-      expect(await strategy.getWeight(1)).to.equal(ethers.utils.parseEther('8').toString());
+      expect(await strategy.getWeight(0)).to.equal('200');
+      expect(await strategy.getWeight(1)).to.equal('800');
       await expect(strategy.getWeight(2)).to.be.revertedWith('ERR_INVALID_INDEX');
 
       strategy = await ConstantWeightedProdStrategyFactory.deploy(packWeights([2.15, 24.3, 12.11, 2, 6]), 5);
       expect(await strategy.getTotalTokens()).to.equal(5);
-      expect(await strategy.getWeight(0)).to.equal(ethers.utils.parseEther('2.15').toString());
-      expect(await strategy.getWeight(4)).to.equal(ethers.utils.parseEther('6').toString());
+      expect(await strategy.getWeight(0)).to.equal('215');
+      expect(await strategy.getWeight(4)).to.equal('600');
       await expect(strategy.getWeight(5)).to.be.revertedWith('ERR_INVALID_INDEX');
 
       strategy = await ConstantWeightedProdStrategyFactory.deploy(
@@ -45,8 +45,8 @@ describe('ConstantWeightedProdStrategy', function () {
         16
       );
       expect(await strategy.getTotalTokens()).to.equal(16);
-      expect(await strategy.getWeight(0)).to.equal(ethers.utils.parseEther('1').toString());
-      expect(await strategy.getWeight(15)).to.equal(ethers.utils.parseEther('16').toString());
+      expect(await strategy.getWeight(0)).to.equal('100');
+      expect(await strategy.getWeight(15)).to.equal('1600');
       await expect(strategy.getWeight(16)).to.be.revertedWith('ERR_INVALID_INDEX');
     });
     it('Fails creating below MIN WEIGHT', async () => {
