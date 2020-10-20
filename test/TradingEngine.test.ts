@@ -77,7 +77,7 @@ describe('TradingEngine', () => {
               diffs,
               swaps,
               amounts,
-              false
+              true
             );
         },
         trader,
@@ -121,7 +121,7 @@ describe('TradingEngine', () => {
               diffs,
               swaps,
               amounts,
-              false
+              true
             );
         },
         trader,

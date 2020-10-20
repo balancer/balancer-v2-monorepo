@@ -27,8 +27,9 @@ contract MockTradeScript is ISwapCaller {
         uint256[] calldata amounts,
         IVault.Diff[] calldata diffs,
         IVault.Swap[] calldata swaps,
+        address supplier,
         address recipient,
-        bool useUserBalance
+        bool withdrawTokens
     ) external {
         require(
             tokens.length == amounts.length,
@@ -37,12 +38,23 @@ contract MockTradeScript is ISwapCaller {
 
         bytes memory callbackData = abi.encode(
             vault,
-            msg.sender,
+            supplier,
             tokens,
             amounts
         );
 
-        vault.batchSwap(diffs, swaps, recipient, useUserBalance, callbackData);
+        vault.batchSwap(
+            diffs,
+            swaps,
+            IVault.FundsIn({
+                withdrawFrom: supplier,
+                callbackData: callbackData
+            }),
+            IVault.FundsOut({
+                recipient: recipient,
+                transferToRecipient: withdrawTokens
+            })
+        );
     }
 
     function sendTokens(bytes calldata callbackData) external override {

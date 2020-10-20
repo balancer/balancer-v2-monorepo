@@ -67,8 +67,8 @@ describe('Vault - swaps', () => {
       }
 
       // Mint tokens for trader
-      await tokens.DAI.mint(await trader.getAddress(), (1e18).toString());
-      await tokens.MKR.mint(await trader.getAddress(), (2e18).toString());
+      await tokens.DAI.mint(await trader.getAddress(), (200e18).toString());
+      await tokens.MKR.mint(await trader.getAddress(), (200e18).toString());
 
       // Approve trade script by trader
       await tokens.DAI.connect(trader).approve(tradeScript.address, (500e18).toString());
@@ -100,65 +100,20 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         async () => {
-          await tradeScript
-            .connect(trader)
-            .batchSwap(
-              vault.address,
-              [tokens.MKR.address],
-              [(1e18 + fee).toString()],
-              diffs,
-              swaps,
-              await trader.getAddress(),
-              false
-            );
+          await tradeScript.batchSwap(
+            vault.address,
+            [tokens.MKR.address],
+            [(1e18 + fee).toString()],
+            diffs,
+            swaps,
+            await trader.getAddress(),
+            await trader.getAddress(),
+            true
+          );
         },
         trader,
         tokens,
         { DAI: 0.49e18, MKR: -1e18 - fee }
-      );
-    });
-
-    it('single pair single pool user balance', async () => {
-      // Trade 1e18 MKR for 0.5e18 DAI
-      const diffs = [
-        {
-          token: tokens.DAI.address,
-          vaultDelta: 0,
-        },
-        {
-          token: tokens.MKR.address,
-          vaultDelta: 0,
-        },
-      ];
-
-      const fee = 1e18 * 0.05; //5% fee
-
-      const swaps = [
-        {
-          poolId: ethers.utils.id('batch0'),
-          tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() },
-          tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() }, //Math isn't 100% accurate
-        },
-      ];
-
-      // Deposit tokens & swap
-      await tokens.MKR.connect(trader).approve(vault.address, (1e18 + fee).toString());
-      await vault.connect(trader).deposit(tokens.MKR.address, (1e18 + fee).toString(), await trader.getAddress());
-
-      await expectBalanceChange(
-        async () => {
-          await tradeScript
-            .connect(trader)
-            .batchSwap(vault.address, [], [], diffs, swaps, await trader.getAddress(), true);
-        },
-        trader,
-        tokens,
-        {}
-      );
-
-      expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.MKR.address)).to.equal(0);
-      expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.DAI.address)).to.equal(
-        (0.49e18).toString()
       );
     });
 
@@ -192,22 +147,213 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         async () => {
-          await tradeScript
-            .connect(trader)
-            .batchSwap(
-              vault.address,
-              [tokens.MKR.address],
-              [(0.68e18 + 2 * fee).toString()],
-              diffs,
-              swaps,
-              await trader.getAddress(),
-              false
-            );
+          await tradeScript.batchSwap(
+            vault.address,
+            [tokens.MKR.address],
+            [(0.68e18 + 2 * fee).toString()],
+            diffs,
+            swaps,
+            await trader.getAddress(),
+            await trader.getAddress(),
+            true
+          );
         },
         trader,
         tokens,
         { DAI: 0.5e18, MKR: -0.68e18 - 2 * fee }
       );
+    });
+
+    describe('input user balance', () => {
+      it('fails if caller is not authorized', async () => {
+        // Trade 1e18 MKR for 0.5e18 DAI
+        const diffs = [
+          {
+            token: tokens.DAI.address,
+            vaultDelta: 0,
+          },
+          {
+            token: tokens.MKR.address,
+            vaultDelta: 0,
+          },
+        ];
+
+        const fee = 1e18 * 0.05; //5% fee
+
+        const swaps = [
+          {
+            poolId: ethers.utils.id('batch0'),
+            tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() },
+            tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() }, //Math isn't 100% accurate
+          },
+        ];
+
+        // Deposit MKR as user balance
+        await tokens.MKR.connect(trader).approve(vault.address, (1e18 + fee).toString());
+        await vault.connect(trader).deposit(tokens.MKR.address, (1e18 + fee).toString(), await trader.getAddress());
+
+        await expect(
+          tradeScript.batchSwap(
+            vault.address,
+            [],
+            [],
+            diffs,
+            swaps,
+            await trader.getAddress(),
+            await trader.getAddress(),
+            true
+          )
+        ).to.be.revertedWith('Caller is not operator');
+      });
+
+      it('withdraws from user balance if caller is authorized', async () => {
+        // Trade 1e18 MKR for 0.5e18 DAI
+        const diffs = [
+          {
+            token: tokens.DAI.address,
+            vaultDelta: 0,
+          },
+          {
+            token: tokens.MKR.address,
+            vaultDelta: 0,
+          },
+        ];
+
+        const fee = 1e18 * 0.05; //5% fee
+
+        const swaps = [
+          {
+            poolId: ethers.utils.id('batch0'),
+            tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() },
+            tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() }, //Math isn't 100% accurate
+          },
+        ];
+
+        // Deposit MKR as user balance
+        await tokens.MKR.connect(trader).approve(vault.address, (1e18 + fee).toString());
+        await vault.connect(trader).deposit(tokens.MKR.address, (1e18 + fee).toString(), await trader.getAddress());
+
+        await vault.connect(trader).authorizeOperator(tradeScript.address);
+
+        await expectBalanceChange(
+          async () =>
+            tradeScript.batchSwap(
+              vault.address,
+              [],
+              [],
+              diffs,
+              swaps,
+              await trader.getAddress(),
+              await trader.getAddress(),
+              true
+            ),
+          trader,
+          tokens,
+          { DAI: 0.49e18 }
+        );
+
+        expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.MKR.address)).to.equal(0);
+        expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.DAI.address)).to.equal(0);
+      });
+
+      it('only withdraws from user balance if funds are missing', async () => {
+        // Trade 1e18 MKR for 0.5e18 DAI
+        const diffs = [
+          {
+            token: tokens.DAI.address,
+            vaultDelta: 0,
+          },
+          {
+            token: tokens.MKR.address,
+            vaultDelta: 0,
+          },
+        ];
+
+        const fee = 1e18 * 0.05; //5% fee
+
+        const swaps = [
+          {
+            poolId: ethers.utils.id('batch0'),
+            tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() },
+            tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() }, //Math isn't 100% accurate
+          },
+        ];
+
+        // Deposit MKR as user balance
+        await tokens.MKR.connect(trader).approve(vault.address, (1e18 + fee).toString());
+        await vault.connect(trader).deposit(tokens.MKR.address, (1e18 + fee).toString(), await trader.getAddress());
+        await vault.connect(trader).authorizeOperator(tradeScript.address);
+
+        await expectBalanceChange(
+          async () =>
+            tradeScript.batchSwap(
+              vault.address,
+              [tokens.MKR.address],
+              [(1e18 + fee).toString()],
+              diffs,
+              swaps,
+              await trader.getAddress(),
+              await trader.getAddress(),
+              true
+            ),
+          trader,
+          tokens,
+          { MKR: -1e18 - fee, DAI: 0.49e18 }
+        );
+
+        expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.MKR.address)).to.equal(
+          (1e18 + fee).toString()
+        );
+        expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.DAI.address)).to.equal(0);
+      });
+    });
+
+    describe('output user balance', () => {
+      it('deposits to user balance if requested', async () => {
+        // Trade 1e18 MKR for 0.5e18 DAI
+        const diffs = [
+          {
+            token: tokens.DAI.address,
+            vaultDelta: 0,
+          },
+          {
+            token: tokens.MKR.address,
+            vaultDelta: 0,
+          },
+        ];
+
+        const fee = 1e18 * 0.05; //5% fee
+
+        const swaps = [
+          {
+            poolId: ethers.utils.id('batch0'),
+            tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() },
+            tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() }, //Math isn't 100% accurate
+          },
+        ];
+
+        await expectBalanceChange(
+          async () =>
+            tradeScript.batchSwap(
+              vault.address,
+              [tokens.MKR.address],
+              [(1e18 + fee).toString()],
+              diffs,
+              swaps,
+              await trader.getAddress(),
+              await creditor.getAddress(),
+              false
+            ),
+          trader,
+          tokens,
+          { MKR: -1e18 - fee }
+        );
+
+        expect(await vault.getUserTokenBalance(await trader.getAddress(), tokens.DAI.address)).to.equal(0);
+        expect(await vault.getUserTokenBalance(await creditor.getAddress(), tokens.DAI.address)).to.equal(
+          (0.49e18).toString()
+        );
+      });
     });
   });
 
@@ -287,9 +433,16 @@ describe('Vault - swaps', () => {
       await expectBalanceChange(
         async () => {
           // The trader gets MKR without spending DAI
-          await tradeScript
-            .connect(trader)
-            .batchSwap(vault.address, [], [], diffs, swaps, await trader.getAddress(), false);
+          await tradeScript.batchSwap(
+            vault.address,
+            [],
+            [],
+            diffs,
+            swaps,
+            await trader.getAddress(),
+            await trader.getAddress(),
+            true
+          );
         },
         trader,
         tokens,

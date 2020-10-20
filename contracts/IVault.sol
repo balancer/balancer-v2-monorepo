@@ -139,12 +139,25 @@ interface IVault {
     function batchSwap(
         Diff[] calldata diffs,
         Swap[] calldata swaps,
-        address recipient,
-        bool useUserBalance,
-        bytes calldata callbackData
+        FundsIn calldata fundsIn,
+        FundsOut calldata fundsOut
     ) external;
 
     // batchSwap helper data structures
+
+    // Funds in are received by calling ISwapCaller.sendTokens with receiveCallbackData on the caller. If received funds
+    // are not enough, they are withdrawn from withdrawFrom's user balance (the caller must be an operator for this to
+    // succeed).
+    struct FundsIn {
+        address withdrawFrom;
+        bytes callbackData;
+    }
+
+    // Funds out are assigned to recipient's user balance, or transferred out if transferToRecipient is true.
+    struct FundsOut {
+        address recipient;
+        bool transferToRecipient;
+    }
 
     // An array of Diffs with unique token addresses will store the net effect of a trade
     // on the entire Vault. Callers provide this array pre-populated with the address of

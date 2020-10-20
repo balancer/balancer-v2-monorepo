@@ -6,7 +6,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 
-describe.only('Vault - user balance', () => {
+describe('Vault - user balance', () => {
   let trader: Signer;
   let user: Signer;
   let operator: Signer;

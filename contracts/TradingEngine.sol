@@ -95,7 +95,7 @@ contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
         IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
         uint256[] memory amountsIn,
-        bool useUserBalance
+        bool withdrawTokens
     ) public {
         Helper memory helper;
 
@@ -164,9 +164,14 @@ contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
         _vault.batchSwap(
             diffs,
             swaps,
-            msg.sender,
-            useUserBalance,
-            callbackData
+            IVault.FundsIn({
+                withdrawFrom: msg.sender,
+                callbackData: callbackData
+            }),
+            IVault.FundsOut({
+                recipient: msg.sender,
+                transferToRecipient: withdrawTokens
+            })
         );
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct

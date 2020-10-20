@@ -35,7 +35,8 @@ contract Vault is IVault, PoolRegistry {
     mapping(address => uint256) private _vaultTokenBalance; // token -> vault balance
 
     mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
-    mapping(address => EnumerableSet.AddressSet) private _userOperators; // operators are allowed to use a user's tokens in a swap
+    // operators are allowed to use a user's tokens in a swap
+    mapping(address => EnumerableSet.AddressSet) private _userOperators;
 
     event Deposited(
         address indexed depositor,
@@ -69,9 +70,9 @@ contract Vault is IVault, PoolRegistry {
     ) public {
         // TODO: check overflow
         _userTokenBalance[user][token] += amount;
-        _vaultTokenBalance[token] += amount;
 
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        // TODO: use ISwapCaller callback?
+        _pullUnderlying(token, msg.sender, amount);
 
         emit Deposited(msg.sender, user, token, amount);
     }
@@ -87,9 +88,8 @@ contract Vault is IVault, PoolRegistry {
         );
 
         _userTokenBalance[msg.sender][token] -= amount;
-        _vaultTokenBalance[token] -= amount;
 
-        IERC20(token).transfer(recipient, amount);
+        _pushUnderlying(token, recipient, amount);
 
         emit Withdrawn(msg.sender, recipient, token, amount);
     }
@@ -123,12 +123,13 @@ contract Vault is IVault, PoolRegistry {
         uint256 start,
         uint256 end
     ) public view returns (address[] memory) {
-        // Ideally we'd use a native implemenation: see https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
+        // Ideally we'd use a native implemenation: see
+        // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
         address[] memory operators = new address[](
             _userOperators[user].length()
         );
 
-        for (uint256 i = start; i <= end; ++i) {
+        for (uint256 i = start; i < end; ++i) {
             operators[i] = _userOperators[user].at(i);
         }
 
@@ -285,10 +286,9 @@ contract Vault is IVault, PoolRegistry {
     function batchSwap(
         Diff[] memory diffs,
         Swap[] memory swaps,
-        address recipient,
-        bool useUserBalance,
-        bytes memory callbackData
-    ) public override {
+        FundsIn calldata fundsIn,
+        FundsOut calldata fundsOut
+    ) external override {
         //TODO: avoid reentrancy
 
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
@@ -400,7 +400,7 @@ contract Vault is IVault, PoolRegistry {
         }
 
         // Call into sender to trigger token receipt
-        ISwapCaller(msg.sender).sendTokens(callbackData);
+        ISwapCaller(msg.sender).sendTokens(fundsIn.callbackData);
 
         // Step 5: check tokens have been received
         for (uint256 i = 0; i < diffs.length; ++i) {
@@ -411,23 +411,24 @@ contract Vault is IVault, PoolRegistry {
                     address(this)
                 );
 
-                if (!useUserBalance) {
-                    // TODO: check strict equality? Might not be feasible due to approximations
+                uint256 missing = uint256(diff.vaultDelta) - newBalance;
+                if (missing > 0) {
                     require(
-                        newBalance >= uint256(diff.vaultDelta),
-                        "ERR_INVALID_DEPOSIT"
+                        isOperatorFor(fundsIn.withdrawFrom, msg.sender),
+                        "Caller is not operator"
                     );
-                } else if (newBalance < uint256(diff.vaultDelta)) {
-                    uint256 missing = uint256(diff.vaultDelta) - newBalance;
                     require(
-                        _userTokenBalance[recipient][diff.token] >= missing,
+                        _userTokenBalance[fundsIn.withdrawFrom][diff.token] >=
+                            missing,
                         "ERR_INVALID_DEPOSIT"
                     );
 
-                    _userTokenBalance[recipient][diff.token] -= missing;
+                    _userTokenBalance[fundsIn.withdrawFrom][diff
+                        .token] -= missing;
                 }
 
                 // Update token balance
+                // TODO: only update based on how many tokens were received
                 _vaultTokenBalance[diff.token] = newBalance;
             }
         }
@@ -440,13 +441,13 @@ contract Vault is IVault, PoolRegistry {
                 // Make delta positive
                 uint256 amount = uint256(-diff.vaultDelta);
 
-                if (!useUserBalance) {
-                    // Send tokens
-                    _pushUnderlying(diff.token, recipient, amount);
+                if (fundsOut.transferToRecipient) {
+                    // Actually transfer the tokens to the recipient
+                    _pushUnderlying(diff.token, fundsOut.recipient, amount);
                 } else {
-                    // Allocate tokens to recipient - the vault's balance doesn't change
-                    _userTokenBalance[recipient][diff.token] = badd(
-                        _userTokenBalance[recipient][diff.token],
+                    // Allocate tokens to the recipient as user balance - the vault's balance doesn't change
+                    _userTokenBalance[fundsOut.recipient][diff.token] = badd(
+                        _userTokenBalance[fundsOut.recipient][diff.token],
                         amount
                     );
                 }
