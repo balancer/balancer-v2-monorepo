@@ -15,27 +15,30 @@
 pragma solidity ^0.7.1;
 
 contract BConst {
+    // TODO: move these into fixed point library (FixedPoint.sol)
     uint256 public constant BONE = 10**18;
-
-    uint256 public constant MIN_BOUND_TOKENS = 2;
-    uint256 public constant MAX_BOUND_TOKENS = 8;
-
-    uint256 public constant DEFAULT_SWAP_FEE = BONE / 10**6;
-    uint256 public constant MIN_FEE = BONE / 10**6;
-    uint256 public constant MAX_FEE = BONE / 10;
-    uint256 public constant EXIT_FEE = 0;
-
-    uint256 public constant MIN_WEIGHT = BONE;
-    uint256 public constant MAX_WEIGHT = BONE * 50;
-    uint256 public constant MAX_TOTAL_WEIGHT = BONE * 50;
-    uint256 public constant MIN_BALANCE = BONE / 10**12;
-
-    uint256 public constant INIT_POOL_SUPPLY = BONE * 100;
-
     uint256 public constant MIN_BPOW_BASE = 1 wei;
     uint256 public constant MAX_BPOW_BASE = (2 * BONE) - 1 wei;
     uint256 public constant BPOW_PRECISION = BONE / 10**10;
 
-    uint256 public constant MAX_IN_RATIO = BONE / 2;
-    uint256 public constant MAX_OUT_RATIO = (BONE / 3) + 1 wei;
+    // TODO: increase or remove maximum. The only reason to have a cap here is to prevent
+    // pools with so many tokens that trading with them becomes prohibitely expensive in terms
+    // of gas.
+    uint256 public constant MIN_BOUND_TOKENS = 2;
+    uint256 public constant MAX_BOUND_TOKENS = 8;
+
+    uint256 public constant MIN_BALANCE = BONE / 10**12;
+
+    // TODO: remove fees from the vault - they will be handled by the Trading Strategies
+    uint256 public constant DEFAULT_SWAP_FEE = BONE / 10**6;
+    uint256 public constant MIN_FEE = BONE / 10**6;
+    uint256 public constant MAX_FEE = BONE / 10;
+
+    // TODO: add missing protocol fees
+    uint256 public constant EXIT_FEE = 0;
+
+    // TODO: remove weights from the vault - they will be handled by the Trading Strategies (if applicable)
+    uint256 public constant MIN_WEIGHT = BONE;
+    uint256 public constant MAX_WEIGHT = BONE * 50;
+    uint256 public constant MAX_TOTAL_WEIGHT = BONE * 50;
 }
