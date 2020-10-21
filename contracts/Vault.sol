@@ -411,8 +411,9 @@ contract Vault is IVault, PoolRegistry {
                     address(this)
                 );
 
-                uint256 missing = uint256(diff.vaultDelta) - newBalance;
-                if (missing > 0) {
+                if (uint256(diff.vaultDelta) > newBalance) {
+                    uint256 missing = uint256(diff.vaultDelta) - newBalance;
+
                     require(
                         isOperatorFor(fundsIn.withdrawFrom, msg.sender),
                         "Caller is not operator"
