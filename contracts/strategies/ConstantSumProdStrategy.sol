@@ -64,7 +64,7 @@ contract ConstantSumProdStrategy is ITupleTradingStrategy, FixedPoint {
     }
 
     function validateTuple(
-        bytes32 poolId,
+        bytes32,
         uint256[] calldata oldBalances,
         uint256[] calldata newBalances
     ) external override view returns (bool) {

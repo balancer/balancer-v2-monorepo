@@ -76,7 +76,7 @@ contract ConstantWeightedProdStrategy is IPairTradingStrategy, FixedPoint {
     }
 
     function validatePair(
-        bytes32 poolId,
+        bytes32,
         uint8 tokenIndexIn,
         uint8 tokenIndexOut,
         uint256 tokenBalanceIn,
