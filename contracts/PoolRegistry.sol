@@ -31,7 +31,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
 
     struct Pool {
         address controller; // has CONTROL role
-        bool paused;
         // `setSwapFee` requires CONTROL
         uint256 swapFee;
         address[] tokens; // For simpler pool configuration querying, not used internally
@@ -69,7 +68,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         pools[poolId] = Pool({
             controller: msg.sender,
             swapFee: DEFAULT_SWAP_FEE,
-            paused: true,
             tokens: new address[](0),
             totalWeight: 0
         });
@@ -77,10 +75,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         emit PoolCreated(poolId);
 
         return poolId;
-    }
-
-    function isPaused(bytes32 poolId) public override view returns (bool) {
-        return pools[poolId].paused;
     }
 
     function isTokenBound(bytes32 poolId, address token)
@@ -201,15 +195,5 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         onlyPoolController(poolId)
     {
         pools[poolId].controller = controller;
-    }
-
-    function setPaused(bytes32 poolId, bool paused)
-        external
-        override
-        _logs_
-        _lock_
-        onlyPoolController(poolId)
-    {
-        pools[poolId].paused = paused;
     }
 }

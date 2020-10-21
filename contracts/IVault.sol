@@ -25,9 +25,6 @@ interface IVault {
     // a proxy that enforces expected conditions (such as pool make up and fees)
     function getController(bytes32 poolId) external view returns (address);
 
-    // Can the pool be traded against
-    function isPaused(bytes32 poolId) external view returns (bool);
-
     function getSwapFee(bytes32 poolId) external view returns (uint256);
 
     function getNumPoolTokens(bytes32 poolId) external view returns (uint256); // do we need this?
@@ -92,8 +89,6 @@ interface IVault {
     // Pool configuration - only callable by the controller
 
     function setController(bytes32 poolId, address controller) external;
-
-    function setPaused(bytes32 poolId, bool paused) external;
 
     function setSwapFee(bytes32 poolId, uint256 swapFee) external;
 
