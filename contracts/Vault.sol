@@ -67,7 +67,7 @@ contract Vault is IVault, PoolRegistry {
         address token,
         uint256 amount,
         address user
-    ) public {
+    ) external {
         // TODO: check overflow
         _userTokenBalance[user][token] += amount;
 
@@ -81,7 +81,7 @@ contract Vault is IVault, PoolRegistry {
         address token,
         uint256 amount,
         address recipient
-    ) public {
+    ) external {
         require(
             _userTokenBalance[msg.sender][token] >= amount,
             "Vault: withdraw amount exceeds balance"
@@ -94,13 +94,13 @@ contract Vault is IVault, PoolRegistry {
         emit Withdrawn(msg.sender, recipient, token, amount);
     }
 
-    function authorizeOperator(address operator) public {
+    function authorizeOperator(address operator) external {
         if (_userOperators[msg.sender].add(operator)) {
             emit AuthorizedOperator(msg.sender, operator);
         }
     }
 
-    function revokeOperator(address operator) public {
+    function revokeOperator(address operator) external {
         if (_userOperators[msg.sender].remove(operator)) {
             emit RevokedOperator(msg.sender, operator);
         }
@@ -114,7 +114,11 @@ contract Vault is IVault, PoolRegistry {
         return (user == operator) || _userOperators[user].contains(operator);
     }
 
-    function getUserTotalOperators(address user) public view returns (uint256) {
+    function getUserTotalOperators(address user)
+        external
+        view
+        returns (uint256)
+    {
         return _userOperators[user].length();
     }
 
@@ -122,7 +126,7 @@ contract Vault is IVault, PoolRegistry {
         address user,
         uint256 start,
         uint256 end
-    ) public view returns (address[] memory) {
+    ) external view returns (address[] memory) {
         // Ideally we'd use a native implemenation: see
         // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
         address[] memory operators = new address[](
