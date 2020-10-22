@@ -19,12 +19,10 @@ import "../../math/FixedPoint.sol";
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
 
-/* solhint-disable private-vars-leading-underscore */
-
 contract ConstantWeightedProduct is FixedPoint {
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances and weights.
-    function outGivenIn(
+    function _outGivenIn(
         uint256 tokenBalanceIn,
         uint256 tokenWeightIn,
         uint256 tokenBalanceOut,
@@ -37,9 +35,8 @@ contract ConstantWeightedProduct is FixedPoint {
         // bO = tokenBalanceOut                                                                      //
         // bI = tokenBalanceIn              /      /            bI             \    (wI / wO) \      //
         // aI = tokenAmountIn    aO = bO * |  1 - | --------------------------  | ^            |     //
-        // wI = tokenWeightIn               \      \       ( bI + aI )          /              /      //
+        // wI = tokenWeightIn               \      \       ( bI + aI )         /              /      //
         // wO = tokenWeightOut                                                                       //
-        // sF = swapFee                                                                              //
         **********************************************************************************************/
 
         uint256 quotient = div(

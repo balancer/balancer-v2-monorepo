@@ -13,6 +13,7 @@ describe('Vault - swaps', () => {
   let creditor: Signer;
 
   let vault: Contract;
+  let curve: Contract;
   let tradeScript: Contract;
   let tokens: TokenList = {};
 
@@ -22,6 +23,7 @@ describe('Vault - swaps', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault');
+    curve = await deploy('ConstantWeightedProdCurve', [1, 1]);
     tradeScript = await deploy('MockTradeScript');
     tokens = await deployTokens(['DAI', 'MKR']);
   });
@@ -31,7 +33,7 @@ describe('Vault - swaps', () => {
 
     beforeEach('add pool', async () => {
       poolId = ethers.utils.id('Test');
-      const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId)).wait();
+      const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId, curve.address)).wait();
       expectEvent.inReceipt(receipt, 'PoolCreated');
     });
 
@@ -55,15 +57,15 @@ describe('Vault - swaps', () => {
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
         const poolId = ethers.utils.id('batch' + poolIdIdx);
 
-        const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId)).wait();
+        const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId, curve.address)).wait();
         expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
 
         //Set fee to 5%
         await vault.connect(controller).setSwapFee(poolId, (5e16).toString());
 
         // 50-50 DAI-MKR pool with 1e18 tokens in each
-        await vault.connect(controller).bind(poolId, tokens.DAI.address, (1e18).toString(), (1e18).toString());
-        await vault.connect(controller).bind(poolId, tokens.MKR.address, (1e18).toString(), (1e18).toString());
+        await vault.connect(controller).bind(poolId, tokens.DAI.address, (1e18).toString());
+        await vault.connect(controller).bind(poolId, tokens.MKR.address, (1e18).toString());
       }
 
       // Mint tokens for trader
@@ -369,19 +371,23 @@ describe('Vault - swaps', () => {
         })
       );
 
+      curve = await deploy('ConstantWeightedProdCurve', [1, 4]);
+      // first curve is 1:10
+      const curveFirst = await deploy('ConstantWeightedProdCurve', [1, 10]);
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
+        const c = poolIdIdx == 0 ? curveFirst.address : curve.address;
         const poolId = ethers.utils.id('unbalanced' + poolIdIdx);
-        const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId)).wait();
+        const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId, c)).wait();
         expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
 
         // 50-50 DAI-MKR pool with a 1 to 4 DAI:MKR ratio
-        await vault.connect(controller).bind(poolId, tokens.DAI.address, (0.5e18).toString(), (1e18).toString());
-        await vault.connect(controller).bind(poolId, tokens.MKR.address, (2e18).toString(), (1e18).toString());
+        await vault.connect(controller).bind(poolId, tokens.DAI.address, (1e18).toString());
+        await vault.connect(controller).bind(poolId, tokens.MKR.address, (1e18).toString());
       }
 
       // Move the first pool to a difference price point (1 to 10 DAI:MKR) by withdrawing DAI
-      const firstPoolId = ethers.utils.id('unbalanced0');
-      await vault.connect(controller).rebind(firstPoolId, tokens.DAI.address, (0.2e18).toString(), (1e18).toString());
+      //const firstPoolId = ethers.utils.id('unbalanced0');
+      //await vault.connect(controller).rebind(firstPoolId, tokens.DAI.address, (0.2e18).toString(), (1e18).toString());
     });
 
     it('works', async () => {

@@ -22,11 +22,10 @@ import "@nomiclabs/buidler/console.sol";
 import "./strategies/lib/ConstantWeightedProduct.sol";
 
 import "./IVault.sol";
-
 import "./ISwapCaller.sol";
 
 contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
-    IVault private _vault;
+    IVault private immutable _vault;
 
     constructor(IVault vault) {
         _vault = vault;
@@ -57,18 +56,18 @@ contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
             addresses
         );
 
+        // uint8 tokenInIdx = _vault.getTokenIndex(poolId, tokenIn);
+        // uint8 tokenOutIdx = _vault.getTokenIndex(poolId, tokenOut);
+
+        uint256 tokenInDenormalizedWeight = 50 * ONE; // inv.getWeight(tokenInIdx);
+        uint256 tokenOutDenormalizedWeight = 50 * ONE; // inv.getWeight(tokenOutIdx);
+
         return
             PoolData({
                 tokenInBalance: tokenBalances[0],
-                tokenInDenorm: _vault.getTokenDenormalizedWeight(
-                    poolId,
-                    tokenIn
-                ),
+                tokenInDenorm: tokenInDenormalizedWeight,
                 tokenOutBalance: tokenBalances[1],
-                tokenOutDenorm: _vault.getTokenDenormalizedWeight(
-                    poolId,
-                    tokenOut
-                ),
+                tokenOutDenorm: tokenOutDenormalizedWeight,
                 swapFee: _vault.getSwapFee(poolId)
             });
     }
@@ -118,7 +117,7 @@ contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
             //Substract fee
             uint256 adjustedIn = sub(amountIn, mul(amountIn, poolData.swapFee));
 
-            uint256 tokenAmountOut = outGivenIn(
+            uint256 tokenAmountOut = _outGivenIn(
                 poolData.tokenInBalance,
                 poolData.tokenInDenorm,
                 poolData.tokenOutBalance,

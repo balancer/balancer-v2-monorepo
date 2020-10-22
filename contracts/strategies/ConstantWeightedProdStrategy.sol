@@ -174,7 +174,7 @@ contract ConstantWeightedProdStrategy is
         uint256 adjustedIn = sub(tokenAmountIn, feeAmount);
 
         //Calculate out amount given in
-        uint256 _tokenAmountOut = outGivenIn(
+        uint256 _tokenAmountOut = _outGivenIn(
             tokenBalanceIn,
             getWeight(tokenAddressIn),
             tokenBalanceOut,

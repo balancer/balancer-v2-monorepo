@@ -11,6 +11,7 @@ describe('TradingEngine', () => {
   let trader: Signer;
 
   let vault: Contract;
+  let curve: Contract;
   let tradingEngine: Contract;
   let tokens: TokenList = {};
 
@@ -22,6 +23,9 @@ describe('TradingEngine', () => {
     vault = await deploy('Vault');
     tradingEngine = await deploy('TradingEngine', vault.address);
     tokens = await deployTokens(['DAI', 'BAT', 'ANT', 'SNX', 'MKR']);
+
+    const weights = [1, 1, 1, 1, 1];
+    curve = await deploy('ConstantWeightedProdCurve', weights);
   });
 
   describe('swap', () => {
@@ -39,7 +43,7 @@ describe('TradingEngine', () => {
 
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
         // Create even pools with all tokens, initial balance of 1e18 for each
-        const poolId = await setupPool(vault, tokens, controller, [
+        const poolId = await setupPool(vault, curve, tokens, controller, [
           ['DAI', 20],
           ['BAT', 20],
           ['ANT', 20],
@@ -56,8 +60,8 @@ describe('TradingEngine', () => {
 
     it('double pool DAI for MKR', async () => {
       // Move the first two pools to a different price point (DAI:MKR becomes 1:2) by withdrawing DAI
-      await vault.connect(controller).rebind(pools[0], tokens.DAI.address, (0.5e18).toString(), (12.5e18).toString());
-      await vault.connect(controller).rebind(pools[1], tokens.DAI.address, (0.5e18).toString(), (12.5e18).toString());
+      await vault.connect(controller).rebind(pools[0], tokens.DAI.address, (0.5e18).toString());
+      await vault.connect(controller).rebind(pools[1], tokens.DAI.address, (0.5e18).toString());
 
       const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
         { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 },
@@ -88,17 +92,17 @@ describe('TradingEngine', () => {
 
     it('multihop DAI for MKR', async () => {
       // Move the first and second pools to a different price point (DAI:SNX becomes 1:2) by withdrawing DAI
-      await vault.connect(controller).rebind(pools[0], tokens.DAI.address, (0.5e18).toString(), (5e18).toString());
-      await vault.connect(controller).rebind(pools[1], tokens.DAI.address, (0.5e18).toString(), (5e18).toString());
+      await vault.connect(controller).rebind(pools[0], tokens.DAI.address, (0.5e18).toString());
+      await vault.connect(controller).rebind(pools[1], tokens.DAI.address, (0.5e18).toString());
 
       // Move the third pool to a different price point (SNX:BAT becomes 1:2) by withdrawing SNX
-      await vault.connect(controller).rebind(pools[2], tokens.SNX.address, (0.5e18).toString(), (5e18).toString());
+      await vault.connect(controller).rebind(pools[2], tokens.SNX.address, (0.5e18).toString());
 
       // Move the fourth pool to a different price point (BAT:MKR becomes 1:2) by withdrawing BAT
-      await vault.connect(controller).rebind(pools[3], tokens.BAT.address, (0.5e18).toString(), (5e18).toString());
+      await vault.connect(controller).rebind(pools[3], tokens.BAT.address, (0.5e18).toString());
 
       // Move the fifth pool to a different price point (DAI:MKR becomes 1:2) by withdrawing DAI
-      await vault.connect(controller).rebind(pools[4], tokens.DAI.address, (0.5e18).toString(), (5e18).toString());
+      await vault.connect(controller).rebind(pools[4], tokens.DAI.address, (0.5e18).toString());
 
       const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
         { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX', amount: 600 },

@@ -18,6 +18,7 @@ describe('ImmutablePoolTokenizer', function () {
   let deployerAddress: string, user1Address: string, user2Address: string;
   let poolID: string;
   let vault: Contract;
+  let curve: Contract;
   let tokenizer: Contract;
 
   beforeEach(async function () {
@@ -27,18 +28,22 @@ describe('ImmutablePoolTokenizer', function () {
     user1Address = await user1.getAddress();
     user2Address = await user2.getAddress();
 
+    const CurveFactory: ContractFactory = await ethers.getContractFactory('ConstantWeightedProdCurve');
     const VaultFactory: ContractFactory = await ethers.getContractFactory('Vault');
     const TokenizerFactory: ContractFactory = await ethers.getContractFactory('ImmutablePoolTokenizer');
 
     // returns bytes32 hash of string, alternatively use keccax256(binaryData)
     poolID = ethers.utils.id('Test');
 
+    const weights = [1, 1];
+    curve = await CurveFactory.deploy(weights);
+
     vault = await VaultFactory.deploy();
     await vault.deployed();
 
     tokenizer = await TokenizerFactory.deploy(vault.address, poolID);
     await tokenizer.deployed();
-    await vault.newPool(poolID);
+    await vault.newPool(poolID, curve.address);
   });
 
   describe('with tokens and a tokenizer', () => {

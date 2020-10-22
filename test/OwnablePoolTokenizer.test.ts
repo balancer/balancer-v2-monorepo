@@ -18,6 +18,7 @@ describe('OwnablePoolTokenizer', function () {
   let adminAddress: string, user1Address: string, user2Address: string;
   let poolId: string;
   let vault: Contract;
+  let curve: Contract;
   let tokenizer: Contract;
 
   beforeEach(async function () {
@@ -27,12 +28,15 @@ describe('OwnablePoolTokenizer', function () {
     user1Address = await user1.getAddress();
     user2Address = await user2.getAddress();
 
+    const CurveFactory: ContractFactory = await ethers.getContractFactory('ConstantWeightedProdCurve');
     const VaultFactory: ContractFactory = await ethers.getContractFactory('Vault');
     const TokenizerFactory: ContractFactory = await ethers.getContractFactory('OwnablePoolTokenizer');
 
     // returns bytes32 hash of string, alternatively use keccax256(binaryData)
     poolId = ethers.utils.id('Test');
 
+    const weights = [1, 1].map(BigNumber.from);
+    curve = await CurveFactory.deploy(weights);
     vault = await VaultFactory.deploy();
     await vault.deployed();
 
@@ -42,7 +46,7 @@ describe('OwnablePoolTokenizer', function () {
     tokenizer = tokenizer.connect(admin);
     vault = vault.connect(admin);
 
-    await vault.newPool(poolId);
+    await vault.newPool(poolId, curve.address);
   });
 
   it('Should give your Tokenizer sole proprietorship', async function () {
