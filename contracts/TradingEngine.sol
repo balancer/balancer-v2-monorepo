@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@nomiclabs/buidler/console.sol";
 
-import "./invariants/ConstantWeightedProduct.sol";
+import "./strategies/lib/ConstantWeightedProduct.sol";
 
 import "./IVault.sol";
 
@@ -115,13 +115,15 @@ contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
                 ? amountsIn[i]
                 : helper.accumOut;
 
+            //Substract fee
+            uint256 adjustedIn = sub(amountIn, mul(amountIn, poolData.swapFee));
+
             uint256 tokenAmountOut = outGivenIn(
                 poolData.tokenInBalance,
                 poolData.tokenInDenorm,
                 poolData.tokenOutBalance,
                 poolData.tokenOutDenorm,
-                amountIn,
-                poolData.swapFee
+                adjustedIn
             );
 
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user

@@ -14,66 +14,57 @@
 
 pragma solidity ^0.7.1;
 
+import "./StrategyFee.sol";
 import "./ITupleTradingStrategy.sol";
-import "../math/FixedPoint.sol";
+import "./lib/ConstantSumProduct.sol";
 import "../LogExpMath.sol";
 
-contract ConstantSumProdStrategy is ITupleTradingStrategy, FixedPoint {
-    uint256 public immutable amp;
+contract ConstantSumProdStrategy is
+    ITupleTradingStrategy,
+    StrategyFee,
+    ConstantSumProduct
+{
+    uint256 private immutable _amp;
+    uint256 private immutable _swapFee;
 
-    constructor(uint256 _amp) {
-        amp = _amp;
+    constructor(uint256 amp, uint256 swapFee) {
+        require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
+        require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
+        _swapFee = swapFee;
+        _amp = amp;
     }
 
-    function _calculateInvariant(uint256[] memory balances)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 S = 0;
-        uint256 N_COINS = balances.length;
-        for (uint256 i = 0; i < N_COINS; i++) {
-            S = S + balances[i];
-        }
-        if (S == 0) {
-            return 0;
-        }
-        uint256 Dprev = 0;
-        uint256 D = S;
-        uint256 Ann = amp * N_COINS;
-        //TODO: make calculations to test and document this approximation. Compare it with math approx.
-        for (uint256 i = 0; i < 255; i++) {
-            uint256 D_P = D;
-            for (uint256 j = 0; j < N_COINS; j++) {
-                D_P = (D_P * D) / (balances[j] * N_COINS);
-            }
-            Dprev = D;
-            D =
-                ((Ann * S + D_P * N_COINS) * D) /
-                ((Ann - 1) * D + (N_COINS + 1) * D_P);
-            // Equality with the precision of 1
-            if (D > Dprev) {
-                if ((D - Dprev) <= 1) {
-                    break;
-                }
-            } else if ((Dprev - D) <= 1) {
-                break;
-            }
-        }
-        return D;
-    }
-
+    //Because it is not possible to overriding external calldata, function is public and balances are in memory
     function validateTuple(
         bytes32,
-        uint256[] calldata oldBalances,
-        uint256[] calldata newBalances
-    ) external override view returns (bool) {
+        address,
+        address,
+        uint8 tokenIndexIn,
+        uint8 tokenIndexOut,
+        uint256[] memory balances,
+        uint256 tokenAmountIn,
+        uint256 tokenAmountOut
+    ) public override view returns (bool, uint256) {
         //Calculate old invariant
-        uint256 oldInvariant = _calculateInvariant(oldBalances);
+        uint256 oldInvariant = calculateInvariant(_amp, balances);
+
+        //Substract fee
+        uint256 feeAmount = mul(tokenAmountIn, _swapFee);
+
+        //Update Balances
+        balances[tokenIndexIn] = add(
+            balances[tokenIndexIn],
+            sub(tokenAmountIn, feeAmount)
+        );
+        balances[tokenIndexOut] = sub(balances[tokenIndexOut], tokenAmountOut);
 
         //Calculate new invariant
-        uint256 newInvariant = _calculateInvariant(newBalances);
+        uint256 newInvariant = calculateInvariant(_amp, balances);
 
-        return newInvariant >= oldInvariant;
+        return (newInvariant >= oldInvariant, feeAmount);
+    }
+
+    function getSwapFee() external override view returns (uint256) {
+        return _swapFee;
     }
 }
