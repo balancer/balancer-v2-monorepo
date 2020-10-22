@@ -7,7 +7,7 @@ import { Contract, Signer } from 'ethers';
 import { getDiffsSwapsAndAmounts } from './helpers/trading';
 
 let vault: Contract;
-let engine: Contract;
+let script: Contract;
 let tokens: TokenList;
 
 let controller: Signer;
@@ -22,7 +22,7 @@ async function main() {
 
   await vaultStats();
 
-  engine = await deploy('TradingEngine', vault.address);
+  script = await deploy('TradeScript', vault.address);
 
   tokens = await deployTokens(['DAI', 'MKR', 'BAT']);
 
@@ -36,12 +36,12 @@ async function main() {
     await tokens[symbol].connect(trader).approve(vault.address, (100e18).toString());
     await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), await trader.getAddress());
 
-    // Approve engine to use tokens
-    await tokens[symbol].connect(trader).approve(engine.address, (100e18).toString());
+    // Approve script to use tokens
+    await tokens[symbol].connect(trader).approve(script.address, (100e18).toString());
 
-    // Deposit tokens for engine to use
+    // Deposit tokens for script to use
     await tokens[symbol].connect(trader).approve(vault.address, (100e18).toString());
-    await vault.connect(trader).deposit(tokens[symbol].address, (100e18).toString(), engine.address);
+    await vault.connect(trader).deposit(tokens[symbol].address, (100e18).toString(), script.address);
   }
 
   await batchedSwap(false);
@@ -68,9 +68,10 @@ async function batchedSwap(withdrawTokens: boolean) {
   // 50-50 DAI-MKR pools
 
   const pools: Array<string> = [];
+  const curve = await deploy('ConstantWeightedProdCurve', [50, 50]);
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
-      await setupPool(vault, tokens, controller, [
+      await setupPool(vault, curve, tokens, controller, [
         ['DAI', 50],
         ['MKR', 50],
       ])
@@ -88,7 +89,7 @@ async function batchedSwap(withdrawTokens: boolean) {
     );
 
     const receipt = await (
-      await engine
+      await script
         .connect(trader)
         .swapExactAmountIn(
           tokens.DAI.address,

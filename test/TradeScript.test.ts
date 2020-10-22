@@ -6,13 +6,13 @@ import { getDiffsSwapsAndAmounts } from '../scripts/helpers/trading';
 import { expectBalanceChange } from './helpers/tokenBalance';
 import { setupPool } from '../scripts/helpers/pools';
 
-describe('TradingEngine', () => {
+describe('TradeScript', () => {
   let controller: Signer;
   let trader: Signer;
 
   let vault: Contract;
   let curve: Contract;
-  let tradingEngine: Contract;
+  let tradeScript: Contract;
   let tokens: TokenList = {};
 
   before('setup', async () => {
@@ -21,7 +21,7 @@ describe('TradingEngine', () => {
 
   beforeEach('deploy vault', async () => {
     vault = await deploy('Vault');
-    tradingEngine = await deploy('TradingEngine', vault.address);
+    tradeScript = await deploy('TradeScript', vault.address);
     tokens = await deployTokens(['DAI', 'BAT', 'ANT', 'SNX', 'MKR']);
 
     const weights = [1, 1, 1, 1, 1];
@@ -70,8 +70,8 @@ describe('TradingEngine', () => {
 
       await expectBalanceChange(
         async () => {
-          await tokens.DAI.connect(trader).approve(tradingEngine.address, (100e18).toString());
-          await tradingEngine
+          await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
+          await tradeScript
             .connect(trader)
             .swapExactAmountIn(
               tokens.DAI.address,
@@ -114,8 +114,8 @@ describe('TradingEngine', () => {
 
       await expectBalanceChange(
         async () => {
-          await tokens.DAI.connect(trader).approve(tradingEngine.address, (100e18).toString());
-          await tradingEngine
+          await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
+          await tradeScript
             .connect(trader)
             .swapExactAmountIn(
               tokens.DAI.address,

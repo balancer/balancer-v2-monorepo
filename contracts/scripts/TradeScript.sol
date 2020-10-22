@@ -19,12 +19,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@nomiclabs/buidler/console.sol";
 
-import "./strategies/lib/ConstantWeightedProduct.sol";
+import "../strategies/lib/ConstantWeightedProduct.sol";
 
-import "./IVault.sol";
-import "./ISwapCaller.sol";
+import "../IVault.sol";
+import "../ISwapCaller.sol";
 
-contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
+contract TradeScript is ConstantWeightedProduct, ISwapCaller {
     IVault private immutable _vault;
 
     constructor(IVault vault) {
