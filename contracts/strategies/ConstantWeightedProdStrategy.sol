@@ -162,8 +162,8 @@ contract ConstantWeightedProdStrategy is
 
     function validatePair(
         bytes32,
-        address tokenIn,
-        address tokenOut,
+        address tokenAddressIn,
+        address tokenAddressOut,
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn,
@@ -176,9 +176,9 @@ contract ConstantWeightedProdStrategy is
         //Calculate out amount given in
         uint256 _tokenAmountOut = outGivenIn(
             tokenBalanceIn,
-            getWeight(tokenIn),
+            getWeight(tokenAddressIn),
             tokenBalanceOut,
-            getWeight(tokenOut),
+            getWeight(tokenAddressOut),
             adjustedIn
         );
 
