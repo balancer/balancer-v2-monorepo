@@ -173,7 +173,6 @@ contract Vault is IVault, PoolRegistry {
 
         require(balance >= MIN_BALANCE, "ERR_MIN_BALANCE");
 
-
         // Adjust the balance record and actual token balance
         uint256 oldBalance = _poolTokenBalance[poolId][token];
         _poolTokenBalance[poolId][token] = balance;
@@ -200,14 +199,11 @@ contract Vault is IVault, PoolRegistry {
         // Swap the token-to-unbind with the last token,
         // then delete the last token
         uint8 index = poolRecords[poolId][token].index;
-        uint last = pools[poolId].tokens.length - 1;
+        uint256 last = pools[poolId].tokens.length - 1;
         pools[poolId].tokens[index] = pools[poolId].tokens[last];
         poolRecords[poolId][pools[poolId].tokens[index]].index = index;
         pools[poolId].tokens.pop();
-        poolRecords[poolId][token] = Record({
-            bound: false,
-            index: 0
-        });
+        poolRecords[poolId][token] = Record({ bound: false, index: 0 });
 
         // TODO: charge exit fee
         _pushUnderlying(token, msg.sender, tokenBalance);
@@ -295,8 +291,6 @@ contract Vault is IVault, PoolRegistry {
             // 1.1.a: Validate hints and new balance for token A
 
             address tokenA = diffs[swap.tokenA.tokenDiffIndex].token;
-
-            Record memory recordA = poolRecords[swap.poolId][tokenA];
             uint256 poolTokenABalance = _poolTokenBalance[swap.poolId][tokenA];
 
             // Validate Pool has Token A and diff index is correct
@@ -307,8 +301,6 @@ contract Vault is IVault, PoolRegistry {
             // 1.1.b: Validate hints and new balance for token B
 
             address tokenB = diffs[swap.tokenB.tokenDiffIndex].token;
-
-            Record memory recordB = poolRecords[swap.poolId][tokenB];
             uint256 poolTokenBBalance = _poolTokenBalance[swap.poolId][tokenB];
 
             // Validate Pool has Token B and diff index is correct
@@ -345,19 +337,26 @@ contract Vault is IVault, PoolRegistry {
                 );
 
             {
-              uint256[] memory oldBalances = new uint256[](pool.tokens.length);
-              uint256[] memory newBalances = new uint256[](pool.tokens.length);
+                uint256[] memory oldBalances = new uint256[](
+                    pool.tokens.length
+                );
+                uint256[] memory newBalances = new uint256[](
+                    pool.tokens.length
+                );
 
-              (oldBalances, newBalances) = balancesOldNew(
-                pool,
-                swap.poolId,
-                tokenA,
-                tokenB,
-                tokenABalanceMinusFee,
-                poolTokenBBalanceNew
-              );
-              ICurve inv = ICurve(pools[swap.poolId].invariant);
-              require(inv.validateBalances(oldBalances, newBalances));
+                (oldBalances, newBalances) = _balancesOldNew(
+                    pool,
+                    swap.poolId,
+                    tokenA,
+                    tokenB,
+                    tokenABalanceMinusFee,
+                    poolTokenBBalanceNew
+                );
+                ICurve inv = ICurve(pools[swap.poolId].invariant);
+                require(
+                    inv.validateBalances(oldBalances, newBalances),
+                    "invariant validation failed"
+                );
             }
 
             // 3: update pool balances
@@ -434,30 +433,29 @@ contract Vault is IVault, PoolRegistry {
         }
     }
 
-    function balancesOldNew(
-      Pool storage pool,
-      bytes32 poolId,
-      address tokenA,
-      address tokenB,
-      uint256 poolTokenABalanceNew,
-      uint256 poolTokenBBalanceNew
-    ) internal returns (uint256[] memory oldBalances, uint256[] memory newBalances)
-    {
-      uint256[] memory oldBalances = new uint256[](pool.tokens.length);
-      uint256[] memory newBalances = new uint256[](pool.tokens.length);
-      for (uint256 j = 0; j < pool.tokens.length; j++) {
-        address t = pool.tokens[j];
+    function _balancesOldNew(
+        Pool storage pool,
+        bytes32 poolId,
+        address tokenA,
+        address tokenB,
+        uint256 poolTokenABalanceNew,
+        uint256 poolTokenBBalanceNew
+    ) internal view returns (uint256[] memory, uint256[] memory) {
+        uint256[] memory oldBalances = new uint256[](pool.tokens.length);
+        uint256[] memory newBalances = new uint256[](pool.tokens.length);
+        for (uint256 j = 0; j < pool.tokens.length; j++) {
+            address t = pool.tokens[j];
 
-        oldBalances[j] = _poolTokenBalance[poolId][t];
-        if (tokenA == t) {
-          newBalances[j] = poolTokenABalanceNew;
-        } else if (tokenB == t) {
-          newBalances[j] = poolTokenBBalanceNew;
-        } else {
-          newBalances[j] = oldBalances[j];
+            oldBalances[j] = _poolTokenBalance[poolId][t];
+            if (tokenA == t) {
+                newBalances[j] = poolTokenABalanceNew;
+            } else if (tokenB == t) {
+                newBalances[j] = poolTokenBBalanceNew;
+            } else {
+                newBalances[j] = oldBalances[j];
+            }
         }
-      }
-      return (oldBalances, newBalances);
+        return (oldBalances, newBalances);
     }
 
     function addInitialLiquidity(

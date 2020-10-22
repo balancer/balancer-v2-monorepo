@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -16,12 +17,11 @@ pragma solidity 0.7.1;
 import "./ICurve.sol";
 import "../math/FixedPoint.sol";
 import "../LogExpMath.sol";
-//import "@nomiclabs/buidler/console.sol";
 
 contract ConstantWeightedProdCurve is ICurve, FixedPoint {
     uint256[] private _weights;
 
-    constructor(uint256[] memory weights) public {
+    constructor(uint256[] memory weights) {
         _weights = weights;
     }
 
@@ -41,8 +41,8 @@ contract ConstantWeightedProdCurve is ICurve, FixedPoint {
         // wO = tokenWeightOut                                                                       //
         // sF = swapFee                                                                              //
         **********************************************************************************************/
-       uint256 tokenWeightIn = _weights[tokenIndexIn];
-       uint256 tokenWeightOut = _weights[tokenIndexOut];
+        uint256 tokenWeightIn = _weights[tokenIndexIn];
+        uint256 tokenWeightOut = _weights[tokenIndexOut];
 
         uint256 numerator = div(tokenBalanceIn, tokenWeightIn);
         uint256 denominator = div(tokenBalanceOut, tokenWeightOut);
@@ -64,7 +64,7 @@ contract ConstantWeightedProdCurve is ICurve, FixedPoint {
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn
-    ) public view override returns (uint256) {
+    ) public override view returns (uint256) {
         uint256 quotient = div(
             tokenBalanceIn,
             add(tokenBalanceIn, tokenAmountIn)
@@ -82,6 +82,7 @@ contract ConstantWeightedProdCurve is ICurve, FixedPoint {
     function calculateInvariant(uint256[] memory balances)
         public
         override
+        view
         returns (uint256 invariant)
     {
         uint256 length = _weights.length;
@@ -105,7 +106,7 @@ contract ConstantWeightedProdCurve is ICurve, FixedPoint {
         uint256 tokenBalanceOut,
         uint256 tokenAmountIn,
         uint256 tokenAmountOut
-    ) external override returns (bool) {
+    ) external override view returns (bool) {
         //Calculate out amount out
         uint256 _tokenAmountOut = calculateOutGivenIn(
             tokenIndexIn,
@@ -121,7 +122,7 @@ contract ConstantWeightedProdCurve is ICurve, FixedPoint {
     function validateBalances(
         uint256[] calldata oldBalances,
         uint256[] calldata newBalances
-    ) external override returns (bool) {
+    ) external override view returns (bool) {
         //Calculate old invariant
         uint256 oldInvariant = calculateInvariant(oldBalances);
 

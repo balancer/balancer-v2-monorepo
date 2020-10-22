@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -20,7 +21,7 @@ interface ICurve {
         uint256 tokenBalanceIn,
         uint256 tokenBalanceOut,
         uint256 swapFee
-    ) external view returns (uint256); 
+    ) external view returns (uint256);
 
     function calculateOutGivenIn(
         uint256 tokenIndexIn,

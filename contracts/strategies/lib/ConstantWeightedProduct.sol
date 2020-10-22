@@ -22,7 +22,7 @@ import "../../math/FixedPoint.sol";
 contract ConstantWeightedProduct is FixedPoint {
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances and weights.
-    function outGivenIn(
+    function _outGivenIn(
         uint256 tokenBalanceIn,
         uint256 tokenWeightIn,
         uint256 tokenBalanceOut,

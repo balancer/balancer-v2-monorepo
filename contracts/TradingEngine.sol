@@ -117,7 +117,7 @@ contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
             //Substract fee
             uint256 adjustedIn = sub(amountIn, mul(amountIn, poolData.swapFee));
 
-            uint256 tokenAmountOut = outGivenIn(
+            uint256 tokenAmountOut = _outGivenIn(
                 poolData.tokenInBalance,
                 poolData.tokenInDenorm,
                 poolData.tokenOutBalance,

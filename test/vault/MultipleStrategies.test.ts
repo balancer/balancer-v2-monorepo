@@ -1,7 +1,6 @@
 import { ethers } from '@nomiclabs/buidler';
 import { expect } from 'chai';
-import { Contract, Signer, ContractReceipt } from 'ethers';
-import * as expectEvent from '../helpers/expectEvent';
+import { Contract, Signer } from 'ethers';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
@@ -15,11 +14,10 @@ describe('Vault - multiple pool trading strategies', () => {
   let curveConstantPrice: Contract;
   let tradeScript: Contract;
   let trader: Signer;
-  let creditor: Signer;
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, controller, trader, creditor] = await ethers.getSigners();
+    [, controller, trader] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault', async () => {
@@ -93,8 +91,6 @@ describe('Vault - multiple pool trading strategies', () => {
         },
       ];
 
-      const fee = 0;
-
       const swaps = [
         {
           poolId: poolIdConstantPrice,
@@ -106,21 +102,18 @@ describe('Vault - multiple pool trading strategies', () => {
       await expectBalanceChange(
         async () => {
           // Send tokens & swap - would normally happen in the same tx
-          const receipt: ContractReceipt = await (
-            await tradeScript.batchSwap(
-              vault.address,
-              [tokens.TEST.address],
-              [(1e18).toString()],
-              diffs,
-              swaps,
-              tradeScript.address,
-              tradeScript.address,
-              true
-            )
-          ).wait();
-          expectEvent.inReceipt(receipt, 'TestCurveValidate');
+          await tradeScript.batchSwap(
+            vault.address,
+            [tokens.TEST.address],
+            [(1e18).toString()],
+            diffs,
+            swaps,
+            await trader.getAddress(),
+            await trader.getAddress(),
+            true
+          );
         },
-        tradeScript.address,
+        trader,
         tokens,
         { DAI: 1e18, TEST: -1e18 }
       );
@@ -137,8 +130,6 @@ describe('Vault - multiple pool trading strategies', () => {
           vaultDelta: 0,
         },
       ];
-
-      const fee = 0;
 
       const swaps = [
         {
@@ -157,12 +148,12 @@ describe('Vault - multiple pool trading strategies', () => {
             [(1e18).toString()],
             diffs,
             swaps,
-            tradeScript.address,
-            tradeScript.address,
+            await trader.getAddress(),
+            await trader.getAddress(),
             true
           );
         },
-        tradeScript.address,
+        trader,
         tokens,
         { DAI: 1e18, TEST: -1e18 }
       );
