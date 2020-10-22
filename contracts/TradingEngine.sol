@@ -19,15 +19,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@nomiclabs/buidler/console.sol";
 
-import "./invariants/ConstantWeightedProduct.sol";
-import "./curves/ICWPCurve.sol";
+import "./strategies/lib/ConstantWeightedProduct.sol";
 
 import "./IVault.sol";
-
 import "./ISwapCaller.sol";
 
 contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
-    IVault private _vault;
+    IVault private immutable _vault;
 
     constructor(IVault vault) {
         _vault = vault;
@@ -57,14 +55,12 @@ contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
             poolId,
             addresses
         );
-        address invariantAddress = _vault.getInvariant(poolId);
-        ICWPCurve inv = ICWPCurve(invariantAddress);
 
-        uint8 tokenInIdx = _vault.getTokenIndex(poolId, tokenIn);
-        uint8 tokenOutIdx = _vault.getTokenIndex(poolId, tokenOut);
+        // uint8 tokenInIdx = _vault.getTokenIndex(poolId, tokenIn);
+        // uint8 tokenOutIdx = _vault.getTokenIndex(poolId, tokenOut);
 
-        uint256 tokenInDenormalizedWeight = inv.getWeight(tokenInIdx);
-        uint256 tokenOutDenormalizedWeight = inv.getWeight(tokenOutIdx);
+        uint256 tokenInDenormalizedWeight = 50 * ONE; // inv.getWeight(tokenInIdx);
+        uint256 tokenOutDenormalizedWeight = 50 * ONE; // inv.getWeight(tokenOutIdx);
 
         return
             PoolData({
@@ -118,13 +114,15 @@ contract TradingEngine is ConstantWeightedProduct, ISwapCaller {
                 ? amountsIn[i]
                 : helper.accumOut;
 
+            //Substract fee
+            uint256 adjustedIn = sub(amountIn, mul(amountIn, poolData.swapFee));
+
             uint256 tokenAmountOut = outGivenIn(
                 poolData.tokenInBalance,
                 poolData.tokenInDenorm,
                 poolData.tokenOutBalance,
                 poolData.tokenOutDenorm,
-                amountIn,
-                poolData.swapFee
+                adjustedIn
             );
 
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
