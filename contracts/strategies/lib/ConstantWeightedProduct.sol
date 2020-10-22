@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "../math/FixedPoint.sol";
+import "../../math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
@@ -22,43 +22,14 @@ import "../math/FixedPoint.sol";
 /* solhint-disable private-vars-leading-underscore */
 
 contract ConstantWeightedProduct is FixedPoint {
-    // Computes the spot price for a given pair (see https://balancer.finance/whitepaper/#spot-price)
-    function spotPrice(
-        uint256 tokenBalanceIn,
-        uint256 tokenWeightIn,
-        uint256 tokenBalanceOut,
-        uint256 tokenWeightOut,
-        uint256 swapFee
-    ) internal pure returns (uint256) {
-        /**********************************************************************************************
-        // spotPrice                                                                                 //
-        // sP = spotPrice                                                                            //
-        // bI = tokenBalanceIn                ( bI / wI )         1                                  //
-        // bO = tokenBalanceOut         sP =  -----------  *  ----------                             //
-        // wI = tokenWeightIn                 ( bO / wO )     ( 1 - sF )                             //
-        // wO = tokenWeightOut                                                                       //
-        // sF = swapFee                                                                              //
-        **********************************************************************************************/
-
-        uint256 numerator = div(tokenBalanceIn, tokenWeightIn);
-        uint256 denominator = div(tokenBalanceOut, tokenWeightOut);
-
-        uint256 spotPriceSansFee = div(numerator, denominator);
-
-        uint256 feeFactor = div(ONE, sub(ONE, swapFee));
-
-        return mul(spotPriceSansFee, feeFactor);
-    }
-
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
-    // current balances, weights and swap fee.
+    // current balances and swap fee.
     function outGivenIn(
         uint256 tokenBalanceIn,
         uint256 tokenWeightIn,
         uint256 tokenBalanceOut,
         uint256 tokenWeightOut,
-        uint256 tokenAmountIn,
-        uint256 swapFee
+        uint256 tokenAmountIn
     ) internal pure returns (uint256) {
         /**********************************************************************************************
         // outGivenIn                                                                                //
@@ -66,14 +37,15 @@ contract ConstantWeightedProduct is FixedPoint {
         // bO = tokenBalanceOut                                                                      //
         // bI = tokenBalanceIn              /      /            bI             \    (wI / wO) \      //
         // aI = tokenAmountIn    aO = bO * |  1 - | --------------------------  | ^            |     //
-        // wI = tokenWeightIn               \      \ ( bI + ( aI * ( 1 - sF )) /              /      //
+        // wI = tokenWeightIn               \      \       ( bI + aI )          /              /      //
         // wO = tokenWeightOut                                                                       //
         // sF = swapFee                                                                              //
         **********************************************************************************************/
 
-        uint256 adjustedIn = mul(tokenAmountIn, sub(ONE, swapFee));
-
-        uint256 quotient = div(tokenBalanceIn, add(tokenBalanceIn, adjustedIn));
+        uint256 quotient = div(
+            tokenBalanceIn,
+            add(tokenBalanceIn, tokenAmountIn)
+        );
         uint256 weightRatio = div(tokenWeightIn, tokenWeightOut);
 
         uint256 ratio = sub(ONE, pow(quotient, weightRatio));
