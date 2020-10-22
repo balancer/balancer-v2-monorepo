@@ -31,19 +31,12 @@ interface IVault {
     // a proxy that enforces expected conditions (such as pool make up and fees)
     function getController(bytes32 poolId) external view returns (address);
 
-    function getSwapFee(bytes32 poolId) external view returns (uint256);
-
     function getStrategy(bytes32 poolId)
         external
         view
         returns (address, StrategyType);
 
     function getNumPoolTokens(bytes32 poolId) external view returns (uint256); // do we need this?
-
-    function getTokenIndex(bytes32 poolId, address token)
-        external
-        view
-        returns (uint8);
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
@@ -63,8 +56,6 @@ interface IVault {
     // Pool configuration - only callable by the controller
 
     function setController(bytes32 poolId, address controller) external;
-
-    function setSwapFee(bytes32 poolId, uint256 swapFee) external;
 
     // TODO rework bind functions to minimize trust of controllers
     // Adds a new token to a pool, with initial balance

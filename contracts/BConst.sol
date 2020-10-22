@@ -29,11 +29,6 @@ contract BConst {
 
     uint256 public constant MIN_BALANCE = BONE / 10**12;
 
-    // TODO: remove fees from the vault - they will be handled by the Trading Strategies
-    uint256 public constant DEFAULT_SWAP_FEE = BONE / 10**6;
-    uint256 public constant MIN_FEE = BONE / 10**6;
-    uint256 public constant MAX_FEE = BONE / 10;
-
     // TODO: add missing protocol fees
     uint256 public constant EXIT_FEE = 0;
 

@@ -342,11 +342,6 @@ contract Vault is IVault, PoolRegistry {
             ? uint256(swap.tokenB.delta)
             : uint256(-swap.tokenB.delta);
 
-        uint256 amountInMinusFee = bmul(
-            amountIn,
-            bsub(BONE, pools[swap.poolId].swapFee)
-        );
-
         if (pools[swap.poolId].strategyType == StrategyType.PAIR) {
             uint256 poolTokenABalance = _poolTokenBalance[swap.poolId][tokenA];
             require(poolTokenABalance > 0, "Token A not in pool");
@@ -364,7 +359,7 @@ contract Vault is IVault, PoolRegistry {
                 tokenB,
                 poolTokenABalance,
                 poolTokenBBalance,
-                amountInMinusFee,
+                amountIn,
                 amountOut
             );
             require(success, "pair validation failed");
@@ -388,8 +383,6 @@ contract Vault is IVault, PoolRegistry {
                 currentBalances[i] = _poolTokenBalance[swap.poolId][token];
                 require(currentBalances[i] > 0, "Token A not in pool");
 
-                require(currentBalances[i] > 0);
-
                 if (tokenA == token) {
                     indexIn = i;
                 } else if (tokenB == token) {
@@ -408,7 +401,7 @@ contract Vault is IVault, PoolRegistry {
                 indexIn,
                 indexOut,
                 currentBalances,
-                amountInMinusFee,
+                amountIn,
                 amountOut
             );
             require(success, "invariant validation failed");

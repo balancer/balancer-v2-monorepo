@@ -55,10 +55,6 @@ describe('OwnablePoolTokenizer', function () {
 
     await vault.setController(poolId, tokenizer.address);
     expect(await vault.getController(poolId)).to.equal(tokenizer.address);
-
-    // can now set swap fee through tokenizer
-    await tokenizer.setSwapFee((123e14).toString());
-    expect(await vault.getSwapFee(poolId)).to.equal((123e14).toString());
   });
 
   describe('with tokens and a tokenizer', () => {

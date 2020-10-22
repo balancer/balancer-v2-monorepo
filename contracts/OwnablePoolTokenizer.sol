@@ -48,10 +48,6 @@ contract OwnablePoolTokenizer is BasePoolTokenizer {
         owner = newOwner;
     }
 
-    function setSwapFee(uint256 swapFee) public onlyOwner {
-        vault.setSwapFee(poolID, swapFee);
-    }
-
     function setController(address manager) public onlyOwner {
         vault.setController(poolID, manager);
     }

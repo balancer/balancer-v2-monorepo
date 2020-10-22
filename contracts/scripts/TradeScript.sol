@@ -57,9 +57,6 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             addresses
         );
 
-        uint8 tokenInIdx = _vault.getTokenIndex(poolId, tokenIn);
-        uint8 tokenOutIdx = _vault.getTokenIndex(poolId, tokenOut);
-
         (address strategy, ) = _vault.getStrategy(poolId);
 
         uint256 tokenInDenormalizedWeight = ConstantWeightedProdStrategy(
@@ -71,13 +68,15 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
         )
             .getWeight(tokenOut);
 
+        uint256 swapFee = ConstantWeightedProdStrategy(strategy).getSwapFee();
+
         return
             PoolData({
                 tokenInBalance: tokenBalances[0],
                 tokenInDenorm: tokenInDenormalizedWeight,
                 tokenOutBalance: tokenBalances[1],
                 tokenOutDenorm: tokenOutDenormalizedWeight,
-                swapFee: _vault.getSwapFee(poolId)
+                swapFee: swapFee
             });
     }
 

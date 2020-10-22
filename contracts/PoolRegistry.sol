@@ -30,8 +30,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
 
     struct Pool {
         address controller; // has CONTROL role
-        // `setSwapFee` requires CONTROL
-        uint256 swapFee;
         address[] tokens; // For simpler pool configuration querying, not used internally
         // Trading strategy
         address strategy;
@@ -74,7 +72,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
 
         pools[poolId] = Pool({
             controller: msg.sender,
-            swapFee: DEFAULT_SWAP_FEE,
             tokens: new address[](0),
             strategy: strategy,
             strategyType: strategyType
@@ -128,16 +125,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         return balances;
     }
 
-    function getSwapFee(bytes32 poolId)
-        external
-        override
-        view
-        _viewlock_
-        returns (uint256)
-    {
-        return pools[poolId].swapFee;
-    }
-
     function getController(bytes32 poolId)
         external
         override
@@ -156,29 +143,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         returns (address, StrategyType)
     {
         return (pools[poolId].strategy, pools[poolId].strategyType);
-    }
-
-    function getTokenIndex(bytes32 poolId, address token)
-        external
-        override
-        view
-        _viewlock_
-        returns (uint8)
-    {
-        return poolRecords[poolId][token].index;
-    }
-
-    function setSwapFee(bytes32 poolId, uint256 swapFee)
-        external
-        override
-        _logs_
-        _lock_
-        ensurePoolExists(poolId)
-        onlyPoolController(poolId)
-    {
-        require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
-        require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
-        pools[poolId].swapFee = swapFee;
     }
 
     function setController(bytes32 poolId, address controller)

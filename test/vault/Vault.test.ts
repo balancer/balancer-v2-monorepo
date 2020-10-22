@@ -63,13 +63,15 @@ describe('Vault - swaps', () => {
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
         const poolId = ethers.utils.id('batch' + poolIdIdx);
 
-        const receipt: ContractReceipt = await (
-          await vault.connect(controller).newPool(poolId, curve.address, 0)
-        ).wait();
+        const strategy = await deploy(
+          'ConstantWeightedProdStrategy',
+          [tokens.DAI.address, tokens.MKR.address],
+          [(1e18).toString(), (1e18).toString()],
+          2,
+          (0.05e18).toString()
+        );
+        const receipt = await (await vault.connect(controller).newPool(poolId, strategy.address, 0)).wait();
         expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
-
-        //Set fee to 5%
-        await vault.connect(controller).setSwapFee(poolId, (5e16).toString());
 
         // 50-50 DAI-MKR pool with 1e18 tokens in each
         await vault.connect(controller).bind(poolId, tokens.DAI.address, (1e18).toString());
