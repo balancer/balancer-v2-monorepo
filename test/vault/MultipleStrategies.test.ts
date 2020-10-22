@@ -5,158 +5,161 @@ import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
+import { setupPool } from '../../scripts/helpers/pools';
 
-describe('Vault - multiple pool trading strategies', () => {
+describe('Vault - multiple trading strategies interfaces', () => {
   let controller: Signer;
 
   let vault: Contract;
-  let curveProd: Contract;
-  let curveConstantPrice: Contract;
-  let tradeScript: Contract;
+  let mockStrategy: Contract;
+  let mockScript: Contract;
+
   let trader: Signer;
   let tokens: TokenList = {};
+
+  let poolIdPair: string;
+  let poolIdTuple: string;
 
   before('setup', async () => {
     [, controller, trader] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault', async () => {
+  beforeEach(async () => {
     vault = await deploy('Vault');
-    curveProd = await deploy('ConstantWeightedProdCurve', [1, 1]);
-    curveConstantPrice = await deploy('ConstantPriceCurve');
-    tradeScript = await deploy('MockTradeScript');
     tokens = await deployTokens(['DAI', 'TEST']);
+
+    mockStrategy = await deploy('MockTradingStrategy');
+    mockScript = await deploy('MockTradeScript');
+
+    poolIdPair = await setupPool(vault, mockStrategy, 0, tokens, controller, [
+      ['DAI', 50],
+      ['TEST', 50],
+    ]);
+
+    poolIdTuple = await setupPool(vault, mockStrategy, 1, tokens, controller, [
+      ['DAI', 50],
+      ['TEST', 50],
+    ]);
+
+    // Mint tokens for trader
+    await tokens.DAI.mint(await trader.getAddress(), (300e18).toString());
+    await tokens.TEST.mint(await trader.getAddress(), (300e18).toString());
+
+    // Approve trade script by trader
+    await tokens.DAI.connect(trader).approve(mockScript.address, MAX_UINT256);
+    await tokens.TEST.connect(trader).approve(mockScript.address, MAX_UINT256);
   });
 
-  describe('curve management', () => {
-    let poolIdProd: string;
-    let poolIdConstantPrice: string;
+  it('has the correct curve', async () => {
+    expect(await vault.getStrategy(poolIdPair)).to.have.members([mockStrategy.address, 0]);
+    expect(await vault.getStrategy(poolIdTuple)).to.have.members([mockStrategy.address, 1]);
+  });
 
-    beforeEach('add 2 pools with different curves', async () => {
-      // mint tokens
-      await Promise.all(
-        ['DAI', 'TEST'].map(async (token) => {
-          await tokens[token].mint(await controller.getAddress(), (500e18).toString());
-          await tokens[token].connect(controller).approve(vault.address, MAX_UINT256);
-        })
-      );
+  it('trades with tuple strategy pool', async () => {
+    const diffs = [
+      {
+        token: tokens.DAI.address,
+        vaultDelta: 0,
+      },
+      {
+        token: tokens.TEST.address,
+        vaultDelta: 0,
+      },
+    ];
 
-      // Set up constant weighted product pool
-      poolIdProd = ethers.utils.id('Test - Prod');
-      await vault.connect(controller).newPool(poolIdProd, curveProd.address);
-      await vault.connect(controller).setSwapFee(poolIdProd, (5e16).toString());
-      // 50-50 DAI-TEST pool with 1e18 tokens in each
-      await vault.connect(controller).bind(poolIdProd, tokens.DAI.address, (200e18).toString());
-      await vault.connect(controller).bind(poolIdProd, tokens.TEST.address, (200e18).toString());
+    const swaps = [
+      {
+        poolId: poolIdTuple,
+        tokenA: { tokenDiffIndex: 1, delta: (1e18).toString() },
+        tokenB: { tokenDiffIndex: 0, delta: (-1e18).toString() },
+      },
+    ];
 
-      // Set up constant sum product pool
-      poolIdConstantPrice = ethers.utils.id('Test - ConstantPrice');
-      await vault.connect(controller).newPool(poolIdConstantPrice, curveConstantPrice.address);
-      await vault.connect(controller).setSwapFee(poolIdConstantPrice, (5e16).toString());
-      // 50-50 DAI-TEST pool with 1e18 tokens in each
-      await vault.connect(controller).bind(poolIdConstantPrice, tokens.DAI.address, (200e18).toString());
-      await vault.connect(controller).bind(poolIdConstantPrice, tokens.TEST.address, (200e18).toString());
+    const [preDAIBalance, preTESTBalance] = await vault.getPoolTokenBalances(poolIdTuple, [
+      tokens.DAI.address,
+      tokens.TEST.address,
+    ]);
 
-      // Mint tokens for trader
-      await tokens.DAI.mint(await trader.getAddress(), (300e18).toString());
-      await tokens.TEST.mint(await trader.getAddress(), (300e18).toString());
+    await expectBalanceChange(
+      async () => {
+        // Send tokens & swap - would normally happen in the same tx
+        await mockScript.batchSwap(
+          vault.address,
+          [tokens.TEST.address],
+          [(1e18).toString()],
+          diffs,
+          swaps,
+          await trader.getAddress(),
+          await trader.getAddress(),
+          true
+        );
+      },
+      trader,
+      tokens,
+      { DAI: 1e18, TEST: -1e18 }
+    );
 
-      // Approve trade script by trader
-      await tokens.DAI.connect(trader).approve(tradeScript.address, (900e18).toString());
-      await tokens.TEST.connect(trader).approve(tradeScript.address, (900e18).toString());
-    });
+    const [postDAIBalance, postTESTBalance] = await vault.getPoolTokenBalances(poolIdTuple, [
+      tokens.DAI.address,
+      tokens.TEST.address,
+    ]);
 
-    it('has the correct curve', async () => {
-      expect(await vault.getInvariant(poolIdProd)).to.equal(curveProd.address);
-      expect(await vault.getInvariant(poolIdConstantPrice)).to.equal(curveConstantPrice.address);
-    });
+    // DAI pool balance should decrease, TEST pool balance should increase
+    expect(postDAIBalance.sub(preDAIBalance)).to.equal((-1e18).toString());
+    expect(postTESTBalance.sub(preTESTBalance)).to.equal((1e18).toString());
+  });
 
-    it('gives different outGivenIn for each curve', async () => {
-      const trade = [0, 1, 100, 100, 100];
-      const outGivenInProd = await curveProd.calculateOutGivenIn(...trade);
-      const outGivenInConstantPrice = await curveConstantPrice.calculateOutGivenIn(...trade);
-      expect(outGivenInConstantPrice).to.equal(100);
-      expect(outGivenInProd).to.equal(50);
-    });
+  it('trades with pair strategy product pool', async () => {
+    const diffs = [
+      {
+        token: tokens.DAI.address,
+        vaultDelta: 0,
+      },
+      {
+        token: tokens.TEST.address,
+        vaultDelta: 0,
+      },
+    ];
 
-    it('trades with constant price pool', async () => {
-      const diffs = [
-        {
-          token: tokens.DAI.address,
-          vaultDelta: 0,
-        },
-        {
-          token: tokens.TEST.address,
-          vaultDelta: 0,
-        },
-      ];
+    const swaps = [
+      {
+        poolId: poolIdPair,
+        tokenA: { tokenDiffIndex: 1, delta: (1e18).toString() },
+        tokenB: { tokenDiffIndex: 0, delta: (-1e18).toString() },
+      },
+    ];
 
-      const swaps = [
-        {
-          poolId: poolIdConstantPrice,
-          tokenA: { tokenDiffIndex: 1, delta: (1e18).toString() },
-          tokenB: { tokenDiffIndex: 0, delta: (-1e18).toString() },
-        },
-      ];
+    const [preDAIBalance, preTESTBalance] = await vault.getPoolTokenBalances(poolIdTuple, [
+      tokens.DAI.address,
+      tokens.TEST.address,
+    ]);
 
-      await expectBalanceChange(
-        async () => {
-          // Send tokens & swap - would normally happen in the same tx
-          await tradeScript.batchSwap(
-            vault.address,
-            [tokens.TEST.address],
-            [(1e18).toString()],
-            diffs,
-            swaps,
-            await trader.getAddress(),
-            await trader.getAddress(),
-            true
-          );
-        },
-        trader,
-        tokens,
-        { DAI: 1e18, TEST: -1e18 }
-      );
-    });
+    await expectBalanceChange(
+      async () => {
+        // Send tokens & swap - would normally happen in the same tx
+        await mockScript.batchSwap(
+          vault.address,
+          [tokens.TEST.address],
+          [(1e18).toString()],
+          diffs,
+          swaps,
+          await trader.getAddress(),
+          await trader.getAddress(),
+          true
+        );
+      },
+      trader,
+      tokens,
+      { DAI: 1e18, TEST: -1e18 }
+    );
 
-    it('trades with constant weighted product pool', async () => {
-      const diffs = [
-        {
-          token: tokens.DAI.address,
-          vaultDelta: 0,
-        },
-        {
-          token: tokens.TEST.address,
-          vaultDelta: 0,
-        },
-      ];
+    const [postDAIBalance, postTESTBalance] = await vault.getPoolTokenBalances(poolIdPair, [
+      tokens.DAI.address,
+      tokens.TEST.address,
+    ]);
 
-      const swaps = [
-        {
-          poolId: poolIdProd,
-          tokenA: { tokenDiffIndex: 1, delta: (1e18).toString() },
-          tokenB: { tokenDiffIndex: 0, delta: (-1e18).toString() },
-        },
-      ];
-
-      await expectBalanceChange(
-        async () => {
-          // Send tokens & swap - would normally happen in the same tx
-          await tradeScript.batchSwap(
-            vault.address,
-            [tokens.TEST.address],
-            [(1e18).toString()],
-            diffs,
-            swaps,
-            await trader.getAddress(),
-            await trader.getAddress(),
-            true
-          );
-        },
-        trader,
-        tokens,
-        { DAI: 1e18, TEST: -1e18 }
-      );
-    });
+    // DAI pool balance should decrease, TEST pool balance should increase
+    expect(postDAIBalance.sub(preDAIBalance)).to.equal((-1e18).toString());
+    expect(postTESTBalance.sub(preTESTBalance)).to.equal((1e18).toString());
   });
 });

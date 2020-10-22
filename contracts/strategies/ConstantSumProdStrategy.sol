@@ -39,8 +39,8 @@ contract ConstantSumProdStrategy is
         bytes32,
         address,
         address,
-        uint8 tokenIndexIn,
-        uint8 tokenIndexOut,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
         uint256[] memory balances,
         uint256 tokenAmountIn,
         uint256 tokenAmountOut

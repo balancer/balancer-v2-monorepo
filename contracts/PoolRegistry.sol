@@ -33,7 +33,9 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         // `setSwapFee` requires CONTROL
         uint256 swapFee;
         address[] tokens; // For simpler pool configuration querying, not used internally
-        address invariant;
+        // Trading strategy
+        address strategy;
+        StrategyType strategyType;
     }
 
     mapping(bytes32 => mapping(address => Record)) public poolRecords;
@@ -61,20 +63,21 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
 
     event PoolCreated(bytes32 poolId);
 
-    function newPool(bytes32 poolId, address invariant)
-        external
-        override
-        returns (bytes32)
-    {
+    function newPool(
+        bytes32 poolId,
+        address strategy,
+        StrategyType strategyType
+    ) external override returns (bytes32) {
         require(!_poolExists[poolId], "Pool ID already exists");
-        require(invariant != address(0), "Invariant must be set");
+        require(strategy != address(0), "Strategy must be set");
         _poolExists[poolId] = true;
 
         pools[poolId] = Pool({
             controller: msg.sender,
             swapFee: DEFAULT_SWAP_FEE,
             tokens: new address[](0),
-            invariant: invariant
+            strategy: strategy,
+            strategyType: strategyType
         });
 
         emit PoolCreated(poolId);
@@ -145,14 +148,14 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         return pools[poolId].controller;
     }
 
-    function getInvariant(bytes32 poolId)
+    function getStrategy(bytes32 poolId)
         external
         override
         view
         _viewlock_
-        returns (address)
+        returns (address, StrategyType)
     {
-        return pools[poolId].invariant;
+        return (pools[poolId].strategy, pools[poolId].strategyType);
     }
 
     function getTokenIndex(bytes32 poolId, address token)

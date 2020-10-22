@@ -17,7 +17,13 @@ pragma experimental ABIEncoderV2;
 pragma solidity ^0.7.1;
 
 interface IVault {
-    function newPool(bytes32, address) external returns (bytes32);
+    enum StrategyType { PAIR, TUPLE }
+
+    function newPool(
+        bytes32,
+        address,
+        StrategyType
+    ) external returns (bytes32);
 
     // Pool config queries
 
@@ -25,9 +31,12 @@ interface IVault {
     // a proxy that enforces expected conditions (such as pool make up and fees)
     function getController(bytes32 poolId) external view returns (address);
 
-    function getInvariant(bytes32 poolId) external view returns (address);
-
     function getSwapFee(bytes32 poolId) external view returns (uint256);
+
+    function getStrategy(bytes32 poolId)
+        external
+        view
+        returns (address, StrategyType);
 
     function getNumPoolTokens(bytes32 poolId) external view returns (uint256); // do we need this?
 

@@ -26,7 +26,8 @@ import "./ISwapCaller.sol";
 
 import "./LogExpMath.sol";
 
-import "./curves/ICurve.sol";
+import "./strategies/IPairTradingStrategy.sol";
+import "./strategies/ITupleTradingStrategy.sol";
 
 contract Vault is IVault, PoolRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -238,82 +239,25 @@ contract Vault is IVault, PoolRegistry {
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             Swap memory swap = swaps[i];
-            Pool storage pool = pools[swap.poolId];
 
-            // 1.1.a: Validate hints and new balance for token A
+            require(swap.tokenA.delta != 0, "Token A NOOP");
+            require(swap.tokenB.delta != 0, "Token B NOOP");
 
             address tokenA = diffs[swap.tokenA.tokenDiffIndex].token;
-            uint256 poolTokenABalance = _poolTokenBalance[swap.poolId][tokenA];
-
-            // Validate Pool has Token A and diff index is correct
-            require(poolTokenABalance > 0, "Token A not in pool");
-            // Validate swap alters pool's balance for token A
-            require(swap.tokenA.delta != 0, "Token A NOOP");
-
-            // 1.1.b: Validate hints and new balance for token B
-
             address tokenB = diffs[swap.tokenB.tokenDiffIndex].token;
-            uint256 poolTokenBBalance = _poolTokenBalance[swap.poolId][tokenB];
-
-            // Validate Pool has Token B and diff index is correct
-            require(poolTokenBBalance > 0, "Token B not in pool");
-            // Validate swap alters pool's balance for token B
-            require(swap.tokenB.delta != 0, "Token B NOOP");
 
             // 1.2: Accumulate token diffs
             diffs[swap.tokenA.tokenDiffIndex].vaultDelta += swap.tokenA.delta;
             diffs[swap.tokenB.tokenDiffIndex].vaultDelta += swap.tokenB.delta;
 
-            // 2: Check new balances are valid without considering fee.
-            // Fees are always charged from tokenA regardless if is a token entering or exiting the pool.
-
-            // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
-            // Also maybe handle int-uint arithmetic more concisely
-
-            uint256 poolTokenABalanceNew = swap.tokenA.delta > 0
-                ? badd(poolTokenABalance, uint256(swap.tokenA.delta))
-                : bsub(poolTokenABalance, uint256(-swap.tokenA.delta));
-
-            uint256 poolTokenBBalanceNew = swap.tokenB.delta > 0
-                ? badd(poolTokenBBalance, uint256(swap.tokenB.delta))
-                : bsub(poolTokenBBalance, uint256(-swap.tokenB.delta));
-
-            uint256 tokenABalanceMinusFee = (swap.tokenA.delta > 0)
-                ? badd(
-                    poolTokenABalance,
-                    bmul(uint256(swap.tokenA.delta), bsub(BONE, pool.swapFee))
-                )
-                : bsub(
-                    poolTokenABalance,
-                    bmul(uint256(-swap.tokenA.delta), bsub(BONE, pool.swapFee))
-                );
-
-            {
-                uint256[] memory oldBalances = new uint256[](
-                    pool.tokens.length
-                );
-                uint256[] memory newBalances = new uint256[](
-                    pool.tokens.length
-                );
-
-                (oldBalances, newBalances) = _balancesOldNew(
-                    pool,
-                    swap.poolId,
-                    tokenA,
-                    tokenB,
-                    tokenABalanceMinusFee,
-                    poolTokenBBalanceNew
-                );
-                ICurve inv = ICurve(pools[swap.poolId].invariant);
-                require(
-                    inv.validateBalances(oldBalances, newBalances),
-                    "invariant validation failed"
-                );
-            }
+            (
+                uint256 tokenAFinalBalance,
+                uint256 tokenBFinalBalance
+            ) = _validateSwap(swap, tokenA, tokenB);
 
             // 3: update pool balances
-            _poolTokenBalance[swap.poolId][tokenA] = poolTokenABalanceNew;
-            _poolTokenBalance[swap.poolId][tokenB] = poolTokenBBalanceNew;
+            _poolTokenBalance[swap.poolId][tokenA] = tokenAFinalBalance;
+            _poolTokenBalance[swap.poolId][tokenB] = tokenBFinalBalance;
         }
 
         // Step 4: measure current balance for tokens that need to be received
@@ -385,29 +329,99 @@ contract Vault is IVault, PoolRegistry {
         }
     }
 
-    function _balancesOldNew(
-        Pool storage pool,
-        bytes32 poolId,
+    function _validateSwap(
+        Swap memory swap,
         address tokenA,
-        address tokenB,
-        uint256 poolTokenABalanceNew,
-        uint256 poolTokenBBalanceNew
-    ) internal view returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory oldBalances = new uint256[](pool.tokens.length);
-        uint256[] memory newBalances = new uint256[](pool.tokens.length);
-        for (uint256 j = 0; j < pool.tokens.length; j++) {
-            address t = pool.tokens[j];
+        address tokenB
+    ) private returns (uint256, uint256) {
+        // Make deltas positive
+        uint256 amountIn = swap.tokenA.delta > 0
+            ? uint256(swap.tokenA.delta)
+            : uint256(-swap.tokenA.delta);
+        uint256 amountOut = swap.tokenB.delta > 0
+            ? uint256(swap.tokenB.delta)
+            : uint256(-swap.tokenB.delta);
 
-            oldBalances[j] = _poolTokenBalance[poolId][t];
-            if (tokenA == t) {
-                newBalances[j] = poolTokenABalanceNew;
-            } else if (tokenB == t) {
-                newBalances[j] = poolTokenBBalanceNew;
-            } else {
-                newBalances[j] = oldBalances[j];
+        uint256 amountInMinusFee = bmul(
+            amountIn,
+            bsub(BONE, pools[swap.poolId].swapFee)
+        );
+
+        if (pools[swap.poolId].strategyType == StrategyType.PAIR) {
+            uint256 poolTokenABalance = _poolTokenBalance[swap.poolId][tokenA];
+            require(poolTokenABalance > 0, "Token A not in pool");
+
+            uint256 poolTokenBBalance = _poolTokenBalance[swap.poolId][tokenB];
+            require(poolTokenBBalance > 0, "Token B not in pool");
+
+            IPairTradingStrategy strategy = IPairTradingStrategy(
+                pools[swap.poolId].strategy
+            );
+
+            (bool success, ) = strategy.validatePair(
+                swap.poolId,
+                tokenA,
+                tokenB,
+                poolTokenABalance,
+                poolTokenBBalance,
+                amountInMinusFee,
+                amountOut
+            );
+            require(success, "pair validation failed");
+
+            return (
+                // TODO: make sure the protocol fees are not accounted for!
+                // currentBalances[indexIn] + amountIn - bmul(feeAmountIn, 0), // feeAmountIn * protocolfee
+                poolTokenABalance + amountIn,
+                poolTokenBBalance - amountOut
+            );
+        } else if (pools[swap.poolId].strategyType == StrategyType.TUPLE) {
+            uint256[] memory currentBalances = new uint256[](
+                pools[swap.poolId].tokens.length
+            );
+
+            uint256 indexIn;
+            uint256 indexOut;
+
+            for (uint256 i = 0; i < pools[swap.poolId].tokens.length; i++) {
+                address token = pools[swap.poolId].tokens[i];
+                currentBalances[i] = _poolTokenBalance[swap.poolId][token];
+                require(currentBalances[i] > 0, "Token A not in pool");
+
+                require(currentBalances[i] > 0);
+
+                if (tokenA == token) {
+                    indexIn = i;
+                } else if (tokenB == token) {
+                    indexOut = i;
+                }
             }
+
+            ITupleTradingStrategy strategy = ITupleTradingStrategy(
+                pools[swap.poolId].strategy
+            );
+
+            (bool success, ) = strategy.validateTuple(
+                swap.poolId,
+                tokenA,
+                tokenB,
+                indexIn,
+                indexOut,
+                currentBalances,
+                amountInMinusFee,
+                amountOut
+            );
+            require(success, "invariant validation failed");
+
+            return (
+                // TODO: make sure the protocol fees are not accounted for!
+                // currentBalances[indexIn] + amountIn - bmul(feeAmountIn, 0), // feeAmountIn * protocolfee
+                currentBalances[indexIn] + amountIn,
+                currentBalances[indexOut] - amountOut
+            );
+        } else {
+            revert("Unknown strategy type");
         }
-        return (oldBalances, newBalances);
     }
 
     function addInitialLiquidity(

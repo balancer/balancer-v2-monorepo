@@ -12,17 +12,34 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity 0.7.1;
 
-interface ITupleTradingStrategy {
+import "../strategies/IPairTradingStrategy.sol";
+import "../strategies/ITupleTradingStrategy.sol";
+
+contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
+    function validatePair(
+        bytes32,
+        address,
+        address,
+        uint256,
+        uint256,
+        uint256,
+        uint256
+    ) external override pure returns (bool, uint256) {
+        return (true, 0);
+    }
+
     function validateTuple(
-        bytes32 poolId,
-        address tokenAddressIn,
-        address tokenAddressOut,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint256[] calldata balances,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
-    ) external returns (bool, uint256);
+        bytes32,
+        address,
+        address,
+        uint256,
+        uint256,
+        uint256[] calldata,
+        uint256,
+        uint256
+    ) external override pure returns (bool, uint256) {
+        return (true, 0);
+    }
 }

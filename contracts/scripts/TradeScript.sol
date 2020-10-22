@@ -20,6 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@nomiclabs/buidler/console.sol";
 
 import "../strategies/lib/ConstantWeightedProduct.sol";
+import "../strategies/ConstantWeightedProdStrategy.sol";
 
 import "../IVault.sol";
 import "../ISwapCaller.sol";
@@ -56,11 +57,19 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             addresses
         );
 
-        // uint8 tokenInIdx = _vault.getTokenIndex(poolId, tokenIn);
-        // uint8 tokenOutIdx = _vault.getTokenIndex(poolId, tokenOut);
+        uint8 tokenInIdx = _vault.getTokenIndex(poolId, tokenIn);
+        uint8 tokenOutIdx = _vault.getTokenIndex(poolId, tokenOut);
 
-        uint256 tokenInDenormalizedWeight = 50 * ONE; // inv.getWeight(tokenInIdx);
-        uint256 tokenOutDenormalizedWeight = 50 * ONE; // inv.getWeight(tokenOutIdx);
+        (address strategy, ) = _vault.getStrategy(poolId);
+
+        uint256 tokenInDenormalizedWeight = ConstantWeightedProdStrategy(
+            strategy
+        )
+            .getWeight(tokenIn);
+        uint256 tokenOutDenormalizedWeight = ConstantWeightedProdStrategy(
+            strategy
+        )
+            .getWeight(tokenOut);
 
         return
             PoolData({
