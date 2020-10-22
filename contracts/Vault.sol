@@ -25,6 +25,7 @@ import "./PoolRegistry.sol";
 import "./ISwapCaller.sol";
 
 import "./LogExpMath.sol";
+
 import "./curves/ICurve.sol";
 
 contract Vault is IVault, PoolRegistry {
@@ -207,55 +208,6 @@ contract Vault is IVault, PoolRegistry {
 
         // TODO: charge exit fee
         _pushUnderlying(token, msg.sender, tokenBalance);
-    }
-
-    function getSpotPrice(
-        bytes32 poolId,
-        address tokenIn,
-        address tokenOut
-    ) external override view _viewlock_ returns (uint256 spotPrice) {
-        Record storage inRecord = poolRecords[poolId][tokenIn];
-        uint256 inRecordBalance = _poolTokenBalance[poolId][tokenIn];
-        Record storage outRecord = poolRecords[poolId][tokenOut];
-        uint256 outRecordBalance = _poolTokenBalance[poolId][tokenOut];
-        ICurve inv = ICurve(pools[poolId].invariant);
-        uint256 swapFee = pools[poolId].swapFee;
-
-        require(inRecord.bound, "ERR_NOT_BOUND");
-        require(outRecord.bound, "ERR_NOT_BOUND");
-
-        return
-            inv.spotPrice(
-                inRecord.index,
-                outRecord.index,
-                inRecordBalance,
-                outRecordBalance,
-                swapFee
-            );
-    }
-
-    function getSpotPriceSansFee(
-        bytes32 poolId,
-        address tokenIn,
-        address tokenOut
-    ) external override view _viewlock_ returns (uint256 spotPrice) {
-        Record storage inRecord = poolRecords[poolId][tokenIn];
-        uint256 inRecordBalance = _poolTokenBalance[poolId][tokenIn];
-        Record storage outRecord = poolRecords[poolId][tokenOut];
-        uint256 outRecordBalance = _poolTokenBalance[poolId][tokenOut];
-        ICurve inv = ICurve(pools[poolId].invariant);
-
-        require(inRecord.bound, "ERR_NOT_BOUND");
-        require(outRecord.bound, "ERR_NOT_BOUND");
-
-        return
-            inv.spotPrice(
-                inRecord.index,
-                outRecord.index,
-                inRecordBalance,
-                outRecordBalance,
-                0
-            );
     }
 
     function batchSwap(
@@ -530,52 +482,6 @@ contract Vault is IVault, PoolRegistry {
             _poolTokenBalance[poolId][t] = bsub(bal, tokenAmountOut);
             _allocatedBalances[t] = bsub(_allocatedBalances[t], tokenAmountOut);
         }
-    }
-
-    function getTokenAmountsIn(
-        bytes32 poolId,
-        uint256 ratio,
-        uint256[] calldata maxAmountsIn
-    ) external override view returns (uint256[] memory) {
-        Pool memory pool = pools[poolId];
-        require(
-            pool.tokens.length == maxAmountsIn.length,
-            "MAX AMOUNTS IN DOES NOT MATCH TOKENS LENGTH"
-        );
-        uint256[] memory tokenAmountsIn = new uint256[](pool.tokens.length);
-        for (uint256 i = 0; i < pool.tokens.length; ++i) {
-            address t = pool.tokens[i];
-            uint256 bal = _poolTokenBalance[poolId][t];
-            uint256 tokenAmountIn = bmul(ratio, bal);
-            require(tokenAmountIn <= maxAmountsIn[i], "ERR_LIMIT_IN");
-            tokenAmountsIn[i] = tokenAmountIn;
-        }
-        return tokenAmountsIn;
-    }
-
-    function getTokenAmountsOut(
-        bytes32 poolId,
-        uint256 ratio,
-        uint256[] calldata minAmountsOut
-    ) external override view returns (uint256[] memory) {
-        Pool memory pool = pools[poolId];
-        require(
-            pool.tokens.length == minAmountsOut.length,
-            "MAX AMOUNTS IN DOES NOT MATCH TOKENS LENGTH"
-        );
-        uint256[] memory tokenAmountsOut = new uint256[](pool.tokens.length);
-
-        for (uint256 i = 0; i < pool.tokens.length; ++i) {
-            address t = pool.tokens[i];
-            uint256 bal = _poolTokenBalance[poolId][t];
-
-            uint256 tokenAmountOut = bmul(ratio, bal);
-            require(tokenAmountOut != 0, "ERR_MATH_APPROX");
-            require(tokenAmountOut <= minAmountsOut[i], "ERR_LIMIT_OUT");
-
-            tokenAmountsOut[i] = tokenAmountOut;
-        }
-        return tokenAmountsOut;
     }
 
     // 'Underlying' token-manipulation functions make external calls but are NOT locked

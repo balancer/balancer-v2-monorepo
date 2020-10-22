@@ -21,8 +21,7 @@ import "./BasePoolTokenizer.sol";
 contract OwnablePoolTokenizer is BasePoolTokenizer {
     address public owner;
 
-    constructor(address _vault, bytes32 _poolID) {
-        vault = IPoolGovernance(_vault);
+    constructor(IVault _vault, bytes32 _poolID) BasePoolTokenizer(_vault) {
         poolID = _poolID;
         owner = msg.sender;
     }
@@ -55,9 +54,5 @@ contract OwnablePoolTokenizer is BasePoolTokenizer {
 
     function setController(address manager) public onlyOwner {
         vault.setController(poolID, manager);
-    }
-
-    function setPublicSwap() public onlyOwner {
-        vault.setPublicSwap(poolID);
     }
 }

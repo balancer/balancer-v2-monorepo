@@ -14,14 +14,18 @@
 
 pragma solidity ^0.7.1;
 
-import "./IPoolGovernance.sol";
+import "./IVault.sol";
 import "./BToken.sol";
 
 // Initial implementation implements a simple, pass-through sole proprietorship model
 // for pool governance
 contract BasePoolTokenizer is BToken {
-    IPoolGovernance public vault;
+    IVault public immutable vault;
     bytes32 public poolID;
+
+    constructor(IVault _vault) {
+        vault = _vault;
+    }
 
     modifier _lock_() {
         require(!_mutex, "ERR_REENTRY");
@@ -44,19 +48,17 @@ contract BasePoolTokenizer is BToken {
         require(ratio != 0, "ERR_MATH_APPROX");
 
         address[] memory tokens = vault.getPoolTokens(poolID);
-        uint256[] memory amountsIn = vault.getTokenAmountsIn(
-            poolID,
-            ratio,
-            maxAmountsIn
-        );
+        uint256[] memory balances = vault.getPoolTokenBalances(poolID, tokens);
 
+        uint256[] memory amountsIn = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            address t = tokens[i];
-            uint256 amountIn = amountsIn[i];
-            bool xfer = IERC20(t).transferFrom(
+            amountsIn[i] = bmul(balances[i], ratio);
+            require(amountsIn[i] <= maxAmountsIn[i], "ERR_LIMIT_IN");
+
+            bool xfer = IERC20(tokens[i]).transferFrom(
                 msg.sender,
                 address(vault),
-                amountIn
+                amountsIn[i]
             );
             require(xfer, "transfer must succeed");
         }
@@ -75,14 +77,17 @@ contract BasePoolTokenizer is BToken {
         uint256 ratio = bdiv(poolAmountIn, poolTotal);
         require(ratio != 0, "ERR_MATH_APPROX");
 
+        address[] memory tokens = vault.getPoolTokens(poolID);
+        uint256[] memory balances = vault.getPoolTokenBalances(poolID, tokens);
+
+        uint256[] memory amountsOut = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            amountsOut[i] = bmul(balances[i], ratio);
+            require(amountsOut[i] >= minAmountsOut[i], "NOT EXITING ENOUGH");
+        }
+
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
-
-        uint256[] memory amountsOut = vault.getTokenAmountsOut(
-            poolID,
-            ratio,
-            minAmountsOut
-        );
 
         vault.removeLiquidity(poolID, msg.sender, amountsOut);
     }

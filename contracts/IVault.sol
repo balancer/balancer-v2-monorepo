@@ -31,18 +31,10 @@ interface IVault {
 
     function getNumPoolTokens(bytes32 poolId) external view returns (uint256); // do we need this?
 
-    //function getTokens(bytes32 poolId) external view returns (address[] memory tokens);
-    function getTokenAmountsIn(
-        bytes32 poolId,
-        uint256 ratio,
-        uint256[] calldata maxAmountsIn
-    ) external view returns (uint256[] memory);
-
-    function getTokenAmountsOut(
-        bytes32 poolId,
-        uint256 ratio,
-        uint256[] calldata minAmountsOut
-    ) external view returns (uint256[] memory);
+    function getTokenIndex(bytes32 poolId, address token)
+        external
+        view
+        returns (uint8);
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
@@ -58,19 +50,6 @@ interface IVault {
         external
         view
         returns (bool);
-
-    // TBD if we expose these as-is, or provide lower-level primitives (possibly accounting for multiple curves)
-    function getSpotPrice(
-        bytes32 poolId,
-        address tokenIn,
-        address tokenOut
-    ) external view returns (uint256 spotPrice);
-
-    function getSpotPriceSansFee(
-        bytes32 poolId,
-        address tokenIn,
-        address tokenOut
-    ) external view returns (uint256 spotPrice);
 
     // Pool configuration - only callable by the controller
 
@@ -165,9 +144,4 @@ interface IVault {
         int256 delta;
         uint256 tokenDiffIndex;
     }
-
-    function getTokenIndex(bytes32 poolId, address token)
-        external
-        view
-        returns (uint8);
 }

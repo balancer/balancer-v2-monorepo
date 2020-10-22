@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "./IPoolGovernance.sol";
+import "./IVault.sol";
 import "./BasePoolTokenizer.sol";
 
 // Initial implementation implements a simple, pass-through sole proprietorship model
@@ -23,10 +23,9 @@ contract ImmutablePoolTokenizer is BasePoolTokenizer {
     address public creator;
 
     constructor(
-        address _vault,
+        IVault _vault,
         bytes32 _poolID // swap fee etc
-    ) {
-        vault = IPoolGovernance(_vault);
+    ) BasePoolTokenizer(_vault) {
         poolID = _poolID;
         creator = msg.sender;
     }
