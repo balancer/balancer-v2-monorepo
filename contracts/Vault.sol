@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import "@nomiclabs/buidler/console.sol";
+import "hardhat/console.sol";
 
 import "./PoolRegistry.sol";
 

@@ -1,4 +1,4 @@
-import { ethers } from '@nomiclabs/buidler';
+import { ethers } from 'hardhat';
 import { BigNumber } from 'ethers';
 
 export function toFixedPoint(value: number): BigNumber {

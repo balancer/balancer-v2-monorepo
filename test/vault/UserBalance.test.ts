@@ -1,4 +1,4 @@
-import { ethers } from '@nomiclabs/buidler';
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract, Signer } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';

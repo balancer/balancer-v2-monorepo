@@ -1,5 +1,5 @@
 import { Contract, ContractFactory } from 'ethers';
-import { ethers } from '@nomiclabs/buidler';
+import { ethers } from 'hardhat';
 import { Dictionary } from 'lodash';
 
 const factories: Dictionary<ContractFactory> = {};

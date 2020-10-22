@@ -1,5 +1,5 @@
 import { Contract, Signer } from 'ethers';
-import { ethers } from '@nomiclabs/buidler';
+import { ethers } from 'hardhat';
 import { TokenList } from '../../test/helpers/tokens';
 
 export async function setupPool(

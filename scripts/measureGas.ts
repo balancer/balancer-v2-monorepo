@@ -1,5 +1,5 @@
 import { deploy } from './helpers/deploy';
-import { ethers } from '@nomiclabs/buidler';
+import { ethers } from 'hardhat';
 import { setupPool } from './helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../test/helpers/tokens';
 import { toFixedPoint } from './helpers/fixedPoint';

@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "@nomiclabs/buidler/console.sol";
+import "hardhat/console.sol";
 
 import "../strategies/lib/ConstantWeightedProduct.sol";
 import "../strategies/ConstantWeightedProdStrategy.sol";

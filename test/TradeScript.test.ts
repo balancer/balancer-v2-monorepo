@@ -1,4 +1,4 @@
-import { ethers } from '@nomiclabs/buidler';
+import { ethers } from 'hardhat';
 import { Contract, Signer } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from './helpers/tokens';
 import { deploy } from '../scripts/helpers/deploy';
