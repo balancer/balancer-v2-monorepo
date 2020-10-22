@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "@nomiclabs/buidler/console.sol";
 
@@ -25,8 +26,119 @@ import "./ISwapCaller.sol";
 
 import "./LogExpMath.sol";
 
-contract Vault is PoolRegistry {
-    mapping(address => uint256) private _tokenBalances;
+contract Vault is IVault, PoolRegistry {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
+    // The vault's accounted-for balance for each token. These include:
+    //  * tokens in pools
+    //  * tokens stored as user balance
+    mapping(address => uint256) private _vaultTokenBalance; // token -> vault balance
+
+    mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
+    // operators are allowed to use a user's tokens in a swap
+    mapping(address => EnumerableSet.AddressSet) private _userOperators;
+
+    event Deposited(
+        address indexed depositor,
+        address indexed user,
+        address indexed token,
+        uint256 amount
+    );
+
+    event Withdrawn(
+        address indexed user,
+        address indexed recipient,
+        address indexed token,
+        uint256 amount
+    );
+
+    event AuthorizedOperator(address indexed user, address indexed operator);
+    event RevokedOperator(address indexed user, address indexed operator);
+
+    function getUserTokenBalance(address user, address token)
+        public
+        view
+        returns (uint256)
+    {
+        return _userTokenBalance[user][token];
+    }
+
+    function deposit(
+        address token,
+        uint256 amount,
+        address user
+    ) external {
+        // TODO: check overflow
+        _userTokenBalance[user][token] += amount;
+
+        // TODO: use ISwapCaller callback?
+        _pullUnderlying(token, msg.sender, amount);
+
+        emit Deposited(msg.sender, user, token, amount);
+    }
+
+    function withdraw(
+        address token,
+        uint256 amount,
+        address recipient
+    ) external {
+        require(
+            _userTokenBalance[msg.sender][token] >= amount,
+            "Vault: withdraw amount exceeds balance"
+        );
+
+        _userTokenBalance[msg.sender][token] -= amount;
+
+        _pushUnderlying(token, recipient, amount);
+
+        emit Withdrawn(msg.sender, recipient, token, amount);
+    }
+
+    function authorizeOperator(address operator) external {
+        if (_userOperators[msg.sender].add(operator)) {
+            emit AuthorizedOperator(msg.sender, operator);
+        }
+    }
+
+    function revokeOperator(address operator) external {
+        if (_userOperators[msg.sender].remove(operator)) {
+            emit RevokedOperator(msg.sender, operator);
+        }
+    }
+
+    function isOperatorFor(address user, address operator)
+        public
+        view
+        returns (bool)
+    {
+        return (user == operator) || _userOperators[user].contains(operator);
+    }
+
+    function getUserTotalOperators(address user)
+        external
+        view
+        returns (uint256)
+    {
+        return _userOperators[user].length();
+    }
+
+    function getUserOperators(
+        address user,
+        uint256 start,
+        uint256 end
+    ) external view returns (address[] memory) {
+        // Ideally we'd use a native implemenation: see
+        // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
+        address[] memory operators = new address[](
+            _userOperators[user].length()
+        );
+
+        for (uint256 i = start; i < end; ++i) {
+            operators[i] = _userOperators[user].at(i);
+        }
+
+        return operators;
+    }
 
     // Bind does not lock because it jumps to `rebind`, which does
     function bind(
@@ -85,8 +197,8 @@ contract Vault is PoolRegistry {
         poolRecords[poolId][token].denorm = denorm;
 
         // Adjust the balance record and actual token balance
-        uint256 oldBalance = _balances[poolId][token];
-        _balances[poolId][token] = balance;
+        uint256 oldBalance = _poolTokenBalance[poolId][token];
+        _poolTokenBalance[poolId][token] = balance;
 
         if (balance > oldBalance) {
             _pullUnderlying(token, msg.sender, bsub(balance, oldBalance));
@@ -105,7 +217,7 @@ contract Vault is PoolRegistry {
         require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(poolRecords[poolId][token].bound, "ERR_NOT_BOUND");
 
-        uint256 tokenBalance = _balances[poolId][token];
+        uint256 tokenBalance = _poolTokenBalance[poolId][token];
 
         pools[poolId].totalWeight = bsub(
             pools[poolId].totalWeight,
@@ -135,9 +247,9 @@ contract Vault is PoolRegistry {
         address tokenOut
     ) external override view _viewlock_ returns (uint256 spotPrice) {
         Record storage inRecord = poolRecords[poolId][tokenIn];
-        uint256 inRecordBalance = _balances[poolId][tokenIn];
+        uint256 inRecordBalance = _poolTokenBalance[poolId][tokenIn];
         Record storage outRecord = poolRecords[poolId][tokenOut];
-        uint256 outRecordBalance = _balances[poolId][tokenOut];
+        uint256 outRecordBalance = _poolTokenBalance[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
@@ -158,9 +270,9 @@ contract Vault is PoolRegistry {
         address tokenOut
     ) external override view _viewlock_ returns (uint256 spotPrice) {
         Record storage inRecord = poolRecords[poolId][tokenIn];
-        uint256 inRecordBalance = _balances[poolId][tokenIn];
+        uint256 inRecordBalance = _poolTokenBalance[poolId][tokenIn];
         Record storage outRecord = poolRecords[poolId][tokenOut];
-        uint256 outRecordBalance = _balances[poolId][tokenOut];
+        uint256 outRecordBalance = _poolTokenBalance[poolId][tokenOut];
 
         require(inRecord.bound, "ERR_NOT_BOUND");
         require(outRecord.bound, "ERR_NOT_BOUND");
@@ -178,9 +290,9 @@ contract Vault is PoolRegistry {
     function batchSwap(
         Diff[] memory diffs,
         Swap[] memory swaps,
-        address recipient,
-        bytes memory callbackData
-    ) public override {
+        FundsIn calldata fundsIn,
+        FundsOut calldata fundsOut
+    ) external override {
         //TODO: avoid reentrancy
 
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
@@ -210,7 +322,7 @@ contract Vault is PoolRegistry {
             address tokenA = diffs[swap.tokenA.tokenDiffIndex].token;
 
             Record memory recordA = poolRecords[swap.poolId][tokenA];
-            uint256 poolTokenABalance = _balances[swap.poolId][tokenA];
+            uint256 poolTokenABalance = _poolTokenBalance[swap.poolId][tokenA];
 
             // Validate Pool has Token A and diff index is correct
             require(poolTokenABalance > 0, "Token A not in pool");
@@ -222,7 +334,7 @@ contract Vault is PoolRegistry {
             address tokenB = diffs[swap.tokenB.tokenDiffIndex].token;
 
             Record memory recordB = poolRecords[swap.poolId][tokenB];
-            uint256 poolTokenBBalance = _balances[swap.poolId][tokenB];
+            uint256 poolTokenBBalance = _poolTokenBalance[swap.poolId][tokenB];
 
             // Validate Pool has Token B and diff index is correct
             require(poolTokenBBalance > 0, "Token B not in pool");
@@ -274,9 +386,9 @@ contract Vault is PoolRegistry {
                 "ERR_INVALID_SWAP"
             );
 
-            // 3: Update pool balances
-            _balances[swap.poolId][tokenA] = poolTokenABalanceNew;
-            _balances[swap.poolId][tokenB] = poolTokenBBalanceNew;
+            // 3: update pool balances
+            _poolTokenBalance[swap.poolId][tokenA] = poolTokenABalanceNew;
+            _poolTokenBalance[swap.poolId][tokenB] = poolTokenBBalanceNew;
         }
 
         // Step 4: measure current balance for tokens that need to be received
@@ -292,7 +404,7 @@ contract Vault is PoolRegistry {
         }
 
         // Call into sender to trigger token receipt
-        ISwapCaller(msg.sender).sendTokens(callbackData);
+        ISwapCaller(msg.sender).sendTokens(fundsIn.callbackData);
 
         // Step 5: check tokens have been received
         for (uint256 i = 0; i < diffs.length; ++i) {
@@ -303,14 +415,26 @@ contract Vault is PoolRegistry {
                     address(this)
                 );
 
-                // TODO: check strict equality? Might not be feasible due to approximations
-                require(
-                    newBalance >= uint256(diff.vaultDelta),
-                    "ERR_INVALID_DEPOSIT"
-                );
+                if (uint256(diff.vaultDelta) > newBalance) {
+                    uint256 missing = uint256(diff.vaultDelta) - newBalance;
+
+                    require(
+                        isOperatorFor(fundsIn.withdrawFrom, msg.sender),
+                        "Caller is not operator"
+                    );
+                    require(
+                        _userTokenBalance[fundsIn.withdrawFrom][diff.token] >=
+                            missing,
+                        "ERR_INVALID_DEPOSIT"
+                    );
+
+                    _userTokenBalance[fundsIn.withdrawFrom][diff
+                        .token] -= missing;
+                }
 
                 // Update token balance
-                _tokenBalances[diff.token] = newBalance;
+                // TODO: only update based on how many tokens were received
+                _vaultTokenBalance[diff.token] = newBalance;
             }
         }
 
@@ -322,7 +446,16 @@ contract Vault is PoolRegistry {
                 // Make delta positive
                 uint256 amount = uint256(-diff.vaultDelta);
 
-                _pushUnderlying(diff.token, recipient, amount);
+                if (fundsOut.transferToRecipient) {
+                    // Actually transfer the tokens to the recipient
+                    _pushUnderlying(diff.token, fundsOut.recipient, amount);
+                } else {
+                    // Allocate tokens to the recipient as user balance - the vault's balance doesn't change
+                    _userTokenBalance[fundsOut.recipient][diff.token] = badd(
+                        _userTokenBalance[fundsOut.recipient][diff.token],
+                        amount
+                    );
+                }
             }
         }
     }
@@ -407,7 +540,7 @@ contract Vault is PoolRegistry {
                 "INSUFFICIENT UNALLOCATED BALANCE"
             );
 
-            _balances[poolId][t] = tokenAmountIn;
+            _poolTokenBalance[poolId][t] = tokenAmountIn;
             _allocatedBalances[t] = badd(_allocatedBalances[t], tokenAmountIn);
         }
     }
@@ -421,7 +554,7 @@ contract Vault is PoolRegistry {
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _balances[poolId][t];
+            uint256 bal = _poolTokenBalance[poolId][t];
             uint256 tokenAmountIn = amountsIn[i];
             require(tokenAmountIn != 0, "ERR_MATH_APPROX");
             require(
@@ -432,7 +565,7 @@ contract Vault is PoolRegistry {
                 "INSUFFICIENT UNALLOCATED BALANCE"
             );
 
-            _balances[poolId][t] = badd(bal, tokenAmountIn);
+            _poolTokenBalance[poolId][t] = badd(bal, tokenAmountIn);
             _allocatedBalances[t] = badd(_allocatedBalances[t], tokenAmountIn);
         }
     }
@@ -446,7 +579,7 @@ contract Vault is PoolRegistry {
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _balances[poolId][t];
+            uint256 bal = _poolTokenBalance[poolId][t];
             uint256 tokenAmountOut = amountsOut[i];
             require(tokenAmountOut != 0, "ERR_MATH_APPROX");
             require(
@@ -457,7 +590,7 @@ contract Vault is PoolRegistry {
             bool xfer = IERC20(t).transfer(recipient, tokenAmountOut);
             require(xfer, "ERR_ERC20_FALSE");
 
-            _balances[poolId][t] = bsub(bal, tokenAmountOut);
+            _poolTokenBalance[poolId][t] = bsub(bal, tokenAmountOut);
             _allocatedBalances[t] = bsub(_allocatedBalances[t], tokenAmountOut);
         }
     }
@@ -475,7 +608,7 @@ contract Vault is PoolRegistry {
         uint256[] memory tokenAmountsIn = new uint256[](pool.tokens.length);
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _balances[poolId][t];
+            uint256 bal = _poolTokenBalance[poolId][t];
             uint256 tokenAmountIn = bmul(ratio, bal);
             require(tokenAmountIn <= maxAmountsIn[i], "ERR_LIMIT_IN");
             tokenAmountsIn[i] = tokenAmountIn;
@@ -497,7 +630,7 @@ contract Vault is PoolRegistry {
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _balances[poolId][t];
+            uint256 bal = _poolTokenBalance[poolId][t];
 
             uint256 tokenAmountOut = bmul(ratio, bal);
             require(tokenAmountOut != 0, "ERR_MATH_APPROX");
@@ -521,7 +654,7 @@ contract Vault is PoolRegistry {
 
         // TODO: What assumptions do we make when pulling? Should we check token.balanceOf(this)
         // increased by toPull?
-        _tokenBalances[erc20] += amount;
+        _vaultTokenBalance[erc20] += amount;
     }
 
     function _pushUnderlying(
@@ -531,7 +664,7 @@ contract Vault is PoolRegistry {
     ) internal {
         // TODO: What assumptions do we make when pushing? Should we check token.balanceOf(this)
         // decreased by toPull?
-        _tokenBalances[erc20] -= amount;
+        _vaultTokenBalance[erc20] -= amount;
 
         bool xfer = IERC20(erc20).transfer(to, amount);
         require(xfer, "ERR_ERC20_FALSE");

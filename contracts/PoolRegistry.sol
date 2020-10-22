@@ -31,7 +31,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
 
     struct Pool {
         address controller; // has CONTROL role
-        bool paused;
         // `setSwapFee` requires CONTROL
         uint256 swapFee;
         address[] tokens; // For simpler pool configuration querying, not used internally
@@ -44,7 +43,8 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
     mapping(bytes32 => Pool) public pools;
 
     mapping(bytes32 => bool) internal _poolExists;
-    mapping(bytes32 => mapping(address => uint256)) internal _balances; // All tokens in a pool have non-zero balances
+    // All tokens in a pool have non-zero balances
+    mapping(bytes32 => mapping(address => uint256)) internal _poolTokenBalance; // poolid => token => pool balance
     mapping(address => uint256) internal _allocatedBalances;
 
     modifier ensurePoolExists(bytes32 poolId) {
@@ -69,7 +69,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         pools[poolId] = Pool({
             controller: msg.sender,
             swapFee: DEFAULT_SWAP_FEE,
-            paused: true,
             tokens: new address[](0),
             totalWeight: 0
         });
@@ -77,10 +76,6 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         emit PoolCreated(poolId);
 
         return poolId;
-    }
-
-    function isPaused(bytes32 poolId) public override view returns (bool) {
-        return pools[poolId].paused;
     }
 
     function isTokenBound(bytes32 poolId, address token)
@@ -120,7 +115,7 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         uint256[] memory balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _balances[poolId][tokens[i]];
+            balances[i] = _poolTokenBalance[poolId][tokens[i]];
         }
 
         return balances;
@@ -201,15 +196,5 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         onlyPoolController(poolId)
     {
         pools[poolId].controller = controller;
-    }
-
-    function setPaused(bytes32 poolId, bool paused)
-        external
-        override
-        _logs_
-        _lock_
-        onlyPoolController(poolId)
-    {
-        pools[poolId].paused = paused;
     }
 }

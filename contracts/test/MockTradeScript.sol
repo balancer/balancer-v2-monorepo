@@ -27,23 +27,46 @@ contract MockTradeScript is ISwapCaller {
         uint256[] calldata amounts,
         IVault.Diff[] calldata diffs,
         IVault.Swap[] calldata swaps,
-        address recipient
+        address supplier,
+        address recipient,
+        bool withdrawTokens
     ) external {
         require(
             tokens.length == amounts.length,
             "MockTradeScript: tokens & amounts length mismatch"
         );
 
-        bytes memory callbackData = abi.encode(vault, tokens, amounts);
-        vault.batchSwap(diffs, swaps, recipient, callbackData);
+        bytes memory callbackData = abi.encode(
+            vault,
+            supplier,
+            tokens,
+            amounts
+        );
+
+        vault.batchSwap(
+            diffs,
+            swaps,
+            IVault.FundsIn({
+                withdrawFrom: supplier,
+                callbackData: callbackData
+            }),
+            IVault.FundsOut({
+                recipient: recipient,
+                transferToRecipient: withdrawTokens
+            })
+        );
     }
 
     function sendTokens(bytes calldata callbackData) external override {
-        (address vault, address[] memory tokens, uint256[] memory amounts) = abi
-            .decode(callbackData, (address, address[], uint256[]));
+        (
+            address vault,
+            address sender,
+            address[] memory tokens,
+            uint256[] memory amounts
+        ) = abi.decode(callbackData, (address, address, address[], uint256[]));
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20(tokens[i]).transfer(vault, amounts[i]);
+            IERC20(tokens[i]).transferFrom(sender, vault, amounts[i]);
         }
     }
 }

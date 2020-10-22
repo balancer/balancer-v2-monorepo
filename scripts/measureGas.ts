@@ -30,12 +30,22 @@ async function main() {
     // controller tokens are used to initialize pools
     await mintTokens(tokens, symbol, controller, 100e18);
     // trader tokens are used to trade and not have non-zero balances
-    await mintTokens(tokens, symbol, trader, 100e18);
+    await mintTokens(tokens, symbol, trader, 200e18);
 
+    // deposit user balance for trader to make it non-zero
+    await tokens[symbol].connect(trader).approve(vault.address, (100e18).toString());
+    await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), await trader.getAddress());
+
+    // Approve engine to use tokens
     await tokens[symbol].connect(trader).approve(engine.address, (100e18).toString());
+
+    // Deposit tokens for engine to use
+    await tokens[symbol].connect(trader).approve(vault.address, (100e18).toString());
+    await vault.connect(trader).deposit(tokens[symbol].address, (100e18).toString(), engine.address);
   }
 
-  await batchedSwap();
+  await batchedSwap(false);
+  await batchedSwap(true);
 }
 
 async function vaultStats() {
@@ -50,8 +60,10 @@ async function vaultStats() {
   console.log(`Deployed bytecode size is ${bytecodeSizeKb} kB`);
 }
 
-async function batchedSwap() {
-  console.log('# Batched swap: multiple batched pools for the same pair');
+async function batchedSwap(withdrawTokens: boolean) {
+  console.log(
+    `# Batched swap: multiple batched pools for the same pair ${withdrawTokens ? '' : 'not withdrawing tokens'}`
+  );
 
   // 50-50 DAI-MKR pools
 
@@ -85,7 +97,8 @@ async function batchedSwap() {
           toFixedPoint(1),
           diffs,
           swaps,
-          amounts
+          amounts,
+          withdrawTokens
         )
     ).wait();
 
