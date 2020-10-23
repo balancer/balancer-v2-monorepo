@@ -1,14 +1,15 @@
 import { ethers } from 'hardhat';
-import { Contract, Signer } from 'ethers';
+import { Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from './helpers/tokens';
 import { deploy } from '../scripts/helpers/deploy';
 import { getDiffsSwapsAndAmounts } from '../scripts/helpers/trading';
 import { expectBalanceChange } from './helpers/tokenBalance';
 import { setupPool } from '../scripts/helpers/pools';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 describe('TradeScript', () => {
-  let controller: Signer;
-  let trader: Signer;
+  let controller: SignerWithAddress;
+  let trader: SignerWithAddress;
 
   let vault: Contract;
   let curve: Contract;
@@ -61,7 +62,7 @@ describe('TradeScript', () => {
       }
 
       // Mint tokens for trader
-      await tokens.DAI.mint(await trader.getAddress(), (1e18).toString());
+      await tokens.DAI.mint(trader.address, (1e18).toString());
     });
 
     it('double pool DAI for MKR', async () => {

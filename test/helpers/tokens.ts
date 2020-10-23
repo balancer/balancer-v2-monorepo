@@ -1,4 +1,5 @@
-import { Contract, Signer } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { Contract } from 'ethers';
 import { fromPairs, Dictionary } from 'lodash';
 import { deploy } from '../../scripts/helpers/deploy';
 
@@ -18,8 +19,8 @@ export async function deployTokens(symbols: Array<string>): Promise<TokenList> {
 export async function mintTokens(
   tokens: TokenList,
   symbol: string,
-  recipient: Signer | string,
+  recipient: SignerWithAddress | string,
   amount: number | string
 ): Promise<void> {
-  await tokens[symbol].mint(typeof recipient == 'string' ? recipient : await recipient.getAddress(), amount.toString());
+  await tokens[symbol].mint(typeof recipient == 'string' ? recipient : recipient.address, amount.toString());
 }

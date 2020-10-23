@@ -1,20 +1,21 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract, Signer } from 'ethers';
+import { Contract } from 'ethers';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { setupPool } from '../../scripts/helpers/pools';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 describe('Vault - multiple trading strategies interfaces', () => {
-  let controller: Signer;
+  let controller: SignerWithAddress;
 
   let vault: Contract;
   let mockStrategy: Contract;
   let mockScript: Contract;
 
-  let trader: Signer;
+  let trader: SignerWithAddress;
   let tokens: TokenList = {};
 
   let poolIdPair: string;
@@ -42,8 +43,8 @@ describe('Vault - multiple trading strategies interfaces', () => {
     ]);
 
     // Mint tokens for trader
-    await tokens.DAI.mint(await trader.getAddress(), (300e18).toString());
-    await tokens.TEST.mint(await trader.getAddress(), (300e18).toString());
+    await tokens.DAI.mint(trader.address, (300e18).toString());
+    await tokens.TEST.mint(trader.address, (300e18).toString());
 
     // Approve trade script by trader
     await tokens.DAI.connect(trader).approve(mockScript.address, MAX_UINT256);
@@ -89,8 +90,8 @@ describe('Vault - multiple trading strategies interfaces', () => {
           [(1e18).toString()],
           diffs,
           swaps,
-          await trader.getAddress(),
-          await trader.getAddress(),
+          trader.address,
+          trader.address,
           true
         );
       },
@@ -143,8 +144,8 @@ describe('Vault - multiple trading strategies interfaces', () => {
           [(1e18).toString()],
           diffs,
           swaps,
-          await trader.getAddress(),
-          await trader.getAddress(),
+          trader.address,
+          trader.address,
           true
         );
       },

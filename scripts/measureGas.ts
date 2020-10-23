@@ -3,15 +3,16 @@ import { ethers } from 'hardhat';
 import { setupPool } from './helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../test/helpers/tokens';
 import { toFixedPoint } from './helpers/fixedPoint';
-import { Contract, Signer } from 'ethers';
+import { Contract } from 'ethers';
 import { getDiffsSwapsAndAmounts } from './helpers/trading';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 let vault: Contract;
 let script: Contract;
 let tokens: TokenList;
 
-let controller: Signer;
-let trader: Signer;
+let controller: SignerWithAddress;
+let trader: SignerWithAddress;
 
 const BATCHED_SWAP_TOTAL_POOLS = 8;
 
@@ -34,7 +35,7 @@ async function main() {
 
     // deposit user balance for trader to make it non-zero
     await tokens[symbol].connect(trader).approve(vault.address, (100e18).toString());
-    await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), await trader.getAddress());
+    await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), trader.address);
 
     // Approve script to use tokens
     await tokens[symbol].connect(trader).approve(script.address, (100e18).toString());

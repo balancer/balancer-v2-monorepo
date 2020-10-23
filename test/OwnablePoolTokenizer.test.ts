@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { ContractFactory, Contract, Signer } from 'ethers';
+import { ContractFactory, Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 const { BigNumber } = ethers;
 const TEST_TOKEN_DECIMALS = 3;
@@ -12,9 +13,9 @@ const fromTokenUnits = (num: string) => {
 };
 
 describe('OwnablePoolTokenizer', function () {
-  let admin: Signer;
-  let user1: Signer;
-  let user2: Signer;
+  let admin: SignerWithAddress;
+  let user1: SignerWithAddress;
+  let user2: SignerWithAddress;
   let adminAddress: string, user1Address: string, user2Address: string;
   let poolId: string;
   let vault: Contract;
@@ -24,9 +25,9 @@ describe('OwnablePoolTokenizer', function () {
   beforeEach(async function () {
     [, admin, user1, user2] = await ethers.getSigners();
 
-    adminAddress = await admin.getAddress();
-    user1Address = await user1.getAddress();
-    user2Address = await user2.getAddress();
+    adminAddress = admin.address;
+    user1Address = user1.address;
+    user2Address = user2.address;
 
     const CurveFactory: ContractFactory = await ethers.getContractFactory('ConstantWeightedProdStrategy');
     const VaultFactory: ContractFactory = await ethers.getContractFactory('Vault');
@@ -37,7 +38,7 @@ describe('OwnablePoolTokenizer', function () {
 
     const weights = [(1e18).toString(), (1e18).toString()];
     // TODO: replace with token addresses
-    curve = await CurveFactory.deploy([await admin.getAddress(), await admin.getAddress()], weights, 2, 0);
+    curve = await CurveFactory.deploy([admin.address, admin.address], weights, 2, 0);
     vault = await VaultFactory.deploy();
     await vault.deployed();
 
@@ -51,7 +52,7 @@ describe('OwnablePoolTokenizer', function () {
   });
 
   it('Should give your Tokenizer sole proprietorship', async function () {
-    expect(await vault.getController(poolId)).to.equal(await admin.getAddress());
+    expect(await vault.getController(poolId)).to.equal(admin.address);
 
     await vault.setController(poolId, tokenizer.address);
     expect(await vault.getController(poolId)).to.equal(tokenizer.address);

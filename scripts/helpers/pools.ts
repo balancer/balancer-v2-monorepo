@@ -1,4 +1,5 @@
-import { Contract, Signer } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { Contract } from 'ethers';
 import { ethers } from 'hardhat';
 import { TokenList } from '../../test/helpers/tokens';
 
@@ -7,7 +8,7 @@ export async function setupPool(
   strategy: Contract,
   strategyType: number,
   tokens: TokenList,
-  controller: Signer,
+  controller: SignerWithAddress,
   makeup: Array<[string, number]>
 ): Promise<string> {
   vault = vault.connect(controller);
@@ -18,7 +19,7 @@ export async function setupPool(
   for (const entry of makeup) {
     const token = tokens[entry[0]];
 
-    await token.mint(await controller.getAddress(), (100e18).toString());
+    await token.mint(controller.address, (100e18).toString());
     await token.connect(controller).approve(vault.address, (100e18).toString());
     await vault.bind(poolId, token.address, (100e18).toString());
   }

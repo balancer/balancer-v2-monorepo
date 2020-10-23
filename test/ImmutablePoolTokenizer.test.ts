@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { ContractFactory, Contract, Signer } from 'ethers';
+import { ContractFactory, Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 const { BigNumber } = ethers;
 const TEST_TOKEN_DECIMALS = 3;
@@ -12,9 +13,9 @@ const fromTokenUnits = (num: string) => {
 };
 
 describe('ImmutablePoolTokenizer', function () {
-  let deployer: Signer;
-  let user1: Signer;
-  let user2: Signer;
+  let deployer: SignerWithAddress;
+  let user1: SignerWithAddress;
+  let user2: SignerWithAddress;
   let deployerAddress: string, user1Address: string, user2Address: string;
   let poolID: string;
   let vault: Contract;
@@ -24,9 +25,9 @@ describe('ImmutablePoolTokenizer', function () {
   beforeEach(async function () {
     [deployer, user1, user2] = await ethers.getSigners();
 
-    deployerAddress = await deployer.getAddress();
-    user1Address = await user1.getAddress();
-    user2Address = await user2.getAddress();
+    deployerAddress = deployer.address;
+    user1Address = user1.address;
+    user2Address = user2.address;
 
     const CurveFactory: ContractFactory = await ethers.getContractFactory('ConstantWeightedProdStrategy');
     const VaultFactory: ContractFactory = await ethers.getContractFactory('Vault');
@@ -37,7 +38,7 @@ describe('ImmutablePoolTokenizer', function () {
 
     const weights = [(1e18).toString(), (1e18).toString()];
     // TODO: replace with token addresses
-    curve = await CurveFactory.deploy([await deployer.getAddress(), await deployer.getAddress()], weights, 2, 0);
+    curve = await CurveFactory.deploy([deployer.address, deployer.address], weights, 2, 0);
 
     vault = await VaultFactory.deploy();
     await vault.deployed();

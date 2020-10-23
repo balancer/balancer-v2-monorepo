@@ -1,7 +1,8 @@
-import { Signer, Contract, BigNumber } from 'ethers';
+import { Contract, BigNumber } from 'ethers';
 import { TokenList } from './tokens';
 import { Dictionary } from 'lodash';
 import { expect } from 'chai';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 // Ported from @openzeppelin/test-helpers to use with ERC20 tokens and Ethers
 
@@ -33,10 +34,10 @@ class ERC20BalanceTracker {
   }
 }
 
-type Account = string | Signer;
+type Account = string | SignerWithAddress;
 
 async function accountToAddress(account: Account): Promise<string> {
-  return typeof account == 'string' ? account : await account.getAddress();
+  return typeof account == 'string' ? account : account.address;
 }
 
 // Creates an initializes a balance tracker. Constructors cannot be async (and therefore get cannot
