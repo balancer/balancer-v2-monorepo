@@ -162,27 +162,27 @@ contract ConstantWeightedProdStrategy is
 
     function validatePair(
         bytes32,
-        address tokenAddressIn,
-        address tokenAddressOut,
-        uint256 tokenBalanceIn,
-        uint256 tokenBalanceOut,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
+        address tokenIn,
+        address tokenOut,
+        uint256 balanceIn,
+        uint256 balanceOut,
+        uint256 amountIn,
+        uint256 amountOut
     ) external override view returns (bool, uint256) {
-        //Substract fee
-        uint256 feeAmount = mul(tokenAmountIn, _swapFee);
-        uint256 adjustedIn = sub(tokenAmountIn, feeAmount);
+        // Substract fee
+        uint256 feeAmount = mul(amountIn, _swapFee);
+        uint256 adjustedIn = sub(amountIn, feeAmount);
 
-        //Calculate out amount given in
-        uint256 _tokenAmountOut = _outGivenIn(
-            tokenBalanceIn,
-            getWeight(tokenAddressIn),
-            tokenBalanceOut,
-            getWeight(tokenAddressOut),
+        // Calculate the maximum amount that can be taken out of the pool
+        uint256 maximumAmountOut = _outGivenIn(
+            balanceIn,
+            getWeight(tokenIn),
+            balanceOut,
+            getWeight(tokenOut),
             adjustedIn
         );
 
-        return (_tokenAmountOut >= tokenAmountOut, feeAmount);
+        return (amountOut <= maximumAmountOut, feeAmount);
     }
 
     function getSwapFee() external override view returns (uint256) {

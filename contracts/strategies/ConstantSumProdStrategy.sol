@@ -39,24 +39,21 @@ contract ConstantSumProdStrategy is
         bytes32,
         address,
         address,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
+        uint256 indexIn,
+        uint256 indexOut,
         uint256[] memory balances,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
+        uint256 amountIn,
+        uint256 amountOut
     ) public override view returns (bool, uint256) {
         //Calculate old invariant
         uint256 oldInvariant = calculateInvariant(_amp, balances);
 
         //Substract fee
-        uint256 feeAmount = mul(tokenAmountIn, _swapFee);
+        uint256 feeAmount = mul(amountIn, _swapFee);
 
         //Update Balances
-        balances[tokenIndexIn] = add(
-            balances[tokenIndexIn],
-            sub(tokenAmountIn, feeAmount)
-        );
-        balances[tokenIndexOut] = sub(balances[tokenIndexOut], tokenAmountOut);
+        balances[indexIn] = add(balances[indexIn], sub(amountIn, feeAmount));
+        balances[indexOut] = sub(balances[indexOut], amountOut);
 
         //Calculate new invariant
         uint256 newInvariant = calculateInvariant(_amp, balances);

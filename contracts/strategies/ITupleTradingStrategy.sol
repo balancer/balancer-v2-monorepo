@@ -17,12 +17,12 @@ pragma solidity ^0.7.1;
 interface ITupleTradingStrategy {
     function validateTuple(
         bytes32 poolId,
-        address tokenAddressIn,
-        address tokenAddressOut,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
+        address tokenIn,
+        address tokenOut,
+        uint256 indexIn,
+        uint256 indexOut,
         uint256[] calldata balances,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
+        uint256 amountIn,
+        uint256 amountOut
     ) external returns (bool, uint256);
 }

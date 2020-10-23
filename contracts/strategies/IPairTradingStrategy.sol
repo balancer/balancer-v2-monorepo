@@ -17,11 +17,11 @@ pragma solidity ^0.7.1;
 interface IPairTradingStrategy {
     function validatePair(
         bytes32 poolId,
-        address tokenAddressIn,
-        address tokenAddressOut,
-        uint256 tokenBalanceIn,
-        uint256 tokenBalanceOut,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
+        address tokenIn,
+        address tokenOut,
+        uint256 balanceIn,
+        uint256 balanceOut,
+        uint256 amountIn,
+        uint256 amountOut
     ) external returns (bool, uint256);
 }
