@@ -24,12 +24,12 @@ const generateAddressArray = (num: number): string[] => {
 };
 
 describe('ConstantWeightedProdStrategy', function () {
-  let poolID: string;
+  let poolId: string;
   let strategy: Contract;
   let ConstantWeightedProdStrategyFactory: ContractFactory;
 
   beforeEach(async function () {
-    poolID = ethers.utils.id('Test');
+    poolId = ethers.utils.id('Test');
     ConstantWeightedProdStrategyFactory = await ethers.getContractFactory('ConstantWeightedProdStrategy');
   });
 
@@ -128,13 +128,15 @@ describe('ConstantWeightedProdStrategy', function () {
       ); //fee: 5%
       await strategy.deployed();
       const result = await strategy.validatePair(
-        poolID,
-        tokens[0],
-        tokens[1],
+        {
+          poolId,
+          tokenIn: tokens[0],
+          tokenOut: tokens[1],
+          amountIn: (15e18 / (1 - 0.05)).toString(), //15e18 + fee
+          amountOut: (85.64935e18).toString(),
+        },
         (100e18).toString(),
-        (200e18).toString(),
-        (15e18 / (1 - 0.05)).toString(), //15e18 + fee
-        (85.64935e18).toString()
+        (200e18).toString()
       );
       expect(result[0]).to.be.true;
     });
@@ -149,13 +151,15 @@ describe('ConstantWeightedProdStrategy', function () {
       ); //fee: 5%
       await strategy.deployed();
       const result = await strategy.validatePair(
-        poolID,
-        tokens[0],
-        tokens[1],
+        {
+          poolId,
+          tokenIn: tokens[0],
+          tokenOut: tokens[1],
+          amountIn: (15e18 / (1 - 0.05)).toString(), //15e18 + fee
+          amountOut: (26.08695652e18).toString(),
+        },
         (100e18).toString(),
-        (200e18).toString(),
-        (15e18 / (1 - 0.05)).toString(), //15e18 + fee
-        (26.08695652e18).toString()
+        (200e18).toString()
       );
       expect(result[0]).to.be.true;
     });

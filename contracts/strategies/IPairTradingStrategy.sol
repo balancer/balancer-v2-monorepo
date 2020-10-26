@@ -13,15 +13,14 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
+pragma experimental ABIEncoderV2;
+
+import "./ITradingStrategy.sol";
 
 interface IPairTradingStrategy {
     function validatePair(
-        bytes32 poolId,
-        address tokenAddressIn,
-        address tokenAddressOut,
-        uint256 tokenBalanceIn,
-        uint256 tokenBalanceOut,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
+        ITradingStrategy.Swap calldata swap,
+        uint256 balanceIn,
+        uint256 balanceOut
     ) external returns (bool, uint256);
 }

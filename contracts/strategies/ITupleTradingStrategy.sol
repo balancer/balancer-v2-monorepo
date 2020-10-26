@@ -13,16 +13,15 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
+pragma experimental ABIEncoderV2;
+
+import "./ITradingStrategy.sol";
 
 interface ITupleTradingStrategy {
     function validateTuple(
-        bytes32 poolId,
-        address tokenAddressIn,
-        address tokenAddressOut,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
+        ITradingStrategy.Swap calldata swap,
         uint256[] calldata balances,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
+        uint256 indexIn,
+        uint256 indexOut
     ) external returns (bool, uint256);
 }

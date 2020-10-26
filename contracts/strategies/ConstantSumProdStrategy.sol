@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
+pragma experimental ABIEncoderV2;
 
 import "./StrategyFee.sol";
 import "./ITupleTradingStrategy.sol";
@@ -36,27 +37,23 @@ contract ConstantSumProdStrategy is
 
     //Because it is not possible to overriding external calldata, function is public and balances are in memory
     function validateTuple(
-        bytes32,
-        address,
-        address,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
+        ITradingStrategy.Swap calldata swap,
         uint256[] memory balances,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
+        uint256 indexIn,
+        uint256 indexOut
     ) public override view returns (bool, uint256) {
         //Calculate old invariant
         uint256 oldInvariant = calculateInvariant(_amp, balances);
 
         //Substract fee
-        uint256 feeAmount = mul(tokenAmountIn, _swapFee);
+        uint256 feeAmount = mul(swap.amountIn, _swapFee);
 
         //Update Balances
-        balances[tokenIndexIn] = add(
-            balances[tokenIndexIn],
-            sub(tokenAmountIn, feeAmount)
+        balances[indexIn] = add(
+            balances[indexIn],
+            sub(swap.amountIn, feeAmount)
         );
-        balances[tokenIndexOut] = sub(balances[tokenIndexOut], tokenAmountOut);
+        balances[indexOut] = sub(balances[indexOut], swap.amountOut);
 
         //Calculate new invariant
         uint256 newInvariant = calculateInvariant(_amp, balances);

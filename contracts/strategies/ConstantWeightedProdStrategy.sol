@@ -13,10 +13,15 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
+pragma experimental ABIEncoderV2;
 
 import "./StrategyFee.sol";
 import "./IPairTradingStrategy.sol";
 import "./lib/ConstantWeightedProduct.sol";
+
+// This contract relies on tons of immutable state variables to
+// perform efficient lookup, without resorting to storage reads.
+// solhint-disable max-states-count
 
 contract ConstantWeightedProdStrategy is
     IPairTradingStrategy,
@@ -161,28 +166,24 @@ contract ConstantWeightedProdStrategy is
     }
 
     function validatePair(
-        bytes32,
-        address tokenAddressIn,
-        address tokenAddressOut,
-        uint256 tokenBalanceIn,
-        uint256 tokenBalanceOut,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
+        ITradingStrategy.Swap calldata swap,
+        uint256 balanceIn,
+        uint256 balanceOut
     ) external override view returns (bool, uint256) {
-        //Substract fee
-        uint256 feeAmount = mul(tokenAmountIn, _swapFee);
-        uint256 adjustedIn = sub(tokenAmountIn, feeAmount);
+        // Substract fee
+        uint256 feeAmount = mul(swap.amountIn, _swapFee);
+        uint256 adjustedIn = sub(swap.amountIn, feeAmount);
 
-        //Calculate out amount given in
-        uint256 _tokenAmountOut = _outGivenIn(
-            tokenBalanceIn,
-            getWeight(tokenAddressIn),
-            tokenBalanceOut,
-            getWeight(tokenAddressOut),
+        // Calculate the maximum amount that can be taken out of the pool
+        uint256 maximumAmountOut = _outGivenIn(
+            balanceIn,
+            getWeight(swap.tokenIn),
+            balanceOut,
+            getWeight(swap.tokenOut),
             adjustedIn
         );
 
-        return (_tokenAmountOut >= tokenAmountOut, feeAmount);
+        return (swap.amountOut <= maximumAmountOut, feeAmount);
     }
 
     function getSwapFee() external override view returns (uint256) {

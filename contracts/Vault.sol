@@ -26,6 +26,7 @@ import "./ISwapCaller.sol";
 
 import "./LogExpMath.sol";
 
+import "./strategies/ITradingStrategy.sol";
 import "./strategies/IPairTradingStrategy.sol";
 import "./strategies/ITupleTradingStrategy.sol";
 
@@ -342,79 +343,107 @@ contract Vault is IVault, PoolRegistry {
             ? uint256(swap.tokenB.delta)
             : uint256(-swap.tokenB.delta);
 
-        if (pools[swap.poolId].strategyType == StrategyType.PAIR) {
-            uint256 poolTokenABalance = _poolTokenBalance[swap.poolId][tokenA];
-            require(poolTokenABalance > 0, "Token A not in pool");
+        StrategyType strategyType = pools[swap.poolId].strategyType;
 
-            uint256 poolTokenBBalance = _poolTokenBalance[swap.poolId][tokenB];
-            require(poolTokenBBalance > 0, "Token B not in pool");
-
-            IPairTradingStrategy strategy = IPairTradingStrategy(
-                pools[swap.poolId].strategy
-            );
-
-            (bool success, ) = strategy.validatePair(
-                swap.poolId,
-                tokenA,
-                tokenB,
-                poolTokenABalance,
-                poolTokenBBalance,
-                amountIn,
-                amountOut
-            );
-            require(success, "pair validation failed");
-
-            return (
-                // TODO: make sure the protocol fees are not accounted for!
-                // currentBalances[indexIn] + amountIn - bmul(feeAmountIn, 0), // feeAmountIn * protocolfee
-                poolTokenABalance + amountIn,
-                poolTokenBBalance - amountOut
-            );
-        } else if (pools[swap.poolId].strategyType == StrategyType.TUPLE) {
-            uint256[] memory currentBalances = new uint256[](
-                pools[swap.poolId].tokens.length
-            );
-
-            uint256 indexIn;
-            uint256 indexOut;
-
-            for (uint256 i = 0; i < pools[swap.poolId].tokens.length; i++) {
-                address token = pools[swap.poolId].tokens[i];
-                currentBalances[i] = _poolTokenBalance[swap.poolId][token];
-                require(currentBalances[i] > 0, "Token A not in pool");
-
-                if (tokenA == token) {
-                    indexIn = i;
-                } else if (tokenB == token) {
-                    indexOut = i;
-                }
-            }
-
-            ITupleTradingStrategy strategy = ITupleTradingStrategy(
-                pools[swap.poolId].strategy
-            );
-
-            (bool success, ) = strategy.validateTuple(
-                swap.poolId,
-                tokenA,
-                tokenB,
-                indexIn,
-                indexOut,
-                currentBalances,
-                amountIn,
-                amountOut
-            );
-            require(success, "invariant validation failed");
-
-            return (
-                // TODO: make sure the protocol fees are not accounted for!
-                // currentBalances[indexIn] + amountIn - bmul(feeAmountIn, 0), // feeAmountIn * protocolfee
-                currentBalances[indexIn] + amountIn,
-                currentBalances[indexOut] - amountOut
-            );
+        if (strategyType == StrategyType.PAIR) {
+            return
+                _validatePairStrategySwap(
+                    swap.poolId,
+                    tokenA,
+                    tokenB,
+                    amountIn,
+                    amountOut,
+                    IPairTradingStrategy(pools[swap.poolId].strategy)
+                );
+        } else if (strategyType == StrategyType.TUPLE) {
+            return
+                _validateTupleStrategySwap(
+                    ITradingStrategy.Swap({
+                        poolId: swap.poolId,
+                        tokenIn: tokenA,
+                        tokenOut: tokenB,
+                        amountIn: amountIn,
+                        amountOut: amountOut
+                    }),
+                    ITupleTradingStrategy(pools[swap.poolId].strategy)
+                );
         } else {
             revert("Unknown strategy type");
         }
+    }
+
+    function _validatePairStrategySwap(
+        bytes32 poolId,
+        address tokenA,
+        address tokenB,
+        uint256 amountIn,
+        uint256 amountOut,
+        IPairTradingStrategy strategy
+    ) private returns (uint256, uint256) {
+        uint256 poolTokenABalance = _poolTokenBalance[poolId][tokenA];
+        require(poolTokenABalance > 0, "Token A not in pool");
+
+        uint256 poolTokenBBalance = _poolTokenBalance[poolId][tokenB];
+        require(poolTokenBBalance > 0, "Token B not in pool");
+
+        (bool success, ) = strategy.validatePair(
+            ITradingStrategy.Swap({
+                poolId: poolId,
+                tokenIn: tokenA,
+                tokenOut: tokenB,
+                amountIn: amountIn,
+                amountOut: amountOut
+            }),
+            poolTokenABalance,
+            poolTokenBBalance
+        );
+        require(success, "pair validation failed");
+
+        return (
+            // TODO: make sure the protocol fees are not accounted for!
+            // currentBalances[indexIn] + amountIn - bmul(feeAmountIn, 0), // feeAmountIn * protocolfee
+            poolTokenABalance + amountIn,
+            poolTokenBBalance - amountOut
+        );
+    }
+
+    function _validateTupleStrategySwap(
+        ITradingStrategy.Swap memory swap,
+        ITupleTradingStrategy strategy
+    ) private returns (uint256, uint256) {
+        uint256[] memory currentBalances = new uint256[](
+            pools[swap.poolId].tokens.length
+        );
+
+        uint256 indexIn;
+        uint256 indexOut;
+
+        for (uint256 i = 0; i < pools[swap.poolId].tokens.length; i++) {
+            address token = pools[swap.poolId].tokens[i];
+            currentBalances[i] = _poolTokenBalance[swap.poolId][token];
+            require(currentBalances[i] > 0, "Token A not in pool");
+
+            if (token == swap.tokenIn) {
+                indexIn = i;
+            } else if (token == swap.tokenOut) {
+                indexOut = i;
+            }
+        }
+
+        (bool success, ) = strategy.validateTuple(
+            swap,
+            currentBalances,
+            indexIn,
+            indexOut
+        );
+        require(success, "invariant validation failed");
+
+        return (
+            // TODO: make sure the protocol fees are not accounted for!
+            // currentBalances[indexIn] + amountIn - bmul(feeAmountIn, 0), // feeAmountIn * protocolfee
+            currentBalances[indexIn] + swap.amountIn,
+            currentBalances[indexOut] - swap.amountOut
+        );
     }
 
     function addInitialLiquidity(

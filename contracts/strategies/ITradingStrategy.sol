@@ -12,27 +12,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity 0.7.1;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.1;
 
-import "../strategies/IPairTradingStrategy.sol";
-import "../strategies/ITupleTradingStrategy.sol";
-
-contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
-    function validatePair(
-        ITradingStrategy.Swap calldata,
-        uint256,
-        uint256
-    ) external override pure returns (bool, uint256) {
-        return (true, 0);
-    }
-
-    function validateTuple(
-        ITradingStrategy.Swap calldata,
-        uint256[] calldata,
-        uint256,
-        uint256
-    ) external override pure returns (bool, uint256) {
-        return (true, 0);
+interface ITradingStrategy {
+    struct Swap {
+        bytes32 poolId;
+        address tokenIn;
+        address tokenOut;
+        uint256 amountIn;
+        uint256 amountOut;
     }
 }
