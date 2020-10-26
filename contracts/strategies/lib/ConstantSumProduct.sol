@@ -14,6 +14,7 @@
 
 pragma solidity ^0.7.1;
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
@@ -22,16 +23,18 @@ import "../../math/FixedPoint.sol";
 // solhint-disable private-vars-leading-underscore
 // solhint-disable var-name-mixedcase
 
-contract ConstantSumProduct is FixedPoint {
+contract ConstantSumProduct {
+    using SafeCast for uint256;
+
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances.
     function outGivenIn(
         uint256 amp,
-        uint256[] memory balances,
+        uint128[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
-        uint256 tokenAmountIn
-    ) internal pure returns (uint256) {
+        uint128 tokenAmountIn
+    ) internal pure returns (uint128) {
         uint256 D = calculateInvariant(amp, balances);
         uint256 c = D;
         uint256 S = 0;
@@ -62,10 +65,10 @@ contract ConstantSumProduct is FixedPoint {
                 break;
             }
         }
-        return y;
+        return y.toUint128();
     }
 
-    function calculateInvariant(uint256 amp, uint256[] memory balances)
+    function calculateInvariant(uint256 amp, uint128[] memory balances)
         internal
         pure
         returns (uint256)
