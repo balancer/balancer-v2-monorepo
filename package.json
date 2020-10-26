@@ -30,7 +30,7 @@
     "eslint-plugin-prettier": "^3.1.4",
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.8",
-    "hardhat": "^2.0.0",
+    "hardhat": "^2.0.1",
     "lodash.frompairs": "^4.0.1",
     "mocha": "^8.1.1",
     "nodemon": "^2.0.4",
