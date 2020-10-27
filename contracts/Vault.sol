@@ -312,7 +312,9 @@ contract Vault is IVault, PoolRegistry {
             Diff memory diff = diffs[i];
 
             if (diff.vaultDelta > 0) {
-                uint128 newBalance = IERC20(diff.token).balanceOf(address(this)).toUint128();
+                uint128 newBalance = IERC20(diff.token)
+                    .balanceOf(address(this))
+                    .toUint128();
 
                 if (uint128(diff.vaultDelta) > newBalance) {
                     uint256 missing = uint256(diff.vaultDelta) - newBalance;
