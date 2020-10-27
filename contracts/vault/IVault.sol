@@ -106,9 +106,16 @@ interface IVault {
         view
         returns (uint128[] memory);
 
+    function getInvestablePercentage(bytes32 poolId, address token)
+        external
+        view
+        returns (uint128);
+
     // Pool management
 
     function newPool(address, StrategyType) external returns (bytes32);
+
+    // Pool configuration - only callable by the controller
 
     function setPoolController(bytes32 poolId, address controller) external;
 
@@ -116,6 +123,12 @@ interface IVault {
         bytes32 poolId,
         address strategy,
         StrategyType strategyType
+    ) external;
+
+    function authorizePoolOperator(
+        bytes32 poolId,
+        address token,
+        address operator
     ) external;
 
     function addLiquidity(
@@ -141,6 +154,20 @@ interface IVault {
         Swap[] calldata swaps,
         FundsIn calldata fundsIn,
         FundsOut calldata fundsOut
+    ) external;
+
+    // Investment interface
+
+    function setInvestablePercentage(
+        bytes32 poolId,
+        address token,
+        uint128 percentage
+    ) external;
+
+    function updateInvested(
+        bytes32 poolId,
+        address token,
+        uint128 amountInvested
     ) external;
 
     // batchSwap helper data structures
