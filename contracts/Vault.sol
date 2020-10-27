@@ -43,7 +43,7 @@ contract Vault is IVault, PoolRegistry {
     // The vault's accounted-for balance for each token. These include:
     //  * tokens in pools
     //  * tokens stored as user balance
-    mapping(address => uint256) private _vaultTokenBalance; // token -> vault balance
+    mapping(address => BalanceLib.Balance) private _vaultTokenBalance; // token -> vault balance
 
     mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
     // operators are allowed to use a user's tokens in a swap
@@ -335,7 +335,9 @@ contract Vault is IVault, PoolRegistry {
 
                 // Update token balance
                 // TODO: only update based on how many tokens were received
-                _vaultTokenBalance[diff.token] = newBalance;
+                _vaultTokenBalance[diff.token].cash = newBalance.sub128(
+                    _vaultTokenBalance[diff.token].invested
+                );
             }
         }
 
@@ -565,7 +567,7 @@ contract Vault is IVault, PoolRegistry {
 
         // TODO: What assumptions do we make when pulling? Should we check token.balanceOf(this)
         // increased by toPull?
-        _vaultTokenBalance[erc20] += amount;
+        _vaultTokenBalance[erc20].cash += amount;
     }
 
     function _pushUnderlying(
@@ -575,7 +577,11 @@ contract Vault is IVault, PoolRegistry {
     ) internal {
         // TODO: What assumptions do we make when pushing? Should we check token.balanceOf(this)
         // decreased by toPull?
-        _vaultTokenBalance[erc20] -= amount;
+        require(
+            _vaultTokenBalance[erc20].cash >= amount,
+            "insufficient cash balance to push"
+        );
+        _vaultTokenBalance[erc20].cash -= amount;
 
         bool xfer = IERC20(erc20).transfer(to, amount);
         require(xfer, "ERR_ERC20_FALSE");
