@@ -312,9 +312,7 @@ contract Vault is IVault, PoolRegistry {
             Diff memory diff = diffs[i];
 
             if (diff.vaultDelta > 0) {
-                uint128 newBalance = uint128(
-                    IERC20(diff.token).balanceOf(address(this))
-                );
+                uint128 newBalance = IERC20(diff.token).balanceOf(address(this)).toUint128();
 
                 if (uint128(diff.vaultDelta) > newBalance) {
                     uint256 missing = uint256(diff.vaultDelta) - newBalance;
@@ -368,11 +366,11 @@ contract Vault is IVault, PoolRegistry {
     ) private returns (uint128, uint128) {
         // Make deltas positive
         uint128 amountIn = swap.tokenA.delta > 0
-            ? uint128(swap.tokenA.delta)
-            : uint128(-swap.tokenA.delta);
+            ? uint256(swap.tokenA.delta).toUint128()
+            : uint256(-swap.tokenA.delta).toUint128();
         uint128 amountOut = swap.tokenB.delta > 0
-            ? uint128(swap.tokenB.delta)
-            : uint128(-swap.tokenB.delta);
+            ? uint256(swap.tokenB.delta).toUint128()
+            : uint256(-swap.tokenB.delta).toUint128();
 
         StrategyType strategyType = pools[swap.poolId].strategyType;
 
