@@ -217,7 +217,7 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             uint256 amountOut = (tokenOut == overallTokenOut)
                 ? amountsOut[i]
                 : helper.accum;
-            
+
             uint256 tokenAmountIn = _inGivenOut(
                 poolData.tokenInBalance,
                 poolData.tokenInDenorm,
@@ -227,7 +227,10 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             );
 
             //Add fee
-            uint256 adjustedIn = add(tokenAmountIn, mul(tokenAmountIn, poolData.swapFee));
+            uint256 adjustedIn = add(
+                tokenAmountIn,
+                mul(tokenAmountIn, poolData.swapFee)
+            );
 
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
             // provides the inputs
