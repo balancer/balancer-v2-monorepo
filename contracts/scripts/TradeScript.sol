@@ -92,8 +92,8 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
     // of maxPrice (including trading fees). The amount of overallTokenIn to be sent for each
     // swap is specified in amountsIn.
     // If the tokenIn for a swap is not overallTokenIn, the output of the previous swap is used
-    // instead (multi-hops). Subsequent non-overallTokenOut outputs are merged together (merge-hop).
-    // MaxPrice argument can be calculated by the sum of the amounts and the moonAmountOut arg,
+    // instead (multi-hops).
+    // MaxPrice argument can be calculated by the sum of amountsIn and the minAmountOut arg,
     // but it is redundant as a secure and simple check.
     function swapExactAmountIn(
         address overallTokenIn,
@@ -184,11 +184,11 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
 
     // Trades overallTokenIn for overallTokenOut, possibly going through intermediate tokens.
     // At least minAmountOut tokens will be spent, with a maximum effective
-    // of maxPrice (including trading fees). The amount of overallTokenIn to be sent for each
-    // swap is specified in amountsIn.
-    // If the tokenIn for a swap is not overallTokenIn, the output of the previous swap is used
-    // instead (multi-hops). Subsequent non-overallTokenOut outputs are merged together (merge-hop).
-    // MaxPrice argument can be calculated by the sum of the amounts and the moonAmountOut arg,
+    // of maxPrice (including trading fees). The amount of overallTokenOut to be sent for each
+    // swap is specified in amountsOut.
+    // If the tokenIn for a swap is not overallTokenOut, the input of the previous swap is used
+    // instead (multi-hops).
+    // MaxPrice argument can be calculated by the sum of amountsOut and the maxAmountIn arg,
     // but it is redundant as a secure and simple check.
     function swapExactAmountOut(
         address overallTokenIn,
