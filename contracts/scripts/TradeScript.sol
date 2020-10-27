@@ -23,9 +23,8 @@ import "../strategies/lib/ConstantWeightedProduct.sol";
 import "../strategies/ConstantWeightedProdStrategy.sol";
 
 import "../IVault.sol";
-import "../ISwapCaller.sol";
 
-contract TradeScript is ConstantWeightedProduct, ISwapCaller {
+contract TradeScript is ConstantWeightedProduct {
     IVault private immutable _vault;
 
     constructor(IVault vault) {
@@ -164,19 +163,17 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             "Price too high"
         );
 
-        bytes memory callbackData = abi.encode(
-            msg.sender,
-            overallTokenIn,
-            helper.toSend
-        );
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            if (diffs[i].token == overallTokenIn) {
+                diffs[i].amountIn = helper.toSend;
+                break;
+            }
+        }
 
         _vault.batchSwap(
             diffs,
             swaps,
-            IVault.FundsIn({
-                withdrawFrom: msg.sender,
-                callbackData: callbackData
-            }),
+            IVault.FundsIn({ withdrawFrom: msg.sender }),
             IVault.FundsOut({
                 recipient: msg.sender,
                 transferToRecipient: withdrawTokens
@@ -184,16 +181,5 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
         );
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
-    }
-
-    // Callback to send tokens to the Vault
-    function sendTokens(bytes calldata callbackData) external override {
-        require(msg.sender == address(_vault), "Invalid callback caller");
-
-        (address sender, address overallTokenIn, uint256 toSend) = abi.decode(
-            callbackData,
-            (address, address, uint256)
-        );
-        IERC20(overallTokenIn).transferFrom(sender, address(_vault), toSend);
     }
 }

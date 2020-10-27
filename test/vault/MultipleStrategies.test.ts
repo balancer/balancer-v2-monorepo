@@ -47,8 +47,10 @@ describe('Vault - multiple trading strategies interfaces', () => {
     await tokens.TEST.mint(trader.address, (300e18).toString());
 
     // Approve trade script by trader
-    await tokens.DAI.connect(trader).approve(mockScript.address, MAX_UINT256);
-    await tokens.TEST.connect(trader).approve(mockScript.address, MAX_UINT256);
+    await tokens.DAI.connect(trader).approve(vault.address, MAX_UINT256);
+    await tokens.TEST.connect(trader).approve(vault.address, MAX_UINT256);
+
+    await vault.connect(trader).authorizeOperator(mockScript.address);
   });
 
   it('has the correct curve', async () => {
@@ -61,10 +63,12 @@ describe('Vault - multiple trading strategies interfaces', () => {
       {
         token: tokens.DAI.address,
         vaultDelta: 0,
+        amountIn: 0,
       },
       {
         token: tokens.TEST.address,
         vaultDelta: 0,
+        amountIn: 0,
       },
     ];
 
@@ -83,17 +87,9 @@ describe('Vault - multiple trading strategies interfaces', () => {
 
     await expectBalanceChange(
       async () => {
-        // Send tokens & swap - would normally happen in the same tx
-        await mockScript.batchSwap(
-          vault.address,
-          [tokens.TEST.address],
-          [(1e18).toString()],
-          diffs,
-          swaps,
-          trader.address,
-          trader.address,
-          true
-        );
+        await mockScript
+          .connect(trader)
+          .batchSwap(vault.address, [0, (1e18).toString()], diffs, swaps, trader.address, trader.address, true);
       },
       trader,
       tokens,
@@ -115,10 +111,12 @@ describe('Vault - multiple trading strategies interfaces', () => {
       {
         token: tokens.DAI.address,
         vaultDelta: 0,
+        amountIn: 0,
       },
       {
         token: tokens.TEST.address,
         vaultDelta: 0,
+        amountIn: 0,
       },
     ];
 
@@ -138,16 +136,9 @@ describe('Vault - multiple trading strategies interfaces', () => {
     await expectBalanceChange(
       async () => {
         // Send tokens & swap - would normally happen in the same tx
-        await mockScript.batchSwap(
-          vault.address,
-          [tokens.TEST.address],
-          [(1e18).toString()],
-          diffs,
-          swaps,
-          trader.address,
-          trader.address,
-          true
-        );
+        await mockScript
+          .connect(trader)
+          .batchSwap(vault.address, [0, (1e18).toString()], diffs, swaps, trader.address, trader.address, true);
       },
       trader,
       tokens,

@@ -23,7 +23,6 @@ import "hardhat/console.sol";
 import "./PoolRegistry.sol";
 
 import "./IVault.sol";
-import "./ISwapCaller.sol";
 
 import "./VaultAccounting.sol";
 
@@ -218,6 +217,11 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
         FundsIn calldata fundsIn,
         FundsOut calldata fundsOut
     ) external override {
+        require(
+            isOperatorFor(fundsIn.withdrawFrom, msg.sender),
+            "Caller is not operator"
+        );
+
         //TODO: avoid reentrancy
 
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
@@ -261,37 +265,21 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
             _poolTokenBalance[swap.poolId][tokenB] = tokenBFinalBalance;
         }
 
-        // Step 4: measure current balance for tokens that need to be received
+        // Step 4: Receive intended tokens, pulling the difference from user balance
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 
             if (diff.vaultDelta > 0) {
-                // Change positive deltas into expected final balances
-                diff.vaultDelta += int256(
-                    IERC20(diff.token).balanceOf(address(this))
-                ); // TODO: check overflows
-            }
-        }
-
-        // Call into sender to trigger token receipt
-        ISwapCaller(msg.sender).sendTokens(fundsIn.callbackData);
-
-        // Step 5: check tokens have been received
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            Diff memory diff = diffs[i];
-
-            if (diff.vaultDelta > 0) {
-                uint256 newBalance = IERC20(diff.token).balanceOf(
-                    address(this)
+                // TODO: skip _receiveTokens if diff.amountIn is 0
+                uint256 received = _receiveTokens(
+                    diff.token,
+                    fundsIn.withdrawFrom,
+                    diff.amountIn
                 );
 
-                if (uint256(diff.vaultDelta) > newBalance) {
-                    uint256 missing = uint256(diff.vaultDelta) - newBalance;
+                if (received < uint256(diff.vaultDelta)) {
+                    uint256 missing = uint256(diff.vaultDelta) - received;
 
-                    require(
-                        isOperatorFor(fundsIn.withdrawFrom, msg.sender),
-                        "Caller is not operator"
-                    );
                     require(
                         _userTokenBalance[fundsIn.withdrawFrom][diff.token] >=
                             missing,
@@ -301,14 +289,10 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
                     _userTokenBalance[fundsIn.withdrawFrom][diff
                         .token] -= missing;
                 }
-
-                // Update token balance
-                // TODO: only update based on how many tokens were received
-                _vaultTokenBalance[diff.token] = newBalance;
             }
         }
 
-        // Step 6: send out tokens to send
+        // Step 5: send out tokens to send
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 

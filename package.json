@@ -12,7 +12,7 @@
     "lint:solidity": "solhint 'contracts/**/*.sol'",
     "lint:typescript": "eslint . --ext .ts",
     "test": "hardhat test --no-compile",
-    "test:watch": "nodemon --ext js,ts --watch test --watch scripts --watch artifacts/build-info --exec 'clear && yarn test'"
+    "test:watch": "nodemon --ext js,ts --watch test --watch scripts --watch cache/solidity-files-cache.json --exec 'clear && yarn test'"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",

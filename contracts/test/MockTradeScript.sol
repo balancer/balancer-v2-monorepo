@@ -17,56 +17,35 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../ISwapCaller.sol";
 import "../IVault.sol";
 
-contract MockTradeScript is ISwapCaller {
+contract MockTradeScript {
     function batchSwap(
         IVault vault,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        IVault.Diff[] calldata diffs,
-        IVault.Swap[] calldata swaps,
+        uint256[] memory amounts,
+        IVault.Diff[] memory diffs,
+        IVault.Swap[] memory swaps,
         address supplier,
         address recipient,
         bool withdrawTokens
-    ) external {
+    ) public {
         require(
-            tokens.length == amounts.length,
-            "MockTradeScript: tokens & amounts length mismatch"
+            diffs.length == amounts.length,
+            "MockTradeScript: diffs & amounts length mismatch"
         );
 
-        bytes memory callbackData = abi.encode(
-            vault,
-            supplier,
-            tokens,
-            amounts
-        );
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            diffs[i].amountIn = amounts[i];
+        }
 
         vault.batchSwap(
             diffs,
             swaps,
-            IVault.FundsIn({
-                withdrawFrom: supplier,
-                callbackData: callbackData
-            }),
+            IVault.FundsIn({ withdrawFrom: supplier }),
             IVault.FundsOut({
                 recipient: recipient,
                 transferToRecipient: withdrawTokens
             })
         );
-    }
-
-    function sendTokens(bytes calldata callbackData) external override {
-        (
-            address vault,
-            address sender,
-            address[] memory tokens,
-            uint256[] memory amounts
-        ) = abi.decode(callbackData, (address, address, address[], uint256[]));
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20(tokens[i]).transferFrom(sender, vault, amounts[i]);
-        }
     }
 }

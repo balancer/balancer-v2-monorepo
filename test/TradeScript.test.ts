@@ -6,6 +6,7 @@ import { getDiffsSwapsAndAmounts } from '../scripts/helpers/trading';
 import { expectBalanceChange } from './helpers/tokenBalance';
 import { setupPool } from '../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { MAX_UINT256 } from './helpers/constants';
 
 describe('TradeScript', () => {
   let controller: SignerWithAddress;
@@ -63,6 +64,9 @@ describe('TradeScript', () => {
 
       // Mint tokens for trader
       await tokens.DAI.mint(trader.address, (1e18).toString());
+      await tokens.DAI.connect(trader).approve(vault.address, MAX_UINT256);
+
+      await vault.connect(trader).authorizeOperator(tradeScript.address);
     });
 
     it('double pool DAI for MKR', async () => {
@@ -77,7 +81,6 @@ describe('TradeScript', () => {
 
       await expectBalanceChange(
         async () => {
-          await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
           await tradeScript
             .connect(trader)
             .swapExactAmountIn(
@@ -121,7 +124,6 @@ describe('TradeScript', () => {
 
       await expectBalanceChange(
         async () => {
-          await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
           await tradeScript
             .connect(trader)
             .swapExactAmountIn(
