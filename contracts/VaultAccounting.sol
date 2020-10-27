@@ -17,31 +17,47 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "./BNum.sol";
+import "./math/FixedPoint.sol";
+
+library BalanceLib {
+    struct Balance {
+        uint128 cash;
+        uint128 invested;
+    }
+
+    function total(Balance storage self) internal view returns (uint128) {
+        return self.cash + self.invested;
+    }
+}
 
 contract VaultAccounting is BNum {
+    using BalanceLib for BalanceLib.Balance;
+    using FixedPoint for uint256;
+    using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
     // The vault's accounted-for balance for each token. These include:
     //  * tokens in pools
     //  * tokens stored as user balance
-    mapping(address => uint256) internal _vaultTokenBalance; // token -> vault balance
+    mapping(address => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
 
     // Returns the amount of tokens that were actually received
     function _receiveTokens(
         address token,
         address from,
-        uint256 amount
-    ) internal returns (uint256) {
+        uint128 amount
+    ) internal returns (uint128) {
         uint256 currentBalance = IERC20(token).balanceOf(address(this));
 
         IERC20(token).safeTransferFrom(from, address(this), amount);
 
         uint256 newBalance = IERC20(token).balanceOf(address(this));
 
-        uint256 received = bsub(newBalance, currentBalance);
-        _vaultTokenBalance[token] += received;
+        uint128 received = newBalance.sub(currentBalance).toUint128();
+        _vaultTokenBalance[token].cash += received;
 
         return received;
     }
@@ -49,10 +65,9 @@ contract VaultAccounting is BNum {
     function _sendTokens(
         address token,
         address to,
-        uint256 amount
+        uint128 amount
     ) internal {
+        _vaultTokenBalance[token].cash -= amount;
         IERC20(token).transfer(to, amount);
-
-        _vaultTokenBalance[token] -= amount;
     }
 }

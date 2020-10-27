@@ -14,21 +14,27 @@
 
 pragma solidity ^0.7.1;
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
 import "../../math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
 
-contract ConstantWeightedProduct is FixedPoint {
+contract ConstantWeightedProduct {
+    using SafeCast for uint256;
+    using FixedPoint for uint256;
+    using FixedPoint for uint128;
+
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances and weights.
     function _outGivenIn(
-        uint256 tokenBalanceIn,
+        uint128 tokenBalanceIn,
         uint256 tokenWeightIn,
-        uint256 tokenBalanceOut,
+        uint128 tokenBalanceOut,
         uint256 tokenWeightOut,
-        uint256 tokenAmountIn
-    ) internal pure returns (uint256) {
+        uint128 tokenAmountIn
+    ) internal pure returns (uint128) {
         /**********************************************************************************************
         // outGivenIn                                                                                //
         // aO = tokenAmountOut                                                                       //
@@ -39,14 +45,13 @@ contract ConstantWeightedProduct is FixedPoint {
         // wO = tokenWeightOut                                                                       //
         **********************************************************************************************/
 
-        uint256 quotient = div(
-            tokenBalanceIn,
-            add(tokenBalanceIn, tokenAmountIn)
+        uint256 quotient = tokenBalanceIn.div(
+            tokenBalanceIn.add(tokenAmountIn)
         );
-        uint256 weightRatio = div(tokenWeightIn, tokenWeightOut);
+        uint256 weightRatio = tokenWeightIn.div(tokenWeightOut);
 
-        uint256 ratio = sub(ONE, pow(quotient, weightRatio));
+        uint256 ratio = FixedPoint.ONE.sub(quotient.pow(weightRatio));
 
-        return mul(tokenBalanceOut, ratio);
+        return tokenBalanceOut.mul(ratio).toUint128();
     }
 }

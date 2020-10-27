@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "hardhat/console.sol";
 
@@ -24,7 +25,13 @@ import "../strategies/ConstantWeightedProdStrategy.sol";
 
 import "../IVault.sol";
 
+import "../math/FixedPoint.sol";
+
 contract TradeScript is ConstantWeightedProduct {
+    using SafeCast for uint256;
+    using SafeCast for int256;
+    using FixedPoint for uint256;
+
     IVault private immutable _vault;
 
     constructor(IVault vault) {
@@ -122,14 +129,14 @@ contract TradeScript is ConstantWeightedProduct {
                 : helper.accumOut;
 
             //Substract fee
-            uint256 adjustedIn = sub(amountIn, mul(amountIn, poolData.swapFee));
+            uint256 adjustedIn = amountIn.sub(amountIn.mul(poolData.swapFee));
 
             uint256 tokenAmountOut = _outGivenIn(
-                poolData.tokenInBalance,
+                poolData.tokenInBalance.toUint128(),
                 poolData.tokenInDenorm,
-                poolData.tokenOutBalance,
+                poolData.tokenOutBalance.toUint128(),
                 poolData.tokenOutDenorm,
-                adjustedIn
+                adjustedIn.toUint128()
             );
 
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
@@ -153,13 +160,13 @@ contract TradeScript is ConstantWeightedProduct {
             // Configure pool end state
 
             // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
-            swaps[i].tokenA.delta = int256(amountIn);
-            swaps[i].tokenB.delta = -int256(tokenAmountOut);
+            swaps[i].tokenA.delta = int256(amountIn).toInt128();
+            swaps[i].tokenB.delta = -int256(tokenAmountOut).toInt128();
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");
         require(
-            div(helper.toSend, helper.toReceive) <= maxPrice,
+            helper.toSend.div(helper.toReceive) <= maxPrice,
             "Price too high"
         );
 

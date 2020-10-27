@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "hardhat/console.sol";
 
@@ -32,8 +33,14 @@ import "./strategies/ITradingStrategy.sol";
 import "./strategies/IPairTradingStrategy.sol";
 import "./strategies/ITupleTradingStrategy.sol";
 
-contract Vault is IVault, PoolRegistry, VaultAccounting {
+import "./math/FixedPoint.sol";
+
+contract Vault is IVault, VaultAccounting, PoolRegistry {
+    using BalanceLib for BalanceLib.Balance;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using FixedPoint for uint256;
+    using FixedPoint for uint128;
+    using SafeCast for uint256;
 
     mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
     // operators are allowed to use a user's tokens in a swap
@@ -66,22 +73,22 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
 
     function deposit(
         address token,
-        uint256 amount,
+        uint128 amount,
         address user
     ) external {
         // Pulling from the sender - no need to check for operators
-        uint256 received = _receiveTokens(token, msg.sender, amount);
-
-        // The amount received may not match the amount argument!
+        uint128 received = _receiveTokens(token, msg.sender, amount);
 
         // TODO: check overflow
-        _userTokenBalance[user][token] += received;
+        _userTokenBalance[user][token] = _userTokenBalance[user][token].add(
+            received
+        );
         emit Deposited(msg.sender, user, token, received);
     }
 
     function withdraw(
         address token,
-        uint256 amount,
+        uint128 amount,
         address recipient
     ) external {
         require(
@@ -174,16 +181,27 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
         require(balance >= MIN_BALANCE, "ERR_MIN_BALANCE");
 
         // Adjust the balance record and actual token balance
-        uint256 oldBalance = _poolTokenBalance[poolId][token];
-        _poolTokenBalance[poolId][token] = balance;
+        uint128 oldBalance = _poolTokenBalance[poolId][token].total();
+        _poolTokenBalance[poolId][token].cash =
+            balance.toUint128() -
+            _poolTokenBalance[poolId][token].invested;
 
         if (balance > oldBalance) {
-            uint256 toReceive = bsub(balance, oldBalance);
-            uint256 received = _receiveTokens(token, msg.sender, toReceive);
+            uint128 toReceive = balance.toUint128().sub128(oldBalance);
+            uint128 received = _receiveTokens(token, msg.sender, toReceive);
             require(received == toReceive, "not enough received");
         } else if (balance < oldBalance) {
+            require(
+                balance >= _poolTokenBalance[poolId][token].invested,
+                "Not enough cash to rebind, divest appropriately"
+            );
+
             // TODO: charge exit fee
-            _sendTokens(token, msg.sender, bsub(oldBalance, balance));
+            _sendTokens(
+                token,
+                msg.sender,
+                oldBalance.sub128(balance.toUint128())
+            );
         }
     }
 
@@ -196,7 +214,11 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
         require(msg.sender == pools[poolId].controller, "ERR_NOT_CONTROLLER");
         require(poolRecords[poolId][token].bound, "ERR_NOT_BOUND");
 
-        uint256 tokenBalance = _poolTokenBalance[poolId][token];
+        require(
+            _poolTokenBalance[poolId][token].invested == 0,
+            "Withdraw all pool token investments before unbinding"
+        );
+        uint128 tokenBalance = _poolTokenBalance[poolId][token].total();
 
         // Swap the token-to-unbind with the last token,
         // then delete the last token
@@ -256,13 +278,17 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
             diffs[swap.tokenB.tokenDiffIndex].vaultDelta += swap.tokenB.delta;
 
             (
-                uint256 tokenAFinalBalance,
-                uint256 tokenBFinalBalance
+                uint128 tokenAFinalBalance,
+                uint128 tokenBFinalBalance
             ) = _validateSwap(swap, tokenA, tokenB);
 
             // 3: update pool balances
-            _poolTokenBalance[swap.poolId][tokenA] = tokenAFinalBalance;
-            _poolTokenBalance[swap.poolId][tokenB] = tokenBFinalBalance;
+            _poolTokenBalance[swap.poolId][tokenA].cash =
+                tokenAFinalBalance -
+                _poolTokenBalance[swap.poolId][tokenA].invested;
+            _poolTokenBalance[swap.poolId][tokenB].cash =
+                tokenBFinalBalance -
+                _poolTokenBalance[swap.poolId][tokenB].invested;
         }
 
         // Step 4: Receive intended tokens, pulling the difference from user balance
@@ -274,7 +300,7 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
                 uint256 received = _receiveTokens(
                     diff.token,
                     fundsIn.withdrawFrom,
-                    diff.amountIn
+                    diff.amountIn.toUint128()
                 );
 
                 if (received < uint256(diff.vaultDelta)) {
@@ -298,17 +324,17 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
 
             if (diff.vaultDelta < 0) {
                 // Make delta positive
-                uint256 amount = uint256(-diff.vaultDelta);
+                uint128 amount = uint128(-diff.vaultDelta);
 
                 if (fundsOut.transferToRecipient) {
                     // Actually transfer the tokens to the recipient
                     _sendTokens(diff.token, fundsOut.recipient, amount);
                 } else {
                     // Allocate tokens to the recipient as user balance - the vault's balance doesn't change
-                    _userTokenBalance[fundsOut.recipient][diff.token] = badd(
-                        _userTokenBalance[fundsOut.recipient][diff.token],
-                        amount
-                    );
+                    _userTokenBalance[fundsOut.recipient][diff
+                        .token] = _userTokenBalance[fundsOut.recipient][diff
+                        .token]
+                        .add(amount);
                 }
             }
         }
@@ -318,14 +344,14 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
         Swap memory swap,
         address tokenA,
         address tokenB
-    ) private returns (uint256, uint256) {
+    ) private returns (uint128, uint128) {
         // Make deltas positive
-        uint256 amountIn = swap.tokenA.delta > 0
-            ? uint256(swap.tokenA.delta)
-            : uint256(-swap.tokenA.delta);
-        uint256 amountOut = swap.tokenB.delta > 0
-            ? uint256(swap.tokenB.delta)
-            : uint256(-swap.tokenB.delta);
+        uint128 amountIn = swap.tokenA.delta > 0
+            ? uint256(swap.tokenA.delta).toUint128()
+            : uint256(-swap.tokenA.delta).toUint128();
+        uint128 amountOut = swap.tokenB.delta > 0
+            ? uint256(swap.tokenB.delta).toUint128()
+            : uint256(-swap.tokenB.delta).toUint128();
 
         StrategyType strategyType = pools[swap.poolId].strategyType;
 
@@ -360,14 +386,14 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
         bytes32 poolId,
         address tokenA,
         address tokenB,
-        uint256 amountIn,
-        uint256 amountOut,
+        uint128 amountIn,
+        uint128 amountOut,
         IPairTradingStrategy strategy
-    ) private returns (uint256, uint256) {
-        uint256 poolTokenABalance = _poolTokenBalance[poolId][tokenA];
+    ) private returns (uint128, uint128) {
+        uint128 poolTokenABalance = _poolTokenBalance[poolId][tokenA].total();
         require(poolTokenABalance > 0, "Token A not in pool");
 
-        uint256 poolTokenBBalance = _poolTokenBalance[poolId][tokenB];
+        uint128 poolTokenBBalance = _poolTokenBalance[poolId][tokenB].total();
         require(poolTokenBBalance > 0, "Token B not in pool");
 
         (bool success, ) = strategy.validatePair(
@@ -394,8 +420,8 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
     function _validateTupleStrategySwap(
         ITradingStrategy.Swap memory swap,
         ITupleTradingStrategy strategy
-    ) private returns (uint256, uint256) {
-        uint256[] memory currentBalances = new uint256[](
+    ) private returns (uint128, uint128) {
+        uint128[] memory currentBalances = new uint128[](
             pools[swap.poolId].tokens.length
         );
 
@@ -404,7 +430,7 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
 
         for (uint256 i = 0; i < pools[swap.poolId].tokens.length; i++) {
             address token = pools[swap.poolId].tokens[i];
-            currentBalances[i] = _poolTokenBalance[swap.poolId][token];
+            currentBalances[i] = _poolTokenBalance[swap.poolId][token].total();
             require(currentBalances[i] > 0, "Token A not in pool");
 
             if (token == swap.tokenIn) {
@@ -439,18 +465,16 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
 
         for (uint256 i = 0; i < initialTokens.length; ++i) {
             address t = initialTokens[i];
-            uint256 tokenAmountIn = initialBalances[i];
+            uint128 tokenAmountIn = initialBalances[i].toUint128();
             require(tokenAmountIn != 0, "ERR_MATH_APPROX");
             require(
-                bsub(
-                    IERC20(t).balanceOf(address(this)),
-                    _allocatedBalances[t]
-                ) >= tokenAmountIn,
+                IERC20(t).balanceOf(address(this)).sub(_allocatedBalances[t]) >=
+                    tokenAmountIn,
                 "INSUFFICIENT UNALLOCATED BALANCE"
             );
 
-            _poolTokenBalance[poolId][t] = tokenAmountIn;
-            _allocatedBalances[t] = badd(_allocatedBalances[t], tokenAmountIn);
+            _poolTokenBalance[poolId][t].cash = tokenAmountIn;
+            _allocatedBalances[t] = _allocatedBalances[t].add(tokenAmountIn);
         }
     }
 
@@ -463,19 +487,17 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _poolTokenBalance[poolId][t];
-            uint256 tokenAmountIn = amountsIn[i];
+            uint128 bal = _poolTokenBalance[poolId][t].cash;
+            uint128 tokenAmountIn = amountsIn[i].toUint128();
             require(tokenAmountIn != 0, "ERR_MATH_APPROX");
             require(
-                bsub(
-                    IERC20(t).balanceOf(address(this)),
-                    _allocatedBalances[t]
-                ) >= tokenAmountIn,
+                IERC20(t).balanceOf(address(this)).sub(_allocatedBalances[t]) >=
+                    tokenAmountIn,
                 "INSUFFICIENT UNALLOCATED BALANCE"
             );
 
-            _poolTokenBalance[poolId][t] = badd(bal, tokenAmountIn);
-            _allocatedBalances[t] = badd(_allocatedBalances[t], tokenAmountIn);
+            _poolTokenBalance[poolId][t].cash = bal.add128(tokenAmountIn);
+            _allocatedBalances[t] = _allocatedBalances[t].add(tokenAmountIn);
         }
     }
 
@@ -488,8 +510,13 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
 
         for (uint256 i = 0; i < pool.tokens.length; ++i) {
             address t = pool.tokens[i];
-            uint256 bal = _poolTokenBalance[poolId][t];
-            uint256 tokenAmountOut = amountsOut[i];
+            uint128 cashBal = _poolTokenBalance[poolId][t].cash;
+
+            uint128 tokenAmountOut = amountsOut[i].toUint128();
+            require(
+                _poolTokenBalance[poolId][t].cash > tokenAmountOut,
+                "insufficient cash balance for liquidity withdrawal"
+            );
             require(tokenAmountOut != 0, "ERR_MATH_APPROX");
             require(
                 _allocatedBalances[t] >= tokenAmountOut,
@@ -499,8 +526,8 @@ contract Vault is IVault, PoolRegistry, VaultAccounting {
             bool xfer = IERC20(t).transfer(recipient, tokenAmountOut);
             require(xfer, "ERR_ERC20_FALSE");
 
-            _poolTokenBalance[poolId][t] = bsub(bal, tokenAmountOut);
-            _allocatedBalances[t] = bsub(_allocatedBalances[t], tokenAmountOut);
+            _poolTokenBalance[poolId][t].cash = cashBal.sub128(tokenAmountOut);
+            _allocatedBalances[t] = _allocatedBalances[t].sub(tokenAmountOut);
         }
     }
 }

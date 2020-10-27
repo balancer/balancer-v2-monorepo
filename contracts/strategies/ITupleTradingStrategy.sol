@@ -20,8 +20,8 @@ import "./ITradingStrategy.sol";
 interface ITupleTradingStrategy {
     function validateTuple(
         ITradingStrategy.Swap calldata swap,
-        uint256[] calldata balances,
+        uint128[] calldata balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external returns (bool, uint256);
+    ) external returns (bool, uint128);
 }
