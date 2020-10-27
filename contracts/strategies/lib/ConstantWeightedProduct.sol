@@ -49,4 +49,34 @@ contract ConstantWeightedProduct is FixedPoint {
 
         return mul(tokenBalanceOut, ratio);
     }
+
+    // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
+    // current balances and weights.
+    function _inGivenOut(
+        uint256 tokenBalanceIn,
+        uint256 tokenWeightIn,
+        uint256 tokenBalanceOut,
+        uint256 tokenWeightOut,
+        uint256 tokenAmountOut
+    ) internal pure returns (uint256) {
+        /**********************************************************************************************
+        // inGivenOut                                                                                //
+        // aO = tokenAmountOut                                                                       //
+        // bO = tokenBalanceOut                                                                      //
+        // bI = tokenBalanceIn              /  /            bO             \    (wO / wI)      \     //
+        // aI = tokenAmountIn    aI = bI * |  | --------------------------  | ^            - 1  |    //
+        // wI = tokenWeightIn               \  \       ( bO - aO )         /                   /     //
+        // wO = tokenWeightOut                                                                       //
+        **********************************************************************************************/
+
+        uint256 quotient = div(
+            tokenBalanceOut,
+            sub(tokenBalanceOut, tokenAmountOut)
+        );
+        uint256 weightRatio = div(tokenWeightOut, tokenWeightIn);
+
+        uint256 ratio = sub(pow(quotient, weightRatio), ONE);
+
+        return mul(tokenBalanceIn, ratio);
+    }
 }
