@@ -17,8 +17,7 @@ pragma solidity ^0.7.1;
 /* solhint-disable private-vars-leading-underscore */
 
 library FixedPoint {
-    uint256 internal constant ONE = 10**18; // 18 decimal places
-    uint128 internal constant ONE128 = 10**18; // 18 decimal places
+    uint128 internal constant ONE = 10**18; // 18 decimal places
 
     uint256 internal constant MIN_POW_BASE = 1 wei;
     uint256 internal constant MAX_POW_BASE = (2 * ONE) - 1 wei;
@@ -92,9 +91,9 @@ library FixedPoint {
     function mul128(uint128 a, uint128 b) internal pure returns (uint128) {
         uint128 c0 = a * b;
         require(a == 0 || c0 / a == b, "ERR_MUL_OVERFLOW");
-        uint128 c1 = c0 + (ONE128 / 2);
+        uint128 c1 = c0 + (ONE / 2);
         require(c1 >= c0, "ERR_MUL_OVERFLOW");
-        uint128 c2 = c1 / ONE128;
+        uint128 c2 = c1 / ONE;
         return c2;
     }
 
@@ -110,8 +109,8 @@ library FixedPoint {
 
     function div128(uint128 a, uint128 b) internal pure returns (uint128) {
         require(b != 0, "ERR_DIV_ZERO");
-        uint128 c0 = a * ONE128;
-        require(a == 0 || c0 / a == ONE128, "ERR_DIV_INTERNAL"); // mul overflow
+        uint128 c0 = a * ONE;
+        require(a == 0 || c0 / a == ONE, "ERR_DIV_INTERNAL"); // mul overflow
         uint128 c1 = c0 + (b / 2);
         require(c1 >= c0, "ERR_DIV_INTERNAL"); //  add require
         uint128 c2 = c1 / b;
