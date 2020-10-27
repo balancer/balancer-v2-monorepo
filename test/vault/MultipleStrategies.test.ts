@@ -71,8 +71,8 @@ describe('Vault - multiple trading strategies interfaces', () => {
     const swaps = [
       {
         poolId: poolIdTuple,
-        tokenA: { tokenDiffIndex: 1, delta: (1e18).toString() },
-        tokenB: { tokenDiffIndex: 0, delta: (-1e18).toString() },
+        tokenIn: { tokenDiffIndex: 1, amount: (1e18).toString() },
+        tokenOut: { tokenDiffIndex: 0, amount: (1e18).toString() },
       },
     ];
 
@@ -125,8 +125,8 @@ describe('Vault - multiple trading strategies interfaces', () => {
     const swaps = [
       {
         poolId: poolIdPair,
-        tokenA: { tokenDiffIndex: 1, delta: (1e18).toString() },
-        tokenB: { tokenDiffIndex: 0, delta: (-1e18).toString() },
+        tokenIn: { tokenDiffIndex: 1, amount: (1e18).toString() },
+        tokenOut: { tokenDiffIndex: 0, amount: (1e18).toString() },
       },
     ];
 
