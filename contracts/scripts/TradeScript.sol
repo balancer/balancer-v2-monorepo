@@ -30,6 +30,7 @@ import "../math/FixedPoint.sol";
 
 contract TradeScript is ConstantWeightedProduct, ISwapCaller {
     using SafeCast for uint256;
+    using SafeCast for int256;
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -160,8 +161,8 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             // Configure pool end state
 
             // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
-            swaps[i].tokenA.delta = int256(amountIn);
-            swaps[i].tokenB.delta = -int256(tokenAmountOut);
+            swaps[i].tokenA.delta = int256(amountIn).toInt128();
+            swaps[i].tokenB.delta = -int256(tokenAmountOut).toInt128();
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");
