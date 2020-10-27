@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "./StrategyFee.sol";
 import "./ITupleTradingStrategy.sol";
 import "./lib/ConstantSumProduct.sol";
-import "../LogExpMath.sol";
 
 contract ConstantSumProdStrategy is
     ITupleTradingStrategy,

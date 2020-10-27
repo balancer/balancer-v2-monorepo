@@ -15,6 +15,7 @@
 pragma solidity ^0.7.1;
 
 import "../../math/FixedPoint.sol";
+import "../../math/LogExpMath.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
@@ -23,83 +24,58 @@ import "../../math/FixedPoint.sol";
 // solhint-disable var-name-mixedcase
 
 contract ConstantSumProduct is FixedPoint {
-    // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
-    // current balances.
+    int256 internal constant CONST_0_3333333 = 333333333333333333;
+    int256 internal constant CONST_0_5 = 500000000000000000;
+    int256 internal constant CONST_1 = 1000000000000000000;
+
     function outGivenIn(
-        uint256 amp,
-        uint256[] memory balances,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint256 tokenAmountIn
+        uint256,
+        uint256[] memory,
+        uint256,
+        uint256,
+        uint256
     ) internal pure returns (uint256) {
-        uint256 D = calculateInvariant(amp, balances);
-        uint256 c = D;
-        uint256 S = 0;
-        uint256 N_COINS = balances.length;
-        uint256 Ann = amp * N_COINS;
-        uint256 x = 0;
-        for (uint256 i = 0; i < N_COINS; i++) {
-            if (i == tokenIndexIn) {
-                x = tokenAmountIn;
-            } else if (i != tokenIndexOut) {
-                x = balances[i];
-            }
-            S += x;
-            c = (c * D) / (x * N_COINS);
-        }
-        c = (c * D) / (Ann * N_COINS);
-        uint256 b = S + D / Ann;
-        uint256 y_prev = 0;
-        uint256 y = D;
-        for (uint256 i = 0; i < 255; i++) {
-            y_prev = y;
-            y = (y * y + c) / (2 * y + b - D);
-            if (y > y_prev) {
-                if ((y - y_prev) <= 1) {
-                    break;
-                }
-            } else if ((y_prev - y) <= 1) {
-                break;
-            }
-        }
-        return y;
+        //TODO: implement out given in for this invariant
+        revert("Not implemented yet");
     }
 
-    function calculateInvariant(uint256 amp, uint256[] memory balances)
+    function calculateInvariant(uint256 _amp, uint256[] memory balances)
         internal
         pure
         returns (uint256)
     {
-        uint256 S = 0;
-        uint256 N_COINS = balances.length;
-        for (uint256 i = 0; i < N_COINS; i++) {
-            S = S + balances[i];
+        int256 amp = int256(_amp);
+        int256 sum = 0;
+        int256 prod = CONST_1;
+        uint256 length = balances.length;
+        for (uint256 i = 0; i < length; i++) {
+            sum = sum + int256(balances[i]);
+            prod = ((prod * int256(balances[i])) / CONST_1);
         }
-        if (S == 0) {
-            return 0;
+        int256 n = int256(length);
+        int256 nn = 1;
+        for (uint256 i = 0; i < length; i++) {
+            nn *= n;
         }
-        uint256 Dprev = 0;
-        uint256 D = S;
-        uint256 Ann = amp * N_COINS;
-        //TODO: make calculations to test and document this approximation. Compare it with math approx.
-        for (uint256 i = 0; i < 255; i++) {
-            uint256 D_P = D;
-            for (uint256 j = 0; j < N_COINS; j++) {
-                D_P = (D_P * D) / (balances[j] * N_COINS);
-            }
-            Dprev = D;
-            D =
-                ((Ann * S + D_P * N_COINS) * D) /
-                ((Ann - 1) * D + (N_COINS + 1) * D_P);
-            // Equality with the precision of 1
-            if (D > Dprev) {
-                if ((D - Dprev) <= 1) {
-                    break;
-                }
-            } else if ((Dprev - D) <= 1) {
-                break;
-            }
-        }
-        return D;
+        //temp = nˆ2n * prod
+        int256 temp = nn * nn * prod;
+        int256 negative_q = (amp * temp * sum) / CONST_1;
+        //P is positive is A > 1/(nˆn)
+        int256 p = amp * temp - temp / nn;
+        int256 c = LogExpMath.exp(
+            p *
+                (LogExpMath.exp(
+                    (negative_q / (4 * p)) *
+                        (negative_q / p) *
+                        CONST_1 +
+                        p /
+                        27,
+                    CONST_0_5
+                ) / CONST_1) +
+                negative_q /
+                2,
+            CONST_0_3333333
+        );
+        return uint256(c - (p * CONST_1) / (3 * c));
     }
 }

@@ -24,8 +24,6 @@ import "./PoolRegistry.sol";
 
 import "./ISwapCaller.sol";
 
-import "./LogExpMath.sol";
-
 import "./strategies/ITradingStrategy.sol";
 import "./strategies/IPairTradingStrategy.sol";
 import "./strategies/ITupleTradingStrategy.sol";
