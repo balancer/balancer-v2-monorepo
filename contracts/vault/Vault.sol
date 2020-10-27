@@ -110,7 +110,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
                 uint128 received = _pullTokens(
                     diff.token,
                     fundsIn.withdrawFrom,
-                    diff.amountIn.toUint128()
+                    diff.amountIn
                 );
 
                 if (received < diff.vaultDelta) {
