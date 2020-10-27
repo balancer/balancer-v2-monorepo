@@ -34,6 +34,7 @@ import "./strategies/ITupleTradingStrategy.sol";
 import "./math/FixedPoint.sol";
 
 contract Vault is IVault, PoolRegistry {
+    using BalanceLib for BalanceLib.Balance;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -184,8 +185,7 @@ contract Vault is IVault, PoolRegistry {
         require(balance >= MIN_BALANCE, "ERR_MIN_BALANCE");
 
         // Adjust the balance record and actual token balance
-        uint128 oldBalance = _poolTokenBalance[poolId][token].cash +
-            _poolTokenBalance[poolId][token].invested;
+        uint128 oldBalance = _poolTokenBalance[poolId][token].total();
         _poolTokenBalance[poolId][token].cash =
             balance.toUint128() -
             _poolTokenBalance[poolId][token].invested;
@@ -224,8 +224,7 @@ contract Vault is IVault, PoolRegistry {
             _poolTokenBalance[poolId][token].invested == 0,
             "Withdraw all pool token investments before unbinding"
         );
-        uint128 tokenBalance = _poolTokenBalance[poolId][token].cash +
-            _poolTokenBalance[poolId][token].invested;
+        uint128 tokenBalance = _poolTokenBalance[poolId][token].total();
 
         // Swap the token-to-unbind with the last token,
         // then delete the last token
@@ -412,12 +411,10 @@ contract Vault is IVault, PoolRegistry {
         uint128 amountOut,
         IPairTradingStrategy strategy
     ) private returns (uint128, uint128) {
-        uint128 poolTokenABalance = _poolTokenBalance[poolId][tokenA].cash +
-            _poolTokenBalance[poolId][tokenA].invested;
+        uint128 poolTokenABalance = _poolTokenBalance[poolId][tokenA].total();
         require(poolTokenABalance > 0, "Token A not in pool");
 
-        uint128 poolTokenBBalance = _poolTokenBalance[poolId][tokenB].cash +
-            _poolTokenBalance[poolId][tokenB].invested;
+        uint128 poolTokenBBalance = _poolTokenBalance[poolId][tokenB].total();
         require(poolTokenBBalance > 0, "Token B not in pool");
 
         (bool success, ) = strategy.validatePair(
@@ -454,9 +451,7 @@ contract Vault is IVault, PoolRegistry {
 
         for (uint256 i = 0; i < pools[swap.poolId].tokens.length; i++) {
             address token = pools[swap.poolId].tokens[i];
-            currentBalances[i] =
-                _poolTokenBalance[swap.poolId][token].cash +
-                _poolTokenBalance[swap.poolId][token].invested;
+            currentBalances[i] = _poolTokenBalance[swap.poolId][token].total();
             require(currentBalances[i] > 0, "Token A not in pool");
 
             if (token == swap.tokenIn) {

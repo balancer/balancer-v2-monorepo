@@ -20,7 +20,20 @@ import "./utils/Logs.sol";
 import "./BConst.sol";
 import "./IVault.sol";
 
+library BalanceLib {
+    struct Balance {
+        uint128 cash;
+        uint128 invested;
+    }
+
+    function total(Balance storage self) internal view returns (uint128) {
+      return self.cash + self.invested;
+    }
+}
+
 abstract contract PoolRegistry is BConst, Lock, Logs, IVault {
+    using BalanceLib for BalanceLib.Balance;
+
     struct Record {
         bool bound; // is token bound to pool
         uint8 index; // private
@@ -34,11 +47,6 @@ abstract contract PoolRegistry is BConst, Lock, Logs, IVault {
         StrategyType strategyType;
     }
 
-    struct Balance {
-        uint128 cash;
-        uint128 invested;
-    }
-
     mapping(bytes32 => mapping(address => Record)) public poolRecords;
 
     // temporarily making this public, we might want to provide a better API later on
@@ -46,7 +54,7 @@ abstract contract PoolRegistry is BConst, Lock, Logs, IVault {
 
     mapping(bytes32 => bool) internal _poolExists;
     // All tokens in a pool have non-zero balances
-    mapping(bytes32 => mapping(address => Balance)) internal _poolTokenBalance; // poolid => token => pool balance
+    mapping(bytes32 => mapping(address => BalanceLib.Balance)) internal _poolTokenBalance; // poolid => token => pool balance
     mapping(address => uint256) internal _allocatedBalances;
 
     modifier ensurePoolExists(bytes32 poolId) {
@@ -123,8 +131,7 @@ abstract contract PoolRegistry is BConst, Lock, Logs, IVault {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             balances[i] = uint256(
-                _poolTokenBalance[poolId][tokens[i]].cash +
-                    _poolTokenBalance[poolId][tokens[i]].invested
+                _poolTokenBalance[poolId][tokens[i]].total()
             );
         }
 
