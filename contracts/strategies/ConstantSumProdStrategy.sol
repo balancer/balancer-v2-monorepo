@@ -15,6 +15,8 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
 import "./StrategyFee.sol";
 import "./ITupleTradingStrategy.sol";
 import "./lib/ConstantSumProduct.sol";
@@ -25,6 +27,9 @@ contract ConstantSumProdStrategy is
     StrategyFee,
     ConstantSumProduct
 {
+    using SafeCast for uint256;
+    using FixedPoint for uint128;
+
     uint256 private immutable _amp;
     uint256 private immutable _swapFee;
 
@@ -38,22 +43,21 @@ contract ConstantSumProdStrategy is
     //Because it is not possible to overriding external calldata, function is public and balances are in memory
     function validateTuple(
         ITradingStrategy.Swap calldata swap,
-        uint256[] memory balances,
+        uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override view returns (bool, uint256) {
+    ) public override view returns (bool, uint128) {
         //Calculate old invariant
         uint256 oldInvariant = calculateInvariant(_amp, balances);
 
         //Substract fee
-        uint256 feeAmount = mul(swap.amountIn, _swapFee);
+        uint128 feeAmount = swap.amountIn.mul(_swapFee).toUint128();
 
         //Update Balances
-        balances[indexIn] = add(
-            balances[indexIn],
-            sub(swap.amountIn, feeAmount)
+        balances[indexIn] = balances[indexIn].add128(
+            swap.amountIn.sub128(feeAmount)
         );
-        balances[indexOut] = sub(balances[indexOut], swap.amountOut);
+        balances[indexOut] = balances[indexOut].sub128(swap.amountOut);
 
         //Calculate new invariant
         uint256 newInvariant = calculateInvariant(_amp, balances);

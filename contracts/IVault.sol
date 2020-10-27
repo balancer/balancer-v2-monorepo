@@ -141,7 +141,7 @@ interface IVault {
     // Diffs array. Instead, the caller provides the indices for the Diffs array, leading to
     // gas savings.
     struct TokenData {
-        int256 delta;
-        uint256 tokenDiffIndex;
+        int128 delta;
+        uint128 tokenDiffIndex;
     }
 }
