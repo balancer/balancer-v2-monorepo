@@ -22,7 +22,10 @@ import "hardhat/console.sol";
 
 import "./PoolRegistry.sol";
 
+import "./IVault.sol";
 import "./ISwapCaller.sol";
+
+import "./VaultAccounting.sol";
 
 import "./LogExpMath.sol";
 
@@ -30,13 +33,8 @@ import "./strategies/ITradingStrategy.sol";
 import "./strategies/IPairTradingStrategy.sol";
 import "./strategies/ITupleTradingStrategy.sol";
 
-contract Vault is IVault, PoolRegistry {
+contract Vault is IVault, PoolRegistry, VaultAccounting {
     using EnumerableSet for EnumerableSet.AddressSet;
-
-    // The vault's accounted-for balance for each token. These include:
-    //  * tokens in pools
-    //  * tokens stored as user balance
-    mapping(address => uint256) private _vaultTokenBalance; // token -> vault balance
 
     mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
     // operators are allowed to use a user's tokens in a swap
@@ -72,13 +70,14 @@ contract Vault is IVault, PoolRegistry {
         uint256 amount,
         address user
     ) external {
+        // Pulling from the sender - no need to check for operators
+        uint256 received = _receiveTokens(token, msg.sender, amount);
+
+        // The amount received may not match the amount argument!
+
         // TODO: check overflow
-        _userTokenBalance[user][token] += amount;
-
-        // TODO: use ISwapCaller callback?
-        _pullUnderlying(token, msg.sender, amount);
-
-        emit Deposited(msg.sender, user, token, amount);
+        _userTokenBalance[user][token] += received;
+        emit Deposited(msg.sender, user, token, received);
     }
 
     function withdraw(
@@ -92,8 +91,7 @@ contract Vault is IVault, PoolRegistry {
         );
 
         _userTokenBalance[msg.sender][token] -= amount;
-
-        _pushUnderlying(token, recipient, amount);
+        _sendTokens(token, recipient, amount);
 
         emit Withdrawn(msg.sender, recipient, token, amount);
     }
@@ -181,10 +179,12 @@ contract Vault is IVault, PoolRegistry {
         _poolTokenBalance[poolId][token] = balance;
 
         if (balance > oldBalance) {
-            _pullUnderlying(token, msg.sender, bsub(balance, oldBalance));
+            uint256 toReceive = bsub(balance, oldBalance);
+            uint256 received = _receiveTokens(token, msg.sender, toReceive);
+            require(received == toReceive, "not enough received");
         } else if (balance < oldBalance) {
             // TODO: charge exit fee
-            _pushUnderlying(token, msg.sender, bsub(oldBalance, balance));
+            _sendTokens(token, msg.sender, bsub(oldBalance, balance));
         }
     }
 
@@ -209,7 +209,7 @@ contract Vault is IVault, PoolRegistry {
         poolRecords[poolId][token] = Record({ bound: false, index: 0 });
 
         // TODO: charge exit fee
-        _pushUnderlying(token, msg.sender, tokenBalance);
+        _sendTokens(token, msg.sender, tokenBalance);
     }
 
     function batchSwap(
@@ -318,7 +318,7 @@ contract Vault is IVault, PoolRegistry {
 
                 if (fundsOut.transferToRecipient) {
                     // Actually transfer the tokens to the recipient
-                    _pushUnderlying(diff.token, fundsOut.recipient, amount);
+                    _sendTokens(diff.token, fundsOut.recipient, amount);
                 } else {
                     // Allocate tokens to the recipient as user balance - the vault's balance doesn't change
                     _userTokenBalance[fundsOut.recipient][diff.token] = badd(
@@ -518,34 +518,5 @@ contract Vault is IVault, PoolRegistry {
             _poolTokenBalance[poolId][t] = bsub(bal, tokenAmountOut);
             _allocatedBalances[t] = bsub(_allocatedBalances[t], tokenAmountOut);
         }
-    }
-
-    // 'Underlying' token-manipulation functions make external calls but are NOT locked
-    // You must `_lock_` or otherwise ensure reentry-safety
-
-    function _pullUnderlying(
-        address erc20,
-        address from,
-        uint256 amount
-    ) internal {
-        bool xfer = IERC20(erc20).transferFrom(from, address(this), amount);
-        require(xfer, "ERR_ERC20_FALSE");
-
-        // TODO: What assumptions do we make when pulling? Should we check token.balanceOf(this)
-        // increased by toPull?
-        _vaultTokenBalance[erc20] += amount;
-    }
-
-    function _pushUnderlying(
-        address erc20,
-        address to,
-        uint256 amount
-    ) internal {
-        // TODO: What assumptions do we make when pushing? Should we check token.balanceOf(this)
-        // decreased by toPull?
-        _vaultTokenBalance[erc20] -= amount;
-
-        bool xfer = IERC20(erc20).transfer(to, amount);
-        require(xfer, "ERR_ERC20_FALSE");
     }
 }
