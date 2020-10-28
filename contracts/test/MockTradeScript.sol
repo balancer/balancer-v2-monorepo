@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../IVault.sol";
+import "../vault/IVault.sol";
 
 contract MockTradeScript {
     function batchSwap(

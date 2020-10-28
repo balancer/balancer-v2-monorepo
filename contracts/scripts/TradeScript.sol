@@ -23,7 +23,7 @@ import "hardhat/console.sol";
 import "../strategies/lib/ConstantWeightedProduct.sol";
 import "../strategies/ConstantWeightedProdStrategy.sol";
 
-import "../IVault.sol";
+import "../vault/IVault.sol";
 
 import "../math/FixedPoint.sol";
 

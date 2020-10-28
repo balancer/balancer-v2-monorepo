@@ -15,14 +15,14 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./utils/Lock.sol";
-import "./utils/Logs.sol";
-import "./BConst.sol";
-import "./IVault.sol";
+import "../utils/Lock.sol";
+import "../utils/Logs.sol";
+import "../BConst.sol";
 
+import "./IVault.sol";
 import "./VaultAccounting.sol";
 
-abstract contract PoolRegistry is BConst, Lock, Logs, IVault, VaultAccounting {
+abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
     using BalanceLib for BalanceLib.Balance;
 
     struct Record {

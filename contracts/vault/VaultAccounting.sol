@@ -19,8 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "./BNum.sol";
-import "./math/FixedPoint.sol";
+import "../math/FixedPoint.sol";
 
 library BalanceLib {
     struct Balance {
@@ -33,7 +32,7 @@ library BalanceLib {
     }
 }
 
-contract VaultAccounting is BNum {
+contract VaultAccounting {
     using BalanceLib for BalanceLib.Balance;
     using FixedPoint for uint256;
     using SafeCast for uint256;
