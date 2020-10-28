@@ -77,7 +77,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry {
         address user
     ) external {
         // Pulling from the sender - no need to check for operators
-        uint128 received = _receiveTokens(token, msg.sender, amount);
+        uint128 received = _pullTokens(token, msg.sender, amount);
 
         // TODO: check overflow
         _userTokenBalance[user][token] = _userTokenBalance[user][token].add(
@@ -188,7 +188,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry {
 
         if (balance > oldBalance) {
             uint128 toReceive = balance.toUint128().sub128(oldBalance);
-            uint128 received = _receiveTokens(token, msg.sender, toReceive);
+            uint128 received = _pullTokens(token, msg.sender, toReceive);
             require(received == toReceive, "not enough received");
         } else if (balance < oldBalance) {
             require(
@@ -296,8 +296,8 @@ contract Vault is IVault, VaultAccounting, PoolRegistry {
             Diff memory diff = diffs[i];
 
             if (diff.vaultDelta > 0) {
-                // TODO: skip _receiveTokens if diff.amountIn is 0
-                uint256 received = _receiveTokens(
+                // TODO: skip _pullTokens if diff.amountIn is 0
+                uint256 received = _pullTokens(
                     diff.token,
                     fundsIn.withdrawFrom,
                     diff.amountIn.toUint128()

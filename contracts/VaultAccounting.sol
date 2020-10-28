@@ -45,7 +45,7 @@ contract VaultAccounting is BNum {
     mapping(address => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
 
     // Returns the amount of tokens that were actually received
-    function _receiveTokens(
+    function _pullTokens(
         address token,
         address from,
         uint128 amount
