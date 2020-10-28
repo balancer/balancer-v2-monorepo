@@ -127,21 +127,19 @@ interface IVault {
         int256 vaultDelta; // Positive delta means the vault receives tokens
     }
 
-    // A batched swap is made up of a number of Swaps. Each swap indicates a change in the
-    // balances of a token pair in a pool.
+    // A batched swap is made up of a number of Swaps. Each swap indicates a token balance increasing (tokenIn) and one
+    // decreasing (tokenOut) in a pool.
     struct Swap {
         bytes32 poolId;
-        TokenData tokenA;
-        TokenData tokenB;
+        TokenData tokenIn;
+        TokenData tokenOut;
     }
 
-    // For each token involved in a Swap, TokenData indicates by how much the balance for
-    // that token in the associated pool should change. If TokenData also included the token
-    // address, then the swap function would need to look up the index of this token in the
-    // Diffs array. Instead, the caller provides the indices for the Diffs array, leading to
-    // gas savings.
+    // 'amount' can mean tokens going either into or out of the Vault, depending on context.
+    // If TokenData also included the token address, then the swap function would need to look up the index of this
+    // token in the Diffs array. Instead, the caller provides the indices for the Diffs array, leading to gas savings.
     struct TokenData {
-        int128 delta;
+        uint128 amount;
         uint128 tokenDiffIndex;
     }
 }

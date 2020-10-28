@@ -32,6 +32,7 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
     using SafeCast for uint256;
     using SafeCast for int256;
     using FixedPoint for uint256;
+    using FixedPoint for uint128;
 
     IVault private immutable _vault;
 
@@ -89,10 +90,10 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
 
     // Used to store data in memory and avoid stack-too-deep errors
     struct Helper {
-        uint256 toSend;
-        uint256 toReceive;
+        uint128 toSend;
+        uint128 toReceive;
         address lastTokenOut;
-        uint256 accumOut;
+        uint128 accumOut;
     }
 
     // Trades overallTokenIn for overallTokenOut, possibly going through intermediate tokens.
@@ -104,18 +105,18 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
     function swapExactAmountIn(
         address overallTokenIn,
         address overallTokenOut,
-        uint256 minAmountOut,
+        uint128 minAmountOut,
         uint256 maxPrice,
         IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
-        uint256[] memory amountsIn,
+        uint128[] memory amountsIn,
         bool withdrawTokens
     ) public {
         Helper memory helper;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
-            address tokenIn = diffs[swaps[i].tokenA.tokenDiffIndex].token;
-            address tokenOut = diffs[swaps[i].tokenB.tokenDiffIndex].token;
+            address tokenIn = diffs[swaps[i].tokenIn.tokenDiffIndex].token;
+            address tokenOut = diffs[swaps[i].tokenOut.tokenDiffIndex].token;
 
             PoolData memory poolData = _getPoolData(
                 swaps[i].poolId,
@@ -125,19 +126,21 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
 
             // If not equal, we could add a sanity check by requiring
             // tokenIn == lasToken && amountsIn[i] == 0
-            uint256 amountIn = (tokenIn == overallTokenIn)
+            uint128 amountIn = (tokenIn == overallTokenIn)
                 ? amountsIn[i]
                 : helper.accumOut;
 
             //Substract fee
-            uint256 adjustedIn = amountIn.sub(amountIn.mul(poolData.swapFee));
+            uint128 adjustedIn = amountIn.sub128(
+                amountIn.mul128(uint128(poolData.swapFee))
+            );
 
-            uint256 tokenAmountOut = _outGivenIn(
+            uint128 tokenAmountOut = _outGivenIn(
                 poolData.tokenInBalance.toUint128(),
                 poolData.tokenInDenorm,
                 poolData.tokenOutBalance.toUint128(),
                 poolData.tokenOutDenorm,
-                adjustedIn.toUint128()
+                adjustedIn
             );
 
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
@@ -161,8 +164,8 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             // Configure pool end state
 
             // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
-            swaps[i].tokenA.delta = int256(amountIn).toInt128();
-            swaps[i].tokenB.delta = -int256(tokenAmountOut).toInt128();
+            swaps[i].tokenIn.amount = amountIn;
+            swaps[i].tokenOut.amount = tokenAmountOut;
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");

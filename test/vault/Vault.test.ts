@@ -106,8 +106,8 @@ describe('Vault - swaps', () => {
       const swaps = [
         {
           poolId: ethers.utils.id('batch0'),
-          tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() }, //Math isn't 100% accurate
-          tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() },
+          tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() }, //Math isn't 100% accurate
+          tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() },
         },
       ];
 
@@ -148,13 +148,13 @@ describe('Vault - swaps', () => {
       const swaps = [
         {
           poolId: ethers.utils.id('batch0'),
-          tokenA: { tokenDiffIndex: 1, delta: (0.34e18 + fee).toString() },
-          tokenB: { tokenDiffIndex: 0, delta: (-0.25e18).toString() },
+          tokenIn: { tokenDiffIndex: 1, amount: (0.34e18 + fee).toString() },
+          tokenOut: { tokenDiffIndex: 0, amount: (0.25e18).toString() },
         },
         {
           poolId: ethers.utils.id('batch1'),
-          tokenA: { tokenDiffIndex: 1, delta: (0.34e18 + fee).toString() },
-          tokenB: { tokenDiffIndex: 0, delta: (-0.25e18).toString() },
+          tokenIn: { tokenDiffIndex: 1, amount: (0.34e18 + fee).toString() },
+          tokenOut: { tokenDiffIndex: 0, amount: (0.25e18).toString() },
         },
       ];
 
@@ -196,8 +196,8 @@ describe('Vault - swaps', () => {
         const swaps = [
           {
             poolId: ethers.utils.id('batch0'),
-            tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() },
-            tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() }, //Math isn't 100% accurate
+            tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
+            tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
           },
         ];
 
@@ -228,8 +228,8 @@ describe('Vault - swaps', () => {
         const swaps = [
           {
             poolId: ethers.utils.id('batch0'),
-            tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() },
-            tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() }, //Math isn't 100% accurate
+            tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
+            tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
           },
         ];
 
@@ -268,8 +268,8 @@ describe('Vault - swaps', () => {
         const swaps = [
           {
             poolId: ethers.utils.id('batch0'),
-            tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() },
-            tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() }, //Math isn't 100% accurate
+            tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
+            tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
           },
         ];
 
@@ -319,8 +319,8 @@ describe('Vault - swaps', () => {
         const swaps = [
           {
             poolId: ethers.utils.id('batch0'),
-            tokenA: { tokenDiffIndex: 1, delta: (1e18 + fee).toString() },
-            tokenB: { tokenDiffIndex: 0, delta: (-0.49e18).toString() }, //Math isn't 100% accurate
+            tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
+            tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
           },
         ];
 
@@ -406,30 +406,30 @@ describe('Vault - swaps', () => {
         // Withdraw 300 MKR in exchange for 36 DAI (buy at ~8)
         {
           poolId: ethers.utils.id('unbalanced0'),
-          tokenA: { tokenDiffIndex: 0, delta: (36e15).toString() },
-          tokenB: { tokenDiffIndex: 1, delta: (-300e15).toString() },
+          tokenIn: { tokenDiffIndex: 0, amount: (36e15).toString() },
+          tokenOut: { tokenDiffIndex: 1, amount: (300e15).toString() },
         },
         // Spend 40 MKR to get 9 DAI in each pool (sell at ~44)
         // A total 160 MKR out of 300 is spent (140 profit), and all 36 gained DAI are spent
         {
           poolId: ethers.utils.id('unbalanced1'),
-          tokenA: { tokenDiffIndex: 0, delta: (-9e15).toString() },
-          tokenB: { tokenDiffIndex: 1, delta: (40e15).toString() },
+          tokenIn: { tokenDiffIndex: 0, amount: (9e15).toString() },
+          tokenOut: { tokenDiffIndex: 1, amount: (40e15).toString() },
         },
         {
           poolId: ethers.utils.id('unbalanced2'),
-          tokenA: { tokenDiffIndex: 0, delta: (-9e15).toString() },
-          tokenB: { tokenDiffIndex: 1, delta: (40e15).toString() },
+          tokenIn: { tokenDiffIndex: 0, amount: (9e15).toString() },
+          tokenOut: { tokenDiffIndex: 1, amount: (40e15).toString() },
         },
         {
           poolId: ethers.utils.id('unbalanced3'),
-          tokenA: { tokenDiffIndex: 0, delta: (-9e15).toString() },
-          tokenB: { tokenDiffIndex: 1, delta: (40e15).toString() },
+          tokenIn: { tokenDiffIndex: 0, amount: (9e15).toString() },
+          tokenOut: { tokenDiffIndex: 1, amount: (40e15).toString() },
         },
         {
           poolId: ethers.utils.id('unbalanced4'),
-          tokenA: { tokenDiffIndex: 0, delta: (-9e15).toString() },
-          tokenB: { tokenDiffIndex: 1, delta: (40e15).toString() },
+          tokenIn: { tokenDiffIndex: 0, amount: (9e15).toString() },
+          tokenOut: { tokenDiffIndex: 1, amount: (40e15).toString() },
         },
       ];
 
