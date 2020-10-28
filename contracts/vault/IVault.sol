@@ -57,6 +57,20 @@ interface IVault {
 
     function setController(bytes32 poolId, address controller) external;
 
+    function depositToPool(
+        bytes32 poolId,
+        address from,
+        address[] calldata tokens,
+        uint128[] calldata amounts
+    ) external;
+
+    function withdrawFromPool(
+        bytes32 poolId,
+        address from,
+        address[] calldata tokens,
+        uint128[] calldata amounts
+    ) external;
+
     // Trading interface
 
     function batchSwap(

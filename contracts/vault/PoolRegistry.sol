@@ -179,4 +179,66 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
     {
         _poolController[poolId] = controller;
     }
+
+    function depositToPool(
+        bytes32 poolId,
+        address from,
+        address[] calldata tokens,
+        uint128[] calldata amounts
+    ) external override withExistingPool(poolId) onlyPoolController(poolId) {
+        require(
+            tokens.length == amounts.length,
+            "Tokens and amounts length mismatch"
+        );
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint128 received = _pullTokens(tokens[i], from, amounts[i]);
+            if (received > 0) {
+
+                    BalanceLib.Balance memory currentBalance
+                 = _poolTokenBalance[poolId][tokens[i]];
+
+                if (currentBalance.total() == 0) {
+                    bool added = _poolTokens[poolId].add(tokens[i]);
+                    assert(added); // No tokens with zero balance should ever be in the _poolTokens set
+                }
+
+                _poolTokenBalance[poolId][tokens[i]].cash = currentBalance
+                    .cash
+                    .add(received);
+            }
+        }
+    }
+
+    function withdrawFromPool(
+        bytes32 poolId,
+        address from,
+        address[] calldata tokens,
+        uint128[] calldata amounts
+    ) external override withExistingPool(poolId) onlyPoolController(poolId) {
+        require(
+            tokens.length == amounts.length,
+            "Tokens and amounts length mismatch"
+        );
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            require(
+                _poolTokens[poolId].contains(tokens[i]),
+                "Token not in pool"
+            );
+
+            _pushTokens(tokens[i], from, amounts[i]);
+
+
+                BalanceLib.Balance memory currentBalance
+             = _poolTokenBalance[poolId][tokens[i]];
+
+            currentBalance.cash = currentBalance.cash.sub(amounts[i]);
+            _poolTokenBalance[poolId][tokens[i]] = currentBalance;
+
+            if (currentBalance.total() == 0) {
+                _poolTokens.remove(tokens[i]);
+            }
+        }
+    }
 }
