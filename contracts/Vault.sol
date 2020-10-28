@@ -97,7 +97,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry {
         );
 
         _userTokenBalance[msg.sender][token] -= amount;
-        _sendTokens(token, recipient, amount);
+        _pushTokens(token, recipient, amount);
 
         emit Withdrawn(msg.sender, recipient, token, amount);
     }
@@ -197,7 +197,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry {
             );
 
             // TODO: charge exit fee
-            _sendTokens(
+            _pushTokens(
                 token,
                 msg.sender,
                 oldBalance.sub128(balance.toUint128())
@@ -230,7 +230,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry {
         poolRecords[poolId][token] = Record({ bound: false, index: 0 });
 
         // TODO: charge exit fee
-        _sendTokens(token, msg.sender, tokenBalance);
+        _pushTokens(token, msg.sender, tokenBalance);
     }
 
     function batchSwap(
@@ -332,7 +332,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry {
 
                 if (fundsOut.transferToRecipient) {
                     // Actually transfer the tokens to the recipient
-                    _sendTokens(diff.token, fundsOut.recipient, amount);
+                    _pushTokens(diff.token, fundsOut.recipient, amount);
                 } else {
                     // Allocate tokens to the recipient as user balance - the vault's balance doesn't change
                     _userTokenBalance[fundsOut.recipient][diff

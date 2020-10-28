@@ -62,7 +62,7 @@ contract VaultAccounting is BNum {
         return received;
     }
 
-    function _sendTokens(
+    function _pushTokens(
         address token,
         address to,
         uint128 amount
