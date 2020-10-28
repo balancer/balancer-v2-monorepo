@@ -7,8 +7,8 @@ export type Trade = {
   amount?: number;
 };
 
-type Diff = { token: string; vaultDelta: number };
-type Swap = {
+export type Diff = { token: string; vaultDelta: number; amountIn: number };
+export type Swap = {
   poolId: string;
   tokenIn: { tokenDiffIndex: number; amount: number };
   tokenOut: { tokenDiffIndex: number; amount: number };
@@ -27,14 +27,14 @@ export function getDiffsSwapsAndAmounts(
 
     let inDiffIndex = diffs.findIndex((diff) => diff.token == tokenInAddress);
     if (inDiffIndex == -1) {
-      diffs.push({ token: tokenInAddress, vaultDelta: 0 });
+      diffs.push({ token: tokenInAddress, vaultDelta: 0, amountIn: 0 });
       inDiffIndex = diffs.length - 1;
     }
 
     const tokenOutAddress = tokens[trade.tokenOut].address;
     let outDiffIndex = diffs.findIndex((diff) => diff.token == tokenOutAddress);
     if (outDiffIndex == -1) {
-      diffs.push({ token: tokenOutAddress, vaultDelta: 0 });
+      diffs.push({ token: tokenOutAddress, vaultDelta: 0, amountIn: 0 });
       outDiffIndex = diffs.length - 1;
     }
 

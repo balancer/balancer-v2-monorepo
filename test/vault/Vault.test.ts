@@ -83,9 +83,12 @@ describe('Vault - swaps', () => {
       await tokens.DAI.mint(trader.address, (200e18).toString());
       await tokens.MKR.mint(trader.address, (200e18).toString());
 
-      // Approve trade script by trader
-      await tokens.DAI.connect(trader).approve(tradeScript.address, (500e18).toString());
-      await tokens.MKR.connect(trader).approve(tradeScript.address, (500e18).toString());
+      // Approve Vault by trader
+      await tokens.DAI.connect(trader).approve(vault.address, MAX_UINT256);
+      await tokens.MKR.connect(trader).approve(vault.address, MAX_UINT256);
+
+      // Set Vault as trader operator
+      await vault.connect(trader).authorizeOperator(tradeScript.address);
     });
 
     it('single pair single pool swap', async () => {
@@ -94,10 +97,12 @@ describe('Vault - swaps', () => {
         {
           token: tokens.DAI.address,
           vaultDelta: 0,
+          amountIn: 0,
         },
         {
           token: tokens.MKR.address,
           vaultDelta: 0,
+          amountIn: 0,
         },
       ];
 
@@ -115,8 +120,7 @@ describe('Vault - swaps', () => {
         async () => {
           await tradeScript.batchSwap(
             vault.address,
-            [tokens.MKR.address],
-            [(1e18 + fee).toString()],
+            ['0', (1e18 + fee).toString()],
             diffs,
             swaps,
             trader.address,
@@ -136,10 +140,12 @@ describe('Vault - swaps', () => {
         {
           token: tokens.DAI.address,
           vaultDelta: 0,
+          amountIn: 0,
         },
         {
           token: tokens.MKR.address,
           vaultDelta: 0,
+          amountIn: 0,
         },
       ];
 
@@ -162,8 +168,7 @@ describe('Vault - swaps', () => {
         async () => {
           await tradeScript.batchSwap(
             vault.address,
-            [tokens.MKR.address],
-            [(0.68e18 + 2 * fee).toString()],
+            ['0', (0.68e18 + 2 * fee).toString()],
             diffs,
             swaps,
             trader.address,
@@ -184,10 +189,12 @@ describe('Vault - swaps', () => {
           {
             token: tokens.DAI.address,
             vaultDelta: 0,
+            amountIn: 0,
           },
           {
             token: tokens.MKR.address,
             vaultDelta: 0,
+            amountIn: 0,
           },
         ];
 
@@ -202,11 +209,13 @@ describe('Vault - swaps', () => {
         ];
 
         // Deposit MKR as user balance
-        await tokens.MKR.connect(trader).approve(vault.address, (1e18 + fee).toString());
         await vault.connect(trader).deposit(tokens.MKR.address, (1e18 + fee).toString(), trader.address);
 
+        // Revoke trade script
+        await vault.connect(trader).revokeOperator(tradeScript.address);
+
         await expect(
-          tradeScript.batchSwap(vault.address, [], [], diffs, swaps, trader.address, trader.address, true)
+          tradeScript.batchSwap(vault.address, ['0', '0'], diffs, swaps, trader.address, trader.address, true)
         ).to.be.revertedWith('Caller is not operator');
       });
 
@@ -216,10 +225,12 @@ describe('Vault - swaps', () => {
           {
             token: tokens.DAI.address,
             vaultDelta: 0,
+            amountIn: 0,
           },
           {
             token: tokens.MKR.address,
             vaultDelta: 0,
+            amountIn: 0,
           },
         ];
 
@@ -234,19 +245,19 @@ describe('Vault - swaps', () => {
         ];
 
         // Deposit MKR as user balance
-        await tokens.MKR.connect(trader).approve(vault.address, (1e18 + fee).toString());
-        await vault.connect(trader).deposit(tokens.MKR.address, (1e18 + fee).toString(), trader.address);
-
-        await vault.connect(trader).authorizeOperator(tradeScript.address);
+        await vault.connect(trader).deposit(tokens.MKR.address, (2e18).toString(), trader.address);
 
         await expectBalanceChange(
-          async () => tradeScript.batchSwap(vault.address, [], [], diffs, swaps, trader.address, trader.address, true),
+          async () =>
+            tradeScript.batchSwap(vault.address, ['0', '0'], diffs, swaps, trader.address, trader.address, true),
           trader,
           tokens,
           { DAI: 0.49e18 }
         );
 
-        expect(await vault.getUserTokenBalance(trader.address, tokens.MKR.address)).to.equal(0);
+        expect(await vault.getUserTokenBalance(trader.address, tokens.MKR.address)).to.equal(
+          (2e18 - (1e18 + fee)).toString()
+        );
         expect(await vault.getUserTokenBalance(trader.address, tokens.DAI.address)).to.equal(0);
       });
 
@@ -256,10 +267,12 @@ describe('Vault - swaps', () => {
           {
             token: tokens.DAI.address,
             vaultDelta: 0,
+            amountIn: 0,
           },
           {
             token: tokens.MKR.address,
             vaultDelta: 0,
+            amountIn: 0,
           },
         ];
 
@@ -274,16 +287,13 @@ describe('Vault - swaps', () => {
         ];
 
         // Deposit MKR as user balance
-        await tokens.MKR.connect(trader).approve(vault.address, (1e18 + fee).toString());
-        await vault.connect(trader).deposit(tokens.MKR.address, (1e18 + fee).toString(), trader.address);
-        await vault.connect(trader).authorizeOperator(tradeScript.address);
+        await vault.connect(trader).deposit(tokens.MKR.address, (2e18).toString(), trader.address);
 
         await expectBalanceChange(
           async () =>
             tradeScript.batchSwap(
               vault.address,
-              [tokens.MKR.address],
-              [(1e18 + fee).toString()],
+              ['0', (1e18 + fee).toString()],
               diffs,
               swaps,
               trader.address,
@@ -295,7 +305,7 @@ describe('Vault - swaps', () => {
           { MKR: -1e18 - fee, DAI: 0.49e18 }
         );
 
-        expect(await vault.getUserTokenBalance(trader.address, tokens.MKR.address)).to.equal((1e18 + fee).toString());
+        expect(await vault.getUserTokenBalance(trader.address, tokens.MKR.address)).to.equal((2e18).toString());
         expect(await vault.getUserTokenBalance(trader.address, tokens.DAI.address)).to.equal(0);
       });
     });
@@ -307,10 +317,12 @@ describe('Vault - swaps', () => {
           {
             token: tokens.DAI.address,
             vaultDelta: 0,
+            amountIn: 0,
           },
           {
             token: tokens.MKR.address,
             vaultDelta: 0,
+            amountIn: 0,
           },
         ];
 
@@ -328,8 +340,7 @@ describe('Vault - swaps', () => {
           async () =>
             tradeScript.batchSwap(
               vault.address,
-              [tokens.MKR.address],
-              [(1e18 + fee).toString()],
+              ['0', (1e18 + fee).toString()],
               diffs,
               swaps,
               trader.address,
@@ -392,10 +403,12 @@ describe('Vault - swaps', () => {
         {
           token: tokens.DAI.address,
           vaultDelta: 0,
+          amountIn: 0,
         },
         {
           token: tokens.MKR.address,
           vaultDelta: 0,
+          amountIn: 0,
         },
       ];
 

@@ -20,18 +20,9 @@ import "./utils/Logs.sol";
 import "./BConst.sol";
 import "./IVault.sol";
 
-library BalanceLib {
-    struct Balance {
-        uint128 cash;
-        uint128 invested;
-    }
+import "./VaultAccounting.sol";
 
-    function total(Balance storage self) internal view returns (uint128) {
-        return self.cash + self.invested;
-    }
-}
-
-abstract contract PoolRegistry is BConst, Lock, Logs, IVault {
+abstract contract PoolRegistry is BConst, Lock, Logs, IVault, VaultAccounting {
     using BalanceLib for BalanceLib.Balance;
 
     struct Record {

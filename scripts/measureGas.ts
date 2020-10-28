@@ -6,6 +6,7 @@ import { toFixedPoint } from './helpers/fixedPoint';
 import { Contract } from 'ethers';
 import { getDiffsSwapsAndAmounts } from './helpers/trading';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { MAX_UINT256 } from '../test/helpers/constants';
 
 let vault: Contract;
 let script: Contract;
@@ -30,19 +31,16 @@ async function main() {
   for (const symbol in tokens) {
     // controller tokens are used to initialize pools
     await mintTokens(tokens, symbol, controller, 100e18);
+
     // trader tokens are used to trade and not have non-zero balances
     await mintTokens(tokens, symbol, trader, 200e18);
+    await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
     // deposit user balance for trader to make it non-zero
-    await tokens[symbol].connect(trader).approve(vault.address, (100e18).toString());
     await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), trader.address);
 
     // Approve script to use tokens
-    await tokens[symbol].connect(trader).approve(script.address, (100e18).toString());
-
-    // Deposit tokens for script to use
-    await tokens[symbol].connect(trader).approve(vault.address, (100e18).toString());
-    await vault.connect(trader).deposit(tokens[symbol].address, (100e18).toString(), script.address);
+    await vault.connect(trader).authorizeOperator(script.address);
   }
 
   await batchedSwap(false);

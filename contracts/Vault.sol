@@ -23,7 +23,9 @@ import "hardhat/console.sol";
 
 import "./PoolRegistry.sol";
 
-import "./ISwapCaller.sol";
+import "./IVault.sol";
+
+import "./VaultAccounting.sol";
 
 import "./LogExpMath.sol";
 
@@ -33,17 +35,12 @@ import "./strategies/ITupleTradingStrategy.sol";
 
 import "./math/FixedPoint.sol";
 
-contract Vault is IVault, PoolRegistry {
+contract Vault is IVault, VaultAccounting, PoolRegistry {
     using BalanceLib for BalanceLib.Balance;
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
-
-    // The vault's accounted-for balance for each token. These include:
-    //  * tokens in pools
-    //  * tokens stored as user balance
-    mapping(address => BalanceLib.Balance) private _vaultTokenBalance; // token -> vault balance
 
     mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
     // operators are allowed to use a user's tokens in a swap
@@ -76,17 +73,17 @@ contract Vault is IVault, PoolRegistry {
 
     function deposit(
         address token,
-        uint256 amount,
+        uint128 amount,
         address user
     ) external {
+        // Pulling from the sender - no need to check for operators
+        uint128 received = _pullTokens(token, msg.sender, amount);
+
+        // TODO: check overflow
         _userTokenBalance[user][token] = _userTokenBalance[user][token].add(
-            amount
+            received
         );
-
-        // TODO: use ISwapCaller callback?
-        _pullUnderlying(token, msg.sender, amount.toUint128());
-
-        emit Deposited(msg.sender, user, token, amount);
+        emit Deposited(msg.sender, user, token, received);
     }
 
     function withdraw(
@@ -100,8 +97,7 @@ contract Vault is IVault, PoolRegistry {
         );
 
         _userTokenBalance[msg.sender][token] -= amount;
-
-        _pushUnderlying(token, recipient, amount);
+        _sendTokens(token, recipient, amount);
 
         emit Withdrawn(msg.sender, recipient, token, amount);
     }
@@ -191,11 +187,9 @@ contract Vault is IVault, PoolRegistry {
             _poolTokenBalance[poolId][token].invested;
 
         if (balance > oldBalance) {
-            _pullUnderlying(
-                token,
-                msg.sender,
-                balance.toUint128().sub128(oldBalance)
-            );
+            uint128 toReceive = balance.toUint128().sub128(oldBalance);
+            uint128 received = _pullTokens(token, msg.sender, toReceive);
+            require(received == toReceive, "not enough received");
         } else if (balance < oldBalance) {
             require(
                 balance >= _poolTokenBalance[poolId][token].invested,
@@ -203,7 +197,7 @@ contract Vault is IVault, PoolRegistry {
             );
 
             // TODO: charge exit fee
-            _pushUnderlying(
+            _sendTokens(
                 token,
                 msg.sender,
                 oldBalance.sub128(balance.toUint128())
@@ -236,7 +230,7 @@ contract Vault is IVault, PoolRegistry {
         poolRecords[poolId][token] = Record({ bound: false, index: 0 });
 
         // TODO: charge exit fee
-        _pushUnderlying(token, msg.sender, tokenBalance);
+        _sendTokens(token, msg.sender, tokenBalance);
     }
 
     function batchSwap(
@@ -245,6 +239,11 @@ contract Vault is IVault, PoolRegistry {
         FundsIn calldata fundsIn,
         FundsOut calldata fundsOut
     ) external override {
+        require(
+            isOperatorFor(fundsIn.withdrawFrom, msg.sender),
+            "Caller is not operator"
+        );
+
         //TODO: avoid reentrancy
 
         // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
@@ -296,37 +295,21 @@ contract Vault is IVault, PoolRegistry {
                 _poolTokenBalance[swap.poolId][tokenOut].invested;
         }
 
-        // Step 4: measure current balance for tokens that need to be received
+        // Step 4: Receive intended tokens, pulling the difference from user balance
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 
             if (diff.vaultDelta > 0) {
-                // Change positive deltas into expected final balances
-                diff.vaultDelta += int256(
-                    IERC20(diff.token).balanceOf(address(this))
-                ); // TODO: check overflows
-            }
-        }
+                // TODO: skip _pullTokens if diff.amountIn is 0
+                uint256 received = _pullTokens(
+                    diff.token,
+                    fundsIn.withdrawFrom,
+                    diff.amountIn.toUint128()
+                );
 
-        // Call into sender to trigger token receipt
-        ISwapCaller(msg.sender).sendTokens(fundsIn.callbackData);
+                if (received < uint256(diff.vaultDelta)) {
+                    uint256 missing = uint256(diff.vaultDelta) - received;
 
-        // Step 5: check tokens have been received
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            Diff memory diff = diffs[i];
-
-            if (diff.vaultDelta > 0) {
-                uint128 newBalance = IERC20(diff.token)
-                    .balanceOf(address(this))
-                    .toUint128();
-
-                if (uint128(diff.vaultDelta) > newBalance) {
-                    uint256 missing = uint256(diff.vaultDelta) - newBalance;
-
-                    require(
-                        isOperatorFor(fundsIn.withdrawFrom, msg.sender),
-                        "Caller is not operator"
-                    );
                     require(
                         _userTokenBalance[fundsIn.withdrawFrom][diff.token] >=
                             missing,
@@ -336,16 +319,10 @@ contract Vault is IVault, PoolRegistry {
                     _userTokenBalance[fundsIn.withdrawFrom][diff
                         .token] -= missing;
                 }
-
-                // Update token balance
-                // TODO: only update based on how many tokens were received
-                _vaultTokenBalance[diff.token].cash = newBalance.sub128(
-                    _vaultTokenBalance[diff.token].invested
-                );
             }
         }
 
-        // Step 6: send out tokens to send
+        // Step 5: send out tokens to send
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 
@@ -355,7 +332,7 @@ contract Vault is IVault, PoolRegistry {
 
                 if (fundsOut.transferToRecipient) {
                     // Actually transfer the tokens to the recipient
-                    _pushUnderlying(diff.token, fundsOut.recipient, amount);
+                    _sendTokens(diff.token, fundsOut.recipient, amount);
                 } else {
                     // Allocate tokens to the recipient as user balance - the vault's balance doesn't change
                     _userTokenBalance[fundsOut.recipient][diff
@@ -549,38 +526,5 @@ contract Vault is IVault, PoolRegistry {
             _poolTokenBalance[poolId][t].cash = cashBal.sub128(tokenAmountOut);
             _allocatedBalances[t] = _allocatedBalances[t].sub(tokenAmountOut);
         }
-    }
-
-    // 'Underlying' token-manipulation functions make external calls but are NOT locked
-    // You must `_lock_` or otherwise ensure reentry-safety
-
-    function _pullUnderlying(
-        address erc20,
-        address from,
-        uint128 amount
-    ) internal {
-        bool xfer = IERC20(erc20).transferFrom(from, address(this), amount);
-        require(xfer, "ERR_ERC20_FALSE");
-
-        // TODO: What assumptions do we make when pulling? Should we check token.balanceOf(this)
-        // increased by toPull?
-        _vaultTokenBalance[erc20].cash += amount;
-    }
-
-    function _pushUnderlying(
-        address erc20,
-        address to,
-        uint128 amount
-    ) internal {
-        // TODO: What assumptions do we make when pushing? Should we check token.balanceOf(this)
-        // decreased by toPull?
-        require(
-            _vaultTokenBalance[erc20].cash >= amount,
-            "insufficient cash balance to push"
-        );
-        _vaultTokenBalance[erc20].cash -= amount;
-
-        bool xfer = IERC20(erc20).transfer(to, amount);
-        require(xfer, "ERR_ERC20_FALSE");
     }
 }

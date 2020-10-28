@@ -108,7 +108,6 @@ interface IVault {
     // succeed).
     struct FundsIn {
         address withdrawFrom;
-        bytes callbackData;
     }
 
     // Funds out are assigned to recipient's user balance, or transferred out if transferToRecipient is true.
@@ -125,6 +124,7 @@ interface IVault {
     struct Diff {
         address token;
         int256 vaultDelta; // Positive delta means the vault receives tokens
+        uint256 amountIn;
     }
 
     // A batched swap is made up of a number of Swaps. Each swap indicates a token balance increasing (tokenIn) and one
