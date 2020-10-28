@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import "./vendor/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../math/FixedPoint.sol";
@@ -155,9 +155,9 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
         address tokenIn,
         address tokenOut
     ) private returns (uint128, uint128) {
-        StrategyType strategyType = pools[swap.poolId].strategyType;
+        PoolStrategy memory strategy = _poolStrategy[swap.poolId];
 
-        if (strategyType == StrategyType.PAIR) {
+        if (strategy.strategyType == StrategyType.PAIR) {
             return
                 _validatePairStrategySwap(
                     swap.poolId,
@@ -165,9 +165,9 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
                     tokenOut,
                     swap.tokenIn.amount,
                     swap.tokenOut.amount,
-                    IPairTradingStrategy(pools[swap.poolId].strategy)
+                    IPairTradingStrategy(strategy.strategy)
                 );
-        } else if (strategyType == StrategyType.TUPLE) {
+        } else if (strategy.strategyType == StrategyType.TUPLE) {
             return
                 _validateTupleStrategySwap(
                     ITradingStrategy.Swap({
@@ -177,7 +177,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
                         amountIn: swap.tokenIn.amount,
                         amountOut: swap.tokenOut.amount
                     }),
-                    ITupleTradingStrategy(pools[swap.poolId].strategy)
+                    ITupleTradingStrategy(strategy.strategy)
                 );
         } else {
             revert("Unknown strategy type");
@@ -224,15 +224,15 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
         ITradingStrategy.Swap memory swap,
         ITupleTradingStrategy strategy
     ) private returns (uint128, uint128) {
-        uint128[] memory currentBalances = new uint128[](
-            pools[swap.poolId].tokens.length
-        );
+        uint256 totalTokens = _poolTokens[swap.poolId].length();
+
+        uint128[] memory currentBalances = new uint128[](totalTokens);
 
         uint256 indexIn;
         uint256 indexOut;
 
-        for (uint256 i = 0; i < pools[swap.poolId].tokens.length; i++) {
-            address token = pools[swap.poolId].tokens[i];
+        for (uint256 i = 0; i < totalTokens; i++) {
+            address token = _poolTokens[swap.poolId].at(i);
             currentBalances[i] = _poolTokenBalance[swap.poolId][token].total();
             require(currentBalances[i] > 0, "Token A not in pool");
 
@@ -257,80 +257,5 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
             currentBalances[indexIn] + swap.amountIn,
             currentBalances[indexOut] - swap.amountOut
         );
-    }
-
-    function addInitialLiquidity(
-        bytes32 poolId,
-        address[] calldata initialTokens,
-        uint256[] calldata initialBalances
-    ) external override onlyPoolController(poolId) {
-        pools[poolId].tokens = initialTokens;
-
-        for (uint256 i = 0; i < initialTokens.length; ++i) {
-            address t = initialTokens[i];
-            uint128 tokenAmountIn = initialBalances[i].toUint128();
-            require(tokenAmountIn != 0, "ERR_MATH_APPROX");
-            require(
-                IERC20(t).balanceOf(address(this)).sub(_allocatedBalances[t]) >=
-                    tokenAmountIn,
-                "INSUFFICIENT UNALLOCATED BALANCE"
-            );
-
-            _poolTokenBalance[poolId][t].cash = tokenAmountIn;
-            _allocatedBalances[t] = _allocatedBalances[t].add(tokenAmountIn);
-        }
-    }
-
-    function addLiquidity(bytes32 poolId, uint256[] calldata amountsIn)
-        external
-        override
-        onlyPoolController(poolId)
-    {
-        Pool memory pool = pools[poolId];
-
-        for (uint256 i = 0; i < pool.tokens.length; ++i) {
-            address t = pool.tokens[i];
-            uint128 bal = _poolTokenBalance[poolId][t].cash;
-            uint128 tokenAmountIn = amountsIn[i].toUint128();
-            require(tokenAmountIn != 0, "ERR_MATH_APPROX");
-            require(
-                IERC20(t).balanceOf(address(this)).sub(_allocatedBalances[t]) >=
-                    tokenAmountIn,
-                "INSUFFICIENT UNALLOCATED BALANCE"
-            );
-
-            _poolTokenBalance[poolId][t].cash = bal.add128(tokenAmountIn);
-            _allocatedBalances[t] = _allocatedBalances[t].add(tokenAmountIn);
-        }
-    }
-
-    function removeLiquidity(
-        bytes32 poolId,
-        address recipient,
-        uint256[] calldata amountsOut
-    ) external override onlyPoolController(poolId) {
-        Pool memory pool = pools[poolId];
-
-        for (uint256 i = 0; i < pool.tokens.length; ++i) {
-            address t = pool.tokens[i];
-            uint128 cashBal = _poolTokenBalance[poolId][t].cash;
-
-            uint128 tokenAmountOut = amountsOut[i].toUint128();
-            require(
-                _poolTokenBalance[poolId][t].cash > tokenAmountOut,
-                "insufficient cash balance for liquidity withdrawal"
-            );
-            require(tokenAmountOut != 0, "ERR_MATH_APPROX");
-            require(
-                _allocatedBalances[t] >= tokenAmountOut,
-                "INSUFFICIENT BALANCE TO WITHDRAW"
-            );
-
-            bool xfer = IERC20(t).transfer(recipient, tokenAmountOut);
-            require(xfer, "ERR_ERC20_FALSE");
-
-            _poolTokenBalance[poolId][t].cash = cashBal.sub128(tokenAmountOut);
-            _allocatedBalances[t] = _allocatedBalances[t].sub(tokenAmountOut);
-        }
     }
 }

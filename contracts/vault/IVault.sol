@@ -41,7 +41,7 @@ interface IVault {
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
         view
-        returns (uint256[] memory);
+        returns (uint128[] memory);
 
     function getPoolTokens(bytes32 poolId)
         external
@@ -56,41 +56,6 @@ interface IVault {
     // Pool configuration - only callable by the controller
 
     function setController(bytes32 poolId, address controller) external;
-
-    // TODO rework bind functions to minimize trust of controllers
-    // Adds a new token to a pool, with initial balance
-    function bind(
-        bytes32 poolId,
-        address token,
-        uint256 balance
-    ) external;
-
-    // Removes a token from a pool, withdrawing all balance
-    function unbind(bytes32 poolId, address token) external;
-
-    // functions for adding several tokens minting/burning bpt
-    function addInitialLiquidity(
-        bytes32 poolId,
-        address[] calldata initialTokens,
-        uint256[] calldata amountsIn
-    ) external;
-
-    function addLiquidity(bytes32 poolId, uint256[] calldata amountsIn)
-        external;
-
-    function removeLiquidity(
-        bytes32 poolId,
-        address recipient,
-        uint256[] calldata amountsOut
-    ) external;
-
-    // Updates a token's config in a pool with new balance
-    // balance (depositing or withdrawing depending on current state)
-    function rebind(
-        bytes32 poolId,
-        address token,
-        uint256 balance
-    ) external;
 
     // Trading interface
 
