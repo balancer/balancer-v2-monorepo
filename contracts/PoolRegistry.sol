@@ -18,11 +18,13 @@ pragma experimental ABIEncoderV2;
 import "./utils/Lock.sol";
 import "./utils/Logs.sol";
 import "./BConst.sol";
-import "./BNum.sol";
-import "./BMath.sol";
 import "./IVault.sol";
 
-abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
+import "./VaultAccounting.sol";
+
+abstract contract PoolRegistry is BConst, Lock, Logs, IVault, VaultAccounting {
+    using BalanceLib for BalanceLib.Balance;
+
     struct Record {
         bool bound; // is token bound to pool
         uint8 index; // private
@@ -43,7 +45,8 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
 
     mapping(bytes32 => bool) internal _poolExists;
     // All tokens in a pool have non-zero balances
-    mapping(bytes32 => mapping(address => uint256)) internal _poolTokenBalance; // poolid => token => pool balance
+    mapping(bytes32 => mapping(address => BalanceLib.Balance))
+        internal _poolTokenBalance; // poolid => token => pool balance
     mapping(address => uint256) internal _allocatedBalances;
 
     modifier ensurePoolExists(bytes32 poolId) {
@@ -119,7 +122,7 @@ abstract contract PoolRegistry is BMath, Lock, Logs, IVault {
         uint256[] memory balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _poolTokenBalance[poolId][tokens[i]];
+            balances[i] = uint256(_poolTokenBalance[poolId][tokens[i]].total());
         }
 
         return balances;
