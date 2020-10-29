@@ -15,138 +15,29 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "hardhat/console.sol";
+import "../math/FixedPoint.sol";
+import "../LogExpMath.sol";
 
-import "./PoolRegistry.sol";
+import "../strategies/ITradingStrategy.sol";
+import "../strategies/IPairTradingStrategy.sol";
+import "../strategies/ITupleTradingStrategy.sol";
 
 import "./IVault.sol";
-
 import "./VaultAccounting.sol";
+import "./PoolRegistry.sol";
+import "./UserBalance.sol";
 
-import "./LogExpMath.sol";
-
-import "./strategies/ITradingStrategy.sol";
-import "./strategies/IPairTradingStrategy.sol";
-import "./strategies/ITupleTradingStrategy.sol";
-
-import "./math/FixedPoint.sol";
-
-contract Vault is IVault, VaultAccounting, PoolRegistry {
+contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
     using BalanceLib for BalanceLib.Balance;
-    using EnumerableSet for EnumerableSet.AddressSet;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
-
-    mapping(address => mapping(address => uint256)) private _userTokenBalance; // user -> token -> user balance
-    // operators are allowed to use a user's tokens in a swap
-    mapping(address => EnumerableSet.AddressSet) private _userOperators;
-
-    event Deposited(
-        address indexed depositor,
-        address indexed user,
-        address indexed token,
-        uint256 amount
-    );
-
-    event Withdrawn(
-        address indexed user,
-        address indexed recipient,
-        address indexed token,
-        uint256 amount
-    );
-
-    event AuthorizedOperator(address indexed user, address indexed operator);
-    event RevokedOperator(address indexed user, address indexed operator);
-
-    function getUserTokenBalance(address user, address token)
-        public
-        view
-        returns (uint256)
-    {
-        return _userTokenBalance[user][token];
-    }
-
-    function deposit(
-        address token,
-        uint128 amount,
-        address user
-    ) external {
-        // Pulling from the sender - no need to check for operators
-        uint128 received = _pullTokens(token, msg.sender, amount);
-
-        // TODO: check overflow
-        _userTokenBalance[user][token] = _userTokenBalance[user][token].add(
-            received
-        );
-        emit Deposited(msg.sender, user, token, received);
-    }
-
-    function withdraw(
-        address token,
-        uint128 amount,
-        address recipient
-    ) external {
-        require(
-            _userTokenBalance[msg.sender][token] >= amount,
-            "Vault: withdraw amount exceeds balance"
-        );
-
-        _userTokenBalance[msg.sender][token] -= amount;
-        _pushTokens(token, recipient, amount);
-
-        emit Withdrawn(msg.sender, recipient, token, amount);
-    }
-
-    function authorizeOperator(address operator) external {
-        if (_userOperators[msg.sender].add(operator)) {
-            emit AuthorizedOperator(msg.sender, operator);
-        }
-    }
-
-    function revokeOperator(address operator) external {
-        if (_userOperators[msg.sender].remove(operator)) {
-            emit RevokedOperator(msg.sender, operator);
-        }
-    }
-
-    function isOperatorFor(address user, address operator)
-        public
-        view
-        returns (bool)
-    {
-        return (user == operator) || _userOperators[user].contains(operator);
-    }
-
-    function getUserTotalOperators(address user)
-        external
-        view
-        returns (uint256)
-    {
-        return _userOperators[user].length();
-    }
-
-    function getUserOperators(
-        address user,
-        uint256 start,
-        uint256 end
-    ) external view returns (address[] memory) {
-        // Ideally we'd use a native implemenation: see
-        // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
-        address[] memory operators = new address[](
-            _userOperators[user].length()
-        );
-
-        for (uint256 i = start; i < end; ++i) {
-            operators[i] = _userOperators[user].at(i);
-        }
-
-        return operators;
-    }
 
     // Bind does not lock because it jumps to `rebind`, which does
     function bind(
@@ -301,14 +192,14 @@ contract Vault is IVault, VaultAccounting, PoolRegistry {
 
             if (diff.vaultDelta > 0) {
                 // TODO: skip _pullTokens if diff.amountIn is 0
-                uint256 received = _pullTokens(
+                uint128 received = _pullTokens(
                     diff.token,
                     fundsIn.withdrawFrom,
                     diff.amountIn.toUint128()
                 );
 
-                if (received < uint256(diff.vaultDelta)) {
-                    uint256 missing = uint256(diff.vaultDelta) - received;
+                if (received < diff.vaultDelta) {
+                    uint128 missing = uint128(diff.vaultDelta) - received;
 
                     require(
                         _userTokenBalance[fundsIn.withdrawFrom][diff.token] >=
@@ -338,7 +229,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry {
                     _userTokenBalance[fundsOut.recipient][diff
                         .token] = _userTokenBalance[fundsOut.recipient][diff
                         .token]
-                        .add(amount);
+                        .add128(amount);
                 }
             }
         }

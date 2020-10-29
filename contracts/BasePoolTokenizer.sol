@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "./IVault.sol";
+import "./vault/IVault.sol";
 import "./BToken.sol";
 
 // Initial implementation implements a simple, pass-through sole proprietorship model
