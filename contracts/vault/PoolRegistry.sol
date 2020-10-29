@@ -15,7 +15,7 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./vendor/EnumerableSet.sol";
+import "../vendor/EnumerableSet.sol";
 
 import "../utils/Lock.sol";
 import "../utils/Logs.sol";
@@ -23,12 +23,22 @@ import "../BConst.sol";
 
 import "./IVault.sol";
 import "./VaultAccounting.sol";
+import "./UserBalance.sol";
 
-abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
+abstract contract PoolRegistry is
+    IVault,
+    VaultAccounting,
+    UserBalance,
+    BConst,
+    Lock,
+    Logs
+{
     using EnumerableSet for EnumerableSet.BytesSet;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     using BalanceLib for BalanceLib.Balance;
+
+    using FixedPoint for uint128;
 
     struct PoolStrategy {
         address strategy;
@@ -72,11 +82,15 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
 
     event PoolCreated(bytes32 poolId);
 
-    function newPool(
-        bytes32 poolId,
-        address strategy,
-        StrategyType strategyType
-    ) external override returns (bytes32) {
+    function newPool(address strategy, StrategyType strategyType)
+        external
+        override
+        returns (bytes32)
+    {
+        bytes32 poolId = keccak256(
+            abi.encodePacked(address(this), _pools.length())
+        );
+
         require(!_pools.contains(poolId), "Pool ID already exists");
         require(strategy != address(0), "Strategy must be set");
 
@@ -92,17 +106,26 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
         return poolId;
     }
 
-    function isTokenBound(bytes32 poolId, address token)
+    function getTotalPools() external override view returns (uint256) {
+        return _pools.length();
+    }
+
+    function getPoolIds(uint256 startIndex, uint256 endIndex)
         external
         override
         view
-        withExistingPool(poolId)
-        returns (bool)
+        _viewlock_
+        returns (bytes32[] memory)
     {
-        return _poolTokens[poolId].contains(token);
+        bytes32[] memory poolIds = new bytes32[](endIndex - startIndex);
+        for (uint256 i = 0; i < poolIds.length; ++i) {
+            poolIds[i] = _pools.at(i + startIndex);
+        }
+
+        return poolIds;
     }
 
-    function getNumPoolTokens(bytes32 poolId)
+    function getPoolTotalTokens(bytes32 poolId)
         external
         override
         view
@@ -112,7 +135,11 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
         return _poolTokens[poolId].length();
     }
 
-    function getPoolTokens(bytes32 poolId)
+    function getPoolTokens(
+        bytes32 poolId,
+        uint256 startIndex,
+        uint256 endIndex
+    )
         external
         override
         view
@@ -120,11 +147,9 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
         withExistingPool(poolId)
         returns (address[] memory)
     {
-        uint256 totalTokens = _poolTokens[poolId].length();
-
-        address[] memory tokens = new address[](totalTokens);
-        for (uint256 i = 0; i < tokens; ++i) {
-            tokens[i] = _poolTokens[poolId].at(i);
+        address[] memory tokens = new address[](endIndex - startIndex);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            tokens[i] = _poolTokens[poolId].at(i + startIndex);
         }
 
         return tokens;
@@ -146,7 +171,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
         return balances;
     }
 
-    function getController(bytes32 poolId)
+    function getPoolController(bytes32 poolId)
         external
         override
         view
@@ -157,7 +182,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
         return _poolController[poolId];
     }
 
-    function getStrategy(bytes32 poolId)
+    function getPoolStrategy(bytes32 poolId)
         external
         override
         view
@@ -169,7 +194,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
         return (strategy.strategy, strategy.strategyType);
     }
 
-    function setController(bytes32 poolId, address controller)
+    function setPoolController(bytes32 poolId, address controller)
         external
         override
         _logs_
@@ -191,6 +216,8 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
             "Tokens and amounts length mismatch"
         );
 
+        require(isOperatorFor(from, msg.sender), "Caller is not operator");
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint128 received = _pullTokens(tokens[i], from, amounts[i]);
             if (received > 0) {
@@ -205,7 +232,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
 
                 _poolTokenBalance[poolId][tokens[i]].cash = currentBalance
                     .cash
-                    .add(received);
+                    .add128(received);
             }
         }
     }
@@ -233,11 +260,11 @@ abstract contract PoolRegistry is IVault, VaultAccounting, BConst, Lock, Logs {
                 BalanceLib.Balance memory currentBalance
              = _poolTokenBalance[poolId][tokens[i]];
 
-            currentBalance.cash = currentBalance.cash.sub(amounts[i]);
+            currentBalance.cash = currentBalance.cash.sub128(amounts[i]);
             _poolTokenBalance[poolId][tokens[i]] = currentBalance;
 
             if (currentBalance.total() == 0) {
-                _poolTokens.remove(tokens[i]);
+                _poolTokens[poolId].remove(tokens[i]);
             }
         }
     }

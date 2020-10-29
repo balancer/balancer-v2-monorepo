@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./vendor/EnumerableSet.sol";
+import "../vendor/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../math/FixedPoint.sol";
@@ -33,7 +33,8 @@ import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
 import "./UserBalance.sol";
 
-contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
+contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using BalanceLib for BalanceLib.Balance;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -110,7 +111,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
                 uint128 received = _pullTokens(
                     diff.token,
                     fundsIn.withdrawFrom,
-                    diff.amountIn
+                    diff.amountIn.toUint128()
                 );
 
                 if (received < diff.vaultDelta) {
@@ -224,14 +225,14 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
         ITradingStrategy.Swap memory swap,
         ITupleTradingStrategy strategy
     ) private returns (uint128, uint128) {
-        uint256 totalTokens = _poolTokens[swap.poolId].length();
-
-        uint128[] memory currentBalances = new uint128[](totalTokens);
+        uint128[] memory currentBalances = new uint128[](
+            _poolTokens[swap.poolId].length()
+        );
 
         uint256 indexIn;
         uint256 indexOut;
 
-        for (uint256 i = 0; i < totalTokens; i++) {
+        for (uint256 i = 0; i < _poolTokens[swap.poolId].length(); i++) {
             address token = _poolTokens[swap.poolId].at(i);
             currentBalances[i] = _poolTokenBalance[swap.poolId][token].total();
             require(currentBalances[i] > 0, "Token A not in pool");

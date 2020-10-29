@@ -27,7 +27,7 @@ library BalanceLib {
         uint128 invested;
     }
 
-    function total(Balance storage self) internal view returns (uint128) {
+    function total(Balance memory self) internal pure returns (uint128) {
         return self.cash + self.invested;
     }
 }

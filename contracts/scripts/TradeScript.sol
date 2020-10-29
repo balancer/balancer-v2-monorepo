@@ -59,12 +59,12 @@ contract TradeScript is ConstantWeightedProduct {
         addresses[0] = tokenIn;
         addresses[1] = tokenOut;
 
-        uint256[] memory tokenBalances = _vault.getPoolTokenBalances(
+        uint128[] memory tokenBalances = _vault.getPoolTokenBalances(
             poolId,
             addresses
         );
 
-        (address strategy, ) = _vault.getStrategy(poolId);
+        (address strategy, ) = _vault.getPoolStrategy(poolId);
 
         uint256 tokenInDenormalizedWeight = ConstantWeightedProdStrategy(
             strategy

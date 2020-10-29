@@ -3,6 +3,11 @@ import { Contract } from 'ethers';
 import { ethers } from 'hardhat';
 import { TokenList } from '../../test/helpers/tokens';
 
+export const PairTS = 0;
+export const TupleTS = 1;
+
+export type TradingStrategyType = typeof PairTS | typeof TupleTS;
+
 export async function setupPool(
   vault: Contract,
   strategy: Contract,

@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "hardhat/console.sol";
 
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import "../vendor/EnumerableSet.sol";
 
 import "./IVault.sol";
 import "./VaultAccounting.sol";

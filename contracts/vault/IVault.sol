@@ -19,43 +19,39 @@ pragma solidity ^0.7.1;
 interface IVault {
     enum StrategyType { PAIR, TUPLE }
 
-    function newPool(
-        bytes32,
-        address,
-        StrategyType
-    ) external returns (bytes32);
+    function newPool(address, StrategyType) external returns (bytes32);
+
+    function getTotalPools() external view returns (uint256);
+
+    function getPoolId(uint256 poolIndex) external view returns (bytes32);
 
     // Pool config queries
 
     // Trading with a pool requires either trusting the controller, or going through
     // a proxy that enforces expected conditions (such as pool make up and fees)
-    function getController(bytes32 poolId) external view returns (address);
+    function getPoolController(bytes32 poolId) external view returns (address);
 
-    function getStrategy(bytes32 poolId)
+    function getPoolStrategy(bytes32 poolId)
         external
         view
         returns (address, StrategyType);
 
-    function getNumPoolTokens(bytes32 poolId) external view returns (uint256); // do we need this?
+    function getPoolTotalTokens(bytes32 poolId) external view returns (uint256);
+
+    function getPoolTokens(
+        bytes32 poolId,
+        uint256 startIndex,
+        uint256 endIndex
+    ) external view returns (address[] memory);
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
         view
         returns (uint128[] memory);
 
-    function getPoolTokens(bytes32 poolId)
-        external
-        view
-        returns (address[] memory);
-
-    function isTokenBound(bytes32 poolId, address token)
-        external
-        view
-        returns (bool);
-
     // Pool configuration - only callable by the controller
 
-    function setController(bytes32 poolId, address controller) external;
+    function setPoolController(bytes32 poolId, address controller) external;
 
     function depositToPool(
         bytes32 poolId,
