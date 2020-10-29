@@ -144,7 +144,7 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
                 helper.toReceive += tokenAmountOut;
             }
 
-            // Multihop and mergehop accounting
+            // Multihop accounting
             helper.accum = tokenAmountOut;
 
             // Configure pool end state
@@ -183,10 +183,10 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
     }
 
     // Trades overallTokenIn for overallTokenOut, possibly going through intermediate tokens.
-    // At least minAmountOut tokens will be spent, with a maximum effective
-    // of maxPrice (including trading fees). The amount of overallTokenOut to be sent for each
+    // At most maxAmountOut tokens will be spent, with a maximum effective
+    // of maxPrice (including trading fees). The amount of overallTokenOut to be received in each
     // swap is specified in amountsOut.
-    // If the tokenIn for a swap is not overallTokenOut, the input of the previous swap is used
+    // If the tokenOut for a swap is not overallTokenOut, the input of the previous swap is used
     // instead (multi-hops).
     // MaxPrice argument can be calculated by the sum of amountsOut and the maxAmountIn arg,
     // but it is redundant as a secure and simple check.
