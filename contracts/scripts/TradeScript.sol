@@ -84,7 +84,6 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
     struct Helper {
         uint256 toSend;
         uint256 toReceive;
-        uint256 accum;
     }
 
     // Trades overallTokenIn for overallTokenOut, possibly going through intermediate tokens.
@@ -106,6 +105,7 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
         bool withdrawTokens
     ) public {
         Helper memory helper;
+        uint256 tokenAmountOut;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             address tokenIn = diffs[swaps[i].tokenA.tokenDiffIndex].token;
@@ -121,12 +121,12 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             // tokenIn == lasToken && amountsIn[i] == 0
             uint256 amountIn = (tokenIn == overallTokenIn)
                 ? amountsIn[i]
-                : helper.accum;
+                : tokenAmountOut;
 
             //Substract fee
             uint256 adjustedIn = sub(amountIn, mul(amountIn, poolData.swapFee));
 
-            uint256 tokenAmountOut = _outGivenIn(
+            tokenAmountOut = _outGivenIn(
                 poolData.tokenInBalance,
                 poolData.tokenInDenorm,
                 poolData.tokenOutBalance,
@@ -143,9 +143,6 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             if (tokenOut == overallTokenOut) {
                 helper.toReceive += tokenAmountOut;
             }
-
-            // Multihop accounting
-            helper.accum = tokenAmountOut;
 
             // Configure pool end state
 
@@ -201,6 +198,7 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
         bool withdrawTokens
     ) public {
         Helper memory helper;
+        uint256 adjustedIn;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             address tokenIn = diffs[swaps[i].tokenA.tokenDiffIndex].token;
@@ -216,7 +214,7 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             // tokenOut == lasToken && amountsOut[i] == 0
             uint256 amountOut = (tokenOut == overallTokenOut)
                 ? amountsOut[i]
-                : helper.accum;
+                : adjustedIn;
 
             uint256 tokenAmountIn = _inGivenOut(
                 poolData.tokenInBalance,
@@ -227,7 +225,7 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             );
 
             //Add fee
-            uint256 adjustedIn = add(
+             adjustedIn = add(
                 tokenAmountIn,
                 mul(tokenAmountIn, poolData.swapFee)
             );
@@ -241,9 +239,6 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             if (tokenOut == overallTokenOut) {
                 helper.toReceive += amountOut;
             }
-
-            // Multihop accounting
-            helper.accum = tokenAmountIn;
 
             // Configure pool end state
 
