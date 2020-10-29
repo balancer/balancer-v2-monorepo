@@ -17,13 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "./StrategyFee.sol";
 import "./ITupleTradingStrategy.sol";
-import "./lib/ConstantSumProduct.sol";
+import "./lib/Stable.sol";
 
-contract ConstantSumProdStrategy is
-    ITupleTradingStrategy,
-    StrategyFee,
-    ConstantSumProduct
-{
+contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
     uint256 private immutable _amp;
     uint256 private immutable _swapFee;
 
@@ -42,7 +38,7 @@ contract ConstantSumProdStrategy is
         uint256 indexOut
     ) public override view returns (bool, uint256) {
         //Calculate old invariant
-        uint256 oldInvariant = calculateInvariant(_amp, balances);
+        uint256 oldInvariant = _invariant(_amp, balances);
 
         //Substract fee
         uint256 feeAmount = mul(swap.amountIn, _swapFee);
@@ -55,9 +51,20 @@ contract ConstantSumProdStrategy is
         balances[indexOut] = sub(balances[indexOut], swap.amountOut);
 
         //Calculate new invariant
-        uint256 newInvariant = calculateInvariant(_amp, balances);
+        uint256 newInvariant = _invariant(_amp, balances);
 
-        return (newInvariant >= oldInvariant, feeAmount);
+        
+
+        if (newInvariant >= oldInvariant) {
+            return (true, feeAmount);
+        } else {
+            uint256 error = (newInvariant * 1000 / oldInvariant);
+            return (error > 1 && error < 1000, feeAmount);
+        }
+    }
+
+    function getAmp() external view returns (uint256) {
+        return _amp;
     }
 
     function getSwapFee() external override view returns (uint256) {

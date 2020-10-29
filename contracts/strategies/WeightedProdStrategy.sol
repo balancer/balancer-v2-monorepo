@@ -17,16 +17,16 @@ pragma experimental ABIEncoderV2;
 
 import "./StrategyFee.sol";
 import "./IPairTradingStrategy.sol";
-import "./lib/ConstantWeightedProduct.sol";
+import "./lib/WeightedProduct.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract ConstantWeightedProdStrategy is
+contract WeightedProdStrategy is
     IPairTradingStrategy,
     StrategyFee,
-    ConstantWeightedProduct
+    WeightedProduct
 {
     uint8 public constant MIN_TOKENS = 2;
     uint8 public constant MAX_TOKENS = 16;

@@ -29,7 +29,7 @@ describe('ImmutablePoolTokenizer', function () {
     user1Address = user1.address;
     user2Address = user2.address;
 
-    const CurveFactory: ContractFactory = await ethers.getContractFactory('ConstantWeightedProdStrategy');
+    const CurveFactory: ContractFactory = await ethers.getContractFactory('WeightedProdStrategy');
     const VaultFactory: ContractFactory = await ethers.getContractFactory('Vault');
     const TokenizerFactory: ContractFactory = await ethers.getContractFactory('ImmutablePoolTokenizer');
 

@@ -33,13 +33,13 @@ describe('Vault - multiple trading strategies interfaces', () => {
     mockScript = await deploy('MockTradeScript');
 
     poolIdPair = await setupPool(vault, mockStrategy, 0, tokens, controller, [
-      ['DAI', 50],
-      ['TEST', 50],
+      ['DAI', (100e18).toString()],
+      ['TEST', (100e18).toString()],
     ]);
 
     poolIdTuple = await setupPool(vault, mockStrategy, 1, tokens, controller, [
-      ['DAI', 50],
-      ['TEST', 50],
+      ['DAI', (100e18).toString()],
+      ['TEST', (100e18).toString()],
     ]);
 
     // Mint tokens for trader

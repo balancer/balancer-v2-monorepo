@@ -4,7 +4,7 @@ export type Trade = {
   poolId: string;
   tokenIn: string;
   tokenOut: string;
-  amount?: number;
+  amount?: number | string;
 };
 
 type Diff = { token: string; vaultDelta: number };
@@ -17,10 +17,10 @@ type Swap = {
 export function getDiffsSwapsAndAmounts(
   tokens: TokenList,
   trades: Array<Trade>
-): [Array<Diff>, Array<Swap>, Array<number>] {
+): [Array<Diff>, Array<Swap>, Array<number | string>] {
   const diffs: Array<Diff> = [];
   const swaps: Array<Swap> = [];
-  const amounts: Array<number> = [];
+  const amounts: Array<number | string> = [];
 
   for (const trade of trades) {
     const tokenInAddress = tokens[trade.tokenIn].address;
@@ -48,4 +48,20 @@ export function getDiffsSwapsAndAmounts(
   }
 
   return [diffs, swaps, amounts];
+}
+
+export type SwapIndexes = {
+  tokenIndexIn: number;
+  tokenIndexOut: number;
+};
+
+export function getSwapTokenIndexes(indexes: number[][]): Array<SwapIndexes> {
+  const swapIndexes: Array<SwapIndexes> = [];
+  for (const pair of indexes) {
+    swapIndexes.push({
+      tokenIndexIn: pair[0],
+      tokenIndexOut: pair[1],
+    });
+  }
+  return swapIndexes;
 }

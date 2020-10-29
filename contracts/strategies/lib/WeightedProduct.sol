@@ -19,7 +19,7 @@ import "../../math/FixedPoint.sol";
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
 
-contract ConstantWeightedProduct is FixedPoint {
+contract WeightedProduct is FixedPoint {
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances and weights.
     function _outGivenIn(

@@ -27,7 +27,7 @@ describe('TradeScript', () => {
 
     const weights = [(1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString()];
     curve = await deploy(
-      'ConstantWeightedProdStrategy',
+      'WeightedProdStrategy',
       [tokens.DAI.address, tokens.BAT.address, tokens.ANT.address, tokens.SNX.address, tokens.MKR.address],
       weights,
       5,
@@ -51,11 +51,11 @@ describe('TradeScript', () => {
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
         // Create even pools with all tokens, initial balance of 1e18 for each
         const poolId = await setupPool(vault, curve, 0, tokens, controller, [
-          ['DAI', 20],
-          ['BAT', 20],
-          ['ANT', 20],
-          ['SNX', 20],
-          ['MKR', 20],
+          ['DAI', (100e18).toString()],
+          ['BAT', (100e18).toString()],
+          ['ANT', (100e18).toString()],
+          ['SNX', (100e18).toString()],
+          ['MKR', (100e18).toString()],
         ]);
 
         pools.push(poolId);

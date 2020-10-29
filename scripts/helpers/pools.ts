@@ -9,7 +9,7 @@ export async function setupPool(
   strategyType: number,
   tokens: TokenList,
   controller: SignerWithAddress,
-  makeup: Array<[string, number]>
+  makeup: Array<[string, string]>
 ): Promise<string> {
   vault = vault.connect(controller);
 
@@ -19,9 +19,9 @@ export async function setupPool(
   for (const entry of makeup) {
     const token = tokens[entry[0]];
 
-    await token.mint(controller.address, (100e18).toString());
-    await token.connect(controller).approve(vault.address, (100e18).toString());
-    await vault.bind(poolId, token.address, (100e18).toString());
+    await token.mint(controller.address, entry[1]);
+    await token.connect(controller).approve(vault.address, entry[1]);
+    await vault.bind(poolId, token.address, entry[1]);
   }
 
   return poolId;
