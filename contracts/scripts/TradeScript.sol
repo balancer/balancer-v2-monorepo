@@ -225,9 +225,9 @@ contract TradeScript is ConstantWeightedProduct, ISwapCaller {
             );
 
             //Add fee
-             adjustedIn = add(
+            adjustedIn = div(
                 tokenAmountIn,
-                mul(tokenAmountIn, poolData.swapFee)
+                sub(ONE, poolData.swapFee)
             );
 
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
