@@ -8,7 +8,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { TupleTS } from '../../scripts/helpers/pools';
 
-describe.only('Vault - pool controller', () => {
+describe.only('Vault - pool registry', () => {
   let controller: SignerWithAddress;
   let other: SignerWithAddress;
 
@@ -25,7 +25,7 @@ describe.only('Vault - pool controller', () => {
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault');
     strategy = await deploy('MockTradingStrategy');
-    tokens = await deployTokens(['DAI', 'MKR']);
+    tokens = await deployTokens(['DAI', 'MKR', 'SNX']);
 
     for (const symbol in tokens) {
       await mintTokens(tokens, symbol, controller, tokenSupply.toString());
@@ -64,7 +64,7 @@ describe.only('Vault - pool controller', () => {
 
     it('new pool is added to pool list', async () => {
       expect(await vault.getTotalPools()).to.equal(1);
-      expect(await vault.getPoolIds(0, 1)).to.equal([poolId]);
+      expect(await vault.getPoolIds(0, 1)).to.have.members([poolId]);
     });
 
     it('creator is pool controller', async () => {
@@ -72,7 +72,7 @@ describe.only('Vault - pool controller', () => {
     });
 
     it('strategy is set', async () => {
-      expect(await vault.getPoolStrategy(poolId)).to.have.ordered.members([strategy.address, TupleTS]);
+      expect(await vault.getPoolStrategy(poolId)).to.deep.equal([strategy.address, TupleTS]);
     });
 
     it('pool starts with no tokens', async () => {
@@ -87,7 +87,7 @@ describe.only('Vault - pool controller', () => {
 
       expect(poolId).to.not.equal(otherPoolId);
       expect(await vault.getTotalPools()).to.equal(2);
-      expect(await vault.getPoolIds(0, 2)).to.equal([poolId, otherPoolId]);
+      expect(await vault.getPoolIds(0, 2)).to.have.members([poolId, otherPoolId]);
     });
   });
 
@@ -129,11 +129,9 @@ describe.only('Vault - pool controller', () => {
     it('controller can add tokens', async () => {
       await vault.connect(controller).depositToPool(poolId, controller.address, [tokens.DAI.address], [5]);
       expect(await vault.getPoolTotalTokens(poolId)).to.equal(1);
-      expect(await vault.getPoolTokens(poolId, 0, 1)).to.have.ordered.members([tokens.DAI.address]);
+      expect(await vault.getPoolTokens(poolId, 0, 1)).to.deep.equal([tokens.DAI.address]);
 
-      expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.have.ordered.members([
-        BigNumber.from(5),
-      ]);
+      expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
     });
 
     it('controller can add tokens multiple times', async () => {
@@ -143,16 +141,56 @@ describe.only('Vault - pool controller', () => {
         .depositToPool(poolId, controller.address, [tokens.DAI.address, tokens.MKR.address], [5, 10]);
 
       expect(await vault.getPoolTotalTokens(poolId)).to.equal(2);
-      expect(await vault.getPoolTokens(poolId, 0, 2)).to.have.ordered.members([tokens.DAI.address, tokens.MKR.address]);
-      expect(
-        await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])
-      ).to.have.ordered.members([BigNumber.from(10), BigNumber.from(10)]);
+      expect(await vault.getPoolTokens(poolId, 0, 2)).to.deep.equal([tokens.DAI.address, tokens.MKR.address]);
+      expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
+        BigNumber.from(10),
+        BigNumber.from(10),
+      ]);
     });
 
     it('non-controller cannot add tokens', async () => {
       await expect(
         vault.connect(other).depositToPool(poolId, controller.address, [tokens.DAI.address], [5])
       ).to.be.revertedWith('Caller is not the pool controller');
+    });
+
+    context('with added tokens', () => {
+      beforeEach(async () => {
+        await vault
+          .connect(controller)
+          .depositToPool(poolId, controller.address, [tokens.DAI.address, tokens.MKR.address], [5, 10]);
+      });
+
+      it('controller can remove tokens', async () => {
+        await vault.connect(controller).withdrawFromPool(poolId, controller.address, [tokens.MKR.address], [10]);
+
+        expect(await vault.getPoolTotalTokens(poolId)).to.equal(1);
+        expect(await vault.getPoolTokens(poolId, 0, 1)).to.deep.equal([tokens.DAI.address]);
+        expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
+      });
+
+      it('controller can partially remove tokens', async () => {
+        await vault.connect(controller).withdrawFromPool(poolId, controller.address, [tokens.MKR.address], [3]);
+
+        expect(await vault.getPoolTotalTokens(poolId)).to.equal(2);
+        expect(await vault.getPoolTokens(poolId, 0, 2)).to.deep.equal([tokens.DAI.address, tokens.MKR.address]);
+        expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
+          BigNumber.from(5),
+          BigNumber.from(7),
+        ]);
+      });
+
+      it('non-controller cannot remove tokens', async () => {
+        await expect(
+          vault.connect(other).withdrawFromPool(poolId, controller.address, [tokens.MKR.address], [0])
+        ).to.be.revertedWith('Caller is not the pool controller');
+      });
+
+      it('controller cannot remove tokens not in pool', async () => {
+        await expect(
+          vault.connect(controller).withdrawFromPool(poolId, controller.address, [tokens.SNX.address], [0])
+        ).to.be.revertedWith('Token not in pool');
+      });
     });
   });
 });

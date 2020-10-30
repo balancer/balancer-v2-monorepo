@@ -23,7 +23,10 @@ interface IVault {
 
     function getTotalPools() external view returns (uint256);
 
-    function getPoolId(uint256 poolIndex) external view returns (bytes32);
+    function getPoolIds(uint256 startIndex, uint256 endIndex)
+        external
+        view
+        returns (bytes32[] memory);
 
     // Pool config queries
 
