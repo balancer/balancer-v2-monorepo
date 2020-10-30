@@ -55,7 +55,7 @@ contract ConstantWeightedProduct {
         return tokenBalanceOut.mul(ratio).toUint128();
     }
 
-    // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
+    // Computes how many tokens must be sent to a pool in order to take `tokenAmountOut`, given the
     // current balances and weights.
     function _inGivenOut(
         uint128 tokenBalanceIn,
