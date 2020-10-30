@@ -71,8 +71,8 @@ async function batchedSwap(withdrawTokens: boolean) {
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
       await setupPool(vault, curve, 0, tokens, controller, [
-        ['DAI', 50],
-        ['MKR', 50],
+        ['DAI', (100e18).toString()],
+        ['MKR', (100e18).toString()],
       ])
     );
   }
