@@ -22,7 +22,7 @@ import "hardhat/console.sol";
 import "../strategies/lib/Stable.sol";
 import "../strategies/StableStrategy.sol";
 
-import "../IVault.sol";
+import "../vault/IVault.sol";
 
 import "../math/FixedPoint.sol";
 
