@@ -23,9 +23,15 @@ import "../strategies/lib/Stable.sol";
 import "../strategies/StableStrategy.sol";
 
 import "../IVault.sol";
-import "../ISwapCaller.sol";
 
-contract TradeScriptStable is Stable, ISwapCaller {
+import "../math/FixedPoint.sol";
+
+contract TradeScriptStable is Stable {
+    using SafeCast for uint256;
+    using SafeCast for int256;
+    using FixedPoint for uint256;
+    using FixedPoint for uint128;
+
     IVault private immutable _vault;
 
     constructor(IVault vault) {
@@ -36,40 +42,31 @@ contract TradeScriptStable is Stable, ISwapCaller {
     struct PoolData {
         address tokenIn;
         address tokenOut;
-        uint256 tokenInBalance;
-        uint256 tokenOutBalance;
-        uint256 amp;
+        uint128 tokenInBalance;
+        uint128 tokenOutBalance;
+        uint128 amp;
         uint256 swapFee;
         uint256[] balances;
     }
 
-    function _getPoolData(IVault.Diff[] memory diffs, IVault.Swap memory swap)
-        private
-        view
-        returns (PoolData memory)
-    {
+    function _getPoolData(
+        IVault.Diff[] memory diffs,
+        IVault.Swap memory swap,
+        SwapTokenIndexes memory indexes
+    ) private view returns (PoolData memory) {
         // TODO: reduce to a single contract call - will depend on the curve abstraction
 
-        address tokenIn = diffs[swap.tokenA.tokenDiffIndex].token;
-        address tokenOut = diffs[swap.tokenB.tokenDiffIndex].token;
-
-        address[] memory addresses = new address[](2);
-        addresses[0] = tokenIn;
-        addresses[1] = tokenOut;
-
-        uint256[] memory tokenBalances = _vault.getPoolTokenBalances(
-            swap.poolId,
-            addresses
-        );
+        address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
+        address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
         (address strategy, ) = _vault.getStrategy(swap.poolId);
 
-        uint256 amp = StableStrategy(strategy).getAmp();
+        uint128 amp = StableStrategy(strategy).getAmp();
 
         uint256 swapFee = StableStrategy(strategy).getSwapFee();
 
         address[] memory tokens = IVault(_vault).getPoolTokens(swap.poolId);
-        uint256[] memory balances = IVault(_vault).getPoolTokenBalances(
+        uint256[] memory tokenBalances = IVault(_vault).getPoolTokenBalances(
             swap.poolId,
             tokens
         );
@@ -78,11 +75,11 @@ contract TradeScriptStable is Stable, ISwapCaller {
             PoolData({
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                tokenInBalance: tokenBalances[0],
-                tokenOutBalance: tokenBalances[1],
+                tokenInBalance: tokenBalances[indexes.tokenIndexIn].toUint128(),
+                tokenOutBalance: tokenBalances[indexes.tokenIndexOut].toUint128(),
                 amp: amp,
                 swapFee: swapFee,
-                balances: balances
+                balances: tokenBalances
             });
     }
 
@@ -106,34 +103,39 @@ contract TradeScriptStable is Stable, ISwapCaller {
     function swapExactAmountIn(
         address overallTokenIn,
         address overallTokenOut,
-        uint256 minAmountOut,
+        uint128 minAmountOut,
         uint256 maxPrice,
         IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
         SwapTokenIndexes[] memory indexes,
-        uint256[] memory amountsIn,
+        uint128[] memory amountsIn,
         bool withdrawTokens
     ) public {
         Helper memory helper;
 
-        uint256 tokenAmountOut;
+        uint128 tokenAmountOut;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
-            PoolData memory poolData = _getPoolData(diffs, swaps[i]);
+            PoolData memory poolData = _getPoolData(diffs, swaps[i], indexes[i]);
 
             // If not equal, we could add a sanity check by requiring
             // tokenIn == lasToken && amountsIn[i] == 0
-            uint256 amountIn = (poolData.tokenIn == overallTokenIn)
+            uint128 amountIn = (poolData.tokenIn == overallTokenIn)
                 ? amountsIn[i]
                 : tokenAmountOut;
+
+            //Substract fee
+            uint128 adjustedIn = amountIn.sub128(
+                amountIn.mul128(uint128(poolData.swapFee))
+            );
 
             tokenAmountOut = _outGivenIn(
                 poolData.amp,
                 poolData.balances,
                 indexes[i].tokenIndexIn,
                 indexes[i].tokenIndexOut,
-                sub(amountIn, mul(amountIn, poolData.swapFee))
-            );
+                adjustedIn
+            ).toUint128();
 
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
             // provides the inputs
@@ -148,29 +150,27 @@ contract TradeScriptStable is Stable, ISwapCaller {
             // Configure pool end state
 
             // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
-            swaps[i].tokenA.delta = int256(amountIn);
-            swaps[i].tokenB.delta = -int256(tokenAmountOut);
+            swaps[i].tokenIn.amount = amountIn;
+            swaps[i].tokenOut.amount = tokenAmountOut;
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");
         require(
-            div(helper.toSend, helper.toReceive) <= maxPrice,
+            helper.toSend.div(helper.toReceive) <= maxPrice,
             "Price too high"
         );
 
-        bytes memory callbackData = abi.encode(
-            msg.sender,
-            overallTokenIn,
-            helper.toSend
-        );
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            if (diffs[i].token == overallTokenIn) {
+                diffs[i].amountIn = helper.toSend;
+                break;
+            }
+        }
 
         _vault.batchSwap(
             diffs,
             swaps,
-            IVault.FundsIn({
-                withdrawFrom: msg.sender,
-                callbackData: callbackData
-            }),
+            IVault.FundsIn({ withdrawFrom: msg.sender }),
             IVault.FundsOut({
                 recipient: msg.sender,
                 transferToRecipient: withdrawTokens
@@ -178,16 +178,5 @@ contract TradeScriptStable is Stable, ISwapCaller {
         );
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
-    }
-
-    // Callback to send tokens to the Vault
-    function sendTokens(bytes calldata callbackData) external override {
-        require(msg.sender == address(_vault), "Invalid callback caller");
-
-        (address sender, address overallTokenIn, uint256 toSend) = abi.decode(
-            callbackData,
-            (address, address, uint256)
-        );
-        IERC20(overallTokenIn).transferFrom(sender, address(_vault), toSend);
     }
 }

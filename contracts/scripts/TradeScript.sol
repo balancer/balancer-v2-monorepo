@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "hardhat/console.sol";
 
@@ -23,9 +24,15 @@ import "../strategies/lib/WeightedProduct.sol";
 import "../strategies/WeightedProdStrategy.sol";
 
 import "../IVault.sol";
-import "../ISwapCaller.sol";
 
-contract TradeScript is WeightedProduct, ISwapCaller {
+import "../math/FixedPoint.sol";
+
+contract TradeScript is WeightedProduct {
+    using SafeCast for uint256;
+    using SafeCast for int256;
+    using FixedPoint for uint256;
+    using FixedPoint for uint128;
+
     IVault private immutable _vault;
 
     constructor(IVault vault) {
@@ -80,8 +87,6 @@ contract TradeScript is WeightedProduct, ISwapCaller {
     struct Helper {
         uint256 toSend;
         uint256 toReceive;
-        address lastTokenOut;
-        uint256 accumOut;
     }
 
     // Trades overallTokenIn for overallTokenOut, possibly going through intermediate tokens.
@@ -89,22 +94,25 @@ contract TradeScript is WeightedProduct, ISwapCaller {
     // of maxPrice (including trading fees). The amount of overallTokenIn to be sent for each
     // swap is specified in amountsIn.
     // If the tokenIn for a swap is not overallTokenIn, the output of the previous swap is used
-    // instead (multi-hops). Subsequent non-overallTokenOut outputs are merged together (merge-hop).
+    // instead (multi-hops).
+    // MaxPrice argument can be calculated by the sum of amountsIn and the minAmountOut arg,
+    // but it is redundant as a secure and simple check.
     function swapExactAmountIn(
         address overallTokenIn,
         address overallTokenOut,
-        uint256 minAmountOut,
+        uint128 minAmountOut,
         uint256 maxPrice,
         IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
-        uint256[] memory amountsIn,
+        uint128[] memory amountsIn,
         bool withdrawTokens
     ) public {
         Helper memory helper;
+        uint128 tokenAmountOut;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
-            address tokenIn = diffs[swaps[i].tokenA.tokenDiffIndex].token;
-            address tokenOut = diffs[swaps[i].tokenB.tokenDiffIndex].token;
+            address tokenIn = diffs[swaps[i].tokenIn.tokenDiffIndex].token;
+            address tokenOut = diffs[swaps[i].tokenOut.tokenDiffIndex].token;
 
             PoolData memory poolData = _getPoolData(
                 swaps[i].poolId,
@@ -114,17 +122,19 @@ contract TradeScript is WeightedProduct, ISwapCaller {
 
             // If not equal, we could add a sanity check by requiring
             // tokenIn == lasToken && amountsIn[i] == 0
-            uint256 amountIn = (tokenIn == overallTokenIn)
+            uint128 amountIn = (tokenIn == overallTokenIn)
                 ? amountsIn[i]
-                : helper.accumOut;
+                : tokenAmountOut;
 
             //Substract fee
-            uint256 adjustedIn = sub(amountIn, mul(amountIn, poolData.swapFee));
+            uint128 adjustedIn = amountIn.sub128(
+                amountIn.mul128(uint128(poolData.swapFee))
+            );
 
-            uint256 tokenAmountOut = _outGivenIn(
-                poolData.tokenInBalance,
+            tokenAmountOut = _outGivenIn(
+                poolData.tokenInBalance.toUint128(),
                 poolData.tokenInDenorm,
-                poolData.tokenOutBalance,
+                poolData.tokenOutBalance.toUint128(),
                 poolData.tokenOutDenorm,
                 adjustedIn
             );
@@ -139,40 +149,30 @@ contract TradeScript is WeightedProduct, ISwapCaller {
                 helper.toReceive += tokenAmountOut;
             }
 
-            // Multihop and mergehop accounting
-            if (helper.lastTokenOut == tokenOut) {
-                helper.accumOut += tokenAmountOut;
-            } else {
-                helper.lastTokenOut = tokenOut;
-                helper.accumOut = tokenAmountOut;
-            }
-
             // Configure pool end state
 
             // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
-            swaps[i].tokenA.delta = int256(amountIn);
-            swaps[i].tokenB.delta = -int256(tokenAmountOut);
+            swaps[i].tokenIn.amount = amountIn;
+            swaps[i].tokenOut.amount = tokenAmountOut;
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");
         require(
-            div(helper.toSend, helper.toReceive) <= maxPrice,
+            helper.toSend.div(helper.toReceive) <= maxPrice,
             "Price too high"
         );
 
-        bytes memory callbackData = abi.encode(
-            msg.sender,
-            overallTokenIn,
-            helper.toSend
-        );
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            if (diffs[i].token == overallTokenIn) {
+                diffs[i].amountIn = helper.toSend;
+                break;
+            }
+        }
 
         _vault.batchSwap(
             diffs,
             swaps,
-            IVault.FundsIn({
-                withdrawFrom: msg.sender,
-                callbackData: callbackData
-            }),
+            IVault.FundsIn({ withdrawFrom: msg.sender }),
             IVault.FundsOut({
                 recipient: msg.sender,
                 transferToRecipient: withdrawTokens
@@ -182,14 +182,96 @@ contract TradeScript is WeightedProduct, ISwapCaller {
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
     }
 
-    // Callback to send tokens to the Vault
-    function sendTokens(bytes calldata callbackData) external override {
-        require(msg.sender == address(_vault), "Invalid callback caller");
+    // Trades overallTokenIn for overallTokenOut, possibly going through intermediate tokens.
+    // At most maxAmountOut tokens will be spent, with a maximum effective
+    // of maxPrice (including trading fees). The amount of overallTokenOut to be received in each
+    // swap is specified in amountsOut.
+    // If the tokenOut for a swap is not overallTokenOut, the input of the previous swap is used
+    // instead (multi-hops).
+    // MaxPrice argument can be calculated by the sum of amountsOut and the maxAmountIn arg,
+    // but it is redundant as a secure and simple check.
+    function swapExactAmountOut(
+        address overallTokenIn,
+        address overallTokenOut,
+        uint128 maxAmountIn,
+        uint256 maxPrice,
+        IVault.Diff[] memory diffs,
+        IVault.Swap[] memory swaps,
+        uint128[] memory amountsOut,
+        bool withdrawTokens
+    ) public {
+        Helper memory helper;
+        uint128 adjustedIn;
 
-        (address sender, address overallTokenIn, uint256 toSend) = abi.decode(
-            callbackData,
-            (address, address, uint256)
+        for (uint256 i = 0; i < swaps.length; ++i) {
+            address tokenIn = diffs[swaps[i].tokenIn.tokenDiffIndex].token;
+            address tokenOut = diffs[swaps[i].tokenOut.tokenDiffIndex].token;
+
+            PoolData memory poolData = _getPoolData(
+                swaps[i].poolId,
+                tokenIn,
+                tokenOut
+            );
+
+            // If not equal, we could add a sanity check by requiring
+            // tokenOut == lasToken && amountsOut[i] == 0
+            uint128 amountOut = (tokenOut == overallTokenOut)
+                ? amountsOut[i]
+                : adjustedIn;
+
+            uint128 tokenAmountIn = _inGivenOut(
+                poolData.tokenInBalance.toUint128(),
+                poolData.tokenInDenorm,
+                poolData.tokenOutBalance.toUint128(),
+                poolData.tokenOutDenorm,
+                amountOut
+            );
+
+            //Calculated fee, to be later used as tokenAmountIn = adjustedIn * (1 - fee)
+            adjustedIn = tokenAmountIn.div128(
+                FixedPoint.ONE.sub128(uint128(poolData.swapFee))
+            );
+
+            // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
+            // provides the inputs
+            if (tokenIn == overallTokenIn) {
+                helper.toSend += adjustedIn;
+            }
+
+            if (tokenOut == overallTokenOut) {
+                helper.toReceive += amountOut;
+            }
+
+            // Configure pool end state
+
+            // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
+            swaps[i].tokenIn.amount = adjustedIn;
+            swaps[i].tokenOut.amount = amountOut;
+        }
+
+        require(helper.toSend <= maxAmountIn, "Excessing amount out");
+        require(
+            helper.toSend.div(helper.toReceive) <= maxPrice,
+            "Price too high"
         );
-        IERC20(overallTokenIn).transferFrom(sender, address(_vault), toSend);
+
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            if (diffs[i].token == overallTokenIn) {
+                diffs[i].amountIn = helper.toSend;
+                break;
+            }
+        }
+
+        _vault.batchSwap(
+            diffs,
+            swaps,
+            IVault.FundsIn({ withdrawFrom: msg.sender }),
+            IVault.FundsOut({
+                recipient: msg.sender,
+                transferToRecipient: withdrawTokens
+            })
+        );
+
+        // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
     }
 }

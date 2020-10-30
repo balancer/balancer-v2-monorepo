@@ -1,11 +1,12 @@
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
-import { TokenList, deployTokens, mintTokens } from './../helpers/tokens';
+import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { getDiffsSwapsAndAmounts, getSwapTokenIndexes } from '../../scripts/helpers/trading';
-import { expectBalanceChange } from './../helpers/tokenBalance';
+import { expectBalanceChange } from '../helpers/tokenBalance';
 import { setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { MAX_UINT256 } from '../helpers/constants';
 
 describe('TradeScriptStable', () => {
   let controller: SignerWithAddress;
@@ -64,9 +65,12 @@ describe('TradeScriptStable', () => {
 
       // Mint tokens for trader
       await tokens.DAI.mint(trader.address, (10e18).toString());
+      await tokens.DAI.connect(trader).approve(vault.address, MAX_UINT256);
+
+      await vault.connect(trader).authorizeOperator(tradeScript.address);
     });
 
-    it.only('swapExactAmountIn - one pool DAI for USDC', async () => {
+    it('swapExactAmountIn - one pool DAI for USDC', async () => {
       const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
         { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
       ]);
@@ -95,7 +99,7 @@ describe('TradeScriptStable', () => {
       );
     });
 
-    it.only('swapExactAmountIn - multihop DAI for SUSD', async () => {
+    it('swapExactAmountIn - multihop DAI for SUSD', async () => {
       const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
         { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
         { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },

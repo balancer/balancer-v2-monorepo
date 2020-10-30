@@ -23,5 +23,5 @@ interface ITupleTradingStrategy {
         uint256[] calldata balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external returns (bool, uint256);
+    ) external returns (bool, uint128);
 }

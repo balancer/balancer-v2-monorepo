@@ -15,15 +15,25 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
 import "./StrategyFee.sol";
 import "./ITupleTradingStrategy.sol";
 import "./lib/Stable.sol";
 
-contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
-    uint256 private immutable _amp;
+contract StableStrategy is
+    ITupleTradingStrategy,
+    StrategyFee,
+    Stable
+{
+    using SafeCast for uint256;
+    using FixedPoint for uint256;
+    using FixedPoint for uint128;
+
+    uint128 private immutable _amp;
     uint256 private immutable _swapFee;
 
-    constructor(uint256 amp, uint256 swapFee) {
+    constructor(uint128 amp, uint256 swapFee) {
         require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
         require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
         _swapFee = swapFee;
@@ -36,24 +46,21 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override view returns (bool, uint256) {
+    ) public override view returns (bool, uint128) {
         //Calculate old invariant
         uint256 oldInvariant = _invariant(_amp, balances);
 
         //Substract fee
-        uint256 feeAmount = mul(swap.amountIn, _swapFee);
+        uint128 feeAmount = swap.amountIn.mul(_swapFee).toUint128();
 
         //Update Balances
-        balances[indexIn] = add(
-            balances[indexIn],
-            sub(swap.amountIn, feeAmount)
+        balances[indexIn] = balances[indexIn].add(
+            swap.amountIn.sub128(feeAmount)
         );
-        balances[indexOut] = sub(balances[indexOut], swap.amountOut);
+        balances[indexOut] = balances[indexOut].sub(swap.amountOut);
 
         //Calculate new invariant
         uint256 newInvariant = _invariant(_amp, balances);
-
-        
 
         if (newInvariant >= oldInvariant) {
             return (true, feeAmount);
@@ -63,7 +70,7 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
         }
     }
 
-    function getAmp() external view returns (uint256) {
+    function getAmp() external view returns (uint128) {
         return _amp;
     }
 

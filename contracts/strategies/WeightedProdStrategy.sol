@@ -15,6 +15,8 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
 import "./StrategyFee.sol";
 import "./IPairTradingStrategy.sol";
 import "./lib/WeightedProduct.sol";
@@ -28,6 +30,9 @@ contract WeightedProdStrategy is
     StrategyFee,
     WeightedProduct
 {
+    using SafeCast for uint256;
+    using FixedPoint for uint128;
+
     uint8 public constant MIN_TOKENS = 2;
     uint8 public constant MAX_TOKENS = 16;
     uint8 public constant MIN_WEIGHT = 1;
@@ -167,15 +172,15 @@ contract WeightedProdStrategy is
 
     function validatePair(
         ITradingStrategy.Swap calldata swap,
-        uint256 balanceIn,
-        uint256 balanceOut
-    ) external override view returns (bool, uint256) {
-        // Substract fee
-        uint256 feeAmount = mul(swap.amountIn, _swapFee);
-        uint256 adjustedIn = sub(swap.amountIn, feeAmount);
+        uint128 balanceIn,
+        uint128 balanceOut
+    ) external override view returns (bool, uint128) {
+        //Subtract fee
+        uint128 feeAmount = swap.amountIn.mul128(_swapFee.toUint128());
+        uint128 adjustedIn = swap.amountIn.sub128(feeAmount);
 
         // Calculate the maximum amount that can be taken out of the pool
-        uint256 maximumAmountOut = _outGivenIn(
+        uint128 maximumAmountOut = _outGivenIn(
             balanceIn,
             getWeight(swap.tokenIn),
             balanceOut,

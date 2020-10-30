@@ -20,7 +20,7 @@ import "./ITradingStrategy.sol";
 interface IPairTradingStrategy {
     function validatePair(
         ITradingStrategy.Swap calldata swap,
-        uint256 balanceIn,
-        uint256 balanceOut
-    ) external returns (bool, uint256);
+        uint128 balanceIn,
+        uint128 balanceOut
+    ) external returns (bool, uint128);
 }

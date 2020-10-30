@@ -19,7 +19,7 @@ interface ITradingStrategy {
         bytes32 poolId;
         address tokenIn;
         address tokenOut;
-        uint256 amountIn;
-        uint256 amountOut;
+        uint128 amountIn;
+        uint128 amountOut;
     }
 }

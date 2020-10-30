@@ -21,9 +21,9 @@ import "../strategies/ITupleTradingStrategy.sol";
 contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
     function validatePair(
         ITradingStrategy.Swap calldata,
-        uint256,
-        uint256
-    ) external override pure returns (bool, uint256) {
+        uint128,
+        uint128
+    ) external override pure returns (bool, uint128) {
         return (true, 0);
     }
 
@@ -32,7 +32,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint256[] calldata,
         uint256,
         uint256
-    ) external override pure returns (bool, uint256) {
+    ) external override pure returns (bool, uint128) {
         return (true, 0);
     }
 }

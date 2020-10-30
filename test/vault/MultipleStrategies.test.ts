@@ -33,13 +33,13 @@ describe('Vault - multiple trading strategies interfaces', () => {
     mockScript = await deploy('MockTradeScript');
 
     poolIdPair = await setupPool(vault, mockStrategy, 0, tokens, controller, [
-      ['DAI', (100e18).toString()],
-      ['TEST', (100e18).toString()],
+      ['DAI', (1e18).toString()],
+      ['TEST', (1e18).toString()],
     ]);
 
     poolIdTuple = await setupPool(vault, mockStrategy, 1, tokens, controller, [
-      ['DAI', (100e18).toString()],
-      ['TEST', (100e18).toString()],
+      ['DAI', (1e18).toString()],
+      ['TEST', (1e18).toString()],
     ]);
 
     // Mint tokens for trader
@@ -47,8 +47,10 @@ describe('Vault - multiple trading strategies interfaces', () => {
     await tokens.TEST.mint(trader.address, (300e18).toString());
 
     // Approve trade script by trader
-    await tokens.DAI.connect(trader).approve(mockScript.address, MAX_UINT256);
-    await tokens.TEST.connect(trader).approve(mockScript.address, MAX_UINT256);
+    await tokens.DAI.connect(trader).approve(vault.address, MAX_UINT256);
+    await tokens.TEST.connect(trader).approve(vault.address, MAX_UINT256);
+
+    await vault.connect(trader).authorizeOperator(mockScript.address);
   });
 
   it('has the correct curve', async () => {
@@ -61,18 +63,20 @@ describe('Vault - multiple trading strategies interfaces', () => {
       {
         token: tokens.DAI.address,
         vaultDelta: 0,
+        amountIn: 0,
       },
       {
         token: tokens.TEST.address,
         vaultDelta: 0,
+        amountIn: 0,
       },
     ];
 
     const swaps = [
       {
         poolId: poolIdTuple,
-        tokenA: { tokenDiffIndex: 1, delta: (1e18).toString() },
-        tokenB: { tokenDiffIndex: 0, delta: (-1e18).toString() },
+        tokenIn: { tokenDiffIndex: 1, amount: (1e18).toString() },
+        tokenOut: { tokenDiffIndex: 0, amount: (1e18).toString() },
       },
     ];
 
@@ -83,17 +87,9 @@ describe('Vault - multiple trading strategies interfaces', () => {
 
     await expectBalanceChange(
       async () => {
-        // Send tokens & swap - would normally happen in the same tx
-        await mockScript.batchSwap(
-          vault.address,
-          [tokens.TEST.address],
-          [(1e18).toString()],
-          diffs,
-          swaps,
-          trader.address,
-          trader.address,
-          true
-        );
+        await mockScript
+          .connect(trader)
+          .batchSwap(vault.address, [0, (1e18).toString()], diffs, swaps, trader.address, trader.address, true);
       },
       trader,
       tokens,
@@ -115,18 +111,20 @@ describe('Vault - multiple trading strategies interfaces', () => {
       {
         token: tokens.DAI.address,
         vaultDelta: 0,
+        amountIn: 0,
       },
       {
         token: tokens.TEST.address,
         vaultDelta: 0,
+        amountIn: 0,
       },
     ];
 
     const swaps = [
       {
         poolId: poolIdPair,
-        tokenA: { tokenDiffIndex: 1, delta: (1e18).toString() },
-        tokenB: { tokenDiffIndex: 0, delta: (-1e18).toString() },
+        tokenIn: { tokenDiffIndex: 1, amount: (1e18).toString() },
+        tokenOut: { tokenDiffIndex: 0, amount: (1e18).toString() },
       },
     ];
 
@@ -138,16 +136,9 @@ describe('Vault - multiple trading strategies interfaces', () => {
     await expectBalanceChange(
       async () => {
         // Send tokens & swap - would normally happen in the same tx
-        await mockScript.batchSwap(
-          vault.address,
-          [tokens.TEST.address],
-          [(1e18).toString()],
-          diffs,
-          swaps,
-          trader.address,
-          trader.address,
-          true
-        );
+        await mockScript
+          .connect(trader)
+          .batchSwap(vault.address, [0, (1e18).toString()], diffs, swaps, trader.address, trader.address, true);
       },
       trader,
       tokens,
