@@ -76,7 +76,8 @@ contract TradeScriptStable is Stable {
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
                 tokenInBalance: tokenBalances[indexes.tokenIndexIn].toUint128(),
-                tokenOutBalance: tokenBalances[indexes.tokenIndexOut].toUint128(),
+                tokenOutBalance: tokenBalances[indexes.tokenIndexOut]
+                    .toUint128(),
                 amp: amp,
                 swapFee: swapFee,
                 balances: tokenBalances
@@ -87,6 +88,7 @@ contract TradeScriptStable is Stable {
     struct Helper {
         uint256 toSend;
         uint256 toReceive;
+        uint128 lastTokenCalculatedAmount;
     }
 
     struct SwapTokenIndexes {
@@ -113,29 +115,36 @@ contract TradeScriptStable is Stable {
     ) public {
         Helper memory helper;
 
-        uint128 tokenAmountOut;
-
         for (uint256 i = 0; i < swaps.length; ++i) {
-            PoolData memory poolData = _getPoolData(diffs, swaps[i], indexes[i]);
+            PoolData memory poolData = _getPoolData(
+                diffs,
+                swaps[i],
+                indexes[i]
+            );
 
             // If not equal, we could add a sanity check by requiring
             // tokenIn == lasToken && amountsIn[i] == 0
             uint128 amountIn = (poolData.tokenIn == overallTokenIn)
                 ? amountsIn[i]
-                : tokenAmountOut;
+                : helper.lastTokenCalculatedAmount;
 
             //Substract fee
             uint128 adjustedIn = amountIn.sub128(
                 amountIn.mul128(uint128(poolData.swapFee))
             );
 
-            tokenAmountOut = _outGivenIn(
-                poolData.amp,
-                poolData.balances,
-                indexes[i].tokenIndexIn,
-                indexes[i].tokenIndexOut,
+            helper.lastTokenCalculatedAmount = _outGivenIn(
+                poolData
+                    .amp,
+                poolData
+                    .balances,
+                indexes[i]
+                    .tokenIndexIn,
+                indexes[i]
+                    .tokenIndexOut,
                 adjustedIn
-            ).toUint128();
+            )
+                .toUint128();
 
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
             // provides the inputs
@@ -144,14 +153,14 @@ contract TradeScriptStable is Stable {
             }
 
             if (poolData.tokenOut == overallTokenOut) {
-                helper.toReceive += tokenAmountOut;
+                helper.toReceive += helper.lastTokenCalculatedAmount;
             }
 
             // Configure pool end state
 
             // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
             swaps[i].tokenIn.amount = amountIn;
-            swaps[i].tokenOut.amount = tokenAmountOut;
+            swaps[i].tokenOut.amount = helper.lastTokenCalculatedAmount;
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");

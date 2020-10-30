@@ -21,11 +21,7 @@ import "./StrategyFee.sol";
 import "./ITupleTradingStrategy.sol";
 import "./lib/Stable.sol";
 
-contract StableStrategy is
-    ITupleTradingStrategy,
-    StrategyFee,
-    Stable
-{
+contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
     using SafeCast for uint256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -65,7 +61,7 @@ contract StableStrategy is
         if (newInvariant >= oldInvariant) {
             return (true, feeAmount);
         } else {
-            uint256 error = (newInvariant * 1000 / oldInvariant);
+            uint256 error = ((newInvariant * 1000) / oldInvariant);
             return (error > 1 && error < 1000, feeAmount);
         }
     }

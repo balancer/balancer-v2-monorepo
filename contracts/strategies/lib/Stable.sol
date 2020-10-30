@@ -49,7 +49,9 @@ contract Stable {
             if (i != tokenIndexOut) {
                 if (i == tokenIndexIn) {
                     sum = sum + balances[i] + tokenAmountIn;
-                    prod = (prod * (balances[i] + tokenAmountIn)) / FixedPoint.ONE;
+                    prod =
+                        (prod * (balances[i] + tokenAmountIn)) /
+                        FixedPoint.ONE;
                 } else {
                     sum = sum + balances[i];
                     prod = (prod * balances[i]) / FixedPoint.ONE;
@@ -80,7 +82,8 @@ contract Stable {
         uint256 c2 = (data.invariant * data.invariant * data.invariant) /
             (data.nn * data.nn * data.prod);
         for (uint256 i = 0; i < 255; i++) {
-            uint256 f1 = (((data.amp * tokenAmountOut * tokenAmountOut) / FixedPoint.ONE) +
+            uint256 f1 = (((data.amp * tokenAmountOut * tokenAmountOut) /
+                FixedPoint.ONE) +
                 ((c1 * tokenAmountOut) / FixedPoint.ONE) -
                 c2) * FixedPoint.ONE;
             uint256 f2 = c1 + 2 * data.amp * tokenAmountOut;
@@ -140,8 +143,11 @@ contract Stable {
                 (((invariant * invariant) / c1) * invariant) -
                 amp *
                 sum) / FixedPoint.ONE;
-            uint256 f2 = (c2 * FixedPoint.ONE + 3 * ((invariant * FixedPoint.ONE) / c1) * invariant) /
-                FixedPoint.ONE;
+            uint256 f2 = (c2 *
+                FixedPoint.ONE +
+                3 *
+                ((invariant * FixedPoint.ONE) / c1) *
+                invariant) / FixedPoint.ONE;
             newInvariant =
                 invariant -
                 (2 * f1 * f2 * FixedPoint.ONE) /
