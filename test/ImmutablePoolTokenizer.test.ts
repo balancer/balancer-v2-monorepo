@@ -12,7 +12,7 @@ const fromTokenUnits = (num: string) => {
   return BigNumber.from(scaled).mul(BigNumber.from(power));
 };
 
-describe('ImmutablePoolTokenizer', function () {
+describe.skip('ImmutablePoolTokenizer', function () {
   let deployer: SignerWithAddress;
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;

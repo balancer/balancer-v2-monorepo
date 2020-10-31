@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { Contract } from 'ethers';
-import { ethers } from 'hardhat';
+import { Contract, ContractReceipt } from 'ethers';
+import { MAX_UINT256 } from '../../test/helpers/constants';
 import { TokenList } from '../../test/helpers/tokens';
 
 export const PairTS = 0;
@@ -18,15 +18,24 @@ export async function setupPool(
 ): Promise<string> {
   vault = vault.connect(controller);
 
-  const poolId = ethers.utils.id(Math.random().toString());
-  await vault.newPool(poolId, strategy.address, strategyType);
+  const receipt: ContractReceipt = await (
+    await vault.connect(controller).newPool(strategy.address, strategyType)
+  ).wait();
+
+  const event = receipt.events?.find((e) => e.event == 'PoolCreated');
+  if (event == undefined) {
+    throw new Error('Could not find PoolCreated event');
+  }
+
+  const poolId: string = event.args?.poolId;
 
   for (const entry of makeup) {
     const token = tokens[entry[0]];
 
-    await token.mint(controller.address, (100e18).toString());
-    await token.connect(controller).approve(vault.address, (100e18).toString());
-    await vault.bind(poolId, token.address, (100e18).toString());
+    await token.mint(controller.address, entry[1].toString());
+    await token.connect(controller).approve(vault.address, MAX_UINT256);
+
+    await vault.connect(controller).depositToPool(poolId, controller.address, [token.address], [entry[1].toString()]);
   }
 
   return poolId;

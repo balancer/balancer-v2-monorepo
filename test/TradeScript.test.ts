@@ -4,7 +4,7 @@ import { TokenList, deployTokens, mintTokens } from './helpers/tokens';
 import { deploy } from '../scripts/helpers/deploy';
 import { getDiffsSwapsAndAmounts } from '../scripts/helpers/trading';
 import { expectBalanceChange } from './helpers/tokenBalance';
-import { setupPool } from '../scripts/helpers/pools';
+import { PairTS, setupPool } from '../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from './helpers/constants';
 
@@ -13,7 +13,7 @@ describe('TradeScript', () => {
   let trader: SignerWithAddress;
 
   let vault: Contract;
-  let curve: Contract;
+  let strategy: Contract;
   let tradeScript: Contract;
   let tokens: TokenList = {};
 
@@ -27,7 +27,7 @@ describe('TradeScript', () => {
     tokens = await deployTokens(['DAI', 'BAT', 'ANT', 'SNX', 'MKR']);
 
     const weights = [(1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString()];
-    curve = await deploy(
+    strategy = await deploy(
       'ConstantWeightedProdStrategy',
       [tokens.DAI.address, tokens.BAT.address, tokens.ANT.address, tokens.SNX.address, tokens.MKR.address],
       weights,
@@ -51,12 +51,12 @@ describe('TradeScript', () => {
 
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
         // Create even pools with all tokens, initial balance of 1e18 for each
-        const poolId = await setupPool(vault, curve, 0, tokens, controller, [
-          ['DAI', 20],
-          ['BAT', 20],
-          ['ANT', 20],
-          ['SNX', 20],
-          ['MKR', 20],
+        const poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
+          ['DAI', 1e18],
+          ['BAT', 1e18],
+          ['ANT', 1e18],
+          ['SNX', 1e18],
+          ['MKR', 1e18],
         ]);
 
         pools.push(poolId);
@@ -71,8 +71,12 @@ describe('TradeScript', () => {
 
     it('double pool DAI for MKR', async () => {
       // Move the first two pools to a different price point (DAI:MKR becomes 1:2) by withdrawing DAI
-      await vault.connect(controller).rebind(pools[0], tokens.DAI.address, (0.5e18).toString());
-      await vault.connect(controller).rebind(pools[1], tokens.DAI.address, (0.5e18).toString());
+      await vault
+        .connect(controller)
+        .withdrawFromPool(pools[0], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
+      await vault
+        .connect(controller)
+        .withdrawFromPool(pools[1], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
       const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
         { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 },
@@ -102,17 +106,27 @@ describe('TradeScript', () => {
 
     it('multihop DAI for MKR', async () => {
       // Move the first and second pools to a different price point (DAI:SNX becomes 1:2) by withdrawing DAI
-      await vault.connect(controller).rebind(pools[0], tokens.DAI.address, (0.5e18).toString());
-      await vault.connect(controller).rebind(pools[1], tokens.DAI.address, (0.5e18).toString());
+      await vault
+        .connect(controller)
+        .withdrawFromPool(pools[0], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
+      await vault
+        .connect(controller)
+        .withdrawFromPool(pools[1], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
       // Move the third pool to a different price point (SNX:BAT becomes 1:2) by withdrawing SNX
-      await vault.connect(controller).rebind(pools[2], tokens.SNX.address, (0.5e18).toString());
+      await vault
+        .connect(controller)
+        .withdrawFromPool(pools[2], controller.address, [tokens.SNX.address], [(0.5e18).toString()]);
 
       // Move the fourth pool to a different price point (BAT:MKR becomes 1:2) by withdrawing BAT
-      await vault.connect(controller).rebind(pools[3], tokens.BAT.address, (0.5e18).toString());
+      await vault
+        .connect(controller)
+        .withdrawFromPool(pools[3], controller.address, [tokens.BAT.address], [(0.5e18).toString()]);
 
       // Move the fifth pool to a different price point (DAI:MKR becomes 1:2) by withdrawing DAI
-      await vault.connect(controller).rebind(pools[4], tokens.DAI.address, (0.5e18).toString());
+      await vault
+        .connect(controller)
+        .withdrawFromPool(pools[4], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
       const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
         { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX', amount: 600 },

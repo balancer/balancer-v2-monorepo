@@ -39,13 +39,10 @@ interface IVault {
         view
         returns (address, StrategyType);
 
-    function getPoolTotalTokens(bytes32 poolId) external view returns (uint256);
-
-    function getPoolTokens(
-        bytes32 poolId,
-        uint256 startIndex,
-        uint256 endIndex
-    ) external view returns (address[] memory);
+    function getPoolTokens(bytes32 poolId)
+        external
+        view
+        returns (address[] memory);
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
@@ -65,7 +62,7 @@ interface IVault {
 
     function withdrawFromPool(
         bytes32 poolId,
-        address from,
+        address to,
         address[] calldata tokens,
         uint128[] calldata amounts
     ) external;

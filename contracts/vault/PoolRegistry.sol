@@ -125,21 +125,7 @@ abstract contract PoolRegistry is
         return poolIds;
     }
 
-    function getPoolTotalTokens(bytes32 poolId)
-        external
-        override
-        view
-        withExistingPool(poolId)
-        returns (uint256)
-    {
-        return _poolTokens[poolId].length();
-    }
-
-    function getPoolTokens(
-        bytes32 poolId,
-        uint256 startIndex,
-        uint256 endIndex
-    )
+    function getPoolTokens(bytes32 poolId)
         external
         override
         view
@@ -147,9 +133,9 @@ abstract contract PoolRegistry is
         withExistingPool(poolId)
         returns (address[] memory)
     {
-        address[] memory tokens = new address[](endIndex - startIndex);
+        address[] memory tokens = new address[](_poolTokens[poolId].length());
         for (uint256 i = 0; i < tokens.length; ++i) {
-            tokens[i] = _poolTokens[poolId].at(i + startIndex);
+            tokens[i] = _poolTokens[poolId].at(i);
         }
 
         return tokens;
@@ -239,7 +225,7 @@ abstract contract PoolRegistry is
 
     function withdrawFromPool(
         bytes32 poolId,
-        address from,
+        address to,
         address[] calldata tokens,
         uint128[] calldata amounts
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
@@ -254,7 +240,7 @@ abstract contract PoolRegistry is
                 "Token not in pool"
             );
 
-            _pushTokens(tokens[i], from, amounts[i]);
+            _pushTokens(tokens[i], to, amounts[i]);
 
 
                 BalanceLib.Balance memory currentBalance

@@ -5,7 +5,7 @@ import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { setupPool } from '../../scripts/helpers/pools';
+import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 describe('Vault - multiple trading strategies interfaces', () => {
@@ -32,14 +32,14 @@ describe('Vault - multiple trading strategies interfaces', () => {
     mockStrategy = await deploy('MockTradingStrategy');
     mockScript = await deploy('MockTradeScript');
 
-    poolIdPair = await setupPool(vault, mockStrategy, 0, tokens, controller, [
-      ['DAI', 50],
-      ['TEST', 50],
+    poolIdPair = await setupPool(vault, mockStrategy, PairTS, tokens, controller, [
+      ['DAI', 100e18],
+      ['TEST', 100e18],
     ]);
 
-    poolIdTuple = await setupPool(vault, mockStrategy, 1, tokens, controller, [
-      ['DAI', 50],
-      ['TEST', 50],
+    poolIdTuple = await setupPool(vault, mockStrategy, TupleTS, tokens, controller, [
+      ['DAI', 100e18],
+      ['TEST', 100e18],
     ]);
 
     // Mint tokens for trader
@@ -54,8 +54,8 @@ describe('Vault - multiple trading strategies interfaces', () => {
   });
 
   it('has the correct curve', async () => {
-    expect(await vault.getStrategy(poolIdPair)).to.have.members([mockStrategy.address, 0]);
-    expect(await vault.getStrategy(poolIdTuple)).to.have.members([mockStrategy.address, 1]);
+    expect(await vault.getPoolStrategy(poolIdPair)).to.have.members([mockStrategy.address, PairTS]);
+    expect(await vault.getPoolStrategy(poolIdTuple)).to.have.members([mockStrategy.address, TupleTS]);
   });
 
   it('trades with tuple strategy pool', async () => {
