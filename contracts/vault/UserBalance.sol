@@ -122,14 +122,17 @@ abstract contract UserBalance is IVault, VaultAccounting {
         uint256 start,
         uint256 end
     ) external view returns (address[] memory) {
-        // Ideally we'd use a native implemenation: see
-        // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
-        address[] memory operators = new address[](
-            _userOperators[user].length()
+        require(
+            (end >= start) && (end - start) <= _userOperators[user].length(),
+            "Bad indices"
         );
 
-        for (uint256 i = start; i < end; ++i) {
-            operators[i] = _userOperators[user].at(i);
+        // Ideally we'd use a native implemenation: see
+        // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
+        address[] memory operators = new address[](end - start);
+
+        for (uint256 i = 0; i < operators.length; ++i) {
+            operators[i] = _userOperators[user].at(i + start);
         }
 
         return operators;

@@ -117,6 +117,12 @@ abstract contract PoolRegistry is
         _viewlock_
         returns (bytes32[] memory)
     {
+        require(
+            (endIndex >= startIndex) &&
+                (endIndex - startIndex) <= _pools.length(),
+            "Bad indices"
+        );
+
         bytes32[] memory poolIds = new bytes32[](endIndex - startIndex);
         for (uint256 i = 0; i < poolIds.length; ++i) {
             poolIds[i] = _pools.at(i + startIndex);
