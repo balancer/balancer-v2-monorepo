@@ -21,7 +21,7 @@ import "../../math/FixedPoint.sol";
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
 
-contract ConstantWeightedProduct {
+contract WeightedProduct {
     using SafeCast for uint256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -53,5 +53,34 @@ contract ConstantWeightedProduct {
         uint256 ratio = FixedPoint.ONE.sub(quotient.pow(weightRatio));
 
         return tokenBalanceOut.mul(ratio).toUint128();
+    }
+
+    // Computes how many tokens must be sent to a pool in order to take `tokenAmountOut`, given the
+    // current balances and weights.
+    function _inGivenOut(
+        uint128 tokenBalanceIn,
+        uint256 tokenWeightIn,
+        uint128 tokenBalanceOut,
+        uint256 tokenWeightOut,
+        uint128 tokenAmountOut
+    ) internal pure returns (uint128) {
+        /**********************************************************************************************
+        // inGivenOut                                                                                //
+        // aO = tokenAmountOut                                                                       //
+        // bO = tokenBalanceOut                                                                      //
+        // bI = tokenBalanceIn              /  /            bO             \    (wO / wI)      \     //
+        // aI = tokenAmountIn    aI = bI * |  | --------------------------  | ^            - 1  |    //
+        // wI = tokenWeightIn               \  \       ( bO - aO )         /                   /     //
+        // wO = tokenWeightOut                                                                       //
+        **********************************************************************************************/
+
+        uint256 quotient = tokenBalanceOut.div(
+            tokenBalanceOut.sub(tokenAmountOut)
+        );
+        uint256 weightRatio = tokenWeightOut.div(tokenWeightIn);
+
+        uint256 ratio = quotient.pow(weightRatio).sub(FixedPoint.ONE);
+
+        return tokenBalanceIn.mul(ratio).toUint128();
     }
 }

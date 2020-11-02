@@ -19,16 +19,16 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "./StrategyFee.sol";
 import "./IPairTradingStrategy.sol";
-import "./lib/ConstantWeightedProduct.sol";
+import "./lib/WeightedProduct.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract ConstantWeightedProdStrategy is
+contract WeightedProdStrategy is
     IPairTradingStrategy,
     StrategyFee,
-    ConstantWeightedProduct
+    WeightedProduct
 {
     using SafeCast for uint256;
     using FixedPoint for uint128;

@@ -151,7 +151,7 @@ abstract contract PoolRegistry is
         uint128[] memory balances = new uint128[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = uint128(_poolTokenBalance[poolId][tokens[i]].total());
+            balances[i] = _poolTokenBalance[poolId][tokens[i]].total();
         }
 
         return balances;

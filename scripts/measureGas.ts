@@ -67,12 +67,12 @@ async function batchedSwap(withdrawTokens: boolean) {
   // 50-50 DAI-MKR pools
 
   const pools: Array<string> = [];
-  const curve = await deploy('ConstantWeightedProdStrategy', [tokens.MKR.address, tokens.DAI.address], [50, 50], 2, 0);
+  const curve = await deploy('WeightedProdStrategy', [tokens.MKR.address, tokens.DAI.address], [50, 50], 2, 0);
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
       await setupPool(vault, curve, 0, tokens, controller, [
-        ['DAI', 50],
-        ['MKR', 50],
+        ['DAI', (100e18).toString()],
+        ['MKR', (100e18).toString()],
       ])
     );
   }

@@ -23,19 +23,19 @@ const generateAddressArray = (num: number): string[] => {
   ].slice(0, num);
 };
 
-describe('ConstantWeightedProdStrategy', function () {
+describe('WeightedProdStrategy', function () {
   let poolId: string;
   let strategy: Contract;
-  let ConstantWeightedProdStrategyFactory: ContractFactory;
+  let WeightedProdStrategyFactory: ContractFactory;
 
   beforeEach(async function () {
     poolId = ethers.utils.id('Test');
-    ConstantWeightedProdStrategyFactory = await ethers.getContractFactory('ConstantWeightedProdStrategy');
+    WeightedProdStrategyFactory = await ethers.getContractFactory('WeightedProdStrategy');
   });
 
   describe('TS Creation', () => {
     it('Creates correctly TS', async () => {
-      strategy = await ConstantWeightedProdStrategyFactory.deploy(
+      strategy = await WeightedProdStrategyFactory.deploy(
         generateAddressArray(2),
         [(2e18).toString(), (8e18).toString()],
         2,
@@ -51,7 +51,7 @@ describe('ConstantWeightedProdStrategy', function () {
         'ERR_INVALID_ADDRESS'
       );
 
-      strategy = await ConstantWeightedProdStrategyFactory.deploy(
+      strategy = await WeightedProdStrategyFactory.deploy(
         generateAddressArray(5),
         [(2.15e18).toString(), (24.3e18).toString(), (12.11e18).toString(), (2e18).toString(), (6e18).toString()],
         5,
@@ -64,7 +64,7 @@ describe('ConstantWeightedProdStrategy', function () {
         'ERR_INVALID_TOKEN'
       );
 
-      strategy = await ConstantWeightedProdStrategyFactory.deploy(
+      strategy = await WeightedProdStrategyFactory.deploy(
         generateAddressArray(16),
         [
           (1e18).toString(),
@@ -96,17 +96,17 @@ describe('ConstantWeightedProdStrategy', function () {
     });
     it('Fails creating below MIN WEIGHT', async () => {
       await expect(
-        ConstantWeightedProdStrategyFactory.deploy(generateAddressArray(2), [0, 8], 2, (0.05e18).toString())
+        WeightedProdStrategyFactory.deploy(generateAddressArray(2), [0, 8], 2, (0.05e18).toString())
       ).to.be.revertedWith('ERR_MIN_WEIGHT');
     });
     it('Fails creating below MIN TOKENS', async () => {
       await expect(
-        ConstantWeightedProdStrategyFactory.deploy(generateAddressArray(1), [8], 1, (0.05e18).toString())
+        WeightedProdStrategyFactory.deploy(generateAddressArray(1), [8], 1, (0.05e18).toString())
       ).to.be.revertedWith('ERR_MIN_TOKENS');
     });
     it('Fails creating above MAX TOKENS', async () => {
       await expect(
-        ConstantWeightedProdStrategyFactory.deploy(
+        WeightedProdStrategyFactory.deploy(
           generateAddressArray(16),
           [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
           17,
@@ -120,7 +120,7 @@ describe('ConstantWeightedProdStrategy', function () {
     it('Validates correctly two tokens', async () => {
       //weights: [8, 2]
       const tokens = generateAddressArray(2);
-      strategy = await ConstantWeightedProdStrategyFactory.deploy(
+      strategy = await WeightedProdStrategyFactory.deploy(
         tokens,
         [(8e18).toString(), (2e18).toString()],
         2,
@@ -143,7 +143,7 @@ describe('ConstantWeightedProdStrategy', function () {
     it('Validates correctly three tokens', async () => {
       //weights: [4, 4, 2]
       const tokens = generateAddressArray(3);
-      strategy = await ConstantWeightedProdStrategyFactory.deploy(
+      strategy = await WeightedProdStrategyFactory.deploy(
         tokens,
         [(4e18).toString(), (4e18).toString(), (2e18).toString()],
         3,

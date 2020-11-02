@@ -27,7 +27,7 @@ describe('Vault - swaps', () => {
     vault = await deploy('Vault');
     tokens = await deployTokens(['DAI', 'MKR']);
     strategy = await deploy(
-      'ConstantWeightedProdStrategy',
+      'WeightedProdStrategy',
       [tokens.DAI.address, tokens.MKR.address],
       [(1e18).toString(), (1e18).toString()],
       2,
@@ -41,8 +41,8 @@ describe('Vault - swaps', () => {
 
     beforeEach('add pool', async () => {
       poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
-        ['DAI', 1e18],
-        ['MKR', 1e18],
+        ['DAI', (1e18).toString()],
+        ['MKR', (1e18).toString()],
       ]);
     });
 
@@ -67,7 +67,7 @@ describe('Vault - swaps', () => {
       poolIds = [];
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
         const strategy = await deploy(
-          'ConstantWeightedProdStrategy',
+          'WeightedProdStrategy',
           [tokens.DAI.address, tokens.MKR.address],
           [(1e18).toString(), (1e18).toString()],
           2,
@@ -374,7 +374,7 @@ describe('Vault - swaps', () => {
       );
 
       strategy = await deploy(
-        'ConstantWeightedProdStrategy',
+        'WeightedProdStrategy',
         [tokens.DAI.address, tokens.MKR.address],
         [(1e18).toString(), (4e18).toString()],
         2,
@@ -382,7 +382,7 @@ describe('Vault - swaps', () => {
       );
       // first curve is 1:10
       const curveFirst = await deploy(
-        'ConstantWeightedProdStrategy',
+        'WeightedProdStrategy',
         [tokens.DAI.address, tokens.MKR.address],
         [(1e18).toString(), (10e18).toString()],
         2,
