@@ -53,14 +53,14 @@ interface IVault {
 
     function setPoolController(bytes32 poolId, address controller) external;
 
-    function depositToPool(
+    function addLiquidity(
         bytes32 poolId,
         address from,
         address[] calldata tokens,
         uint128[] calldata amounts
     ) external;
 
-    function withdrawFromPool(
+    function removeLiquidity(
         bytes32 poolId,
         address to,
         address[] calldata tokens,

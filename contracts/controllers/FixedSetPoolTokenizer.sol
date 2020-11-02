@@ -49,7 +49,7 @@ contract FixedSetPoolTokenizer is BToken {
         address[] memory tokens,
         uint128[] memory amounts
     ) public {
-        vault.depositToPool(poolId, msg.sender, tokens, amounts);
+        vault.addLiquidity(poolId, msg.sender, tokens, amounts);
 
         _mintPoolShare(initialBPT);
         _pushPoolShare(msg.sender, initialBPT);
@@ -81,7 +81,7 @@ contract FixedSetPoolTokenizer is BToken {
             require(amountsIn[i] <= maxAmountsIn[i], "ERR_LIMIT_IN");
         }
 
-        vault.depositToPool(poolId, msg.sender, tokens, amountsIn);
+        vault.addLiquidity(poolId, msg.sender, tokens, amountsIn);
 
         _mintPoolShare(poolAmountOut);
         _pushPoolShare(msg.sender, poolAmountOut);
@@ -109,7 +109,7 @@ contract FixedSetPoolTokenizer is BToken {
             require(amountsOut[i] >= minAmountsOut[i], "NOT EXITING ENOUGH");
         }
 
-        vault.withdrawFromPool(poolId, msg.sender, tokens, amountsOut);
+        vault.removeLiquidity(poolId, msg.sender, tokens, amountsOut);
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);

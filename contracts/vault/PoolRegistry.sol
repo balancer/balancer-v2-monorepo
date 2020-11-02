@@ -191,7 +191,7 @@ abstract contract PoolRegistry is
         _poolController[poolId] = controller;
     }
 
-    function depositToPool(
+    function addLiquidity(
         bytes32 poolId,
         address from,
         address[] calldata tokens,
@@ -223,7 +223,7 @@ abstract contract PoolRegistry is
         }
     }
 
-    function withdrawFromPool(
+    function removeLiquidity(
         bytes32 poolId,
         address to,
         address[] calldata tokens,

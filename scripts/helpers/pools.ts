@@ -35,7 +35,7 @@ export async function setupPool(
     await token.mint(controller.address, entry[1].toString());
     await token.connect(controller).approve(vault.address, MAX_UINT256);
 
-    await vault.connect(controller).depositToPool(poolId, controller.address, [token.address], [entry[1].toString()]);
+    await vault.connect(controller).addLiquidity(poolId, controller.address, [token.address], [entry[1].toString()]);
   }
 
   return poolId;

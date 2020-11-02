@@ -73,10 +73,10 @@ describe('TradeScript', () => {
       // Move the first two pools to a different price point (DAI:MKR becomes 1:2) by withdrawing DAI
       await vault
         .connect(controller)
-        .withdrawFromPool(pools[0], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
+        .removeLiquidity(pools[0], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
       await vault
         .connect(controller)
-        .withdrawFromPool(pools[1], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
+        .removeLiquidity(pools[1], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
       const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
         { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 },
@@ -108,25 +108,25 @@ describe('TradeScript', () => {
       // Move the first and second pools to a different price point (DAI:SNX becomes 1:2) by withdrawing DAI
       await vault
         .connect(controller)
-        .withdrawFromPool(pools[0], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
+        .removeLiquidity(pools[0], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
       await vault
         .connect(controller)
-        .withdrawFromPool(pools[1], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
+        .removeLiquidity(pools[1], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
       // Move the third pool to a different price point (SNX:BAT becomes 1:2) by withdrawing SNX
       await vault
         .connect(controller)
-        .withdrawFromPool(pools[2], controller.address, [tokens.SNX.address], [(0.5e18).toString()]);
+        .removeLiquidity(pools[2], controller.address, [tokens.SNX.address], [(0.5e18).toString()]);
 
       // Move the fourth pool to a different price point (BAT:MKR becomes 1:2) by withdrawing BAT
       await vault
         .connect(controller)
-        .withdrawFromPool(pools[3], controller.address, [tokens.BAT.address], [(0.5e18).toString()]);
+        .removeLiquidity(pools[3], controller.address, [tokens.BAT.address], [(0.5e18).toString()]);
 
       // Move the fifth pool to a different price point (DAI:MKR becomes 1:2) by withdrawing DAI
       await vault
         .connect(controller)
-        .withdrawFromPool(pools[4], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
+        .removeLiquidity(pools[4], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
       const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
         { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX', amount: 600 },
