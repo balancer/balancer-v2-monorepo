@@ -2,11 +2,11 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { deploy } from '../scripts/helpers/deploy';
-import { PairTS } from '../scripts/helpers/pools';
-import { deployTokens, TokenList } from './helpers/tokens';
-import { MAX_UINT256 } from './helpers/constants';
-import { expectBalanceChange } from './helpers/tokenBalance';
+import { deploy } from '../../scripts/helpers/deploy';
+import { PairTS } from '../../scripts/helpers/pools';
+import { deployTokens, TokenList } from '../helpers/tokens';
+import { MAX_UINT256 } from '../helpers/constants';
+import { expectBalanceChange } from '../helpers/tokenBalance';
 
 describe('FixedSetPoolTokenizer', function () {
   let lp: SignerWithAddress;

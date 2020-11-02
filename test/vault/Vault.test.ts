@@ -76,8 +76,8 @@ describe('Vault - swaps', () => {
 
         poolIds.push(
           await setupPool(vault, strategy, PairTS, tokens, controller, [
-            ['DAI', 1e18],
-            ['MKR', 1e18],
+            ['DAI', (1e18).toString()],
+            ['MKR', (1e18).toString()],
           ])
         );
       }

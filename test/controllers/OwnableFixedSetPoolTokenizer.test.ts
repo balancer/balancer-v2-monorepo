@@ -2,8 +2,8 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PairTS } from '../scripts/helpers/pools';
-import { deploy } from '../scripts/helpers/deploy';
+import { PairTS } from '../../scripts/helpers/pools';
+import { deploy } from '../../scripts/helpers/deploy';
 
 describe('OwnableFixedSetPoolTokenizer', function () {
   let owner: SignerWithAddress;
