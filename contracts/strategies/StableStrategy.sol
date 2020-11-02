@@ -62,8 +62,10 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
         if (newInvariant >= oldInvariant) {
             return (true, feeAmount);
         } else {
-            uint256 error = (oldInvariant - newInvariant) / oldInvariant;
-            return (error < 1000, feeAmount);
+            return (
+                (oldInvariant - newInvariant) * 100 < oldInvariant,
+                feeAmount
+            );
         }
     }
 
