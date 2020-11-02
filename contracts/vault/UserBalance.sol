@@ -24,7 +24,6 @@ import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
 
 import "../math/FixedPoint.sol";
-import "../LogExpMath.sol";
 
 abstract contract UserBalance is IVault, VaultAccounting {
     using EnumerableSet for EnumerableSet.AddressSet;

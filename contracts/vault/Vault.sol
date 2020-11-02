@@ -22,7 +22,6 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../math/FixedPoint.sol";
-import "../LogExpMath.sol";
 
 import "../strategies/ITradingStrategy.sol";
 import "../strategies/IPairTradingStrategy.sol";

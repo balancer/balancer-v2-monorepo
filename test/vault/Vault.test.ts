@@ -26,7 +26,7 @@ describe('Vault - swaps', () => {
     vault = await deploy('Vault');
     tokens = await deployTokens(['DAI', 'MKR']);
     curve = await deploy(
-      'ConstantWeightedProdStrategy',
+      'WeightedProdStrategy',
       [tokens.DAI.address, tokens.MKR.address],
       [(1e18).toString(), (1e18).toString()],
       2,
@@ -65,7 +65,7 @@ describe('Vault - swaps', () => {
         const poolId = ethers.utils.id('batch' + poolIdIdx);
 
         const strategy = await deploy(
-          'ConstantWeightedProdStrategy',
+          'WeightedProdStrategy',
           [tokens.DAI.address, tokens.MKR.address],
           [(1e18).toString(), (1e18).toString()],
           2,
@@ -371,7 +371,7 @@ describe('Vault - swaps', () => {
       );
 
       curve = await deploy(
-        'ConstantWeightedProdStrategy',
+        'WeightedProdStrategy',
         [tokens.DAI.address, tokens.MKR.address],
         [(1e18).toString(), (4e18).toString()],
         2,
@@ -379,7 +379,7 @@ describe('Vault - swaps', () => {
       );
       // first curve is 1:10
       const curveFirst = await deploy(
-        'ConstantWeightedProdStrategy',
+        'WeightedProdStrategy',
         [tokens.DAI.address, tokens.MKR.address],
         [(1e18).toString(), (10e18).toString()],
         2,

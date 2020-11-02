@@ -41,7 +41,7 @@ interface IVault {
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
         view
-        returns (uint256[] memory);
+        returns (uint128[] memory);
 
     function getPoolTokens(bytes32 poolId)
         external

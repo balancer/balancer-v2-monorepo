@@ -1,12 +1,12 @@
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
-import { TokenList, deployTokens, mintTokens } from './helpers/tokens';
-import { deploy } from '../scripts/helpers/deploy';
-import { getDiffsSwapsAndAmounts } from '../scripts/helpers/trading';
-import { expectBalanceChange } from './helpers/tokenBalance';
-import { setupPool } from '../scripts/helpers/pools';
+import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
+import { deploy } from '../../scripts/helpers/deploy';
+import { getDiffsSwapsAndAmounts } from '../../scripts/helpers/trading';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+import { setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256 } from './helpers/constants';
+import { MAX_UINT256 } from '../helpers/constants';
 
 describe('TradeScript', () => {
   let controller: SignerWithAddress;
@@ -28,7 +28,7 @@ describe('TradeScript', () => {
 
     const weights = [(1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString()];
     curve = await deploy(
-      'ConstantWeightedProdStrategy',
+      'WeightedProdStrategy',
       [tokens.DAI.address, tokens.BAT.address, tokens.ANT.address, tokens.SNX.address, tokens.MKR.address],
       weights,
       5,

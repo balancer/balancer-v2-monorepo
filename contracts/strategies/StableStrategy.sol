@@ -19,21 +19,17 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "./StrategyFee.sol";
 import "./ITupleTradingStrategy.sol";
-import "./lib/ConstantSumProduct.sol";
-import "../LogExpMath.sol";
+import "./lib/Stable.sol";
 
-contract ConstantSumProdStrategy is
-    ITupleTradingStrategy,
-    StrategyFee,
-    ConstantSumProduct
-{
+contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
     using SafeCast for uint256;
+    using FixedPoint for uint256;
     using FixedPoint for uint128;
 
-    uint256 private immutable _amp;
+    uint128 private immutable _amp;
     uint256 private immutable _swapFee;
 
-    constructor(uint256 amp, uint256 swapFee) {
+    constructor(uint128 amp, uint256 swapFee) {
         require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
         require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
         _swapFee = swapFee;
@@ -48,7 +44,7 @@ contract ConstantSumProdStrategy is
         uint256 indexOut
     ) public override view returns (bool, uint128) {
         //Calculate old invariant
-        uint256 oldInvariant = calculateInvariant(_amp, balances);
+        uint256 oldInvariant = _invariant(_amp, balances);
 
         //Substract fee
         uint128 feeAmount = swap.amountIn.mul(_swapFee).toUint128();
@@ -60,9 +56,21 @@ contract ConstantSumProdStrategy is
         balances[indexOut] = balances[indexOut].sub128(swap.amountOut);
 
         //Calculate new invariant
-        uint256 newInvariant = calculateInvariant(_amp, balances);
+        uint256 newInvariant = _invariant(_amp, balances);
 
-        return (newInvariant >= oldInvariant, feeAmount);
+        //Check new invariant is greater or relative error is small
+        if (newInvariant >= oldInvariant) {
+            return (true, feeAmount);
+        } else {
+            return (
+                (oldInvariant - newInvariant) * 100 < oldInvariant,
+                feeAmount
+            );
+        }
+    }
+
+    function getAmp() external view returns (uint128) {
+        return _amp;
     }
 
     function getSwapFee() external override view returns (uint256) {

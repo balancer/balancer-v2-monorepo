@@ -21,7 +21,7 @@ import "../../math/FixedPoint.sol";
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
 
-contract ConstantWeightedProduct {
+contract WeightedProduct {
     using SafeCast for uint256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;

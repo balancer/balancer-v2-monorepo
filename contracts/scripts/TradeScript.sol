@@ -20,14 +20,14 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "hardhat/console.sol";
 
-import "../strategies/lib/ConstantWeightedProduct.sol";
-import "../strategies/ConstantWeightedProdStrategy.sol";
+import "../strategies/lib/WeightedProduct.sol";
+import "../strategies/WeightedProdStrategy.sol";
 
 import "../vault/IVault.sol";
 
 import "../math/FixedPoint.sol";
 
-contract TradeScript is ConstantWeightedProduct {
+contract TradeScript is WeightedProduct {
     using SafeCast for uint256;
     using SafeCast for int256;
     using FixedPoint for uint256;
@@ -59,23 +59,19 @@ contract TradeScript is ConstantWeightedProduct {
         addresses[0] = tokenIn;
         addresses[1] = tokenOut;
 
-        uint256[] memory tokenBalances = _vault.getPoolTokenBalances(
+        uint128[] memory tokenBalances = _vault.getPoolTokenBalances(
             poolId,
             addresses
         );
 
         (address strategy, ) = _vault.getStrategy(poolId);
 
-        uint256 tokenInDenormalizedWeight = ConstantWeightedProdStrategy(
-            strategy
-        )
+        uint256 tokenInDenormalizedWeight = WeightedProdStrategy(strategy)
             .getWeight(tokenIn);
-        uint256 tokenOutDenormalizedWeight = ConstantWeightedProdStrategy(
-            strategy
-        )
+        uint256 tokenOutDenormalizedWeight = WeightedProdStrategy(strategy)
             .getWeight(tokenOut);
 
-        uint256 swapFee = ConstantWeightedProdStrategy(strategy).getSwapFee();
+        uint256 swapFee = WeightedProdStrategy(strategy).getSwapFee();
 
         return
             PoolData({
