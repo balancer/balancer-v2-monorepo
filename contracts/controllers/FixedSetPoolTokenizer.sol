@@ -70,6 +70,11 @@ contract FixedSetPoolTokenizer is BToken {
         address[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
+        require(
+            maxAmountsIn.length == tokens.length,
+            "Tokens and amounts length mismatch"
+        );
+
         uint128[] memory amountsIn = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             amountsIn[i] = balances[i].mul128(ratio);
@@ -92,6 +97,11 @@ contract FixedSetPoolTokenizer is BToken {
 
         address[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
+
+        require(
+            minAmountsOut.length == tokens.length,
+            "Tokens and amounts length mismatch"
+        );
 
         uint128[] memory amountsOut = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
