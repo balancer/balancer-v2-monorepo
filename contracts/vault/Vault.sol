@@ -308,7 +308,7 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
         ITradingStrategy.Swap memory swap,
         ITupleTradingStrategy strategy
     ) private returns (uint128, uint128) {
-        uint256[] memory currentBalances = new uint256[](
+        uint128[] memory currentBalances = new uint128[](
             pools[swap.poolId].tokens.length
         );
 
@@ -338,8 +338,8 @@ contract Vault is IVault, VaultAccounting, PoolRegistry, UserBalance {
         return (
             // TODO: make sure the protocol fees are not accounted for!
             // currentBalances[indexIn] + amountIn - bmul(feeAmountIn, 0), // feeAmountIn * protocolfee
-            currentBalances[indexIn].toUint128() + swap.amountIn,
-            currentBalances[indexOut].toUint128() - swap.amountOut
+            currentBalances[indexIn] + swap.amountIn,
+            currentBalances[indexOut] - swap.amountOut
         );
     }
 

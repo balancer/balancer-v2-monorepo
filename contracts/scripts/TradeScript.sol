@@ -59,7 +59,7 @@ contract TradeScript is WeightedProduct {
         addresses[0] = tokenIn;
         addresses[1] = tokenOut;
 
-        uint256[] memory tokenBalances = _vault.getPoolTokenBalances(
+        uint128[] memory tokenBalances = _vault.getPoolTokenBalances(
             poolId,
             addresses
         );

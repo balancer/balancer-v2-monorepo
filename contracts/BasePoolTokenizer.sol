@@ -48,7 +48,7 @@ contract BasePoolTokenizer is BToken {
         require(ratio != 0, "ERR_MATH_APPROX");
 
         address[] memory tokens = vault.getPoolTokens(poolID);
-        uint256[] memory balances = vault.getPoolTokenBalances(poolID, tokens);
+        uint128[] memory balances = vault.getPoolTokenBalances(poolID, tokens);
 
         uint256[] memory amountsIn = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -78,7 +78,7 @@ contract BasePoolTokenizer is BToken {
         require(ratio != 0, "ERR_MATH_APPROX");
 
         address[] memory tokens = vault.getPoolTokens(poolID);
-        uint256[] memory balances = vault.getPoolTokenBalances(poolID, tokens);
+        uint128[] memory balances = vault.getPoolTokenBalances(poolID, tokens);
 
         uint256[] memory amountsOut = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {

@@ -29,7 +29,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
 
     function validateTuple(
         ITradingStrategy.Swap calldata,
-        uint256[] calldata,
+        uint128[] calldata,
         uint256,
         uint256
     ) external override pure returns (bool, uint128) {

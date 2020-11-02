@@ -46,7 +46,7 @@ contract TradeScriptStable is Stable {
         uint128 tokenOutBalance;
         uint128 amp;
         uint256 swapFee;
-        uint256[] balances;
+        uint128[] balances;
     }
 
     function _getPoolData(
@@ -66,7 +66,7 @@ contract TradeScriptStable is Stable {
         uint256 swapFee = StableStrategy(strategy).getSwapFee();
 
         address[] memory tokens = IVault(_vault).getPoolTokens(swap.poolId);
-        uint256[] memory tokenBalances = IVault(_vault).getPoolTokenBalances(
+        uint128[] memory tokenBalances = IVault(_vault).getPoolTokenBalances(
             swap.poolId,
             tokens
         );
@@ -75,9 +75,8 @@ contract TradeScriptStable is Stable {
             PoolData({
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                tokenInBalance: tokenBalances[indexes.tokenIndexIn].toUint128(),
-                tokenOutBalance: tokenBalances[indexes.tokenIndexOut]
-                    .toUint128(),
+                tokenInBalance: tokenBalances[indexes.tokenIndexIn],
+                tokenOutBalance: tokenBalances[indexes.tokenIndexOut],
                 amp: amp,
                 swapFee: swapFee,
                 balances: tokenBalances

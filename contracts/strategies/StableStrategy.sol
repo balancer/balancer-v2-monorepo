@@ -39,7 +39,7 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
     //Because it is not possible to overriding external calldata, function is public and balances are in memory
     function validateTuple(
         ITradingStrategy.Swap calldata swap,
-        uint256[] memory balances,
+        uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) public override view returns (bool, uint128) {
@@ -50,19 +50,20 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
         uint128 feeAmount = swap.amountIn.mul(_swapFee).toUint128();
 
         //Update Balances
-        balances[indexIn] = balances[indexIn].add(
+        balances[indexIn] = balances[indexIn].add128(
             swap.amountIn.sub128(feeAmount)
         );
-        balances[indexOut] = balances[indexOut].sub(swap.amountOut);
+        balances[indexOut] = balances[indexOut].sub128(swap.amountOut);
 
         //Calculate new invariant
         uint256 newInvariant = _invariant(_amp, balances);
 
+        //Check new invariant is greater or relative error is small
         if (newInvariant >= oldInvariant) {
             return (true, feeAmount);
         } else {
-            uint256 error = ((newInvariant * 1000) / oldInvariant);
-            return (error > 1 && error < 1000, feeAmount);
+            uint256 error = (oldInvariant - newInvariant) / oldInvariant;
+            return (error < 1000, feeAmount);
         }
     }
 

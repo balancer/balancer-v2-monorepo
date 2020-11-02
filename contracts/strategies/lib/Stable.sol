@@ -35,10 +35,10 @@ contract Stable {
 
     function _getData(
         uint256 amp,
-        uint256[] memory balances,
+        uint128[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
-        uint256 tokenAmountIn
+        uint128 tokenAmountIn
     ) private pure returns (Data memory) {
         uint256 invariant = _invariant(amp, balances);
         uint256 sum = 0;
@@ -69,12 +69,12 @@ contract Stable {
             });
     }
 
-    function _calcTokenAmountOut(Data memory data, uint256 tokenAmountOut)
+    function _calcTokenAmountOut(Data memory data, uint128 tokenAmountOut)
         private
         pure
-        returns (uint256)
+        returns (uint128)
     {
-        uint256 newTokenAmountOut;
+        uint128 newTokenAmountOut;
         uint256 c1 = data.amp *
             data.sum +
             ((FixedPoint.ONE / data.nn) - data.amp) *
@@ -87,7 +87,7 @@ contract Stable {
                 ((c1 * tokenAmountOut) / FixedPoint.ONE) -
                 c2) * FixedPoint.ONE;
             uint256 f2 = c1 + 2 * data.amp * tokenAmountOut;
-            newTokenAmountOut = tokenAmountOut - (f1 / f2);
+            newTokenAmountOut = uint128(tokenAmountOut - (f1 / f2));
             if (newTokenAmountOut > tokenAmountOut) {
                 if ((newTokenAmountOut - tokenAmountOut) <= PRECISION) {
                     break;
@@ -102,10 +102,10 @@ contract Stable {
 
     function _outGivenIn(
         uint256 amp,
-        uint256[] memory balances,
+        uint128[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
-        uint256 tokenAmountIn
+        uint128 tokenAmountIn
     ) internal pure returns (uint256) {
         Data memory data = _getData(
             amp,
@@ -114,12 +114,12 @@ contract Stable {
             tokenIndexOut,
             tokenAmountIn
         );
-        uint256 tokenAmountOut = balances[tokenIndexOut] + tokenAmountIn;
+        uint128 tokenAmountOut = balances[tokenIndexOut] + tokenAmountIn;
         return
             balances[tokenIndexOut] - _calcTokenAmountOut(data, tokenAmountOut);
     }
 
-    function _invariant(uint256 amp, uint256[] memory balances)
+    function _invariant(uint256 amp, uint128[] memory balances)
         internal
         pure
         returns (uint256)
