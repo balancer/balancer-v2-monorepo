@@ -22,13 +22,39 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../math/FixedPoint.sol";
 
 library BalanceLib {
+    using FixedPoint for uint128;
+
     struct Balance {
         uint128 cash;
-        uint128 invested;
+        uint128 total;
     }
 
-    function total(Balance memory self) internal pure returns (uint128) {
-        return self.cash + self.invested;
+    function invested(Balance storage self) internal view returns (uint128) {
+        return self.total - self.cash;
+    }
+
+    function increment(Balance storage self, uint128 amount)
+        internal
+        view
+        returns (Balance memory)
+    {
+        return
+            Balance({
+                cash: self.cash.add128(amount),
+                total: self.total.add128(amount)
+            });
+    }
+
+    function decrement(Balance storage self, uint128 amount)
+        internal
+        view
+        returns (Balance memory)
+    {
+        return
+            Balance({
+                cash: self.cash.sub128(amount),
+                total: self.total.sub128(amount)
+            });
     }
 }
 
@@ -57,7 +83,8 @@ contract VaultAccounting {
         uint256 newBalance = IERC20(token).balanceOf(address(this));
 
         uint128 received = newBalance.sub(currentBalance).toUint128();
-        _vaultTokenBalance[token].cash = _vaultTokenBalance[token].cash.add128(
+
+        _vaultTokenBalance[token] = _vaultTokenBalance[token].increment(
             received
         );
 
@@ -69,9 +96,8 @@ contract VaultAccounting {
         address to,
         uint128 amount
     ) internal {
-        _vaultTokenBalance[token].cash = _vaultTokenBalance[token].cash.sub128(
-            amount
-        );
+        _vaultTokenBalance[token] = _vaultTokenBalance[token].decrement(amount);
+
         IERC20(token).safeTransfer(to, amount);
     }
 }

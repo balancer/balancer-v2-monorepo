@@ -106,14 +106,14 @@ abstract contract PoolRegistry is
         return poolId;
     }
 
-    function getTotalPools() external override view returns (uint256) {
+    function getTotalPools() external view override returns (uint256) {
         return _pools.length();
     }
 
     function getPoolIds(uint256 startIndex, uint256 endIndex)
         external
-        override
         view
+        override
         _viewlock_
         returns (bytes32[] memory)
     {
@@ -133,8 +133,8 @@ abstract contract PoolRegistry is
 
     function getPoolTokens(bytes32 poolId)
         external
-        override
         view
+        override
         _viewlock_
         withExistingPool(poolId)
         returns (address[] memory)
@@ -149,15 +149,15 @@ abstract contract PoolRegistry is
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
-        override
         view
+        override
         withExistingPool(poolId)
         returns (uint128[] memory)
     {
         uint128[] memory balances = new uint128[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _poolTokenBalance[poolId][tokens[i]].total();
+            balances[i] = _poolTokenBalance[poolId][tokens[i]].total;
         }
 
         return balances;
@@ -165,8 +165,8 @@ abstract contract PoolRegistry is
 
     function getPoolController(bytes32 poolId)
         external
-        override
         view
+        override
         withExistingPool(poolId)
         _viewlock_
         returns (address)
@@ -176,8 +176,8 @@ abstract contract PoolRegistry is
 
     function getPoolStrategy(bytes32 poolId)
         external
-        override
         view
+        override
         withExistingPool(poolId)
         _viewlock_
         returns (address, StrategyType)
@@ -217,14 +217,13 @@ abstract contract PoolRegistry is
                     BalanceLib.Balance memory currentBalance
                  = _poolTokenBalance[poolId][tokens[i]];
 
-                if (currentBalance.total() == 0) {
+                if (currentBalance.total == 0) {
                     bool added = _poolTokens[poolId].add(tokens[i]);
                     assert(added); // No tokens with zero balance should ever be in the _poolTokens set
                 }
 
-                _poolTokenBalance[poolId][tokens[i]].cash = currentBalance
-                    .cash
-                    .add128(received);
+                _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]]
+                    .increment(received);
             }
         }
     }
@@ -248,14 +247,10 @@ abstract contract PoolRegistry is
 
             _pushTokens(tokens[i], to, amounts[i]);
 
+            _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]]
+                .decrement(amounts[i]);
 
-                BalanceLib.Balance memory currentBalance
-             = _poolTokenBalance[poolId][tokens[i]];
-
-            currentBalance.cash = currentBalance.cash.sub128(amounts[i]);
-            _poolTokenBalance[poolId][tokens[i]] = currentBalance;
-
-            if (currentBalance.total() == 0) {
+            if (_poolTokenBalance[poolId][tokens[i]].total == 0) {
                 _poolTokens[poolId].remove(tokens[i]);
             }
         }

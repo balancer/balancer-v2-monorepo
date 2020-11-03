@@ -93,12 +93,22 @@ contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
             ) = _validateSwap(swap, tokenIn, tokenOut);
 
             // 3: update pool balances
-            _poolTokenBalance[swap.poolId][tokenIn].cash =
-                tokenInFinalBalance -
-                _poolTokenBalance[swap.poolId][tokenIn].invested;
-            _poolTokenBalance[swap.poolId][tokenOut].cash =
-                tokenOutFinalBalance -
-                _poolTokenBalance[swap.poolId][tokenOut].invested;
+
+            // TODO: optimize this so we don't end up reading from the same storage slots multiple times
+            uint128 numTokensIn = tokenInFinalBalance.sub128(
+                _poolTokenBalance[swap.poolId][tokenIn].total
+            );
+            uint128 numTokensOut = _poolTokenBalance[swap.poolId][tokenOut]
+                .total
+                .sub128(tokenOutFinalBalance);
+
+            _poolTokenBalance[swap.poolId][tokenIn] = _poolTokenBalance[swap
+                .poolId][tokenIn]
+                .increment(numTokensIn);
+
+            _poolTokenBalance[swap.poolId][tokenOut] = _poolTokenBalance[swap
+                .poolId][tokenOut]
+                .decrement(numTokensOut);
         }
 
         // Step 4: Receive intended tokens, pulling the difference from user balance
@@ -192,11 +202,10 @@ contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
         uint128 amountOut,
         IPairTradingStrategy strategy
     ) private returns (uint128, uint128) {
-        uint128 poolTokenInBalance = _poolTokenBalance[poolId][tokenIn].total();
+        uint128 poolTokenInBalance = _poolTokenBalance[poolId][tokenIn].total;
         require(poolTokenInBalance > 0, "Token A not in pool");
 
-        uint128 poolTokenOutBalance = _poolTokenBalance[poolId][tokenOut]
-            .total();
+        uint128 poolTokenOutBalance = _poolTokenBalance[poolId][tokenOut].total;
         require(poolTokenOutBalance > 0, "Token B not in pool");
 
         (bool success, ) = strategy.validatePair(
@@ -233,7 +242,7 @@ contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
 
         for (uint256 i = 0; i < _poolTokens[swap.poolId].length(); i++) {
             address token = _poolTokens[swap.poolId].at(i);
-            currentBalances[i] = _poolTokenBalance[swap.poolId][token].total();
+            currentBalances[i] = _poolTokenBalance[swap.poolId][token].total;
             require(currentBalances[i] > 0, "Token A not in pool");
 
             if (token == swap.tokenIn) {
