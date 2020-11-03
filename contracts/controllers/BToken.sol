@@ -16,7 +16,7 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./BNum.sol";
+import "../BNum.sol";
 
 // Highly opinionated token implementation
 // * It includes functions to increase and decrease allowance as a workaround

@@ -64,7 +64,7 @@ contract TradeScript is WeightedProduct {
             addresses
         );
 
-        (address strategy, ) = _vault.getStrategy(poolId);
+        (address strategy, ) = _vault.getPoolStrategy(poolId);
 
         uint256 tokenInDenormalizedWeight = WeightedProdStrategy(strategy)
             .getWeight(tokenIn);

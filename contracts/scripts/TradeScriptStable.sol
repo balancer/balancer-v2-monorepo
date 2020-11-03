@@ -59,7 +59,7 @@ contract TradeScriptStable is Stable {
         address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
         address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
-        (address strategy, ) = _vault.getStrategy(swap.poolId);
+        (address strategy, ) = _vault.getPoolStrategy(swap.poolId);
 
         uint128 amp = StableStrategy(strategy).getAmp();
 
