@@ -24,11 +24,11 @@ import "../math/FixedPoint.sol";
 library BalanceLib {
     struct Balance {
         uint128 cash;
-        uint128 invested;
+        uint128 total;
     }
 
-    function total(Balance storage self) internal view returns (uint128) {
-        return self.cash + self.invested;
+    function invested(Balance storage self) internal view returns (uint128) {
+        return self.total - self.cash;
     }
 }
 
