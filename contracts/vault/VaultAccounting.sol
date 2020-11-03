@@ -27,7 +27,7 @@ library BalanceLib {
         uint128 invested;
     }
 
-    function total(Balance storage self) internal view returns (uint128) {
+    function total(Balance memory self) internal pure returns (uint128) {
         return self.cash + self.invested;
     }
 }
@@ -35,6 +35,7 @@ library BalanceLib {
 contract VaultAccounting {
     using BalanceLib for BalanceLib.Balance;
     using FixedPoint for uint256;
+    using FixedPoint for uint128;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
@@ -56,7 +57,9 @@ contract VaultAccounting {
         uint256 newBalance = IERC20(token).balanceOf(address(this));
 
         uint128 received = newBalance.sub(currentBalance).toUint128();
-        _vaultTokenBalance[token].cash += received;
+        _vaultTokenBalance[token].cash = _vaultTokenBalance[token].cash.add128(
+            received
+        );
 
         return received;
     }
@@ -66,7 +69,9 @@ contract VaultAccounting {
         address to,
         uint128 amount
     ) internal {
-        _vaultTokenBalance[token].cash -= amount;
-        IERC20(token).transfer(to, amount);
+        _vaultTokenBalance[token].cash = _vaultTokenBalance[token].cash.sub128(
+            amount
+        );
+        IERC20(token).safeTransfer(to, amount);
     }
 }

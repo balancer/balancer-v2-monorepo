@@ -19,77 +19,52 @@ pragma solidity ^0.7.1;
 interface IVault {
     enum StrategyType { PAIR, TUPLE }
 
-    function newPool(
-        bytes32,
-        address,
-        StrategyType
-    ) external returns (bytes32);
+    function newPool(address, StrategyType) external returns (bytes32);
+
+    function getTotalPools() external view returns (uint256);
+
+    function getPoolIds(uint256 startIndex, uint256 endIndex)
+        external
+        view
+        returns (bytes32[] memory);
 
     // Pool config queries
 
     // Trading with a pool requires either trusting the controller, or going through
     // a proxy that enforces expected conditions (such as pool make up and fees)
-    function getController(bytes32 poolId) external view returns (address);
+    function getPoolController(bytes32 poolId) external view returns (address);
 
-    function getStrategy(bytes32 poolId)
+    function getPoolStrategy(bytes32 poolId)
         external
         view
         returns (address, StrategyType);
-
-    function getNumPoolTokens(bytes32 poolId) external view returns (uint256); // do we need this?
-
-    function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
-        external
-        view
-        returns (uint128[] memory);
 
     function getPoolTokens(bytes32 poolId)
         external
         view
         returns (address[] memory);
 
-    function isTokenBound(bytes32 poolId, address token)
+    function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
         view
-        returns (bool);
+        returns (uint128[] memory);
 
     // Pool configuration - only callable by the controller
 
-    function setController(bytes32 poolId, address controller) external;
+    function setPoolController(bytes32 poolId, address controller) external;
 
-    // TODO rework bind functions to minimize trust of controllers
-    // Adds a new token to a pool, with initial balance
-    function bind(
+    function addLiquidity(
         bytes32 poolId,
-        address token,
-        uint256 balance
+        address from,
+        address[] calldata tokens,
+        uint128[] calldata amounts
     ) external;
-
-    // Removes a token from a pool, withdrawing all balance
-    function unbind(bytes32 poolId, address token) external;
-
-    // functions for adding several tokens minting/burning bpt
-    function addInitialLiquidity(
-        bytes32 poolId,
-        address[] calldata initialTokens,
-        uint256[] calldata amountsIn
-    ) external;
-
-    function addLiquidity(bytes32 poolId, uint256[] calldata amountsIn)
-        external;
 
     function removeLiquidity(
         bytes32 poolId,
-        address recipient,
-        uint256[] calldata amountsOut
-    ) external;
-
-    // Updates a token's config in a pool with new balance
-    // balance (depositing or withdrawing depending on current state)
-    function rebind(
-        bytes32 poolId,
-        address token,
-        uint256 balance
+        address to,
+        address[] calldata tokens,
+        uint128[] calldata amounts
     ) external;
 
     // Trading interface
