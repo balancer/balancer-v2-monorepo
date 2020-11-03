@@ -7,7 +7,8 @@ import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-describe.only('Vault - user balance', () => {
+describe('Vault - user balance', () => {
+  let admin: SignerWithAddress;
   let trader: SignerWithAddress;
   let user: SignerWithAddress;
   let operator: SignerWithAddress;
@@ -19,14 +20,14 @@ describe.only('Vault - user balance', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, trader, user, operator, reporter, trustedOperator, other] = await ethers.getSigners();
+    [, admin, trader, user, operator, reporter, trustedOperator, other] = await ethers.getSigners();
   });
 
   const amount = ethers.BigNumber.from(500);
 
   describe('deposit & withdraw', () => {
     beforeEach('deploy vault & tokens', async () => {
-      vault = await deploy('Vault');
+      vault = await deploy('Vault', { from: admin, args: [] });
       tokens = await deployTokens(['DAI', 'MKR']);
 
       await mintTokens(tokens, 'DAI', trader, amount.toString());
@@ -181,9 +182,7 @@ describe.only('Vault - user balance', () => {
 
     context('with trusted operator reporter', () => {
       beforeEach(async () => {
-        // By the Vault's deployer - the admin.
-        // TODO: improve this, and let deploy receive a signer
-        await vault.authorizeTrustedOperatorReporter(reporter.address);
+        await vault.connect(admin).authorizeTrustedOperatorReporter(reporter.address);
       });
 
       it('reporters can be queried', async () => {

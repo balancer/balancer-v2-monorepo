@@ -7,7 +7,7 @@ export type TokenList = Dictionary<Contract>;
 
 // Deploys a vanilla ERC20 token that can be minted by any account
 export async function deployToken(symbol: string, decimals?: number): Promise<Contract> {
-  const token = await deploy('TestToken', symbol, symbol, decimals ?? 18);
+  const token = await deploy('TestToken', { args: [symbol, symbol, decimals ?? 18] });
   return token;
 }
 

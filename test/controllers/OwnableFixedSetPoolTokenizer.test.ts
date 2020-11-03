@@ -18,12 +18,13 @@ describe('OwnableFixedSetPoolTokenizer', function () {
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault');
-    strategy = await deploy('MockTradingStrategy');
+    vault = await deploy('Vault', { args: [] });
+    strategy = await deploy('MockTradingStrategy', { args: [] });
 
-    // TODO: have deploy accept a signer
-    tokenizer = await deploy('OwnableFixedSetPoolTokenizer', vault.address, strategy.address, PairTS);
-    tokenizer.transferOwnership(owner.address);
+    tokenizer = await deploy('OwnableFixedSetPoolTokenizer', {
+      from: owner,
+      args: [vault.address, strategy.address, PairTS],
+    });
   });
 
   it('has control of the created pool', async function () {
