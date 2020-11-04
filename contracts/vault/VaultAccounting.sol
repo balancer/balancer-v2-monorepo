@@ -33,7 +33,7 @@ library BalanceLib {
         return self.total - self.cash;
     }
 
-    function increment(Balance storage self, uint128 amount)
+    function increase(Balance storage self, uint128 amount)
         internal
         view
         returns (Balance memory)
@@ -45,7 +45,7 @@ library BalanceLib {
             });
     }
 
-    function decrement(Balance storage self, uint128 amount)
+    function decrease(Balance storage self, uint128 amount)
         internal
         view
         returns (Balance memory)
@@ -84,7 +84,7 @@ contract VaultAccounting {
 
         uint128 received = newBalance.sub(currentBalance).toUint128();
 
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].increment(
+        _vaultTokenBalance[token] = _vaultTokenBalance[token].increase(
             received
         );
 
@@ -96,7 +96,7 @@ contract VaultAccounting {
         address to,
         uint128 amount
     ) internal {
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].decrement(amount);
+        _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(amount);
 
         IERC20(token).safeTransfer(to, amount);
     }

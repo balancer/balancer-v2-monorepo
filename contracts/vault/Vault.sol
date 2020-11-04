@@ -104,11 +104,11 @@ contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
 
             _poolTokenBalance[swap.poolId][tokenIn] = _poolTokenBalance[swap
                 .poolId][tokenIn]
-                .increment(numTokensIn);
+                .increase(numTokensIn);
 
             _poolTokenBalance[swap.poolId][tokenOut] = _poolTokenBalance[swap
                 .poolId][tokenOut]
-                .decrement(numTokensOut);
+                .decrease(numTokensOut);
         }
 
         // Step 4: Receive intended tokens, pulling the difference from user balance

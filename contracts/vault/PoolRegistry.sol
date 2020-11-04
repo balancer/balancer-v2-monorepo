@@ -223,7 +223,7 @@ abstract contract PoolRegistry is
                 }
 
                 _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]]
-                    .increment(received);
+                    .increase(received);
             }
         }
     }
@@ -248,7 +248,7 @@ abstract contract PoolRegistry is
             _pushTokens(tokens[i], to, amounts[i]);
 
             _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]]
-                .decrement(amounts[i]);
+                .decrease(amounts[i]);
 
             if (_poolTokenBalance[poolId][tokens[i]].total == 0) {
                 _poolTokens[poolId].remove(tokens[i]);
