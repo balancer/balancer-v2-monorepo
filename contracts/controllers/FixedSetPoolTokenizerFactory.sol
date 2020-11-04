@@ -22,7 +22,7 @@ import "../vault/IVault.sol";
 import "./FixedSetPoolTokenizer.sol";
 
 contract FixedSetPoolTokenizerFactory {
-    IVault immutable vault;
+    IVault public immutable vault;
 
     event FixedSetPoolTokenizerCreated(address indexed tokenizer);
 
@@ -42,7 +42,7 @@ contract FixedSetPoolTokenizerFactory {
             keccak256(creationCode)
         );
 
-        //vault.reportTrustedOperator(expectedDestination);
+        vault.reportTrustedOperator(expectedDestination);
 
         address tokenizer = Create2.deploy(0, salt, creationCode);
         assert(tokenizer == expectedDestination);
