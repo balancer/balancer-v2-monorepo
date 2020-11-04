@@ -106,14 +106,14 @@ abstract contract PoolRegistry is
         return poolId;
     }
 
-    function getTotalPools() external view override returns (uint256) {
+    function getTotalPools() external override view returns (uint256) {
         return _pools.length();
     }
 
     function getPoolIds(uint256 startIndex, uint256 endIndex)
         external
-        view
         override
+        view
         _viewlock_
         returns (bytes32[] memory)
     {
@@ -133,8 +133,8 @@ abstract contract PoolRegistry is
 
     function getPoolTokens(bytes32 poolId)
         external
-        view
         override
+        view
         _viewlock_
         withExistingPool(poolId)
         returns (address[] memory)
@@ -149,8 +149,8 @@ abstract contract PoolRegistry is
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
-        view
         override
+        view
         withExistingPool(poolId)
         returns (uint128[] memory)
     {
@@ -165,8 +165,8 @@ abstract contract PoolRegistry is
 
     function getPoolController(bytes32 poolId)
         external
-        view
         override
+        view
         withExistingPool(poolId)
         _viewlock_
         returns (address)
@@ -176,8 +176,8 @@ abstract contract PoolRegistry is
 
     function getPoolStrategy(bytes32 poolId)
         external
-        view
         override
+        view
         withExistingPool(poolId)
         _viewlock_
         returns (address, StrategyType)
@@ -223,7 +223,7 @@ abstract contract PoolRegistry is
                 }
 
                 _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]]
-                    .increment(received);
+                    .increase(received);
             }
         }
     }
@@ -248,7 +248,7 @@ abstract contract PoolRegistry is
             _pushTokens(tokens[i], to, amounts[i]);
 
             _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]]
-                .decrement(amounts[i]);
+                .decrease(amounts[i]);
 
             if (_poolTokenBalance[poolId][tokens[i]].total == 0) {
                 _poolTokens[poolId].remove(tokens[i]);
