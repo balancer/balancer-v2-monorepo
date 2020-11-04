@@ -22,18 +22,19 @@ describe('TradeScript', () => {
   });
 
   beforeEach('deploy vault', async () => {
-    vault = await deploy('Vault');
-    tradeScript = await deploy('TradeScript', vault.address);
+    vault = await deploy('Vault', { args: [] });
+    tradeScript = await deploy('TradeScript', { args: [vault.address] });
     tokens = await deployTokens(['DAI', 'BAT', 'ANT', 'SNX', 'MKR']);
 
     const weights = [(1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString()];
-    strategy = await deploy(
-      'WeightedProdStrategy',
-      [tokens.DAI.address, tokens.BAT.address, tokens.ANT.address, tokens.SNX.address, tokens.MKR.address],
-      weights,
-      5,
-      0
-    );
+    strategy = await deploy('WeightedProdStrategy', {
+      args: [
+        [tokens.DAI.address, tokens.BAT.address, tokens.ANT.address, tokens.SNX.address, tokens.MKR.address],
+        weights,
+        5,
+        0,
+      ],
+    });
   });
 
   describe('swap', () => {

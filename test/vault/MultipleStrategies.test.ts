@@ -26,11 +26,11 @@ describe('Vault - multiple trading strategies interfaces', () => {
   });
 
   beforeEach(async () => {
-    vault = await deploy('Vault');
+    vault = await deploy('Vault', { args: [] });
     tokens = await deployTokens(['DAI', 'TEST']);
 
-    mockStrategy = await deploy('MockTradingStrategy');
-    mockScript = await deploy('MockTradeScript');
+    mockStrategy = await deploy('MockTradingStrategy', { args: [] });
+    mockScript = await deploy('MockTradeScript', { args: [] });
 
     poolIdPair = await setupPool(vault, mockStrategy, PairTS, tokens, controller, [
       ['DAI', (1e18).toString()],

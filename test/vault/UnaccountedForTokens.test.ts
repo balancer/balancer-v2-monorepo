@@ -21,7 +21,7 @@ describe('Vault - unaccounted for tokens', () => {
   });
 
   beforeEach(async () => {
-    vault = await deploy('Vault');
+    vault = await deploy('Vault', { args: [] });
     tokens = await deployTokens(['DAI', 'MKR']);
 
     for (const symbol in tokens) {
@@ -50,7 +50,7 @@ describe('Vault - unaccounted for tokens', () => {
     let poolId: string;
 
     beforeEach(async () => {
-      const strategy = await deploy('MockTradingStrategy');
+      const strategy = await deploy('MockTradingStrategy', { args: [] });
       poolId = await createPool(vault, strategy, PairTS, controller);
     });
 
@@ -77,7 +77,7 @@ describe('Vault - unaccounted for tokens', () => {
     let poolId: string;
 
     beforeEach(async () => {
-      const strategy = await deploy('MockTradingStrategy');
+      const strategy = await deploy('MockTradingStrategy', { args: [] });
       poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
         ['DAI', (2e18).toString()],
         ['MKR', (2e18).toString()],

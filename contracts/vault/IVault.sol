@@ -19,7 +19,66 @@ pragma solidity ^0.7.1;
 interface IVault {
     enum StrategyType { PAIR, TUPLE }
 
-    function newPool(address, StrategyType) external returns (bytes32);
+    // User balance
+
+    function getUserTokenBalance(address user, address token)
+        external
+        view
+        returns (uint128);
+
+    function deposit(
+        address token,
+        uint128 amount,
+        address user
+    ) external;
+
+    function withdraw(
+        address token,
+        uint128 amount,
+        address recipient
+    ) external;
+
+    // User operators
+
+    function authorizeOperator(address operator) external;
+
+    function revokeOperator(address operator) external;
+
+    function isOperatorFor(address user, address operator)
+        external
+        view
+        returns (bool);
+
+    function getUserTotalOperators(address user)
+        external
+        view
+        returns (uint256);
+
+    function getUserOperators(
+        address user,
+        uint256 start,
+        uint256 end
+    ) external view returns (address[] memory);
+
+    // Trusted operators
+
+    function getTotalTrustedOperators() external view returns (uint256);
+
+    function getTrustedOperators(uint256 start, uint256 end)
+        external
+        view
+        returns (address[] memory);
+
+    function getTotalTrustedOperatorReporters() external view returns (uint256);
+
+    function getTrustedOperatorReporters(uint256 start, uint256 end)
+        external
+        view
+        returns (address[] memory);
+
+    function reportTrustedOperator(address operator) external;
+
+    // Pool queries
 
     function getTotalPools() external view returns (uint256);
 
@@ -27,8 +86,6 @@ interface IVault {
         external
         view
         returns (bytes32[] memory);
-
-    // Pool config queries
 
     // Trading with a pool requires either trusting the controller, or going through
     // a proxy that enforces expected conditions (such as pool make up and fees)
@@ -49,7 +106,9 @@ interface IVault {
         view
         returns (uint128[] memory);
 
-    // Pool configuration - only callable by the controller
+    // Pool management
+
+    function newPool(address, StrategyType) external returns (bytes32);
 
     function setPoolController(bytes32 poolId, address controller) external;
 
@@ -124,4 +183,8 @@ interface IVault {
         external
         view
         returns (uint256);
+
+    // Admin
+
+    function authorizeTrustedOperatorReporter(address reporter) external;
 }

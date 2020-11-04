@@ -24,7 +24,7 @@ describe('FixedSetPoolTokenizer', function () {
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault');
+    vault = await deploy('Vault', { args: [] });
 
     tokens = await deployTokens(['DAI', 'MKR']);
     await Promise.all(
@@ -37,8 +37,8 @@ describe('FixedSetPoolTokenizer', function () {
       })
     );
 
-    strategy = await deploy('MockTradingStrategy');
-    tokenizer = await deploy('FixedSetPoolTokenizer', vault.address, strategy.address, PairTS);
+    strategy = await deploy('MockTradingStrategy', { args: [] });
+    tokenizer = await deploy('FixedSetPoolTokenizer', { args: [vault.address, strategy.address, PairTS] });
 
     await vault.connect(lp).authorizeOperator(tokenizer.address);
     await vault.connect(other).authorizeOperator(tokenizer.address);

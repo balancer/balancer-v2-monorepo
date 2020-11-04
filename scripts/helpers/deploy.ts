@@ -1,13 +1,19 @@
-import { Contract, ContractFactory } from 'ethers';
+import { Contract, ContractFactory, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import { Dictionary } from 'lodash';
 
 const factories: Dictionary<ContractFactory> = {};
 
-export async function deploy(contractName: string, ...parameters: Array<unknown>): Promise<Contract> {
-  const factory = await getFactory(contractName);
+export async function deploy(
+  contractName: string,
+  { from, args }: { from?: Signer; args: Array<unknown> }
+): Promise<Contract> {
+  let factory = await getFactory(contractName);
+  if (from) {
+    factory = factory.connect(from);
+  }
 
-  const contract = await (await factory.deploy(...parameters)).deployed();
+  const contract = await (await factory.deploy(...args)).deployed();
 
   return contract;
 }
