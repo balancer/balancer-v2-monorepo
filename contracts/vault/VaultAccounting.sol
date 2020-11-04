@@ -73,7 +73,7 @@ abstract contract VaultAccounting is IVault {
     mapping(address => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
 
     function getTotalUnaccountedForTokens(address token)
-        external
+        public
         view
         override
         returns (uint256)

@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../vendor/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
@@ -33,6 +34,7 @@ import "./PoolRegistry.sol";
 import "./UserBalance.sol";
 
 contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
+    using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using BalanceLib for BalanceLib.Balance;
     using FixedPoint for uint256;
@@ -281,5 +283,29 @@ contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
         require(msg.sender == admin, "Caller is not the admin");
 
         _trustedOperatorReporters.add(reporter);
+    }
+
+    function claimUnaccountedForTokens(
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        address recipient
+    ) external override {
+        require(msg.sender == admin, "Caller is not the admin");
+        require(
+            tokens.length == amounts.length,
+            "Tokens and amounts length mismatch"
+        );
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint256 totalUnaccountedFor = getTotalUnaccountedForTokens(
+                tokens[i]
+            );
+            require(
+                totalUnaccountedFor >= amounts[i],
+                "Insufficient unaccounted for tokens"
+            );
+
+            IERC20(tokens[i]).safeTransfer(recipient, amounts[i]);
+        }
     }
 }
