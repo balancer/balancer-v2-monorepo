@@ -35,7 +35,7 @@
     "mocha": "^8.1.1",
     "nodemon": "^2.0.4",
     "prettier": "^2.1.2",
-    "prettier-plugin-solidity": "^1.0.0-alpha.56",
+    "prettier-plugin-solidity": "^1.0.0-alpha.59",
     "solhint": "^3.2.0",
     "solhint-plugin-prettier": "^0.0.4",
     "ts-node": "^8.10.2",
