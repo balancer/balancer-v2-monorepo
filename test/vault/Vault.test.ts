@@ -24,16 +24,12 @@ describe('Vault - swaps', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault');
+    vault = await deploy('Vault', { args: [] });
     tokens = await deployTokens(['DAI', 'MKR']);
-    strategy = await deploy(
-      'WeightedProdStrategy',
-      [tokens.DAI.address, tokens.MKR.address],
-      [(1e18).toString(), (1e18).toString()],
-      2,
-      0
-    );
-    tradeScript = await deploy('MockTradeScript');
+    strategy = await deploy('WeightedProdStrategy', {
+      args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (1e18).toString()], 2, 0],
+    });
+    tradeScript = await deploy('MockTradeScript', { args: [] });
   });
 
   describe('pool management', () => {
@@ -66,13 +62,14 @@ describe('Vault - swaps', () => {
 
       poolIds = [];
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-        const strategy = await deploy(
-          'WeightedProdStrategy',
-          [tokens.DAI.address, tokens.MKR.address],
-          [(1e18).toString(), (1e18).toString()],
-          2,
-          (0.05e18).toString()
-        );
+        const strategy = await deploy('WeightedProdStrategy', {
+          args: [
+            [tokens.DAI.address, tokens.MKR.address],
+            [(1e18).toString(), (1e18).toString()],
+            2,
+            (0.05e18).toString(),
+          ],
+        });
 
         poolIds.push(
           await setupPool(vault, strategy, PairTS, tokens, controller, [
@@ -373,21 +370,13 @@ describe('Vault - swaps', () => {
         })
       );
 
-      strategy = await deploy(
-        'WeightedProdStrategy',
-        [tokens.DAI.address, tokens.MKR.address],
-        [(1e18).toString(), (4e18).toString()],
-        2,
-        0
-      );
+      strategy = await deploy('WeightedProdStrategy', {
+        args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (4e18).toString()], 2, 0],
+      });
       // first curve is 1:10
-      const curveFirst = await deploy(
-        'WeightedProdStrategy',
-        [tokens.DAI.address, tokens.MKR.address],
-        [(1e18).toString(), (10e18).toString()],
-        2,
-        0
-      );
+      const curveFirst = await deploy('WeightedProdStrategy', {
+        args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (10e18).toString()], 2, 0],
+      });
 
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
         const c = poolIdIdx == 0 ? curveFirst.address : strategy.address;

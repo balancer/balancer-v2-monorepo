@@ -39,6 +39,12 @@ contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
     using FixedPoint for uint128;
     using SafeCast for uint256;
 
+    address public admin;
+
+    constructor() {
+        admin = msg.sender;
+    }
+
     function batchSwap(
         Diff[] memory diffs,
         Swap[] memory swaps,
@@ -266,5 +272,14 @@ contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
             currentBalances[indexIn] + swap.amountIn,
             currentBalances[indexOut] - swap.amountOut
         );
+    }
+
+    function authorizeTrustedOperatorReporter(address reporter)
+        external
+        override
+    {
+        require(msg.sender == admin, "Caller is not the admin");
+
+        _trustedOperatorReporters.add(reporter);
     }
 }
