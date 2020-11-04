@@ -23,7 +23,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         ITradingStrategy.Swap calldata,
         uint128,
         uint128
-    ) external override pure returns (bool, uint128) {
+    ) external pure override returns (bool, uint128) {
         return (true, 0);
     }
 
@@ -32,7 +32,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint128[] calldata,
         uint256,
         uint256
-    ) external override pure returns (bool, uint128) {
+    ) external pure override returns (bool, uint128) {
         return (true, 0);
     }
 }

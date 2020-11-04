@@ -62,8 +62,8 @@ abstract contract UserBalance is IVault, VaultAccounting {
 
     function getUserTokenBalance(address user, address token)
         public
-        override
         view
+        override
         returns (uint128)
     {
         return _userTokenBalance[user][token];
@@ -114,8 +114,8 @@ abstract contract UserBalance is IVault, VaultAccounting {
 
     function isOperatorFor(address user, address operator)
         public
-        override
         view
+        override
         returns (bool)
     {
         return
@@ -126,8 +126,8 @@ abstract contract UserBalance is IVault, VaultAccounting {
 
     function getUserTotalOperators(address user)
         external
-        override
         view
+        override
         returns (uint256)
     {
         return _userOperators[user].length();
@@ -137,7 +137,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
         address user,
         uint256 start,
         uint256 end
-    ) external override view returns (address[] memory) {
+    ) external view override returns (address[] memory) {
         require(
             (end >= start) && (end - start) <= _userOperators[user].length(),
             "Bad indices"
@@ -156,8 +156,8 @@ abstract contract UserBalance is IVault, VaultAccounting {
 
     function getTotalTrustedOperators()
         external
-        override
         view
+        override
         returns (uint256)
     {
         return _trustedOperators.length();
@@ -165,8 +165,8 @@ abstract contract UserBalance is IVault, VaultAccounting {
 
     function getTrustedOperators(uint256 start, uint256 end)
         external
-        override
         view
+        override
         returns (address[] memory)
     {
         require(
@@ -187,8 +187,8 @@ abstract contract UserBalance is IVault, VaultAccounting {
 
     function getTotalTrustedOperatorReporters()
         external
-        override
         view
+        override
         returns (uint256)
     {
         return _trustedOperatorReporters.length();
@@ -196,8 +196,8 @@ abstract contract UserBalance is IVault, VaultAccounting {
 
     function getTrustedOperatorReporters(uint256 start, uint256 end)
         external
-        override
         view
+        override
         returns (address[] memory)
     {
         require(
