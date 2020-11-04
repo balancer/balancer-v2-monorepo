@@ -8,16 +8,12 @@ export const TupleTS = 1;
 
 export type TradingStrategyType = typeof PairTS | typeof TupleTS;
 
-export async function setupPool(
+export async function createPool(
   vault: Contract,
   strategy: Contract,
   strategyType: number,
-  tokens: TokenList,
-  controller: SignerWithAddress,
-  makeup: Array<[string, string]>
+  controller: SignerWithAddress
 ): Promise<string> {
-  vault = vault.connect(controller);
-
   const receipt: ContractReceipt = await (
     await vault.connect(controller).newPool(strategy.address, strategyType)
   ).wait();
@@ -27,7 +23,18 @@ export async function setupPool(
     throw new Error('Could not find PoolCreated event');
   }
 
-  const poolId: string = event.args?.poolId;
+  return event.args?.poolId;
+}
+
+export async function setupPool(
+  vault: Contract,
+  strategy: Contract,
+  strategyType: number,
+  tokens: TokenList,
+  controller: SignerWithAddress,
+  makeup: Array<[string, string]>
+): Promise<string> {
+  const poolId = createPool(vault, strategy, strategyType, controller);
 
   for (const entry of makeup) {
     const token = tokens[entry[0]];

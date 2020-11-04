@@ -21,6 +21,8 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../math/FixedPoint.sol";
 
+import "./IVault.sol";
+
 library BalanceLib {
     using FixedPoint for uint128;
 
@@ -58,7 +60,7 @@ library BalanceLib {
     }
 }
 
-contract VaultAccounting {
+abstract contract VaultAccounting is IVault {
     using BalanceLib for BalanceLib.Balance;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -69,6 +71,18 @@ contract VaultAccounting {
     //  * tokens in pools
     //  * tokens stored as user balance
     mapping(address => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
+
+    function getTotalUnaccountedForTokens(address token)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        uint256 totalBalance = IERC20(token).balanceOf(address(this));
+        assert(totalBalance >= _vaultTokenBalance[token].total);
+
+        return totalBalance - _vaultTokenBalance[token].total;
+    }
 
     // Returns the amount of tokens that were actually received
     function _pullTokens(

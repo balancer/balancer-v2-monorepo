@@ -117,4 +117,11 @@ interface IVault {
         uint128 amount;
         uint128 tokenDiffIndex;
     }
+
+    // Unaccounted-for tokens
+
+    function getTotalUnaccountedForTokens(address token)
+        external
+        view
+        returns (uint256);
 }
