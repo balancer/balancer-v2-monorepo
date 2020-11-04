@@ -133,17 +133,12 @@ contract TradeScriptStable is Stable {
             );
 
             helper.lastTokenCalculatedAmount = _outGivenIn(
-                poolData
-                    .amp,
-                poolData
-                    .balances,
-                indexes[i]
-                    .tokenIndexIn,
-                indexes[i]
-                    .tokenIndexOut,
+                poolData.amp,
+                poolData.balances,
+                indexes[i].tokenIndexIn,
+                indexes[i].tokenIndexOut,
                 adjustedIn
-            )
-                .toUint128();
+            );
 
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
             // provides the inputs
@@ -163,6 +158,99 @@ contract TradeScriptStable is Stable {
         }
 
         require(helper.toReceive >= minAmountOut, "Insufficient amount out");
+        require(
+            helper.toSend.div(helper.toReceive) <= maxPrice,
+            "Price too high"
+        );
+
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            if (diffs[i].token == overallTokenIn) {
+                diffs[i].amountIn = helper.toSend;
+                break;
+            }
+        }
+
+        _vault.batchSwap(
+            diffs,
+            swaps,
+            IVault.FundsIn({ withdrawFrom: msg.sender }),
+            IVault.FundsOut({
+                recipient: msg.sender,
+                transferToRecipient: withdrawTokens
+            })
+        );
+
+        // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
+    }
+
+    // Trades overallTokenIn for overallTokenOut, possibly going through intermediate tokens.
+    // At most maxAmountOut tokens will be spent, with a maximum effective
+    // of maxPrice (including trading fees). The amount of overallTokenOut to be received in each
+    // swap is specified in amountsOut.
+    // If the tokenOut for a swap is not overallTokenOut, the input of the previous swap is used
+    // instead (multi-hops).
+    // MaxPrice argument can be calculated by the sum of amountsOut and the maxAmountIn arg,
+    // but it is redundant as a secure and simple check.
+    function swapExactAmountOut(
+        address overallTokenIn,
+        address overallTokenOut,
+        uint128 maxAmountIn,
+        uint256 maxPrice,
+        IVault.Diff[] memory diffs,
+        IVault.Swap[] memory swaps,
+        SwapTokenIndexes[] memory indexes,
+        uint128[] memory amountsOut,
+        bool withdrawTokens
+    ) public {
+        Helper memory helper;
+
+        for (uint256 i = 0; i < swaps.length; ++i) {
+            address tokenIn = diffs[swaps[i].tokenIn.tokenDiffIndex].token;
+            address tokenOut = diffs[swaps[i].tokenOut.tokenDiffIndex].token;
+
+            PoolData memory poolData = _getPoolData(
+                diffs,
+                swaps[i],
+                indexes[i]
+            );
+
+            // If not equal, we could add a sanity check by requiring
+            // tokenOut == lasToken && amountsOut[i] == 0
+            uint128 amountOut = (tokenOut == overallTokenOut)
+                ? amountsOut[i]
+                : helper.lastTokenCalculatedAmount;
+
+            uint128 tokenAmountIn = _inGivenOut(
+                poolData.amp,
+                poolData.balances,
+                indexes[i].tokenIndexIn,
+                indexes[i].tokenIndexOut,
+                amountOut
+            );
+
+            //Calculated fee, to be later used as tokenAmountIn = adjustedIn * (1 - fee)
+            helper.lastTokenCalculatedAmount = tokenAmountIn.div128(
+                FixedPoint.ONE.sub128(uint128(poolData.swapFee))
+            );
+
+            // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
+            // provides the inputs
+            if (tokenIn == overallTokenIn) {
+                helper.toSend += helper.lastTokenCalculatedAmount;
+            }
+
+            if (tokenOut == overallTokenOut) {
+                helper.toReceive += amountOut;
+            }
+
+            // Configure pool end state
+
+            // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
+            swaps[i].tokenIn.amount = helper.lastTokenCalculatedAmount;
+            swaps[i].tokenOut.amount = amountOut;
+        }
+
+        require(helper.toSend <= maxAmountIn, "Excessing amount out");
         require(
             helper.toSend.div(helper.toReceive) <= maxPrice,
             "Price too high"

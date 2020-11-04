@@ -8,7 +8,7 @@ import { setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../helpers/constants';
 
-describe('TradeScriptStable', () => {
+describe('TradeScript - Stable', () => {
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
 
@@ -23,7 +23,7 @@ describe('TradeScriptStable', () => {
 
   beforeEach('deploy vault', async () => {
     vault = await deploy('Vault');
-    tradeScript = await deploy('TradeScriptStable', vault.address);
+    tradeScript = await deploy('TradeScript', vault.address);
     tokens = await deployTokens(['DAI', 'USDC', 'TUSD', 'SUSD']);
 
     const amp = (30e18).toString();
@@ -70,68 +70,135 @@ describe('TradeScriptStable', () => {
       await vault.connect(trader).authorizeOperator(tradeScript.address);
     });
 
-    it('swapExactAmountIn - one pool DAI for USDC', async () => {
-      const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-        { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
-      ]);
-      const indexes = getSwapTokenIndexes([[0, 1]]);
+    describe('swapExactAmountIn', () => {
+      it('one pool DAI for USDC', async () => {
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
+        ]);
+        const indexes = getSwapTokenIndexes([[0, 1]]);
 
-      await expectBalanceChange(
-        async () => {
-          await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
-          await tradeScript
-            .connect(trader)
-            .swapExactAmountIn(
-              tokens.DAI.address,
-              tokens.USDC.address,
-              (2e18).toString(),
-              (1e18).toString(),
+        await expectBalanceChange(
+          async () => {
+            await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
+            await tradeScript.connect(trader).swapExactAmountIn(
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.USDC.address,
+                minAmountOut: (2e18).toString(), //minAmountOut
+                maxPrice: (1e18).toString(), //maxPrice
+              },
               diffs,
               swaps,
               indexes,
               amounts,
               true
             );
-        },
-        trader,
-        tokens,
-        { DAI: (-2e18).toString(), USDC: ['gte', '2004825982206027991'] } //2004825982206027991
-      );
+          },
+          trader,
+          tokens,
+          { DAI: (-2e18).toString(), USDC: ['gte', '2004825982206027991'] } //2004825982206027991
+        );
+      });
+
+      it('multihop DAI for SUSD', async () => {
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
+          { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
+          { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD' },
+        ]);
+        const indexes = getSwapTokenIndexes([
+          [0, 1],
+          [1, 2],
+          [2, 3],
+        ]);
+
+        await expectBalanceChange(
+          async () => {
+            await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
+            await tradeScript.connect(trader).swapExactAmountIn(
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.SUSD.address,
+                minAmountOut: (2e18).toString(), //minAmountOut
+                maxPrice: (1e18).toString(), //maxPrice
+              },
+              diffs,
+              swaps,
+              indexes,
+              amounts,
+              true
+            );
+          },
+          trader,
+          tokens,
+          { DAI: (-2e18).toString(), SUSD: ['gte', '2132790554831920652'] } //2132790554831920652
+        );
+      });
     });
+    describe('swapExactAmountOut', () => {
+      it('one pool USDC for DAI', async () => {
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: '2004825982206027991' }, //in (2e18).toString()
+        ]);
+        const indexes = getSwapTokenIndexes([[0, 1]]);
 
-    it('swapExactAmountIn - multihop DAI for SUSD', async () => {
-      const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-        { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
-        { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
-        { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD' },
-      ]);
-      const indexes = getSwapTokenIndexes([
-        [0, 1],
-        [1, 2],
-        [2, 3],
-      ]);
-
-      await expectBalanceChange(
-        async () => {
-          await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
-          await tradeScript
-            .connect(trader)
-            .swapExactAmountIn(
-              tokens.DAI.address,
-              tokens.SUSD.address,
-              (2e18).toString(),
-              (1e18).toString(),
+        await expectBalanceChange(
+          async () => {
+            await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
+            await tradeScript.connect(trader).swapExactAmountOut(
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.USDC.address,
+                maxAmountIn: (2e18).toString(), //maxAmountIn
+                maxPrice: (1.1e18).toString(), //maxPrice
+              },
               diffs,
               swaps,
               indexes,
               amounts,
               true
             );
-        },
-        trader,
-        tokens,
-        { DAI: (-2e18).toString(), SUSD: ['gte', '2132790554831920652'] } //2132790554831920652
-      );
+          },
+          trader,
+          tokens,
+          { USDC: '2004825982206027991', DAI: '-2000000000000000000' } //2004825982206027991
+        );
+      });
+
+      it('multihop DAI for SUSD', async () => {
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2132790554831920652' },
+          { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
+          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC' },
+        ]);
+        const indexes = getSwapTokenIndexes([
+          [2, 3],
+          [1, 2],
+          [0, 1],
+        ]);
+
+        await expectBalanceChange(
+          async () => {
+            await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
+            await tradeScript.connect(trader).swapExactAmountOut(
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.SUSD.address,
+                maxAmountIn: (2e18).toString(), //maxAmountIn
+                maxPrice: (1.1e18).toString(), //maxPrice
+              },
+              diffs,
+              swaps,
+              indexes,
+              amounts,
+              true
+            );
+          },
+          trader,
+          tokens,
+          { SUSD: '2132790554831920652', DAI: '-2000000000000000000' } //2132790554831920652
+        );
+      });
     });
   });
 });
