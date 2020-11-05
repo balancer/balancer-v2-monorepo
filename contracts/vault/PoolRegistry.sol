@@ -201,29 +201,58 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         address from,
         address[] calldata tokens,
-        uint128[] calldata amounts
+        uint128[] calldata totalAmounts,
+        uint128[] calldata amountsToTransfer
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
         require(
-            tokens.length == amounts.length,
-            "Tokens and amounts length mismatch"
+            tokens.length == totalAmounts.length,
+            "Tokens and total amounts length mismatch"
+        );
+
+        require(
+            totalAmounts.length == amountsToTransfer.length,
+            "Amount arrays length mismatch"
         );
 
         require(isOperatorFor(from, msg.sender), "Caller is not operator");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint128 received = _pullTokens(tokens[i], from, amounts[i]);
-            if (received > 0) {
+            {
+                // scope for received - avoids 'stack too deep' error
+
+                uint128 received = _pullTokens(
+                    tokens[i],
+                    from,
+                    amountsToTransfer[i]
+                );
+
+                {
+                    // scope for amountFromuserBalance - avoids 'stack too deep' error
+
+                    // This checks totalAmounts[i] >= amountsTransferred[i] (assuming amountsTransferred[i] >= received)
+                    uint128 amountFromUserBalance = totalAmounts[i].sub128(
+                        received
+                    );
+
+                    if (amountFromUserBalance > 0) {
+                        _userTokenBalance[from][tokens[i]] = _userTokenBalance[from][tokens[i]]
+                            .sub128(amountFromUserBalance);
+                    }
+                }
+            }
+
+            if (totalAmounts[i] > 0) {
 
                     BalanceLib.Balance memory currentBalance
                  = _poolTokenBalance[poolId][tokens[i]];
 
                 if (currentBalance.total == 0) {
-                    bool added = _poolTokens[poolId].add(tokens[i]);
-                    assert(added); // No tokens with zero balance should ever be in the _poolTokens set
+                    // No tokens with zero balance should ever be in the _poolTokens set
+                    assert(_poolTokens[poolId].add(tokens[i]));
                 }
 
                 _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]]
-                    .increase(received);
+                    .increase(totalAmounts[i]);
             }
         }
     }
@@ -232,11 +261,17 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         address to,
         address[] calldata tokens,
-        uint128[] calldata amounts
+        uint128[] calldata totalAmounts,
+        uint128[] calldata amountsToTransfer
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
         require(
-            tokens.length == amounts.length,
-            "Tokens and amounts length mismatch"
+            tokens.length == totalAmounts.length,
+            "Tokens and total amounts length mismatch"
+        );
+
+        require(
+            totalAmounts.length == amountsToTransfer.length,
+            "Amount arrays length mismatch"
         );
 
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -245,10 +280,20 @@ abstract contract PoolRegistry is
                 "Token not in pool"
             );
 
-            _pushTokens(tokens[i], to, amounts[i]);
+            // This asserts  totalAmounts[i] >= amountsToTransfer[i]
+            uint128 amountToUserBalance = totalAmounts[i].sub128(
+                amountsToTransfer[i]
+            );
+
+            _pushTokens(tokens[i], to, amountsToTransfer[i]);
+
+            if (amountToUserBalance > 0) {
+                _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]]
+                    .add128(amountToUserBalance);
+            }
 
             _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]]
-                .decrease(amounts[i]);
+                .decrease(totalAmounts[i]);
 
             if (_poolTokenBalance[poolId][tokens[i]].total == 0) {
                 _poolTokens[poolId].remove(tokens[i]);

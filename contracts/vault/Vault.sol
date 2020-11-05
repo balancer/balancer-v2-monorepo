@@ -122,7 +122,6 @@ contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
             Diff memory diff = diffs[i];
 
             if (diff.vaultDelta > 0) {
-                // TODO: skip _pullTokens if diff.amountIn is 0
                 uint128 received = _pullTokens(
                     diff.token,
                     fundsIn.withdrawFrom,
