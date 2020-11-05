@@ -9,7 +9,7 @@ import { MAX_UINT256 } from '../helpers/constants';
 import { Diff, Swap } from '../../scripts/helpers/trading';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
-describe.only('Vault - unaccounted for tokens', () => {
+describe('Vault - unaccounted for tokens', () => {
   let admin: SignerWithAddress;
   let trader: SignerWithAddress;
   let controller: SignerWithAddress;
