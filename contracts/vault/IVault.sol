@@ -177,7 +177,20 @@ interface IVault {
         uint128 tokenDiffIndex;
     }
 
+    // Unaccounted-for tokens
+
+    function getTotalUnaccountedForTokens(address token)
+        external
+        view
+        returns (uint256);
+
     // Admin
 
     function authorizeTrustedOperatorReporter(address reporter) external;
+
+    function claimUnaccountedForTokens(
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        address recipient
+    ) external;
 }
