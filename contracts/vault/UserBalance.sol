@@ -21,7 +21,6 @@ import "../vendor/EnumerableSet.sol";
 
 import "./IVault.sol";
 import "./VaultAccounting.sol";
-import "./PoolRegistry.sol";
 
 import "../math/FixedPoint.sol";
 
@@ -95,7 +94,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
         );
 
         _userTokenBalance[msg.sender][token] -= amount;
-        _pushTokens(token, recipient, amount);
+        _pushTokens(token, recipient, amount, true);
 
         emit Withdrawn(msg.sender, recipient, token, amount);
     }

@@ -245,7 +245,7 @@ abstract contract PoolRegistry is
                 "Token not in pool"
             );
 
-            _pushTokens(tokens[i], to, amounts[i]);
+            _pushTokens(tokens[i], to, amounts[i], true);
 
             _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]]
                 .decrease(amounts[i]);

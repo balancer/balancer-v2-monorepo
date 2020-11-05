@@ -1,11 +1,12 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
 describe('Vault - user balance', () => {
   let admin: SignerWithAddress;
@@ -23,7 +24,7 @@ describe('Vault - user balance', () => {
     [, admin, trader, user, operator, reporter, trustedOperator, other] = await ethers.getSigners();
   });
 
-  const amount = ethers.BigNumber.from(500);
+  const amount = BigNumber.from(500);
 
   describe('deposit & withdraw', () => {
     beforeEach('deploy vault & tokens', async () => {
@@ -78,9 +79,7 @@ describe('Vault - user balance', () => {
 
       it('user can withdraw partial tokens', async () => {
         await expectBalanceChange(
-          async () => {
-            await vault.connect(user).withdraw(tokens.DAI.address, amount.sub(1), other.address);
-          },
+          () => vault.connect(user).withdraw(tokens.DAI.address, amount.sub(1), other.address),
           other,
           tokens,
           { DAI: amount.sub(1) }
@@ -89,9 +88,7 @@ describe('Vault - user balance', () => {
 
       it('user can withdraw all tokens', async () => {
         await expectBalanceChange(
-          async () => {
-            await vault.connect(user).withdraw(tokens.DAI.address, amount, other.address);
-          },
+          () => vault.connect(user).withdraw(tokens.DAI.address, amount, other.address),
           other,
           tokens,
           { DAI: amount }
@@ -113,6 +110,23 @@ describe('Vault - user balance', () => {
         await expect(vault.connect(trader).withdraw(tokens.DAI.address, amount, other.address)).to.be.revertedWith(
           'Vault: withdraw amount exceeds balance'
         );
+      });
+
+      context('with withdrawal fees', () => {
+        const withdrawFee = 0.01;
+
+        beforeEach(async () => {
+          await vault.connect(admin).setWithdrawFee(toFixedPoint(withdrawFee));
+        });
+
+        it('tokens minus fee are pushed', async () => {
+          await expectBalanceChange(
+            () => vault.connect(user).withdraw(tokens.DAI.address, amount, other.address),
+            other,
+            tokens,
+            { DAI: amount.toNumber() * (1 - withdrawFee) }
+          );
+        });
       });
     });
   });
