@@ -234,17 +234,17 @@ describe('FixedSetPoolTokenizer', function () {
       });
     });
 
-    context('with withdrawal fees', () => {
-      const withdrawFee = 0.01;
+    context('with protocol withdraw fees', () => {
+      const protocolWithdrawFee = 0.01;
 
       beforeEach(async () => {
-        await vault.connect(admin).setWithdrawFee(toFixedPoint(withdrawFee));
+        await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
       });
 
       it('tokens minus fee are pushed', async () => {
         await expectBalanceChange(() => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0]), lp, tokens, {
-          DAI: 0.1e18 * (1 - withdrawFee),
-          MKR: 0.2e18 * (1 - withdrawFee),
+          DAI: 0.1e18 * (1 - protocolWithdrawFee),
+          MKR: 0.2e18 * (1 - protocolWithdrawFee),
         });
       });
     });

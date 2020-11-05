@@ -59,8 +59,11 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         // A simple way to implement this is to require the addresses to be sorted, and require strict
         // inequality
 
+        uint128[] memory diffProtocolFees = new uint128[](diffs.length);
+
         for (uint256 i = 0; i < diffs.length; ++i) {
             require(diffs[i].vaultDelta == 0, "Bad workspace");
+            diffProtocolFees[i] = 0;
         }
 
         // TODO: check each pool only appears in a single swap. Might be overly restrictive, but easy
@@ -90,27 +93,20 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                 .amount;
 
             (
-                uint128 tokenInFinalBalance,
-                uint128 tokenOutFinalBalance
+                BalanceLib.Balance memory tokenInFinalBalance,
+                BalanceLib.Balance memory tokenOutFinalBalance,
+                uint128 protocolSwapFeeAmountIn
             ) = _validateSwap(swap, tokenIn, tokenOut);
+
+            diffProtocolFees[swap
+                .tokenIn
+                .tokenDiffIndex] = diffProtocolFees[swap.tokenIn.tokenDiffIndex]
+                .add128(protocolSwapFeeAmountIn);
 
             // 3: update pool balances
 
-            // TODO: optimize this so we don't end up reading from the same storage slots multiple times
-            uint128 numTokensIn = tokenInFinalBalance.sub128(
-                _poolTokenBalance[swap.poolId][tokenIn].total
-            );
-            uint128 numTokensOut = _poolTokenBalance[swap.poolId][tokenOut]
-                .total
-                .sub128(tokenOutFinalBalance);
-
-            _poolTokenBalance[swap.poolId][tokenIn] = _poolTokenBalance[swap
-                .poolId][tokenIn]
-                .increase(numTokensIn);
-
-            _poolTokenBalance[swap.poolId][tokenOut] = _poolTokenBalance[swap
-                .poolId][tokenOut]
-                .decrease(numTokensOut);
+            _poolTokenBalance[swap.poolId][tokenIn] = tokenInFinalBalance;
+            _poolTokenBalance[swap.poolId][tokenOut] = tokenOutFinalBalance;
         }
 
         // Step 4: Receive intended tokens, pulling the difference from user balance
@@ -160,23 +156,38 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                 }
             }
         }
+
+        for (uint256 i = 0; i < diffs.length; ++i) {
+            Diff memory diff = diffs[i];
+            _vaultTokenBalance[diff.token] = _vaultTokenBalance[diff.token]
+                .decrease(diffProtocolFees[i]);
+        }
     }
 
     function _validateSwap(
         Swap memory swap,
         address tokenIn,
         address tokenOut
-    ) private returns (uint128, uint128) {
+    )
+        private
+        returns (
+            BalanceLib.Balance memory,
+            BalanceLib.Balance memory,
+            uint128
+        )
+    {
         PoolStrategy memory strategy = _poolStrategy[swap.poolId];
 
         if (strategy.strategyType == StrategyType.PAIR) {
             return
                 _validatePairStrategySwap(
-                    swap.poolId,
-                    tokenIn,
-                    tokenOut,
-                    swap.tokenIn.amount,
-                    swap.tokenOut.amount,
+                    ITradingStrategy.Swap({
+                        poolId: swap.poolId,
+                        tokenIn: tokenIn,
+                        tokenOut: tokenOut,
+                        amountIn: swap.tokenIn.amount,
+                        amountOut: swap.tokenOut.amount
+                    }),
                     IPairTradingStrategy(strategy.strategy)
                 );
         } else if (strategy.strategyType == StrategyType.TUPLE) {
@@ -197,44 +208,57 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
     }
 
     function _validatePairStrategySwap(
-        bytes32 poolId,
-        address tokenIn,
-        address tokenOut,
-        uint128 amountIn,
-        uint128 amountOut,
+        ITradingStrategy.Swap memory swap,
         IPairTradingStrategy strategy
-    ) private returns (uint128, uint128) {
-        uint128 poolTokenInBalance = _poolTokenBalance[poolId][tokenIn].total;
-        require(poolTokenInBalance > 0, "Token A not in pool");
+    )
+        private
+        returns (
+            BalanceLib.Balance memory,
+            BalanceLib.Balance memory,
+            uint128
+        )
+    {
+        BalanceLib.Balance memory poolTokenInBalance = _poolTokenBalance[swap
+            .poolId][swap.tokenIn];
+        require(poolTokenInBalance.total > 0, "Token A not in pool");
 
-        uint128 poolTokenOutBalance = _poolTokenBalance[poolId][tokenOut].total;
-        require(poolTokenOutBalance > 0, "Token B not in pool");
+        BalanceLib.Balance memory poolTokenOutBalance = _poolTokenBalance[swap
+            .poolId][swap.tokenOut];
+        require(poolTokenOutBalance.total > 0, "Token B not in pool");
 
-        (bool success, ) = strategy.validatePair(
+        (bool success, uint128 tokenInFeeAmount) = strategy.validatePair(
             ITradingStrategy.Swap({
-                poolId: poolId,
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                amountIn: amountIn,
-                amountOut: amountOut
+                poolId: swap.poolId,
+                tokenIn: swap.tokenIn,
+                tokenOut: swap.tokenOut,
+                amountIn: swap.amountIn,
+                amountOut: swap.amountOut
             }),
-            poolTokenInBalance,
-            poolTokenOutBalance
+            poolTokenInBalance.total,
+            poolTokenOutBalance.total
         );
         require(success, "pair validation failed");
 
+        uint128 protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
+
         return (
-            // TODO: make sure the protocol fees are not accounted for!
-            // currentBalances[indexIn] + amountIn - bmul(feeAmountIn, 0), // feeAmountIn * protocolfee
-            poolTokenInBalance + amountIn,
-            poolTokenOutBalance - amountOut
+            poolTokenInBalance.increase(swap.amountIn.sub128(protocolSwapFee)),
+            poolTokenOutBalance.decrease(swap.amountOut),
+            protocolSwapFee
         );
     }
 
     function _validateTupleStrategySwap(
         ITradingStrategy.Swap memory swap,
         ITupleTradingStrategy strategy
-    ) private returns (uint128, uint128) {
+    )
+        private
+        returns (
+            BalanceLib.Balance memory,
+            BalanceLib.Balance memory,
+            uint128
+        )
+    {
         uint128[] memory currentBalances = new uint128[](
             _poolTokens[swap.poolId].length()
         );
@@ -242,19 +266,27 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         uint256 indexIn;
         uint256 indexOut;
 
+        BalanceLib.Balance memory balanceIn;
+        BalanceLib.Balance memory balanceOut;
+
         for (uint256 i = 0; i < _poolTokens[swap.poolId].length(); i++) {
             address token = _poolTokens[swap.poolId].at(i);
-            currentBalances[i] = _poolTokenBalance[swap.poolId][token].total;
+            BalanceLib.Balance memory balance = _poolTokenBalance[swap
+                .poolId][token];
+
+            currentBalances[i] = balance.total;
             require(currentBalances[i] > 0, "Token A not in pool");
 
             if (token == swap.tokenIn) {
                 indexIn = i;
+                balanceIn = balance;
             } else if (token == swap.tokenOut) {
                 indexOut = i;
+                balanceOut = balance;
             }
         }
 
-        (bool success, ) = strategy.validateTuple(
+        (bool success, uint128 tokenInFeeAmount) = strategy.validateTuple(
             swap,
             currentBalances,
             indexIn,
@@ -262,11 +294,12 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         );
         require(success, "invariant validation failed");
 
+        uint128 protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
+
         return (
-            // TODO: make sure the protocol fees are not accounted for!
-            // currentBalances[indexIn] + amountIn - bmul(feeAmountIn, 0), // feeAmountIn * protocolfee
-            currentBalances[indexIn] + swap.amountIn,
-            currentBalances[indexOut] - swap.amountOut
+            balanceIn.increase(swap.amountIn.sub128(protocolSwapFee)),
+            balanceOut.decrease(swap.amountOut),
+            protocolSwapFee
         );
     }
 }

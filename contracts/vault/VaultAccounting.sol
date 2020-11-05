@@ -32,13 +32,13 @@ library BalanceLib {
         uint128 total;
     }
 
-    function invested(Balance storage self) internal view returns (uint128) {
+    function invested(Balance memory self) internal pure returns (uint128) {
         return self.total - self.cash;
     }
 
-    function increase(Balance storage self, uint128 amount)
+    function increase(Balance memory self, uint128 amount)
         internal
-        view
+        pure
         returns (Balance memory)
     {
         return
@@ -48,9 +48,9 @@ library BalanceLib {
             });
     }
 
-    function decrease(Balance storage self, uint128 amount)
+    function decrease(Balance memory self, uint128 amount)
         internal
-        view
+        pure
         returns (Balance memory)
     {
         return
@@ -114,7 +114,9 @@ abstract contract VaultAccounting is IVault, Settings {
     ) internal {
         _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(amount);
 
-        uint128 amountToSend = chargeFee ? _applyWithdrawFee(amount) : amount;
+        uint128 amountToSend = chargeFee
+            ? _applyProtocolWithdrawFee(amount)
+            : amount;
 
         IERC20(token).safeTransfer(to, amountToSend);
     }

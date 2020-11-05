@@ -112,11 +112,11 @@ describe('Vault - user balance', () => {
         );
       });
 
-      context('with withdrawal fees', () => {
-        const withdrawFee = 0.01;
+      context('with protocol withdraw fees', () => {
+        const protocolWithdrawFee = 0.01;
 
         beforeEach(async () => {
-          await vault.connect(admin).setWithdrawFee(toFixedPoint(withdrawFee));
+          await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
         });
 
         it('tokens minus fee are pushed', async () => {
@@ -124,7 +124,7 @@ describe('Vault - user balance', () => {
             () => vault.connect(user).withdraw(tokens.DAI.address, amount, other.address),
             other,
             tokens,
-            { DAI: amount.toNumber() * (1 - withdrawFee) }
+            { DAI: amount.toNumber() * (1 - protocolWithdrawFee) }
           );
         });
       });
