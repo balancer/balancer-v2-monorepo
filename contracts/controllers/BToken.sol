@@ -16,7 +16,7 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./BNum.sol";
+import "../BNum.sol";
 
 // Highly opinionated token implementation
 // * It includes functions to increase and decrease allowance as a workaround
@@ -84,18 +84,18 @@ contract BToken is BTokenBase {
 
     function allowance(address src, address dst)
         external
-        override
         view
+        override
         returns (uint256)
     {
         return _allowance[src][dst];
     }
 
-    function balanceOf(address whom) external override view returns (uint256) {
+    function balanceOf(address whom) external view override returns (uint256) {
         return _balance[whom];
     }
 
-    function totalSupply() public override view returns (uint256) {
+    function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
 

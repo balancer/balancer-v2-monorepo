@@ -5,7 +5,7 @@ import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { setupPool } from '../../scripts/helpers/pools';
+import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 describe('Vault - multiple trading strategies interfaces', () => {
@@ -28,18 +28,18 @@ describe('Vault - multiple trading strategies interfaces', () => {
   });
 
   beforeEach(async () => {
-    vault = await deploy('Vault');
+    vault = await deploy('Vault', { args: [] });
     tokens = await deployTokens(['DAI', 'TEST']);
 
-    mockStrategy = await deploy('MockTradingStrategy');
-    mockScript = await deploy('MockTradeScript');
+    mockStrategy = await deploy('MockTradingStrategy', { args: [] });
+    mockScript = await deploy('MockTradeScript', { args: [] });
 
-    poolIdPair = await setupPool(vault, mockStrategy, 0, tokens, controller, [
+    poolIdPair = await setupPool(vault, mockStrategy, PairTS, tokens, controller, [
       ['DAI', (1e18).toString()],
       ['TEST', (1e18).toString()],
     ]);
 
-    poolIdTuple = await setupPool(vault, mockStrategy, 1, tokens, controller, [
+    poolIdTuple = await setupPool(vault, mockStrategy, TupleTS, tokens, controller, [
       ['DAI', (1e18).toString()],
       ['TEST', (1e18).toString()],
     ]);
@@ -56,8 +56,8 @@ describe('Vault - multiple trading strategies interfaces', () => {
   });
 
   it('has the correct curve', async () => {
-    expect(await vault.getStrategy(poolIdPair)).to.have.members([mockStrategy.address, 0]);
-    expect(await vault.getStrategy(poolIdTuple)).to.have.members([mockStrategy.address, 1]);
+    expect(await vault.getPoolStrategy(poolIdPair)).to.have.members([mockStrategy.address, PairTS]);
+    expect(await vault.getPoolStrategy(poolIdTuple)).to.have.members([mockStrategy.address, TupleTS]);
   });
 
   it('trades with tuple strategy pool', async () => {

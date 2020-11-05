@@ -8,23 +8,26 @@ import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 describe('Vault - user balance', () => {
+  let admin: SignerWithAddress;
   let trader: SignerWithAddress;
   let user: SignerWithAddress;
   let operator: SignerWithAddress;
+  let reporter: SignerWithAddress;
+  let trustedOperator: SignerWithAddress;
   let other: SignerWithAddress;
 
   let vault: Contract;
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, trader, user, operator, other] = await ethers.getSigners();
+    [, admin, trader, user, operator, reporter, trustedOperator, other] = await ethers.getSigners();
   });
 
   const amount = ethers.BigNumber.from(500);
 
   describe('deposit & withdraw', () => {
     beforeEach('deploy vault & tokens', async () => {
-      vault = await deploy('Vault');
+      vault = await deploy('Vault', { from: admin, args: [] });
       tokens = await deployTokens(['DAI', 'MKR']);
 
       await mintTokens(tokens, 'DAI', trader, amount.toString());
@@ -164,6 +167,51 @@ describe('Vault - user balance', () => {
         });
 
         expect(await vault.isOperatorFor(user.address, operator.address)).to.equal(false);
+      });
+    });
+  });
+
+  describe('trusted operators', () => {
+    it('the vault starts with no trusted operators', async () => {
+      expect(await vault.getTotalTrustedOperators()).to.equal(0);
+    });
+
+    it('the vault starts with no reporters', async () => {
+      expect(await vault.getTotalTrustedOperatorReporters()).to.equal(0);
+    });
+
+    context('with trusted operator reporter', () => {
+      beforeEach(async () => {
+        await vault.connect(admin).authorizeTrustedOperatorReporter(reporter.address);
+      });
+
+      it('reporters can be queried', async () => {
+        expect(await vault.getTotalTrustedOperatorReporters()).to.equal(1);
+        expect(await vault.getTrustedOperatorReporters(0, 1)).to.have.members([reporter.address]);
+      });
+
+      it('reporter can report new trusted operators', async () => {
+        await vault.connect(reporter).reportTrustedOperator(trustedOperator.address);
+
+        expect(await vault.getTotalTrustedOperators()).to.equal(1);
+        expect(await vault.getTrustedOperators(0, 1)).to.have.members([trustedOperator.address]);
+      });
+
+      it('trusted operators are operators for all accounts', async () => {
+        await vault.connect(reporter).reportTrustedOperator(trustedOperator.address);
+        expect(await vault.isOperatorFor(other.address, trustedOperator.address)).to.equal(true);
+      });
+
+      it('trusted operators cannot be revoked', async () => {
+        await vault.connect(reporter).reportTrustedOperator(trustedOperator.address);
+        await vault.connect(other).revokeOperator(trustedOperator.address);
+        expect(await vault.isOperatorFor(other.address, trustedOperator.address)).to.equal(true);
+      });
+
+      it('non-reporter cannot report new trusted operators', async () => {
+        await expect(vault.connect(other).reportTrustedOperator(trustedOperator.address)).to.be.revertedWith(
+          'Caller is not trusted operator reporter'
+        );
       });
     });
   });

@@ -22,12 +22,12 @@ describe('TradeScript - Stable', () => {
   });
 
   beforeEach('deploy vault', async () => {
-    vault = await deploy('Vault');
-    tradeScript = await deploy('TradeScript', vault.address);
+    vault = await deploy('Vault', { args: [] });
+    tradeScript = await deploy('TradeScript', { args: [vault.address] });
     tokens = await deployTokens(['DAI', 'USDC', 'TUSD', 'SUSD']);
 
     const amp = (30e18).toString();
-    curve = await deploy('StableStrategy', amp, 0);
+    curve = await deploy('StableStrategy', { args: [amp, 0] });
   });
 
   describe('swap', () => {

@@ -52,7 +52,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             (address strategy, IVault.StrategyType strategyType) = _vault
-                .getStrategy(swaps[i].poolId);
+                .getPoolStrategy(swaps[i].poolId);
 
             if (strategyType == IVault.StrategyType.PAIR) {
                 helper = PairTradeScript.getExactAmountInData(
@@ -145,7 +145,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             (address strategy, IVault.StrategyType strategyType) = _vault
-                .getStrategy(swaps[i].poolId);
+                .getPoolStrategy(swaps[i].poolId);
 
             if (strategyType == IVault.StrategyType.PAIR) {
                 helper = PairTradeScript.getExactAmountOutData(

@@ -7,6 +7,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { PairTS, setupPool } from '../../scripts/helpers/pools';
 
 describe('Vault - swaps', () => {
   let controller: SignerWithAddress;
@@ -15,7 +16,7 @@ describe('Vault - swaps', () => {
   let traderAddress: string;
 
   let vault: Contract;
-  let curve: Contract;
+  let strategy: Contract;
   let tradeScript: Contract;
   let tokens: TokenList = {};
 
@@ -25,34 +26,32 @@ describe('Vault - swaps', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault');
+    vault = await deploy('Vault', { args: [] });
     tokens = await deployTokens(['DAI', 'MKR']);
-    curve = await deploy(
-      'WeightedProdStrategy',
-      [tokens.DAI.address, tokens.MKR.address],
-      [(1e18).toString(), (1e18).toString()],
-      2,
-      0
-    );
-    tradeScript = await deploy('MockTradeScript');
+    strategy = await deploy('WeightedProdStrategy', {
+      args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (1e18).toString()], 2, 0],
+    });
+    tradeScript = await deploy('MockTradeScript', { args: [] });
   });
 
   describe('pool management', () => {
     let poolId: string;
 
     beforeEach('add pool', async () => {
-      poolId = ethers.utils.id('Test');
-      const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId, curve.address, 0)).wait();
-      expectEvent.inReceipt(receipt, 'PoolCreated');
+      poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
+        ['DAI', (1e18).toString()],
+        ['MKR', (1e18).toString()],
+      ]);
     });
 
     it('has the correct controller', async () => {
-      expect(await vault.getController(poolId)).to.equal(controller.address);
+      expect(await vault.getPoolController(poolId)).to.equal(controller.address);
     });
   });
 
   describe('batch swap', () => {
     const totalPools = 5;
+    let poolIds: string[] = [];
 
     beforeEach('setup pools & mint tokens', async () => {
       // Mint and approve controller liquidity
@@ -63,22 +62,23 @@ describe('Vault - swaps', () => {
         })
       );
 
+      poolIds = [];
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-        const poolId = ethers.utils.id('batch' + poolIdIdx);
+        const strategy = await deploy('WeightedProdStrategy', {
+          args: [
+            [tokens.DAI.address, tokens.MKR.address],
+            [(1e18).toString(), (1e18).toString()],
+            2,
+            (0.05e18).toString(),
+          ],
+        });
 
-        const strategy = await deploy(
-          'WeightedProdStrategy',
-          [tokens.DAI.address, tokens.MKR.address],
-          [(1e18).toString(), (1e18).toString()],
-          2,
-          (0.05e18).toString()
+        poolIds.push(
+          await setupPool(vault, strategy, PairTS, tokens, controller, [
+            ['DAI', (1e18).toString()],
+            ['MKR', (1e18).toString()],
+          ])
         );
-        const receipt = await (await vault.connect(controller).newPool(poolId, strategy.address, 0)).wait();
-        expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });
-
-        // 50-50 DAI-MKR pool with 1e18 tokens in each
-        await vault.connect(controller).bind(poolId, tokens.DAI.address, (1e18).toString());
-        await vault.connect(controller).bind(poolId, tokens.MKR.address, (1e18).toString());
       }
 
       // Mint tokens for trader
@@ -112,7 +112,7 @@ describe('Vault - swaps', () => {
 
       const swaps = [
         {
-          poolId: ethers.utils.id('batch0'),
+          poolId: poolIds[0],
           from: traderAddress,
           to: traderAddress,
           tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() }, //Math isn't 100% accurate
@@ -158,7 +158,7 @@ describe('Vault - swaps', () => {
 
       const swaps = [
         {
-          poolId: ethers.utils.id('batch0'),
+          poolId: poolIds[0],
           from: traderAddress,
           to: traderAddress,
           tokenIn: { tokenDiffIndex: 1, amount: (0.34e18 + fee).toString() },
@@ -166,7 +166,7 @@ describe('Vault - swaps', () => {
           userData: '0x',
         },
         {
-          poolId: ethers.utils.id('batch1'),
+          poolId: poolIds[1],
           from: traderAddress,
           to: traderAddress,
           tokenIn: { tokenDiffIndex: 1, amount: (0.34e18 + fee).toString() },
@@ -213,7 +213,7 @@ describe('Vault - swaps', () => {
 
         const swaps = [
           {
-            poolId: ethers.utils.id('batch0'),
+            poolId: poolIds[0],
             from: traderAddress,
             to: traderAddress,
             tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
@@ -252,7 +252,7 @@ describe('Vault - swaps', () => {
 
         const swaps = [
           {
-            poolId: ethers.utils.id('batch0'),
+            poolId: poolIds[0],
             from: traderAddress,
             to: traderAddress,
             tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
@@ -297,7 +297,7 @@ describe('Vault - swaps', () => {
 
         const swaps = [
           {
-            poolId: ethers.utils.id('batch0'),
+            poolId: poolIds[0],
             from: traderAddress,
             to: traderAddress,
             tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
@@ -350,7 +350,7 @@ describe('Vault - swaps', () => {
 
         const swaps = [
           {
-            poolId: ethers.utils.id('batch0'),
+            poolId: poolIds[0],
             from: traderAddress,
             to: traderAddress,
             tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
@@ -393,24 +393,16 @@ describe('Vault - swaps', () => {
         })
       );
 
-      curve = await deploy(
-        'WeightedProdStrategy',
-        [tokens.DAI.address, tokens.MKR.address],
-        [(1e18).toString(), (4e18).toString()],
-        2,
-        0
-      );
+      strategy = await deploy('WeightedProdStrategy', {
+        args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (4e18).toString()], 2, 0],
+      });
       // first curve is 1:10
-      const curveFirst = await deploy(
-        'WeightedProdStrategy',
-        [tokens.DAI.address, tokens.MKR.address],
-        [(1e18).toString(), (10e18).toString()],
-        2,
-        0
-      );
+      const curveFirst = await deploy('WeightedProdStrategy', {
+        args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (10e18).toString()], 2, 0],
+      });
 
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-        const c = poolIdIdx == 0 ? curveFirst.address : curve.address;
+        const c = poolIdIdx == 0 ? curveFirst.address : strategy.address;
         const poolId = ethers.utils.id('unbalanced' + poolIdIdx);
         const receipt: ContractReceipt = await (await vault.connect(controller).newPool(poolId, c, 0)).wait();
         expectEvent.inReceipt(receipt, 'PoolCreated', { poolId });

@@ -3,29 +3,28 @@
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 pragma solidity ^0.7.1;
 
-import "./vault/IVault.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
+import "../vault/IVault.sol";
+import "../math/FixedPoint.sol";
+
 import "./BToken.sol";
 
-// Initial implementation implements a simple, pass-through sole proprietorship model
-// for pool governance
-contract BasePoolTokenizer is BToken {
-    IVault public immutable vault;
-    bytes32 public poolID;
+contract FixedSetPoolTokenizer is BToken {
+    using FixedPoint for uint128;
+    using SafeCast for uint256;
 
-    constructor(IVault _vault) {
-        vault = _vault;
-    }
+    IVault public immutable vault;
+    bytes32 public immutable poolId;
+    bool private _mutex;
 
     modifier _lock_() {
         require(!_mutex, "ERR_REENTRY");
@@ -34,36 +33,55 @@ contract BasePoolTokenizer is BToken {
         _mutex = false;
     }
 
-    bool private _mutex;
+    constructor(
+        IVault _vault,
+        address strategy,
+        IVault.StrategyType strategyType
+    ) {
+        vault = _vault;
+        poolId = _vault.newPool(strategy, strategyType);
+    }
+
+    // Placeholder - this will be part of the constructor once we address
+    // https://github.com/balancer-labs/balancer-core-v2/issues/76
+    function initialize(
+        uint256 initialBPT,
+        address[] memory tokens,
+        uint128[] memory amounts
+    ) public {
+        vault.addLiquidity(poolId, msg.sender, tokens, amounts);
+
+        _mintPoolShare(initialBPT);
+        _pushPoolShare(msg.sender, initialBPT);
+    }
 
     // Joining a pool
     // poolAmountOut - how much bpt the user expects to get
     // maxAmountsIn - the max amounts of each token the user is willing to add to the vault
-    function joinPool(uint256 poolAmountOut, uint256[] calldata maxAmountsIn)
+    // The set of tokens is not specified because it is read from the Vault - and remains immutable that way.
+    function joinPool(uint256 poolAmountOut, uint128[] calldata maxAmountsIn)
         external
         _lock_
     {
         uint256 poolTotal = totalSupply();
-        uint256 ratio = bdiv(poolAmountOut, poolTotal);
+        uint128 ratio = bdiv(poolAmountOut, poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
 
-        address[] memory tokens = vault.getPoolTokens(poolID);
-        uint128[] memory balances = vault.getPoolTokenBalances(poolID, tokens);
+        address[] memory tokens = vault.getPoolTokens(poolId);
+        uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
-        uint256[] memory amountsIn = new uint256[](tokens.length);
+        require(
+            maxAmountsIn.length == tokens.length,
+            "Tokens and amounts length mismatch"
+        );
+
+        uint128[] memory amountsIn = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            amountsIn[i] = bmul(balances[i], ratio);
+            amountsIn[i] = balances[i].mul128(ratio);
             require(amountsIn[i] <= maxAmountsIn[i], "ERR_LIMIT_IN");
-
-            bool xfer = IERC20(tokens[i]).transferFrom(
-                msg.sender,
-                address(vault),
-                amountsIn[i]
-            );
-            require(xfer, "transfer must succeed");
         }
 
-        vault.addLiquidity(poolID, amountsIn);
+        vault.addLiquidity(poolId, msg.sender, tokens, amountsIn);
 
         _mintPoolShare(poolAmountOut);
         _pushPoolShare(msg.sender, poolAmountOut);
@@ -74,44 +92,28 @@ contract BasePoolTokenizer is BToken {
         _lock_
     {
         uint256 poolTotal = totalSupply();
-        uint256 ratio = bdiv(poolAmountIn, poolTotal);
+        uint128 ratio = bdiv(poolAmountIn, poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
 
-        address[] memory tokens = vault.getPoolTokens(poolID);
-        uint128[] memory balances = vault.getPoolTokenBalances(poolID, tokens);
+        address[] memory tokens = vault.getPoolTokens(poolId);
+        uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
-        uint256[] memory amountsOut = new uint256[](tokens.length);
+        require(
+            minAmountsOut.length == tokens.length,
+            "Tokens and amounts length mismatch"
+        );
+
+        uint128[] memory amountsOut = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            amountsOut[i] = bmul(balances[i], ratio);
+            amountsOut[i] = balances[i].mul128(ratio);
             require(amountsOut[i] >= minAmountsOut[i], "NOT EXITING ENOUGH");
         }
 
+        vault.removeLiquidity(poolId, msg.sender, tokens, amountsOut);
+
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
-
-        vault.removeLiquidity(poolID, msg.sender, amountsOut);
     }
-
-    // Add initial liquidity
-
-    function _addInitialLiquidity(
-        uint256 initialBPT,
-        address[] memory initialTokens,
-        uint256[] memory initialBalances
-    ) internal {
-        for (uint256 i = 0; i < initialTokens.length; i++) {
-            address t = initialTokens[i];
-            uint256 amountIn = initialBalances[i];
-            IERC20(t).transferFrom(msg.sender, address(vault), amountIn);
-        }
-
-        vault.addInitialLiquidity(poolID, initialTokens, initialBalances);
-        _mintPoolShare(initialBPT);
-        _pushPoolShare(msg.sender, initialBPT);
-    }
-
-    // 'Underlying' token-manipulation functions make external calls but are NOT locked
-    // You must `_lock_` or otherwise ensure reentry-safety
 
     function _pullPoolShare(address from, uint256 amount) internal {
         _pull(from, amount);

@@ -24,16 +24,20 @@ describe('TradeScript - Multiple Strategies', () => {
   });
 
   beforeEach('deploy vault', async () => {
-    vault = await deploy('Vault');
-    tradeScript = await deploy('TradeScript', vault.address);
+    vault = await deploy('Vault', { args: [] });
+    tradeScript = await deploy('TradeScript', { args: [vault.address] });
     tokens = await deployTokens(['DAI', 'USDC', 'TUSD', 'SUSD', 'MKR']);
 
     const weights = [(1e18).toString(), (1e18).toString()];
-    curveWeightProd1 = await deploy('WeightedProdStrategy', [tokens.USDC.address, tokens.MKR.address], weights, 2, 0);
-    curveWeightProd2 = await deploy('WeightedProdStrategy', [tokens.TUSD.address, tokens.MKR.address], weights, 2, 0);
+    curveWeightProd1 = await deploy('WeightedProdStrategy', {
+      args: [[tokens.USDC.address, tokens.MKR.address], weights, 2, 0],
+    });
+    curveWeightProd2 = await deploy('WeightedProdStrategy', {
+      args: [[tokens.TUSD.address, tokens.MKR.address], weights, 2, 0],
+    });
 
     const amp = (30e18).toString();
-    curveStable = await deploy('StableStrategy', amp, 0);
+    curveStable = await deploy('StableStrategy', { args: [amp, 0] });
   });
 
   describe('swap', () => {
