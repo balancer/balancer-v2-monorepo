@@ -79,9 +79,9 @@ abstract contract VaultAccounting is IVault {
         returns (uint256)
     {
         uint256 totalBalance = IERC20(token).balanceOf(address(this));
-        assert(totalBalance >= _vaultTokenBalance[token].total);
+        assert(totalBalance >= _vaultTokenBalance[token].cash);
 
-        return totalBalance - _vaultTokenBalance[token].total;
+        return totalBalance - _vaultTokenBalance[token].cash;
     }
 
     // Returns the amount of tokens that were actually received
