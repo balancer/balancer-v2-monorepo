@@ -42,7 +42,7 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override view returns (bool, uint128) {
+    ) external override view returns (bool, uint128) {
         //Calculate old invariant
         uint256 oldInvariant = _invariant(_amp, balances);
 

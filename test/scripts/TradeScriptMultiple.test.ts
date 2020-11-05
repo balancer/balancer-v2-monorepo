@@ -83,12 +83,17 @@ describe('TradeScript - Multiple Strategies', () => {
 
     describe('swapExactAmountIn', () => {
       it('multihop DAI for SUSD', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
-          { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'MKR' },
-          { poolId: pools[2], tokenIn: 'MKR', tokenOut: 'TUSD' },
-          { poolId: pools[3], tokenIn: 'TUSD', tokenOut: 'SUSD' },
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [
+            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
+            { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'MKR' },
+            { poolId: pools[2], tokenIn: 'MKR', tokenOut: 'TUSD' },
+            { poolId: pools[3], tokenIn: 'TUSD', tokenOut: 'SUSD' },
+          ]
+        );
         const indexes = getSwapTokenIndexes([
           [0, 1],
           [0, 1],
@@ -121,12 +126,17 @@ describe('TradeScript - Multiple Strategies', () => {
     });
     describe('swapExactAmountOut', () => {
       it('multihop DAI for SUSD', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[3], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2011635607989682633' },
-          { poolId: pools[2], tokenIn: 'MKR', tokenOut: 'TUSD' },
-          { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'MKR' },
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC' },
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [
+            { poolId: pools[3], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2011635607989682633' },
+            { poolId: pools[2], tokenIn: 'MKR', tokenOut: 'TUSD' },
+            { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'MKR' },
+            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC' },
+          ]
+        );
 
         const indexes = getSwapTokenIndexes([
           [2, 3],

@@ -72,9 +72,12 @@ describe('TradeScript - Stable', () => {
 
     describe('swapExactAmountIn', () => {
       it('one pool DAI for USDC', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [{ poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() }]
+        );
         const indexes = getSwapTokenIndexes([[0, 1]]);
 
         await expectBalanceChange(
@@ -101,11 +104,16 @@ describe('TradeScript - Stable', () => {
       });
 
       it('multihop DAI for SUSD', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
-          { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
-          { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD' },
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [
+            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
+            { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
+            { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD' },
+          ]
+        );
         const indexes = getSwapTokenIndexes([
           [0, 1],
           [1, 2],
@@ -137,9 +145,14 @@ describe('TradeScript - Stable', () => {
     });
     describe('swapExactAmountOut', () => {
       it('one pool USDC for DAI', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: '2004825982206027991' }, //in (2e18).toString()
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [
+            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: '2004825982206027991' }, //in (2e18).toString()
+          ]
+        );
         const indexes = getSwapTokenIndexes([[0, 1]]);
 
         await expectBalanceChange(
@@ -166,11 +179,16 @@ describe('TradeScript - Stable', () => {
       });
 
       it('multihop DAI for SUSD', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2132790554831920652' },
-          { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC' },
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [
+            { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2132790554831920652' },
+            { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
+            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC' },
+          ]
+        );
         const indexes = getSwapTokenIndexes([
           [2, 3],
           [1, 2],
