@@ -66,11 +66,9 @@ contract Vault is IVault, VaultAccounting, UserBalance, PoolRegistry {
         // inequality
 
         for (uint256 i = 0; i < diffs.length; ++i) {
+            // TODO: take vaultDelta out of the diffs struct, and initialize the array here instead
             require(diffs[i].vaultDelta == 0, "Bad workspace");
         }
-
-        // TODO: check each pool only appears in a single swap. Might be overly restrictive, but easy
-        // to implement (require swaps array to be sorted by poolId).
 
         // Steps 1, 2 & 3:
         //  - validate hints

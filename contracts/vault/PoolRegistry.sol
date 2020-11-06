@@ -80,8 +80,6 @@ abstract contract PoolRegistry is
         _;
     }
 
-    event PoolCreated(bytes32 poolId);
-
     function newPool(address strategy, StrategyType strategyType)
         external
         override
@@ -110,7 +108,7 @@ abstract contract PoolRegistry is
         return _pools.length();
     }
 
-    function getPoolIds(uint256 startIndex, uint256 endIndex)
+    function getPoolIds(uint256 start, uint256 end)
         external
         view
         override
@@ -118,14 +116,13 @@ abstract contract PoolRegistry is
         returns (bytes32[] memory)
     {
         require(
-            (endIndex >= startIndex) &&
-                (endIndex - startIndex) <= _pools.length(),
+            (end >= start) && (end - start) <= _pools.length(),
             "Bad indices"
         );
 
-        bytes32[] memory poolIds = new bytes32[](endIndex - startIndex);
+        bytes32[] memory poolIds = new bytes32[](end - start);
         for (uint256 i = 0; i < poolIds.length; ++i) {
-            poolIds[i] = _pools.at(i + startIndex);
+            poolIds[i] = _pools.at(i + start);
         }
 
         return poolIds;
