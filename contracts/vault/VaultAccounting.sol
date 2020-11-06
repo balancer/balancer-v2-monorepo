@@ -91,6 +91,10 @@ abstract contract VaultAccounting is IVault, Settings {
         address from,
         uint128 amount
     ) internal returns (uint128) {
+        if (amount == 0) {
+            return 0;
+        }
+
         uint256 currentBalance = IERC20(token).balanceOf(address(this));
 
         IERC20(token).safeTransferFrom(from, address(this), amount);
@@ -112,6 +116,10 @@ abstract contract VaultAccounting is IVault, Settings {
         uint128 amount,
         bool chargeFee
     ) internal {
+        if (amount == 0) {
+            return;
+        }
+
         _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(amount);
 
         uint128 amountToSend = chargeFee

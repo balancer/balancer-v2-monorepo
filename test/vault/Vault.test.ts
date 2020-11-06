@@ -13,6 +13,7 @@ describe('Vault - swaps', () => {
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
   let creditor: SignerWithAddress;
+  let traderAddress: string;
 
   let vault: Contract;
   let strategy: Contract;
@@ -21,6 +22,7 @@ describe('Vault - swaps', () => {
 
   before('setup', async () => {
     [, controller, trader, creditor] = await ethers.getSigners();
+    traderAddress = await trader.getAddress();
   });
 
   beforeEach('deploy vault & tokens', async () => {
@@ -111,8 +113,11 @@ describe('Vault - swaps', () => {
       const swaps = [
         {
           poolId: poolIds[0],
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() }, //Math isn't 100% accurate
           tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() },
+          userData: '0x',
         },
       ];
 
@@ -154,13 +159,19 @@ describe('Vault - swaps', () => {
       const swaps = [
         {
           poolId: poolIds[0],
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: { tokenDiffIndex: 1, amount: (0.34e18 + fee).toString() },
           tokenOut: { tokenDiffIndex: 0, amount: (0.25e18).toString() },
+          userData: '0x',
         },
         {
           poolId: poolIds[1],
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: { tokenDiffIndex: 1, amount: (0.34e18 + fee).toString() },
           tokenOut: { tokenDiffIndex: 0, amount: (0.25e18).toString() },
+          userData: '0x',
         },
       ];
 
@@ -203,8 +214,11 @@ describe('Vault - swaps', () => {
         const swaps = [
           {
             poolId: poolIds[0],
+            from: traderAddress,
+            to: traderAddress,
             tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
             tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
+            userData: '0x',
           },
         ];
 
@@ -239,8 +253,11 @@ describe('Vault - swaps', () => {
         const swaps = [
           {
             poolId: poolIds[0],
+            from: traderAddress,
+            to: traderAddress,
             tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
             tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
+            userData: '0x',
           },
         ];
 
@@ -281,8 +298,11 @@ describe('Vault - swaps', () => {
         const swaps = [
           {
             poolId: poolIds[0],
+            from: traderAddress,
+            to: traderAddress,
             tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
             tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
+            userData: '0x',
           },
         ];
 
@@ -331,8 +351,11 @@ describe('Vault - swaps', () => {
         const swaps = [
           {
             poolId: poolIds[0],
+            from: traderAddress,
+            to: traderAddress,
             tokenIn: { tokenDiffIndex: 1, amount: (1e18 + fee).toString() },
             tokenOut: { tokenDiffIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
+            userData: '0x',
           },
         ];
 
@@ -411,30 +434,45 @@ describe('Vault - swaps', () => {
         // Withdraw 300 MKR in exchange for 36 DAI (buy at ~8)
         {
           poolId: ethers.utils.id('unbalanced0'),
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: { tokenDiffIndex: 0, amount: (36e15).toString() },
           tokenOut: { tokenDiffIndex: 1, amount: (300e15).toString() },
+          userData: '0x',
         },
         // Spend 40 MKR to get 9 DAI in each pool (sell at ~44)
         // A total 160 MKR out of 300 is spent (140 profit), and all 36 gained DAI are spent
         {
           poolId: ethers.utils.id('unbalanced1'),
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: { tokenDiffIndex: 0, amount: (9e15).toString() },
           tokenOut: { tokenDiffIndex: 1, amount: (40e15).toString() },
+          userData: '0x',
         },
         {
           poolId: ethers.utils.id('unbalanced2'),
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: { tokenDiffIndex: 0, amount: (9e15).toString() },
           tokenOut: { tokenDiffIndex: 1, amount: (40e15).toString() },
+          userData: '0x',
         },
         {
           poolId: ethers.utils.id('unbalanced3'),
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: { tokenDiffIndex: 0, amount: (9e15).toString() },
           tokenOut: { tokenDiffIndex: 1, amount: (40e15).toString() },
+          userData: '0x',
         },
         {
           poolId: ethers.utils.id('unbalanced4'),
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: { tokenDiffIndex: 0, amount: (9e15).toString() },
           tokenOut: { tokenDiffIndex: 1, amount: (40e15).toString() },
+          userData: '0x',
         },
       ];
 

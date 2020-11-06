@@ -17,12 +17,14 @@ describe('Vault - multiple trading strategies interfaces', () => {
 
   let trader: SignerWithAddress;
   let tokens: TokenList = {};
+  let traderAddress: string;
 
   let poolIdPair: string;
   let poolIdTuple: string;
 
   before('setup', async () => {
     [, controller, trader] = await ethers.getSigners();
+    traderAddress = await trader.getAddress();
   });
 
   beforeEach(async () => {
@@ -75,8 +77,11 @@ describe('Vault - multiple trading strategies interfaces', () => {
     const swaps = [
       {
         poolId: poolIdTuple,
+        from: traderAddress,
+        to: traderAddress,
         tokenIn: { tokenDiffIndex: 1, amount: (1e18).toString() },
         tokenOut: { tokenDiffIndex: 0, amount: (1e18).toString() },
+        userData: '0x',
       },
     ];
 
@@ -123,8 +128,11 @@ describe('Vault - multiple trading strategies interfaces', () => {
     const swaps = [
       {
         poolId: poolIdPair,
+        from: traderAddress,
+        to: traderAddress,
         tokenIn: { tokenDiffIndex: 1, amount: (1e18).toString() },
         tokenOut: { tokenDiffIndex: 0, amount: (1e18).toString() },
+        userData: '0x',
       },
     ];
 

@@ -96,7 +96,13 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                 BalanceLib.Balance memory tokenInFinalBalance,
                 BalanceLib.Balance memory tokenOutFinalBalance,
                 uint128 protocolSwapFeeAmountIn
-            ) = _validateSwap(swap, tokenIn, tokenOut);
+            ) = _validateSwap(
+                fundsIn.withdrawFrom,
+                fundsOut.recipient,
+                swap,
+                tokenIn,
+                tokenOut
+            );
 
             diffProtocolFees[swap
                 .tokenIn
@@ -165,6 +171,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
     }
 
     function _validateSwap(
+        address from,
+        address to,
         Swap memory swap,
         address tokenIn,
         address tokenOut
@@ -183,10 +191,13 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                 _validatePairStrategySwap(
                     ITradingStrategy.Swap({
                         poolId: swap.poolId,
+                        from: from,
+                        to: to,
                         tokenIn: tokenIn,
                         tokenOut: tokenOut,
                         amountIn: swap.tokenIn.amount,
-                        amountOut: swap.tokenOut.amount
+                        amountOut: swap.tokenOut.amount,
+                        userData: swap.userData
                     }),
                     IPairTradingStrategy(strategy.strategy)
                 );
@@ -195,10 +206,13 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                 _validateTupleStrategySwap(
                     ITradingStrategy.Swap({
                         poolId: swap.poolId,
+                        from: from,
+                        to: to,
                         tokenIn: tokenIn,
                         tokenOut: tokenOut,
                         amountIn: swap.tokenIn.amount,
-                        amountOut: swap.tokenOut.amount
+                        amountOut: swap.tokenOut.amount,
+                        userData: swap.userData
                     }),
                     ITupleTradingStrategy(strategy.strategy)
                 );
@@ -227,13 +241,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         require(poolTokenOutBalance.total > 0, "Token B not in pool");
 
         (bool success, uint128 tokenInFeeAmount) = strategy.validatePair(
-            ITradingStrategy.Swap({
-                poolId: swap.poolId,
-                tokenIn: swap.tokenIn,
-                tokenOut: swap.tokenOut,
-                amountIn: swap.amountIn,
-                amountOut: swap.amountOut
-            }),
+            swap,
             poolTokenInBalance.total,
             poolTokenOutBalance.total
         );

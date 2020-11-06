@@ -5,9 +5,13 @@ import { ContractFactory, Contract } from 'ethers';
 describe('StableStrategy', function () {
   let poolId: string;
   let strategy: Contract;
+  let traderAddress: string;
+  let tokens: string[];
 
   beforeEach(async function () {
     poolId = ethers.utils.id('Test');
+    traderAddress = '0x0000000000000000000000000000000000000001';
+    tokens = ['0x0000000000000000000000000000000000000002', '0x0000000000000000000000000000000000000003'];
 
     const StableStrategyFactory: ContractFactory = await ethers.getContractFactory('StableStrategy');
 
@@ -20,10 +24,13 @@ describe('StableStrategy', function () {
       const result = await strategy.validateTuple(
         {
           poolId,
-          tokenIn: '0x0000000000000000000000000000000000000001',
-          tokenOut: '0x0000000000000000000000000000000000000002',
+          from: traderAddress,
+          to: traderAddress,
+          tokenIn: tokens[0],
+          tokenOut: tokens[1],
           amountIn: (4.3579e18).toString(), //4.14 / (1 - fee)
           amountOut: (3.7928e18).toString(),
+          userData: '0x',
         },
         [(108.6e18).toString(), (42.482e18).toString()],
         0,
@@ -35,10 +42,13 @@ describe('StableStrategy', function () {
       const result = await strategy.validateTuple(
         {
           poolId,
-          tokenIn: '0x0000000000000000000000000000000000000001',
-          tokenOut: '0x0000000000000000000000000000000000000002',
+          from: traderAddress,
+          to: traderAddress,
+          tokenIn: tokens[0],
+          tokenOut: tokens[1],
           amountIn: '105263157900000000000', //100 / (1 - fee)
           amountOut: '100888873',
+          userData: '0x',
         },
         ['76090948022791367352564021', '153330925159873', '142105440540871'],
         0,

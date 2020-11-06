@@ -27,9 +27,11 @@ describe('WeightedProdStrategy', function () {
   let poolId: string;
   let strategy: Contract;
   let WeightedProdStrategyFactory: ContractFactory;
+  let traderAddress: string;
 
   beforeEach(async function () {
     poolId = ethers.utils.id('Test');
+    traderAddress = '0x0000000000000000000000000000000000000001';
     WeightedProdStrategyFactory = await ethers.getContractFactory('WeightedProdStrategy');
   });
 
@@ -130,10 +132,13 @@ describe('WeightedProdStrategy', function () {
       const result = await strategy.validatePair(
         {
           poolId,
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: tokens[0],
           tokenOut: tokens[1],
           amountIn: (15e18 / (1 - 0.05)).toString(), //15e18 + fee
           amountOut: (85.64935e18).toString(),
+          userData: '0x',
         },
         (100e18).toString(),
         (200e18).toString()
@@ -153,10 +158,13 @@ describe('WeightedProdStrategy', function () {
       const result = await strategy.validatePair(
         {
           poolId,
+          from: traderAddress,
+          to: traderAddress,
           tokenIn: tokens[0],
           tokenOut: tokens[1],
           amountIn: (15e18 / (1 - 0.05)).toString(), //15e18 + fee
           amountOut: (26.08695652e18).toString(),
+          userData: '0x',
         },
         (100e18).toString(),
         (200e18).toString()
