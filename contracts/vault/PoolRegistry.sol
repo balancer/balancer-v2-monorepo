@@ -197,6 +197,31 @@ abstract contract PoolRegistry is
         _poolController[poolId] = controller;
     }
 
+    function setPoolStrategy(
+        bytes32 poolId,
+        address strategy,
+        StrategyType strategyType
+    )
+        external
+        override
+        _logs_
+        _lock_
+        withExistingPool(poolId)
+        onlyPoolController(poolId)
+    {
+        // The Pool registry will store token information in different formats depending on the strategy type,
+        // so changing it is disallowed
+        require(
+            strategyType == _poolStrategy[poolId].strategyType,
+            "Trading strategy type cannot change"
+        );
+
+        _poolStrategy[poolId] = PoolStrategy({
+            strategy: strategy,
+            strategyType: strategyType
+        });
+    }
+
     function addLiquidity(
         bytes32 poolId,
         address from,

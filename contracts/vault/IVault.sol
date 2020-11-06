@@ -112,6 +112,12 @@ interface IVault {
 
     function setPoolController(bytes32 poolId, address controller) external;
 
+    function setPoolStrategy(
+        bytes32 poolId,
+        address strategy,
+        StrategyType strategyType
+    ) external;
+
     function addLiquidity(
         bytes32 poolId,
         address from,
