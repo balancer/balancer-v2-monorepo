@@ -83,6 +83,8 @@ async function batchedSwap(withdrawTokens: boolean) {
 
   for (let poolAmount = 1; poolAmount <= BATCHED_SWAP_TOTAL_POOLS; ++poolAmount) {
     const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+      await trader.getAddress(),
+      await trader.getAddress(),
       tokens,
       pools.slice(0, poolAmount).map((poolId) => {
         return { poolId, tokenIn: 'DAI', tokenOut: 'MKR', amount: 500 };

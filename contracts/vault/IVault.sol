@@ -167,6 +167,7 @@ interface IVault {
         bytes32 poolId;
         TokenData tokenIn;
         TokenData tokenOut;
+        bytes userData;
     }
 
     // 'amount' can mean tokens going either into or out of the Vault, depending on context.

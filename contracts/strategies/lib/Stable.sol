@@ -33,7 +33,42 @@ contract Stable {
         uint256 prod;
     }
 
-    function _getData(
+    function _approximateAmount(Data memory data, uint128 approxAmount)
+        private
+        pure
+        returns (uint128)
+    {
+        //console.log("data.invariant", data.invariant);
+        uint128 newApproxAmount;
+        uint256 c1 = data.amp *
+            data.sum +
+            ((FixedPoint.ONE / data.nn) - data.amp) *
+            data.invariant;
+        uint256 c2 = (data.invariant * data.invariant * data.invariant) /
+            (data.nn * data.nn * data.prod);
+        for (uint256 i = 0; i < 255; i++) {
+            uint256 f1 = data.amp *
+                approxAmount *
+                approxAmount +
+                c1 *
+                approxAmount -
+                c2 *
+                FixedPoint.ONE;
+            uint256 f2 = c1 + 2 * data.amp * approxAmount;
+            newApproxAmount = uint128(approxAmount - (f1 / f2));
+            if (newApproxAmount > approxAmount) {
+                if ((newApproxAmount - approxAmount) <= PRECISION) {
+                    break;
+                }
+            } else if ((newApproxAmount - approxAmount) <= PRECISION) {
+                break;
+            }
+            approxAmount = newApproxAmount;
+        }
+        return newApproxAmount;
+    }
+
+    function _getDataOutGivenIn(
         uint256 amp,
         uint128[] memory balances,
         uint256 tokenIndexIn,
@@ -69,35 +104,40 @@ contract Stable {
             });
     }
 
-    function _calcTokenAmountOut(Data memory data, uint128 tokenAmountOut)
-        private
-        pure
-        returns (uint128)
-    {
-        uint128 newTokenAmountOut;
-        uint256 c1 = data.amp *
-            data.sum +
-            ((FixedPoint.ONE / data.nn) - data.amp) *
-            data.invariant;
-        uint256 c2 = (data.invariant * data.invariant * data.invariant) /
-            (data.nn * data.nn * data.prod);
-        for (uint256 i = 0; i < 255; i++) {
-            uint256 f1 = (((data.amp * tokenAmountOut * tokenAmountOut) /
-                FixedPoint.ONE) +
-                ((c1 * tokenAmountOut) / FixedPoint.ONE) -
-                c2) * FixedPoint.ONE;
-            uint256 f2 = c1 + 2 * data.amp * tokenAmountOut;
-            newTokenAmountOut = uint128(tokenAmountOut - (f1 / f2));
-            if (newTokenAmountOut > tokenAmountOut) {
-                if ((newTokenAmountOut - tokenAmountOut) <= PRECISION) {
-                    break;
+    function _getDataInGivenOut(
+        uint256 amp,
+        uint128[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint128 tokenAmountOut
+    ) private pure returns (Data memory) {
+        uint256 invariant = _invariant(amp, balances);
+        uint256 sum = 0;
+        uint256 prod = FixedPoint.ONE;
+        uint256 n = balances.length;
+        uint256 nn = 1;
+        for (uint256 i = 0; i < n; i++) {
+            if (i != tokenIndexIn) {
+                if (i == tokenIndexOut) {
+                    sum = sum + balances[i] - tokenAmountOut;
+                    prod =
+                        (prod * (balances[i] - tokenAmountOut)) /
+                        FixedPoint.ONE;
+                } else {
+                    sum = sum + balances[i];
+                    prod = (prod * balances[i]) / FixedPoint.ONE;
                 }
-            } else if ((newTokenAmountOut - tokenAmountOut) <= PRECISION) {
-                break;
             }
-            tokenAmountOut = newTokenAmountOut;
+            nn = nn * n;
         }
-        return newTokenAmountOut;
+        return
+            Data({
+                amp: amp,
+                invariant: invariant,
+                sum: sum,
+                nn: nn,
+                prod: prod
+            });
     }
 
     function _outGivenIn(
@@ -106,17 +146,38 @@ contract Stable {
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint128 tokenAmountIn
-    ) internal pure returns (uint256) {
-        Data memory data = _getData(
+    ) internal pure returns (uint128) {
+        Data memory data = _getDataOutGivenIn(
             amp,
             balances,
             tokenIndexIn,
             tokenIndexOut,
             tokenAmountIn
         );
-        uint128 tokenAmountOut = balances[tokenIndexOut] + tokenAmountIn;
+        uint128 approxTokenAmountOut = balances[tokenIndexOut] - tokenAmountIn;
         return
-            balances[tokenIndexOut] - _calcTokenAmountOut(data, tokenAmountOut);
+            balances[tokenIndexOut] -
+            _approximateAmount(data, approxTokenAmountOut);
+    }
+
+    function _inGivenOut(
+        uint256 amp,
+        uint128[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint128 tokenAmountOut
+    ) internal pure returns (uint128) {
+        Data memory data = _getDataInGivenOut(
+            amp,
+            balances,
+            tokenIndexIn,
+            tokenIndexOut,
+            tokenAmountOut
+        );
+        uint128 approxTokenAmountIn = balances[tokenIndexIn] + tokenAmountOut;
+        return
+            _approximateAmount(data, approxTokenAmountIn) -
+            balances[tokenIndexIn];
     }
 
     function _invariant(uint256 amp, uint128[] memory balances)

@@ -8,7 +8,7 @@ import { PairTS, setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../helpers/constants';
 
-describe('TradeScript', () => {
+describe('TradeScript - WeightProduct', () => {
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
 
@@ -80,20 +80,28 @@ describe('TradeScript', () => {
           .connect(controller)
           .removeLiquidity(pools[1], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
-          { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [
+            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
+            { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
+          ]
+        );
 
         await expectBalanceChange(
           async () => {
             await tradeScript.connect(trader).swapExactAmountIn(
-              tokens.DAI.address,
-              tokens.MKR.address,
-              1500, //minAmountOut
-              (0.6e18).toString(), //maxPrice
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.MKR.address,
+                minAmountOut: 1500, //minAmountOut
+                maxPrice: (0.6e18).toString(), //maxPrice
+              },
               diffs,
               swaps,
+              [],
               amounts,
               true
             );
@@ -125,22 +133,30 @@ describe('TradeScript', () => {
           .connect(controller)
           .removeLiquidity(pools[3], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX', amount: 1200 }, //out 2400
-          { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //out 4800
-          { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR' }, //out 9600
-          { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 10800
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [
+            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX', amount: 1200 }, //out 2400
+            { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //out 4800
+            { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR' }, //out 9600
+            { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 10800
+          ]
+        );
 
         await expectBalanceChange(
           async () => {
             await tradeScript.connect(trader).swapExactAmountIn(
-              tokens.DAI.address,
-              tokens.MKR.address,
-              10800, //minAmountOut
-              (0.6e18).toString(), //maxPrice
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.MKR.address,
+                minAmountOut: 10800, //minAmountOut
+                maxPrice: (0.6e18).toString(), //maxPrice
+              },
               diffs,
               swaps,
+              [],
               amounts,
               true
             );
@@ -161,20 +177,28 @@ describe('TradeScript', () => {
           .connect(controller)
           .removeLiquidity(pools[1], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
-          { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [
+            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
+            { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
+          ]
+        );
 
         await expectBalanceChange(
           async () => {
             await tradeScript.connect(trader).swapExactAmountOut(
-              tokens.DAI.address,
-              tokens.MKR.address,
-              1200, //maxAmountIn
-              (0.6e18).toString(), //maxPrice
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.MKR.address,
+                maxAmountIn: 1200, //maxAmountIn
+                maxPrice: (0.6e18).toString(), //maxPrice
+              },
               diffs,
               swaps,
+              [],
               amounts,
               true
             );
@@ -206,23 +230,31 @@ describe('TradeScript', () => {
           .connect(controller)
           .removeLiquidity(pools[3], controller.address, [tokens.DAI.address], [(0.5e18).toString()]);
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR', amount: 9600 }, //in 4800
-          { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //in 2400
-          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX' }, //in 1200
-          { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
-        ]);
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+          await trader.getAddress(),
+          await trader.getAddress(),
+          tokens,
+          [
+            { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR', amount: 9600 }, //in 4800
+            { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //in 2400
+            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX' }, //in 1200
+            { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
+          ]
+        );
 
         await expectBalanceChange(
           async () => {
             await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
             await tradeScript.connect(trader).swapExactAmountOut(
-              tokens.DAI.address,
-              tokens.MKR.address,
-              1800, //maxAmountIn
-              (0.6e18).toString(), //maxPrice
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.MKR.address,
+                maxAmountIn: 1800, //maxAmountIn
+                maxPrice: (0.6e18).toString(), //maxPrice
+              },
               diffs,
               swaps,
+              [],
               amounts,
               true
             );

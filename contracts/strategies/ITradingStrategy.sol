@@ -16,10 +16,13 @@ pragma solidity ^0.7.1;
 
 interface ITradingStrategy {
     struct Swap {
+        address from;
+        address to;
         bytes32 poolId;
         address tokenIn;
         address tokenOut;
         uint128 amountIn;
         uint128 amountOut;
+        bytes userData;
     }
 }

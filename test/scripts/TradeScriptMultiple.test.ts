@@ -8,12 +8,14 @@ import { setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../helpers/constants';
 
-describe('TradeScript - Stable', () => {
+describe('TradeScript - Multiple Strategies', () => {
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
 
   let vault: Contract;
-  let curve: Contract;
+  let curveWeightProd1: Contract;
+  let curveWeightProd2: Contract;
+  let curveStable: Contract;
   let tradeScript: Contract;
   let tokens: TokenList = {};
 
@@ -24,10 +26,18 @@ describe('TradeScript - Stable', () => {
   beforeEach('deploy vault', async () => {
     vault = await deploy('Vault', { args: [] });
     tradeScript = await deploy('TradeScript', { args: [vault.address] });
-    tokens = await deployTokens(['DAI', 'USDC', 'TUSD', 'SUSD']);
+    tokens = await deployTokens(['DAI', 'USDC', 'TUSD', 'SUSD', 'MKR']);
+
+    const weights = [(1e18).toString(), (1e18).toString()];
+    curveWeightProd1 = await deploy('WeightedProdStrategy', {
+      args: [[tokens.USDC.address, tokens.MKR.address], weights, 2, 0],
+    });
+    curveWeightProd2 = await deploy('WeightedProdStrategy', {
+      args: [[tokens.TUSD.address, tokens.MKR.address], weights, 2, 0],
+    });
 
     const amp = (30e18).toString();
-    curve = await deploy('StableStrategy', { args: [amp, 0] });
+    curveStable = await deploy('StableStrategy', { args: [amp, 0] });
   });
 
   describe('swap', () => {
@@ -42,20 +52,25 @@ describe('TradeScript - Stable', () => {
       );
 
       // Create pool 1
-      let poolId = await setupPool(vault, curve, 1, tokens, controller, [
+      let poolId = await setupPool(vault, curveStable, 1, tokens, controller, [
         ['DAI', (50e18).toString()],
         ['USDC', (60e18).toString()],
       ]);
       pools.push(poolId);
       // Create pool 2
-      poolId = await setupPool(vault, curve, 1, tokens, controller, [
-        ['DAI', (20e18).toString()],
-        ['USDC', (30e18).toString()],
-        ['TUSD', (40e18).toString()],
+      poolId = await setupPool(vault, curveWeightProd1, 0, tokens, controller, [
+        ['USDC', (700e18).toString()],
+        ['MKR', (10e18).toString()],
       ]);
       pools.push(poolId);
       // Create pool 3
-      poolId = await setupPool(vault, curve, 1, tokens, controller, [
+      poolId = await setupPool(vault, curveWeightProd2, 0, tokens, controller, [
+        ['TUSD', (700e18).toString()],
+        ['MKR', (10e18).toString()],
+      ]);
+      pools.push(poolId);
+      // Create pool 4
+      poolId = await setupPool(vault, curveStable, 1, tokens, controller, [
         ['DAI', (20e18).toString()],
         ['USDC', (30e18).toString()],
         ['TUSD', (40e18).toString()],
@@ -71,38 +86,6 @@ describe('TradeScript - Stable', () => {
     });
 
     describe('swapExactAmountIn', () => {
-      it('one pool DAI for USDC', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
-          await trader.getAddress(),
-          await trader.getAddress(),
-          tokens,
-          [{ poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() }]
-        );
-        const indexes = getSwapTokenIndexes([[0, 1]]);
-
-        await expectBalanceChange(
-          async () => {
-            await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
-            await tradeScript.connect(trader).swapExactAmountIn(
-              {
-                overallTokenIn: tokens.DAI.address,
-                overallTokenOut: tokens.USDC.address,
-                minAmountOut: (2e18).toString(), //minAmountOut
-                maxPrice: (1e18).toString(), //maxPrice
-              },
-              diffs,
-              swaps,
-              indexes,
-              amounts,
-              true
-            );
-          },
-          trader,
-          tokens,
-          { DAI: (-2e18).toString(), USDC: ['gte', '2004825982206027991'] } //2004825982206027991
-        );
-      });
-
       it('multihop DAI for SUSD', async () => {
         const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
           await trader.getAddress(),
@@ -110,13 +93,15 @@ describe('TradeScript - Stable', () => {
           tokens,
           [
             { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
-            { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
-            { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD' },
+            { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'MKR' },
+            { poolId: pools[2], tokenIn: 'MKR', tokenOut: 'TUSD' },
+            { poolId: pools[3], tokenIn: 'TUSD', tokenOut: 'SUSD' },
           ]
         );
         const indexes = getSwapTokenIndexes([
           [0, 1],
-          [1, 2],
+          [0, 1],
+          [1, 0],
           [2, 3],
         ]);
 
@@ -139,59 +124,28 @@ describe('TradeScript - Stable', () => {
           },
           trader,
           tokens,
-          { DAI: (-2e18).toString(), SUSD: ['gte', '2132790554831920652'] } //2132790554831920652
+          { DAI: (-2e18).toString(), SUSD: ['gte', '2011635607989682633'] } //2011635607989682633
         );
       });
     });
     describe('swapExactAmountOut', () => {
-      it('one pool USDC for DAI', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
-          await trader.getAddress(),
-          await trader.getAddress(),
-          tokens,
-          [
-            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: '2004825982206027991' }, //in (2e18).toString()
-          ]
-        );
-        const indexes = getSwapTokenIndexes([[0, 1]]);
-
-        await expectBalanceChange(
-          async () => {
-            await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
-            await tradeScript.connect(trader).swapExactAmountOut(
-              {
-                overallTokenIn: tokens.DAI.address,
-                overallTokenOut: tokens.USDC.address,
-                maxAmountIn: (2e18).toString(), //maxAmountIn
-                maxPrice: (1.1e18).toString(), //maxPrice
-              },
-              diffs,
-              swaps,
-              indexes,
-              amounts,
-              true
-            );
-          },
-          trader,
-          tokens,
-          { USDC: '2004825982206027991', DAI: '-2000000000000000000' } //2004825982206027991
-        );
-      });
-
       it('multihop DAI for SUSD', async () => {
         const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
           await trader.getAddress(),
           await trader.getAddress(),
           tokens,
           [
-            { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2132790554831920652' },
-            { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
+            { poolId: pools[3], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2011635607989682633' },
+            { poolId: pools[2], tokenIn: 'MKR', tokenOut: 'TUSD' },
+            { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'MKR' },
             { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC' },
           ]
         );
+
         const indexes = getSwapTokenIndexes([
           [2, 3],
-          [1, 2],
+          [1, 0],
+          [0, 1],
           [0, 1],
         ]);
 
@@ -202,7 +156,7 @@ describe('TradeScript - Stable', () => {
               {
                 overallTokenIn: tokens.DAI.address,
                 overallTokenOut: tokens.SUSD.address,
-                maxAmountIn: (2e18).toString(), //maxAmountIn
+                maxAmountIn: (3e18).toString(), //maxAmountIn
                 maxPrice: (1.1e18).toString(), //maxPrice
               },
               diffs,
@@ -214,7 +168,7 @@ describe('TradeScript - Stable', () => {
           },
           trader,
           tokens,
-          { SUSD: '2132790554831920652', DAI: '-2000000000000000000' } //2132790554831920652
+          { SUSD: '2011635607989682633', DAI: '-2000000000000000108' } //2011635607989682633
         );
       });
     });
