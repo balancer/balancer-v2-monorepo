@@ -369,8 +369,7 @@ abstract contract PoolRegistry is
         withExistingPool(poolId)
         onlyPoolController(poolId)
     {
-        // TODO check its between 0 - 100
-        require(true, "Percentage must be between 0 and 100");
+        require(percentage <= FixedPoint.ONE, "Percentage must be between 0 and 100%");
         _investablePercentage[poolId][token] = percentage;
     }
 
