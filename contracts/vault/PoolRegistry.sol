@@ -480,6 +480,53 @@ abstract contract PoolRegistry is
         );
     }
 
+    function rebalancePoolInvestment(
+        bytes32 poolId,
+        address token,
+        address investmentManager
+    ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
+        uint128 targetUtilization = _investablePercentage[poolId][token];
+        uint128 targetInvestableAmount = _poolTokenBalance[poolId][token]
+            .total
+            .mul128(targetUtilization);
+        uint128 investedAmount = _poolTokenBalance[poolId][token].invested();
+
+        if (targetInvestableAmount > investedAmount) {
+            uint128 amountToInvest = targetInvestableAmount.sub128(
+                investedAmount
+            );
+            _poolTokenBalance[poolId][token]
+                .cash = _poolTokenBalance[poolId][token].cash.sub128(
+                amountToInvest
+            );
+
+            _pushTokens(token, investmentManager, amountToInvest);
+            IInvestmentManager(investmentManager).recordPoolInvestment(
+                poolId,
+                amountToInvest
+            );
+        } else if (targetInvestableAmount < investedAmount) {
+            uint128 amountToDivest = investedAmount.sub128(
+                targetInvestableAmount
+            );
+            _poolTokenBalance[poolId][token]
+                .cash = _poolTokenBalance[poolId][token].cash.add128(
+                amountToDivest
+            );
+
+            // think about what happens with tokens that charge a transfer fee
+            _pullTokens(token, investmentManager, amountToDivest);
+            IInvestmentManager(investmentManager).recordPoolDivestment(
+                poolId,
+                amountToDivest
+            );
+        } else {
+            revert(
+                "Pool balance is already balanced between cash and investment"
+            );
+        }
+    }
+
     // how the investment manager updates the value of invested tokens to the curves knowledge
     function updateInvested(
         bytes32 poolId,
