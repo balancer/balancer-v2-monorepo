@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
@@ -167,6 +168,8 @@ describe('TradeScript - Stable', () => {
           tokens,
           { DAI: (-2.041e18).toString(), USDC: ['gte', '2004825982206027991'] }
         );
+
+        expect(await vault.getTotalUnaccountedForTokens(tokens.DAI.address)).to.equal((0.04082e18 / 2).toString()); //50% of 2% of 2.041e18
       });
 
       it('multihop DAI for SUSD', async () => {
