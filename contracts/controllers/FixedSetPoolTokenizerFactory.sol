@@ -24,7 +24,7 @@ import "./FixedSetPoolTokenizer.sol";
 contract FixedSetPoolTokenizerFactory {
     IVault public immutable vault;
 
-    event FixedSetPoolTokenizerCreated(address indexed tokenizer);
+    event TokenizerCreated(address indexed tokenizer);
 
     constructor(IVault _vault) {
         vault = _vault;
@@ -33,9 +33,19 @@ contract FixedSetPoolTokenizerFactory {
     function create(
         address strategy,
         IVault.StrategyType strategyType,
+        uint256 initialBPT,
+        address[] memory tokens,
+        uint128[] memory amounts,
         bytes32 salt
     ) external returns (address) {
-        bytes memory creationCode = _getCreationCode(strategy, strategyType);
+        bytes memory creationCode = _getCreationCode(
+            strategy,
+            strategyType,
+            initialBPT,
+            tokens,
+            amounts,
+            msg.sender
+        );
 
         address expectedDestination = Create2.computeAddress(
             salt,
@@ -47,19 +57,31 @@ contract FixedSetPoolTokenizerFactory {
         address tokenizer = Create2.deploy(0, salt, creationCode);
         assert(tokenizer == expectedDestination);
 
-        emit FixedSetPoolTokenizerCreated(tokenizer);
+        emit TokenizerCreated(tokenizer);
 
         return tokenizer;
     }
 
     function _getCreationCode(
         address strategy,
-        IVault.StrategyType strategyType
+        IVault.StrategyType strategyType,
+        uint256 initialBPT,
+        address[] memory tokens,
+        uint128[] memory amounts,
+        address from
     ) private view returns (bytes memory) {
         return
             abi.encodePacked(
                 type(FixedSetPoolTokenizer).creationCode,
-                abi.encode(vault, strategy, strategyType)
+                abi.encode(
+                    vault,
+                    strategy,
+                    strategyType,
+                    initialBPT,
+                    tokens,
+                    amounts,
+                    from
+                )
             );
     }
 }

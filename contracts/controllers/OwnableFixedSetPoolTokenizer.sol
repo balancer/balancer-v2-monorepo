@@ -22,8 +22,23 @@ contract OwnableFixedSetPoolTokenizer is FixedSetPoolTokenizer, Ownable {
     constructor(
         IVault _vault,
         address strategy,
-        IVault.StrategyType strategyType
-    ) FixedSetPoolTokenizer(_vault, strategy, strategyType) Ownable() {
+        IVault.StrategyType strategyType,
+        uint256 initialBPT,
+        address[] memory tokens,
+        uint128[] memory amounts,
+        address from
+    )
+        FixedSetPoolTokenizer(
+            _vault,
+            strategy,
+            strategyType,
+            initialBPT,
+            tokens,
+            amounts,
+            from
+        )
+        Ownable()
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
