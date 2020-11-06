@@ -41,7 +41,7 @@ abstract contract Admin is IVault, Settings, UserBalance {
     }
 
     function transferAdmin(address newAdmin) external {
-        require(msg.sender == _admin);
+        require(msg.sender == _admin, "Caller is not the admin");
 
         _admin = newAdmin;
     }

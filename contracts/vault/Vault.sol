@@ -36,6 +36,8 @@ import "./Swaps.sol";
 import "./Admin.sol";
 import "./UserBalance.sol";
 
+// solhint-disable no-empty-blocks
+
 contract Vault is
     IVault,
     Settings,

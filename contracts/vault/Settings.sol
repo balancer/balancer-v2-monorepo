@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "../math/FixedPoint.sol";
 import "./IVault.sol";
 
+// solhint-disable var-name-mixedcase
+
 abstract contract Settings is IVault {
     using FixedPoint for uint128;
 
@@ -32,18 +34,18 @@ abstract contract Settings is IVault {
     // The Vault relies on the trading strategy being honest and reporting the actuall fee it charged.
     uint128 private _protocolSwapFee;
 
-    uint128 private immutable MAX_PROTOCOL_WITHDRAW_FEE = FixedPoint
+    uint128 private immutable _MAX_PROTOCOL_WITHDRAW_FEE = FixedPoint
         .ONE
         .mul128(2)
         .div128(100); // 0.02 (2%)
 
-    uint128 private immutable MAX_PROTOCOL_SWAP_FEE = FixedPoint
+    uint128 private immutable _MAX_PROTOCOL_SWAP_FEE = FixedPoint
         .ONE
         .mul128(50)
         .div128(100); // 0.5 (50%)
 
     function _setProtocolWithdrawFee(uint128 newFee) internal {
-        require(newFee <= MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
+        require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
         _protocolWithdrawFee = newFee;
     }
 
@@ -61,7 +63,7 @@ abstract contract Settings is IVault {
     }
 
     function _setProtocolSwapFee(uint128 newFee) internal {
-        require(newFee <= MAX_PROTOCOL_SWAP_FEE, "Swap fee too high");
+        require(newFee <= _MAX_PROTOCOL_SWAP_FEE, "Swap fee too high");
         _protocolSwapFee = newFee;
     }
 
