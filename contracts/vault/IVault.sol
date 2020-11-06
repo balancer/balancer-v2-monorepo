@@ -131,6 +131,12 @@ interface IVault {
         address operator
     ) external;
 
+    function revokePoolInvestmentManager(
+        bytes32 poolId,
+        address token,
+        address operator
+    ) external;
+
     function addLiquidity(
         bytes32 poolId,
         address from,

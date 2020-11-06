@@ -108,7 +108,8 @@ describe('InvestmentManager', function () {
 
         it('should revert if you attempt to divest while underutilized', async () => {
           const reversionMsg = 'under investment amount - cannot divest';
-          expect(vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address)).to.be.revertedWith(
+          const divestmentAmount = BigNumber.from((10e18).toString())
+          expect(vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address, divestmentAmount)).to.be.revertedWith(
             reversionMsg
           );
         });
@@ -128,7 +129,8 @@ describe('InvestmentManager', function () {
         it('should let anyone trigger divestment when assets are overutilized', async () => {
           expect(await tokens.DAI.balanceOf(vault.address)).to.equal(BigNumber.from((20e18).toString()));
 
-          await vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address);
+          const divestmentAmount = BigNumber.from((50e18).toString())
+          await vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address, divestmentAmount);
 
           expect(await tokens.DAI.balanceOf(vault.address)).to.equal(BigNumber.from((70e18).toString()));
         });
@@ -154,7 +156,8 @@ describe('InvestmentManager', function () {
           // Total:             116
           // Utilizaton: 96/116 = 82.759%
 
-          await vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address);
+          const divestmentAmount = BigNumber.from((3.2e18).toString())
+          await vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address, divestmentAmount);
 
           // Vault:             23.2
           // InvestmentManager: 92.8

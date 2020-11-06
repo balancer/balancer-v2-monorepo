@@ -78,7 +78,7 @@ abstract contract PoolRegistry is
         internal _investablePercentage;
 
     // operators are allowed to use a pools tokens for an investment
-    mapping(bytes32 => mapping(address => EnumerableSet.AddressSet))
+    mapping(bytes32 => mapping(address => address))
         private _poolInvestmentManagers;
 
     event AuthorizedPoolInvestmentManager(
@@ -379,23 +379,29 @@ abstract contract PoolRegistry is
         address token,
         address operator
     ) external override onlyPoolController(poolId) {
-        if (_poolInvestmentManagers[poolId][token].add(operator)) {
-            emit AuthorizedPoolInvestmentManager(poolId, token, operator);
-        }
+        require(
+          _poolInvestmentManagers[poolId][token] == address(0) ||
+            _poolTokenBalance[poolId][token].cash == _poolTokenBalance[poolId][token].total
+        );
+        _poolInvestmentManagers[poolId][token] = operator;
+        emit AuthorizedPoolInvestmentManager(poolId, token, operator);
     }
 
     function revokePoolInvestmentManager(
         bytes32 poolId,
         address token,
         address operator
-    ) external {
-        // TODO require authorized to make changes on behalf of pool
-        if (_poolInvestmentManagers[poolId][token].remove(operator)) {
-            emit RevokedPoolInvestmentManager(poolId, token, operator);
-        }
+    ) external override onlyPoolController(poolId) {
+        require(
+          _poolInvestmentManagers[poolId][token] == address(0) ||
+            _poolTokenBalance[poolId][token].cash == _poolTokenBalance[poolId][token].total
+        );
+
+        delete _poolInvestmentManagers[poolId][token];
+        emit RevokedPoolInvestmentManager(poolId, token, operator);
     }
 
-    modifier onlyPoolInvestmentManagers(
+    modifier onlyPoolInvestmentManager(
         bytes32 poolId,
         address token,
         address operator
@@ -412,7 +418,7 @@ abstract contract PoolRegistry is
         address token,
         address operator
     ) public view returns (bool) {
-        return _poolInvestmentManagers[poolId][token].contains(operator);
+        return _poolInvestmentManagers[poolId][token] == operator;
     }
 
     // Investments
@@ -422,12 +428,8 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         address token,
         address investmentManager,
-        uint128 amount // must be less than total allowed
-    ) public onlyPoolInvestmentManagers(poolId, token, investmentManager) {
-        _poolTokenBalance[poolId][token].cash = _poolTokenBalance[poolId][token]
-            .cash
-            .sub128(amount);
-
+        uint128 amountToInvest // must be less than total allowed
+    ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
         uint128 targetUtilization = _investablePercentage[poolId][token];
         uint128 targetInvestableAmount = _poolTokenBalance[poolId][token]
             .total
@@ -436,34 +438,36 @@ abstract contract PoolRegistry is
         uint128 investedAmount = _poolTokenBalance[poolId][token].invested();
 
         require(
-            investedAmount <= targetInvestableAmount,
+            investedAmount.add128(amountToInvest) <= targetInvestableAmount,
             "over investment amount - cannot invest"
         );
 
-        _pushTokens(token, investmentManager, amount);
+        _poolTokenBalance[poolId][token].cash = _poolTokenBalance[poolId][token]
+            .cash
+            .sub128(amountToInvest);
+
+        _pushTokens(token, investmentManager, amountToInvest);
         IInvestmentManager(investmentManager).recordPoolInvestment(
             poolId,
-            amount
+            amountToInvest
         );
     }
 
-    // divest to the limit
     function divestPoolBalance(
         bytes32 poolId,
         address token,
-        address investmentManager
-    ) public onlyPoolInvestmentManagers(poolId, token, investmentManager) {
+        address investmentManager,
+        uint128 amountToDivest // must be less than total allowed
+    ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
         uint128 targetUtilization = _investablePercentage[poolId][token];
         uint128 targetInvestableAmount = _poolTokenBalance[poolId][token]
             .total
             .mul128(targetUtilization);
         uint128 investedAmount = _poolTokenBalance[poolId][token].invested();
         require(
-            investedAmount > targetInvestableAmount,
+            investedAmount.sub128(amountToDivest) >= targetInvestableAmount,
             "under investment amount - cannot divest"
         );
-
-        uint128 amountToDivest = investedAmount.sub128(targetInvestableAmount);
 
         _poolTokenBalance[poolId][token].cash = _poolTokenBalance[poolId][token]
             .cash
@@ -482,7 +486,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         address token,
         uint128 amountInvested
-    ) public override onlyPoolInvestmentManagers(poolId, token, msg.sender) {
+    ) public override onlyPoolInvestmentManager(poolId, token, msg.sender) {
         _poolTokenBalance[poolId][token].total = amountInvested.add128(
             _poolTokenBalance[poolId][token].cash
         );
