@@ -21,6 +21,7 @@ import "./IVault.sol";
 // solhint-disable var-name-mixedcase
 
 abstract contract Settings is IVault {
+    using FixedPoint for uint256;
     using FixedPoint for uint128;
 
     // Protocol fees: these are charged as unaccounted for tokens, and can therefore be claimed and distributed by the
@@ -36,7 +37,12 @@ abstract contract Settings is IVault {
 
     uint128 private immutable _MAX_PROTOCOL_WITHDRAW_FEE = FixedPoint.ONE.mul128(2).div128(100); // 0.02 (2%)
 
+    // The flash loan fee is charged whenever a flash loan occurs, and is a percentage of the tokens lent
+    uint256 private _protocolFlashLoanFee;
+
     uint128 private immutable _MAX_PROTOCOL_SWAP_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
+
+    uint256 private immutable _MAX_PROTOCOL_FLASH_LOAN_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
     function _setProtocolWithdrawFee(uint128 newFee) internal {
         require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
@@ -63,5 +69,18 @@ abstract contract Settings is IVault {
 
     function _calculateProtocolSwapFee(uint128 swapFeeAmount) internal view returns (uint128) {
         return swapFeeAmount.mul128(_protocolSwapFee);
+    }
+
+    function _setProtocolFlashLoanFee(uint256 newFee) internal {
+        require(newFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FlashLoan fee too high");
+        _protocolFlashLoanFee = newFee;
+    }
+
+    function protocolFlashLoanFee() public view returns (uint256) {
+        return _protocolFlashLoanFee;
+    }
+
+    function _calculateProtocolFlashLoanFee(uint256 swapFeeAmount) internal view returns (uint256) {
+        return swapFeeAmount.mul(_protocolFlashLoanFee);
     }
 }
