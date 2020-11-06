@@ -125,7 +125,7 @@ interface IVault {
         StrategyType strategyType
     ) external;
 
-    function authorizePoolOperator(
+    function authorizePoolInvestmentManager(
         bytes32 poolId,
         address token,
         address operator

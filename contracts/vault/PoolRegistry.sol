@@ -79,14 +79,14 @@ abstract contract PoolRegistry is
 
     // operators are allowed to use a pools tokens for an investment
     mapping(bytes32 => mapping(address => EnumerableSet.AddressSet))
-        private _poolOperators;
+        private _poolInvestmentManagers;
 
-    event AuthorizedPoolOperator(
+    event AuthorizedPoolInvestmentManager(
         bytes32 indexed poolId,
         address indexed token,
         address indexed operator
     );
-    event RevokedPoolOperator(
+    event RevokedPoolInvestmentManager(
         bytes32 indexed poolId,
         address indexed token,
         address indexed operator
@@ -374,45 +374,45 @@ abstract contract PoolRegistry is
         _investablePercentage[poolId][token] = percentage;
     }
 
-    function authorizePoolOperator(
+    function authorizePoolInvestmentManager(
         bytes32 poolId,
         address token,
         address operator
     ) external override onlyPoolController(poolId) {
-        if (_poolOperators[poolId][token].add(operator)) {
-            emit AuthorizedPoolOperator(poolId, token, operator);
+        if (_poolInvestmentManagers[poolId][token].add(operator)) {
+            emit AuthorizedPoolInvestmentManager(poolId, token, operator);
         }
     }
 
-    function revokePoolOperator(
+    function revokePoolInvestmentManager(
         bytes32 poolId,
         address token,
         address operator
     ) external {
         // TODO require authorized to make changes on behalf of pool
-        if (_poolOperators[poolId][token].remove(operator)) {
-            emit RevokedPoolOperator(poolId, token, operator);
+        if (_poolInvestmentManagers[poolId][token].remove(operator)) {
+            emit RevokedPoolInvestmentManager(poolId, token, operator);
         }
     }
 
-    modifier onlyPoolInvestmentOperator(
+    modifier onlyPoolInvestmentManagers(
         bytes32 poolId,
         address token,
         address operator
     ) {
         require(
-            isPoolInvestmentOperatorFor(poolId, token, operator),
+            isPoolInvestmentManager(poolId, token, operator),
             "Only pool investment operator"
         );
         _;
     }
 
-    function isPoolInvestmentOperatorFor(
+    function isPoolInvestmentManager(
         bytes32 poolId,
         address token,
         address operator
     ) public view returns (bool) {
-        return _poolOperators[poolId][token].contains(operator);
+        return _poolInvestmentManagers[poolId][token].contains(operator);
     }
 
     // Investments
@@ -423,7 +423,7 @@ abstract contract PoolRegistry is
         address token,
         address investmentManager,
         uint128 amount // must be less than total allowed
-    ) public onlyPoolInvestmentOperator(poolId, token, investmentManager) {
+    ) public onlyPoolInvestmentManagers(poolId, token, investmentManager) {
         _poolTokenBalance[poolId][token].cash = _poolTokenBalance[poolId][token]
             .cash
             .sub128(amount);
@@ -452,7 +452,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         address token,
         address investmentManager
-    ) public onlyPoolInvestmentOperator(poolId, token, investmentManager) {
+    ) public onlyPoolInvestmentManagers(poolId, token, investmentManager) {
         uint128 targetUtilization = _investablePercentage[poolId][token];
         uint128 targetInvestableAmount = _poolTokenBalance[poolId][token]
             .total
@@ -481,7 +481,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         address token,
         uint128 amountInvested
-    ) public override onlyPoolInvestmentOperator(poolId, token, msg.sender) {
+    ) public override onlyPoolInvestmentManagers(poolId, token, msg.sender) {
         _poolTokenBalance[poolId][token].total = amountInvested.add128(
             _poolTokenBalance[poolId][token].cash
         );

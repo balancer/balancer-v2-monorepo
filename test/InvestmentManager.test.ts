@@ -52,7 +52,7 @@ describe('InvestmentManager', function () {
 
     investmentManager = await deploy('MockInvestmentManager', { args: [vault.address, tokens.DAI.address] });
     await investmentManager.initialize();
-    await tokenizer.connect(owner).authorizeInvestmentManager(tokens.DAI.address, investmentManager.address);
+    await tokenizer.connect(owner).authorizePoolInvestmentManager(tokens.DAI.address, investmentManager.address);
   });
 
   describe('with a pool', () => {
