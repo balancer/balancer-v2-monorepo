@@ -22,6 +22,7 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../math/FixedPoint.sol";
 
 import "./IVault.sol";
+import "./Settings.sol";
 
 library BalanceLib {
     using FixedPoint for uint128;
@@ -31,13 +32,13 @@ library BalanceLib {
         uint128 total;
     }
 
-    function invested(Balance storage self) internal view returns (uint128) {
+    function invested(Balance memory self) internal pure returns (uint128) {
         return self.total - self.cash;
     }
 
-    function increase(Balance storage self, uint128 amount)
+    function increase(Balance memory self, uint128 amount)
         internal
-        view
+        pure
         returns (Balance memory)
     {
         return
@@ -47,9 +48,9 @@ library BalanceLib {
             });
     }
 
-    function decrease(Balance storage self, uint128 amount)
+    function decrease(Balance memory self, uint128 amount)
         internal
-        view
+        pure
         returns (Balance memory)
     {
         return
@@ -60,7 +61,7 @@ library BalanceLib {
     }
 }
 
-abstract contract VaultAccounting is IVault {
+abstract contract VaultAccounting is IVault, Settings {
     using BalanceLib for BalanceLib.Balance;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -112,7 +113,8 @@ abstract contract VaultAccounting is IVault {
     function _pushTokens(
         address token,
         address to,
-        uint128 amount
+        uint128 amount,
+        bool chargeFee
     ) internal {
         if (amount == 0) {
             return;
@@ -120,6 +122,10 @@ abstract contract VaultAccounting is IVault {
 
         _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(amount);
 
-        IERC20(token).safeTransfer(to, amount);
+        uint128 amountToSend = chargeFee
+            ? _applyProtocolWithdrawFee(amount)
+            : amount;
+
+        IERC20(token).safeTransfer(to, amountToSend);
     }
 }

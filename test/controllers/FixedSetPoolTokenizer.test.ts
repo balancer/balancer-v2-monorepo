@@ -7,8 +7,10 @@ import { PairTS } from '../../scripts/helpers/pools';
 import { deployTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
+import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
 describe('FixedSetPoolTokenizer', function () {
+  let admin: SignerWithAddress;
   let lp: SignerWithAddress;
   let other: SignerWithAddress;
 
@@ -20,11 +22,11 @@ describe('FixedSetPoolTokenizer', function () {
   let tokens: TokenList = {};
 
   before(async function () {
-    [, lp, other] = await ethers.getSigners();
+    [, admin, lp, other] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { args: [] });
+    vault = await deploy('Vault', { from: admin, args: [] });
 
     tokens = await deployTokens(['DAI', 'MKR']);
     await Promise.all(
@@ -236,13 +238,6 @@ describe('FixedSetPoolTokenizer', function () {
       ).to.be.revertedWith('NOT EXITING ENOUGH');
     });
 
-    it('all tokens due are pushed', async () => {
-      await expectBalanceChange(() => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true), lp, tokens, {
-        DAI: 0.1e18,
-        MKR: 0.2e18,
-      });
-    });
-
     it('fails if not requesting all tokens', async () => {
       await expect(tokenizer.connect(lp).exitPool((10e18).toString(), [(0.1e18).toString()], true)).to.be.revertedWith(
         'Tokens and amounts length mismatch'
@@ -255,6 +250,28 @@ describe('FixedSetPoolTokenizer', function () {
           .connect(lp)
           .exitPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString(), (0.3e18).toString()], true)
       ).to.be.revertedWith('Tokens and amounts length mismatch');
+    });
+
+    it('all tokens due are pushed', async () => {
+      await expectBalanceChange(() => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true), lp, tokens, {
+        DAI: 0.1e18,
+        MKR: 0.2e18,
+      });
+    });
+
+    context('with protocol withdraw fees', () => {
+      const protocolWithdrawFee = 0.01;
+
+      beforeEach(async () => {
+        await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
+      });
+
+      it('tokens minus fee are pushed', async () => {
+        await expectBalanceChange(() => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true), lp, tokens, {
+          DAI: 0.1e18 * (1 - protocolWithdrawFee),
+          MKR: 0.2e18 * (1 - protocolWithdrawFee),
+        });
+      });
     });
 
     it('can deposit into user balance', async () => {

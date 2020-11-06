@@ -310,7 +310,7 @@ abstract contract PoolRegistry is
                 amountsToTransfer[i]
             );
 
-            _pushTokens(tokens[i], to, amountsToTransfer[i]);
+            _pushTokens(tokens[i], to, amountsToTransfer[i], true);
 
             if (amountToUserBalance > 0) {
                 _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]]
