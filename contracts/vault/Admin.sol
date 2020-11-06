@@ -56,6 +56,11 @@ abstract contract Admin is IVault, Settings, UserBalance {
         _setProtocolSwapFee(fee);
     }
 
+    function setProtocolFlashLoanFee(uint128 fee) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+        _setProtocolFlashLoanFee(fee);
+    }
+
     function authorizeTrustedOperatorReporter(address reporter) external override {
         require(msg.sender == _admin, "Caller is not the admin");
 
