@@ -75,7 +75,7 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
             });
     }
 
-    function getExactAmountInData(
+    function _getExactAmountInData(
         IVault vault,
         address strategy,
         IVault.Diff[] memory diffs,
@@ -101,7 +101,7 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         // tokenIn == lasToken && amountsIn[i] == 0
         amountIn = (poolData.tokenIn == overallTokenIn)
             ? amountIn
-            : helper.amountTo;
+            : helper.amountCalculated;
 
         //Substract fee
         uint128 adjustedIn = amountIn.sub128(
@@ -122,12 +122,12 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
                 toReceive: helper.toReceive,
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                amountFrom: amountIn,
-                amountTo: amountOut
+                amountUsedToCalculate: amountIn,
+                amountCalculated: amountOut
             });
     }
 
-    function getExactAmountOutData(
+    function _getExactAmountOutData(
         IVault vault,
         address strategy,
         IVault.Diff[] memory diffs,
@@ -151,7 +151,9 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
 
         // If not equal, we could add a sanity check by requiring
         // tokenOut == lasToken && amountsOut[i] == 0
-        amountOut = (tokenOut == overallTokenOut) ? amountOut : helper.amountTo;
+        amountOut = (tokenOut == overallTokenOut)
+            ? amountOut
+            : helper.amountCalculated;
 
         uint128 amountIn = _inGivenOut(
             poolData.amp,
@@ -172,8 +174,8 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
                 toReceive: helper.toReceive,
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                amountFrom: amountOut,
-                amountTo: amountIn
+                amountUsedToCalculate: amountOut,
+                amountCalculated: amountIn
             });
     }
 }

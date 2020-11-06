@@ -29,7 +29,7 @@ interface ITradeScript {
         address overallTokenIn;
         address overallTokenOut;
         uint128 minAmountOut;
-        uint256 maxPrice;
+        uint128 maxPrice;
     }
 
     // Used to store data in memory and avoid stack-too-deep errors
@@ -37,17 +37,17 @@ interface ITradeScript {
         address overallTokenIn;
         address overallTokenOut;
         uint128 maxAmountIn;
-        uint256 maxPrice;
+        uint128 maxPrice;
     }
 
     // Used to store data in memory and avoid stack-too-deep errors
     struct Helper {
-        uint256 toSend;
-        uint256 toReceive;
+        uint128 toSend;
+        uint128 toReceive;
         address tokenIn;
         address tokenOut;
-        uint128 amountFrom;
-        uint128 amountTo;
+        uint128 amountUsedToCalculate;
+        uint128 amountCalculated;
     }
 
     struct SwapTokenIndexes {

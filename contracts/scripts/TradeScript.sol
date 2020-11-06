@@ -55,7 +55,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
                 .getPoolStrategy(swaps[i].poolId);
 
             if (strategyType == IVault.StrategyType.PAIR) {
-                helper = PairTradeScript.getExactAmountInData(
+                helper = PairTradeScript._getExactAmountInData(
                     _vault,
                     strategy,
                     diffs,
@@ -65,7 +65,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
                     helper
                 );
             } else if (strategyType == IVault.StrategyType.TUPLE) {
-                helper = TupleTradeScript.getExactAmountInData(
+                helper = TupleTradeScript._getExactAmountInData(
                     _vault,
                     strategy,
                     diffs,
@@ -82,18 +82,18 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
             // provides the inputs
             if (helper.tokenIn == info.overallTokenIn) {
-                helper.toSend += helper.amountFrom;
+                helper.toSend += helper.amountUsedToCalculate;
             }
 
             if (helper.tokenOut == info.overallTokenOut) {
-                helper.toReceive += helper.amountTo;
+                helper.toReceive += helper.amountCalculated;
             }
 
             // Configure pool end state
 
             // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
-            swaps[i].tokenIn.amount = helper.amountFrom;
-            swaps[i].tokenOut.amount = helper.amountTo;
+            swaps[i].tokenIn.amount = helper.amountUsedToCalculate;
+            swaps[i].tokenOut.amount = helper.amountCalculated;
         }
 
         require(
@@ -148,7 +148,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
                 .getPoolStrategy(swaps[i].poolId);
 
             if (strategyType == IVault.StrategyType.PAIR) {
-                helper = PairTradeScript.getExactAmountOutData(
+                helper = PairTradeScript._getExactAmountOutData(
                     _vault,
                     strategy,
                     diffs,
@@ -158,7 +158,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
                     helper
                 );
             } else if (strategyType == IVault.StrategyType.TUPLE) {
-                helper = TupleTradeScript.getExactAmountOutData(
+                helper = TupleTradeScript._getExactAmountOutData(
                     _vault,
                     strategy,
                     diffs,
@@ -175,18 +175,18 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
             // TODO: do we need overflow safe arithmetic? Could skip those for gas savings, since the user
             // provides the inputs
             if (helper.tokenIn == info.overallTokenIn) {
-                helper.toSend += helper.amountTo;
+                helper.toSend += helper.amountCalculated;
             }
 
             if (helper.tokenOut == info.overallTokenOut) {
-                helper.toReceive += helper.amountFrom;
+                helper.toReceive += helper.amountUsedToCalculate;
             }
 
             // Configure pool end state
 
             // TODO: check overflow (https://docs.openzeppelin.com/contracts/3.x/api/utils#SafeCast-toInt256-uint256-)
-            swaps[i].tokenIn.amount = helper.amountTo;
-            swaps[i].tokenOut.amount = helper.amountFrom;
+            swaps[i].tokenIn.amount = helper.amountCalculated;
+            swaps[i].tokenOut.amount = helper.amountUsedToCalculate;
         }
 
         require(helper.toSend <= info.maxAmountIn, "Excessing amount out");

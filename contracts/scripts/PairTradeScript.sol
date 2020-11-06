@@ -25,7 +25,6 @@ import "./ITradeScript.sol";
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
 
-
 abstract contract PairTradeScript is ITradeScript, WeightedProduct {
     using SafeCast for uint256;
     using SafeCast for int256;
@@ -76,7 +75,7 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
             });
     }
 
-    function getExactAmountInData(
+    function _getExactAmountInData(
         IVault vault,
         address strategy,
         IVault.Diff[] memory diffs,
@@ -98,7 +97,9 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
 
         // If not equal, we could add a sanity check by requiring
         // tokenIn == lasToken && amountsIn[i] == 0
-        amountIn = (tokenIn == overallTokenIn) ? amountIn : helper.amountTo;
+        amountIn = (tokenIn == overallTokenIn)
+            ? amountIn
+            : helper.amountCalculated;
 
         //Substract fee
         uint128 adjustedIn = amountIn.sub128(
@@ -119,12 +120,12 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
                 toReceive: helper.toReceive,
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                amountFrom: amountIn,
-                amountTo: amountOut
+                amountUsedToCalculate: amountIn,
+                amountCalculated: amountOut
             });
     }
 
-    function getExactAmountOutData(
+    function _getExactAmountOutData(
         IVault vault,
         address strategy,
         IVault.Diff[] memory diffs,
@@ -146,7 +147,9 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
 
         // If not equal, we could add a sanity check by requiring
         // tokenOut == lasToken && amountsOut[i] == 0
-        amountOut = (tokenOut == overallTokenOut) ? amountOut : helper.amountTo;
+        amountOut = (tokenOut == overallTokenOut)
+            ? amountOut
+            : helper.amountCalculated;
 
         uint128 amountIn = WeightedProduct._inGivenOut(
             poolData.tokenInBalance.toUint128(),
@@ -167,8 +170,8 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
                 toReceive: helper.toReceive,
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
-                amountFrom: amountOut,
-                amountTo: amountIn
+                amountUsedToCalculate: amountOut,
+                amountCalculated: amountIn
             });
     }
 }
