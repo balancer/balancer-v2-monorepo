@@ -92,15 +92,10 @@ describe('TradeScript - WeightProduct', () => {
             [(0.5e18).toString()]
           );
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
-          await trader.getAddress(),
-          await trader.getAddress(),
-          tokens,
-          [
-            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
-            { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
-          ]
-        );
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
+          { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
+        ]);
 
         await expectBalanceChange(
           async () => {
@@ -169,17 +164,12 @@ describe('TradeScript - WeightProduct', () => {
             [(0.5e18).toString()]
           );
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
-          await trader.getAddress(),
-          await trader.getAddress(),
-          tokens,
-          [
-            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX', amount: 1200 }, //out 2400
-            { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //out 4800
-            { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR' }, //out 9600
-            { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 10800
-          ]
-        );
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX', amount: 1200 }, //out 2400
+          { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //out 4800
+          { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR' }, //out 9600
+          { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 10800
+        ]);
 
         await expectBalanceChange(
           async () => {
@@ -225,15 +215,10 @@ describe('TradeScript - WeightProduct', () => {
             [(0.5e18).toString()]
           );
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
-          await trader.getAddress(),
-          await trader.getAddress(),
-          tokens,
-          [
-            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
-            { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
-          ]
-        );
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
+          { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
+        ]);
 
         await expectBalanceChange(
           async () => {
@@ -302,17 +287,12 @@ describe('TradeScript - WeightProduct', () => {
             [(0.5e18).toString()]
           );
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
-          await trader.getAddress(),
-          await trader.getAddress(),
-          tokens,
-          [
-            { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR', amount: 9600 }, //in 4800
-            { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //in 2400
-            { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX' }, //in 1200
-            { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
-          ]
-        );
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR', amount: 9600 }, //in 4800
+          { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //in 2400
+          { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX' }, //in 1200
+          { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
+        ]);
 
         await expectBalanceChange(
           async () => {

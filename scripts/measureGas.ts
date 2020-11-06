@@ -83,8 +83,6 @@ async function batchedSwap(withdrawTokens: boolean) {
 
   for (let poolAmount = 1; poolAmount <= BATCHED_SWAP_TOTAL_POOLS; ++poolAmount) {
     const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
-      await trader.getAddress(),
-      await trader.getAddress(),
       tokens,
       pools.slice(0, poolAmount).map((poolId) => {
         return { poolId, tokenIn: 'DAI', tokenOut: 'MKR', amount: 500 };
@@ -92,18 +90,19 @@ async function batchedSwap(withdrawTokens: boolean) {
     );
 
     const receipt = await (
-      await script
-        .connect(trader)
-        .swapExactAmountIn(
-          tokens.DAI.address,
-          tokens.MKR.address,
-          500 * poolAmount,
-          toFixedPoint(1),
-          diffs,
-          swaps,
-          amounts,
-          withdrawTokens
-        )
+      await script.connect(trader).swapExactAmountIn(
+        {
+          overallTokenIn: tokens.DAI.address,
+          overallTokenOut: tokens.MKR.address,
+          minAmountOut: 500 * poolAmount,
+          maxPrice: toFixedPoint(1),
+        },
+        diffs,
+        swaps,
+        [],
+        amounts,
+        withdrawTokens
+      )
     ).wait();
 
     console.log(

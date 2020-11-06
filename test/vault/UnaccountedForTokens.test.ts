@@ -66,6 +66,7 @@ describe('Vault - unaccounted for tokens', () => {
           poolId,
           controller.address,
           [tokens.DAI.address, tokens.MKR.address],
+          [(2e18).toString(), (2e18).toString()],
           [(2e18).toString(), (2e18).toString()]
         );
 
@@ -95,7 +96,12 @@ describe('Vault - unaccounted for tokens', () => {
         { token: tokens.MKR.address, vaultDelta: 0, amountIn: 0 },
       ];
       const swaps: [Swap] = [
-        { poolId, tokenIn: { tokenDiffIndex: 0, amount: 500 }, tokenOut: { tokenDiffIndex: 1, amount: 500 } },
+        {
+          poolId,
+          tokenIn: { tokenDiffIndex: 0, amount: 500 },
+          tokenOut: { tokenDiffIndex: 1, amount: 500 },
+          userData: '0x',
+        },
       ];
 
       await vault
