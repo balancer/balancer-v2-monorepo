@@ -84,18 +84,18 @@ contract BToken is BTokenBase {
 
     function allowance(address src, address dst)
         external
-        view
         override
+        view
         returns (uint256)
     {
         return _allowance[src][dst];
     }
 
-    function balanceOf(address whom) external view override returns (uint256) {
+    function balanceOf(address whom) external override view returns (uint256) {
         return _balance[whom];
     }
 
-    function totalSupply() public view override returns (uint256) {
+    function totalSupply() public override view returns (uint256) {
         return _totalSupply;
     }
 

@@ -174,7 +174,7 @@ contract WeightedProdStrategy is
         ITradingStrategy.Swap calldata swap,
         uint128 balanceIn,
         uint128 balanceOut
-    ) external view override returns (bool, uint128) {
+    ) external override view returns (bool, uint128) {
         //Subtract fee
         uint128 feeAmount = swap.amountIn.mul128(_swapFee.toUint128());
         uint128 adjustedIn = swap.amountIn.sub128(feeAmount);
@@ -191,7 +191,7 @@ contract WeightedProdStrategy is
         return (swap.amountOut <= maximumAmountOut, feeAmount);
     }
 
-    function getSwapFee() external view override returns (uint256) {
+    function getSwapFee() external override view returns (uint256) {
         return _swapFee;
     }
 }

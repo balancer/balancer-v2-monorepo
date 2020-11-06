@@ -74,8 +74,8 @@ abstract contract VaultAccounting is IVault {
 
     function getTotalUnaccountedForTokens(address token)
         public
-        view
         override
+        view
         returns (uint256)
     {
         uint256 totalBalance = IERC20(token).balanceOf(address(this));
