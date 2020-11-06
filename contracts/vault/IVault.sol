@@ -258,8 +258,15 @@ interface IVault {
         FundsOut calldata fundsOut
     ) external;
 
-    // Investment interface
+    // Flash Loan interface
+    function flashLoan(
+        address _receiver,
+        address _token,
+        uint256 _amount,
+        bytes memory _params //TODO check for reentrancy
+    ) external;
 
+    // Investment interface
     function setInvestablePercentage(
         bytes32 poolId,
         IERC20 token,
