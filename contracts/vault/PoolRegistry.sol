@@ -397,7 +397,8 @@ abstract contract PoolRegistry is
         address operator
     ) external override onlyPoolController(poolId) {
         require(
-            _poolTokenBalance[poolId][token].cash ==
+            _poolInvestmentManagers[poolId][token] != address(0) &&
+                _poolTokenBalance[poolId][token].cash ==
                 _poolTokenBalance[poolId][token].total,
             "Cannot remove an investment manager with outstanding investment"
         );
