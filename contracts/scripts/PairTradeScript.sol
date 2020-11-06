@@ -33,9 +33,9 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
 
     // Data required to compute a trade
     struct PairPoolData {
-        uint256 tokenInBalance;
+        uint128 tokenInBalance;
         uint256 tokenInDenorm;
-        uint256 tokenOutBalance;
+        uint128 tokenOutBalance;
         uint256 tokenOutDenorm;
         uint256 swapFee;
     }
@@ -107,9 +107,9 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
         );
 
         uint128 amountOut = WeightedProduct._outGivenIn(
-            poolData.tokenInBalance.toUint128(),
+            poolData.tokenInBalance,
             poolData.tokenInDenorm,
-            poolData.tokenOutBalance.toUint128(),
+            poolData.tokenOutBalance,
             poolData.tokenOutDenorm,
             adjustedIn
         );
@@ -152,9 +152,9 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
             : helper.amountCalculated;
 
         uint128 amountIn = WeightedProduct._inGivenOut(
-            poolData.tokenInBalance.toUint128(),
+            poolData.tokenInBalance,
             poolData.tokenInDenorm,
-            poolData.tokenOutBalance.toUint128(),
+            poolData.tokenOutBalance,
             poolData.tokenOutDenorm,
             amountOut
         );
