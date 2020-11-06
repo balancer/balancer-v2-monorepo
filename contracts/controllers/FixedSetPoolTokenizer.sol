@@ -49,19 +49,7 @@ contract FixedSetPoolTokenizer is BToken {
         address[] memory tokens,
         uint128[] memory amounts
     ) public {
-        // Transfer all tokens, don't use user balance
-        uint128[] memory amountsToTransfer = new uint128[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            amountsToTransfer[i] = amounts[i];
-        }
-
-        vault.addLiquidity(
-            poolId,
-            msg.sender,
-            tokens,
-            amounts,
-            amountsToTransfer
-        );
+        vault.addLiquidity(poolId, msg.sender, tokens, amounts, amounts);
 
         _mintPoolShare(initialBPT);
         _pushPoolShare(msg.sender, initialBPT);
