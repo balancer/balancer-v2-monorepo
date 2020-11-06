@@ -49,7 +49,7 @@ contract FixedSetPoolTokenizer is BToken {
         address[] memory tokens,
         uint128[] memory amounts
     ) public {
-        vault.addLiquidity(poolId, msg.sender, tokens, amounts);
+        vault.addLiquidity(poolId, msg.sender, tokens, amounts, amounts);
 
         _mintPoolShare(initialBPT);
         _pushPoolShare(msg.sender, initialBPT);
@@ -59,10 +59,11 @@ contract FixedSetPoolTokenizer is BToken {
     // poolAmountOut - how much bpt the user expects to get
     // maxAmountsIn - the max amounts of each token the user is willing to add to the vault
     // The set of tokens is not specified because it is read from the Vault - and remains immutable that way.
-    function joinPool(uint256 poolAmountOut, uint128[] calldata maxAmountsIn)
-        external
-        _lock_
-    {
+    function joinPool(
+        uint256 poolAmountOut,
+        uint128[] calldata maxAmountsIn,
+        bool transferTokens
+    ) external _lock_ {
         uint256 poolTotal = totalSupply();
         uint128 ratio = bdiv(poolAmountOut, poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
@@ -76,21 +77,37 @@ contract FixedSetPoolTokenizer is BToken {
         );
 
         uint128[] memory amountsIn = new uint128[](tokens.length);
+        uint128[] memory amountsToTransfer = new uint128[](tokens.length);
+
         for (uint256 i = 0; i < tokens.length; i++) {
             amountsIn[i] = balances[i].mul128(ratio);
             require(amountsIn[i] <= maxAmountsIn[i], "ERR_LIMIT_IN");
+
+            if (transferTokens) {
+                amountsToTransfer[i] = amountsIn[i];
+            } else {
+                // This leads into user balance withdrawals
+                amountsToTransfer[i] = 0;
+            }
         }
 
-        vault.addLiquidity(poolId, msg.sender, tokens, amountsIn);
+        vault.addLiquidity(
+            poolId,
+            msg.sender,
+            tokens,
+            amountsIn,
+            amountsToTransfer
+        );
 
         _mintPoolShare(poolAmountOut);
         _pushPoolShare(msg.sender, poolAmountOut);
     }
 
-    function exitPool(uint256 poolAmountIn, uint256[] calldata minAmountsOut)
-        external
-        _lock_
-    {
+    function exitPool(
+        uint256 poolAmountIn,
+        uint256[] calldata minAmountsOut,
+        bool withdrawTokens
+    ) external _lock_ {
         uint256 poolTotal = totalSupply();
         uint128 ratio = bdiv(poolAmountIn, poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
@@ -104,12 +121,27 @@ contract FixedSetPoolTokenizer is BToken {
         );
 
         uint128[] memory amountsOut = new uint128[](tokens.length);
+        uint128[] memory amountsToTransfer = new uint128[](tokens.length);
+
         for (uint256 i = 0; i < tokens.length; i++) {
             amountsOut[i] = balances[i].mul128(ratio);
             require(amountsOut[i] >= minAmountsOut[i], "NOT EXITING ENOUGH");
+
+            if (withdrawTokens) {
+                amountsToTransfer[i] = amountsOut[i];
+            } else {
+                // This leads into user balance deposits
+                amountsToTransfer[i] = 0;
+            }
         }
 
-        vault.removeLiquidity(poolId, msg.sender, tokens, amountsOut);
+        vault.removeLiquidity(
+            poolId,
+            msg.sender,
+            tokens,
+            amountsOut,
+            amountsToTransfer
+        );
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);

@@ -116,14 +116,16 @@ interface IVault {
         bytes32 poolId,
         address from,
         address[] calldata tokens,
-        uint128[] calldata amounts
+        uint128[] calldata totalAmounts,
+        uint128[] calldata amountsToTransfer
     ) external;
 
     function removeLiquidity(
         bytes32 poolId,
         address to,
         address[] calldata tokens,
-        uint128[] calldata amounts
+        uint128[] calldata totalAmounts,
+        uint128[] calldata amountsToTransfer
     ) external;
 
     // Trading interface

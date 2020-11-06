@@ -42,7 +42,8 @@ export async function setupPool(
     await token.mint(controller.address, entry[1]);
     await token.connect(controller).approve(vault.address, MAX_UINT256);
 
-    await vault.connect(controller).addLiquidity(poolId, controller.address, [token.address], [entry[1]]);
+    // Transfer tokens, don't withdraw from user balance
+    await vault.connect(controller).addLiquidity(poolId, controller.address, [token.address], [entry[1]], [entry[1]]);
   }
 
   return poolId;
