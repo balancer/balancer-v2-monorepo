@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { ContractFactory, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../scripts/helpers/deploy';
 import { PairTS } from '../scripts/helpers/pools';
@@ -8,18 +8,10 @@ import { deployTokens, TokenList } from './helpers/tokens';
 import { MAX_UINT256 } from './helpers/constants';
 
 const { BigNumber } = ethers;
-const TEST_TOKEN_DECIMALS = 3;
-
-const fromTokenUnits = (num: string) => {
-  const power = BigNumber.from(10).pow(TEST_TOKEN_DECIMALS);
-  const scaled = parseFloat(num);
-  return BigNumber.from(scaled).mul(BigNumber.from(power));
-};
 
 describe('InvestmentManager', function () {
-  let deployer: SignerWithAddress;
   let owner: SignerWithAddress;
-  let deployerAddress: string, ownerAddress: string;
+  let ownerAddress: string;
   let poolId: string;
   let vault: Contract;
   let strategy: Contract;
@@ -28,9 +20,8 @@ describe('InvestmentManager', function () {
   let tokens: TokenList = {};
 
   beforeEach(async function () {
-    [deployer, owner] = await ethers.getSigners();
+    [, owner] = await ethers.getSigners();
 
-    deployerAddress = deployer.address;
     ownerAddress = owner.address;
 
     vault = await deploy('Vault', { args: [] });
@@ -108,10 +99,10 @@ describe('InvestmentManager', function () {
 
         it('should revert if you attempt to divest while underutilized', async () => {
           const reversionMsg = 'under investment amount - cannot divest';
-          const divestmentAmount = BigNumber.from((10e18).toString())
-          expect(vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address, divestmentAmount)).to.be.revertedWith(
-            reversionMsg
-          );
+          const divestmentAmount = BigNumber.from((10e18).toString());
+          expect(
+            vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address, divestmentAmount)
+          ).to.be.revertedWith(reversionMsg);
         });
       });
 
@@ -129,7 +120,7 @@ describe('InvestmentManager', function () {
         it('should let anyone trigger divestment when assets are overutilized', async () => {
           expect(await tokens.DAI.balanceOf(vault.address)).to.equal(BigNumber.from((20e18).toString()));
 
-          const divestmentAmount = BigNumber.from((50e18).toString())
+          const divestmentAmount = BigNumber.from((50e18).toString());
           await vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address, divestmentAmount);
 
           expect(await tokens.DAI.balanceOf(vault.address)).to.equal(BigNumber.from((70e18).toString()));
@@ -156,7 +147,7 @@ describe('InvestmentManager', function () {
           // Total:             116
           // Utilizaton: 96/116 = 82.759%
 
-          const divestmentAmount = BigNumber.from((3.2e18).toString())
+          const divestmentAmount = BigNumber.from((3.2e18).toString());
           await vault.divestPoolBalance(poolId, tokens.DAI.address, investmentManager.address, divestmentAmount);
 
           // Vault:             23.2

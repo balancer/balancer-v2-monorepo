@@ -126,14 +126,14 @@ abstract contract PoolRegistry is
         return poolId;
     }
 
-    function getTotalPools() external override view returns (uint256) {
+    function getTotalPools() external view override returns (uint256) {
         return _pools.length();
     }
 
     function getPoolIds(uint256 startIndex, uint256 endIndex)
         external
-        override
         view
+        override
         _viewlock_
         returns (bytes32[] memory)
     {
@@ -153,8 +153,8 @@ abstract contract PoolRegistry is
 
     function getPoolTokens(bytes32 poolId)
         external
-        override
         view
+        override
         _viewlock_
         withExistingPool(poolId)
         returns (address[] memory)
@@ -169,8 +169,8 @@ abstract contract PoolRegistry is
 
     function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
         external
-        override
         view
+        override
         withExistingPool(poolId)
         returns (uint128[] memory)
     {
@@ -185,8 +185,8 @@ abstract contract PoolRegistry is
 
     function getPoolController(bytes32 poolId)
         external
-        override
         view
+        override
         withExistingPool(poolId)
         _viewlock_
         returns (address)
@@ -196,8 +196,8 @@ abstract contract PoolRegistry is
 
     function getPoolStrategy(bytes32 poolId)
         external
-        override
         view
+        override
         withExistingPool(poolId)
         _viewlock_
         returns (address, StrategyType)
@@ -348,8 +348,8 @@ abstract contract PoolRegistry is
 
     function getInvestablePercentage(bytes32 poolId, address token)
         external
-        override
         view
+        override
         _viewlock_
         withExistingPool(poolId)
         returns (uint128)
@@ -369,7 +369,10 @@ abstract contract PoolRegistry is
         withExistingPool(poolId)
         onlyPoolController(poolId)
     {
-        require(percentage <= FixedPoint.ONE, "Percentage must be between 0 and 100%");
+        require(
+            percentage <= FixedPoint.ONE,
+            "Percentage must be between 0 and 100%"
+        );
         _investablePercentage[poolId][token] = percentage;
     }
 
@@ -379,8 +382,10 @@ abstract contract PoolRegistry is
         address operator
     ) external override onlyPoolController(poolId) {
         require(
-          _poolInvestmentManagers[poolId][token] == address(0) ||
-            _poolTokenBalance[poolId][token].cash == _poolTokenBalance[poolId][token].total
+            _poolInvestmentManagers[poolId][token] == address(0) ||
+                _poolTokenBalance[poolId][token].cash ==
+                _poolTokenBalance[poolId][token].total,
+            "Cannot set a new investment manager with outstanding investment"
         );
         _poolInvestmentManagers[poolId][token] = operator;
         emit AuthorizedPoolInvestmentManager(poolId, token, operator);
@@ -392,8 +397,9 @@ abstract contract PoolRegistry is
         address operator
     ) external override onlyPoolController(poolId) {
         require(
-          _poolInvestmentManagers[poolId][token] == address(0) ||
-            _poolTokenBalance[poolId][token].cash == _poolTokenBalance[poolId][token].total
+            _poolTokenBalance[poolId][token].cash ==
+                _poolTokenBalance[poolId][token].total,
+            "Cannot remove an investment manager with outstanding investment"
         );
 
         delete _poolInvestmentManagers[poolId][token];

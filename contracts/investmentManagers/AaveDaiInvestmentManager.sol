@@ -42,10 +42,14 @@ contract AaveDaiInvestmentManager is InvestmentManager {
 
     // Addresses subject to change
     // https://docs.aave.com/developers/deployed-contracts/deployed-contract-instances
-    address constant lendingPoolCore = 0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3;
-    address constant lendingPoolAddress = 0x398eC7346DcD622eDc5ae82352F02bE94C62d119;
-    address constant reserveAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F; // for Dai
-    address constant aTokenAddress = 0xfC1E690f61EFd961294b3e1Ce3313fBD8aa4f85d; // For aDai
+    address
+        internal constant _LENDING_POOL_CORE = 0x3dfd23A6c5E8BbcFc9581d2E864a68feb6a076d3;
+    address
+        internal constant _LENDING_POOL_ADDRESS = 0x398eC7346DcD622eDc5ae82352F02bE94C62d119;
+    address
+        internal constant _RESERVE_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F; // for Dai
+    address
+        internal constant _ATOKEN_ADDRESS = 0xfC1E690f61EFd961294b3e1Ce3313fBD8aa4f85d; // For aDai
 
     function initialize() public override {
         // grant allowance to vault
@@ -54,7 +58,7 @@ contract AaveDaiInvestmentManager is InvestmentManager {
             uint256 MAX_INT
          = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
         _token.approve(address(_vault), MAX_INT);
-        _token.approve(address(lendingPoolCore), MAX_INT);
+        _token.approve(address(_LENDING_POOL_CORE), MAX_INT);
     }
 
     // transfers capital out, for invesment
@@ -63,8 +67,8 @@ contract AaveDaiInvestmentManager is InvestmentManager {
         cash -= amount;
 
         uint256 referralCode = 0;
-        ILendingPool(lendingPoolAddress).deposit(
-            reserveAddress,
+        ILendingPool(_LENDING_POOL_ADDRESS).deposit(
+            _RESERVE_ADDRESS,
             amount,
             referralCode
         );
@@ -73,7 +77,7 @@ contract AaveDaiInvestmentManager is InvestmentManager {
     // calls capital back in from investments
     // TODO restrict
     function reap(uint128 amount) public {
-        IAToken(aTokenAddress).redeem(amount);
+        IAToken(_ATOKEN_ADDRESS).redeem(amount);
 
         cash += amount;
     }
