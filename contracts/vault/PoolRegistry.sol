@@ -469,6 +469,7 @@ abstract contract PoolRegistry is
             .cash
             .add128(amountToDivest);
 
+        // think about what happens with tokens that charge a transfer fee
         _pullTokens(token, investmentManager, amountToDivest);
         IInvestmentManager(investmentManager).recordPoolDivestment(
             poolId,
