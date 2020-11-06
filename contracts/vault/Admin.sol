@@ -51,6 +51,11 @@ abstract contract Admin is IVault, Settings, UserBalance {
         _setProtocolWithdrawFee(fee);
     }
 
+    function setProtocolSwapFee(uint128 fee) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+        _setProtocolSwapFee(fee);
+    }
+
     function authorizeTrustedOperatorReporter(address reporter)
         external
         override
