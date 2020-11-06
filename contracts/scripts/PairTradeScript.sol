@@ -25,8 +25,6 @@ import "./ITradeScript.sol";
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
 
-// solhint-disable private-vars-leading-underscore
-// solhint-disable var-name-mixedcase
 
 abstract contract PairTradeScript is ITradeScript, WeightedProduct {
     using SafeCast for uint256;
