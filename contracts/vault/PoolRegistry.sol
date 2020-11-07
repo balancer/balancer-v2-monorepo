@@ -452,7 +452,7 @@ abstract contract PoolRegistry is
             .cash
             .sub128(amountToInvest);
 
-        _pushTokens(token, investmentManager, amountToInvest);
+        _pushTokens(token, investmentManager, amountToInvest, false);
         IInvestmentManager(investmentManager).recordPoolInvestment(
             poolId,
             amountToInvest
@@ -507,7 +507,7 @@ abstract contract PoolRegistry is
                 amountToInvest
             );
 
-            _pushTokens(token, investmentManager, amountToInvest);
+            _pushTokens(token, investmentManager, amountToInvest, false);
             IInvestmentManager(investmentManager).recordPoolInvestment(
                 poolId,
                 amountToInvest
