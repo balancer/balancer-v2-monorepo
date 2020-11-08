@@ -24,6 +24,7 @@ import "../BConst.sol";
 import "./IVault.sol";
 import "./VaultAccounting.sol";
 import "./UserBalance.sol";
+import "../investmentManagers/IInvestmentManager.sol";
 
 abstract contract PoolRegistry is
     IVault,
@@ -71,6 +72,25 @@ abstract contract PoolRegistry is
         require(_pools.contains(poolId), "Inexistent pool");
         _;
     }
+
+    // investable percentage per token
+    mapping(bytes32 => mapping(address => uint128))
+        internal _investablePercentage;
+
+    // operators are allowed to use a pools tokens for an investment
+    mapping(bytes32 => mapping(address => address))
+        private _poolInvestmentManagers;
+
+    event AuthorizedPoolInvestmentManager(
+        bytes32 indexed poolId,
+        address indexed token,
+        address indexed operator
+    );
+    event RevokedPoolInvestmentManager(
+        bytes32 indexed poolId,
+        address indexed token,
+        address indexed operator
+    );
 
     modifier onlyPoolController(bytes32 poolId) {
         require(
@@ -324,5 +344,204 @@ abstract contract PoolRegistry is
                 _poolTokens[poolId].remove(tokens[i]);
             }
         }
+    }
+
+    function getInvestablePercentage(bytes32 poolId, address token)
+        external
+        view
+        override
+        _viewlock_
+        withExistingPool(poolId)
+        returns (uint128)
+    {
+        return _investablePercentage[poolId][token];
+    }
+
+    function setInvestablePercentage(
+        bytes32 poolId,
+        address token,
+        uint128 percentage
+    )
+        external
+        override
+        _logs_
+        _lock_
+        withExistingPool(poolId)
+        onlyPoolController(poolId)
+    {
+        require(
+            percentage <= FixedPoint.ONE,
+            "Percentage must be between 0 and 100%"
+        );
+        _investablePercentage[poolId][token] = percentage;
+    }
+
+    function authorizePoolInvestmentManager(
+        bytes32 poolId,
+        address token,
+        address operator
+    ) external override onlyPoolController(poolId) {
+        require(
+            _poolInvestmentManagers[poolId][token] == address(0) ||
+                _poolTokenBalance[poolId][token].cash ==
+                _poolTokenBalance[poolId][token].total,
+            "Cannot set a new investment manager with outstanding investment"
+        );
+        _poolInvestmentManagers[poolId][token] = operator;
+        emit AuthorizedPoolInvestmentManager(poolId, token, operator);
+    }
+
+    function revokePoolInvestmentManager(
+        bytes32 poolId,
+        address token,
+        address operator
+    ) external override onlyPoolController(poolId) {
+        require(
+            _poolInvestmentManagers[poolId][token] != address(0) &&
+                _poolTokenBalance[poolId][token].cash ==
+                _poolTokenBalance[poolId][token].total,
+            "Cannot remove an investment manager with outstanding investment"
+        );
+
+        delete _poolInvestmentManagers[poolId][token];
+        emit RevokedPoolInvestmentManager(poolId, token, operator);
+    }
+
+    modifier onlyPoolInvestmentManager(
+        bytes32 poolId,
+        address token,
+        address operator
+    ) {
+        require(
+            isPoolInvestmentManager(poolId, token, operator),
+            "Only pool investment operator"
+        );
+        _;
+    }
+
+    function isPoolInvestmentManager(
+        bytes32 poolId,
+        address token,
+        address operator
+    ) public view returns (bool) {
+        return _poolInvestmentManagers[poolId][token] == operator;
+    }
+
+    // Investments
+    // how the investment manager receives more tokens to invest
+    // callable by anyone
+    function investPoolBalance(
+        bytes32 poolId,
+        address token,
+        address investmentManager,
+        uint128 amountToInvest // must be less than total allowed
+    ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
+        uint128 targetUtilization = _investablePercentage[poolId][token];
+        uint128 targetInvestableAmount = _poolTokenBalance[poolId][token]
+            .total
+            .mul128(targetUtilization);
+
+        uint128 investedAmount = _poolTokenBalance[poolId][token].invested();
+
+        require(
+            investedAmount.add128(amountToInvest) <= targetInvestableAmount,
+            "over investment amount - cannot invest"
+        );
+
+        _poolTokenBalance[poolId][token].cash = _poolTokenBalance[poolId][token]
+            .cash
+            .sub128(amountToInvest);
+
+        _pushTokens(token, investmentManager, amountToInvest, false);
+        IInvestmentManager(investmentManager).recordPoolInvestment(
+            poolId,
+            amountToInvest
+        );
+    }
+
+    function divestPoolBalance(
+        bytes32 poolId,
+        address token,
+        address investmentManager,
+        uint128 amountToDivest // must be less than total allowed
+    ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
+        uint128 targetUtilization = _investablePercentage[poolId][token];
+        uint128 targetInvestableAmount = _poolTokenBalance[poolId][token]
+            .total
+            .mul128(targetUtilization);
+        uint128 investedAmount = _poolTokenBalance[poolId][token].invested();
+        require(
+            investedAmount.sub128(amountToDivest) >= targetInvestableAmount,
+            "under investment amount - cannot divest"
+        );
+
+        _poolTokenBalance[poolId][token].cash = _poolTokenBalance[poolId][token]
+            .cash
+            .add128(amountToDivest);
+
+        // think about what happens with tokens that charge a transfer fee
+        _pullTokens(token, investmentManager, amountToDivest);
+        IInvestmentManager(investmentManager).recordPoolDivestment(
+            poolId,
+            amountToDivest
+        );
+    }
+
+    function rebalancePoolInvestment(
+        bytes32 poolId,
+        address token,
+        address investmentManager
+    ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
+        uint128 targetUtilization = _investablePercentage[poolId][token];
+        uint128 targetInvestableAmount = _poolTokenBalance[poolId][token]
+            .total
+            .mul128(targetUtilization);
+        uint128 investedAmount = _poolTokenBalance[poolId][token].invested();
+
+        if (targetInvestableAmount > investedAmount) {
+            uint128 amountToInvest = targetInvestableAmount.sub128(
+                investedAmount
+            );
+            _poolTokenBalance[poolId][token]
+                .cash = _poolTokenBalance[poolId][token].cash.sub128(
+                amountToInvest
+            );
+
+            _pushTokens(token, investmentManager, amountToInvest, false);
+            IInvestmentManager(investmentManager).recordPoolInvestment(
+                poolId,
+                amountToInvest
+            );
+        } else if (targetInvestableAmount < investedAmount) {
+            uint128 amountToDivest = investedAmount.sub128(
+                targetInvestableAmount
+            );
+            _poolTokenBalance[poolId][token]
+                .cash = _poolTokenBalance[poolId][token].cash.add128(
+                amountToDivest
+            );
+
+            // think about what happens with tokens that charge a transfer fee
+            _pullTokens(token, investmentManager, amountToDivest);
+            IInvestmentManager(investmentManager).recordPoolDivestment(
+                poolId,
+                amountToDivest
+            );
+        } else {
+            revert(
+                "Pool balance is already balanced between cash and investment"
+            );
+        }
+    }
+
+    // how the investment manager updates the value of invested tokens to the curves knowledge
+    function updateInvested(
+        bytes32 poolId,
+        address token,
+        uint128 amountInvested
+    ) public override onlyPoolInvestmentManager(poolId, token, msg.sender) {
+        _poolTokenBalance[poolId][token].total = amountInvested.add128(
+            _poolTokenBalance[poolId][token].cash
+        );
     }
 }
