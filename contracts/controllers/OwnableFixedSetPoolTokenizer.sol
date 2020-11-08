@@ -42,9 +42,14 @@ contract OwnableFixedSetPoolTokenizer is FixedSetPoolTokenizer, Ownable {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function transferPoolControl(address controller) public onlyOwner {
+    function changePoolController(address controller) public onlyOwner {
         vault.setPoolController(poolId, controller);
     }
 
-    // TODO: allow for the trading strategy to be changed
+    function changePoolStrategy(
+        address strategy,
+        IVault.StrategyType strategyType
+    ) public onlyOwner {
+        vault.setPoolStrategy(poolId, strategy, strategyType);
+    }
 }

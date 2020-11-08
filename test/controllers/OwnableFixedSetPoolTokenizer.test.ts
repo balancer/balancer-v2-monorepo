@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PairTS } from '../../scripts/helpers/pools';
+import { PairTS, TupleTS } from '../../scripts/helpers/pools';
 import { deploy } from '../../scripts/helpers/deploy';
 
 // We need to have a factory for this type of tokenizer in order to deploy it
@@ -33,24 +33,45 @@ describe.skip('OwnableFixedSetPoolTokenizer', function () {
     expect(await vault.getPoolController(poolId)).to.equal(tokenizer.address);
   });
 
-  describe('transferPoolControl', () => {
+  describe('changePoolController', () => {
     it('owner can transfer control of the pool', async () => {
-      await tokenizer.connect(owner).transferPoolControl(other.address);
+      await tokenizer.connect(owner).changePoolController(other.address);
 
       const poolId = await tokenizer.poolId();
       expect(await vault.getPoolController(poolId)).to.equal(other.address);
     });
 
     it('non-owner cannot transfer control of the pool', async () => {
-      await expect(tokenizer.connect(other).transferPoolControl(other.address)).to.be.revertedWith(
+      await expect(tokenizer.connect(other).changePoolController(other.address)).to.be.revertedWith(
         'Ownable: caller is not the owner'
       );
     });
   });
 
   describe('changePoolStrategy', () => {
-    it('owner can change the pool trading stategy');
-    it('non-owner cannot change the pool trading stategy');
-    it('owner cannot change the pool trading stategy to a different type');
+    let otherStrategy: Contract;
+
+    beforeEach(async () => {
+      otherStrategy = await deploy('MockTradingStrategy', { args: [] });
+    });
+
+    it('owner can change the pool trading stategy', async () => {
+      await tokenizer.connect(owner).changePoolStrategy(otherStrategy.address, PairTS);
+
+      const poolId = await tokenizer.poolId();
+      expect(await vault.getPoolStrategy(poolId)).to.have.members([otherStrategy.address, PairTS]);
+    });
+
+    it('non-owner cannot change the pool trading stategy', async () => {
+      await expect(tokenizer.connect(other).changePoolStrategy(otherStrategy.address, PairTS)).to.be.revertedWith(
+        'Ownable: caller is not the owner'
+      );
+    });
+
+    it('owner cannot change the pool trading stategy to a different type', async () => {
+      await expect(tokenizer.connect(owner).changePoolStrategy(otherStrategy.address, TupleTS)).to.be.revertedWith(
+        'Trading strategy type cannot change'
+      );
+    });
   });
 });

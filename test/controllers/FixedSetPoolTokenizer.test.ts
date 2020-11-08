@@ -8,6 +8,7 @@ import { deployTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { setupTokenizer } from '../../scripts/helpers/controllers';
+import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
 describe('FixedSetPoolTokenizer', function () {
   let admin: SignerWithAddress;
@@ -184,6 +185,12 @@ describe('FixedSetPoolTokenizer', function () {
         ).to.be.revertedWith('NOT EXITING ENOUGH');
       });
 
+      it('fails if not requesting all tokens', async () => {
+        await expect(
+          tokenizer.connect(lp).exitPool((10e18).toString(), [(0.1e18).toString()], true)
+        ).to.be.revertedWith('Tokens and amounts length mismatch');
+      });
+
       it('all tokens due are pushed', async () => {
         await expectBalanceChange(() => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true), lp, tokens, {
           DAI: 0.1e18,
@@ -191,10 +198,33 @@ describe('FixedSetPoolTokenizer', function () {
         });
       });
 
-      it('fails if not requesting all tokens', async () => {
-        await expect(
-          tokenizer.connect(lp).exitPool((10e18).toString(), [(0.1e18).toString()], true)
-        ).to.be.revertedWith('Tokens and amounts length mismatch');
+      context('with protocol withdraw fees', () => {
+        const protocolWithdrawFee = 0.01;
+
+        beforeEach(async () => {
+          await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
+        });
+
+        it('tokens minus fee are pushed', async () => {
+          await expectBalanceChange(
+            () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true),
+            lp,
+            tokens,
+            {
+              DAI: 0.1e18 * (1 - protocolWithdrawFee),
+              MKR: 0.2e18 * (1 - protocolWithdrawFee),
+            }
+          );
+        });
+      });
+
+      it('can deposit into user balance', async () => {
+        await expectBalanceChange(
+          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false),
+          lp,
+          tokens,
+          {}
+        );
       });
 
       it('fails if requesting extra tokens', async () => {
