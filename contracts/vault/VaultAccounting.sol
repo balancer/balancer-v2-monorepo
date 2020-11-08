@@ -36,8 +36,8 @@ library BalanceLib {
     // internal logic, which the Vault uses when validating swaps with the Pool's Trading Strategy, as well as returns
     // profits by returning invested 'cash'.
     //
-    // The Vault disallows the Pool's 'cash' ever becoming negative, in other words, it can never use any tokens that are
-    // not inside of the Vault.
+    // The Vault disallows the Pool's 'cash' ever becoming negative, in other words, it can never use any tokens that
+    // are not inside of the Vault.
     struct Balance {
         uint128 cash;
         uint128 total;
