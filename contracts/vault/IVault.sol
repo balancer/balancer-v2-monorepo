@@ -196,6 +196,17 @@ interface IVault {
     function setPoolController(bytes32 poolId, address controller) external;
 
     /**
+     * @dev Sets a new Trading Strategy for a Pool. Can only be called by its controller.
+     *
+     * The StrategyType must match the one of the Pool's current Trading Strategy - it can never be changed.
+     */
+    function setPoolStrategy(
+        bytes32 poolId,
+        address strategy,
+        StrategyType strategyType
+    ) external;
+
+    /**
      * @dev Adds liquidity into a Pool. Can only be called by its controller.
      *
      * For each token, the Pool's balance will be increased by `totalAmounts[i]`. This is achieved by first transferring

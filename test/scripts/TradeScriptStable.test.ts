@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
@@ -9,25 +10,28 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { MAX_UINT256 } from '../helpers/constants';
 
 describe('TradeScript - Stable', () => {
+  let admin: SignerWithAddress;
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
 
   let vault: Contract;
   let curve: Contract;
+  let curveWithFee: Contract;
   let tradeScript: Contract;
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, controller, trader] = await ethers.getSigners();
+    [, admin, controller, trader] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault', async () => {
-    vault = await deploy('Vault', { args: [] });
+    vault = await deploy('Vault', { from: admin, args: [] });
     tradeScript = await deploy('TradeScript', { args: [vault.address] });
     tokens = await deployTokens(['DAI', 'USDC', 'TUSD', 'SUSD']);
 
     const amp = (30e18).toString();
     curve = await deploy('StableStrategy', { args: [amp, 0] });
+    curveWithFee = await deploy('StableStrategy', { args: [amp, (0.02e18).toString()] }); // 2% fee
   });
 
   describe('swap', () => {
@@ -60,6 +64,12 @@ describe('TradeScript - Stable', () => {
         ['USDC', (30e18).toString()],
         ['TUSD', (40e18).toString()],
         ['SUSD', (50e18).toString()],
+      ]);
+      pools.push(poolId);
+      // Create pool 4 with fee
+      poolId = await setupPool(vault, curveWithFee, 1, tokens, controller, [
+        ['DAI', (50e18).toString()],
+        ['USDC', (60e18).toString()],
       ]);
       pools.push(poolId);
 
@@ -98,6 +108,68 @@ describe('TradeScript - Stable', () => {
           tokens,
           { DAI: (-2e18).toString(), USDC: ['gte', '2004825982206027991'] } //2004825982206027991
         );
+      });
+
+      it('one pool DAI for USDC with swap fee', async () => {
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2.041e18).toString() }, //2e18 / (1 - 0.02)
+        ]);
+        const indexes = getSwapTokenIndexes([[0, 1]]);
+
+        await expectBalanceChange(
+          async () => {
+            await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
+            await tradeScript.connect(trader).swapExactAmountIn(
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.USDC.address,
+                minAmountOut: (2e18).toString(), //minAmountOut
+                maxPrice: (1.1e18).toString(), //maxPrice
+              },
+              diffs,
+              swaps,
+              indexes,
+              amounts,
+              true
+            );
+          },
+          trader,
+          tokens,
+          { DAI: (-2.041e18).toString(), USDC: ['gte', '2004825982206027991'] }
+        );
+      });
+
+      it('one pool DAI for USDC with swap fee and swap protocol fee', async () => {
+        await vault.connect(admin).setProtocolSwapFee((0.5e18).toString()); //50%
+
+        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+          { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2.041e18).toString() }, //2e18 / (1 - 0.02)
+        ]);
+        const indexes = getSwapTokenIndexes([[0, 1]]);
+
+        await expectBalanceChange(
+          async () => {
+            await tokens.DAI.connect(trader).approve(tradeScript.address, (100e18).toString());
+            await tradeScript.connect(trader).swapExactAmountIn(
+              {
+                overallTokenIn: tokens.DAI.address,
+                overallTokenOut: tokens.USDC.address,
+                minAmountOut: (2e18).toString(), //minAmountOut
+                maxPrice: (1.1e18).toString(), //maxPrice
+              },
+              diffs,
+              swaps,
+              indexes,
+              amounts,
+              true
+            );
+          },
+          trader,
+          tokens,
+          { DAI: (-2.041e18).toString(), USDC: ['gte', '2004825982206027991'] }
+        );
+
+        expect(await vault.getTotalUnaccountedForTokens(tokens.DAI.address)).to.equal((0.04082e18 / 2).toString()); //50% of 2% of 2.041e18
       });
 
       it('multihop DAI for SUSD', async () => {

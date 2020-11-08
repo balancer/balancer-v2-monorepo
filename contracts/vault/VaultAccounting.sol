@@ -22,6 +22,7 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../math/FixedPoint.sol";
 
 import "./IVault.sol";
+import "./Settings.sol";
 
 library BalanceLib {
     using FixedPoint for uint128;
@@ -46,16 +47,16 @@ library BalanceLib {
      * @dev The number of invested assets. This is simply the difference between 'total' and 'cash' - the Vault has no
      * insights into how the assets are used by the Investment Manager.
      */
-    function invested(Balance storage self) internal view returns (uint128) {
+    function invested(Balance memory self) internal view returns (uint128) {
         return self.total - self.cash;
     }
 
     /**
      * @dev Increases a Pool's balance. Called when tokens are added to the Pool (except from the Investment Manager).
      */
-    function increase(Balance storage self, uint128 amount)
+    function increase(Balance memory self, uint128 amount)
         internal
-        view
+        pure
         returns (Balance memory)
     {
         return
@@ -68,9 +69,9 @@ library BalanceLib {
     /**
      * @dev Decreases a Pool's balance. Called when tokens are removed from the Pool (except to the Investment Manager).
      */
-    function decrease(Balance storage self, uint128 amount)
+    function decrease(Balance memory self, uint128 amount)
         internal
-        view
+        pure
         returns (Balance memory)
     {
         return
@@ -81,7 +82,7 @@ library BalanceLib {
     }
 }
 
-abstract contract VaultAccounting is IVault {
+abstract contract VaultAccounting is IVault, Settings {
     using BalanceLib for BalanceLib.Balance;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -137,12 +138,14 @@ abstract contract VaultAccounting is IVault {
     }
 
     /**
-     * @dev Transfers tokens from the Vault to `to`.
+     * @dev Transfers tokens from the Vault to `to`. If `chargeFee` is true, a withdrawal fee will be charged as
+     * unaccounted-for tokens.
      */
     function _pushTokens(
         address token,
         address to,
-        uint128 amount
+        uint128 amount,
+        bool chargeFee
     ) internal {
         if (amount == 0) {
             return;
@@ -150,6 +153,10 @@ abstract contract VaultAccounting is IVault {
 
         _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(amount);
 
-        IERC20(token).safeTransfer(to, amount);
+        uint128 amountToSend = chargeFee
+            ? _applyProtocolWithdrawFee(amount)
+            : amount;
+
+        IERC20(token).safeTransfer(to, amountToSend);
     }
 }
