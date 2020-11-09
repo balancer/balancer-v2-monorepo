@@ -27,15 +27,33 @@ import "./Settings.sol";
 library BalanceLib {
     using FixedPoint for uint128;
 
+    // This data structure is used to represent a token's balance for a Pool. 'cash' is how many tokens the Pool has
+    // sitting inside of the Vault. 'total' is always larger or equal to 'cash', and represents the Pool's total token
+    // balance, including tokens that are *not* inside of the Vault.
+    //
+    // Cash and total are updated in concordance whenever tokens are added/removed from a Pool, except when interacting
+    // with the Pool's Investment Manager. The Investment Manager updates the new 'total' value (according to its own)
+    // internal logic, which the Vault uses when validating swaps with the Pool's Trading Strategy, as well as returns
+    // profits by returning invested 'cash'.
+    //
+    // The Vault disallows the Pool's 'cash' ever becoming negative, in other words, it can never use any tokens that
+    // are not inside of the Vault.
     struct Balance {
         uint128 cash;
         uint128 total;
     }
 
-    function invested(Balance memory self) internal pure returns (uint128) {
+    /**
+     * @dev The number of invested assets. This is simply the difference between 'total' and 'cash' - the Vault has no
+     * insights into how the assets are used by the Investment Manager.
+     */
+    function invested(Balance memory self) internal view returns (uint128) {
         return self.total - self.cash;
     }
 
+    /**
+     * @dev Increases a Pool's balance. Called when tokens are added to the Pool (except from the Investment Manager).
+     */
     function increase(Balance memory self, uint128 amount)
         internal
         pure
@@ -48,6 +66,9 @@ library BalanceLib {
             });
     }
 
+    /**
+     * @dev Decreases a Pool's balance. Called when tokens are removed from the Pool (except to the Investment Manager).
+     */
     function decrease(Balance memory self, uint128 amount)
         internal
         pure
@@ -68,9 +89,9 @@ abstract contract VaultAccounting is IVault, Settings {
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
-    // The vault's accounted-for balance for each token. These include:
-    //  * tokens in pools
-    //  * tokens stored as user balance
+    // The Vault's accounted-for balance for each token. This should always be equal to the sum of all User Balance
+    // tokens, plus all 'cash' of all Pools.
+    // TODO: make this uint128 and not Balance, since it consists exclusively of 'cash'.
     mapping(address => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
 
     function getTotalUnaccountedForTokens(address token)
@@ -85,7 +106,13 @@ abstract contract VaultAccounting is IVault, Settings {
         return totalBalance - _vaultTokenBalance[token].cash;
     }
 
-    // Returns the amount of tokens that were actually received
+    /**
+     * @dev Transfers tokens into the Vault from `from`. The caller must verify that this action was authorized by
+     * `from` (typically by the entry-point function being called by an operator for `from`).
+     *
+     * The number of tokens received are measured as a delta, by calling `IERC20.balanceOf` before and after the
+     * transfer. This means tokens with a transfer fee are supported. The number of tokens received is returned.
+     */
     function _pullTokens(
         address token,
         address from,
@@ -110,6 +137,10 @@ abstract contract VaultAccounting is IVault, Settings {
         return received;
     }
 
+    /**
+     * @dev Transfers tokens from the Vault to `to`. If `chargeFee` is true, a withdrawal fee will be charged as
+     * unaccounted-for tokens.
+     */
     function _pushTokens(
         address token,
         address to,

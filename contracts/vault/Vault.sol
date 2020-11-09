@@ -15,26 +15,13 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../vendor/EnumerableSet.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-
-import "../math/FixedPoint.sol";
-
-import "../strategies/ITradingStrategy.sol";
-import "../strategies/IPairTradingStrategy.sol";
-import "../strategies/ITupleTradingStrategy.sol";
-
 import "./IVault.sol";
-import "./VaultAccounting.sol";
-import "./PoolRegistry.sol";
 import "./Settings.sol";
+import "./VaultAccounting.sol";
+import "./UserBalance.sol";
+import "./PoolRegistry.sol";
 import "./Swaps.sol";
 import "./Admin.sol";
-import "./UserBalance.sol";
 
 // solhint-disable no-empty-blocks
 

@@ -47,33 +47,29 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         FundsIn calldata fundsIn,
         FundsOut calldata fundsOut
     ) external override {
+        //TODO: avoid reentrancy
+
+        // Any net token amount going into the Vault will be taken from `fundsIn.withdrawFrom`, so they must have
+        // approved the caller to use their funds.
         require(
             isOperatorFor(fundsIn.withdrawFrom, msg.sender),
             "Caller is not operator"
         );
 
-        //TODO: avoid reentrancy
+        // Contains the swap protocol fees charged for each token
+        uint128[] memory diffSwapProtocolFees = new uint128[](diffs.length);
 
-        // TODO: check tokens in diffs are unique. Is this necessary? Would avoid multiple valid diff
-        // indexes pointing to the same token.
-        // A simple way to implement this is to require the addresses to be sorted, and require strict
-        // inequality
-
-        uint128[] memory diffProtocolFees = new uint128[](diffs.length);
-
+        // Validate correctness of VaultDelta array
+        // TODO: take vaultDelta out of the diffs struct, and initialize the array here instead
         for (uint256 i = 0; i < diffs.length; ++i) {
             require(diffs[i].vaultDelta == 0, "Bad workspace");
-            diffProtocolFees[i] = 0;
+            diffSwapProtocolFees[i] = 0;
         }
 
-        // TODO: check each pool only appears in a single swap. Might be overly restrictive, but easy
-        // to implement (require swaps array to be sorted by poolId).
-
         // Steps 1, 2 & 3:
-        //  - validate hints
-        //  - check new pool balances are valid
-        //  - accumulate token diffs
+        //  - check swaps are valid
         //  - update pool balances
+        //  - accumulate token diffs
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             Swap memory swap = swaps[i];
@@ -84,14 +80,9 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
             address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
-            // 1.2: Accumulate token diffs
-            diffs[swap.tokenIn.tokenDiffIndex].vaultDelta += swap
-                .tokenIn
-                .amount;
-            diffs[swap.tokenOut.tokenDiffIndex].vaultDelta -= swap
-                .tokenOut
-                .amount;
+            require(tokenIn != tokenOut, "Swap for same token");
 
+            // 1: Validate swap using the Pool's Trading Strategy
             (
                 BalanceLib.Balance memory tokenInFinalBalance,
                 BalanceLib.Balance memory tokenOutFinalBalance,
@@ -104,23 +95,32 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                 tokenOut
             );
 
-            diffProtocolFees[swap
-                .tokenIn
-                .tokenDiffIndex] = diffProtocolFees[swap.tokenIn.tokenDiffIndex]
-                .add128(protocolSwapFeeAmountIn);
-
-            // 3: update pool balances
-
+            // 2: Update Pool balances - these have been deducted the swap protocol fees
             _poolTokenBalance[swap.poolId][tokenIn] = tokenInFinalBalance;
             _poolTokenBalance[swap.poolId][tokenOut] = tokenOutFinalBalance;
+
+            // 3: Accumulate token diffs
+            diffs[swap.tokenIn.tokenDiffIndex].vaultDelta += swap
+                .tokenIn
+                .amount;
+            diffs[swap.tokenOut.tokenDiffIndex].vaultDelta -= swap
+                .tokenOut
+                .amount;
+
+            // 3b: Accumulate token swap protocol fees
+            diffSwapProtocolFees[swap
+                .tokenIn
+                .tokenDiffIndex] = diffSwapProtocolFees[swap
+                .tokenIn
+                .tokenDiffIndex]
+                .add128(protocolSwapFeeAmountIn);
         }
 
-        // Step 4: Receive intended tokens, pulling the difference from user balance
+        // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 
             if (diff.vaultDelta > 0) {
-                // TODO: skip _pullTokens if diff.amountIn is 0
                 uint128 received = _pullTokens(
                     diff.token,
                     fundsIn.withdrawFrom,
@@ -142,7 +142,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             }
         }
 
-        // Step 5: send out tokens to send
+        // Step 5: Send tokens due to the recipient
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
 
@@ -154,7 +154,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                     // Actually transfer the tokens to the recipient
                     _pushTokens(diff.token, fundsOut.recipient, amount, false);
                 } else {
-                    // Allocate tokens to the recipient as user balance - the vault's balance doesn't change
+                    // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
                     _userTokenBalance[fundsOut.recipient][diff
                         .token] = _userTokenBalance[fundsOut.recipient][diff
                         .token]
@@ -163,13 +163,20 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             }
         }
 
+        // Step 6: Deduct swap protocol swap fees from the Vault's balance - this makes them unaccounted-for
         for (uint256 i = 0; i < diffs.length; ++i) {
             Diff memory diff = diffs[i];
             _vaultTokenBalance[diff.token] = _vaultTokenBalance[diff.token]
-                .decrease(diffProtocolFees[i]);
+                .decrease(diffSwapProtocolFees[i]);
         }
     }
 
+    /**
+     * @dev Validates a swap with a Pool by calling into its Trading Strategy. Reverts if the swap is rejected.
+     *
+     * Returns the Pool's final balances for tokenIn and tokenOut. tokenIn is applied swap protocol fees, which are also
+     * returned.
+     */
     function _validateSwap(
         address from,
         address to,
