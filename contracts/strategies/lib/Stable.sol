@@ -38,7 +38,6 @@ contract Stable {
         pure
         returns (uint128)
     {
-        //console.log("data.invariant", data.invariant);
         uint128 newApproxAmount;
         uint256 c1 = data.amp *
             data.sum +
