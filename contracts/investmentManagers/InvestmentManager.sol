@@ -106,6 +106,6 @@ contract InvestmentManager is IInvestmentManager {
         require(investments[poolId].amount != 0, "No investment was made for this pool yet");
 
         uint128 currentValue = investments[poolId].amount.mul128(presentValue).div128(investments[poolId].asOf);
-        _vault.updateInvested(poolId, address(_token), currentValue);
+        _vault.updateInvested(poolId, _token, currentValue);
     }
 }

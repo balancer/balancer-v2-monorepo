@@ -63,7 +63,7 @@ abstract contract Admin is IVault, Settings, UserBalance {
     }
 
     function claimUnaccountedForTokens(
-        address[] calldata tokens,
+        IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
     ) external override {

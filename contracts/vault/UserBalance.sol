@@ -28,7 +28,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixedPoint for uint128;
 
-    mapping(address => mapping(address => uint128)) internal _userTokenBalance; // user -> token -> user balance
+    mapping(address => mapping(IERC20 => uint128)) internal _userTokenBalance; // user -> token -> user balance
 
     // Operators are allowed to use a user's tokens in a swap
     mapping(address => EnumerableSet.AddressSet) private _userOperators;
@@ -40,21 +40,21 @@ abstract contract UserBalance is IVault, VaultAccounting {
     // Trusted operators reporters can report new trusted operators
     EnumerableSet.AddressSet internal _trustedOperatorReporters;
 
-    event Deposited(address indexed depositor, address indexed user, address indexed token, uint128 amount);
+    event Deposited(address indexed depositor, address indexed user, IERC20 indexed token, uint128 amount);
 
-    event Withdrawn(address indexed user, address indexed recipient, address indexed token, uint128 amount);
+    event Withdrawn(address indexed user, address indexed recipient, IERC20 indexed token, uint128 amount);
 
     event AuthorizedOperator(address indexed user, address indexed operator);
     event RevokedOperator(address indexed user, address indexed operator);
 
     event AuthorizedTrustedOperator(address indexed operator);
 
-    function getUserTokenBalance(address user, address token) public view override returns (uint128) {
+    function getUserTokenBalance(address user, IERC20 token) public view override returns (uint128) {
         return _userTokenBalance[user][token];
     }
 
     function deposit(
-        address token,
+        IERC20 token,
         uint128 amount,
         address user
     ) external override {
@@ -67,7 +67,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
     }
 
     function withdraw(
-        address token,
+        IERC20 token,
         uint128 amount,
         address recipient
     ) external override {

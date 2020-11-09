@@ -11,6 +11,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 pragma solidity ^0.7.1;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../vault/IVault.sol";
@@ -38,7 +39,7 @@ contract FixedSetPoolTokenizer is BToken {
         address strategy,
         IVault.StrategyType strategyType,
         uint256 initialBPT,
-        address[] memory tokens,
+        IERC20[] memory tokens,
         uint128[] memory amounts,
         address from
     ) {
@@ -66,7 +67,7 @@ contract FixedSetPoolTokenizer is BToken {
         uint128 ratio = bdiv(poolAmountOut, poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
 
-        address[] memory tokens = vault.getPoolTokens(poolId);
+        IERC20[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
         require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
@@ -101,7 +102,7 @@ contract FixedSetPoolTokenizer is BToken {
         uint128 ratio = bdiv(poolAmountIn, poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
 
-        address[] memory tokens = vault.getPoolTokens(poolId);
+        IERC20[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
         require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
