@@ -18,6 +18,12 @@ pragma experimental ABIEncoderV2;
 import "./ITradingStrategy.sol";
 
 interface IPairTradingStrategy {
+    /**
+     * @dev Validates a change in balances of Pair Trading Strategy. This strategy needs
+     * only the two balances changed to perform the validation.
+     * The change to validate is `balanceIn` of `swap.tokenIn` token increased by `swap.amountIn`
+     * and `balanceOut` of `swap.tokenOut` decreased by `swap.amountOut`
+     */
     function validatePair(
         ITradingStrategy.Swap calldata swap,
         uint128 balanceIn,
