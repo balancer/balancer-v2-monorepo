@@ -15,6 +15,7 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "./StrategyFee.sol";
@@ -36,22 +37,22 @@ contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProd
     uint256 private immutable _swapFee;
     uint8 private immutable _totalTokens;
 
-    address private immutable _token0;
-    address private immutable _token1;
-    address private immutable _token2;
-    address private immutable _token3;
-    address private immutable _token4;
-    address private immutable _token5;
-    address private immutable _token6;
-    address private immutable _token7;
-    address private immutable _token8;
-    address private immutable _token9;
-    address private immutable _token10;
-    address private immutable _token11;
-    address private immutable _token12;
-    address private immutable _token13;
-    address private immutable _token14;
-    address private immutable _token15;
+    IERC20 private immutable _token0;
+    IERC20 private immutable _token1;
+    IERC20 private immutable _token2;
+    IERC20 private immutable _token3;
+    IERC20 private immutable _token4;
+    IERC20 private immutable _token5;
+    IERC20 private immutable _token6;
+    IERC20 private immutable _token7;
+    IERC20 private immutable _token8;
+    IERC20 private immutable _token9;
+    IERC20 private immutable _token10;
+    IERC20 private immutable _token11;
+    IERC20 private immutable _token12;
+    IERC20 private immutable _token13;
+    IERC20 private immutable _token14;
+    IERC20 private immutable _token15;
 
     uint256 private immutable _weight0;
     uint256 private immutable _weight1;
@@ -71,7 +72,7 @@ contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProd
     uint256 private immutable _weight15;
 
     constructor(
-        address[] memory tokens,
+        IERC20[] memory tokens,
         uint256[] memory weights,
         uint8 totalTokens,
         uint256 swapFee
@@ -88,22 +89,23 @@ contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProd
             require(weights[i] >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
         }
         //This is because immutable variables cannot be initialized inside an if statement or on another function.
-        _token0 = totalTokens > 0 ? tokens[0] : address(0);
-        _token1 = totalTokens > 1 ? tokens[1] : address(0);
-        _token2 = totalTokens > 2 ? tokens[2] : address(0);
-        _token3 = totalTokens > 3 ? tokens[3] : address(0);
-        _token4 = totalTokens > 4 ? tokens[4] : address(0);
-        _token5 = totalTokens > 5 ? tokens[5] : address(0);
-        _token6 = totalTokens > 6 ? tokens[6] : address(0);
-        _token7 = totalTokens > 7 ? tokens[7] : address(0);
-        _token8 = totalTokens > 8 ? tokens[8] : address(0);
-        _token9 = totalTokens > 9 ? tokens[9] : address(0);
-        _token10 = totalTokens > 10 ? tokens[10] : address(0);
-        _token11 = totalTokens > 11 ? tokens[11] : address(0);
-        _token12 = totalTokens > 12 ? tokens[12] : address(0);
-        _token13 = totalTokens > 13 ? tokens[13] : address(0);
-        _token14 = totalTokens > 14 ? tokens[14] : address(0);
-        _token15 = totalTokens > 15 ? tokens[15] : address(0);
+        _token0 = totalTokens > 0 ? tokens[0] : IERC20(0);
+        _token1 = totalTokens > 1 ? tokens[1] : IERC20(0);
+        _token2 = totalTokens > 2 ? tokens[2] : IERC20(0);
+        _token3 = totalTokens > 3 ? tokens[3] : IERC20(0);
+        _token4 = totalTokens > 4 ? tokens[4] : IERC20(0);
+        _token5 = totalTokens > 5 ? tokens[5] : IERC20(0);
+        _token6 = totalTokens > 6 ? tokens[6] : IERC20(0);
+        _token7 = totalTokens > 7 ? tokens[7] : IERC20(0);
+        _token8 = totalTokens > 8 ? tokens[8] : IERC20(0);
+        _token9 = totalTokens > 9 ? tokens[9] : IERC20(0);
+        _token10 = totalTokens > 10 ? tokens[10] : IERC20(0);
+        _token11 = totalTokens > 11 ? tokens[11] : IERC20(0);
+        _token12 = totalTokens > 12 ? tokens[12] : IERC20(0);
+        _token13 = totalTokens > 13 ? tokens[13] : IERC20(0);
+        _token14 = totalTokens > 14 ? tokens[14] : IERC20(0);
+        _token15 = totalTokens > 15 ? tokens[15] : IERC20(0);
+
         _weight0 = totalTokens > 0 ? weights[0] : 0;
         _weight1 = totalTokens > 1 ? weights[1] : 0;
         _weight2 = totalTokens > 2 ? weights[2] : 0;
@@ -127,8 +129,8 @@ contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProd
         return _totalTokens;
     }
 
-    function getWeight(address token) public view returns (uint256) {
-        require(token != address(0), "ERR_INVALID_ADDRESS");
+    function getWeight(IERC20 token) public view returns (uint256) {
+        require(token != IERC20(0), "ERR_INVALID_ADDRESS");
         if (token == _token0) {
             return _weight0;
         } else if (token == _token1) {

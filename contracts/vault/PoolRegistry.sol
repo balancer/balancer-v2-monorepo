@@ -15,6 +15,7 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../vendor/EnumerableSet.sol";
 
 import "../utils/Lock.sol";
@@ -58,7 +59,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
 
     // Tokens in a pool have non-zero balances, which can be used as a shortcut to check
     // at once if a) a pool exists and b) a token is in that pool.
-    mapping(bytes32 => mapping(address => BalanceLib.Balance)) internal _poolTokenBalance;
+    mapping(bytes32 => mapping(IERC20 => BalanceLib.Balance)) internal _poolTokenBalance;
     // poolid => token => pool balance
 
     modifier withExistingPool(bytes32 poolId) {
@@ -67,13 +68,13 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
     }
 
     // investable percentage per token
-    mapping(bytes32 => mapping(address => uint128)) internal _investablePercentage;
+    mapping(bytes32 => mapping(IERC20 => uint128)) internal _investablePercentage;
 
     // operators are allowed to use a pools tokens for an investment
-    mapping(bytes32 => mapping(address => address)) private _poolInvestmentManagers;
+    mapping(bytes32 => mapping(IERC20 => address)) private _poolInvestmentManagers;
 
-    event AuthorizedPoolInvestmentManager(bytes32 indexed poolId, address indexed token, address indexed operator);
-    event RevokedPoolInvestmentManager(bytes32 indexed poolId, address indexed token, address indexed operator);
+    event AuthorizedPoolInvestmentManager(bytes32 indexed poolId, IERC20 indexed token, address indexed operator);
+    event RevokedPoolInvestmentManager(bytes32 indexed poolId, IERC20 indexed token, address indexed operator);
 
     modifier onlyPoolController(bytes32 poolId) {
         require(_poolController[poolId] == msg.sender, "Caller is not the pool controller");
@@ -116,17 +117,17 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
         override
         _viewlock_
         withExistingPool(poolId)
-        returns (address[] memory)
+        returns (IERC20[] memory)
     {
-        address[] memory tokens = new address[](_poolTokens[poolId].length());
+        IERC20[] memory tokens = new IERC20[](_poolTokens[poolId].length());
         for (uint256 i = 0; i < tokens.length; ++i) {
-            tokens[i] = _poolTokens[poolId].at(i);
+            tokens[i] = IERC20(_poolTokens[poolId].at(i));
         }
 
         return tokens;
     }
 
-    function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
+    function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens)
         external
         view
         override
@@ -191,7 +192,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
     function addLiquidity(
         bytes32 poolId,
         address from,
-        address[] calldata tokens,
+        IERC20[] calldata tokens,
         uint128[] calldata totalAmounts,
         uint128[] calldata amountsToTransfer
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
@@ -226,7 +227,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
 
                 if (currentBalance.total == 0) {
                     // No tokens with zero balance should ever be in the _poolTokens set
-                    assert(_poolTokens[poolId].add(tokens[i]));
+                    assert(_poolTokens[poolId].add(address(tokens[i])));
                 }
 
                 _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].increase(totalAmounts[i]);
@@ -237,7 +238,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
     function removeLiquidity(
         bytes32 poolId,
         address to,
-        address[] calldata tokens,
+        IERC20[] calldata tokens,
         uint128[] calldata totalAmounts,
         uint128[] calldata amountsToTransfer
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
@@ -246,7 +247,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
         require(totalAmounts.length == amountsToTransfer.length, "Amount arrays length mismatch");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            require(_poolTokens[poolId].contains(tokens[i]), "Token not in pool");
+            require(_poolTokens[poolId].contains(address(tokens[i])), "Token not in pool");
 
             // This asserts  totalAmounts[i] >= amountsToTransfer[i]
             uint128 amountToUserBalance = totalAmounts[i].sub128(amountsToTransfer[i]);
@@ -260,12 +261,12 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
             _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].decrease(totalAmounts[i]);
 
             if (_poolTokenBalance[poolId][tokens[i]].total == 0) {
-                _poolTokens[poolId].remove(tokens[i]);
+                _poolTokens[poolId].remove(address(tokens[i]));
             }
         }
     }
 
-    function getInvestablePercentage(bytes32 poolId, address token)
+    function getInvestablePercentage(bytes32 poolId, IERC20 token)
         external
         view
         override
@@ -278,7 +279,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
 
     function setInvestablePercentage(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         uint128 percentage
     ) external override _logs_ _lock_ withExistingPool(poolId) onlyPoolController(poolId) {
         require(percentage <= FixedPoint.ONE, "Percentage must be between 0 and 100%");
@@ -287,7 +288,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
 
     function authorizePoolInvestmentManager(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         address operator
     ) external override onlyPoolController(poolId) {
         require(
@@ -301,7 +302,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
 
     function revokePoolInvestmentManager(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         address operator
     ) external override onlyPoolController(poolId) {
         require(
@@ -316,7 +317,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
 
     modifier onlyPoolInvestmentManager(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         address operator
     ) {
         require(isPoolInvestmentManager(poolId, token, operator), "Only pool investment operator");
@@ -325,7 +326,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
 
     function isPoolInvestmentManager(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         address operator
     ) public view returns (bool) {
         return _poolInvestmentManagers[poolId][token] == operator;
@@ -336,7 +337,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
     // callable by anyone
     function investPoolBalance(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         address investmentManager,
         uint128 amountToInvest // must be less than total allowed
     ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
@@ -358,7 +359,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
 
     function divestPoolBalance(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         address investmentManager,
         uint128 amountToDivest // must be less than total allowed
     ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
@@ -379,7 +380,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
 
     function rebalancePoolInvestment(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         address investmentManager
     ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
         uint128 targetUtilization = _investablePercentage[poolId][token];
@@ -407,7 +408,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, 
     // how the investment manager updates the value of invested tokens to the curves knowledge
     function updateInvested(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         uint128 amountInvested
     ) public override onlyPoolInvestmentManager(poolId, token, msg.sender) {
         _poolTokenBalance[poolId][token].total = amountInvested.add128(_poolTokenBalance[poolId][token].cash);

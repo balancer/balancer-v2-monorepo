@@ -26,16 +26,16 @@ import "../vault/IVault.sol";
 interface ITradeScript {
     // Used to store data in memory and avoid stack-too-deep errors
     struct OverallInfoIn {
-        address overallTokenIn;
-        address overallTokenOut;
+        IERC20 overallTokenIn;
+        IERC20 overallTokenOut;
         uint128 minAmountOut;
         uint128 maxPrice;
     }
 
     // Used to store data in memory and avoid stack-too-deep errors
     struct OverallInfoOut {
-        address overallTokenIn;
-        address overallTokenOut;
+        IERC20 overallTokenIn;
+        IERC20 overallTokenOut;
         uint128 maxAmountIn;
         uint128 maxPrice;
     }
@@ -44,8 +44,8 @@ interface ITradeScript {
     struct Helper {
         uint128 toSend;
         uint128 toReceive;
-        address tokenIn;
-        address tokenOut;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
         uint128 amountUsedToCalculate;
         uint128 amountCalculated;
     }

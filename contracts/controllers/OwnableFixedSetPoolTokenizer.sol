@@ -24,7 +24,7 @@ contract OwnableFixedSetPoolTokenizer is FixedSetPoolTokenizer, Ownable {
         address strategy,
         IVault.StrategyType strategyType,
         uint256 initialBPT,
-        address[] memory tokens,
+        IERC20[] memory tokens,
         uint128[] memory amounts,
         address from
     ) FixedSetPoolTokenizer(_vault, strategy, strategyType, initialBPT, tokens, amounts, from) Ownable() {
@@ -39,11 +39,11 @@ contract OwnableFixedSetPoolTokenizer is FixedSetPoolTokenizer, Ownable {
         vault.setPoolStrategy(poolId, strategy, strategyType);
     }
 
-    function setInvestablePercentage(address token, uint128 percentage) public onlyOwner {
+    function setInvestablePercentage(IERC20 token, uint128 percentage) public onlyOwner {
         vault.setInvestablePercentage(poolId, token, percentage);
     }
 
-    function authorizePoolInvestmentManager(address token, address investmentManager) public onlyOwner {
+    function authorizePoolInvestmentManager(IERC20 token, address investmentManager) public onlyOwner {
         vault.authorizePoolInvestmentManager(poolId, token, investmentManager);
     }
 }

@@ -63,7 +63,7 @@ abstract contract Admin is IVault, Settings, UserBalance {
     }
 
     function claimUnaccountedForTokens(
-        address[] calldata tokens,
+        IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
     ) external override {
@@ -74,7 +74,7 @@ abstract contract Admin is IVault, Settings, UserBalance {
             uint256 totalUnaccountedFor = getTotalUnaccountedForTokens(tokens[i]);
             require(totalUnaccountedFor >= amounts[i], "Insufficient unaccounted for tokens");
 
-            IERC20(tokens[i]).safeTransfer(recipient, amounts[i]);
+            tokens[i].safeTransfer(recipient, amounts[i]);
         }
     }
 }

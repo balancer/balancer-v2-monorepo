@@ -34,8 +34,8 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
 
     // Data required to compute a trade
     struct TuplePoolData {
-        address tokenIn;
-        address tokenOut;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
         uint128 tokenInBalance;
         uint128 tokenOutBalance;
         uint128 amp;
@@ -47,8 +47,8 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         IVault vault,
         bytes32 poolId,
         address strategy,
-        address tokenIn,
-        address tokenOut,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
         SwapTokenIndexes memory indexes
     ) private view returns (TuplePoolData memory) {
         // TODO: reduce to a single contract call - will depend on the curve abstraction
@@ -57,7 +57,7 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
 
         uint256 swapFee = StableStrategy(strategy).getSwapFee();
 
-        address[] memory tokens = vault.getPoolTokens(poolId);
+        IERC20[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory tokenBalances = vault.getPoolTokenBalances(poolId, tokens);
 
         return
@@ -78,12 +78,12 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         IVault.Diff[] memory diffs,
         IVault.Swap memory swap,
         SwapTokenIndexes memory indexes,
-        address overallTokenIn,
+        IERC20 overallTokenIn,
         uint128 amountIn,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-        address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+        IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
+        IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
         TuplePoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut, indexes);
 
@@ -119,12 +119,12 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         IVault.Diff[] memory diffs,
         IVault.Swap memory swap,
         SwapTokenIndexes memory indexes,
-        address overallTokenOut,
+        IERC20 overallTokenOut,
         uint128 amountOut,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-        address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+        IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
+        IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
         TuplePoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut, indexes);
 

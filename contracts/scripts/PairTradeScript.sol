@@ -44,16 +44,16 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
         IVault vault,
         bytes32 poolId,
         address strategy,
-        address tokenIn,
-        address tokenOut
+        IERC20 tokenIn,
+        IERC20 tokenOut
     ) private view returns (PairPoolData memory) {
         // TODO: reduce to a single contract call - will depend on the curve abstraction
 
-        address[] memory addresses = new address[](2);
-        addresses[0] = tokenIn;
-        addresses[1] = tokenOut;
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[0] = tokenIn;
+        tokens[1] = tokenOut;
 
-        uint128[] memory tokenBalances = vault.getPoolTokenBalances(poolId, addresses);
+        uint128[] memory tokenBalances = vault.getPoolTokenBalances(poolId, tokens);
 
         uint256 tokenInDenormalizedWeight = WeightedProdStrategy(strategy).getWeight(tokenIn);
         uint256 tokenOutDenormalizedWeight = WeightedProdStrategy(strategy).getWeight(tokenOut);
@@ -75,12 +75,12 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
         address strategy,
         IVault.Diff[] memory diffs,
         IVault.Swap memory swap,
-        address overallTokenIn,
+        IERC20 overallTokenIn,
         uint128 amountIn,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-        address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+        IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
+        IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
         PairPoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut);
 
@@ -115,12 +115,12 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
         address strategy,
         IVault.Diff[] memory diffs,
         IVault.Swap memory swap,
-        address overallTokenOut,
+        IERC20 overallTokenOut,
         uint128 amountOut,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-        address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+        IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
+        IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
         PairPoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut);
 

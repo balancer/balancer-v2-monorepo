@@ -74,8 +74,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             require(swap.tokenIn.amount != 0, "Token In NOOP");
             require(swap.tokenOut.amount != 0, "Token Out NOOP");
 
-            address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-            address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+            IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
+            IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
             require(tokenIn != tokenOut, "Swap for same token");
 
@@ -153,8 +153,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         address from,
         address to,
         Swap memory swap,
-        address tokenIn,
-        address tokenOut
+        IERC20 tokenIn,
+        IERC20 tokenOut
     )
         private
         returns (
@@ -247,7 +247,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         BalanceLib.Balance memory balanceOut;
 
         for (uint256 i = 0; i < _poolTokens[swap.poolId].length(); i++) {
-            address token = _poolTokens[swap.poolId].at(i);
+            IERC20 token = IERC20(_poolTokens[swap.poolId].at(i));
             BalanceLib.Balance memory balance = _poolTokenBalance[swap.poolId][token];
 
             currentBalances[i] = balance.total;
