@@ -132,6 +132,6 @@ abstract contract VaultAccounting is IVault, Settings {
 
         uint128 amountToSend = chargeFee ? _applyProtocolWithdrawFee(amount) : amount;
 
-        IERC20(token).safeTransfer(to, amountToSend);
+        token.safeTransfer(to, amountToSend);
     }
 }
