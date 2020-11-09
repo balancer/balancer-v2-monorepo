@@ -332,8 +332,8 @@ interface IVault {
         uint128 tokenDiffIndex;
     }
 
-    // Funds in are received by calling ISwapCaller.sendTokens with receiveCallbackData on the caller. If received funds
-    // are not enough, they are withdrawn from withdrawFrom's User Balance.
+    // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are
+    // withdrawn from withdrawFrom's User Balance.
     // In any case, the caller must be an operator for withdrawFrom.
     struct FundsIn {
         address withdrawFrom;
