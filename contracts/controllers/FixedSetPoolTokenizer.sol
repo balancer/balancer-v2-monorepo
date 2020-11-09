@@ -20,6 +20,7 @@ import "./BToken.sol";
 
 contract FixedSetPoolTokenizer is BToken {
     using FixedPoint for uint128;
+    using FixedPoint for uint256;
     using SafeCast for uint256;
 
     IVault public immutable vault;
@@ -63,7 +64,7 @@ contract FixedSetPoolTokenizer is BToken {
         bool transferTokens
     ) external _lock_ {
         uint256 poolTotal = totalSupply();
-        uint128 ratio = bdiv(poolAmountOut, poolTotal).toUint128();
+        uint128 ratio = poolAmountOut.div(poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
 
         address[] memory tokens = vault.getPoolTokens(poolId);
@@ -98,7 +99,7 @@ contract FixedSetPoolTokenizer is BToken {
         bool withdrawTokens
     ) external _lock_ {
         uint256 poolTotal = totalSupply();
-        uint128 ratio = bdiv(poolAmountIn, poolTotal).toUint128();
+        uint128 ratio = poolAmountIn.div(poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
 
         address[] memory tokens = vault.getPoolTokens(poolId);
