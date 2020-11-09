@@ -9,7 +9,7 @@ import { MAX_UINT256 } from './helpers/constants';
 
 const { BigNumber } = ethers;
 
-describe('InvestmentManager', function () {
+describe.skip('InvestmentManager', function () {
   let owner: SignerWithAddress;
   let ownerAddress: string;
   let poolId: string;
