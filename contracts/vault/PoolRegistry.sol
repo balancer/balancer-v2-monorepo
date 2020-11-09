@@ -20,14 +20,13 @@ import "../vendor/EnumerableSet.sol";
 
 import "../utils/Lock.sol";
 import "../utils/Logs.sol";
-import "../BConst.sol";
 
 import "./IVault.sol";
 import "./VaultAccounting.sol";
 import "./UserBalance.sol";
 import "../investmentManagers/IInvestmentManager.sol";
 
-abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, BConst, Lock, Logs {
+abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Logs {
     using EnumerableSet for EnumerableSet.BytesSet;
     using EnumerableSet for EnumerableSet.AddressSet;
 
