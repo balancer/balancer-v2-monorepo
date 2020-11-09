@@ -53,15 +53,10 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
         addresses[0] = tokenIn;
         addresses[1] = tokenOut;
 
-        uint128[] memory tokenBalances = vault.getPoolTokenBalances(
-            poolId,
-            addresses
-        );
+        uint128[] memory tokenBalances = vault.getPoolTokenBalances(poolId, addresses);
 
-        uint256 tokenInDenormalizedWeight = WeightedProdStrategy(strategy)
-            .getWeight(tokenIn);
-        uint256 tokenOutDenormalizedWeight = WeightedProdStrategy(strategy)
-            .getWeight(tokenOut);
+        uint256 tokenInDenormalizedWeight = WeightedProdStrategy(strategy).getWeight(tokenIn);
+        uint256 tokenOutDenormalizedWeight = WeightedProdStrategy(strategy).getWeight(tokenOut);
 
         uint256 swapFee = WeightedProdStrategy(strategy).getSwapFee();
 
@@ -87,24 +82,14 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
         address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
         address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
-        PairPoolData memory poolData = _getPoolData(
-            vault,
-            swap.poolId,
-            strategy,
-            tokenIn,
-            tokenOut
-        );
+        PairPoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut);
 
         // If not equal, we could add a sanity check by requiring
         // tokenIn == lasToken && amountsIn[i] == 0
-        amountIn = (tokenIn == overallTokenIn)
-            ? amountIn
-            : helper.amountCalculated;
+        amountIn = (tokenIn == overallTokenIn) ? amountIn : helper.amountCalculated;
 
         //Substract fee
-        uint128 adjustedIn = amountIn.sub128(
-            amountIn.mul128(uint128(poolData.swapFee))
-        );
+        uint128 adjustedIn = amountIn.sub128(amountIn.mul128(uint128(poolData.swapFee)));
 
         uint128 amountOut = WeightedProduct._outGivenIn(
             poolData.tokenInBalance,
@@ -137,19 +122,11 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
         address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
         address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
-        PairPoolData memory poolData = _getPoolData(
-            vault,
-            swap.poolId,
-            strategy,
-            tokenIn,
-            tokenOut
-        );
+        PairPoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut);
 
         // If not equal, we could add a sanity check by requiring
         // tokenOut == lasToken && amountsOut[i] == 0
-        amountOut = (tokenOut == overallTokenOut)
-            ? amountOut
-            : helper.amountCalculated;
+        amountOut = (tokenOut == overallTokenOut) ? amountOut : helper.amountCalculated;
 
         uint128 amountIn = WeightedProduct._inGivenOut(
             poolData.tokenInBalance,
@@ -160,9 +137,7 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
         );
 
         //Calculated fee, to be later used as tokenAmountIn = adjustedIn * (1 - fee)
-        amountIn = amountIn.div128(
-            FixedPoint.ONE.sub128(uint128(poolData.swapFee))
-        );
+        amountIn = amountIn.div128(FixedPoint.ONE.sub128(uint128(poolData.swapFee)));
 
         return
             Helper({

@@ -82,12 +82,7 @@ contract BToken is BTokenBase {
         return _decimals;
     }
 
-    function allowance(address src, address dst)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function allowance(address src, address dst) external view override returns (uint256) {
         return _allowance[src][dst];
     }
 
@@ -99,29 +94,19 @@ contract BToken is BTokenBase {
         return _totalSupply;
     }
 
-    function approve(address dst, uint256 amt)
-        external
-        override
-        returns (bool)
-    {
+    function approve(address dst, uint256 amt) external override returns (bool) {
         _allowance[msg.sender][dst] = amt;
         emit Approval(msg.sender, dst, amt);
         return true;
     }
 
-    function increaseApproval(address dst, uint256 amt)
-        external
-        returns (bool)
-    {
+    function increaseApproval(address dst, uint256 amt) external returns (bool) {
         _allowance[msg.sender][dst] = badd(_allowance[msg.sender][dst], amt);
         emit Approval(msg.sender, dst, _allowance[msg.sender][dst]);
         return true;
     }
 
-    function decreaseApproval(address dst, uint256 amt)
-        external
-        returns (bool)
-    {
+    function decreaseApproval(address dst, uint256 amt) external returns (bool) {
         uint256 oldValue = _allowance[msg.sender][dst];
         if (amt > oldValue) {
             _allowance[msg.sender][dst] = 0;
@@ -132,11 +117,7 @@ contract BToken is BTokenBase {
         return true;
     }
 
-    function transfer(address dst, uint256 amt)
-        external
-        override
-        returns (bool)
-    {
+    function transfer(address dst, uint256 amt) external override returns (bool) {
         _move(msg.sender, dst, amt);
         return true;
     }
@@ -146,16 +127,10 @@ contract BToken is BTokenBase {
         address dst,
         uint256 amt
     ) external override returns (bool) {
-        require(
-            msg.sender == src || amt <= _allowance[src][msg.sender],
-            "ERR_BTOKEN_BAD_CALLER"
-        );
+        require(msg.sender == src || amt <= _allowance[src][msg.sender], "ERR_BTOKEN_BAD_CALLER");
         _move(src, dst, amt);
         if (msg.sender != src && _allowance[src][msg.sender] != uint256(-1)) {
-            _allowance[src][msg.sender] = bsub(
-                _allowance[src][msg.sender],
-                amt
-            );
+            _allowance[src][msg.sender] = bsub(_allowance[src][msg.sender], amt);
             emit Approval(msg.sender, dst, _allowance[src][msg.sender]);
         }
         return true;

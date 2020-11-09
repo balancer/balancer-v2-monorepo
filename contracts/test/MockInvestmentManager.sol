@@ -22,6 +22,8 @@ import "../vault/IVault.sol";
 import "../investmentManagers/InvestmentManager.sol";
 import "../math/FixedPoint.sol";
 
+// solhint-disable no-empty-blocks
+
 contract MockInvestmentManager is InvestmentManager {
     using FixedPoint for uint128;
     using SafeCast for uint256;

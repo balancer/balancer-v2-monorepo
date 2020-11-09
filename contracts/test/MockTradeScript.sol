@@ -29,10 +29,7 @@ contract MockTradeScript {
         address recipient,
         bool withdrawTokens
     ) public {
-        require(
-            diffs.length == amounts.length,
-            "MockTradeScript: diffs & amounts length mismatch"
-        );
+        require(diffs.length == amounts.length, "MockTradeScript: diffs & amounts length mismatch");
 
         for (uint256 i = 0; i < diffs.length; ++i) {
             diffs[i].amountIn = amounts[i];
@@ -42,10 +39,7 @@ contract MockTradeScript {
             diffs,
             swaps,
             IVault.FundsIn({ withdrawFrom: supplier }),
-            IVault.FundsOut({
-                recipient: recipient,
-                transferToRecipient: withdrawTokens
-            })
+            IVault.FundsOut({ recipient: recipient, transferToRecipient: withdrawTokens })
         );
     }
 }

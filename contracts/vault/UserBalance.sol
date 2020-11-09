@@ -40,31 +40,16 @@ abstract contract UserBalance is IVault, VaultAccounting {
     // Trusted operators reporters can report new trusted operators
     EnumerableSet.AddressSet internal _trustedOperatorReporters;
 
-    event Deposited(
-        address indexed depositor,
-        address indexed user,
-        address indexed token,
-        uint128 amount
-    );
+    event Deposited(address indexed depositor, address indexed user, address indexed token, uint128 amount);
 
-    event Withdrawn(
-        address indexed user,
-        address indexed recipient,
-        address indexed token,
-        uint128 amount
-    );
+    event Withdrawn(address indexed user, address indexed recipient, address indexed token, uint128 amount);
 
     event AuthorizedOperator(address indexed user, address indexed operator);
     event RevokedOperator(address indexed user, address indexed operator);
 
     event AuthorizedTrustedOperator(address indexed operator);
 
-    function getUserTokenBalance(address user, address token)
-        public
-        view
-        override
-        returns (uint128)
-    {
+    function getUserTokenBalance(address user, address token) public view override returns (uint128) {
         return _userTokenBalance[user][token];
     }
 
@@ -77,9 +62,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
         uint128 received = _pullTokens(token, msg.sender, amount);
 
         // TODO: check overflow
-        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(
-            received
-        );
+        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(received);
         emit Deposited(msg.sender, user, token, received);
     }
 
@@ -88,10 +71,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
         uint128 amount,
         address recipient
     ) external override {
-        require(
-            _userTokenBalance[msg.sender][token] >= amount,
-            "Vault: withdraw amount exceeds balance"
-        );
+        require(_userTokenBalance[msg.sender][token] >= amount, "Vault: withdraw amount exceeds balance");
 
         _userTokenBalance[msg.sender][token] -= amount;
         _pushTokens(token, recipient, amount, true);
@@ -111,24 +91,11 @@ abstract contract UserBalance is IVault, VaultAccounting {
         }
     }
 
-    function isOperatorFor(address user, address operator)
-        public
-        view
-        override
-        returns (bool)
-    {
-        return
-            (user == operator) ||
-            _trustedOperators.contains(operator) ||
-            _userOperators[user].contains(operator);
+    function isOperatorFor(address user, address operator) public view override returns (bool) {
+        return (user == operator) || _trustedOperators.contains(operator) || _userOperators[user].contains(operator);
     }
 
-    function getUserTotalOperators(address user)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getUserTotalOperators(address user) external view override returns (uint256) {
         return _userOperators[user].length();
     }
 
@@ -137,10 +104,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
         uint256 start,
         uint256 end
     ) external view override returns (address[] memory) {
-        require(
-            (end >= start) && (end - start) <= _userOperators[user].length(),
-            "Bad indices"
-        );
+        require((end >= start) && (end - start) <= _userOperators[user].length(), "Bad indices");
 
         // Ideally we'd use a native implemenation: see
         // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
@@ -153,25 +117,12 @@ abstract contract UserBalance is IVault, VaultAccounting {
         return operators;
     }
 
-    function getTotalTrustedOperators()
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getTotalTrustedOperators() external view override returns (uint256) {
         return _trustedOperators.length();
     }
 
-    function getTrustedOperators(uint256 start, uint256 end)
-        external
-        view
-        override
-        returns (address[] memory)
-    {
-        require(
-            (end >= start) && (end - start) <= _trustedOperators.length(),
-            "Bad indices"
-        );
+    function getTrustedOperators(uint256 start, uint256 end) external view override returns (address[] memory) {
+        require((end >= start) && (end - start) <= _trustedOperators.length(), "Bad indices");
 
         // Ideally we'd use a native implemenation: see
         // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
@@ -184,26 +135,12 @@ abstract contract UserBalance is IVault, VaultAccounting {
         return operators;
     }
 
-    function getTotalTrustedOperatorReporters()
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getTotalTrustedOperatorReporters() external view override returns (uint256) {
         return _trustedOperatorReporters.length();
     }
 
-    function getTrustedOperatorReporters(uint256 start, uint256 end)
-        external
-        view
-        override
-        returns (address[] memory)
-    {
-        require(
-            (end >= start) &&
-                (end - start) <= _trustedOperatorReporters.length(),
-            "Bad indices"
-        );
+    function getTrustedOperatorReporters(uint256 start, uint256 end) external view override returns (address[] memory) {
+        require((end >= start) && (end - start) <= _trustedOperatorReporters.length(), "Bad indices");
 
         // Ideally we'd use a native implemenation: see
         // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
@@ -217,10 +154,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
     }
 
     function reportTrustedOperator(address operator) external override {
-        require(
-            _trustedOperatorReporters.contains(msg.sender),
-            "Caller is not trusted operator reporter"
-        );
+        require(_trustedOperatorReporters.contains(msg.sender), "Caller is not trusted operator reporter");
 
         if (_trustedOperators.add(operator)) {
             emit AuthorizedTrustedOperator(operator);

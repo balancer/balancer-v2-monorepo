@@ -56,10 +56,7 @@ abstract contract Admin is IVault, Settings, UserBalance {
         _setProtocolSwapFee(fee);
     }
 
-    function authorizeTrustedOperatorReporter(address reporter)
-        external
-        override
-    {
+    function authorizeTrustedOperatorReporter(address reporter) external override {
         require(msg.sender == _admin, "Caller is not the admin");
 
         _trustedOperatorReporters.add(reporter);
@@ -71,19 +68,11 @@ abstract contract Admin is IVault, Settings, UserBalance {
         address recipient
     ) external override {
         require(msg.sender == _admin, "Caller is not the admin");
-        require(
-            tokens.length == amounts.length,
-            "Tokens and amounts length mismatch"
-        );
+        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 totalUnaccountedFor = getTotalUnaccountedForTokens(
-                tokens[i]
-            );
-            require(
-                totalUnaccountedFor >= amounts[i],
-                "Insufficient unaccounted for tokens"
-            );
+            uint256 totalUnaccountedFor = getTotalUnaccountedForTokens(tokens[i]);
+            require(totalUnaccountedFor >= amounts[i], "Insufficient unaccounted for tokens");
 
             IERC20(tokens[i]).safeTransfer(recipient, amounts[i]);
         }

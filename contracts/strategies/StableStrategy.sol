@@ -50,9 +50,7 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
         uint128 feeAmount = swap.amountIn.mul(_swapFee).toUint128();
 
         //Update Balances
-        balances[indexIn] = balances[indexIn].add128(
-            swap.amountIn.sub128(feeAmount)
-        );
+        balances[indexIn] = balances[indexIn].add128(swap.amountIn.sub128(feeAmount));
         balances[indexOut] = balances[indexOut].sub128(swap.amountOut);
 
         //Calculate new invariant
@@ -62,10 +60,7 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
         if (newInvariant >= oldInvariant) {
             return (true, feeAmount);
         } else {
-            return (
-                (oldInvariant - newInvariant) * 100 < oldInvariant,
-                feeAmount
-            );
+            return ((oldInvariant - newInvariant) * 100 < oldInvariant, feeAmount);
         }
     }
 

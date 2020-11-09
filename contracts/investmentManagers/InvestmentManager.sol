@@ -20,6 +20,8 @@ import "./IInvestmentManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../math/FixedPoint.sol";
 
+// solhint-disable var-name-mixedcase
+
 contract InvestmentManager is IInvestmentManager {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -28,7 +30,7 @@ contract InvestmentManager is IInvestmentManager {
     // asset invested
     // Increases as returns accrue, ie if it started at 100 and the investment returned 5% it would now be 105
     uint128 public presentValue;
-    IERC20 _token;
+    IERC20 internal _token;
 
     uint128 public cash; // how much sits in cash - ideally 0
     uint128 public total; // total
@@ -57,39 +59,24 @@ contract InvestmentManager is IInvestmentManager {
     function initialize() public virtual {
         // grant allowance to vault
 
-
-            uint256 MAX_INT
-         = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        uint256 MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
         _token.approve(address(_vault), MAX_INT);
     }
 
     modifier onlyVault {
-        require(
-            msg.sender == address(_vault),
-            "callback only callable by vault"
-        );
+        require(msg.sender == address(_vault), "callback only callable by vault");
         _;
     }
 
     // Callback after the vault sends tokens
-    function recordPoolInvestment(bytes32 poolId, uint128 tokensIn)
-        external
-        override
-        onlyVault
-    {
+    function recordPoolInvestment(bytes32 poolId, uint128 tokensIn) external override onlyVault {
         uint128 amountIn = tokensIn.div128(presentValue);
 
         if (investments[poolId].amount == 0) {
-            investments[poolId] = Investment({
-                amount: amountIn,
-                asOf: presentValue
-            });
+            investments[poolId] = Investment({ amount: amountIn, asOf: presentValue });
         } else {
             // when there is already an investment we need to scale it to current values
-            uint128 currentValue = investments[poolId]
-                .amount
-                .mul128(presentValue)
-                .div128(investments[poolId].asOf);
+            uint128 currentValue = investments[poolId].amount.mul128(presentValue).div128(investments[poolId].asOf);
             investments[poolId].amount = amountIn + currentValue;
             investments[poolId].asOf = presentValue;
         }
@@ -100,22 +87,12 @@ contract InvestmentManager is IInvestmentManager {
     }
 
     // Callback after the vault pulls tokens
-    function recordPoolDivestment(bytes32 poolId, uint128 tokensOut)
-        external
-        override
-        onlyVault
-    {
+    function recordPoolDivestment(bytes32 poolId, uint128 tokensOut) external override onlyVault {
         uint128 amountOut = tokensOut.div128(presentValue);
 
-        require(
-            investments[poolId].amount != 0,
-            "There must be an existing investment to divest"
-        );
+        require(investments[poolId].amount != 0, "There must be an existing investment to divest");
         // when there is already an investment we need to scale it to current values
-        uint128 currentValue = investments[poolId]
-            .amount
-            .mul128(presentValue)
-            .div128(investments[poolId].asOf);
+        uint128 currentValue = investments[poolId].amount.mul128(presentValue).div128(investments[poolId].asOf);
         investments[poolId].amount = currentValue.sub128(amountOut);
         investments[poolId].asOf = presentValue;
 
@@ -126,15 +103,9 @@ contract InvestmentManager is IInvestmentManager {
 
     // Update the vaults notion of a pool's total token balance
     function updateInvested(bytes32 poolId) external {
-        require(
-            investments[poolId].amount != 0,
-            "No investment was made for this pool yet"
-        );
+        require(investments[poolId].amount != 0, "No investment was made for this pool yet");
 
-        uint128 currentValue = investments[poolId]
-            .amount
-            .mul128(presentValue)
-            .div128(investments[poolId].asOf);
+        uint128 currentValue = investments[poolId].amount.mul128(presentValue).div128(investments[poolId].asOf);
         _vault.updateInvested(poolId, address(_token), currentValue);
     }
 }

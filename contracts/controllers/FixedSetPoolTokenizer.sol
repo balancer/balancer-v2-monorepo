@@ -69,10 +69,7 @@ contract FixedSetPoolTokenizer is BToken {
         address[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
-        require(
-            maxAmountsIn.length == tokens.length,
-            "Tokens and amounts length mismatch"
-        );
+        require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
 
         uint128[] memory amountsIn = new uint128[](tokens.length);
         uint128[] memory amountsToTransfer = new uint128[](tokens.length);
@@ -89,13 +86,7 @@ contract FixedSetPoolTokenizer is BToken {
             }
         }
 
-        vault.addLiquidity(
-            poolId,
-            msg.sender,
-            tokens,
-            amountsIn,
-            amountsToTransfer
-        );
+        vault.addLiquidity(poolId, msg.sender, tokens, amountsIn, amountsToTransfer);
 
         _mintPoolShare(poolAmountOut);
         _pushPoolShare(msg.sender, poolAmountOut);
@@ -113,10 +104,7 @@ contract FixedSetPoolTokenizer is BToken {
         address[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
-        require(
-            minAmountsOut.length == tokens.length,
-            "Tokens and amounts length mismatch"
-        );
+        require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
 
         uint128[] memory amountsOut = new uint128[](tokens.length);
         uint128[] memory amountsToTransfer = new uint128[](tokens.length);
@@ -133,13 +121,7 @@ contract FixedSetPoolTokenizer is BToken {
             }
         }
 
-        vault.removeLiquidity(
-            poolId,
-            msg.sender,
-            tokens,
-            amountsOut,
-            amountsToTransfer
-        );
+        vault.removeLiquidity(poolId, msg.sender, tokens, amountsOut, amountsToTransfer);
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
