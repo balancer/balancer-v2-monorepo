@@ -5,31 +5,49 @@ import * as expectEvent from '../helpers/expectEvent';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../../scripts/helpers/deploy';
 import { PairTS } from '../../scripts/helpers/pools';
+import { deployTokens, TokenList } from '../helpers/tokens';
+import { MAX_UINT256 } from '../helpers/constants';
 
 describe('FixedSetPoolTokenizerFactory', function () {
   let admin: SignerWithAddress;
+  let lp: SignerWithAddress;
 
   let vault: Contract;
   let strategy: Contract;
   let factory: Contract;
+  let tokens: TokenList = {};
+
+  const salt = ethers.utils.id('salt');
+
+  const initialBPT = (1e18).toString();
+  let poolTokens: Array<string>;
+  const poolAmounts = [(1e18).toString(), (1e18).toString()];
 
   before(async function () {
-    [, admin] = await ethers.getSigners();
+    [, admin, lp] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
     vault = await deploy('Vault', { from: admin, args: [] });
 
+    tokens = await deployTokens(['DAI', 'MKR']);
+    await Promise.all(
+      ['DAI', 'MKR'].map(async (token) => {
+        await tokens[token].mint(lp.address, (100e18).toString());
+        await tokens[token].connect(lp).approve(vault.address, MAX_UINT256);
+      })
+    );
+
+    poolTokens = [tokens.DAI.address, tokens.MKR.address];
+
     strategy = await deploy('MockTradingStrategy', { args: [] });
     factory = await deploy('FixedSetPoolTokenizerFactory', { args: [vault.address] });
   });
 
-  const salt = ethers.utils.id('salt');
-
   it('fails if not trusted by the vault', async () => {
-    await expect(factory.create(strategy.address, PairTS, salt)).to.be.revertedWith(
-      'Caller is not trusted operator reporter'
-    );
+    await expect(
+      factory.connect(lp).create(strategy.address, PairTS, initialBPT, poolTokens, poolAmounts, salt)
+    ).to.be.revertedWith('Caller is not trusted operator reporter');
   });
 
   context('once trusted by the vault', () => {
@@ -38,12 +56,14 @@ describe('FixedSetPoolTokenizerFactory', function () {
     });
 
     it('creates a pool tokenizer', async () => {
-      const receipt = await (await factory.create(strategy.address, PairTS, salt)).wait();
-      expectEvent.inReceipt(receipt, 'FixedSetPoolTokenizerCreated');
+      const receipt = await (
+        await factory.connect(lp).create(strategy.address, PairTS, initialBPT, poolTokens, poolAmounts, salt)
+      ).wait();
+      expectEvent.inReceipt(receipt, 'TokenizerCreated');
     });
 
     it('salt cannot be reused', async () => {
-      await factory.create(strategy.address, PairTS, salt);
+      await factory.connect(lp).create(strategy.address, PairTS, initialBPT, poolTokens, poolAmounts, salt);
       await expect(factory.create(strategy.address, PairTS, salt)).to.be.reverted;
     });
 
@@ -51,17 +71,12 @@ describe('FixedSetPoolTokenizerFactory', function () {
       let tokenizer: Contract;
 
       beforeEach(async () => {
-        const receipt = await (await factory.create(strategy.address, PairTS, salt)).wait();
-        const event = expectEvent.inReceipt(receipt, 'FixedSetPoolTokenizerCreated');
+        const receipt = await (
+          await factory.connect(lp).create(strategy.address, PairTS, initialBPT, poolTokens, poolAmounts, salt)
+        ).wait();
+        const event = expectEvent.inReceipt(receipt, 'TokenizerCreated');
 
         tokenizer = await ethers.getContractAt('FixedSetPoolTokenizer', event.args.tokenizer);
-      });
-
-      it('tokenizer has the correct configuration', async () => {
-        expect(await tokenizer.vault()).to.equal(vault.address);
-
-        const poolId = await tokenizer.poolId();
-        expect(await vault.getPoolStrategy(poolId)).to.deep.equal([strategy.address, PairTS]);
       });
 
       it('tokenizer is a trusted operator', async () => {

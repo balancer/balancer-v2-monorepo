@@ -36,23 +36,21 @@ contract FixedSetPoolTokenizer is BToken {
     constructor(
         IVault _vault,
         address strategy,
-        IVault.StrategyType strategyType
-    ) {
-        vault = _vault;
-        poolId = _vault.newPool(strategy, strategyType);
-    }
-
-    // Placeholder - this will be part of the constructor once we address
-    // https://github.com/balancer-labs/balancer-core-v2/issues/76
-    function initialize(
+        IVault.StrategyType strategyType,
         uint256 initialBPT,
         address[] memory tokens,
-        uint128[] memory amounts
-    ) public {
-        vault.addLiquidity(poolId, msg.sender, tokens, amounts, amounts);
+        uint128[] memory amounts,
+        address from
+    ) {
+        bytes32 _poolId = _vault.newPool(strategy, strategyType);
+        _vault.addLiquidity(_poolId, from, tokens, amounts, amounts);
 
         _mintPoolShare(initialBPT);
-        _pushPoolShare(msg.sender, initialBPT);
+        _pushPoolShare(from, initialBPT);
+
+        // Set immutable state variables - these cannot be read from during construction
+        vault = _vault;
+        poolId = _poolId;
     }
 
     // Joining a pool
