@@ -23,17 +23,9 @@ contract Logs {
         uint256 tokenAmountOut
     );
 
-    event LogJoin(
-        address indexed caller,
-        address indexed tokenIn,
-        uint256 tokenAmountIn
-    );
+    event LogJoin(address indexed caller, address indexed tokenIn, uint256 tokenAmountIn);
 
-    event LogExit(
-        address indexed caller,
-        address indexed tokenOut,
-        uint256 tokenAmountOut
-    );
+    event LogExit(address indexed caller, address indexed tokenOut, uint256 tokenAmountOut);
 
     event LogCall(bytes4 indexed sig, address indexed caller, bytes data);
 

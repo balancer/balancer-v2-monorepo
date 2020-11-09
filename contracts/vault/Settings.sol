@@ -34,15 +34,9 @@ abstract contract Settings is IVault {
     // The Vault relies on the trading strategy being honest and reporting the actuall fee it charged.
     uint128 private _protocolSwapFee;
 
-    uint128 private immutable _MAX_PROTOCOL_WITHDRAW_FEE = FixedPoint
-        .ONE
-        .mul128(2)
-        .div128(100); // 0.02 (2%)
+    uint128 private immutable _MAX_PROTOCOL_WITHDRAW_FEE = FixedPoint.ONE.mul128(2).div128(100); // 0.02 (2%)
 
-    uint128 private immutable _MAX_PROTOCOL_SWAP_FEE = FixedPoint
-        .ONE
-        .mul128(50)
-        .div128(100); // 0.5 (50%)
+    uint128 private immutable _MAX_PROTOCOL_SWAP_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
     function _setProtocolWithdrawFee(uint128 newFee) internal {
         require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
@@ -53,11 +47,7 @@ abstract contract Settings is IVault {
         return _protocolWithdrawFee;
     }
 
-    function _applyProtocolWithdrawFee(uint128 amount)
-        internal
-        view
-        returns (uint128)
-    {
+    function _applyProtocolWithdrawFee(uint128 amount) internal view returns (uint128) {
         uint128 fee = amount.mul128(_protocolWithdrawFee);
         return amount.sub128(fee);
     }
@@ -71,11 +61,7 @@ abstract contract Settings is IVault {
         return _protocolSwapFee;
     }
 
-    function _calculateProtocolSwapFee(uint128 swapFeeAmount)
-        internal
-        view
-        returns (uint128)
-    {
+    function _calculateProtocolSwapFee(uint128 swapFeeAmount) internal view returns (uint128) {
         return swapFeeAmount.mul128(_protocolSwapFee);
     }
 }

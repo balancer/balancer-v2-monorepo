@@ -38,19 +38,9 @@ contract FixedSetPoolTokenizerFactory {
         uint128[] memory amounts,
         bytes32 salt
     ) external returns (address) {
-        bytes memory creationCode = _getCreationCode(
-            strategy,
-            strategyType,
-            initialBPT,
-            tokens,
-            amounts,
-            msg.sender
-        );
+        bytes memory creationCode = _getCreationCode(strategy, strategyType, initialBPT, tokens, amounts, msg.sender);
 
-        address expectedDestination = Create2.computeAddress(
-            salt,
-            keccak256(creationCode)
-        );
+        address expectedDestination = Create2.computeAddress(salt, keccak256(creationCode));
 
         vault.reportTrustedOperator(expectedDestination);
 
@@ -73,15 +63,7 @@ contract FixedSetPoolTokenizerFactory {
         return
             abi.encodePacked(
                 type(FixedSetPoolTokenizer).creationCode,
-                abi.encode(
-                    vault,
-                    strategy,
-                    strategyType,
-                    initialBPT,
-                    tokens,
-                    amounts,
-                    from
-                )
+                abi.encode(vault, strategy, strategyType, initialBPT, tokens, amounts, from)
             );
     }
 }

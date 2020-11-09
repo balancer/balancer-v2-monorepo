@@ -46,11 +46,7 @@ contract BNum is BConst {
         return c;
     }
 
-    function bsubSign(uint256 a, uint256 b)
-        internal
-        pure
-        returns (uint256, bool)
-    {
+    function bsubSign(uint256 a, uint256 b) internal pure returns (uint256, bool) {
         if (a >= b) {
             return (a - b, false);
         } else {

@@ -54,31 +54,15 @@ library BalanceLib {
     /**
      * @dev Increases a Pool's balance. Called when tokens are added to the Pool (except from the Investment Manager).
      */
-    function increase(Balance memory self, uint128 amount)
-        internal
-        pure
-        returns (Balance memory)
-    {
-        return
-            Balance({
-                cash: self.cash.add128(amount),
-                total: self.total.add128(amount)
-            });
+    function increase(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
+        return Balance({ cash: self.cash.add128(amount), total: self.total.add128(amount) });
     }
 
     /**
      * @dev Decreases a Pool's balance. Called when tokens are removed from the Pool (except to the Investment Manager).
      */
-    function decrease(Balance memory self, uint128 amount)
-        internal
-        pure
-        returns (Balance memory)
-    {
-        return
-            Balance({
-                cash: self.cash.sub128(amount),
-                total: self.total.sub128(amount)
-            });
+    function decrease(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
+        return Balance({ cash: self.cash.sub128(amount), total: self.total.sub128(amount) });
     }
 }
 
@@ -94,12 +78,7 @@ abstract contract VaultAccounting is IVault, Settings {
     // TODO: make this uint128 and not Balance, since it consists exclusively of 'cash'.
     mapping(address => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
 
-    function getTotalUnaccountedForTokens(address token)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function getTotalUnaccountedForTokens(address token) public view override returns (uint256) {
         uint256 totalBalance = IERC20(token).balanceOf(address(this));
         assert(totalBalance >= _vaultTokenBalance[token].cash);
 
@@ -130,9 +109,7 @@ abstract contract VaultAccounting is IVault, Settings {
 
         uint128 received = newBalance.sub(currentBalance).toUint128();
 
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].increase(
-            received
-        );
+        _vaultTokenBalance[token] = _vaultTokenBalance[token].increase(received);
 
         return received;
     }
@@ -153,9 +130,7 @@ abstract contract VaultAccounting is IVault, Settings {
 
         _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(amount);
 
-        uint128 amountToSend = chargeFee
-            ? _applyProtocolWithdrawFee(amount)
-            : amount;
+        uint128 amountToSend = chargeFee ? _applyProtocolWithdrawFee(amount) : amount;
 
         IERC20(token).safeTransfer(to, amountToSend);
     }

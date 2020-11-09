@@ -27,18 +27,7 @@ contract OwnableFixedSetPoolTokenizer is FixedSetPoolTokenizer, Ownable {
         address[] memory tokens,
         uint128[] memory amounts,
         address from
-    )
-        FixedSetPoolTokenizer(
-            _vault,
-            strategy,
-            strategyType,
-            initialBPT,
-            tokens,
-            amounts,
-            from
-        )
-        Ownable()
-    {
+    ) FixedSetPoolTokenizer(_vault, strategy, strategyType, initialBPT, tokens, amounts, from) Ownable() {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -46,24 +35,15 @@ contract OwnableFixedSetPoolTokenizer is FixedSetPoolTokenizer, Ownable {
         vault.setPoolController(poolId, controller);
     }
 
-    function changePoolStrategy(
-        address strategy,
-        IVault.StrategyType strategyType
-    ) public onlyOwner {
+    function changePoolStrategy(address strategy, IVault.StrategyType strategyType) public onlyOwner {
         vault.setPoolStrategy(poolId, strategy, strategyType);
     }
 
-    function setInvestablePercentage(address token, uint128 percentage)
-        public
-        onlyOwner
-    {
+    function setInvestablePercentage(address token, uint128 percentage) public onlyOwner {
         vault.setInvestablePercentage(poolId, token, percentage);
     }
 
-    function authorizePoolInvestmentManager(
-        address token,
-        address investmentManager
-    ) public onlyOwner {
+    function authorizePoolInvestmentManager(address token, address investmentManager) public onlyOwner {
         vault.authorizePoolInvestmentManager(poolId, token, investmentManager);
     }
 }

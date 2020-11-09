@@ -25,11 +25,7 @@ import "./lib/WeightedProduct.sol";
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract WeightedProdStrategy is
-    IPairTradingStrategy,
-    StrategyFee,
-    WeightedProduct
-{
+contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProduct {
     using SafeCast for uint256;
     using FixedPoint for uint128;
 

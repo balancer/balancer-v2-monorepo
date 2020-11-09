@@ -58,10 +58,7 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         uint256 swapFee = StableStrategy(strategy).getSwapFee();
 
         address[] memory tokens = vault.getPoolTokens(poolId);
-        uint128[] memory tokenBalances = vault.getPoolTokenBalances(
-            poolId,
-            tokens
-        );
+        uint128[] memory tokenBalances = vault.getPoolTokenBalances(poolId, tokens);
 
         return
             TuplePoolData({
@@ -88,25 +85,14 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
         address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
-        TuplePoolData memory poolData = _getPoolData(
-            vault,
-            swap.poolId,
-            strategy,
-            tokenIn,
-            tokenOut,
-            indexes
-        );
+        TuplePoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut, indexes);
 
         // If not equal, we could add a sanity check by requiring
         // tokenIn == lasToken && amountsIn[i] == 0
-        amountIn = (poolData.tokenIn == overallTokenIn)
-            ? amountIn
-            : helper.amountCalculated;
+        amountIn = (poolData.tokenIn == overallTokenIn) ? amountIn : helper.amountCalculated;
 
         //Substract fee
-        uint128 adjustedIn = amountIn.sub128(
-            amountIn.mul128(uint128(poolData.swapFee))
-        );
+        uint128 adjustedIn = amountIn.sub128(amountIn.mul128(uint128(poolData.swapFee)));
 
         uint128 amountOut = Stable._outGivenIn(
             poolData.amp,
@@ -140,20 +126,11 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         address tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
         address tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
 
-        TuplePoolData memory poolData = _getPoolData(
-            vault,
-            swap.poolId,
-            strategy,
-            tokenIn,
-            tokenOut,
-            indexes
-        );
+        TuplePoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut, indexes);
 
         // If not equal, we could add a sanity check by requiring
         // tokenOut == lasToken && amountsOut[i] == 0
-        amountOut = (tokenOut == overallTokenOut)
-            ? amountOut
-            : helper.amountCalculated;
+        amountOut = (tokenOut == overallTokenOut) ? amountOut : helper.amountCalculated;
 
         uint128 amountIn = _inGivenOut(
             poolData.amp,
@@ -164,9 +141,7 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         );
 
         //Calculated fee, to be later used as tokenAmountIn = adjustedIn * (1 - fee)
-        amountIn = amountIn.div128(
-            FixedPoint.ONE.sub128(uint128(poolData.swapFee))
-        );
+        amountIn = amountIn.div128(FixedPoint.ONE.sub128(uint128(poolData.swapFee)));
 
         return
             Helper({
