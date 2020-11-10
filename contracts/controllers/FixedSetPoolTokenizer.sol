@@ -62,7 +62,8 @@ contract FixedSetPoolTokenizer is BToken {
     function joinPool(
         uint256 poolAmountOut,
         uint128[] calldata maxAmountsIn,
-        bool transferTokens
+        bool transferTokens,
+        address beneficiary
     ) external _lock_ {
         uint256 poolTotal = totalSupply();
         uint128 ratio = poolAmountOut.div(poolTotal).toUint128();
@@ -91,7 +92,7 @@ contract FixedSetPoolTokenizer is BToken {
         vault.addLiquidity(poolId, msg.sender, tokens, amountsIn, amountsToTransfer);
 
         _mintPoolShare(poolAmountOut);
-        _pushPoolShare(msg.sender, poolAmountOut);
+        _pushPoolShare(beneficiary, poolAmountOut);
     }
 
     function exitPool(
