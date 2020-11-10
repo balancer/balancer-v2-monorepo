@@ -77,7 +77,7 @@ type Comparison = [CompareFunction, BigNumberish];
 // }, account, tokens, { 'DAI': 50, 'USDC': -50, 'UNI': ['gt', 0] }); // Earn an unknown amount of UNI
 // });
 export async function expectBalanceChange(
-  promise: () => Promise<void>,
+  promise: () => Promise<unknown>,
   account: Account,
   tokens: TokenList,
   balanceChanges: Dictionary<BigNumberish | Comparison>

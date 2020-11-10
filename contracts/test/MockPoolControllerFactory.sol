@@ -17,29 +17,23 @@ pragma experimental ABIEncoderV2;
 
 import "../vault/IVault.sol";
 
-import "./BasePoolControllerFactory.sol";
-import "./FixedSetPoolTokenizer.sol";
+import "../controllers/BasePoolControllerFactory.sol";
 
-contract FixedSetPoolTokenizerFactory is BasePoolControllerFactory {
+contract MockPoolController {
+    IVault public vault;
+
+    constructor(IVault _vault) {
+        vault = _vault;
+
+        require(_vault.isOperatorFor(address(0), address(this)), "Not a Trusted Operator during construction");
+    }
+}
+
+contract MockPoolControllerFactory is BasePoolControllerFactory {
     // solhint-disable-next-line no-empty-blocks
     constructor(IVault _vault) BasePoolControllerFactory(_vault) {}
 
-    function create(
-        address strategy,
-        IVault.StrategyType strategyType,
-        uint256 initialBPT,
-        address[] memory tokens,
-        uint128[] memory amounts,
-        bytes32 salt
-    ) external returns (address) {
-        return
-            _create(
-                abi.encodePacked(
-                    type(FixedSetPoolTokenizer).creationCode,
-                    // Make the sender the `from` address
-                    abi.encode(vault, strategy, strategyType, initialBPT, tokens, amounts, msg.sender)
-                ),
-                salt
-            );
+    function create(bytes32 salt) external returns (address) {
+        return _create(abi.encodePacked(type(MockPoolController).creationCode, abi.encode(vault)), salt);
     }
 }
