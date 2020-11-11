@@ -15,8 +15,7 @@
 pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import "../BNum.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 // Highly opinionated token implementation
 // * It includes functions to increase and decrease allowance as a workaround
@@ -27,21 +26,24 @@ import "../BNum.sol";
 // * It lets a token holder use 'transferFrom' to send their own tokens,
 //   without first setting allowance
 // * It emits 'Approval' events whenever allowance is changed by 'transferFrom'
-abstract contract BTokenBase is BNum, IERC20 {
+abstract contract BTokenBase is IERC20 {
+    using SafeMath for uint256;
+
     mapping(address => uint256) internal _balance;
     mapping(address => mapping(address => uint256)) internal _allowance;
     uint256 internal _totalSupply;
 
     function _mint(uint256 amt) internal {
-        _balance[address(this)] = badd(_balance[address(this)], amt);
-        _totalSupply = badd(_totalSupply, amt);
+        _balance[address(this)] = _balance[address(this)].add(amt);
+        _totalSupply = _totalSupply.add(amt);
+
         emit Transfer(address(0), address(this), amt);
     }
 
     function _burn(uint256 amt) internal {
-        require(_balance[address(this)] >= amt, "ERR_INSUFFICIENT_BAL");
-        _balance[address(this)] = bsub(_balance[address(this)], amt);
-        _totalSupply = bsub(_totalSupply, amt);
+        _balance[address(this)] = _balance[address(this)].sub(amt, "ERR_INSUFFICIENT_BAL");
+        _totalSupply = _totalSupply.sub(amt);
+
         emit Transfer(address(this), address(0), amt);
     }
 
@@ -50,9 +52,9 @@ abstract contract BTokenBase is BNum, IERC20 {
         address dst,
         uint256 amt
     ) internal {
-        require(_balance[src] >= amt, "ERR_INSUFFICIENT_BAL");
-        _balance[src] = bsub(_balance[src], amt);
-        _balance[dst] = badd(_balance[dst], amt);
+        _balance[src] = _balance[src].sub(amt, "ERR_INSUFFICIENT_BAL");
+        _balance[dst] = _balance[dst].add(amt);
+
         emit Transfer(src, dst, amt);
     }
 
@@ -66,6 +68,8 @@ abstract contract BTokenBase is BNum, IERC20 {
 }
 
 contract BToken is BTokenBase {
+    using SafeMath for uint256;
+
     string private _name = "Balancer Pool Token";
     string private _symbol = "BPT";
     uint8 private _decimals = 18;
@@ -82,12 +86,7 @@ contract BToken is BTokenBase {
         return _decimals;
     }
 
-    function allowance(address src, address dst)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function allowance(address src, address dst) external view override returns (uint256) {
         return _allowance[src][dst];
     }
 
@@ -99,45 +98,39 @@ contract BToken is BTokenBase {
         return _totalSupply;
     }
 
-    function approve(address dst, uint256 amt)
-        external
-        override
-        returns (bool)
-    {
+    function approve(address dst, uint256 amt) external override returns (bool) {
         _allowance[msg.sender][dst] = amt;
+
         emit Approval(msg.sender, dst, amt);
+
         return true;
     }
 
-    function increaseApproval(address dst, uint256 amt)
-        external
-        returns (bool)
-    {
-        _allowance[msg.sender][dst] = badd(_allowance[msg.sender][dst], amt);
+    function increaseApproval(address dst, uint256 amt) external returns (bool) {
+        _allowance[msg.sender][dst] = _allowance[msg.sender][dst].add(amt);
+
         emit Approval(msg.sender, dst, _allowance[msg.sender][dst]);
+
         return true;
     }
 
-    function decreaseApproval(address dst, uint256 amt)
-        external
-        returns (bool)
-    {
+    function decreaseApproval(address dst, uint256 amt) external returns (bool) {
         uint256 oldValue = _allowance[msg.sender][dst];
+
         if (amt > oldValue) {
             _allowance[msg.sender][dst] = 0;
         } else {
-            _allowance[msg.sender][dst] = bsub(oldValue, amt);
+            _allowance[msg.sender][dst] = oldValue.sub(amt);
         }
+
         emit Approval(msg.sender, dst, _allowance[msg.sender][dst]);
+
         return true;
     }
 
-    function transfer(address dst, uint256 amt)
-        external
-        override
-        returns (bool)
-    {
+    function transfer(address dst, uint256 amt) external override returns (bool) {
         _move(msg.sender, dst, amt);
+
         return true;
     }
 
@@ -146,18 +139,15 @@ contract BToken is BTokenBase {
         address dst,
         uint256 amt
     ) external override returns (bool) {
-        require(
-            msg.sender == src || amt <= _allowance[src][msg.sender],
-            "ERR_BTOKEN_BAD_CALLER"
-        );
+        require(msg.sender == src || amt <= _allowance[src][msg.sender], "ERR_BTOKEN_BAD_CALLER");
+
         _move(src, dst, amt);
+
         if (msg.sender != src && _allowance[src][msg.sender] != uint256(-1)) {
-            _allowance[src][msg.sender] = bsub(
-                _allowance[src][msg.sender],
-                amt
-            );
+            _allowance[src][msg.sender] = _allowance[src][msg.sender].sub(amt);
             emit Approval(msg.sender, dst, _allowance[src][msg.sender]);
         }
+
         return true;
     }
 }

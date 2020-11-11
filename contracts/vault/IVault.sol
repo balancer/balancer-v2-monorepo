@@ -14,6 +14,8 @@
 
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 pragma solidity ^0.7.1;
 
 // Full external interface for the Vault core contract - no external or public methods exist in the contract that don't
@@ -24,16 +26,13 @@ interface IVault {
     /**
      * @dev Returns `user`'s User Balance for a specific token.
      */
-    function getUserTokenBalance(address user, address token)
-        external
-        view
-        returns (uint128);
+    function getUserTokenBalance(address user, IERC20 token) external view returns (uint128);
 
     /**
      * @dev Deposits tokens from the caller into `user`'s User Balance.
      */
     function deposit(
-        address token,
+        IERC20 token,
         uint128 amount,
         address user
     ) external;
@@ -43,7 +42,7 @@ interface IVault {
      * are charged by this.
      */
     function withdraw(
-        address token,
+        IERC20 token,
         uint128 amount,
         address recipient
     ) external;
@@ -64,18 +63,12 @@ interface IVault {
     /**
      * @dev Returns true of `operator` is an operator for `user`.
      */
-    function isOperatorFor(address user, address operator)
-        external
-        view
-        returns (bool);
+    function isOperatorFor(address user, address operator) external view returns (bool);
 
     /**
      * @dev Returns the number of operators for `user`. This does not include `user` itself, nor Trusted Operators.
      */
-    function getUserTotalOperators(address user)
-        external
-        view
-        returns (uint256);
+    function getUserTotalOperators(address user) external view returns (uint256);
 
     /**
      * @dev Returns a partial list of `user`'s operators, starting at index `start`, up to index `end`. This does not
@@ -99,10 +92,7 @@ interface IVault {
     /**
      * @dev Returns a partial list of Trusted Operators, starting at index `start`, up to index `end`.
      */
-    function getTrustedOperators(uint256 start, uint256 end)
-        external
-        view
-        returns (address[] memory);
+    function getTrustedOperators(uint256 start, uint256 end) external view returns (address[] memory);
 
     /**
      * @dev Returns the number of Trusted Operator Reporters.
@@ -112,10 +102,7 @@ interface IVault {
     /**
      * @dev Returns a partial list of Trusted Operator Reporters, starting at index `start`, up to index `end`.
      */
-    function getTrustedOperatorReporters(uint256 start, uint256 end)
-        external
-        view
-        returns (address[] memory);
+    function getTrustedOperatorReporters(uint256 start, uint256 end) external view returns (address[] memory);
 
     /**
      * @dev Adds `operator` as a Trusted Operator. Can only be called by a Trusted Operator Reporter.
@@ -135,9 +122,7 @@ interface IVault {
      *
      * Returns the created Pool's ID. Also emits a PoolCreated event.
      */
-    function newPool(address strategy, StrategyType strategyType)
-        external
-        returns (bytes32);
+    function newPool(address strategy, StrategyType strategyType) external returns (bytes32);
 
     /**
      * @dev Emitted when a Pool is created by calling `newPool`. Contains the Pool ID of the created pool.
@@ -154,10 +139,7 @@ interface IVault {
     /**
      * @dev Returns a partial list of Pool IDs, starting at index `start`, up to index `end`.
      */
-    function getPoolIds(uint256 start, uint256 end)
-        external
-        view
-        returns (bytes32[] memory);
+    function getPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory);
 
     /**
      * @dev Returns a Pool's controller.
@@ -167,31 +149,19 @@ interface IVault {
     /**
      * @dev Returns a Pool's Trading Strategy and Trading Strategy Type.
      */
-    function getPoolStrategy(bytes32 poolId)
-        external
-        view
-        returns (address, StrategyType);
+    function getPoolStrategy(bytes32 poolId) external view returns (address, StrategyType);
 
     /**
      * @dev Returns all tokens in the Pool (tokens for which the Pool has balance).
      */
-    function getPoolTokens(bytes32 poolId)
-        external
-        view
-        returns (address[] memory);
+    function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory);
 
     /**
      * @dev Returns the Pool's balance of `tokens`. This might be zero if the tokens are not in the Pool.
      */
-    function getPoolTokenBalances(bytes32 poolId, address[] calldata tokens)
-        external
-        view
-        returns (uint128[] memory);
+    function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint128[] memory);
 
-    function getInvestablePercentage(bytes32 poolId, address token)
-        external
-        view
-        returns (uint128);
+    function getInvestablePercentage(bytes32 poolId, IERC20 token) external view returns (uint128);
 
     // Pool Management
 
@@ -213,13 +183,13 @@ interface IVault {
 
     function authorizePoolInvestmentManager(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         address operator
     ) external;
 
     function revokePoolInvestmentManager(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         address operator
     ) external;
 
@@ -237,7 +207,7 @@ interface IVault {
     function addLiquidity(
         bytes32 poolId,
         address from,
-        address[] calldata tokens,
+        IERC20[] calldata tokens,
         uint128[] calldata totalAmounts,
         uint128[] calldata amountsToTransfer
     ) external;
@@ -255,7 +225,7 @@ interface IVault {
     function removeLiquidity(
         bytes32 poolId,
         address to,
-        address[] calldata tokens,
+        IERC20[] calldata tokens,
         uint128[] calldata totalAmounts,
         uint128[] calldata amountsToTransfer
     ) external;
@@ -292,13 +262,13 @@ interface IVault {
 
     function setInvestablePercentage(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         uint128 percentage
     ) external;
 
     function updateInvested(
         bytes32 poolId,
-        address token,
+        IERC20 token,
         uint128 amountInvested
     ) external;
 
@@ -310,7 +280,7 @@ interface IVault {
     // This saves the contract from having to compute the list of tokens that need to be
     // sent or received as part of the trade.
     struct Diff {
-        address token;
+        IERC20 token;
         int256 vaultDelta; // Positive delta means the vault receives tokens
         uint256 amountIn;
     }
@@ -350,10 +320,7 @@ interface IVault {
     /**
      * @dev Returns the number of unaccounted-for tokens for `token`.
      */
-    function getTotalUnaccountedForTokens(address token)
-        external
-        view
-        returns (uint256);
+    function getTotalUnaccountedForTokens(IERC20 token) external view returns (uint256);
 
     // Admin Controls
 
@@ -367,7 +334,7 @@ interface IVault {
      * @dev Transfers to `recipient` the requested amounts of unnaccounted-for tokens. Can only be called by the admin.
      */
     function claimUnaccountedForTokens(
-        address[] calldata tokens,
+        IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
     ) external;

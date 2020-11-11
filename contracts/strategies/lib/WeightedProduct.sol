@@ -45,9 +45,7 @@ contract WeightedProduct {
         // wO = tokenWeightOut                                                                       //
         **********************************************************************************************/
 
-        uint256 quotient = tokenBalanceIn.div(
-            tokenBalanceIn.add(tokenAmountIn)
-        );
+        uint256 quotient = tokenBalanceIn.div(tokenBalanceIn.add(tokenAmountIn));
         uint256 weightRatio = tokenWeightIn.div(tokenWeightOut);
 
         uint256 ratio = FixedPoint.ONE.sub(quotient.pow(weightRatio));
@@ -74,9 +72,7 @@ contract WeightedProduct {
         // wO = tokenWeightOut                                                                       //
         **********************************************************************************************/
 
-        uint256 quotient = tokenBalanceOut.div(
-            tokenBalanceOut.sub(tokenAmountOut)
-        );
+        uint256 quotient = tokenBalanceOut.div(tokenBalanceOut.sub(tokenAmountOut));
         uint256 weightRatio = tokenWeightOut.div(tokenWeightIn);
 
         uint256 ratio = quotient.pow(weightRatio).sub(FixedPoint.ONE);

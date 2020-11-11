@@ -61,7 +61,9 @@ async function vaultStats() {
 
 async function batchedSwap(withdrawTokens: boolean) {
   console.log(
-    `# Weighted Prod TS Batched swap: multiple batched pools for the same pair ${withdrawTokens ? '' : 'not withdrawing tokens'}`
+    `# Weighted Prod TS Batched swap: multiple batched pools for the same pair ${
+      withdrawTokens ? '' : 'not withdrawing tokens'
+    }`
   );
 
   // 50-50 DAI-MKR pools

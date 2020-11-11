@@ -203,7 +203,7 @@ describe('TradeScript - Stable', () => {
           },
           trader,
           tokens,
-          { DAI: (-2e18).toString(), SUSD: ['gte', '2132790554831920652'] } //2132790554831920652
+          { DAI: (-2e18).toString(), SUSD: ['gte', '2004844365375433805'] } //2004844365375433805
         );
       });
     });
@@ -239,7 +239,7 @@ describe('TradeScript - Stable', () => {
 
       it('multihop DAI for SUSD', async () => {
         const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2132790554831920652' },
+          { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2004844365375433805' },
           { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC' },
         ]);
@@ -268,7 +268,7 @@ describe('TradeScript - Stable', () => {
           },
           trader,
           tokens,
-          { SUSD: '2132790554831920652', DAI: '-2000000000000000000' } //2132790554831920652
+          { SUSD: '2004844365375433805', DAI: '-2000000000000000000' } //2132790554831920652
         );
       });
     });

@@ -54,31 +54,15 @@ library BalanceLib {
     /**
      * @dev Increases a Pool's balance. Called when tokens are added to the Pool (except from the Investment Manager).
      */
-    function increase(Balance memory self, uint128 amount)
-        internal
-        pure
-        returns (Balance memory)
-    {
-        return
-            Balance({
-                cash: self.cash.add128(amount),
-                total: self.total.add128(amount)
-            });
+    function increase(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
+        return Balance({ cash: self.cash.add128(amount), total: self.total.add128(amount) });
     }
 
     /**
      * @dev Decreases a Pool's balance. Called when tokens are removed from the Pool (except to the Investment Manager).
      */
-    function decrease(Balance memory self, uint128 amount)
-        internal
-        pure
-        returns (Balance memory)
-    {
-        return
-            Balance({
-                cash: self.cash.sub128(amount),
-                total: self.total.sub128(amount)
-            });
+    function decrease(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
+        return Balance({ cash: self.cash.sub128(amount), total: self.total.sub128(amount) });
     }
 }
 
@@ -92,15 +76,10 @@ abstract contract VaultAccounting is IVault, Settings {
     // The Vault's accounted-for balance for each token. This should always be equal to the sum of all User Balance
     // tokens, plus all 'cash' of all Pools.
     // TODO: make this uint128 and not Balance, since it consists exclusively of 'cash'.
-    mapping(address => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
+    mapping(IERC20 => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
 
-    function getTotalUnaccountedForTokens(address token)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        uint256 totalBalance = IERC20(token).balanceOf(address(this));
+    function getTotalUnaccountedForTokens(IERC20 token) public view override returns (uint256) {
+        uint256 totalBalance = token.balanceOf(address(this));
         assert(totalBalance >= _vaultTokenBalance[token].cash);
 
         return totalBalance - _vaultTokenBalance[token].cash;
@@ -114,7 +93,7 @@ abstract contract VaultAccounting is IVault, Settings {
      * transfer. This means tokens with a transfer fee are supported. The number of tokens received is returned.
      */
     function _pullTokens(
-        address token,
+        IERC20 token,
         address from,
         uint128 amount
     ) internal returns (uint128) {
@@ -122,17 +101,15 @@ abstract contract VaultAccounting is IVault, Settings {
             return 0;
         }
 
-        uint256 currentBalance = IERC20(token).balanceOf(address(this));
+        uint256 currentBalance = token.balanceOf(address(this));
 
-        IERC20(token).safeTransferFrom(from, address(this), amount);
+        token.safeTransferFrom(from, address(this), amount);
 
-        uint256 newBalance = IERC20(token).balanceOf(address(this));
+        uint256 newBalance = token.balanceOf(address(this));
 
         uint128 received = newBalance.sub(currentBalance).toUint128();
 
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].increase(
-            received
-        );
+        _vaultTokenBalance[token] = _vaultTokenBalance[token].increase(received);
 
         return received;
     }
@@ -142,7 +119,7 @@ abstract contract VaultAccounting is IVault, Settings {
      * unaccounted-for tokens.
      */
     function _pushTokens(
-        address token,
+        IERC20 token,
         address to,
         uint128 amount,
         bool chargeFee
@@ -153,10 +130,8 @@ abstract contract VaultAccounting is IVault, Settings {
 
         _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(amount);
 
-        uint128 amountToSend = chargeFee
-            ? _applyProtocolWithdrawFee(amount)
-            : amount;
+        uint128 amountToSend = chargeFee ? _applyProtocolWithdrawFee(amount) : amount;
 
-        IERC20(token).safeTransfer(to, amountToSend);
+        token.safeTransfer(to, amountToSend);
     }
 }

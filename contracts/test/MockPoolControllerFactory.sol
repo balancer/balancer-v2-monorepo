@@ -15,16 +15,25 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./IVault.sol";
-import "./Settings.sol";
-import "./VaultAccounting.sol";
-import "./UserBalance.sol";
-import "./PoolRegistry.sol";
-import "./Swaps.sol";
-import "./Admin.sol";
+import "../vault/IVault.sol";
 
-// solhint-disable no-empty-blocks
+import "../controllers/BasePoolControllerFactory.sol";
 
-contract Vault is IVault, Settings, VaultAccounting, UserBalance, PoolRegistry, Swaps, Admin {
-    constructor() Admin(msg.sender) {}
+contract MockPoolController {
+    IVault public vault;
+
+    constructor(IVault _vault) {
+        vault = _vault;
+
+        require(_vault.isOperatorFor(address(0), address(this)), "Not a Trusted Operator during construction");
+    }
+}
+
+contract MockPoolControllerFactory is BasePoolControllerFactory {
+    // solhint-disable-next-line no-empty-blocks
+    constructor(IVault _vault) BasePoolControllerFactory(_vault) {}
+
+    function create(bytes32 salt) external returns (address) {
+        return _create(abi.encodePacked(type(MockPoolController).creationCode, abi.encode(vault)), salt);
+    }
 }

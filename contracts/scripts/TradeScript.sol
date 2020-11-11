@@ -51,8 +51,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
         Helper memory helper;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
-            (address strategy, IVault.StrategyType strategyType) = _vault
-                .getPoolStrategy(swaps[i].poolId);
+            (address strategy, IVault.StrategyType strategyType) = _vault.getPoolStrategy(swaps[i].poolId);
 
             if (strategyType == IVault.StrategyType.PAIR) {
                 helper = PairTradeScript._getExactAmountInData(
@@ -96,14 +95,8 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
             swaps[i].tokenOut.amount = helper.amountCalculated;
         }
 
-        require(
-            helper.toReceive >= info.minAmountOut,
-            "Insufficient amount out"
-        );
-        require(
-            helper.toSend.div(helper.toReceive) <= info.maxPrice,
-            "Price too high"
-        );
+        require(helper.toReceive >= info.minAmountOut, "Insufficient amount out");
+        require(helper.toSend.div(helper.toReceive) <= info.maxPrice, "Price too high");
 
         for (uint256 i = 0; i < diffs.length; ++i) {
             if (diffs[i].token == info.overallTokenIn) {
@@ -116,10 +109,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
             diffs,
             swaps,
             IVault.FundsIn({ withdrawFrom: msg.sender }),
-            IVault.FundsOut({
-                recipient: msg.sender,
-                transferToRecipient: withdrawTokens
-            })
+            IVault.FundsOut({ recipient: msg.sender, transferToRecipient: withdrawTokens })
         );
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct
@@ -144,8 +134,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
         Helper memory helper;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
-            (address strategy, IVault.StrategyType strategyType) = _vault
-                .getPoolStrategy(swaps[i].poolId);
+            (address strategy, IVault.StrategyType strategyType) = _vault.getPoolStrategy(swaps[i].poolId);
 
             if (strategyType == IVault.StrategyType.PAIR) {
                 helper = PairTradeScript._getExactAmountOutData(
@@ -190,10 +179,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
         }
 
         require(helper.toSend <= info.maxAmountIn, "Excessing amount out");
-        require(
-            helper.toSend.div(helper.toReceive) <= info.maxPrice,
-            "Price too high"
-        );
+        require(helper.toSend.div(helper.toReceive) <= info.maxPrice, "Price too high");
 
         for (uint256 i = 0; i < diffs.length; ++i) {
             if (diffs[i].token == info.overallTokenIn) {
@@ -206,10 +192,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
             diffs,
             swaps,
             IVault.FundsIn({ withdrawFrom: msg.sender }),
-            IVault.FundsOut({
-                recipient: msg.sender,
-                transferToRecipient: withdrawTokens
-            })
+            IVault.FundsOut({ recipient: msg.sender, transferToRecipient: withdrawTokens })
         );
 
         // TODO: check recipient balance increased by helper.toReceive? This should never fail if engine is correct

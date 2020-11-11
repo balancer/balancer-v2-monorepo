@@ -15,20 +15,14 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/utils/Create2.sol";
-
 import "../vault/IVault.sol";
 
+import "./BasePoolControllerFactory.sol";
 import "./FixedSetPoolTokenizer.sol";
 
-contract FixedSetPoolTokenizerFactory {
-    IVault public immutable vault;
-
-    event TokenizerCreated(address indexed tokenizer);
-
-    constructor(IVault _vault) {
-        vault = _vault;
-    }
+contract FixedSetPoolTokenizerFactory is BasePoolControllerFactory {
+    // solhint-disable-next-line no-empty-blocks
+    constructor(IVault _vault) BasePoolControllerFactory(_vault) {}
 
     function create(
         address strategy,
@@ -38,50 +32,14 @@ contract FixedSetPoolTokenizerFactory {
         uint128[] memory amounts,
         bytes32 salt
     ) external returns (address) {
-        bytes memory creationCode = _getCreationCode(
-            strategy,
-            strategyType,
-            initialBPT,
-            tokens,
-            amounts,
-            msg.sender
-        );
-
-        address expectedDestination = Create2.computeAddress(
-            salt,
-            keccak256(creationCode)
-        );
-
-        vault.reportTrustedOperator(expectedDestination);
-
-        address tokenizer = Create2.deploy(0, salt, creationCode);
-        assert(tokenizer == expectedDestination);
-
-        emit TokenizerCreated(tokenizer);
-
-        return tokenizer;
-    }
-
-    function _getCreationCode(
-        address strategy,
-        IVault.StrategyType strategyType,
-        uint256 initialBPT,
-        address[] memory tokens,
-        uint128[] memory amounts,
-        address from
-    ) private view returns (bytes memory) {
         return
-            abi.encodePacked(
-                type(FixedSetPoolTokenizer).creationCode,
-                abi.encode(
-                    vault,
-                    strategy,
-                    strategyType,
-                    initialBPT,
-                    tokens,
-                    amounts,
-                    from
-                )
+            _create(
+                abi.encodePacked(
+                    type(FixedSetPoolTokenizer).creationCode,
+                    // Make the sender the `from` address
+                    abi.encode(vault, strategy, strategyType, initialBPT, tokens, amounts, msg.sender)
+                ),
+                salt
             );
     }
 }

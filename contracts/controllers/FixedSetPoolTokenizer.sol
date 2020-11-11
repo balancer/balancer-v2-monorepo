@@ -11,6 +11,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 pragma solidity ^0.7.1;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../vault/IVault.sol";
@@ -20,6 +21,7 @@ import "./BToken.sol";
 
 contract FixedSetPoolTokenizer is BToken {
     using FixedPoint for uint128;
+    using FixedPoint for uint256;
     using SafeCast for uint256;
 
     IVault public immutable vault;
@@ -38,7 +40,7 @@ contract FixedSetPoolTokenizer is BToken {
         address strategy,
         IVault.StrategyType strategyType,
         uint256 initialBPT,
-        address[] memory tokens,
+        IERC20[] memory tokens,
         uint128[] memory amounts,
         address from
     ) {
@@ -60,19 +62,17 @@ contract FixedSetPoolTokenizer is BToken {
     function joinPool(
         uint256 poolAmountOut,
         uint128[] calldata maxAmountsIn,
-        bool transferTokens
+        bool transferTokens,
+        address beneficiary
     ) external _lock_ {
         uint256 poolTotal = totalSupply();
-        uint128 ratio = bdiv(poolAmountOut, poolTotal).toUint128();
+        uint128 ratio = poolAmountOut.div(poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
 
-        address[] memory tokens = vault.getPoolTokens(poolId);
+        IERC20[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
-        require(
-            maxAmountsIn.length == tokens.length,
-            "Tokens and amounts length mismatch"
-        );
+        require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
 
         uint128[] memory amountsIn = new uint128[](tokens.length);
         uint128[] memory amountsToTransfer = new uint128[](tokens.length);
@@ -89,16 +89,10 @@ contract FixedSetPoolTokenizer is BToken {
             }
         }
 
-        vault.addLiquidity(
-            poolId,
-            msg.sender,
-            tokens,
-            amountsIn,
-            amountsToTransfer
-        );
+        vault.addLiquidity(poolId, msg.sender, tokens, amountsIn, amountsToTransfer);
 
         _mintPoolShare(poolAmountOut);
-        _pushPoolShare(msg.sender, poolAmountOut);
+        _pushPoolShare(beneficiary, poolAmountOut);
     }
 
     function exitPool(
@@ -107,16 +101,13 @@ contract FixedSetPoolTokenizer is BToken {
         bool withdrawTokens
     ) external _lock_ {
         uint256 poolTotal = totalSupply();
-        uint128 ratio = bdiv(poolAmountIn, poolTotal).toUint128();
+        uint128 ratio = poolAmountIn.div(poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
 
-        address[] memory tokens = vault.getPoolTokens(poolId);
+        IERC20[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
-        require(
-            minAmountsOut.length == tokens.length,
-            "Tokens and amounts length mismatch"
-        );
+        require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
 
         uint128[] memory amountsOut = new uint128[](tokens.length);
         uint128[] memory amountsToTransfer = new uint128[](tokens.length);
@@ -133,13 +124,7 @@ contract FixedSetPoolTokenizer is BToken {
             }
         }
 
-        vault.removeLiquidity(
-            poolId,
-            msg.sender,
-            tokens,
-            amountsOut,
-            amountsToTransfer
-        );
+        vault.removeLiquidity(poolId, msg.sender, tokens, amountsOut, amountsToTransfer);
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);

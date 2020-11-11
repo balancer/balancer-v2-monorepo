@@ -16,7 +16,6 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
-
 import "../../math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
@@ -36,26 +35,12 @@ contract Stable {
         int256 prod;
     }
 
-    function _approximateAmount(Data memory data, uint128 approxAmount)
-        private
-        pure
-        returns (uint128)
-    {
+    function _approximateAmount(Data memory data, uint128 approxAmount) private pure returns (uint128) {
         uint128 newApproxAmount;
-        int256 c1 = data.amp *
-            data.sum +
-            ((FixedPoint.ONE / data.nn) - data.amp) *
-            data.invariant;
-        int256 c2 = (data.invariant * data.invariant * data.invariant) /
-            (data.nn * data.nn * data.prod);
+        int256 c1 = data.amp * data.sum + ((FixedPoint.ONE / data.nn) - data.amp) * data.invariant;
+        int256 c2 = (data.invariant * data.invariant * data.invariant) / (data.nn * data.nn * data.prod);
         for (int256 i = 0; i < 255; i++) {
-            int256 f1 = data.amp *
-                approxAmount *
-                approxAmount +
-                c1 *
-                approxAmount -
-                c2 *
-                FixedPoint.ONE;
+            int256 f1 = data.amp * approxAmount * approxAmount + c1 * approxAmount - c2 * FixedPoint.ONE;
             int256 f2 = c1 + 2 * data.amp * approxAmount;
             newApproxAmount = uint128(approxAmount - (f1 / f2));
             if (newApproxAmount > approxAmount) {
@@ -86,9 +71,7 @@ contract Stable {
             if (i != tokenIndexOut) {
                 if (i == tokenIndexIn) {
                     sum = sum + balances[i] + tokenAmountIn;
-                    prod =
-                        (prod * (balances[i] + tokenAmountIn)) /
-                        FixedPoint.ONE;
+                    prod = (prod * (balances[i] + tokenAmountIn)) / FixedPoint.ONE;
                 } else {
                     sum = sum + balances[i];
                     prod = (prod * balances[i]) / FixedPoint.ONE;
@@ -96,14 +79,7 @@ contract Stable {
             }
             nn = nn * int256(n);
         }
-        return
-            Data({
-                amp: amp,
-                invariant: invariant,
-                sum: sum,
-                nn: nn,
-                prod: prod
-            });
+        return Data({ amp: amp, invariant: invariant, sum: sum, nn: nn, prod: prod });
     }
 
     function _getDataInGivenOut(
@@ -122,9 +98,7 @@ contract Stable {
             if (i != tokenIndexIn) {
                 if (i == tokenIndexOut) {
                     sum = sum + balances[i] - tokenAmountOut;
-                    prod =
-                        (prod * (balances[i] - tokenAmountOut)) /
-                        FixedPoint.ONE;
+                    prod = (prod * (balances[i] - tokenAmountOut)) / FixedPoint.ONE;
                 } else {
                     sum = sum + balances[i];
                     prod = (prod * balances[i]) / FixedPoint.ONE;
@@ -132,14 +106,7 @@ contract Stable {
             }
             nn = nn * int256(n);
         }
-        return
-            Data({
-                amp: amp,
-                invariant: invariant,
-                sum: sum,
-                nn: nn,
-                prod: prod
-            });
+        return Data({ amp: amp, invariant: invariant, sum: sum, nn: nn, prod: prod });
     }
 
     function _outGivenIn(
@@ -149,17 +116,9 @@ contract Stable {
         uint256 tokenIndexOut,
         uint128 tokenAmountIn
     ) internal pure returns (uint128) {
-        Data memory data = _getDataOutGivenIn(
-            amp,
-            balances,
-            tokenIndexIn,
-            tokenIndexOut,
-            tokenAmountIn
-        );
+        Data memory data = _getDataOutGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
         uint128 approxTokenAmountOut = balances[tokenIndexOut] - tokenAmountIn;
-        return
-            balances[tokenIndexOut] -
-            _approximateAmount(data, approxTokenAmountOut);
+        return balances[tokenIndexOut] - _approximateAmount(data, approxTokenAmountOut);
     }
 
     function _inGivenOut(
@@ -169,24 +128,12 @@ contract Stable {
         uint256 tokenIndexOut,
         uint128 tokenAmountOut
     ) internal pure returns (uint128) {
-        Data memory data = _getDataInGivenOut(
-            amp,
-            balances,
-            tokenIndexIn,
-            tokenIndexOut,
-            tokenAmountOut
-        );
+        Data memory data = _getDataInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
         uint128 approxTokenAmountIn = balances[tokenIndexIn] + tokenAmountOut;
-        return
-            _approximateAmount(data, approxTokenAmountIn) -
-            balances[tokenIndexIn];
+        return _approximateAmount(data, approxTokenAmountIn) - balances[tokenIndexIn];
     }
 
-    function _invariant(int256 amp, uint128[] memory balances)
-        internal
-        pure
-        returns (int256)
-    {
+    function _invariant(int256 amp, uint128[] memory balances) internal pure returns (int256) {
         int256 sum = 0;
         int256 prod = FixedPoint.ONE;
         uint256 n = balances.length;
@@ -201,16 +148,8 @@ contract Stable {
         int256 c2 = amp - FixedPoint.ONE / nn;
         int256 c1 = (nn * nn * prod);
         for (int256 i = 0; i < 255; i++) {
-            int256 f1 = (c2 *
-                invariant +
-                (((invariant * invariant) / c1) * invariant) -
-                amp *
-                sum) / FixedPoint.ONE;
-            int256 f2 = (c2 *
-                FixedPoint.ONE +
-                3 *
-                ((invariant * FixedPoint.ONE) / c1) *
-                invariant) / FixedPoint.ONE;
+            int256 f1 = (c2 * invariant + (((invariant * invariant) / c1) * invariant) - amp * sum) / FixedPoint.ONE;
+            int256 f2 = (c2 * FixedPoint.ONE + 3 * ((invariant * FixedPoint.ONE) / c1) * invariant) / FixedPoint.ONE;
             newInvariant =
                 invariant -
                 (2 * f1 * f2 * FixedPoint.ONE) /
