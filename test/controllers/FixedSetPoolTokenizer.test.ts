@@ -222,7 +222,7 @@ describe('FixedSetPoolTokenizer', function () {
         const previousBPT = await tokenizer.balanceOf(lp.address);
 
         // By returning 10% of the current BTP, an LP gets in return 10% of the current token balance
-        await tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true);
+        await tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address);
 
         const newBPT = await tokenizer.balanceOf(lp.address);
         expect(newBPT.sub(previousBPT)).to.equal((-10e18).toString());
@@ -232,27 +232,42 @@ describe('FixedSetPoolTokenizer', function () {
         await expect(
           tokenizer
             .connect(lp)
-            .exitPool((10e18).toString(), [BigNumber.from((0.1e18).toString()).add(1), (0.2e18).toString()], true)
+            .exitPool(
+              (10e18).toString(),
+              [BigNumber.from((0.1e18).toString()).add(1), (0.2e18).toString()],
+              true,
+              lp.address
+            )
         ).to.be.revertedWith('NOT EXITING ENOUGH');
 
         await expect(
           tokenizer
             .connect(lp)
-            .exitPool((10e18).toString(), [(0.1e18).toString(), BigNumber.from((0.2e18).toString()).add(1)], true)
+            .exitPool(
+              (10e18).toString(),
+              [(0.1e18).toString(), BigNumber.from((0.2e18).toString()).add(1)],
+              true,
+              lp.address
+            )
         ).to.be.revertedWith('NOT EXITING ENOUGH');
       });
 
       it('fails if not requesting all tokens', async () => {
         await expect(
-          tokenizer.connect(lp).exitPool((10e18).toString(), [(0.1e18).toString()], true)
+          tokenizer.connect(lp).exitPool((10e18).toString(), [(0.1e18).toString()], true, lp.address)
         ).to.be.revertedWith('Tokens and amounts length mismatch');
       });
 
       it('all tokens due are pushed', async () => {
-        await expectBalanceChange(() => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true), lp, tokens, {
-          DAI: 0.1e18,
-          MKR: 0.2e18,
-        });
+        await expectBalanceChange(
+          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address),
+          lp,
+          tokens,
+          {
+            DAI: 0.1e18,
+            MKR: 0.2e18,
+          }
+        );
       });
 
       context('with protocol withdraw fees', () => {
@@ -264,7 +279,7 @@ describe('FixedSetPoolTokenizer', function () {
 
         it('tokens minus fee are pushed', async () => {
           await expectBalanceChange(
-            () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true),
+            () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address),
             lp,
             tokens,
             {
@@ -277,7 +292,7 @@ describe('FixedSetPoolTokenizer', function () {
 
       it('can deposit into user balance', async () => {
         await expectBalanceChange(
-          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false),
+          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
           lp,
           tokens,
           {}
@@ -288,13 +303,18 @@ describe('FixedSetPoolTokenizer', function () {
         await expect(
           tokenizer
             .connect(lp)
-            .exitPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString(), (0.3e18).toString()], true)
+            .exitPool(
+              (10e18).toString(),
+              [(0.1e18).toString(), (0.2e18).toString(), (0.3e18).toString()],
+              true,
+              lp.address
+            )
         ).to.be.revertedWith('Tokens and amounts length mismatch');
       });
 
       it('can deposit into user balance', async () => {
         await expectBalanceChange(
-          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false),
+          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
           lp,
           tokens,
           {}
@@ -307,14 +327,14 @@ describe('FixedSetPoolTokenizer', function () {
 
     describe('draining', () => {
       it('pools can be fully exited', async () => {
-        await tokenizer.connect(lp).exitPool((100e18).toString(), [0, 0], true);
+        await tokenizer.connect(lp).exitPool((100e18).toString(), [0, 0], true, lp.address);
 
         expect(await tokenizer.totalSupply()).to.equal(0);
         expect(await vault.getPoolTokens(poolId)).to.have.members([]);
       });
 
       it('drained pools cannot be rejoined', async () => {
-        await tokenizer.connect(lp).exitPool((100e18).toString(), [0, 0], true);
+        await tokenizer.connect(lp).exitPool((100e18).toString(), [0, 0], true, lp.address);
         await expect(
           tokenizer
             .connect(lp)
