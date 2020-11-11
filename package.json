@@ -5,7 +5,8 @@
   "author": "Nicolás Venturo <nico@balancer.finance>",
   "license": "GPL-3.0-only",
   "scripts": {
-    "benchmark": "hardhat run scripts/measureGas.ts",
+    "benchmark-wp": "hardhat run scripts/gas/measureWPSwap.ts",
+    "benchmark-stable": "hardhat run scripts/gas/measureStableSwap.ts",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",

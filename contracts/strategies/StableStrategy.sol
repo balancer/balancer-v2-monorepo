@@ -44,7 +44,7 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
         uint256 indexOut
     ) external view override returns (bool, uint128) {
         //Calculate old invariant
-        uint256 oldInvariant = _invariant(_amp, balances);
+        int256 oldInvariant = _invariant(_amp, balances);
 
         //Substract fee
         uint128 feeAmount = swap.amountIn.mul(_swapFee).toUint128();
@@ -56,7 +56,7 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
         balances[indexOut] = balances[indexOut].sub128(swap.amountOut);
 
         //Calculate new invariant
-        uint256 newInvariant = _invariant(_amp, balances);
+        int256 newInvariant = _invariant(_amp, balances);
 
         //Check new invariant is greater or relative error is small
         if (newInvariant >= oldInvariant) {
