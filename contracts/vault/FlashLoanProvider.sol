@@ -37,13 +37,7 @@ abstract contract FlashLoanProvider is IVault, Settings {
      * @param _fee the fee on the amount
      * @param _timestamp the timestamp of the action
      **/
-    event FlashLoan(
-        address indexed _target,
-        address indexed _token,
-        uint256 _amount,
-        uint256 _fee,
-        uint256 _timestamp
-    );
+    event FlashLoan(address indexed _target, address indexed _token, uint256 _amount, uint256 _fee, uint256 _timestamp);
 
     /**
      * @dev allows smartcontracts to access the liquidity of the vault within one transaction,
@@ -62,21 +56,13 @@ abstract contract FlashLoanProvider is IVault, Settings {
         bytes memory _params //TODO check for reentrancy
     ) external override {
         //check that the token has enough available liquidity
-        uint256 availableLiquidityBefore = IERC20(_token).balanceOf(
-            address(this)
-        );
+        uint256 availableLiquidityBefore = IERC20(_token).balanceOf(address(this));
 
-        require(
-            availableLiquidityBefore >= _amount,
-            "There is not enough liquidity available to borrow"
-        );
+        require(availableLiquidityBefore >= _amount, "There is not enough liquidity available to borrow");
 
         //calculate fee on amount
         uint256 amountFee = _calculateProtocolFlashLoanFee(_amount);
-        require(
-            amountFee > 0,
-            "The requested amount is too small for a flashLoan."
-        );
+        require(amountFee > 0, "The requested amount is too small for a flashLoan.");
 
         //get the FlashLoanReceiver instance
         IFlashLoanReceiver receiver = IFlashLoanReceiver(_receiver);
@@ -90,9 +76,7 @@ abstract contract FlashLoanProvider is IVault, Settings {
         receiver.executeOperation(_token, _amount, amountFee, _params);
 
         //check that the actual balance of the core contract includes the returned amount
-        uint256 availableLiquidityAfter = IERC20(_token).balanceOf(
-            address(this)
-        );
+        uint256 availableLiquidityAfter = IERC20(_token).balanceOf(address(this));
 
         require(
             availableLiquidityAfter == availableLiquidityBefore.add(amountFee),
