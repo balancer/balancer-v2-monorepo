@@ -98,7 +98,8 @@ contract FixedSetPoolTokenizer is BToken {
     function exitPool(
         uint256 poolAmountIn,
         uint256[] calldata minAmountsOut,
-        bool withdrawTokens
+        bool withdrawTokens,
+        address beneficiary
     ) external _lock_ {
         uint256 poolTotal = totalSupply();
         uint128 ratio = poolAmountIn.div(poolTotal).toUint128();
@@ -124,7 +125,7 @@ contract FixedSetPoolTokenizer is BToken {
             }
         }
 
-        vault.removeLiquidity(poolId, msg.sender, tokens, amountsOut, amountsToTransfer);
+        vault.removeLiquidity(poolId, beneficiary, tokens, amountsOut, amountsToTransfer);
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
