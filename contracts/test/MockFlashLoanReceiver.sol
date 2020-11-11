@@ -46,10 +46,7 @@ contract MockFlashLoanReceiver is Ownable, IFlashLoanReceiver {
         uint256 _fee,
         bytes calldata _params
     ) external override {
-        require(
-            IERC20(_token).balanceOf(address(this)) >= _amount,
-            "Invalid balance, was the flashLoan successful?"
-        );
+        require(IERC20(_token).balanceOf(address(this)) >= _amount, "Invalid balance, was the flashLoan successful?");
 
         if (failExecution) {
             return;
