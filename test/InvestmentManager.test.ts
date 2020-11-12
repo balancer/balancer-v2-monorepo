@@ -33,7 +33,7 @@ describe.skip('InvestmentManager', function () {
     poolId = await tokenizer.poolId();
 
     const tokenNames = ['WETH', 'DAI'];
-    tokens = await deployTokens(tokenNames);
+    tokens = await deployTokens(tokenNames, [18, 18]);
     await Promise.all(
       tokenNames.map(async (token) => {
         await tokens[token].mint(owner.address, (200e18).toString());

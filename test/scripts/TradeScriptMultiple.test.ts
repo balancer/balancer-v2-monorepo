@@ -26,7 +26,7 @@ describe('TradeScript - Multiple Strategies', () => {
   beforeEach('deploy vault', async () => {
     vault = await deploy('Vault', { args: [] });
     tradeScript = await deploy('TradeScript', { args: [vault.address] });
-    tokens = await deployTokens(['DAI', 'USDC', 'TUSD', 'SUSD', 'MKR']);
+    tokens = await deployTokens(['DAI', 'USDC', 'TUSD', 'SUSD', 'MKR'], [18, 6, 18, 18, 18]);
 
     const weights = [(1e18).toString(), (1e18).toString()];
     curveWeightProd1 = await deploy('WeightedProdStrategy', {

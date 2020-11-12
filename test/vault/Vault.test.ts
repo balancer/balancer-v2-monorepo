@@ -27,7 +27,7 @@ describe('Vault - swaps', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [] });
-    tokens = await deployTokens(['DAI', 'MKR']);
+    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
     strategy = await deploy('WeightedProdStrategy', {
       args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (1e18).toString()], 2, 0],
     });

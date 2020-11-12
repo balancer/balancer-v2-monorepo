@@ -30,7 +30,7 @@ describe('FixedSetPoolTokenizer', function () {
   beforeEach(async function () {
     vault = await deploy('Vault', { from: admin, args: [] });
 
-    tokens = await deployTokens(['DAI', 'MKR']);
+    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
     await Promise.all(
       ['DAI', 'MKR'].map(async (token) => {
         await tokens[token].mint(lp.address, (100e18).toString());

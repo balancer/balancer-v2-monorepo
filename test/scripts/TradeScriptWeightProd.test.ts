@@ -24,7 +24,7 @@ describe('TradeScript - WeightProduct', () => {
   beforeEach('deploy vault', async () => {
     vault = await deploy('Vault', { args: [] });
     tradeScript = await deploy('TradeScript', { args: [vault.address] });
-    tokens = await deployTokens(['DAI', 'BAT', 'ANT', 'SNX', 'MKR']);
+    tokens = await deployTokens(['DAI', 'BAT', 'ANT', 'SNX', 'MKR'], [18, 18, 18, 18, 18]);
 
     const weights = [(1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString(), (1e18).toString()];
     strategy = await deploy('WeightedProdStrategy', {

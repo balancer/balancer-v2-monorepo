@@ -29,7 +29,7 @@ describe('Vault - multiple trading strategies interfaces', () => {
 
   beforeEach(async () => {
     vault = await deploy('Vault', { args: [] });
-    tokens = await deployTokens(['DAI', 'TEST']);
+    tokens = await deployTokens(['DAI', 'TEST'], [18, 18]);
 
     mockStrategy = await deploy('MockTradingStrategy', { args: [] });
     mockScript = await deploy('MockTradeScript', { args: [] });

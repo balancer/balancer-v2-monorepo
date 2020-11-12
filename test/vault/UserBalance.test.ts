@@ -29,7 +29,7 @@ describe('Vault - user balance', () => {
   describe('deposit & withdraw', () => {
     beforeEach('deploy vault & tokens', async () => {
       vault = await deploy('Vault', { from: admin, args: [] });
-      tokens = await deployTokens(['DAI', 'MKR']);
+      tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
       await mintTokens(tokens, 'DAI', trader, amount.toString());
     });

@@ -12,8 +12,8 @@ export async function deployToken(symbol: string, decimals?: number): Promise<Co
 }
 
 // Deploys multiple tokens and returns a symbol -> token dictionary, which can be used in other helpers
-export async function deployTokens(symbols: Array<string>): Promise<TokenList> {
-  return fromPairs(await Promise.all(symbols.map(async (symbol) => [symbol, await deployToken(symbol)])));
+export async function deployTokens(symbols: Array<string>, decimals: Array<number>): Promise<TokenList> {
+  return fromPairs(await Promise.all(symbols.map(async (symbol, index) => [symbol, await deployToken(symbol, decimals[index])])));
 }
 
 export async function mintTokens(

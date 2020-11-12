@@ -26,7 +26,7 @@ async function main() {
 
   script = await deploy('TradeScript', { args: [vault.address] });
 
-  tokens = await deployTokens(['DAI', 'MKR', 'BAT']);
+  tokens = await deployTokens(['DAI', 'MKR', 'BAT'], [18, 18, 18]);
 
   for (const symbol in tokens) {
     // controller tokens are used to initialize pools
