@@ -10,8 +10,8 @@ export type Trade = {
 
 export type Swap = {
   poolId: string;
-  tokenIn: { tokenDiffIndex: number; amount: number };
-  tokenOut: { tokenDiffIndex: number; amount: number };
+  tokenIn: { tokenIndex: number; amount: number };
+  tokenOut: { tokenIndex: number; amount: number };
   userData: string;
 };
 
@@ -33,8 +33,8 @@ export function getTokensSwapsAndAmounts(
 
     swaps.push({
       poolId: trade.poolId,
-      tokenIn: { tokenDiffIndex: inDiffIndex, amount: 0 },
-      tokenOut: { tokenDiffIndex: outDiffIndex, amount: 0 },
+      tokenIn: { tokenIndex: inDiffIndex, amount: 0 },
+      tokenOut: { tokenIndex: outDiffIndex, amount: 0 },
       userData: '0x',
     });
 

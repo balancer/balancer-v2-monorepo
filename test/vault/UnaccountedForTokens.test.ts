@@ -96,8 +96,8 @@ describe('Vault - unaccounted for tokens', () => {
       const swaps: [Swap] = [
         {
           poolId,
-          tokenIn: { tokenDiffIndex: 0, amount: 500 },
-          tokenOut: { tokenDiffIndex: 1, amount: 500 },
+          tokenIn: { tokenIndex: 0, amount: 500 },
+          tokenOut: { tokenIndex: 1, amount: 500 },
           userData: '0x',
         },
       ];

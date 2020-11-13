@@ -82,8 +82,8 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         uint128 amountIn,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        IERC20 tokenIn = tokens[swap.tokenIn.tokenDiffIndex];
-        IERC20 tokenOut = tokens[swap.tokenOut.tokenDiffIndex];
+        IERC20 tokenIn = tokens[swap.tokenIn.tokenIndex];
+        IERC20 tokenOut = tokens[swap.tokenOut.tokenIndex];
 
         TuplePoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut, indexes);
 
@@ -123,8 +123,8 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
         uint128 amountOut,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        IERC20 tokenIn = tokens[swap.tokenIn.tokenDiffIndex];
-        IERC20 tokenOut = tokens[swap.tokenOut.tokenDiffIndex];
+        IERC20 tokenIn = tokens[swap.tokenIn.tokenIndex];
+        IERC20 tokenOut = tokens[swap.tokenOut.tokenIndex];
 
         TuplePoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut, indexes);
 

@@ -295,7 +295,7 @@ interface IVault {
     // token in the Diffs array. Instead, the caller provides the indices for the Diffs array, leading to gas savings.
     struct TokenData {
         uint128 amount;
-        uint128 tokenDiffIndex;
+        uint128 tokenIndex;
     }
 
     // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are

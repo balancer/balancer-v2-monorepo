@@ -68,8 +68,8 @@ describe('Vault - multiple trading strategies interfaces', () => {
         poolId: poolIdTuple,
         from: traderAddress,
         to: traderAddress,
-        tokenIn: { tokenDiffIndex: 1, amount: (1e18).toString() },
-        tokenOut: { tokenDiffIndex: 0, amount: (1e18).toString() },
+        tokenIn: { tokenIndex: 1, amount: (1e18).toString() },
+        tokenOut: { tokenIndex: 0, amount: (1e18).toString() },
         userData: '0x',
       },
     ];
@@ -115,8 +115,8 @@ describe('Vault - multiple trading strategies interfaces', () => {
         poolId: poolIdPair,
         from: traderAddress,
         to: traderAddress,
-        tokenIn: { tokenDiffIndex: 1, amount: (1e18).toString() },
-        tokenOut: { tokenDiffIndex: 0, amount: (1e18).toString() },
+        tokenIn: { tokenIndex: 1, amount: (1e18).toString() },
+        tokenOut: { tokenIndex: 0, amount: (1e18).toString() },
         userData: '0x',
       },
     ];

@@ -70,8 +70,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             require(swap.tokenIn.amount != 0, "Token In NOOP");
             require(swap.tokenOut.amount != 0, "Token Out NOOP");
 
-            IERC20 tokenIn = tokens[swap.tokenIn.tokenDiffIndex];
-            IERC20 tokenOut = tokens[swap.tokenOut.tokenDiffIndex];
+            IERC20 tokenIn = tokens[swap.tokenIn.tokenIndex];
+            IERC20 tokenOut = tokens[swap.tokenOut.tokenIndex];
 
             require(tokenIn != tokenOut, "Swap for same token");
 
@@ -87,12 +87,13 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             _poolTokenBalance[swap.poolId][tokenOut] = tokenOutFinalBalance;
 
             // 3: Accumulate token diffs
-            tokenDeltas[swap.tokenIn.tokenDiffIndex] += swap.tokenIn.amount.toInt128();
-            tokenDeltas[swap.tokenOut.tokenDiffIndex] -= swap.tokenOut.amount.toInt128();
+            tokenDeltas[swap.tokenIn.tokenIndex] += swap.tokenIn.amount.toInt128();
+            tokenDeltas[swap.tokenOut.tokenIndex] -= swap.tokenOut.amount.toInt128();
 
             // 3b: Accumulate token swap protocol fees
-            tokenSwapProtocolFees[swap.tokenIn.tokenDiffIndex] = tokenSwapProtocolFees[swap.tokenIn.tokenDiffIndex]
-                .add128(protocolSwapFeeAmountIn);
+            tokenSwapProtocolFees[swap.tokenIn.tokenIndex] = tokenSwapProtocolFees[swap.tokenIn.tokenIndex].add128(
+                protocolSwapFeeAmountIn
+            );
         }
 
         // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
