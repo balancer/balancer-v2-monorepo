@@ -7,6 +7,7 @@
   "scripts": {
     "benchmark-wp": "hardhat run scripts/gas/measureWPSwap.ts",
     "benchmark-stable": "hardhat run scripts/gas/measureStableSwap.ts",
+    "benchmark": "yarn benchmark-wp && yarn benchmark-stable",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
