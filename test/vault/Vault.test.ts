@@ -19,6 +19,7 @@ describe('Vault - swaps', () => {
   let strategy: Contract;
   let tradeScript: Contract;
   let tokens: TokenList = {};
+  let tokenAddresses: string[];
 
   before('setup', async () => {
     [, controller, trader, creditor] = await ethers.getSigners();
@@ -28,6 +29,7 @@ describe('Vault - swaps', () => {
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [] });
     tokens = await deployTokens(['DAI', 'MKR']);
+    tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
     strategy = await deploy('WeightedProdStrategy', {
       args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (1e18).toString()], 2, 0],
     });
@@ -95,18 +97,6 @@ describe('Vault - swaps', () => {
 
     it('single pair single pool swap', async () => {
       // Trade 1e18 MKR for 0.5e18 DAI
-      const diffs = [
-        {
-          token: tokens.DAI.address,
-          vaultDelta: 0,
-          amountIn: 0,
-        },
-        {
-          token: tokens.MKR.address,
-          vaultDelta: 0,
-          amountIn: 0,
-        },
-      ];
 
       const fee = 1e18 * 0.05; //5% fee
 
@@ -126,8 +116,8 @@ describe('Vault - swaps', () => {
           await tradeScript.batchSwap(
             vault.address,
             ['0', (1e18 + fee).toString()],
-            diffs,
             swaps,
+            tokenAddresses,
             trader.address,
             trader.address,
             true
@@ -141,19 +131,6 @@ describe('Vault - swaps', () => {
 
     it('single pair multi pool (batch) swap', async () => {
       // Trade 0.68e18 MKR for 0.5e18 DAI
-      const diffs = [
-        {
-          token: tokens.DAI.address,
-          vaultDelta: 0,
-          amountIn: 0,
-        },
-        {
-          token: tokens.MKR.address,
-          vaultDelta: 0,
-          amountIn: 0,
-        },
-      ];
-
       const fee = 0.34e18 * 0.05; //5% fee
 
       const swaps = [
@@ -180,8 +157,8 @@ describe('Vault - swaps', () => {
           await tradeScript.batchSwap(
             vault.address,
             ['0', (0.68e18 + 2 * fee).toString()],
-            diffs,
             swaps,
+            tokenAddresses,
             trader.address,
             trader.address,
             true
@@ -196,19 +173,6 @@ describe('Vault - swaps', () => {
     describe('input user balance', () => {
       it('fails if caller is not authorized', async () => {
         // Trade 1e18 MKR for 0.5e18 DAI
-        const diffs = [
-          {
-            token: tokens.DAI.address,
-            vaultDelta: 0,
-            amountIn: 0,
-          },
-          {
-            token: tokens.MKR.address,
-            vaultDelta: 0,
-            amountIn: 0,
-          },
-        ];
-
         const fee = 1e18 * 0.05; //5% fee
 
         const swaps = [
@@ -229,25 +193,12 @@ describe('Vault - swaps', () => {
         await vault.connect(trader).revokeOperator(tradeScript.address);
 
         await expect(
-          tradeScript.batchSwap(vault.address, ['0', '0'], diffs, swaps, trader.address, trader.address, true)
+          tradeScript.batchSwap(vault.address, ['0', '0'], swaps, tokenAddresses, trader.address, trader.address, true)
         ).to.be.revertedWith('Caller is not operator');
       });
 
       it('withdraws from user balance if caller is authorized', async () => {
         // Trade 1e18 MKR for 0.5e18 DAI
-        const diffs = [
-          {
-            token: tokens.DAI.address,
-            vaultDelta: 0,
-            amountIn: 0,
-          },
-          {
-            token: tokens.MKR.address,
-            vaultDelta: 0,
-            amountIn: 0,
-          },
-        ];
-
         const fee = 1e18 * 0.05; //5% fee
 
         const swaps = [
@@ -266,7 +217,15 @@ describe('Vault - swaps', () => {
 
         await expectBalanceChange(
           async () =>
-            tradeScript.batchSwap(vault.address, ['0', '0'], diffs, swaps, trader.address, trader.address, true),
+            tradeScript.batchSwap(
+              vault.address,
+              ['0', '0'],
+              swaps,
+              tokenAddresses,
+              trader.address,
+              trader.address,
+              true
+            ),
           trader,
           tokens,
           { DAI: 0.49e18 }
@@ -280,19 +239,6 @@ describe('Vault - swaps', () => {
 
       it('only withdraws from user balance if funds are missing', async () => {
         // Trade 1e18 MKR for 0.5e18 DAI
-        const diffs = [
-          {
-            token: tokens.DAI.address,
-            vaultDelta: 0,
-            amountIn: 0,
-          },
-          {
-            token: tokens.MKR.address,
-            vaultDelta: 0,
-            amountIn: 0,
-          },
-        ];
-
         const fee = 1e18 * 0.05; //5% fee
 
         const swaps = [
@@ -314,8 +260,8 @@ describe('Vault - swaps', () => {
             tradeScript.batchSwap(
               vault.address,
               ['0', (1e18 + fee).toString()],
-              diffs,
               swaps,
+              tokenAddresses,
               trader.address,
               trader.address,
               true
@@ -333,19 +279,6 @@ describe('Vault - swaps', () => {
     describe('output user balance', () => {
       it('deposits to user balance if requested', async () => {
         // Trade 1e18 MKR for 0.5e18 DAI
-        const diffs = [
-          {
-            token: tokens.DAI.address,
-            vaultDelta: 0,
-            amountIn: 0,
-          },
-          {
-            token: tokens.MKR.address,
-            vaultDelta: 0,
-            amountIn: 0,
-          },
-        ];
-
         const fee = 1e18 * 0.05; //5% fee
 
         const swaps = [
@@ -364,8 +297,8 @@ describe('Vault - swaps', () => {
             tradeScript.batchSwap(
               vault.address,
               ['0', (1e18 + fee).toString()],
-              diffs,
               swaps,
+              tokenAddresses,
               trader.address,
               creditor.address,
               false
@@ -414,19 +347,6 @@ describe('Vault - swaps', () => {
     });
 
     it('works', async () => {
-      const diffs = [
-        {
-          token: tokens.DAI.address,
-          vaultDelta: 0,
-          amountIn: 0,
-        },
-        {
-          token: tokens.MKR.address,
-          vaultDelta: 0,
-          amountIn: 0,
-        },
-      ];
-
       // Move the unbalanced pool to a 1:7 ratio (this is not the optimal ratio)
 
       // Has min fee: 0.000001%
@@ -479,7 +399,16 @@ describe('Vault - swaps', () => {
       await expectBalanceChange(
         async () => {
           // The trader gets MKR without spending DAI
-          await tradeScript.batchSwap(vault.address, [], [], diffs, swaps, trader.address, trader.address, true);
+          await tradeScript.batchSwap(
+            vault.address,
+            [],
+            [],
+            swaps,
+            tokenAddresses,
+            trader.address,
+            trader.address,
+            true
+          );
         },
         trader,
         tokens,

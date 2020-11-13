@@ -6,7 +6,7 @@ import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { createPool, PairTS, setupPool } from '../../scripts/helpers/pools';
 import { MAX_UINT256 } from '../helpers/constants';
-import { Diff, Swap } from '../../scripts/helpers/trading';
+import { Swap } from '../../scripts/helpers/trading';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 describe('Vault - unaccounted for tokens', () => {
@@ -91,10 +91,8 @@ describe('Vault - unaccounted for tokens', () => {
     it('swaps do not alter unaccounted for balance', async () => {
       await tokens.DAI.connect(other).transfer(vault.address, (1e18).toString());
 
-      const diffs: Array<Diff> = [
-        { token: tokens.DAI.address, vaultDelta: 0, amountIn: 500 },
-        { token: tokens.MKR.address, vaultDelta: 0, amountIn: 0 },
-      ];
+      const tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
+      const amounts = [(500).toString(), (0).toString()];
       const swaps: [Swap] = [
         {
           poolId,
@@ -107,9 +105,9 @@ describe('Vault - unaccounted for tokens', () => {
       await vault
         .connect(trader)
         .batchSwap(
-          diffs,
           swaps,
-          { withdrawFrom: trader.address },
+          tokenAddresses,
+          { withdrawFrom: trader.address, amounts },
           { recipient: trader.address, transferToRecipient: true }
         );
 

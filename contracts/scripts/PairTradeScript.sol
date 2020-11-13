@@ -73,14 +73,14 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
     function _getExactAmountInData(
         IVault vault,
         address strategy,
-        IVault.Diff[] memory diffs,
         IVault.Swap memory swap,
+        IERC20[] memory tokens,
         IERC20 overallTokenIn,
         uint128 amountIn,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-        IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+        IERC20 tokenIn = tokens[swap.tokenIn.tokenDiffIndex];
+        IERC20 tokenOut = tokens[swap.tokenOut.tokenDiffIndex];
 
         PairPoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut);
 
@@ -113,14 +113,14 @@ abstract contract PairTradeScript is ITradeScript, WeightedProduct {
     function _getExactAmountOutData(
         IVault vault,
         address strategy,
-        IVault.Diff[] memory diffs,
         IVault.Swap memory swap,
+        IERC20[] memory tokens,
         IERC20 overallTokenOut,
         uint128 amountOut,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-        IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+        IERC20 tokenIn = tokens[swap.tokenIn.tokenDiffIndex];
+        IERC20 tokenOut = tokens[swap.tokenOut.tokenDiffIndex];
 
         PairPoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut);
 
