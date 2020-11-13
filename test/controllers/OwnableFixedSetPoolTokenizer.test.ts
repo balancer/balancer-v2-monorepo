@@ -81,33 +81,6 @@ describe('OwnableFixedSetPoolTokenizer', function () {
       });
     });
 
-    describe('changePoolStrategy', () => {
-      let otherStrategy: Contract;
-
-      beforeEach(async () => {
-        otherStrategy = await deploy('MockTradingStrategy', { args: [] });
-      });
-
-      it('owner can change the pool trading stategy', async () => {
-        await tokenizer.connect(owner).changePoolStrategy(otherStrategy.address, PairTS);
-
-        const poolId = await tokenizer.poolId();
-        expect(await vault.getPoolStrategy(poolId)).to.have.members([otherStrategy.address, PairTS]);
-      });
-
-      it('non-owner cannot change the pool trading stategy', async () => {
-        await expect(tokenizer.connect(other).changePoolStrategy(otherStrategy.address, PairTS)).to.be.revertedWith(
-          'Ownable: caller is not the owner'
-        );
-      });
-
-      it('owner cannot change the pool trading stategy to a different type', async () => {
-        await expect(tokenizer.connect(owner).changePoolStrategy(otherStrategy.address, TupleTS)).to.be.revertedWith(
-          'Trading strategy type cannot change'
-        );
-      });
-    });
-
     describe('authorizePoolInvestmentManager', () => {
       it('owner can authorize an investment manager', async () => {
         await tokenizer.connect(owner).authorizePoolInvestmentManager(tokens.DAI.address, other.address);

@@ -163,9 +163,9 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             uint128
         )
     {
-        PoolStrategy memory strategy = _poolStrategy[swap.poolId];
+        (address strategy, StrategyType strategyType) = fromPoolId(swap.poolId);
 
-        if (strategy.strategyType == StrategyType.PAIR) {
+        if (strategyType == StrategyType.PAIR) {
             return
                 _validatePairStrategySwap(
                     ITradingStrategy.Swap({
@@ -178,9 +178,9 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                         amountOut: swap.tokenOut.amount,
                         userData: swap.userData
                     }),
-                    IPairTradingStrategy(strategy.strategy)
+                    IPairTradingStrategy(strategy)
                 );
-        } else if (strategy.strategyType == StrategyType.TUPLE) {
+        } else if (strategyType == StrategyType.TUPLE) {
             return
                 _validateTupleStrategySwap(
                     ITradingStrategy.Swap({
@@ -193,7 +193,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                         amountOut: swap.tokenOut.amount,
                         userData: swap.userData
                     }),
-                    ITupleTradingStrategy(strategy.strategy)
+                    ITupleTradingStrategy(strategy)
                 );
         } else {
             revert("Unknown strategy type");
