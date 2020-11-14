@@ -54,7 +54,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         // approved the caller to use their funds.
         require(isOperatorFor(fundsIn.withdrawFrom, msg.sender), "Caller is not operator");
 
-        int128[] memory tokenDeltas = new int128[](tokens.length);
+        int256[] memory tokenDeltas = new int256[](tokens.length);
 
         // Contains the swap protocol fees charged for each token
         uint128[] memory tokenSwapProtocolFees = new uint128[](tokens.length);
@@ -87,8 +87,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             _poolTokenBalance[swap.poolId][tokenOut] = tokenOutFinalBalance;
 
             // 3: Accumulate token diffs
-            tokenDeltas[swap.tokenIn.tokenIndex] += swap.tokenIn.amount.toInt128();
-            tokenDeltas[swap.tokenOut.tokenIndex] -= swap.tokenOut.amount.toInt128();
+            tokenDeltas[swap.tokenIn.tokenIndex] += swap.tokenIn.amount.toInt256();
+            tokenDeltas[swap.tokenOut.tokenIndex] -= swap.tokenOut.amount.toInt256();
 
             // 3b: Accumulate token swap protocol fees
             tokenSwapProtocolFees[swap.tokenIn.tokenIndex] = tokenSwapProtocolFees[swap.tokenIn.tokenIndex].add128(

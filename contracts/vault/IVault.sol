@@ -292,7 +292,7 @@ interface IVault {
 
     // 'amount' can mean tokens going either into or out of the Vault, depending on context.
     // If TokenData also included the token address, then the swap function would need to look up the index of this
-    // token in the Diffs array. Instead, the caller provides the indices for the Diffs array, leading to gas savings.
+    // token in the tokens array. Instead, the caller provides the indices for the Diffs array, leading to gas savings.
     struct TokenData {
         uint128 amount;
         uint128 tokenIndex;

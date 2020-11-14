@@ -1,5 +1,4 @@
 import { TokenList } from '../../test/helpers/tokens';
-import { Contract } from 'ethers';
 
 export type Trade = {
   poolId: string;
@@ -19,9 +18,17 @@ export function getTokensSwapsAndAmounts(
   tokens: TokenList,
   trades: Array<Trade>
 ): [Array<string>, Array<Swap>, Array<number | string>] {
-  const tokenAddresses = Object.values(tokens).map((tokenContract: Contract) => tokenContract.address);
   const swaps: Array<Swap> = [];
   const amounts: Array<number | string> = [];
+
+  const tokenAddresses = Array.from(
+    new Set(
+      trades.reduce(
+        (acc: string[], trade) => acc.concat([tokens[trade.tokenIn].address, tokens[trade.tokenOut].address]),
+        []
+      )
+    )
+  );
 
   for (const trade of trades) {
     const tokenInAddress = tokens[trade.tokenIn].address;
