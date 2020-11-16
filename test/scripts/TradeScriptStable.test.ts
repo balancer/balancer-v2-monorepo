@@ -9,7 +9,8 @@ import { setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../helpers/constants';
 
-describe('TradeScript - Stable', () => {
+// These tests need to be migrated into the Vault swap tests
+describe.skip('TradeScript - Stable', () => {
   let admin: SignerWithAddress;
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;

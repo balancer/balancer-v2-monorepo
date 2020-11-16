@@ -8,7 +8,7 @@ import { PairTS, setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../helpers/constants';
 
-describe.only('TradeScript', () => {
+describe('TradeScript', () => {
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
 

@@ -26,7 +26,7 @@ import "../math/FixedPoint.sol";
 
 import "../strategies/v2/ITradingStrategy.sol";
 import "../strategies/v2/IPairTradingStrategy.sol";
-//import "../strategies/v2/ITupleTradingStrategy.sol"
+import "../strategies/v2/ITupleTradingStrategy.sol";
 
 import "./IVault.sol";
 import "./VaultAccounting.sol";
@@ -184,8 +184,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
 
         if (strategy.strategyType == StrategyType.PAIR) {
             return _validatePairStrategySwap(request, IPairTradingStrategy(strategy.strategy));
-            // } else if (strategy.strategyType == StrategyType.TUPLE) {
-            //     return _validateTupleStrategySwap(request, ITupleTradingStrategy(strategy.strategy));
+        } else if (strategy.strategyType == StrategyType.TUPLE) {
+            return _validateTupleStrategySwap(request, ITupleTradingStrategy(strategy.strategy));
         } else {
             revert("Unknown strategy type");
         }
@@ -225,47 +225,61 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         );
     }
 
-    // function _validateTupleStrategySwap(ITradingStrategy.Swap memory swap, ITupleTradingStrategy strategy)
-    //     private
-    //     returns (
-    //         BalanceLib.Balance memory,
-    //         BalanceLib.Balance memory,
-    //         uint128
-    //     )
-    // {
-    //     uint128[] memory currentBalances = new uint128[](_poolTokens[swap.poolId].length());
+    // TODO: Temporary struct to workaround stack-too-deep: remove once #73 is implemented
+    struct Helper {
+        uint256 indexIn;
+        uint256 indexOut;
+    }
 
-    //     uint256 indexIn;
-    //     uint256 indexOut;
+    function _validateTupleStrategySwap(
+        ITradingStrategy.QuoteRequestGivenIn memory request,
+        ITupleTradingStrategy strategy
+    )
+        private
+        returns (
+            BalanceLib.Balance memory,
+            BalanceLib.Balance memory,
+            uint128,
+            uint128
+        )
+    {
+        uint128[] memory currentBalances = new uint128[](_poolTokens[request.poolId].length());
 
-    //     BalanceLib.Balance memory balanceIn;
-    //     BalanceLib.Balance memory balanceOut;
+        Helper memory helper;
 
-    //     for (uint256 i = 0; i < _poolTokens[swap.poolId].length(); i++) {
-    //         IERC20 token = IERC20(_poolTokens[swap.poolId].at(i));
-    //         BalanceLib.Balance memory balance = _poolTokenBalance[swap.poolId][token];
+        BalanceLib.Balance memory balanceIn;
+        BalanceLib.Balance memory balanceOut;
 
-    //         currentBalances[i] = balance.total;
-    //         require(currentBalances[i] > 0, "Token A not in pool");
+        for (uint256 i = 0; i < _poolTokens[request.poolId].length(); i++) {
+            IERC20 token = IERC20(_poolTokens[request.poolId].at(i));
+            BalanceLib.Balance memory balance = _poolTokenBalance[request.poolId][token];
 
-    //         if (token == swap.tokenIn) {
-    //             indexIn = i;
-    //             balanceIn = balance;
-    //         } else if (token == swap.tokenOut) {
-    //             indexOut = i;
-    //             balanceOut = balance;
-    //         }
-    //     }
+            currentBalances[i] = balance.total;
+            require(currentBalances[i] > 0, "Token A not in pool");
 
-    //     (bool success, uint128 tokenInFeeAmount) = strategy.validateTuple(swap, currentBalances, indexIn, indexOut);
-    //     require(success, "invariant validation failed");
+            if (token == request.tokenIn) {
+                helper.indexIn = i;
+                balanceIn = balance;
+            } else if (token == request.tokenOut) {
+                helper.indexOut = i;
+                balanceOut = balance;
+            }
+        }
 
-    //     uint128 protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
+        (uint128 amountOut, uint128 tokenInFeeAmount) = strategy.quoteOutGivenIn(
+            request,
+            currentBalances,
+            helper.indexIn,
+            helper.indexOut
+        );
 
-    //     return (
-    //         balanceIn.increase(swap.amountIn.sub128(protocolSwapFee)),
-    //         balanceOut.decrease(swap.amountOut),
-    //         protocolSwapFee
-    //     );
-    // }
+        uint128 protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
+
+        return (
+            balanceIn.increase(request.amountIn.sub128(protocolSwapFee)),
+            balanceOut.decrease(amountOut),
+            amountOut,
+            protocolSwapFee
+        );
+    }
 }
