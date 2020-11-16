@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
+import "hardhat/console.sol";
+
 import "./StrategyFee.sol";
 import "./IPairTradingStrategy.sol";
 import "./lib/WeightedProduct.sol";
@@ -186,7 +188,12 @@ contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProd
             adjustedIn
         );
 
-        return (swap.amountOut <= maximumAmountOut, feeAmount);
+        //Check new invariant is greater or relative error is small
+        if (maximumAmountOut >= swap.amountOut) {
+            return (true, feeAmount);
+        } else {
+            return ((swap.amountOut - maximumAmountOut) * 100 < swap.amountOut, feeAmount);
+        }
     }
 
     function getSwapFee() external view override returns (uint256) {

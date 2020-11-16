@@ -107,8 +107,8 @@ describe('TradeScript - Multiple Strategies', () => {
               {
                 overallTokenIn: tokens.DAI.address,
                 overallTokenOut: tokens.SUSD.address,
-                minAmountOut: (2e18).toString(), //minAmountOut
-                maxPrice: (1e18).toString(), //maxPrice
+                minAmountOut: (1.9e18).toString(), //minAmountOut
+                maxPrice: (1.1e18).toString(), //maxPrice
               },
               diffs,
               swaps,
@@ -119,14 +119,14 @@ describe('TradeScript - Multiple Strategies', () => {
           },
           trader,
           tokens,
-          { DAI: (-2e18).toString(), SUSD: ['gte', '2011635607989682633'] } //2011635607989682633
+          { DAI: (-2e18).toString(), SUSD: ['gte', '1993407604730094808'] } //1993407604730094808
         );
       });
     });
     describe('swapExactAmountOut', () => {
       it('multihop DAI for SUSD', async () => {
         const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
-          { poolId: pools[3], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2011635607989682633' },
+          { poolId: pools[3], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '1993407604730094808' },
           { poolId: pools[2], tokenIn: 'MKR', tokenOut: 'TUSD' },
           { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'MKR' },
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC' },
@@ -158,7 +158,7 @@ describe('TradeScript - Multiple Strategies', () => {
           },
           trader,
           tokens,
-          { SUSD: '2011635607989682633', DAI: '-2000000000000000108' } //2011635607989682633
+          { SUSD: '1993407604730094808', DAI: '-1999999999999998711' } //1993407604730094808
         );
       });
     });

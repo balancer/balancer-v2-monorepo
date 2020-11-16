@@ -178,7 +178,7 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
             swaps[i].tokenOut.amount = helper.amountUsedToCalculate;
         }
 
-        require(helper.toSend <= info.maxAmountIn, "Excessing amount out");
+        require(helper.toSend <= info.maxAmountIn, "Excessing amount in");
         require(helper.toSend.div(helper.toReceive) <= info.maxPrice, "Price too high");
 
         for (uint256 i = 0; i < diffs.length; ++i) {
