@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { getDiffsSwapsAndAmounts, getSwapTokenIndexes } from '../../scripts/helpers/trading';
+import { getTokensSwapsAndAmounts, getSwapTokenIndexes } from '../../scripts/helpers/trading';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -87,7 +87,7 @@ describe('TradeScript - Multiple Strategies', () => {
 
     describe('swapExactAmountIn', () => {
       it('multihop DAI for SUSD', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
           { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'MKR' },
           { poolId: pools[2], tokenIn: 'MKR', tokenOut: 'TUSD' },
@@ -110,8 +110,8 @@ describe('TradeScript - Multiple Strategies', () => {
                 minAmountOut: (2e18).toString(), //minAmountOut
                 maxPrice: (1e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               indexes,
               amounts,
               true
@@ -125,7 +125,7 @@ describe('TradeScript - Multiple Strategies', () => {
     });
     describe('swapExactAmountOut', () => {
       it('multihop DAI for SUSD', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[3], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2011635607989682633' },
           { poolId: pools[2], tokenIn: 'MKR', tokenOut: 'TUSD' },
           { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'MKR' },
@@ -149,8 +149,8 @@ describe('TradeScript - Multiple Strategies', () => {
                 maxAmountIn: (3e18).toString(), //maxAmountIn
                 maxPrice: (1.1e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               indexes,
               amounts,
               true

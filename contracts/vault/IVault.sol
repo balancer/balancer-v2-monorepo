@@ -252,8 +252,8 @@ interface IVault {
      * Funds will be received according to the data in `fundsIn`, and sent according to `fundsOut`.
      */
     function batchSwap(
-        Diff[] calldata diffs,
         Swap[] calldata swaps,
+        IERC20[] memory tokens,
         FundsIn calldata fundsIn,
         FundsOut calldata fundsOut
     ) external;
@@ -281,17 +281,6 @@ interface IVault {
 
     // batchSwap helper data structures
 
-    // An array of Diffs with unique token addresses will store the net effect of a trade
-    // on the entire Vault. Callers provide this array pre-populated with the address of
-    // each token involved in the swap, and an initial vaultDelta value of 0.
-    // This saves the contract from having to compute the list of tokens that need to be
-    // sent or received as part of the trade.
-    struct Diff {
-        IERC20 token;
-        int256 vaultDelta; // Positive delta means the vault receives tokens
-        uint256 amountIn;
-    }
-
     // A batched swap is made up of a number of Swaps. Each swap indicates a token balance increasing (tokenIn) and one
     // decreasing (tokenOut) in a pool.
     struct Swap {
@@ -303,10 +292,10 @@ interface IVault {
 
     // 'amount' can mean tokens going either into or out of the Vault, depending on context.
     // If TokenData also included the token address, then the swap function would need to look up the index of this
-    // token in the Diffs array. Instead, the caller provides the indices for the Diffs array, leading to gas savings.
+    // token in the tokens array. Instead, the caller provides the indices for the Diffs array, leading to gas savings.
     struct TokenData {
         uint128 amount;
-        uint128 tokenDiffIndex;
+        uint128 tokenIndex;
     }
 
     // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are
@@ -314,6 +303,7 @@ interface IVault {
     // In any case, the caller must be an operator for withdrawFrom.
     struct FundsIn {
         address withdrawFrom;
+        uint128[] amounts;
     }
 
     // Funds out are deposited to recipient's User Balance, or transferred out if transferToRecipient is true.
