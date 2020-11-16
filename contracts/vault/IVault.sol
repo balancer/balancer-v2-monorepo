@@ -252,11 +252,38 @@ interface IVault {
      * Funds will be received according to the data in `fundsIn`, and sent according to `fundsOut`.
      */
     function batchSwap(
-        Swap[] calldata swaps,
+        SwapIn[] calldata swaps,
         IERC20[] memory tokens,
         FundsIn calldata fundsIn,
         FundsOut calldata fundsOut
-    ) external;
+    ) external returns (int256[] memory vaultDeltas);
+
+    // batchSwap helper data structures
+
+    // A batched swap is made up of a number of Swaps. Each swap indicates a token balance increasing (tokenIn) and one
+    // decreasing (tokenOut) in a pool.
+    // Indexes instead of token addresses to not perform lookup in the tokens array.
+    struct SwapIn {
+        bytes32 poolId;
+        uint128 tokenInIndex;
+        uint128 tokenOutIndex;
+        uint128 amountIn;
+        bytes userData;
+    }
+
+    // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are
+    // withdrawn from withdrawFrom's User Balance.
+    // In any case, the caller must be an operator for withdrawFrom.
+    struct FundsIn {
+        address withdrawFrom;
+        uint128[] amounts;
+    }
+
+    // Funds out are deposited to recipient's User Balance, or transferred out if transferToRecipient is true.
+    struct FundsOut {
+        address recipient;
+        bool transferToRecipient;
+    }
 
     // Flash Loan interface
     function flashLoan(
@@ -278,39 +305,6 @@ interface IVault {
         IERC20 token,
         uint128 amountInvested
     ) external;
-
-    // batchSwap helper data structures
-
-    // A batched swap is made up of a number of Swaps. Each swap indicates a token balance increasing (tokenIn) and one
-    // decreasing (tokenOut) in a pool.
-    struct Swap {
-        bytes32 poolId;
-        TokenData tokenIn;
-        TokenData tokenOut;
-        bytes userData;
-    }
-
-    // 'amount' can mean tokens going either into or out of the Vault, depending on context.
-    // If TokenData also included the token address, then the swap function would need to look up the index of this
-    // token in the tokens array. Instead, the caller provides the indices for the Diffs array, leading to gas savings.
-    struct TokenData {
-        uint128 amount;
-        uint128 tokenIndex;
-    }
-
-    // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are
-    // withdrawn from withdrawFrom's User Balance.
-    // In any case, the caller must be an operator for withdrawFrom.
-    struct FundsIn {
-        address withdrawFrom;
-        uint128[] amounts;
-    }
-
-    // Funds out are deposited to recipient's User Balance, or transferred out if transferToRecipient is true.
-    struct FundsOut {
-        address recipient;
-        bool transferToRecipient;
-    }
 
     // Unaccounted-for Tokens
 

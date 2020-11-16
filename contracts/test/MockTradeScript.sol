@@ -23,7 +23,7 @@ contract MockTradeScript {
     function batchSwap(
         IVault vault,
         uint128[] memory amounts,
-        IVault.Swap[] memory swaps,
+        IVault.SwapIn[] memory swaps,
         IERC20[] memory tokens,
         address supplier,
         address recipient,

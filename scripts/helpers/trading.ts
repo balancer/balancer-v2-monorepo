@@ -66,3 +66,50 @@ export function getSwapTokenIndexes(indexes: number[][]): Array<SwapIndexes> {
   }
   return swapIndexes;
 }
+
+export type TradeV2 = {
+  poolId: string;
+  tokenIn: string;
+  tokenOut: string;
+  amount?: number | string;
+};
+
+export type SwapV2 = {
+  poolId: string;
+  tokenInIndex: number;
+  tokenOutIndex: number;
+  amountIn: number | string;
+  userData: string;
+};
+
+export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<SwapV2>] {
+  const swaps: Array<SwapV2> = [];
+
+  const tokenAddresses = Array.from(
+    new Set(
+      trades.reduce(
+        (acc: string[], trade) => acc.concat([tokens[trade.tokenIn].address, tokens[trade.tokenOut].address]),
+        []
+      )
+    )
+  );
+
+  for (const trade of trades) {
+    const tokenInAddress = tokens[trade.tokenIn].address;
+
+    const inDiffIndex = tokenAddresses.indexOf(tokenInAddress);
+
+    const tokenOutAddress = tokens[trade.tokenOut].address;
+    const outDiffIndex = tokenAddresses.indexOf(tokenOutAddress);
+
+    swaps.push({
+      poolId: trade.poolId,
+      tokenInIndex: inDiffIndex,
+      tokenOutIndex: outDiffIndex,
+      amountIn: trade.amount?.toString() ?? 0,
+      userData: '0x',
+    });
+  }
+
+  return [tokenAddresses, swaps];
+}

@@ -30,7 +30,7 @@ describe('Vault - swaps', () => {
     vault = await deploy('Vault', { args: [] });
     tokens = await deployTokens(['DAI', 'MKR']);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
-    strategy = await deploy('WeightedProdStrategy', {
+    strategy = await deploy('CWPTradingStrategy', {
       args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (1e18).toString()], 2, 0],
     });
     tradeScript = await deploy('MockTradeScript', { args: [] });
@@ -66,7 +66,7 @@ describe('Vault - swaps', () => {
 
       poolIds = [];
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-        const strategy = await deploy('WeightedProdStrategy', {
+        const strategy = await deploy('CWPTradingStrategy', {
           args: [
             [tokens.DAI.address, tokens.MKR.address],
             [(1e18).toString(), (1e18).toString()],
@@ -105,11 +105,14 @@ describe('Vault - swaps', () => {
           poolId: poolIds[0],
           from: traderAddress,
           to: traderAddress,
-          tokenIn: { tokenIndex: 1, amount: (1e18 + fee).toString() }, //Math isn't 100% accurate
-          tokenOut: { tokenIndex: 0, amount: (0.49e18).toString() },
+          tokenInIndex: 1,
+          tokenOutIndex: 0,
+          amountIn: (1e18 + fee).toString(),
           userData: '0x',
         },
       ];
+
+      //Math isn't 100% accurate
 
       await expectBalanceChange(
         async () => {
@@ -125,7 +128,7 @@ describe('Vault - swaps', () => {
         },
         trader,
         tokens,
-        { DAI: 0.49e18, MKR: -1e18 - fee }
+        { DAI: ['gte', 0.49e18], MKR: -1e18 - fee }
       );
     });
 
@@ -138,16 +141,18 @@ describe('Vault - swaps', () => {
           poolId: poolIds[0],
           from: traderAddress,
           to: traderAddress,
-          tokenIn: { tokenIndex: 1, amount: (0.34e18 + fee).toString() },
-          tokenOut: { tokenIndex: 0, amount: (0.25e18).toString() },
+          tokenInIndex: 1,
+          tokenOutIndex: 0,
+          amountIn: (0.34e18 + fee).toString(),
           userData: '0x',
         },
         {
           poolId: poolIds[1],
           from: traderAddress,
           to: traderAddress,
-          tokenIn: { tokenIndex: 1, amount: (0.34e18 + fee).toString() },
-          tokenOut: { tokenIndex: 0, amount: (0.25e18).toString() },
+          tokenInIndex: 1,
+          tokenOutIndex: 0,
+          amountIn: (0.34e18 + fee).toString(),
           userData: '0x',
         },
       ];
@@ -166,7 +171,7 @@ describe('Vault - swaps', () => {
         },
         trader,
         tokens,
-        { DAI: 0.5e18, MKR: -0.68e18 - 2 * fee }
+        { DAI: ['gte', 0.5e18], MKR: -0.68e18 - 2 * fee }
       );
     });
 
@@ -180,8 +185,9 @@ describe('Vault - swaps', () => {
             poolId: poolIds[0],
             from: traderAddress,
             to: traderAddress,
-            tokenIn: { tokenIndex: 1, amount: (1e18 + fee).toString() },
-            tokenOut: { tokenIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
+            tokenInIndex: 1,
+            tokenOutIndex: 0,
+            amountIn: (1e18 + fee).toString(),
             userData: '0x',
           },
         ];
@@ -206,8 +212,9 @@ describe('Vault - swaps', () => {
             poolId: poolIds[0],
             from: traderAddress,
             to: traderAddress,
-            tokenIn: { tokenIndex: 1, amount: (1e18 + fee).toString() },
-            tokenOut: { tokenIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
+            tokenInIndex: 1,
+            tokenOutIndex: 0,
+            amountIn: (1e18 + fee).toString(),
             userData: '0x',
           },
         ];
@@ -228,7 +235,7 @@ describe('Vault - swaps', () => {
             ),
           trader,
           tokens,
-          { DAI: 0.49e18 }
+          { DAI: ['gte', 0.49e18] }
         );
 
         expect(await vault.getUserTokenBalance(trader.address, tokens.MKR.address)).to.equal(
@@ -246,8 +253,9 @@ describe('Vault - swaps', () => {
             poolId: poolIds[0],
             from: traderAddress,
             to: traderAddress,
-            tokenIn: { tokenIndex: 1, amount: (1e18 + fee).toString() },
-            tokenOut: { tokenIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
+            tokenInIndex: 1,
+            tokenOutIndex: 0,
+            amountIn: (1e18 + fee).toString(),
             userData: '0x',
           },
         ];
@@ -268,7 +276,7 @@ describe('Vault - swaps', () => {
             ),
           trader,
           tokens,
-          { MKR: -1e18 - fee, DAI: 0.49e18 }
+          { MKR: -1e18 - fee, DAI: ['gte', 0.49e18] }
         );
 
         expect(await vault.getUserTokenBalance(trader.address, tokens.MKR.address)).to.equal((2e18).toString());
@@ -286,8 +294,9 @@ describe('Vault - swaps', () => {
             poolId: poolIds[0],
             from: traderAddress,
             to: traderAddress,
-            tokenIn: { tokenIndex: 1, amount: (1e18 + fee).toString() },
-            tokenOut: { tokenIndex: 0, amount: (0.49e18).toString() }, //Math isn't 100% accurate
+            tokenInIndex: 1,
+            tokenOutIndex: 0,
+            amountIn: (1e18 + fee).toString(),
             userData: '0x',
           },
         ];
@@ -309,7 +318,9 @@ describe('Vault - swaps', () => {
         );
 
         expect(await vault.getUserTokenBalance(trader.address, tokens.DAI.address)).to.equal(0);
-        expect(await vault.getUserTokenBalance(creditor.address, tokens.DAI.address)).to.equal((0.49e18).toString());
+        expect(await vault.getUserTokenBalance(creditor.address, tokens.DAI.address)).to.be.at.least(
+          (0.49e18).toString()
+        );
       });
     });
   });
@@ -326,11 +337,11 @@ describe('Vault - swaps', () => {
         })
       );
 
-      strategy = await deploy('WeightedProdStrategy', {
+      strategy = await deploy('CWPTradingStrategy', {
         args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (4e18).toString()], 2, 0],
       });
       // first curve is 1:10
-      const curveFirst = await deploy('WeightedProdStrategy', {
+      const curveFirst = await deploy('CWPTradingStrategy', {
         args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (10e18).toString()], 2, 0],
       });
 

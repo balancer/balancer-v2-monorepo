@@ -12,30 +12,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-pragma solidity ^0.7.1;
+import "./ITradingStrategy.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-
-import "../math/FixedPoint.sol";
-
-import "../vault/IVault.sol";
-
-interface ITradeScript {
-    struct OverallInfoIn {
-        IERC20 overallTokenIn;
-        IERC20 overallTokenOut;
-        uint128 maxAmountIn;
-        uint128 minAmountOut;
-    }
-
-    function swapExactAmountIn(
-        OverallInfoIn memory info,
-        IVault.SwapIn[] memory swaps,
-        IERC20[] memory tokens,
-        uint128[] memory amountsIn,
-        bool withdrawTokens
-    ) external;
+interface IPairTradingStrategy is ITradingStrategy {
+    function quoteOutGivenIn(
+        QuoteRequestGivenIn calldata request,
+        uint128 currentBalanceTokenIn,
+        uint128 currentBalanceTokenOut
+    ) external returns (uint128 amountOut, uint128 amountInFees);
 }
