@@ -1,4 +1,3 @@
-import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '../../../scripts/helpers/deploy';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/strategies/weightedProd';
@@ -31,7 +30,7 @@ async function compareOutGivenIn(
 
   //Relative error must be less that the max accepted
   expect(
-    outAmountMath.dividedBy(outAmountStrategy.toString()).minus(1).lessThanOrEqualTo(MAX_RELATIVE_ERROR),
+    outAmountMath.dividedBy(outAmountStrategy.toString()).minus(1).abs().lessThanOrEqualTo(MAX_RELATIVE_ERROR),
     'Relative error too big'
   ).to.be.true;
 }
@@ -62,7 +61,7 @@ async function compareInGivenOut(
 
   //Relative error must be less that the max accepted
   expect(
-    inAmountMath.dividedBy(inAmountStrategy.toString()).minus(1).lessThanOrEqualTo(MAX_RELATIVE_ERROR),
+    inAmountMath.dividedBy(inAmountStrategy.toString()).minus(1).abs().lessThanOrEqualTo(MAX_RELATIVE_ERROR),
     'Relative error too big'
   ).to.be.true;
 }
@@ -105,7 +104,7 @@ describe('WeightedProd Lib', function () {
         (50e18).toString(), //tokenWeightIn
         (100e18).toString(), //tokenBalanceOut
         (40e18).toString(), //tokenWeightOut
-        (10e3).toString() //tokenAmountIn (MIN AMOUNT = 10000)
+        (10e6).toString() //tokenAmountIn (MIN AMOUNT = 0.00000000001)
       );
     });
     it('inGivenOut - min amount out', async () => {
@@ -115,7 +114,7 @@ describe('WeightedProd Lib', function () {
         (50e18).toString(), //tokenWeightIn
         (100e18).toString(), //tokenBalanceOut
         (40e18).toString(), //tokenWeightOut
-        (10e6).toString() //tokenAmountOut (MIN AMOUNT = 10000)
+        (10e6).toString() //tokenAmountOut (MIN AMOUNT = 0.00000000001)
       );
     });
     it('outGivenIn - max amount in', async () => {
