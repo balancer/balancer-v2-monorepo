@@ -34,8 +34,12 @@ contract MockTradeScript {
         vault.batchSwap(
             swaps,
             tokens,
-            IVault.FundsIn({ withdrawFrom: supplier, amounts: amounts }),
-            IVault.FundsOut({ recipient: recipient, transferToRecipient: withdrawTokens })
+            IVault.Funds({
+                withdrawFrom: supplier,
+                amounts: amounts,
+                recipient: recipient,
+                transferToRecipient: withdrawTokens
+            })
         );
     }
 }

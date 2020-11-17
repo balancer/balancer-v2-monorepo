@@ -43,8 +43,12 @@ contract TradeScript is ITradeScript {
         int256[] memory vaultDeltas = _vault.batchSwap(
             swaps,
             tokens,
-            IVault.FundsIn({ withdrawFrom: msg.sender, amounts: amountsIn }),
-            IVault.FundsOut({ recipient: msg.sender, transferToRecipient: withdrawTokens })
+            IVault.Funds({
+                withdrawFrom: msg.sender,
+                amounts: amountsIn,
+                recipient: msg.sender,
+                transferToRecipient: withdrawTokens
+            })
         );
 
         for (uint256 i = 0; i < tokens.length; ++i) {

@@ -42,17 +42,67 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
     using SafeCast for uint256;
     using SafeCast for uint128;
 
+    struct SwapOutput {
+        IERC20 tokenOut;
+        uint128 amountOut;
+    }
+
+    function swapWithPool(
+        IERC20[] memory tokens,
+        SwapIn memory swap,
+        address from,
+        address to,
+        SwapOutput memory previous
+    )
+        private
+        returns (
+            uint128,
+            uint128,
+            uint128
+        )
+    {
+        IERC20 tokenIn = tokens[swap.tokenInIndex];
+        IERC20 tokenOut = tokens[swap.tokenOutIndex];
+
+        require(tokenIn != tokenOut, "Swap for same token");
+
+        uint128 amountIn = swap.amountIn;
+        if (amountIn == 0) {
+            require(previous.tokenOut != IERC20(0), "Unknown amount in on first swap");
+            require(tokenIn == previous.tokenOut, "Misconstructed multihop swap");
+
+            amountIn = previous.amountOut;
+        }
+
+        ITradingStrategy.QuoteRequestGivenIn memory request = ITradingStrategy.QuoteRequestGivenIn({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amountIn: amountIn,
+            poolId: swap.poolId,
+            from: from,
+            to: to,
+            userData: swap.userData
+        });
+
+        // 1: Validate swap using the Pool's Trading Strategy
+        (uint128 amountOut, uint128 protocolSwapFeeAmountIn) = _validateSwap(request);
+
+        previous.tokenOut = tokenOut;
+        previous.amountOut = amountOut;
+
+        return (amountIn, amountOut, protocolSwapFeeAmountIn);
+    }
+
     function batchSwap(
         SwapIn[] memory swaps,
         IERC20[] memory tokens, // tokens involved in the trade, as indexed by swaps
-        FundsIn calldata fundsIn,
-        FundsOut calldata fundsOut
+        Funds calldata funds
     ) external override returns (int256[] memory vaultDeltas) {
         //TODO: avoid reentrancy
 
-        // Any net token amount going into the Vault will be taken from `fundsIn.withdrawFrom`, so they must have
+        // Any net token amount going into the Vault will be taken from `funds.withdrawFrom`, so they must have
         // approved the caller to use their funds.
-        require(isOperatorFor(fundsIn.withdrawFrom, msg.sender), "Caller is not operator");
+        require(isOperatorFor(funds.withdrawFrom, msg.sender), "Caller is not operator");
 
         int256[] memory tokenDeltas = new int256[](tokens.length);
 
@@ -64,47 +114,19 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         //  - update pool balances
         //  - accumulate token diffs
 
-        IERC20 previousTokenOut;
-        uint128 previousAmountOut;
+        SwapOutput memory previous;
+        SwapIn memory swap;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
-            SwapIn memory swap = swaps[i];
+            swap = swaps[i];
 
-            IERC20 tokenIn = tokens[swap.tokenInIndex];
-            IERC20 tokenOut = tokens[swap.tokenOutIndex];
-
-            require(tokenIn != tokenOut, "Swap for same token");
-
-            uint128 amountIn;
-            if (swap.amountIn > 0) {
-                amountIn = swap.amountIn;
-            } else {
-                require(i > 0);
-                require(tokenIn == previousTokenOut);
-                amountIn = previousAmountOut;
-            }
-
-            ITradingStrategy.QuoteRequestGivenIn memory request = ITradingStrategy.QuoteRequestGivenIn({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                amountIn: amountIn,
-                poolId: swap.poolId,
-                from: fundsIn.withdrawFrom,
-                to: fundsOut.recipient,
-                userData: swap.userData
-            });
-
-            // 1: Validate swap using the Pool's Trading Strategy
-            (
-                BalanceLib.Balance memory tokenInFinalBalance,
-                BalanceLib.Balance memory tokenOutFinalBalance,
-                uint128 amountOut,
-                uint128 protocolSwapFeeAmountIn
-            ) = _validateSwap(request);
-
-            // 2: Update Pool balances - these have been deducted the swap protocol fees
-            _poolTokenBalance[swap.poolId][tokenIn] = tokenInFinalBalance;
-            _poolTokenBalance[swap.poolId][tokenOut] = tokenOutFinalBalance;
+            (uint128 amountIn, uint128 amountOut, uint128 protocolSwapFeeAmountIn) = swapWithPool(
+                tokens,
+                swap,
+                funds.withdrawFrom,
+                funds.recipient,
+                previous
+            );
 
             // 3: Accumulate token diffs
             tokenDeltas[swap.tokenInIndex] += amountIn;
@@ -114,9 +136,6 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             tokenSwapProtocolFees[swap.tokenInIndex] = tokenSwapProtocolFees[swap.tokenInIndex].add128(
                 protocolSwapFeeAmountIn
             );
-
-            previousTokenOut = tokenOut;
-            previousAmountOut = amountOut;
         }
 
         // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
@@ -124,14 +143,14 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             IERC20 token = tokens[i];
 
             if (tokenDeltas[i] > 0) {
-                uint128 received = _pullTokens(token, fundsIn.withdrawFrom, fundsIn.amounts[i]);
+                uint128 received = _pullTokens(token, funds.withdrawFrom, funds.amounts[i]);
 
                 if (received < uint128(tokenDeltas[i])) {
                     uint128 missing = uint128(tokenDeltas[i]) - received;
 
-                    require(_userTokenBalance[fundsIn.withdrawFrom][token] >= missing, "ERR_INVALID_DEPOSIT");
+                    require(_userTokenBalance[funds.withdrawFrom][token] >= missing, "ERR_INVALID_DEPOSIT");
 
-                    _userTokenBalance[fundsIn.withdrawFrom][token] -= missing;
+                    _userTokenBalance[funds.withdrawFrom][token] -= missing;
                 }
             }
         }
@@ -144,12 +163,12 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                 // Make delta positive
                 uint128 amount = uint128(-tokenDeltas[i]);
 
-                if (fundsOut.transferToRecipient) {
+                if (funds.transferToRecipient) {
                     // Actually transfer the tokens to the recipient
-                    _pushTokens(token, fundsOut.recipient, amount, false);
+                    _pushTokens(token, funds.recipient, amount, false);
                 } else {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                    _userTokenBalance[fundsOut.recipient][token] = _userTokenBalance[fundsOut.recipient][token].add128(
+                    _userTokenBalance[funds.recipient][token] = _userTokenBalance[funds.recipient][token].add128(
                         amount
                     );
                 }
@@ -171,24 +190,34 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
      * Returns the Pool's final balances for tokenIn and tokenOut. tokenIn is applied swap protocol fees, which are also
      * returned.
      */
-    function _validateSwap(ITradingStrategy.QuoteRequestGivenIn memory request)
-        private
-        returns (
-            BalanceLib.Balance memory,
-            BalanceLib.Balance memory,
-            uint128,
-            uint128
-        )
-    {
+    function _validateSwap(ITradingStrategy.QuoteRequestGivenIn memory request) private returns (uint128, uint128) {
         PoolStrategy memory strategy = _poolStrategy[request.poolId];
 
+        BalanceLib.Balance memory tokenInFinalBalance;
+        BalanceLib.Balance memory tokenOutFinalBalance;
+
+        uint128 amountOut;
+        uint128 protocolSwapFee;
+
         if (strategy.strategyType == StrategyType.PAIR) {
-            return _validatePairStrategySwap(request, IPairTradingStrategy(strategy.strategy));
+            (tokenInFinalBalance, tokenOutFinalBalance, amountOut, protocolSwapFee) = _validatePairStrategySwap(
+                request,
+                IPairTradingStrategy(strategy.strategy)
+            );
         } else if (strategy.strategyType == StrategyType.TUPLE) {
-            return _validateTupleStrategySwap(request, ITupleTradingStrategy(strategy.strategy));
+            (tokenInFinalBalance, tokenOutFinalBalance, amountOut, protocolSwapFee) = _validateTupleStrategySwap(
+                request,
+                ITupleTradingStrategy(strategy.strategy)
+            );
         } else {
             revert("Unknown strategy type");
         }
+
+        // 2: Update Pool balances - these have been deducted the swap protocol fees
+        _poolTokenBalance[request.poolId][request.tokenIn] = tokenInFinalBalance;
+        _poolTokenBalance[request.poolId][request.tokenOut] = tokenOutFinalBalance;
+
+        return (amountOut, protocolSwapFee);
     }
 
     function _validatePairStrategySwap(

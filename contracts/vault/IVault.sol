@@ -254,8 +254,7 @@ interface IVault {
     function batchSwap(
         SwapIn[] calldata swaps,
         IERC20[] memory tokens,
-        FundsIn calldata fundsIn,
-        FundsOut calldata fundsOut
+        Funds calldata funds
     ) external returns (int256[] memory vaultDeltas);
 
     // batchSwap helper data structures
@@ -274,13 +273,10 @@ interface IVault {
     // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are
     // withdrawn from withdrawFrom's User Balance.
     // In any case, the caller must be an operator for withdrawFrom.
-    struct FundsIn {
+    // Funds out are deposited to recipient's User Balance, or transferred out if transferToRecipient is true.
+    struct Funds {
         address withdrawFrom;
         uint128[] amounts;
-    }
-
-    // Funds out are deposited to recipient's User Balance, or transferred out if transferToRecipient is true.
-    struct FundsOut {
         address recipient;
         bool transferToRecipient;
     }
