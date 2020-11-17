@@ -75,15 +75,15 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
     function _getExactAmountInData(
         IVault vault,
         address strategy,
-        IVault.Diff[] memory diffs,
         IVault.Swap memory swap,
+        IERC20[] memory tokens,
         SwapTokenIndexes memory indexes,
         IERC20 overallTokenIn,
         uint128 amountIn,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-        IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+        IERC20 tokenIn = tokens[swap.tokenIn.tokenIndex];
+        IERC20 tokenOut = tokens[swap.tokenOut.tokenIndex];
 
         TuplePoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut, indexes);
 
@@ -116,15 +116,15 @@ abstract contract TupleTradeScript is ITradeScript, Stable {
     function _getExactAmountOutData(
         IVault vault,
         address strategy,
-        IVault.Diff[] memory diffs,
         IVault.Swap memory swap,
+        IERC20[] memory tokens,
         SwapTokenIndexes memory indexes,
         IERC20 overallTokenOut,
         uint128 amountOut,
         Helper memory helper
     ) internal view returns (Helper memory) {
-        IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-        IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+        IERC20 tokenIn = tokens[swap.tokenIn.tokenIndex];
+        IERC20 tokenOut = tokens[swap.tokenOut.tokenIndex];
 
         TuplePoolData memory poolData = _getPoolData(vault, swap.poolId, strategy, tokenIn, tokenOut, indexes);
 

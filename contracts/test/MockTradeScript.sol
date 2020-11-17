@@ -22,23 +22,19 @@ import "../vault/IVault.sol";
 contract MockTradeScript {
     function batchSwap(
         IVault vault,
-        uint256[] memory amounts,
-        IVault.Diff[] memory diffs,
+        uint128[] memory amounts,
         IVault.Swap[] memory swaps,
+        IERC20[] memory tokens,
         address supplier,
         address recipient,
         bool withdrawTokens
     ) public {
-        require(diffs.length == amounts.length, "MockTradeScript: diffs & amounts length mismatch");
-
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            diffs[i].amountIn = amounts[i];
-        }
+        require(tokens.length == amounts.length, "MockTradeScript: tokens & amounts length mismatch");
 
         vault.batchSwap(
-            diffs,
             swaps,
-            IVault.FundsIn({ withdrawFrom: supplier }),
+            tokens,
+            IVault.FundsIn({ withdrawFrom: supplier, amounts: amounts }),
             IVault.FundsOut({ recipient: recipient, transferToRecipient: withdrawTokens })
         );
     }

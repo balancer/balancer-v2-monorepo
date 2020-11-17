@@ -14,16 +14,17 @@ describe('FixedSetPoolTokenizer', function () {
   let admin: SignerWithAddress;
   let lp: SignerWithAddress;
   let other: SignerWithAddress;
+  let beneficiary: SignerWithAddress;
 
   let vault: Contract;
   let strategy: Contract;
   let tokens: TokenList = {};
 
   const initialBPT = (100e18).toString();
-  let callsetupController: () => Promise<Contract>;
+  let callSetupController: () => Promise<Contract>;
 
   before(async function () {
-    [, admin, lp, other] = await ethers.getSigners();
+    [, admin, lp, other, beneficiary] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
@@ -42,7 +43,7 @@ describe('FixedSetPoolTokenizer', function () {
 
     strategy = await deploy('MockTradingStrategy', { args: [] });
 
-    callsetupController = () =>
+    callSetupController = () =>
       setupController(
         vault,
         admin,
@@ -58,7 +59,7 @@ describe('FixedSetPoolTokenizer', function () {
 
   describe('creation via factory', async () => {
     it('creates a pool in the vault', async () => {
-      const tokenizer = await callsetupController();
+      const tokenizer = await callSetupController();
 
       const poolId = await tokenizer.poolId();
       expect(await vault.getPoolController(poolId)).to.equal(tokenizer.address);
@@ -66,13 +67,13 @@ describe('FixedSetPoolTokenizer', function () {
     });
 
     it('grants initial BPT to the LP', async () => {
-      const tokenizer = await callsetupController();
+      const tokenizer = await callSetupController();
 
       expect(await tokenizer.balanceOf(lp.address)).to.equal(initialBPT);
     });
 
     it('adds tokens to pool', async () => {
-      const tokenizer = await callsetupController();
+      const tokenizer = await callSetupController();
       const poolId = await tokenizer.poolId();
 
       expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address, tokens.MKR.address]);
@@ -83,7 +84,7 @@ describe('FixedSetPoolTokenizer', function () {
     });
 
     it('pulls tokens from the LP', async () => {
-      await expectBalanceChange(() => callsetupController(), lp, tokens, {
+      await expectBalanceChange(() => callSetupController(), lp, tokens, {
         DAI: (-1e18).toString(),
         MKR: (-2e18).toString(),
       });
@@ -95,7 +96,7 @@ describe('FixedSetPoolTokenizer', function () {
     let poolId: string;
 
     beforeEach(async () => {
-      tokenizer = await callsetupController();
+      tokenizer = await callSetupController();
       poolId = await tokenizer.poolId();
     });
 
@@ -103,7 +104,7 @@ describe('FixedSetPoolTokenizer', function () {
       it('grants BPT in return', async () => {
         const previousBPT = await tokenizer.balanceOf(lp.address);
 
-        // To get 10% of the current BTP, an LP needs to supply 10% of the current token balance
+        // To get 10% of the current BPT, an LP needs to supply 10% of the current token balance
         await tokenizer
           .connect(lp)
           .joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], true, lp.address);
@@ -115,7 +116,7 @@ describe('FixedSetPoolTokenizer', function () {
       it('grants BPT to specified beneficiary', async () => {
         const previousBPT = await tokenizer.balanceOf(other.address);
 
-        // To get 10% of the current BTP, an LP needs to supply 10% of the current token balance
+        // To get 10% of the current BPT, an LP needs to supply 10% of the current token balance
         await tokenizer
           .connect(lp)
           .joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], true, other.address);
@@ -221,8 +222,8 @@ describe('FixedSetPoolTokenizer', function () {
       it('takes BPT in return', async () => {
         const previousBPT = await tokenizer.balanceOf(lp.address);
 
-        // By returning 10% of the current BTP, an LP gets in return 10% of the current token balance
-        await tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true);
+        // By returning 10% of the current BPT, an LP gets in return 10% of the current token balance
+        await tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address);
 
         const newBPT = await tokenizer.balanceOf(lp.address);
         expect(newBPT.sub(previousBPT)).to.equal((-10e18).toString());
@@ -232,27 +233,54 @@ describe('FixedSetPoolTokenizer', function () {
         await expect(
           tokenizer
             .connect(lp)
-            .exitPool((10e18).toString(), [BigNumber.from((0.1e18).toString()).add(1), (0.2e18).toString()], true)
+            .exitPool(
+              (10e18).toString(),
+              [BigNumber.from((0.1e18).toString()).add(1), (0.2e18).toString()],
+              true,
+              lp.address
+            )
         ).to.be.revertedWith('NOT EXITING ENOUGH');
 
         await expect(
           tokenizer
             .connect(lp)
-            .exitPool((10e18).toString(), [(0.1e18).toString(), BigNumber.from((0.2e18).toString()).add(1)], true)
+            .exitPool(
+              (10e18).toString(),
+              [(0.1e18).toString(), BigNumber.from((0.2e18).toString()).add(1)],
+              true,
+              lp.address
+            )
         ).to.be.revertedWith('NOT EXITING ENOUGH');
       });
 
       it('fails if not requesting all tokens', async () => {
         await expect(
-          tokenizer.connect(lp).exitPool((10e18).toString(), [(0.1e18).toString()], true)
+          tokenizer.connect(lp).exitPool((10e18).toString(), [(0.1e18).toString()], true, lp.address)
         ).to.be.revertedWith('Tokens and amounts length mismatch');
       });
 
       it('all tokens due are pushed', async () => {
-        await expectBalanceChange(() => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true), lp, tokens, {
-          DAI: 0.1e18,
-          MKR: 0.2e18,
-        });
+        await expectBalanceChange(
+          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address),
+          lp,
+          tokens,
+          {
+            DAI: 0.1e18,
+            MKR: 0.2e18,
+          }
+        );
+      });
+
+      it('all tokens due are pushed to a specified beneficiary', async () => {
+        await expectBalanceChange(
+          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, beneficiary.address),
+          beneficiary,
+          tokens,
+          {
+            DAI: 0.1e18,
+            MKR: 0.2e18,
+          }
+        );
       });
 
       context('with protocol withdraw fees', () => {
@@ -264,7 +292,7 @@ describe('FixedSetPoolTokenizer', function () {
 
         it('tokens minus fee are pushed', async () => {
           await expectBalanceChange(
-            () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true),
+            () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address),
             lp,
             tokens,
             {
@@ -277,7 +305,7 @@ describe('FixedSetPoolTokenizer', function () {
 
       it('can deposit into user balance', async () => {
         await expectBalanceChange(
-          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false),
+          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
           lp,
           tokens,
           {}
@@ -288,13 +316,18 @@ describe('FixedSetPoolTokenizer', function () {
         await expect(
           tokenizer
             .connect(lp)
-            .exitPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString(), (0.3e18).toString()], true)
+            .exitPool(
+              (10e18).toString(),
+              [(0.1e18).toString(), (0.2e18).toString(), (0.3e18).toString()],
+              true,
+              lp.address
+            )
         ).to.be.revertedWith('Tokens and amounts length mismatch');
       });
 
       it('can deposit into user balance', async () => {
         await expectBalanceChange(
-          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false),
+          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
           lp,
           tokens,
           {}
@@ -303,18 +336,30 @@ describe('FixedSetPoolTokenizer', function () {
         expect(await vault.getUserTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
         expect(await vault.getUserTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.2e18).toString());
       });
+
+      it("can deposit into a beneficiary's user balance", async () => {
+        await expectBalanceChange(
+          () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false, beneficiary.address),
+          beneficiary,
+          tokens,
+          {}
+        );
+
+        expect(await vault.getUserTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal((0.1e18).toString());
+        expect(await vault.getUserTokenBalance(beneficiary.address, tokens.MKR.address)).to.equal((0.2e18).toString());
+      });
     });
 
     describe('draining', () => {
       it('pools can be fully exited', async () => {
-        await tokenizer.connect(lp).exitPool((100e18).toString(), [0, 0], true);
+        await tokenizer.connect(lp).exitPool((100e18).toString(), [0, 0], true, lp.address);
 
         expect(await tokenizer.totalSupply()).to.equal(0);
         expect(await vault.getPoolTokens(poolId)).to.have.members([]);
       });
 
       it('drained pools cannot be rejoined', async () => {
-        await tokenizer.connect(lp).exitPool((100e18).toString(), [0, 0], true);
+        await tokenizer.connect(lp).exitPool((100e18).toString(), [0, 0], true, lp.address);
         await expect(
           tokenizer
             .connect(lp)

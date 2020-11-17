@@ -47,7 +47,7 @@ library BalanceLib {
      * @dev The number of invested assets. This is simply the difference between 'total' and 'cash' - the Vault has no
      * insights into how the assets are used by the Investment Manager.
      */
-    function invested(Balance memory self) internal view returns (uint128) {
+    function invested(Balance memory self) internal pure returns (uint128) {
         return self.total - self.cash;
     }
 

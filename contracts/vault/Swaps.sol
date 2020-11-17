@@ -40,10 +40,11 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
+    using SafeCast for uint128;
 
     function batchSwap(
-        Diff[] memory diffs,
         Swap[] memory swaps,
+        IERC20[] memory tokens, // tokens involved in the trade, as indexed by swaps
         FundsIn calldata fundsIn,
         FundsOut calldata fundsOut
     ) external override {
@@ -53,15 +54,10 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         // approved the caller to use their funds.
         require(isOperatorFor(fundsIn.withdrawFrom, msg.sender), "Caller is not operator");
 
-        // Contains the swap protocol fees charged for each token
-        uint128[] memory diffSwapProtocolFees = new uint128[](diffs.length);
+        int256[] memory tokenDeltas = new int256[](tokens.length);
 
-        // Validate correctness of VaultDelta array
-        // TODO: take vaultDelta out of the diffs struct, and initialize the array here instead
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            require(diffs[i].vaultDelta == 0, "Bad workspace");
-            diffSwapProtocolFees[i] = 0;
-        }
+        // Contains the swap protocol fees charged for each token
+        uint128[] memory tokenSwapProtocolFees = new uint128[](tokens.length);
 
         // Steps 1, 2 & 3:
         //  - check swaps are valid
@@ -74,8 +70,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             require(swap.tokenIn.amount != 0, "Token In NOOP");
             require(swap.tokenOut.amount != 0, "Token Out NOOP");
 
-            IERC20 tokenIn = diffs[swap.tokenIn.tokenDiffIndex].token;
-            IERC20 tokenOut = diffs[swap.tokenOut.tokenDiffIndex].token;
+            IERC20 tokenIn = tokens[swap.tokenIn.tokenIndex];
+            IERC20 tokenOut = tokens[swap.tokenOut.tokenIndex];
 
             require(tokenIn != tokenOut, "Swap for same token");
 
@@ -91,55 +87,56 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             _poolTokenBalance[swap.poolId][tokenOut] = tokenOutFinalBalance;
 
             // 3: Accumulate token diffs
-            diffs[swap.tokenIn.tokenDiffIndex].vaultDelta += swap.tokenIn.amount;
-            diffs[swap.tokenOut.tokenDiffIndex].vaultDelta -= swap.tokenOut.amount;
+            tokenDeltas[swap.tokenIn.tokenIndex] += swap.tokenIn.amount.toInt256();
+            tokenDeltas[swap.tokenOut.tokenIndex] -= swap.tokenOut.amount.toInt256();
 
             // 3b: Accumulate token swap protocol fees
-            diffSwapProtocolFees[swap.tokenIn.tokenDiffIndex] = diffSwapProtocolFees[swap.tokenIn.tokenDiffIndex]
-                .add128(protocolSwapFeeAmountIn);
+            tokenSwapProtocolFees[swap.tokenIn.tokenIndex] = tokenSwapProtocolFees[swap.tokenIn.tokenIndex].add128(
+                protocolSwapFeeAmountIn
+            );
         }
 
         // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            Diff memory diff = diffs[i];
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
 
-            if (diff.vaultDelta > 0) {
-                uint128 received = _pullTokens(diff.token, fundsIn.withdrawFrom, diff.amountIn.toUint128());
+            if (tokenDeltas[i] > 0) {
+                uint128 received = _pullTokens(token, fundsIn.withdrawFrom, fundsIn.amounts[i]);
 
-                if (received < diff.vaultDelta) {
-                    uint128 missing = uint128(diff.vaultDelta) - received;
+                if (received < uint128(tokenDeltas[i])) {
+                    uint128 missing = uint128(tokenDeltas[i]) - received;
 
-                    require(_userTokenBalance[fundsIn.withdrawFrom][diff.token] >= missing, "ERR_INVALID_DEPOSIT");
+                    require(_userTokenBalance[fundsIn.withdrawFrom][token] >= missing, "ERR_INVALID_DEPOSIT");
 
-                    _userTokenBalance[fundsIn.withdrawFrom][diff.token] -= missing;
+                    _userTokenBalance[fundsIn.withdrawFrom][token] -= missing;
                 }
             }
         }
 
         // Step 5: Send tokens due to the recipient
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            Diff memory diff = diffs[i];
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
 
-            if (diff.vaultDelta < 0) {
+            if (tokenDeltas[i] < 0) {
                 // Make delta positive
-                uint128 amount = uint128(-diff.vaultDelta);
+                uint128 amount = uint128(-tokenDeltas[i]);
 
                 if (fundsOut.transferToRecipient) {
                     // Actually transfer the tokens to the recipient
-                    _pushTokens(diff.token, fundsOut.recipient, amount, false);
+                    _pushTokens(token, fundsOut.recipient, amount, false);
                 } else {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                    _userTokenBalance[fundsOut.recipient][diff.token] = _userTokenBalance[fundsOut.recipient][diff
-                        .token]
-                        .add128(amount);
+                    _userTokenBalance[fundsOut.recipient][token] = _userTokenBalance[fundsOut.recipient][token].add128(
+                        amount
+                    );
                 }
             }
         }
 
         // Step 6: Deduct swap protocol swap fees from the Vault's balance - this makes them unaccounted-for
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            Diff memory diff = diffs[i];
-            _vaultTokenBalance[diff.token] = _vaultTokenBalance[diff.token].decrease(diffSwapProtocolFees[i]);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(tokenSwapProtocolFees[i]);
         }
     }
 
@@ -163,9 +160,9 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             uint128
         )
     {
-        PoolStrategy memory strategy = _poolStrategy[swap.poolId];
+        (address strategy, StrategyType strategyType) = fromPoolId(swap.poolId);
 
-        if (strategy.strategyType == StrategyType.PAIR) {
+        if (strategyType == StrategyType.PAIR) {
             return
                 _validatePairStrategySwap(
                     ITradingStrategy.Swap({
@@ -178,9 +175,9 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                         amountOut: swap.tokenOut.amount,
                         userData: swap.userData
                     }),
-                    IPairTradingStrategy(strategy.strategy)
+                    IPairTradingStrategy(strategy)
                 );
-        } else if (strategy.strategyType == StrategyType.TUPLE) {
+        } else if (strategyType == StrategyType.TUPLE) {
             return
                 _validateTupleStrategySwap(
                     ITradingStrategy.Swap({
@@ -193,7 +190,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                         amountOut: swap.tokenOut.amount,
                         userData: swap.userData
                     }),
-                    ITupleTradingStrategy(strategy.strategy)
+                    ITupleTradingStrategy(strategy)
                 );
         } else {
             revert("Unknown strategy type");

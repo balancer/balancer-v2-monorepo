@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { getDiffsSwapsAndAmounts, getSwapTokenIndexes } from '../../scripts/helpers/trading';
+import { getTokensSwapsAndAmounts, getSwapTokenIndexes } from '../../scripts/helpers/trading';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -82,7 +82,7 @@ describe('TradeScript - Stable', () => {
 
     describe('swapExactAmountIn', () => {
       it('one pool DAI for USDC', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
         ]);
         const indexes = getSwapTokenIndexes([[0, 1]]);
@@ -97,8 +97,8 @@ describe('TradeScript - Stable', () => {
                 minAmountOut: (2e18).toString(), //minAmountOut
                 maxPrice: (1e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               indexes,
               amounts,
               true
@@ -111,7 +111,7 @@ describe('TradeScript - Stable', () => {
       });
 
       it('one pool DAI for USDC with swap fee', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2.041e18).toString() }, //2e18 / (1 - 0.02)
         ]);
         const indexes = getSwapTokenIndexes([[0, 1]]);
@@ -126,8 +126,8 @@ describe('TradeScript - Stable', () => {
                 minAmountOut: (2e18).toString(), //minAmountOut
                 maxPrice: (1.1e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               indexes,
               amounts,
               true
@@ -142,7 +142,7 @@ describe('TradeScript - Stable', () => {
       it('one pool DAI for USDC with swap fee and swap protocol fee', async () => {
         await vault.connect(admin).setProtocolSwapFee((0.5e18).toString()); //50%
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[3], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2.041e18).toString() }, //2e18 / (1 - 0.02)
         ]);
         const indexes = getSwapTokenIndexes([[0, 1]]);
@@ -157,8 +157,8 @@ describe('TradeScript - Stable', () => {
                 minAmountOut: (2e18).toString(), //minAmountOut
                 maxPrice: (1.1e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               indexes,
               amounts,
               true
@@ -173,7 +173,7 @@ describe('TradeScript - Stable', () => {
       });
 
       it('multihop DAI for SUSD', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: (2e18).toString() },
           { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
           { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD' },
@@ -194,8 +194,8 @@ describe('TradeScript - Stable', () => {
                 minAmountOut: (2e18).toString(), //minAmountOut
                 maxPrice: (1e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               indexes,
               amounts,
               true
@@ -209,7 +209,7 @@ describe('TradeScript - Stable', () => {
     });
     describe('swapExactAmountOut', () => {
       it('one pool USDC for DAI', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC', amount: '2004825982206027991' }, //in (2e18).toString()
         ]);
         const indexes = getSwapTokenIndexes([[0, 1]]);
@@ -224,8 +224,8 @@ describe('TradeScript - Stable', () => {
                 maxAmountIn: (2e18).toString(), //maxAmountIn
                 maxPrice: (1.1e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               indexes,
               amounts,
               true
@@ -238,7 +238,7 @@ describe('TradeScript - Stable', () => {
       });
 
       it('multihop DAI for SUSD', async () => {
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[2], tokenIn: 'TUSD', tokenOut: 'SUSD', amount: '2004844365375433805' },
           { poolId: pools[1], tokenIn: 'USDC', tokenOut: 'TUSD' },
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'USDC' },
@@ -259,8 +259,8 @@ describe('TradeScript - Stable', () => {
                 maxAmountIn: (2e18).toString(), //maxAmountIn
                 maxPrice: (1.1e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               indexes,
               amounts,
               true
