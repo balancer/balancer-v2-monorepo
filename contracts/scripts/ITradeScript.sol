@@ -57,8 +57,8 @@ interface ITradeScript {
 
     function swapExactAmountIn(
         OverallInfoIn memory info,
-        IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
+        IERC20[] memory tokens,
         SwapTokenIndexes[] memory indexes,
         uint128[] memory amountsIn,
         bool withdrawTokens
@@ -66,8 +66,8 @@ interface ITradeScript {
 
     function swapExactAmountOut(
         OverallInfoOut memory info,
-        IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
+        IERC20[] memory tokens,
         SwapTokenIndexes[] memory indexes,
         uint128[] memory amountsOut,
         bool withdrawTokens

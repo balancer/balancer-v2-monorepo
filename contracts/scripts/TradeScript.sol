@@ -42,8 +42,8 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
     // instead (multi-hops). Subsequent non-overallTokenOut outputs are merged together (merge-hop).
     function swapExactAmountIn(
         OverallInfoIn memory info,
-        IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
+        IERC20[] memory tokens,
         SwapTokenIndexes[] memory indexes,
         uint128[] memory amountsIn,
         bool withdrawTokens
@@ -57,8 +57,8 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
                 helper = PairTradeScript._getExactAmountInData(
                     _vault,
                     strategy,
-                    diffs,
                     swaps[i],
+                    tokens,
                     info.overallTokenIn,
                     amountsIn[i],
                     helper
@@ -67,8 +67,8 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
                 helper = TupleTradeScript._getExactAmountInData(
                     _vault,
                     strategy,
-                    diffs,
                     swaps[i],
+                    tokens,
                     indexes[i],
                     info.overallTokenIn,
                     amountsIn[i],
@@ -98,17 +98,17 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
         require(helper.toReceive >= info.minAmountOut, "Insufficient amount out");
         require(helper.toSend.div(helper.toReceive) <= info.maxPrice, "Price too high");
 
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            if (diffs[i].token == info.overallTokenIn) {
-                diffs[i].amountIn = helper.toSend;
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == info.overallTokenIn) {
+                amountsIn[i] = helper.toSend;
                 break;
             }
         }
 
         _vault.batchSwap(
-            diffs,
             swaps,
-            IVault.FundsIn({ withdrawFrom: msg.sender }),
+            tokens,
+            IVault.FundsIn({ withdrawFrom: msg.sender, amounts: amountsIn }),
             IVault.FundsOut({ recipient: msg.sender, transferToRecipient: withdrawTokens })
         );
 
@@ -125,8 +125,8 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
     // but it is redundant as a secure and simple check.
     function swapExactAmountOut(
         OverallInfoOut memory info,
-        IVault.Diff[] memory diffs,
         IVault.Swap[] memory swaps,
+        IERC20[] memory tokens,
         SwapTokenIndexes[] memory indexes,
         uint128[] memory amountsOut,
         bool withdrawTokens
@@ -140,8 +140,8 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
                 helper = PairTradeScript._getExactAmountOutData(
                     _vault,
                     strategy,
-                    diffs,
                     swaps[i],
+                    tokens,
                     info.overallTokenOut,
                     amountsOut[i],
                     helper
@@ -150,8 +150,8 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
                 helper = TupleTradeScript._getExactAmountOutData(
                     _vault,
                     strategy,
-                    diffs,
                     swaps[i],
+                    tokens,
                     indexes[i],
                     info.overallTokenOut,
                     amountsOut[i],
@@ -181,17 +181,18 @@ contract TradeScript is ITradeScript, PairTradeScript, TupleTradeScript {
         require(helper.toSend <= info.maxAmountIn, "Excessing amount in");
         require(helper.toSend.div(helper.toReceive) <= info.maxPrice, "Price too high");
 
-        for (uint256 i = 0; i < diffs.length; ++i) {
-            if (diffs[i].token == info.overallTokenIn) {
-                diffs[i].amountIn = helper.toSend;
+        uint128[] memory amountsIn = new uint128[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == info.overallTokenIn) {
+                amountsIn[i] = helper.toSend;
                 break;
             }
         }
 
         _vault.batchSwap(
-            diffs,
             swaps,
-            IVault.FundsIn({ withdrawFrom: msg.sender }),
+            tokens,
+            IVault.FundsIn({ withdrawFrom: msg.sender, amounts: amountsIn }),
             IVault.FundsOut({ recipient: msg.sender, transferToRecipient: withdrawTokens })
         );
 

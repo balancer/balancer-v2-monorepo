@@ -51,8 +51,6 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
     // The creator of a pool is the initial controller.
     mapping(bytes32 => address) internal _poolController;
 
-    mapping(bytes32 => PoolStrategy) internal _poolStrategy;
-
     // Set with all tokens in a pool
     mapping(bytes32 => EnumerableSet.AddressSet) internal _poolTokens;
 
@@ -80,15 +78,32 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         _;
     }
 
+    function toPoolId(
+        address strategy,
+        uint16 strategyType,
+        uint32 poolIndex
+    ) public pure returns (bytes32) {
+        uint256 serialized;
+        serialized |= uint256(poolIndex) << (22 * 8);
+        serialized |= uint256(strategyType) << (20 * 8);
+        serialized |= uint256(strategy);
+        return bytes32(serialized);
+    }
+
+    function fromPoolId(bytes32 serialized) public pure returns (address strategy, StrategyType strategyType) {
+        //|| 6 bytes empty | 4 bytes count of pools | 2 bytes strategyType | 20 bytes address ||
+        strategy = address(uint256(serialized) & (2**(20 * 8) - 1));
+        strategyType = StrategyType(uint256(serialized >> (20 * 8)) & (2**(2 * 8) - 1));
+    }
+
     function newPool(address strategy, StrategyType strategyType) external override returns (bytes32) {
-        bytes32 poolId = keccak256(abi.encodePacked(address(this), _pools.length()));
+        bytes32 poolId = toPoolId(strategy, uint16(strategyType), uint32(_pools.length()));
 
         require(!_pools.contains(poolId), "Pool ID already exists");
         require(strategy != address(0), "Strategy must be set");
 
         _pools.add(poolId);
         _poolController[poolId] = msg.sender;
-        _poolStrategy[poolId] = PoolStrategy({ strategy: strategy, strategyType: strategyType });
 
         emit PoolCreated(poolId);
 
@@ -161,8 +176,8 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         _viewlock_
         returns (address, StrategyType)
     {
-        PoolStrategy memory strategy = _poolStrategy[poolId];
-        return (strategy.strategy, strategy.strategyType);
+        (address strategy, StrategyType strategyType) = fromPoolId(poolId);
+        return (strategy, strategyType);
     }
 
     function setPoolController(bytes32 poolId, address controller)
@@ -174,18 +189,6 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         onlyPoolController(poolId)
     {
         _poolController[poolId] = controller;
-    }
-
-    function setPoolStrategy(
-        bytes32 poolId,
-        address strategy,
-        StrategyType strategyType
-    ) external override _logs_ _lock_ withExistingPool(poolId) onlyPoolController(poolId) {
-        // The Pool registry will store token information in different formats depending on the strategy type,
-        // so changing it is disallowed
-        require(strategyType == _poolStrategy[poolId].strategyType, "Trading strategy type cannot change");
-
-        _poolStrategy[poolId] = PoolStrategy({ strategy: strategy, strategyType: strategyType });
     }
 
     function addLiquidity(

@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { getDiffsSwapsAndAmounts } from '../../scripts/helpers/trading';
+import { getTokensSwapsAndAmounts } from '../../scripts/helpers/trading';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { PairTS, setupPool } from '../../scripts/helpers/pools';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -92,7 +92,7 @@ describe('TradeScript - WeightProduct', () => {
             [(0.5e18).toString()]
           );
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
           { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 600 }, //out 1200
         ]);
@@ -106,8 +106,8 @@ describe('TradeScript - WeightProduct', () => {
                 minAmountOut: 1500, //minAmountOut
                 maxPrice: (0.6e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               [],
               amounts,
               true
@@ -164,7 +164,7 @@ describe('TradeScript - WeightProduct', () => {
             [(0.5e18).toString()]
           );
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX', amount: 1200 }, //out 2400
           { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //out 4800
           { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR' }, //out 9600
@@ -180,8 +180,8 @@ describe('TradeScript - WeightProduct', () => {
                 minAmountOut: 10800, //minAmountOut
                 maxPrice: (0.6e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               [],
               amounts,
               true
@@ -215,7 +215,7 @@ describe('TradeScript - WeightProduct', () => {
             [(0.5e18).toString()]
           );
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
           { poolId: pools[1], tokenIn: 'DAI', tokenOut: 'MKR', amount: 1200 }, //in 600
         ]);
@@ -229,8 +229,8 @@ describe('TradeScript - WeightProduct', () => {
                 maxAmountIn: 1200, //maxAmountIn
                 maxPrice: (0.6e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               [],
               amounts,
               true
@@ -287,7 +287,7 @@ describe('TradeScript - WeightProduct', () => {
             [(0.5e18).toString()]
           );
 
-        const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(tokens, [
+        const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(tokens, [
           { poolId: pools[2], tokenIn: 'BAT', tokenOut: 'MKR', amount: 9600 }, //in 4800
           { poolId: pools[1], tokenIn: 'SNX', tokenOut: 'BAT' }, //in 2400
           { poolId: pools[0], tokenIn: 'DAI', tokenOut: 'SNX' }, //in 1200
@@ -304,8 +304,8 @@ describe('TradeScript - WeightProduct', () => {
                 maxAmountIn: 1800, //maxAmountIn
                 maxPrice: (0.6e18).toString(), //maxPrice
               },
-              diffs,
               swaps,
+              tokenAddresses,
               [],
               amounts,
               true

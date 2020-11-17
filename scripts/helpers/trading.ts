@@ -7,49 +7,48 @@ export type Trade = {
   amount?: number | string;
 };
 
-export type Diff = { token: string; vaultDelta: number; amountIn: number };
 export type Swap = {
   poolId: string;
-  tokenIn: { tokenDiffIndex: number; amount: number };
-  tokenOut: { tokenDiffIndex: number; amount: number };
+  tokenIn: { tokenIndex: number; amount: number };
+  tokenOut: { tokenIndex: number; amount: number };
   userData: string;
 };
 
-export function getDiffsSwapsAndAmounts(
+export function getTokensSwapsAndAmounts(
   tokens: TokenList,
   trades: Array<Trade>
-): [Array<Diff>, Array<Swap>, Array<number | string>] {
-  const diffs: Array<Diff> = [];
+): [Array<string>, Array<Swap>, Array<number | string>] {
   const swaps: Array<Swap> = [];
   const amounts: Array<number | string> = [];
+
+  const tokenAddresses = Array.from(
+    new Set(
+      trades.reduce(
+        (acc: string[], trade) => acc.concat([tokens[trade.tokenIn].address, tokens[trade.tokenOut].address]),
+        []
+      )
+    )
+  );
 
   for (const trade of trades) {
     const tokenInAddress = tokens[trade.tokenIn].address;
 
-    let inDiffIndex = diffs.findIndex((diff) => diff.token == tokenInAddress);
-    if (inDiffIndex == -1) {
-      diffs.push({ token: tokenInAddress, vaultDelta: 0, amountIn: 0 });
-      inDiffIndex = diffs.length - 1;
-    }
+    const inDiffIndex = tokenAddresses.indexOf(tokenInAddress);
 
     const tokenOutAddress = tokens[trade.tokenOut].address;
-    let outDiffIndex = diffs.findIndex((diff) => diff.token == tokenOutAddress);
-    if (outDiffIndex == -1) {
-      diffs.push({ token: tokenOutAddress, vaultDelta: 0, amountIn: 0 });
-      outDiffIndex = diffs.length - 1;
-    }
+    const outDiffIndex = tokenAddresses.indexOf(tokenOutAddress);
 
     swaps.push({
       poolId: trade.poolId,
-      tokenIn: { tokenDiffIndex: inDiffIndex, amount: 0 },
-      tokenOut: { tokenDiffIndex: outDiffIndex, amount: 0 },
+      tokenIn: { tokenIndex: inDiffIndex, amount: 0 },
+      tokenOut: { tokenIndex: outDiffIndex, amount: 0 },
       userData: '0x',
     });
 
     amounts.push(trade.amount ?? 0);
   }
 
-  return [diffs, swaps, amounts];
+  return [tokenAddresses, swaps, amounts];
 }
 
 export type SwapIndexes = {

@@ -35,10 +35,6 @@ contract OwnableFixedSetPoolTokenizer is FixedSetPoolTokenizer, Ownable {
         vault.setPoolController(poolId, controller);
     }
 
-    function changePoolStrategy(address strategy, IVault.StrategyType strategyType) public onlyOwner {
-        vault.setPoolStrategy(poolId, strategy, strategyType);
-    }
-
     function setInvestablePercentage(IERC20 token, uint128 percentage) public onlyOwner {
         vault.setInvestablePercentage(poolId, token, percentage);
     }
