@@ -28,8 +28,9 @@ contract Stable {
     struct Data {
         int256 amp;
         int256 invariant;
-        int256 sum;
+        int256 n;
         int256 nn;
+        int256 sum;
         int256 prod;
     }
 
@@ -77,7 +78,7 @@ contract Stable {
             }
             nn = nn * int256(n);
         }
-        return Data({ amp: int256(amp), invariant: invariant, sum: sum, nn: nn, prod: prod });
+        return Data({ amp: int256(amp), invariant: invariant, sum: sum, n: int256(n), nn: nn, prod: prod });
     }
 
     function _getDataInGivenOut(
@@ -104,7 +105,7 @@ contract Stable {
             }
             nn = nn * int256(n);
         }
-        return Data({ amp: int256(amp), invariant: invariant, sum: sum, nn: nn, prod: prod });
+        return Data({ amp: int256(amp), invariant: invariant, sum: sum, n: int256(n), nn: nn, prod: prod });
     }
 
     function _outGivenIn(

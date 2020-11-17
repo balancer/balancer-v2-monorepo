@@ -31,9 +31,10 @@ function _invariant(amp: Decimal, balances: Decimal[]): Decimal {
 }
 
 function calcBalance(amp: Decimal, oldBalances: Decimal[], newBalances: Decimal[], balanceIndex: number): Decimal {
-  const n = new Decimal(newBalances.length);
+  const n = new Decimal(oldBalances.length);
   //Invariant
   const invariant = _invariant(amp, oldBalances);
+
   //Sum (without amount in)
   const sum = newBalances.reduce((a: Decimal, b: Decimal, index: number) => {
     if (index !== balanceIndex) return a.add(b);
@@ -47,7 +48,7 @@ function calcBalance(amp: Decimal, oldBalances: Decimal[], newBalances: Decimal[
   //a
   const a = amp;
   //b
-  const b = amp.mul(sum).add(new Decimal(1).div(n.pow(2)).minus(amp).mul(invariant));
+  const b = amp.mul(sum).add(new Decimal(1).div(n.pow(n)).minus(amp).mul(invariant));
   //c
   const c = new Decimal(-1)
     .times(invariant.pow(3))
