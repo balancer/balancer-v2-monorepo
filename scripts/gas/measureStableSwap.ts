@@ -4,7 +4,7 @@ import { setupPool } from '../helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
 import { toFixedPoint } from '../helpers/fixedPoint';
 import { Contract } from 'ethers';
-import { getDiffsSwapsAndAmounts, getSwapTokenIndexes } from '../helpers/trading';
+import { getTokensSwapsAndAmounts, getSwapTokenIndexes } from '../helpers/trading';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 
@@ -83,7 +83,7 @@ async function batchedSwap(withdrawTokens: boolean) {
   // Trade DAI for MKR, putting 500 DAI into each pool
   const indexes: number[][] = [];
   for (let poolAmount = 1; poolAmount <= BATCHED_SWAP_TOTAL_POOLS; ++poolAmount) {
-    const [diffs, swaps, amounts] = getDiffsSwapsAndAmounts(
+    const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(
       tokens,
       pools.slice(0, poolAmount).map((poolId) => {
         return { poolId, tokenIn: 'DAI', tokenOut: 'MKR', amount: (2e18).toString() };
@@ -100,8 +100,8 @@ async function batchedSwap(withdrawTokens: boolean) {
           minAmountOut: (1e18 * poolAmount).toString(),
           maxPrice: toFixedPoint(2),
         },
-        diffs,
         swaps,
+        tokenAddresses,
         getSwapTokenIndexes(indexes),
         amounts,
         withdrawTokens
