@@ -15,24 +15,36 @@
 pragma solidity 0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../strategies/IPairTradingStrategy.sol";
-import "../strategies/ITupleTradingStrategy.sol";
+import "../strategies/v2/IPairTradingStrategy.sol";
+import "../strategies/v2/ITupleTradingStrategy.sol";
+
+import "../math/FixedPoint.sol";
 
 contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
-    function validatePair(
-        ITradingStrategy.Swap calldata,
-        uint128,
-        uint128
-    ) external pure override returns (bool, uint128) {
-        return (true, 0);
+    using FixedPoint for uint128;
+
+    uint128 multiplier;
+    uint128 fee;
+
+    constructor(uint128 _multiplier, uint128 _fee) {
+        multiplier = _multiplier;
+        fee = _fee;
     }
 
-    function validateTuple(
-        ITradingStrategy.Swap calldata,
+    function quoteOutGivenIn(
+        ITradingStrategy.QuoteRequestGivenIn calldata request,
+        uint128,
+        uint128
+    ) external view override returns (uint128, uint128) {
+        return (request.amountIn.mul128(multiplier), request.amountIn.mul128(fee));
+    }
+
+    function quoteOutGivenIn(
+        ITradingStrategy.QuoteRequestGivenIn calldata request,
         uint128[] calldata,
         uint256,
         uint256
-    ) external pure override returns (bool, uint128) {
-        return (true, 0);
+    ) external view override returns (uint128, uint128) {
+        return (request.amountIn.mul128(multiplier), request.amountIn.mul128(fee));
     }
 }

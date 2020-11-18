@@ -251,7 +251,7 @@ interface IVault {
      *
      * Funds will be received according to the data in `fundsIn`, and sent according to `fundsOut`.
      */
-    function batchSwap(
+    function batchSwapGivenIn(
         SwapIn[] calldata swaps,
         IERC20[] memory tokens,
         FundManagement calldata funds

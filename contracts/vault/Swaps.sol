@@ -53,7 +53,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         SwapIn memory swap,
         address from,
         address to,
-        SwapOutput memory previous
+        SwapOutput memory previous,
+        BatchSwapType kind
     )
         private
         returns (
@@ -62,6 +63,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             uint128
         )
     {
+        require(kind == BatchSwapType.GIVEN_IN);
+
         IERC20 tokenIn = tokens[swap.tokenInIndex];
         IERC20 tokenOut = tokens[swap.tokenOutIndex];
 
@@ -94,11 +97,22 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         return (amountIn, amountOut, protocolSwapFeeAmountIn);
     }
 
-    function batchSwap(
+    enum BatchSwapType { GIVEN_IN, GIVEN_OUT }
+
+    function batchSwapGivenIn(
         SwapIn[] memory swaps,
         IERC20[] memory tokens, // tokens involved in the trade, as indexed by swaps
         FundManagement memory funds
-    ) external override returns (int256[] memory vaultDeltas) {
+    ) external override returns (int256[] memory) {
+        return batchSwap(swaps, tokens, funds, BatchSwapType.GIVEN_IN);
+    }
+
+    function batchSwap(
+        SwapIn[] memory swaps,
+        IERC20[] memory tokens, // tokens involved in the trade, as indexed by swaps
+        FundManagement memory funds,
+        BatchSwapType kind
+    ) private returns (int256[] memory) {
         //TODO: avoid reentrancy
 
         // Any net token amount going into the Vault will be taken from `funds.sender`, so they must have
@@ -126,7 +140,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                 swap,
                 funds.sender,
                 funds.recipient,
-                previous
+                previous,
+                kind
             );
 
             // 3: Accumulate token diffs

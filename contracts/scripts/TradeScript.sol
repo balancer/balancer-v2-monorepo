@@ -39,7 +39,7 @@ contract TradeScript is ITradeScript {
         IERC20[] memory tokens,
         bool withdrawTokens
     ) public override {
-        int256[] memory vaultDeltas = _vault.batchSwap(
+        int256[] memory vaultDeltas = _vault.batchSwapGivenIn(
             swaps,
             tokens,
             IVault.FundManagement({

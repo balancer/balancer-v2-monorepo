@@ -10,7 +10,7 @@ import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { FundManagement, SwapV2 } from '../../scripts/helpers/trading';
 
-describe.only('Vault - swaps', () => {
+describe('Vault - swaps', () => {
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
   let other: SignerWithAddress;
@@ -20,7 +20,7 @@ describe.only('Vault - swaps', () => {
   let tokenAddresses: string[];
 
   const totalPools = 2;
-  let poolIds: string[] = [];
+  let poolIds: string[];
   let funds: FundManagement;
 
   before('setup', async () => {
@@ -33,20 +33,16 @@ describe.only('Vault - swaps', () => {
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     poolIds = [];
-    for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-      // All pools are CWP 1:1:1 DAI:MKR:SNX with no fee
-      const strategy = await deploy('CWPTradingStrategy', {
-        args: [
-          [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address],
-          [toFixedPoint(1), toFixedPoint(1), toFixedPoint(1)],
-          3,
-          0,
-        ],
-      });
+    // All pools have mock strategies with a multiplier of 1 and a fee of 0 (they trade 1:1)
+    const strategy = await deploy('MockTradingStrategy', {
+      args: [toFixedPoint(1), toFixedPoint(0)],
+    });
 
+    for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
       // Pools are seeded with 200e18 DAO and MKR, making the price 1:1
       poolIds.push(
-        await setupPool(vault, strategy, PairTS, tokens, controller, [
+        // Odd pools have Pair Trading Strategies, even ones Tuple
+        await setupPool(vault, strategy, poolIdIdx % 2 ? PairTS : TupleTS, tokens, controller, [
           ['DAI', (100e18).toString()],
           ['MKR', (100e18).toString()],
           ['SNX', (100e18).toString()],
@@ -81,14 +77,19 @@ describe.only('Vault - swaps', () => {
       },
     ];
 
-    await expectBalanceChange(() => vault.connect(trader).batchSwap(swaps, tokenAddresses, funds), trader, tokens, {
-      DAI: ['near', 1e18],
-      MKR: -1e18,
-    });
+    await expectBalanceChange(
+      () => vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds),
+      trader,
+      tokens,
+      {
+        DAI: 1e18,
+        MKR: -1e18,
+      }
+    );
   });
 
   it('single pair multi pool swap', async () => {
-    // In each pool, send 1e18 MKR, get around 1e18 DAI back
+    // In each pool, send 1e18 MKR, get 1e18 DAI back
     const swaps: SwapV2[] = [
       {
         poolId: poolIds[0],
@@ -108,58 +109,17 @@ describe.only('Vault - swaps', () => {
 
     await expectBalanceChange(
       async () => {
-        await vault.connect(trader).batchSwap(swaps, tokenAddresses, funds);
+        await vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds);
       },
       trader,
       tokens,
-      { DAI: ['near', 2e18], MKR: -2e18 }
-    );
-  });
-
-  // TODO: What's a reasonable value for Flattened's 'amp'?
-  it.skip('single pair multi pool multi trading strategy swap', async () => {
-    // Create a new pool with the FlattenedTradingStrategy, no fee
-    const flattenedStrategy = await deploy('FlattenedTradingStrategy', {
-      args: [(30e18).toString(), 0],
-    });
-
-    const flattenedPoolId = await setupPool(vault, flattenedStrategy, TupleTS, tokens, controller, [
-      ['DAI', (100e18).toString()],
-      ['MKR', (100e18).toString()],
-      ['SNX', (100e18).toString()],
-    ]);
-
-    // In each pool, send 1e18 MKR, get around 1e18 DAI back
-    const swaps: SwapV2[] = [
-      {
-        poolId: poolIds[0],
-        tokenInIndex: 1,
-        tokenOutIndex: 0,
-        amountIn: (1e18).toString(),
-        userData: '0x',
-      },
-      {
-        poolId: flattenedPoolId,
-        tokenInIndex: 1,
-        tokenOutIndex: 0,
-        amountIn: (1e18).toString(),
-        userData: '0x',
-      },
-    ];
-
-    await expectBalanceChange(
-      async () => {
-        await vault.connect(trader).batchSwap(swaps, tokenAddresses, funds);
-      },
-      trader,
-      tokens,
-      { DAI: ['near', 2e18], MKR: -2e18 }
+      { DAI: 2e18, MKR: -2e18 }
     );
   });
 
   it('multi pair multi pool swap', async () => {
     const swaps: SwapV2[] = [
-      // Send 1e18 MKR, get around 1e18 DAI back
+      // Send 1e18 MKR, get 1e18 DAI back
       {
         poolId: poolIds[0],
         tokenInIndex: 1,
@@ -167,7 +127,7 @@ describe.only('Vault - swaps', () => {
         amountIn: (1e18).toString(),
         userData: '0x',
       },
-      // Send 1e18 MKR, get around 1e18 SNX back
+      // Send 1e18 MKR, get 1e18 SNX back
       {
         poolId: poolIds[1],
         tokenInIndex: 1,
@@ -179,17 +139,17 @@ describe.only('Vault - swaps', () => {
 
     await expectBalanceChange(
       async () => {
-        await vault.connect(trader).batchSwap(swaps, tokenAddresses, funds);
+        await vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds);
       },
       trader,
       tokens,
-      { DAI: ['near', 1e18], SNX: ['near', 1e18], MKR: -2e18 }
+      { DAI: 1e18, SNX: 1e18, MKR: -2e18 }
     );
   });
 
   it('multi pair multi pool multihop swap', async () => {
     const swaps: SwapV2[] = [
-      // Send 1e18 MKR, get around 1e18 DAI back
+      // Send 1e18 MKR, get 1e18 DAI back
       {
         poolId: poolIds[0],
         tokenInIndex: 1,
@@ -197,7 +157,7 @@ describe.only('Vault - swaps', () => {
         amountIn: (1e18).toString(),
         userData: '0x',
       },
-      // Sends the previously acquired amount of DAI, gets around 1e18 SNX back
+      // Sends the previously acquired amount of DAI, gets 1e18 SNX back
       {
         poolId: poolIds[1],
         tokenInIndex: 0,
@@ -209,11 +169,11 @@ describe.only('Vault - swaps', () => {
 
     await expectBalanceChange(
       async () => {
-        await vault.connect(trader).batchSwap(swaps, tokenAddresses, funds);
+        await vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds);
       },
       trader,
       tokens,
-      { SNX: ['near', 1e18], MKR: -1e18 }
+      { SNX: 1e18, MKR: -1e18 }
     );
   });
 
@@ -228,7 +188,7 @@ describe.only('Vault - swaps', () => {
       },
     ];
 
-    await expect(vault.connect(trader).batchSwap(swaps, tokenAddresses, funds)).to.be.revertedWith(
+    await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
       'Unknown amount in on first swap'
     );
   });
@@ -251,50 +211,51 @@ describe.only('Vault - swaps', () => {
       },
     ];
 
-    await expect(vault.connect(trader).batchSwap(swaps, tokenAddresses, funds)).to.be.revertedWith(
+    await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
       'Misconstructed multihop swap'
     );
   });
 
   it('only transfers tokens for the net vault balance change', async () => {
-    // Remove 80% of the DAI tokens from the first pool - this makes DAI much more valuable in this pool
-    await vault
-      .connect(controller)
-      .removeLiquidity(
-        poolIds[0],
-        controller.address,
-        [tokens.DAI.address],
-        [(80e18).toString()],
-        [(80e18).toString()]
-      );
+    // Create a pool that gives back twice as much as it receives
+
+    const strategy = await deploy('MockTradingStrategy', {
+      args: [toFixedPoint(2), toFixedPoint(0)],
+    });
+
+    const unbalancedPoolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
+      ['DAI', (100e18).toString()],
+      ['MKR', (100e18).toString()],
+      ['SNX', (100e18).toString()],
+    ]);
 
     // Sell DAI in the pool where it is valuable, buy it in the one where it has a regular price
     const swaps: SwapV2[] = [
       {
-        poolId: poolIds[0],
+        poolId: unbalancedPoolId,
         tokenInIndex: 0,
         tokenOutIndex: 1,
-        amountIn: (0.8e18).toString(), // 1e18 MKR will be sold for DAI, only 0.8e18 of these are sold here
+        amountIn: (1e18).toString(), // Sell 1e18 DAI for 2e18 MKR
         userData: '0x',
       },
       {
-        poolId: poolIds[1],
+        poolId: poolIds[0],
         tokenInIndex: 1,
         tokenOutIndex: 0,
-        amountIn: (1e18).toString(),
+        amountIn: (1e18).toString(), // Buy 1e18 MKR with DAI
         userData: '0x',
       },
     ];
 
-    // The trader will receive profit in MKR (that was bought by selling DAI for a lot), plus some dust in the form of
-    // DAI (since not the entire amount purchased was sold). The trader receives tokens and doesn't send any.
+    // The trader will receive profit in MKR, since it sold DAI for more MKR than it bought it for. The trader receives
+    // tokens and doesn't send any.
     await expectBalanceChange(
       async () => {
-        await vault.connect(trader).batchSwap(swaps, tokenAddresses, funds);
+        await vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds);
       },
       trader,
       tokens,
-      { DAI: ['gt', 0], MKR: ['gt', 0] }
+      { MKR: 1e18 }
     );
   });
 
@@ -315,18 +276,18 @@ describe.only('Vault - swaps', () => {
 
     it('can send funds to arbitrary recipient', async () => {
       await expectBalanceChange(
-        () => vault.connect(trader).batchSwap(swaps, tokenAddresses, { ...funds, recipient: other.address }),
+        () => vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, { ...funds, recipient: other.address }),
         other,
         tokens,
         {
-          DAI: ['near', 1e18], // The MKR is deducted from trader
+          DAI: 1e18, // The MKR is deducted from trader
         }
       );
     });
 
     it('cannot withdraw funds from arbitrary sender recipient', async () => {
       await expect(
-        vault.connect(other).batchSwap(swaps, tokenAddresses, funds) // funds.sender is trader
+        vault.connect(other).batchSwapGivenIn(swaps, tokenAddresses, funds) // funds.sender is trader
       ).to.be.revertedWith('Caller is not operator');
     });
 
@@ -334,11 +295,11 @@ describe.only('Vault - swaps', () => {
       await vault.connect(trader).authorizeOperator(other.address);
 
       await expectBalanceChange(
-        () => vault.connect(other).batchSwap(swaps, tokenAddresses, funds), // funds.sender is trader
+        () => vault.connect(other).batchSwapGivenIn(swaps, tokenAddresses, funds), // funds.sender is trader
         trader,
         tokens,
         {
-          DAI: ['near', 1e18],
+          DAI: 1e18,
           MKR: -1e18,
         }
       );
@@ -348,11 +309,12 @@ describe.only('Vault - swaps', () => {
       await vault.connect(trader).deposit(tokens.MKR.address, (0.3e18).toString(), trader.address);
 
       await expectBalanceChange(
-        () => vault.connect(trader).batchSwap(swaps, tokenAddresses, { ...funds, withdrawFromUserBalance: true }),
+        () =>
+          vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, { ...funds, withdrawFromUserBalance: true }),
         trader,
         tokens,
         {
-          DAI: ['near', 1e18],
+          DAI: 1e18,
           MKR: -0.7e18, // The 0.3e18 remaining came from User Balance
         }
       );
@@ -362,7 +324,7 @@ describe.only('Vault - swaps', () => {
 
     it('can deposit into user balance', async () => {
       await expectBalanceChange(
-        () => vault.connect(trader).batchSwap(swaps, tokenAddresses, { ...funds, depositToUserBalance: true }),
+        () => vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, { ...funds, depositToUserBalance: true }),
         trader,
         tokens,
         {
@@ -371,8 +333,7 @@ describe.only('Vault - swaps', () => {
       );
 
       const daiBalance = await vault.getUserTokenBalance(trader.address, tokens.DAI.address);
-      expect(daiBalance).to.be.at.least((0.9e18).toString());
-      expect(daiBalance).to.be.at.most((1.1e18).toString());
+      expect(daiBalance).to.equal((1e18).toString());
     });
   });
 });
