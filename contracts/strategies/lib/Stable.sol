@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.1;
 
+import "hardhat/console.sol";
+
 import "../../math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
