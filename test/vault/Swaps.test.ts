@@ -146,6 +146,75 @@ describe('Vault - swaps', () => {
     );
   });
 
+  it('multi pair multi pool multihop swap', async () => {
+    const swaps: SwapV2[] = [
+      // Send 1e18 MKR, get around 1e18 DAI back
+      {
+        poolId: poolIds[0],
+        tokenInIndex: 1,
+        tokenOutIndex: 0,
+        amountIn: (1e18).toString(),
+        userData: '0x',
+      },
+      // Sends the previously acquired amount of DAI, gets around 1e18 SNX back
+      {
+        poolId: poolIds[1],
+        tokenInIndex: 0,
+        tokenOutIndex: 2,
+        amountIn: 0, // sentinel value for 'use previous output'
+        userData: '0x',
+      },
+    ];
+
+    await expectBalanceChange(
+      async () => {
+        await vault.connect(trader).batchSwap(swaps, tokenAddresses, funds);
+      },
+      trader,
+      tokens,
+      { SNX: ['near', 1e18], MKR: -1e18 }
+    );
+  });
+
+  it('reverts if using multihop logic on first swap', async () => {
+    const swaps: SwapV2[] = [
+      {
+        poolId: poolIds[0],
+        tokenInIndex: 1,
+        tokenOutIndex: 0,
+        amountIn: 0,
+        userData: '0x',
+      },
+    ];
+
+    await expect(vault.connect(trader).batchSwap(swaps, tokenAddresses, funds)).to.be.revertedWith(
+      'Unknown amount in on first swap'
+    );
+  });
+
+  it('reverts on multihop token in and out mismatch', async () => {
+    const swaps: SwapV2[] = [
+      {
+        poolId: poolIds[0],
+        tokenInIndex: 1,
+        tokenOutIndex: 0,
+        amountIn: (1e18).toString(),
+        userData: '0x',
+      },
+      {
+        poolId: poolIds[1],
+        tokenInIndex: 1, // tokenInIndex should be 0, since this is the output of the last swap
+        tokenOutIndex: 2,
+        amountIn: 0, // sentinel value for 'use previous output'
+        userData: '0x',
+      },
+    ];
+
+    await expect(vault.connect(trader).batchSwap(swaps, tokenAddresses, funds)).to.be.revertedWith(
+      'Misconstructed multihop swap'
+    );
+  });
+
   it('only transfers tokens for the net vault balance change', async () => {
     // Remove 80% of the DAI tokens from the first pool - this makes DAI much more valuable in this pool
     await vault
