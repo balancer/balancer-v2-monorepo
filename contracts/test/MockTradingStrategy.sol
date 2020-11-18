@@ -23,6 +23,7 @@ import "../math/FixedPoint.sol";
 contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
     using FixedPoint for uint128;
 
+    // Amounts in are multiplied by the multiplier, amounts out divided by it
     uint128 multiplier = FixedPoint.ONE;
     uint128 fee = 0;
 
@@ -48,7 +49,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint128,
         uint128
     ) external view override returns (uint128, uint128) {
-        uint128 amountIn = request.amountOut.mul128(multiplier);
+        uint128 amountIn = request.amountOut.div128(multiplier);
         return (amountIn, amountIn.mul128(fee));
     }
 
@@ -68,7 +69,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint256,
         uint256
     ) external view override returns (uint128, uint128) {
-        uint128 amountIn = request.amountOut.mul128(multiplier);
+        uint128 amountIn = request.amountOut.div128(multiplier);
         return (amountIn, amountIn.mul128(fee));
     }
 }
