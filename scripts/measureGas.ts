@@ -3,7 +3,7 @@ import { ethers } from 'hardhat';
 import { setupPool } from './helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../test/helpers/tokens';
 import { Contract } from 'ethers';
-import { getTokensSwaps } from './helpers/trading';
+import { getTokensSwaps, toSwapIn } from './helpers/trading';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../test/helpers/constants';
 
@@ -96,7 +96,7 @@ async function batchedSwap(withdrawTokens: boolean) {
           minAmountOut: 500 * poolAmount,
           maxAmountIn: 500 * poolAmount,
         },
-        swaps,
+        toSwapIn(swaps),
         tokenAddresses,
         withdrawTokens
       )
