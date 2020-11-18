@@ -25,9 +25,9 @@ import "@openzeppelin/contracts/math/Math.sol";
 
 import "../math/FixedPoint.sol";
 
-import "../strategies/v2/ITradingStrategy.sol";
-import "../strategies/v2/IPairTradingStrategy.sol";
-import "../strategies/v2/ITupleTradingStrategy.sol";
+import "../strategies/ITradingStrategy.sol";
+import "../strategies/IPairTradingStrategy.sol";
+import "../strategies/ITupleTradingStrategy.sol";
 
 import "./IVault.sol";
 import "./VaultAccounting.sol";

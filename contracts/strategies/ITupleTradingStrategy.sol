@@ -17,17 +17,18 @@ pragma experimental ABIEncoderV2;
 
 import "./ITradingStrategy.sol";
 
-interface ITupleTradingStrategy {
-    /**
-     * @dev Validates a change in balances of Tuple Trading Strategy. This strategy needs
-     * all the balances to perform the validation.
-     * The change to validate is `balances[indexIn]` of `swap.tokenIn` token increased by `swap.amountIn`
-     * and `balances[indexOut]` of `swap.tokenOut` decreased by `swap.amountOut`
-     */
-    function validateTuple(
-        ITradingStrategy.Swap calldata swap,
+interface ITupleTradingStrategy is ITradingStrategy {
+    function quoteOutGivenIn(
+        QuoteRequestGivenIn calldata request,
         uint128[] calldata balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external returns (bool, uint128);
+    ) external returns (uint128 amountOut, uint128 amountInFees);
+
+    function quoteInGivenOut(
+        QuoteRequestGivenOut calldata request,
+        uint128[] calldata balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) external returns (uint128 amountOut, uint128 amountInFees);
 }

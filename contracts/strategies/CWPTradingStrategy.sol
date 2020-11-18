@@ -20,9 +20,9 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "../StrategyFee.sol";
 import "./IPairTradingStrategy.sol";
-import "../lib/WeightedProduct.sol";
+import "./lib/WeightedProduct.sol";
+import "./StrategyFee.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.

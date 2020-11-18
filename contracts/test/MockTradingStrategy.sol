@@ -15,8 +15,8 @@
 pragma solidity 0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../strategies/v2/IPairTradingStrategy.sol";
-import "../strategies/v2/ITupleTradingStrategy.sol";
+import "../strategies/IPairTradingStrategy.sol";
+import "../strategies/ITupleTradingStrategy.sol";
 
 import "../math/FixedPoint.sol";
 
