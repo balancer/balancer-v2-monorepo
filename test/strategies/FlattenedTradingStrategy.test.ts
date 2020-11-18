@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { ContractFactory, Contract } from 'ethers';
 
-describe('StableStrategy', function () {
+describe('FlattenedTradingStrategy', function () {
   let poolId: string;
   let strategy: Contract;
   let traderAddress: string;
