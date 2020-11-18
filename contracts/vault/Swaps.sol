@@ -97,7 +97,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
     function batchSwap(
         SwapIn[] memory swaps,
         IERC20[] memory tokens, // tokens involved in the trade, as indexed by swaps
-        FundManagement calldata funds
+        FundManagement memory funds
     ) external override returns (int256[] memory vaultDeltas) {
         //TODO: avoid reentrancy
 
@@ -140,6 +140,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         }
 
         // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
+        // Step 5: Send tokens due to the recipient
+        // Step 6: Deduct swap protocol swap fees from the Vault's balance - this makes them unaccounted-for
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
 
@@ -155,14 +157,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
 
                 uint128 received = _pullTokens(token, funds.sender, toReceive);
                 require(received == toReceive);
-            }
-        }
-
-        // Step 5: Send tokens due to the recipient
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-
-            if (tokenDeltas[i] < 0) {
+            } else {
                 // Make delta positive
                 uint128 toSend = uint128(-tokenDeltas[i]);
 
@@ -176,11 +171,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                     _pushTokens(token, funds.recipient, toSend, false);
                 }
             }
-        }
 
-        // Step 6: Deduct swap protocol swap fees from the Vault's balance - this makes them unaccounted-for
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
             _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(tokenSwapProtocolFees[i]);
         }
 
