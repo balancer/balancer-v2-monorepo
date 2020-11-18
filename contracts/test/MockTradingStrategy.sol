@@ -24,15 +24,15 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
     using FixedPoint for uint128;
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it
-    uint128 multiplier = FixedPoint.ONE;
-    uint128 fee = 0;
+    uint128 private _multiplier = FixedPoint.ONE;
+    uint128 private _fee = 0;
 
     function setMultiplier(uint128 newMultiplier) external {
-        multiplier = newMultiplier;
+        _multiplier = newMultiplier;
     }
 
     function setFee(uint128 newFee) external {
-        fee = newFee;
+        _fee = newFee;
     }
 
     // IPairTradingStrategy
@@ -41,7 +41,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint128,
         uint128
     ) external view override returns (uint128, uint128) {
-        return (request.amountIn.mul128(multiplier), request.amountIn.mul128(fee));
+        return (request.amountIn.mul128(_multiplier), request.amountIn.mul128(_fee));
     }
 
     function quoteInGivenOut(
@@ -49,8 +49,8 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint128,
         uint128
     ) external view override returns (uint128, uint128) {
-        uint128 amountIn = request.amountOut.div128(multiplier);
-        return (amountIn, amountIn.mul128(fee));
+        uint128 amountIn = request.amountOut.div128(_multiplier);
+        return (amountIn, amountIn.mul128(_fee));
     }
 
     // ITupleTradingStrategy
@@ -60,7 +60,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint256,
         uint256
     ) external view override returns (uint128, uint128) {
-        return (request.amountIn.mul128(multiplier), request.amountIn.mul128(fee));
+        return (request.amountIn.mul128(_multiplier), request.amountIn.mul128(_fee));
     }
 
     function quoteInGivenOut(
@@ -69,7 +69,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint256,
         uint256
     ) external view override returns (uint128, uint128) {
-        uint128 amountIn = request.amountOut.div128(multiplier);
-        return (amountIn, amountIn.mul128(fee));
+        uint128 amountIn = request.amountOut.div128(_multiplier);
+        return (amountIn, amountIn.mul128(_fee));
     }
 }
