@@ -33,12 +33,13 @@ describe('Vault - swaps', () => {
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     poolIds = [];
-    // All pools have mock strategies with a multiplier of 1 and a fee of 0 (they trade 1:1)
-    const strategy = await deploy('MockTradingStrategy', {
-      args: [toFixedPoint(1), toFixedPoint(0)],
-    });
 
     for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
+      // All pools have mock strategies with a multiplier of 1 and a fee of 0 (they trade 1:1)
+      const strategy = await deploy('MockTradingStrategy', {
+        args: [],
+      });
+
       // Pools are seeded with 200e18 DAO and MKR, making the price 1:1
       poolIds.push(
         // Odd pools have Pair Trading Strategies, even ones Tuple
@@ -217,32 +218,26 @@ describe('Vault - swaps', () => {
   });
 
   it('only transfers tokens for the net vault balance change', async () => {
-    // Create a pool that gives back twice as much as it receives
+    // Make the first pool give back twice as much as it receives
+    const [strategyAddress] = (await vault.getPoolStrategy(poolIds[0])) as [string, unknown];
+    const strategy = await ethers.getContractAt('MockTradingStrategy', strategyAddress);
 
-    const strategy = await deploy('MockTradingStrategy', {
-      args: [toFixedPoint(2), toFixedPoint(0)],
-    });
-
-    const unbalancedPoolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
-      ['DAI', (100e18).toString()],
-      ['MKR', (100e18).toString()],
-      ['SNX', (100e18).toString()],
-    ]);
+    await strategy.setMultiplier(toFixedPoint(2));
 
     // Sell DAI in the pool where it is valuable, buy it in the one where it has a regular price
     const swaps: SwapV2[] = [
       {
-        poolId: unbalancedPoolId,
+        poolId: poolIds[0],
         tokenInIndex: 0,
         tokenOutIndex: 1,
         amountIn: (1e18).toString(), // Sell 1e18 DAI for 2e18 MKR
         userData: '0x',
       },
       {
-        poolId: poolIds[0],
+        poolId: poolIds[1],
         tokenInIndex: 1,
         tokenOutIndex: 0,
-        amountIn: (1e18).toString(), // Buy 1e18 MKR with DAI
+        amountIn: (1e18).toString(), // Buy 1e18 DAI with 1e18 MKR
         userData: '0x',
       },
     ];

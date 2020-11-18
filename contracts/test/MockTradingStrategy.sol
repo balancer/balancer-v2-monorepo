@@ -23,12 +23,15 @@ import "../math/FixedPoint.sol";
 contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
     using FixedPoint for uint128;
 
-    uint128 multiplier;
-    uint128 fee;
+    uint128 multiplier = FixedPoint.ONE;
+    uint128 fee = 0;
 
-    constructor(uint128 _multiplier, uint128 _fee) {
-        multiplier = _multiplier;
-        fee = _fee;
+    function setMultiplier(uint128 newMultiplier) external {
+        multiplier = newMultiplier;
+    }
+
+    function setFee(uint128 newFee) external {
+        fee = newFee;
     }
 
     function quoteOutGivenIn(
