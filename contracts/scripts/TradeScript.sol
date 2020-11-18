@@ -36,7 +36,8 @@ contract TradeScript is ITradeScript {
     function swapExactAmountIn(
         OverallInfoIn memory info,
         IVault.SwapIn[] memory swaps,
-        IERC20[] memory tokens
+        IERC20[] memory tokens,
+        bool withdrawTokens
     ) public override {
         int256[] memory vaultDeltas = _vault.batchSwap(
             swaps,
@@ -45,7 +46,7 @@ contract TradeScript is ITradeScript {
                 sender: msg.sender,
                 recipient: msg.sender,
                 withdrawFromUserBalance: false,
-                depositToUserBalance: false
+                depositToUserBalance: !withdrawTokens
             })
         );
 

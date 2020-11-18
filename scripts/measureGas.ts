@@ -2,9 +2,8 @@ import { deploy } from './helpers/deploy';
 import { ethers } from 'hardhat';
 import { setupPool } from './helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../test/helpers/tokens';
-import { toFixedPoint } from './helpers/fixedPoint';
 import { Contract } from 'ethers';
-import { getTokensSwaps, getTokensSwapsAndAmounts } from './helpers/trading';
+import { getTokensSwaps } from './helpers/trading';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../test/helpers/constants';
 
@@ -89,8 +88,6 @@ async function batchedSwap(withdrawTokens: boolean) {
       })
     );
 
-    const amounts = [500, 0, 0];
-
     const receipt = await (
       await script.connect(trader).swapExactAmountIn(
         {
@@ -101,7 +98,6 @@ async function batchedSwap(withdrawTokens: boolean) {
         },
         swaps,
         tokenAddresses,
-        amounts,
         withdrawTokens
       )
     ).wait();

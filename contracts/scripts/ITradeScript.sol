@@ -34,6 +34,7 @@ interface ITradeScript {
     function swapExactAmountIn(
         OverallInfoIn memory info,
         IVault.SwapIn[] memory swaps,
-        IERC20[] memory tokens
+        IERC20[] memory tokens,
+        bool withdrawTokens
     ) external;
 }
