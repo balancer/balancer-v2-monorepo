@@ -43,17 +43,20 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
     using SafeCast for uint256;
     using SafeCast for uint128;
 
-    struct SwapOutput {
-        IERC20 tokenOut;
-        uint128 amountOut;
+    struct LastSwapData {
+        // For swaps of kind GIVEN_IN, these are tokenOut and amountOut. For GIVEN_OUT, they are tokenIn and amountIn.
+        // This struct should not be explicitly initialized: the default token value of IERC20(0) signals the first
+        // swap.
+        IERC20 token;
+        uint128 amount;
     }
 
     function swapWithPool(
         IERC20[] memory tokens,
-        SwapIn memory swap,
+        SwapInternal memory swap,
         address from,
         address to,
-        SwapOutput memory previous,
+        LastSwapData memory previous,
         BatchSwapType kind
     )
         private
@@ -63,53 +66,82 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             uint128
         )
     {
-        require(kind == BatchSwapType.GIVEN_IN);
-
         IERC20 tokenIn = tokens[swap.tokenInIndex];
         IERC20 tokenOut = tokens[swap.tokenOutIndex];
-
         require(tokenIn != tokenOut, "Swap for same token");
 
-        uint128 amountIn = swap.amountIn;
-        if (amountIn == 0) {
-            require(previous.tokenOut != IERC20(0), "Unknown amount in on first swap");
-            require(tokenIn == previous.tokenOut, "Misconstructed multihop swap");
+        if (kind == BatchSwapType.GIVEN_IN) {
+            uint128 amountIn = swap.amount;
+            if (amountIn == 0) {
+                require(previous.token != IERC20(0), "Unknown amount in on first swap");
+                require(tokenIn == previous.token, "Misconstructed multihop swap");
 
-            amountIn = previous.amountOut;
+                amountIn = previous.amount;
+            }
+
+            ITradingStrategy.QuoteRequestGivenIn memory request = ITradingStrategy.QuoteRequestGivenIn({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountIn: amountIn,
+                poolId: swap.poolId,
+                from: from,
+                to: to,
+                userData: swap.userData
+            });
+
+            // 1: Validate swap using the Pool's Trading Strategy
+            (uint128 amountOut, uint128 protocolSwapFeeAmountIn) = _validateSwap(request);
+
+            previous.token = tokenOut;
+            previous.amount = amountOut;
+
+            return (amountIn, amountOut, protocolSwapFeeAmountIn);
+        } else if (kind == BatchSwapType.GIVEN_OUT) {} else {
+            revert("Unknown swap kind");
         }
+    }
 
-        ITradingStrategy.QuoteRequestGivenIn memory request = ITradingStrategy.QuoteRequestGivenIn({
-            tokenIn: tokenIn,
-            tokenOut: tokenOut,
-            amountIn: amountIn,
-            poolId: swap.poolId,
-            from: from,
-            to: to,
-            userData: swap.userData
-        });
-
-        // 1: Validate swap using the Pool's Trading Strategy
-        (uint128 amountOut, uint128 protocolSwapFeeAmountIn) = _validateSwap(request);
-
-        previous.tokenOut = tokenOut;
-        previous.amountOut = amountOut;
-
-        return (amountIn, amountOut, protocolSwapFeeAmountIn);
+    struct SwapInternal {
+        bytes32 poolId;
+        uint128 tokenInIndex;
+        uint128 tokenOutIndex;
+        uint128 amount;
+        bytes userData;
     }
 
     enum BatchSwapType { GIVEN_IN, GIVEN_OUT }
 
     function batchSwapGivenIn(
         SwapIn[] memory swaps,
-        IERC20[] memory tokens, // tokens involved in the trade, as indexed by swaps
+        IERC20[] memory tokens,
         FundManagement memory funds
     ) external override returns (int256[] memory) {
-        return batchSwap(swaps, tokens, funds, BatchSwapType.GIVEN_IN);
+        return batchSwap(toInternal(swaps), tokens, funds, BatchSwapType.GIVEN_IN);
+    }
+
+    function batchSwapGivenOut(
+        SwapOut[] memory swaps,
+        IERC20[] memory tokens,
+        FundManagement memory funds
+    ) external override returns (int256[] memory) {
+        return batchSwap(toInternal(swaps), tokens, funds, BatchSwapType.GIVEN_OUT);
+    }
+
+    function toInternal(SwapIn[] memory swapsIn) private pure returns (SwapInternal[] memory swapsInternal) {
+        assembly {
+            swapsInternal := swapsIn
+        }
+    }
+
+    function toInternal(SwapOut[] memory swapsOut) private pure returns (SwapInternal[] memory swapsInternal) {
+        assembly {
+            swapsInternal := swapsOut
+        }
     }
 
     function batchSwap(
-        SwapIn[] memory swaps,
-        IERC20[] memory tokens, // tokens involved in the trade, as indexed by swaps
+        SwapInternal[] memory swaps,
+        IERC20[] memory tokens,
         FundManagement memory funds,
         BatchSwapType kind
     ) private returns (int256[] memory) {
@@ -129,8 +161,8 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         //  - update pool balances
         //  - accumulate token diffs
 
-        SwapOutput memory previous;
-        SwapIn memory swap;
+        LastSwapData memory previous;
+        SwapInternal memory swap;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];

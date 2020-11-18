@@ -257,6 +257,12 @@ interface IVault {
         FundManagement calldata funds
     ) external returns (int256[] memory vaultDeltas);
 
+    function batchSwapGivenOut(
+        SwapOut[] calldata swaps,
+        IERC20[] memory tokens,
+        FundManagement calldata funds
+    ) external returns (int256[] memory vaultDeltas);
+
     // batchSwap helper data structures
 
     // A batched swap is made up of a number of Swaps. Each swap indicates a token balance increasing (tokenIn) and one
@@ -267,6 +273,14 @@ interface IVault {
         uint128 tokenInIndex;
         uint128 tokenOutIndex;
         uint128 amountIn;
+        bytes userData;
+    }
+
+    struct SwapOut {
+        bytes32 poolId;
+        uint128 tokenInIndex;
+        uint128 tokenOutIndex;
+        uint128 amountOut;
         bytes userData;
     }
 
