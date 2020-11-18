@@ -175,7 +175,7 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
     ) external view override returns (uint128, uint128) {
-        //Subtract fee
+        // Subtract fee
         uint128 feeAmount = request.amountIn.mul128(_swapFee.toUint128());
         uint128 adjustedIn = request.amountIn.sub128(feeAmount);
 
@@ -189,6 +189,27 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
         );
 
         return (maximumAmountOut, feeAmount);
+    }
+
+    function quoteInGivenOut(
+        QuoteRequestGivenOut calldata request,
+        uint128 currentBalanceTokenIn,
+        uint128 currentBalanceTokenOut
+    ) external view override returns (uint128, uint128) {
+        // Calculate the minimum amount that must be put into the pool
+        uint128 minimumAmountIn = _inGivenOut(
+            currentBalanceTokenIn,
+            getWeight(request.tokenIn),
+            currentBalanceTokenOut,
+            getWeight(request.tokenOut),
+            request.amountOut
+        );
+
+        // Add fee
+        uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
+        uint128 feeAmount = adjustedIn.sub128(minimumAmountIn);
+
+        return (adjustedIn, feeAmount);
     }
 
     function getSwapFee() external view override returns (uint256) {

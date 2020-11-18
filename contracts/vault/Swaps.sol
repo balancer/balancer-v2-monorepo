@@ -43,64 +43,6 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
     using SafeCast for uint256;
     using SafeCast for uint128;
 
-    struct LastSwapData {
-        // For swaps of kind GIVEN_IN, these are tokenOut and amountOut. For GIVEN_OUT, they are tokenIn and amountIn.
-        // This struct should not be explicitly initialized: the default token value of IERC20(0) signals the first
-        // swap.
-        IERC20 token;
-        uint128 amount;
-    }
-
-    function swapWithPool(
-        IERC20[] memory tokens,
-        SwapInternal memory swap,
-        address from,
-        address to,
-        LastSwapData memory previous,
-        BatchSwapType kind
-    )
-        private
-        returns (
-            uint128,
-            uint128,
-            uint128
-        )
-    {
-        IERC20 tokenIn = tokens[swap.tokenInIndex];
-        IERC20 tokenOut = tokens[swap.tokenOutIndex];
-        require(tokenIn != tokenOut, "Swap for same token");
-
-        if (kind == BatchSwapType.GIVEN_IN) {
-            uint128 amountIn = swap.amount;
-            if (amountIn == 0) {
-                require(previous.token != IERC20(0), "Unknown amount in on first swap");
-                require(tokenIn == previous.token, "Misconstructed multihop swap");
-
-                amountIn = previous.amount;
-            }
-
-            ITradingStrategy.QuoteRequestGivenIn memory request = ITradingStrategy.QuoteRequestGivenIn({
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                amountIn: amountIn,
-                poolId: swap.poolId,
-                from: from,
-                to: to,
-                userData: swap.userData
-            });
-
-            // 1: Validate swap using the Pool's Trading Strategy
-            (uint128 amountOut, uint128 protocolSwapFeeAmountIn) = _validateSwap(request);
-
-            previous.token = tokenOut;
-            previous.amount = amountOut;
-
-            return (amountIn, amountOut, protocolSwapFeeAmountIn);
-        } else if (kind == BatchSwapType.GIVEN_OUT) {} else {
-            revert("Unknown swap kind");
-        }
-    }
-
     struct SwapInternal {
         bytes32 poolId;
         uint128 tokenInIndex;
@@ -116,7 +58,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         IERC20[] memory tokens,
         FundManagement memory funds
     ) external override returns (int256[] memory) {
-        return batchSwap(toInternal(swaps), tokens, funds, BatchSwapType.GIVEN_IN);
+        return _batchSwap(_toInternalSwap(swaps), tokens, funds, BatchSwapType.GIVEN_IN);
     }
 
     function batchSwapGivenOut(
@@ -124,22 +66,22 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         IERC20[] memory tokens,
         FundManagement memory funds
     ) external override returns (int256[] memory) {
-        return batchSwap(toInternal(swaps), tokens, funds, BatchSwapType.GIVEN_OUT);
+        return _batchSwap(_toInternalSwap(swaps), tokens, funds, BatchSwapType.GIVEN_OUT);
     }
 
-    function toInternal(SwapIn[] memory swapsIn) private pure returns (SwapInternal[] memory swapsInternal) {
+    function _toInternalSwap(SwapIn[] memory swapsIn) private pure returns (SwapInternal[] memory swapsInternal) {
         assembly {
             swapsInternal := swapsIn
         }
     }
 
-    function toInternal(SwapOut[] memory swapsOut) private pure returns (SwapInternal[] memory swapsInternal) {
+    function _toInternalSwap(SwapOut[] memory swapsOut) private pure returns (SwapInternal[] memory swapsInternal) {
         assembly {
             swapsInternal := swapsOut
         }
     }
 
-    function batchSwap(
+    function _batchSwap(
         SwapInternal[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
@@ -156,18 +98,17 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         // Contains the swap protocol fees charged for each token
         uint128[] memory tokenSwapProtocolFees = new uint128[](tokens.length);
 
+        LastSwapData memory previous;
+        SwapInternal memory swap;
+
         // Steps 1, 2 & 3:
         //  - check swaps are valid
         //  - update pool balances
         //  - accumulate token diffs
-
-        LastSwapData memory previous;
-        SwapInternal memory swap;
-
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
 
-            (uint128 amountIn, uint128 amountOut, uint128 protocolSwapFeeAmountIn) = swapWithPool(
+            (uint128 amountIn, uint128 amountOut, uint128 protocolSwapFee) = swapWithPool(
                 tokens,
                 swap,
                 funds.sender,
@@ -181,9 +122,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             tokenDeltas[swap.tokenOutIndex] -= amountOut;
 
             // 3b: Accumulate token swap protocol fees
-            tokenSwapProtocolFees[swap.tokenInIndex] = tokenSwapProtocolFees[swap.tokenInIndex].add128(
-                protocolSwapFeeAmountIn
-            );
+            tokenSwapProtocolFees[swap.tokenInIndex] = tokenSwapProtocolFees[swap.tokenInIndex].add128(protocolSwapFee);
         }
 
         // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
@@ -225,31 +164,135 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         return tokenDeltas;
     }
 
-    /**
-     * @dev Validates a swap with a Pool by calling into its Trading Strategy. Reverts if the swap is rejected.
-     *
-     * Returns the Pool's final balances for tokenIn and tokenOut. tokenIn is applied swap protocol fees, which are also
-     * returned.
-     */
-    function _validateSwap(ITradingStrategy.QuoteRequestGivenIn memory request) private returns (uint128, uint128) {
+    struct LastSwapData {
+        // For swaps of kind GIVEN_IN, these are tokenOut and amountOut. For GIVEN_OUT, they are tokenIn and amountIn.
+        // This struct should not be explicitly initialized: the default token value of IERC20(0) signals the first
+        // swap.
+        IERC20 tokenQuoted;
+        uint128 amountQuoted;
+    }
+
+    function swapWithPool(
+        IERC20[] memory tokens,
+        SwapInternal memory swap,
+        address from,
+        address to,
+        LastSwapData memory previous,
+        BatchSwapType kind
+    )
+        private
+        returns (
+            uint128,
+            uint128,
+            uint128
+        )
+    {
+        IERC20 tokenIn = tokens[swap.tokenInIndex];
+        IERC20 tokenOut = tokens[swap.tokenOutIndex];
+        require(tokenIn != tokenOut, "Swap for same token");
+
+        uint128 amountGiven = swap.amount;
+        if (amountGiven == 0) {
+            require(previous.tokenQuoted != IERC20(0), "Unknown amount in on first swap");
+            require(previous.tokenQuoted == _tokenGiven(kind, tokenIn, tokenOut), "Misconstructed multihop swap");
+
+            amountGiven = previous.amountQuoted;
+        }
+
+        QuoteRequestInternal memory request = QuoteRequestInternal({
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amount: amountGiven,
+            poolId: swap.poolId,
+            from: from,
+            to: to,
+            userData: swap.userData
+        });
+
+        (uint128 amountQuoted, uint128 protocolSwapFee) = _processQuoteRequest(request, kind);
+
+        previous.tokenQuoted = _tokenQuoted(kind, tokenIn, tokenOut);
+        previous.amountQuoted = amountQuoted;
+
+        if (kind == BatchSwapType.GIVEN_IN) {
+            return (amountGiven, amountQuoted, protocolSwapFee);
+        } else {
+            return (amountQuoted, amountGiven, protocolSwapFee);
+        }
+    }
+
+    function _tokenGiven(
+        BatchSwapType kind,
+        IERC20 tokenIn,
+        IERC20 tokenOut
+    ) private pure returns (IERC20) {
+        return kind == BatchSwapType.GIVEN_IN ? tokenIn : tokenOut;
+    }
+
+    function _tokenQuoted(
+        BatchSwapType kind,
+        IERC20 tokenIn,
+        IERC20 tokenOut
+    ) private pure returns (IERC20) {
+        return kind == BatchSwapType.GIVEN_IN ? tokenOut : tokenIn;
+    }
+
+    struct QuoteRequestInternal {
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        uint128 amount;
+        bytes32 poolId;
+        address from;
+        address to;
+        bytes userData;
+    }
+
+    function _toQuoteGivenIn(QuoteRequestInternal memory requestInternal)
+        private
+        pure
+        returns (ITradingStrategy.QuoteRequestGivenIn memory requestGivenIn)
+    {
+        assembly {
+            requestGivenIn := requestInternal
+        }
+    }
+
+    function _toQuoteGivenOut(QuoteRequestInternal memory requestInternal)
+        private
+        pure
+        returns (ITradingStrategy.QuoteRequestGivenOut memory requestGivenOut)
+    {
+        assembly {
+            requestGivenOut := requestInternal
+        }
+    }
+
+    function _processQuoteRequest(QuoteRequestInternal memory request, BatchSwapType kind)
+        private
+        returns (uint128, uint128)
+    {
         PoolStrategy memory strategy = _poolStrategy[request.poolId];
 
         BalanceLib.Balance memory tokenInFinalBalance;
         BalanceLib.Balance memory tokenOutFinalBalance;
 
-        uint128 amountOut;
+        uint128 amountQuoted;
         uint128 protocolSwapFee;
 
         if (strategy.strategyType == StrategyType.PAIR) {
-            (tokenInFinalBalance, tokenOutFinalBalance, amountOut, protocolSwapFee) = _validatePairStrategySwap(
-                request,
-                IPairTradingStrategy(strategy.strategy)
-            );
+            (
+                tokenInFinalBalance,
+                tokenOutFinalBalance,
+                amountQuoted,
+                protocolSwapFee
+            ) = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(strategy.strategy), kind);
         } else if (strategy.strategyType == StrategyType.TUPLE) {
-            (tokenInFinalBalance, tokenOutFinalBalance, amountOut, protocolSwapFee) = _validateTupleStrategySwap(
-                request,
-                ITupleTradingStrategy(strategy.strategy)
-            );
+            (
+                tokenInFinalBalance,
+                tokenOutFinalBalance,
+                amountQuoted,
+                protocolSwapFee
+            ) = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(strategy.strategy), kind);
         } else {
             revert("Unknown strategy type");
         }
@@ -258,12 +301,13 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         _poolTokenBalance[request.poolId][request.tokenIn] = tokenInFinalBalance;
         _poolTokenBalance[request.poolId][request.tokenOut] = tokenOutFinalBalance;
 
-        return (amountOut, protocolSwapFee);
+        return (amountQuoted, protocolSwapFee);
     }
 
-    function _validatePairStrategySwap(
-        ITradingStrategy.QuoteRequestGivenIn memory request,
-        IPairTradingStrategy strategy
+    function _processPairTradingStrategyQuoteRequest(
+        QuoteRequestInternal memory request,
+        IPairTradingStrategy strategy,
+        BatchSwapType kind
     )
         private
         returns (
@@ -279,20 +323,37 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         BalanceLib.Balance memory poolTokenOutBalance = _poolTokenBalance[request.poolId][request.tokenOut];
         require(poolTokenOutBalance.total > 0, "Token B not in pool");
 
-        (uint128 amountOut, uint128 tokenInFeeAmount) = strategy.quoteOutGivenIn(
-            request,
-            poolTokenInBalance.total,
-            poolTokenOutBalance.total
-        );
+        if (kind == BatchSwapType.GIVEN_IN) {
+            (uint128 amountOut, uint128 tokenInFeeAmount) = strategy.quoteOutGivenIn(
+                _toQuoteGivenIn(request),
+                poolTokenInBalance.total,
+                poolTokenOutBalance.total
+            );
 
-        uint128 protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
+            uint128 protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
 
-        return (
-            poolTokenInBalance.increase(request.amountIn.sub128(protocolSwapFee)),
-            poolTokenOutBalance.decrease(amountOut),
-            amountOut,
-            protocolSwapFee
-        );
+            return (
+                poolTokenInBalance.increase(request.amount.sub128(protocolSwapFee)),
+                poolTokenOutBalance.decrease(amountOut),
+                amountOut,
+                protocolSwapFee
+            );
+        } else {
+            (uint128 amountIn, uint128 tokenInFeeAmount) = strategy.quoteInGivenOut(
+                _toQuoteGivenOut(request),
+                poolTokenInBalance.total,
+                poolTokenOutBalance.total
+            );
+
+            uint128 protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
+
+            return (
+                poolTokenInBalance.increase(amountIn.sub128(protocolSwapFee)),
+                poolTokenOutBalance.decrease(request.amount),
+                amountIn,
+                protocolSwapFee
+            );
+        }
     }
 
     // TODO: Temporary struct to workaround stack-too-deep: remove once #73 is implemented
@@ -301,31 +362,28 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         uint256 indexOut;
     }
 
-    function _validateTupleStrategySwap(
-        ITradingStrategy.QuoteRequestGivenIn memory request,
-        ITupleTradingStrategy strategy
+    function _processTupleTradingStrategyQuoteRequest(
+        QuoteRequestInternal memory request,
+        ITupleTradingStrategy strategy,
+        BatchSwapType kind
     )
         private
         returns (
-            BalanceLib.Balance memory,
-            BalanceLib.Balance memory,
+            BalanceLib.Balance memory balanceIn,
+            BalanceLib.Balance memory balanceOut,
             uint128,
-            uint128
+            uint128 protocolSwapFee
         )
     {
         uint128[] memory currentBalances = new uint128[](_poolTokens[request.poolId].length());
 
         Helper memory helper;
 
-        BalanceLib.Balance memory balanceIn;
-        BalanceLib.Balance memory balanceOut;
-
         for (uint256 i = 0; i < _poolTokens[request.poolId].length(); i++) {
             IERC20 token = IERC20(_poolTokens[request.poolId].at(i));
             BalanceLib.Balance memory balance = _poolTokenBalance[request.poolId][token];
 
             currentBalances[i] = balance.total;
-            require(currentBalances[i] > 0, "Token A not in pool");
 
             if (token == request.tokenIn) {
                 helper.indexIn = i;
@@ -336,20 +394,41 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             }
         }
 
-        (uint128 amountOut, uint128 tokenInFeeAmount) = strategy.quoteOutGivenIn(
-            request,
-            currentBalances,
-            helper.indexIn,
-            helper.indexOut
-        );
+        require(balanceIn.total > 0, "Token A not in pool");
+        require(balanceOut.total > 0, "Token B not in pool");
 
-        uint128 protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
+        if (kind == BatchSwapType.GIVEN_IN) {
+            (uint128 amountOut, uint128 tokenInFeeAmount) = strategy.quoteOutGivenIn(
+                _toQuoteGivenIn(request),
+                currentBalances,
+                helper.indexIn,
+                helper.indexOut
+            );
 
-        return (
-            balanceIn.increase(request.amountIn.sub128(protocolSwapFee)),
-            balanceOut.decrease(amountOut),
-            amountOut,
-            protocolSwapFee
-        );
+            protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
+
+            return (
+                balanceIn.increase(request.amount.sub128(protocolSwapFee)),
+                balanceOut.decrease(amountOut),
+                amountOut,
+                protocolSwapFee
+            );
+        } else {
+            (uint128 amountIn, uint128 tokenInFeeAmount) = strategy.quoteInGivenOut(
+                _toQuoteGivenOut(request),
+                currentBalances,
+                helper.indexIn,
+                helper.indexOut
+            );
+
+            protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
+
+            return (
+                balanceIn.increase(amountIn.sub128(protocolSwapFee)),
+                balanceOut.decrease(request.amount),
+                amountIn,
+                protocolSwapFee
+            );
+        }
     }
 }

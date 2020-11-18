@@ -24,4 +24,11 @@ interface ITupleTradingStrategy is ITradingStrategy {
         uint256 indexIn,
         uint256 indexOut
     ) external returns (uint128 amountOut, uint128 amountInFees);
+
+    function quoteInGivenOut(
+        QuoteRequestGivenOut calldata request,
+        uint128[] calldata balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) external returns (uint128 amountOut, uint128 amountInFees);
 }

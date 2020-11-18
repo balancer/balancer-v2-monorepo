@@ -35,4 +35,15 @@ interface ITradingStrategy {
         address to;
         bytes userData;
     }
+
+    struct QuoteRequestGivenOut {
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        uint128 amountOut;
+        // Misc data
+        bytes32 poolId;
+        address from;
+        address to;
+        bytes userData;
+    }
 }
