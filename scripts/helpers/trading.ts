@@ -82,6 +82,13 @@ export type SwapV2 = {
   userData: string;
 };
 
+export type FundManagement = {
+  sender: string;
+  recipient: string;
+  withdrawFromUserBalance: boolean;
+  depositToUserBalance: boolean;
+};
+
 export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<SwapV2>] {
   const swaps: Array<SwapV2> = [];
 

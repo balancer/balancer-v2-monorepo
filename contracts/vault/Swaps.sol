@@ -96,13 +96,13 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
     function batchSwap(
         SwapIn[] memory swaps,
         IERC20[] memory tokens, // tokens involved in the trade, as indexed by swaps
-        Funds calldata funds
+        FundManagement calldata funds
     ) external override returns (int256[] memory vaultDeltas) {
         //TODO: avoid reentrancy
 
-        // Any net token amount going into the Vault will be taken from `funds.withdrawFrom`, so they must have
+        // Any net token amount going into the Vault will be taken from `funds.sender`, so they must have
         // approved the caller to use their funds.
-        require(isOperatorFor(funds.withdrawFrom, msg.sender), "Caller is not operator");
+        require(isOperatorFor(funds.sender, msg.sender), "Caller is not operator");
 
         int256[] memory tokenDeltas = new int256[](tokens.length);
 
@@ -123,7 +123,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             (uint128 amountIn, uint128 amountOut, uint128 protocolSwapFeeAmountIn) = swapWithPool(
                 tokens,
                 swap,
-                funds.withdrawFrom,
+                funds.sender,
                 funds.recipient,
                 previous
             );
@@ -143,15 +143,17 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
             IERC20 token = tokens[i];
 
             if (tokenDeltas[i] > 0) {
-                uint128 received = _pullTokens(token, funds.withdrawFrom, funds.amounts[i]);
+                uint128 toReceive = uint128(tokenDeltas[i]);
 
-                if (received < uint128(tokenDeltas[i])) {
-                    uint128 missing = uint128(tokenDeltas[i]) - received;
+                if (funds.withdrawFromUserBalance) {
+                    uint128 toWithdraw = min(_userTokenBalance[funds.sender][token], toReceive);
 
-                    require(_userTokenBalance[funds.withdrawFrom][token] >= missing, "ERR_INVALID_DEPOSIT");
-
-                    _userTokenBalance[funds.withdrawFrom][token] -= missing;
+                    _userTokenBalance[funds.sender][token] -= toWithdraw;
+                    toReceive -= toWithdraw;
                 }
+
+                uint128 received = _pullTokens(token, funds.sender, toReceive);
+                require(received == toReceive);
             }
         }
 
@@ -161,16 +163,16 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
 
             if (tokenDeltas[i] < 0) {
                 // Make delta positive
-                uint128 amount = uint128(-tokenDeltas[i]);
+                uint128 toSend = uint128(-tokenDeltas[i]);
 
-                if (funds.transferToRecipient) {
-                    // Actually transfer the tokens to the recipient
-                    _pushTokens(token, funds.recipient, amount, false);
-                } else {
+                if (funds.depositToUserBalance) {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
                     _userTokenBalance[funds.recipient][token] = _userTokenBalance[funds.recipient][token].add128(
-                        amount
+                        toSend
                     );
+                } else {
+                    // Actually transfer the tokens to the recipient
+                    _pushTokens(token, funds.recipient, toSend, false);
                 }
             }
         }
@@ -182,6 +184,10 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         }
 
         return tokenDeltas;
+    }
+
+    function min(uint128 a, uint128 b) private pure returns (uint128) {
+        return a < b ? a : b;
     }
 
     /**
