@@ -6,11 +6,11 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PairTS, setupPool } from '../../scripts/helpers/pools';
+import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { FundManagement, SwapV2 } from '../../scripts/helpers/trading';
 
-describe('Vault - swaps', () => {
+describe.only('Vault - swaps', () => {
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
   let other: SignerWithAddress;
@@ -99,6 +99,47 @@ describe('Vault - swaps', () => {
       },
       {
         poolId: poolIds[1],
+        tokenInIndex: 1,
+        tokenOutIndex: 0,
+        amountIn: (1e18).toString(),
+        userData: '0x',
+      },
+    ];
+
+    await expectBalanceChange(
+      async () => {
+        await vault.connect(trader).batchSwap(swaps, tokenAddresses, funds);
+      },
+      trader,
+      tokens,
+      { DAI: ['near', 2e18], MKR: -2e18 }
+    );
+  });
+
+  // TODO: What's a reasonable value for Flattened's 'amp'?
+  it.skip('single pair multi pool multi trading strategy swap', async () => {
+    // Create a new pool with the FlattenedTradingStrategy, no fee
+    const flattenedStrategy = await deploy('FlattenedTradingStrategy', {
+      args: [(30e18).toString(), 0],
+    });
+
+    const flattenedPoolId = await setupPool(vault, flattenedStrategy, TupleTS, tokens, controller, [
+      ['DAI', (100e18).toString()],
+      ['MKR', (100e18).toString()],
+      ['SNX', (100e18).toString()],
+    ]);
+
+    // In each pool, send 1e18 MKR, get around 1e18 DAI back
+    const swaps: SwapV2[] = [
+      {
+        poolId: poolIds[0],
+        tokenInIndex: 1,
+        tokenOutIndex: 0,
+        amountIn: (1e18).toString(),
+        userData: '0x',
+      },
+      {
+        poolId: flattenedPoolId,
         tokenInIndex: 1,
         tokenOutIndex: 0,
         amountIn: (1e18).toString(),
