@@ -21,6 +21,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../vendor/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 
 import "../math/FixedPoint.sol";
 
@@ -146,7 +147,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
                 uint128 toReceive = uint128(tokenDeltas[i]);
 
                 if (funds.withdrawFromUserBalance) {
-                    uint128 toWithdraw = min(_userTokenBalance[funds.sender][token], toReceive);
+                    uint128 toWithdraw = uint128(Math.min(_userTokenBalance[funds.sender][token], toReceive));
 
                     _userTokenBalance[funds.sender][token] -= toWithdraw;
                     toReceive -= toWithdraw;
@@ -184,10 +185,6 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         }
 
         return tokenDeltas;
-    }
-
-    function min(uint128 a, uint128 b) private pure returns (uint128) {
-        return a < b ? a : b;
     }
 
     /**
