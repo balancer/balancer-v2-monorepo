@@ -70,7 +70,7 @@ async function batchedSwap(withdrawTokens: boolean) {
 
   const pools: Array<string> = [];
   const curve = await deploy('WeightedProdStrategy', {
-    args: [[tokens.MKR.address, tokens.DAI.address], [50, 50], 2, (0.02e18).toString()], //2% fee
+    args: [[tokens.MKR.address, tokens.DAI.address], [50, 50], (0.02e18).toString()], //2% fee
   });
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
