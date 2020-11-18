@@ -30,10 +30,10 @@ describe('TradeScript - Multiple Strategies', () => {
 
     const weights = [(1e18).toString(), (1e18).toString()];
     curveWeightProd1 = await deploy('WeightedProdStrategy', {
-      args: [[tokens.USDC.address, tokens.MKR.address], weights, 2, 0],
+      args: [[tokens.USDC.address, tokens.MKR.address], weights, 0],
     });
     curveWeightProd2 = await deploy('WeightedProdStrategy', {
-      args: [[tokens.TUSD.address, tokens.MKR.address], weights, 2, 0],
+      args: [[tokens.TUSD.address, tokens.MKR.address], weights, 0],
     });
 
     const amp = (30e18).toString();

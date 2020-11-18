@@ -35,7 +35,7 @@ contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProd
     uint8 public constant MIN_WEIGHT = 1;
 
     uint256 private immutable _swapFee;
-    uint8 private immutable _totalTokens;
+    uint256 private immutable _totalTokens;
 
     IERC20 private immutable _token0;
     IERC20 private immutable _token1;
@@ -74,20 +74,21 @@ contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProd
     constructor(
         IERC20[] memory tokens,
         uint256[] memory weights,
-        uint8 totalTokens,
         uint256 swapFee
     ) {
         require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
         require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
         _swapFee = swapFee;
 
-        require(totalTokens >= MIN_TOKENS, "ERR_MIN_TOKENS");
-        require(totalTokens <= MAX_TOKENS, "ERR_MAX_TOKENS");
-        require(tokens.length == totalTokens, "ERR_TOKENS_LIST");
-        require(weights.length == totalTokens, "ERR_WEIGHTS_LIST");
-        for (uint8 i = 0; i < totalTokens; i++) {
+        require(tokens.length >= MIN_TOKENS, "ERR_MIN_TOKENS");
+        require(tokens.length <= MAX_TOKENS, "ERR_MAX_TOKENS");
+        require(tokens.length == weights.length, "ERR_WEIGHTS_LIST");
+        for (uint8 i = 0; i < tokens.length; i++) {
             require(weights[i] >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
         }
+
+        uint256 totalTokens = tokens.length;
+
         //This is because immutable variables cannot be initialized inside an if statement or on another function.
         _token0 = totalTokens > 0 ? tokens[0] : IERC20(0);
         _token1 = totalTokens > 1 ? tokens[1] : IERC20(0);
@@ -122,10 +123,11 @@ contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProd
         _weight13 = totalTokens > 13 ? weights[13] : 0;
         _weight14 = totalTokens > 14 ? weights[14] : 0;
         _weight15 = totalTokens > 15 ? weights[15] : 0;
+
         _totalTokens = totalTokens;
     }
 
-    function getTotalTokens() external view returns (uint8) {
+    function getTotalTokens() external view returns (uint256) {
         return _totalTokens;
     }
 

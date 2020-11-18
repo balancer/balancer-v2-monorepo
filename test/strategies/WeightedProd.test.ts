@@ -20,6 +20,7 @@ const generateAddressArray = (num: number): string[] => {
     '0x0000000000000000000000000000000000000014',
     '0x0000000000000000000000000000000000000015',
     '0x0000000000000000000000000000000000000016',
+    '0x0000000000000000000000000000000000000017',
   ].slice(0, num);
 };
 
@@ -40,7 +41,6 @@ describe('WeightedProdStrategy', function () {
       strategy = await WeightedProdStrategyFactory.deploy(
         generateAddressArray(2),
         [(2e18).toString(), (8e18).toString()],
-        2,
         (0.05e18).toString()
       );
       expect(await strategy.getTotalTokens()).to.equal(2);
@@ -56,7 +56,6 @@ describe('WeightedProdStrategy', function () {
       strategy = await WeightedProdStrategyFactory.deploy(
         generateAddressArray(5),
         [(2.15e18).toString(), (24.3e18).toString(), (12.11e18).toString(), (2e18).toString(), (6e18).toString()],
-        5,
         (0.05e18).toString()
       );
       expect(await strategy.getTotalTokens()).to.equal(5);
@@ -86,7 +85,6 @@ describe('WeightedProdStrategy', function () {
           (15e18).toString(),
           (16e18).toString(),
         ],
-        16,
         (0.05e18).toString()
       );
       expect(await strategy.getTotalTokens()).to.equal(16);
@@ -98,20 +96,19 @@ describe('WeightedProdStrategy', function () {
     });
     it('Fails creating below MIN WEIGHT', async () => {
       await expect(
-        WeightedProdStrategyFactory.deploy(generateAddressArray(2), [0, 8], 2, (0.05e18).toString())
+        WeightedProdStrategyFactory.deploy(generateAddressArray(2), [0, 8], (0.05e18).toString())
       ).to.be.revertedWith('ERR_MIN_WEIGHT');
     });
     it('Fails creating below MIN TOKENS', async () => {
       await expect(
-        WeightedProdStrategyFactory.deploy(generateAddressArray(1), [8], 1, (0.05e18).toString())
+        WeightedProdStrategyFactory.deploy(generateAddressArray(1), [8], (0.05e18).toString())
       ).to.be.revertedWith('ERR_MIN_TOKENS');
     });
     it('Fails creating above MAX TOKENS', async () => {
       await expect(
         WeightedProdStrategyFactory.deploy(
-          generateAddressArray(16),
+          generateAddressArray(17),
           [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
-          17,
           (0.05e18).toString()
         ) //fee: 5%
       ).to.be.revertedWith('ERR_MAX_TOKENS');
@@ -125,7 +122,6 @@ describe('WeightedProdStrategy', function () {
       strategy = await WeightedProdStrategyFactory.deploy(
         tokens,
         [(8e18).toString(), (2e18).toString()],
-        2,
         (0.05e18).toString()
       ); //fee: 5%
       await strategy.deployed();
@@ -151,7 +147,6 @@ describe('WeightedProdStrategy', function () {
       strategy = await WeightedProdStrategyFactory.deploy(
         tokens,
         [(4e18).toString(), (4e18).toString(), (2e18).toString()],
-        3,
         (0.05e18).toString()
       ); //fee: 5%
       await strategy.deployed();

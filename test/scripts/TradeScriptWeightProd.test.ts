@@ -31,7 +31,6 @@ describe('TradeScript - WeightProduct', () => {
       args: [
         [tokens.DAI.address, tokens.BAT.address, tokens.ANT.address, tokens.SNX.address, tokens.MKR.address],
         weights,
-        5,
         0,
       ],
     });

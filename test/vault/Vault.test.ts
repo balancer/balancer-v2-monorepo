@@ -31,7 +31,7 @@ describe('Vault - swaps', () => {
     tokens = await deployTokens(['DAI', 'MKR']);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
     strategy = await deploy('WeightedProdStrategy', {
-      args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (1e18).toString()], 2, 0],
+      args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (1e18).toString()], 0],
     });
     tradeScript = await deploy('MockTradeScript', { args: [] });
   });
@@ -70,7 +70,6 @@ describe('Vault - swaps', () => {
           args: [
             [tokens.DAI.address, tokens.MKR.address],
             [(1e18).toString(), (1e18).toString()],
-            2,
             (0.05e18).toString(),
           ],
         });
@@ -327,11 +326,11 @@ describe('Vault - swaps', () => {
       );
 
       strategy = await deploy('WeightedProdStrategy', {
-        args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (4e18).toString()], 2, 0],
+        args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (4e18).toString()], 0],
       });
       // first curve is 1:10
       const curveFirst = await deploy('WeightedProdStrategy', {
-        args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (10e18).toString()], 2, 0],
+        args: [[tokens.DAI.address, tokens.MKR.address], [(1e18).toString(), (10e18).toString()], 0],
       });
 
       for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
