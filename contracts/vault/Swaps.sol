@@ -297,25 +297,25 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         private
         returns (uint128 amountQuoted, uint128 protocolSwapFee)
     {
-        PoolStrategy memory strategy = _poolStrategy[request.poolId];
+        (address strategy, StrategyType strategyType) = fromPoolId(request.poolId);
 
         BalanceLib.Balance memory tokenInFinalBalance;
         BalanceLib.Balance memory tokenOutFinalBalance;
 
-        if (strategy.strategyType == StrategyType.PAIR) {
+        if (strategyType == StrategyType.PAIR) {
             (
                 tokenInFinalBalance,
                 tokenOutFinalBalance,
                 amountQuoted,
                 protocolSwapFee
-            ) = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(strategy.strategy), kind);
-        } else if (strategy.strategyType == StrategyType.TUPLE) {
+            ) = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(strategy), kind);
+        } else if (strategyType == StrategyType.TUPLE) {
             (
                 tokenInFinalBalance,
                 tokenOutFinalBalance,
                 amountQuoted,
                 protocolSwapFee
-            ) = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(strategy.strategy), kind);
+            ) = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(strategy), kind);
         } else {
             revert("Unknown strategy type");
         }

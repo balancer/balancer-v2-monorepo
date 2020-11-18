@@ -1,11 +1,12 @@
-import { deploy } from './helpers/deploy';
+import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
-import { setupPool } from './helpers/pools';
-import { deployTokens, mintTokens, TokenList } from '../test/helpers/tokens';
+import { getTokensSwaps, toSwapIn } from '../helpers/trading';
+import { setupPool } from '../helpers/pools';
+import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
-import { getTokensSwaps, toSwapIn } from './helpers/trading';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256 } from '../test/helpers/constants';
+import { MAX_UINT256 } from '../../test/helpers/constants';
+import { toFixedPoint } from '../helpers/fixedPoint';
 
 let vault: Contract;
 let script: Contract;
@@ -60,18 +61,21 @@ async function vaultStats() {
 
 async function batchedSwap(withdrawTokens: boolean) {
   console.log(
-    `# Batched swap: multiple batched pools for the same pair ${withdrawTokens ? '' : 'not withdrawing tokens'}`
+    `# Weighted Prod TS Batched swap: multiple batched pools for the same pair ${
+      withdrawTokens ? '' : 'not withdrawing tokens'
+    }`
   );
 
   // 50-50 DAI-MKR pools
 
   const pools: Array<string> = [];
-  const curve = await deploy('CWPTradingStrategy', {
-    args: [[tokens.MKR.address, tokens.DAI.address], [50, 50], 2, 0],
+
+  const strategy = await deploy('CWPTradingStrategy', {
+    args: [[tokens.MKR.address, tokens.DAI.address], [50, 50], 2, toFixedPoint(0.02)], // 2% fee
   });
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
-      await setupPool(vault, curve, 0, tokens, controller, [
+      await setupPool(vault, strategy, 0, tokens, controller, [
         ['DAI', (100e18).toString()],
         ['MKR', (100e18).toString()],
       ])
