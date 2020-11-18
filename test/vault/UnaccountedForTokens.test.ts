@@ -6,9 +6,8 @@ import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { createPool, PairTS, setupPool } from '../../scripts/helpers/pools';
 import { MAX_UINT256 } from '../helpers/constants';
-import { Swap, SwapV2 } from '../../scripts/helpers/trading';
+import { SwapIn } from '../../scripts/helpers/trading';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { TransactionDescription } from 'ethers/lib/utils';
 
 describe('Vault - unaccounted for tokens', () => {
   let admin: SignerWithAddress;
@@ -95,7 +94,7 @@ describe('Vault - unaccounted for tokens', () => {
       await tokens.DAI.connect(other).transfer(vault.address, (1e18).toString());
 
       const tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
-      const swaps: SwapV2[] = [
+      const swaps: SwapIn[] = [
         {
           poolId,
           tokenInIndex: 0,
@@ -105,7 +104,7 @@ describe('Vault - unaccounted for tokens', () => {
         },
       ];
 
-      await vault.connect(trader).batchSwap(swaps, tokenAddresses, {
+      await vault.connect(trader).batchSwapGiveIn(swaps, tokenAddresses, {
         sender: trader.address,
         recipient: trader.address,
         withdrawFromUserBalance: false,
