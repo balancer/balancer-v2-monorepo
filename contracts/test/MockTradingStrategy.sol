@@ -25,14 +25,9 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it
     uint128 private _multiplier = FixedPoint.ONE;
-    uint128 private _fee = 0;
 
     function setMultiplier(uint128 newMultiplier) external {
         _multiplier = newMultiplier;
-    }
-
-    function setFee(uint128 newFee) external {
-        _fee = newFee;
     }
 
     // IPairTradingStrategy
@@ -41,7 +36,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint128,
         uint128
     ) external view override returns (uint128, uint128) {
-        return (request.amountIn.mul128(_multiplier), request.amountIn.mul128(_fee));
+        return (request.amountIn.mul128(_multiplier), 0);
     }
 
     function quoteInGivenOut(
@@ -50,7 +45,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint128
     ) external view override returns (uint128, uint128) {
         uint128 amountIn = request.amountOut.div128(_multiplier);
-        return (amountIn, amountIn.mul128(_fee));
+        return (amountIn, 0);
     }
 
     // ITupleTradingStrategy
@@ -60,7 +55,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint256,
         uint256
     ) external view override returns (uint128, uint128) {
-        return (request.amountIn.mul128(_multiplier), request.amountIn.mul128(_fee));
+        return (request.amountIn.mul128(_multiplier), 0);
     }
 
     function quoteInGivenOut(
@@ -70,6 +65,6 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint256
     ) external view override returns (uint128, uint128) {
         uint128 amountIn = request.amountOut.div128(_multiplier);
-        return (amountIn, amountIn.mul128(_fee));
+        return (amountIn, 0);
     }
 }

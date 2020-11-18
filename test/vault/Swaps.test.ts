@@ -35,7 +35,7 @@ describe('Vault - swaps', () => {
     poolIds = [];
 
     for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-      // All pools have mock strategies with an in-out multiplier of 2 and a fee of 0
+      // All pools have mock strategies with an in-out multiplier of 2
       const strategy = await deploy('MockTradingStrategy', {
         args: [],
       });
