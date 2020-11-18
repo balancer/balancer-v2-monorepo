@@ -35,7 +35,7 @@ jobs:
             - v1-dependencies
       - run: yarn compile
       - run: yarn test
-  benchmark-wp:
+  benchmark:
     docker:
       - image: circleci/node:14.6
     steps:
@@ -44,17 +44,7 @@ jobs:
           keys:
             - v1-dependencies-{{ checksum "package.json" }}
             - v1-dependencies
-      - run: yarn benchmark-wp
-  benchmark-stable:
-    docker:
-      - image: circleci/node:14.6
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "package.json" }}
-            - v1-dependencies
-      - run: yarn benchmark-stable
+      - run: yarn benchmark
 workflows:
   version: 2
   build_lint_test:
@@ -66,9 +56,6 @@ workflows:
       - test:
           requires:
             - build
-      - benchmark-wp:
-          requires:
-            - build
-      - benchmark-stable:
+      - benchmark:
           requires:
             - build
