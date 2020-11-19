@@ -71,7 +71,7 @@ async function batchedSwap(withdrawTokens: boolean) {
   const pools: Array<string> = [];
 
   const strategy = await deploy('CWPTradingStrategy', {
-    args: [[tokens.MKR.address, tokens.DAI.address], [50, 50], 2, toFixedPoint(0.02)], // 2% fee
+    args: [[tokens.MKR.address, tokens.DAI.address], [50, 50], toFixedPoint(0.02)], // 2% fee
   });
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
