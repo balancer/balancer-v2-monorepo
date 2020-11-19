@@ -17,6 +17,7 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ITradingStrategy {
+    // TODO: outdated docs, fix
     // This data structure represents a two tokens swap and is used by strategies for trade validation.
     // `from` is the origin address where the entering funds are coming from
     // `to` is the destination address where exiting funds are going to.
@@ -24,14 +25,25 @@ interface ITradingStrategy {
     // `amountIn` and `amountOut` are the amount increased by `tokenIn`
     // and the amount decreased by `tokenOut`respectively.
     // `userData` is any extra data that the swap caller wants to send to the strategy to validate the swap.
-    struct Swap {
-        address from;
-        address to;
-        bytes32 poolId;
+    struct QuoteRequestGivenIn {
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint128 amountIn;
+        // Misc data
+        bytes32 poolId;
+        address from;
+        address to;
+        bytes userData;
+    }
+
+    struct QuoteRequestGivenOut {
+        IERC20 tokenIn;
+        IERC20 tokenOut;
         uint128 amountOut;
+        // Misc data
+        bytes32 poolId;
+        address from;
+        address to;
         bytes userData;
     }
 }

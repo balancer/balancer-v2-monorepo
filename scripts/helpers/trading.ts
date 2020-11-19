@@ -9,17 +9,37 @@ export type Trade = {
 
 export type Swap = {
   poolId: string;
-  tokenIn: { tokenIndex: number; amount: number };
-  tokenOut: { tokenIndex: number; amount: number };
+  tokenInIndex: number;
+  tokenOutIndex: number;
+  amount: number | string;
   userData: string;
 };
 
-export function getTokensSwapsAndAmounts(
-  tokens: TokenList,
-  trades: Array<Trade>
-): [Array<string>, Array<Swap>, Array<number | string>] {
+export type SwapIn = {
+  poolId: string;
+  tokenInIndex: number;
+  tokenOutIndex: number;
+  amountIn: number | string;
+  userData: string;
+};
+
+export type SwapOut = {
+  poolId: string;
+  tokenInIndex: number;
+  tokenOutIndex: number;
+  amountOut: number | string;
+  userData: string;
+};
+
+export type FundManagement = {
+  sender: string;
+  recipient: string;
+  withdrawFromUserBalance: boolean;
+  depositToUserBalance: boolean;
+};
+
+export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<Swap>] {
   const swaps: Array<Swap> = [];
-  const amounts: Array<number | string> = [];
 
   const tokenAddresses = Array.from(
     new Set(
@@ -32,37 +52,43 @@ export function getTokensSwapsAndAmounts(
 
   for (const trade of trades) {
     const tokenInAddress = tokens[trade.tokenIn].address;
-
-    const inDiffIndex = tokenAddresses.indexOf(tokenInAddress);
+    const tokenInIndex = tokenAddresses.indexOf(tokenInAddress);
 
     const tokenOutAddress = tokens[trade.tokenOut].address;
-    const outDiffIndex = tokenAddresses.indexOf(tokenOutAddress);
+    const tokenOutIndex = tokenAddresses.indexOf(tokenOutAddress);
 
     swaps.push({
       poolId: trade.poolId,
-      tokenIn: { tokenIndex: inDiffIndex, amount: 0 },
-      tokenOut: { tokenIndex: outDiffIndex, amount: 0 },
+      tokenInIndex,
+      tokenOutIndex,
+      amount: trade.amount?.toString() ?? 0,
       userData: '0x',
     });
-
-    amounts.push(trade.amount ?? 0);
   }
 
-  return [tokenAddresses, swaps, amounts];
+  return [tokenAddresses, swaps];
 }
 
-export type SwapIndexes = {
-  tokenIndexIn: number;
-  tokenIndexOut: number;
-};
+export function toSwapIn(swaps: Array<Swap>): Array<SwapIn> {
+  return swaps.map((swap) => {
+    return {
+      poolId: swap.poolId,
+      tokenInIndex: swap.tokenInIndex,
+      tokenOutIndex: swap.tokenOutIndex,
+      amountIn: swap.amount,
+      userData: swap.userData,
+    };
+  });
+}
 
-export function getSwapTokenIndexes(indexes: number[][]): Array<SwapIndexes> {
-  const swapIndexes: Array<SwapIndexes> = [];
-  for (const pair of indexes) {
-    swapIndexes.push({
-      tokenIndexIn: pair[0],
-      tokenIndexOut: pair[1],
-    });
-  }
-  return swapIndexes;
+export function toSwapOut(swaps: Array<Swap>): Array<SwapOut> {
+  return swaps.map((swap) => {
+    return {
+      poolId: swap.poolId,
+      tokenInIndex: swap.tokenInIndex,
+      tokenOutIndex: swap.tokenOutIndex,
+      amountOut: swap.amount,
+      userData: swap.userData,
+    };
+  });
 }
