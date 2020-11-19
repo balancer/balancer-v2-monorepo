@@ -1,12 +1,12 @@
 import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
+import { getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { setupPool } from '../helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
-import { toFixedPoint } from '../helpers/fixedPoint';
 import { Contract } from 'ethers';
-import { getTokensSwapsAndAmounts } from '../helpers/trading';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
+import { toFixedPoint } from '../helpers/fixedPoint';
 
 let vault: Contract;
 let script: Contract;
@@ -69,12 +69,13 @@ async function batchedSwap(withdrawTokens: boolean) {
   // 50-50 DAI-MKR pools
 
   const pools: Array<string> = [];
-  const curve = await deploy('WeightedProdStrategy', {
-    args: [[tokens.MKR.address, tokens.DAI.address], [50, 50], (0.02e18).toString()], //2% fee
+
+  const strategy = await deploy('CWPTradingStrategy', {
+    args: [[tokens.MKR.address, tokens.DAI.address], [50, 50], toFixedPoint(0.02)], // 2% fee
   });
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
-      await setupPool(vault, curve, 0, tokens, controller, [
+      await setupPool(vault, strategy, 0, tokens, controller, [
         ['DAI', (100e18).toString()],
         ['MKR', (100e18).toString()],
       ])
@@ -84,7 +85,7 @@ async function batchedSwap(withdrawTokens: boolean) {
   // Trade DAI for MKR, putting 500 DAI into each pool
 
   for (let poolAmount = 1; poolAmount <= BATCHED_SWAP_TOTAL_POOLS; ++poolAmount) {
-    const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(
+    const [tokenAddresses, swaps] = getTokensSwaps(
       tokens,
       pools.slice(0, poolAmount).map((poolId) => {
         return { poolId, tokenIn: 'DAI', tokenOut: 'MKR', amount: 500 };
@@ -97,12 +98,10 @@ async function batchedSwap(withdrawTokens: boolean) {
           overallTokenIn: tokens.DAI.address,
           overallTokenOut: tokens.MKR.address,
           minAmountOut: 500 * poolAmount,
-          maxPrice: toFixedPoint(1),
+          maxAmountIn: 500 * poolAmount,
         },
-        swaps,
+        toSwapIn(swaps),
         tokenAddresses,
-        [],
-        amounts,
         withdrawTokens
       )
     ).wait();

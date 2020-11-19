@@ -15,18 +15,20 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "./StrategyFee.sol";
 import "./IPairTradingStrategy.sol";
 import "./lib/WeightedProduct.sol";
+import "./StrategyFee.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProduct {
+contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduct {
     using SafeCast for uint256;
     using FixedPoint for uint128;
 
@@ -170,25 +172,46 @@ contract WeightedProdStrategy is IPairTradingStrategy, StrategyFee, WeightedProd
         }
     }
 
-    function validatePair(
-        ITradingStrategy.Swap calldata swap,
-        uint128 balanceIn,
-        uint128 balanceOut
-    ) external view override returns (bool, uint128) {
-        //Subtract fee
-        uint128 feeAmount = swap.amountIn.mul128(_swapFee.toUint128());
-        uint128 adjustedIn = swap.amountIn.sub128(feeAmount);
+    function quoteOutGivenIn(
+        QuoteRequestGivenIn calldata request,
+        uint128 currentBalanceTokenIn,
+        uint128 currentBalanceTokenOut
+    ) external view override returns (uint128, uint128) {
+        // Subtract fee
+        uint128 amountInFees = request.amountIn.mul128(_swapFee.toUint128());
+        uint128 adjustedIn = request.amountIn.sub128(amountInFees);
 
         // Calculate the maximum amount that can be taken out of the pool
         uint128 maximumAmountOut = _outGivenIn(
-            balanceIn,
-            getWeight(swap.tokenIn),
-            balanceOut,
-            getWeight(swap.tokenOut),
+            currentBalanceTokenIn,
+            getWeight(request.tokenIn),
+            currentBalanceTokenOut,
+            getWeight(request.tokenOut),
             adjustedIn
         );
 
-        return (swap.amountOut <= maximumAmountOut, feeAmount);
+        return (maximumAmountOut, amountInFees);
+    }
+
+    function quoteInGivenOut(
+        QuoteRequestGivenOut calldata request,
+        uint128 currentBalanceTokenIn,
+        uint128 currentBalanceTokenOut
+    ) external view override returns (uint128, uint128) {
+        // Calculate the minimum amount that must be put into the pool
+        uint128 minimumAmountIn = _inGivenOut(
+            currentBalanceTokenIn,
+            getWeight(request.tokenIn),
+            currentBalanceTokenOut,
+            getWeight(request.tokenOut),
+            request.amountOut
+        );
+
+        // Add fee
+        uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
+        uint128 amountInFees = adjustedIn.sub128(minimumAmountIn);
+
+        return (adjustedIn, amountInFees);
     }
 
     function getSwapFee() external view override returns (uint256) {

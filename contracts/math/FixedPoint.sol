@@ -31,6 +31,24 @@ library FixedPoint {
         return btoi(a) * ONE;
     }
 
+    function abs(int256 a) internal pure returns (uint256) {
+        if (a > 0) {
+            return uint256(a);
+        } else {
+            // TODO: check valid
+            return uint256(-a);
+        }
+    }
+
+    function abs128(int128 a) internal pure returns (uint128) {
+        if (a > 0) {
+            return uint128(a);
+        } else {
+            // TODO: check valid
+            return uint128(-a);
+        }
+    }
+
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c = a + b;
         require(c >= a, "ERR_ADD_OVERFLOW");

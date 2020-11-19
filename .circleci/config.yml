@@ -35,7 +35,7 @@ jobs:
             - v1-dependencies
       - run: yarn compile
       - run: yarn test
-  benchmark-wp:
+  coverage:
     docker:
       - image: circleci/node:14.6
     steps:
@@ -44,8 +44,10 @@ jobs:
           keys:
             - v1-dependencies-{{ checksum "package.json" }}
             - v1-dependencies
-      - run: yarn benchmark-wp
-  benchmark-stable:
+      - run: yarn coverage
+      - store_artifacts:
+          path: coverage
+  benchmark:
     docker:
       - image: circleci/node:14.6
     steps:
@@ -54,7 +56,7 @@ jobs:
           keys:
             - v1-dependencies-{{ checksum "package.json" }}
             - v1-dependencies
-      - run: yarn benchmark-stable
+      - run: yarn benchmark
 workflows:
   version: 2
   build_lint_test:
@@ -66,9 +68,10 @@ workflows:
       - test:
           requires:
             - build
-      - benchmark-wp:
+      - coverage:
           requires:
             - build
-      - benchmark-stable:
+            - test # only run if tests pass, redundantly runs tests
+      - benchmark:
           requires:
             - build

@@ -4,7 +4,7 @@ import { setupPool } from '../helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
 import { toFixedPoint } from '../helpers/fixedPoint';
 import { Contract } from 'ethers';
-import { getTokensSwapsAndAmounts, getSwapTokenIndexes } from '../helpers/trading';
+import { getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 
@@ -70,7 +70,7 @@ async function batchedSwap(withdrawTokens: boolean) {
 
   const pools: Array<string> = [];
   const amp = (30e18).toString();
-  const curve = await deploy('StableStrategy', { args: [amp, (0.02e18).toString()] }); // 2% fee
+  const curve = await deploy('FlattenedTradingStrategy', { args: [amp, (0.02e18).toString()] }); // 2% fee
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
       await setupPool(vault, curve, 1, tokens, controller, [
@@ -83,7 +83,7 @@ async function batchedSwap(withdrawTokens: boolean) {
   // Trade DAI for MKR, putting 500 DAI into each pool
   const indexes: number[][] = [];
   for (let poolAmount = 1; poolAmount <= BATCHED_SWAP_TOTAL_POOLS; ++poolAmount) {
-    const [tokenAddresses, swaps, amounts] = getTokensSwapsAndAmounts(
+    const [tokenAddresses, swaps] = getTokensSwaps(
       tokens,
       pools.slice(0, poolAmount).map((poolId) => {
         return { poolId, tokenIn: 'DAI', tokenOut: 'MKR', amount: (2e18).toString() };
@@ -98,12 +98,10 @@ async function batchedSwap(withdrawTokens: boolean) {
           overallTokenIn: tokens.DAI.address,
           overallTokenOut: tokens.MKR.address,
           minAmountOut: (1e18 * poolAmount).toString(),
-          maxPrice: toFixedPoint(2),
+          maxAmountIn: (2e18 * poolAmount).toString(),
         },
-        swaps,
+        toSwapIn(swaps),
         tokenAddresses,
-        getSwapTokenIndexes(indexes),
-        amounts,
         withdrawTokens
       )
     ).wait();
