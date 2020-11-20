@@ -1,6 +1,6 @@
-import { expect } from 'chai';
 import { deploy } from '../../../scripts/helpers/deploy';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/strategies/stable';
+import { expectRelativeError } from '../../helpers/relativeError';
 import { Contract } from 'ethers';
 import { Decimal } from 'decimal.js';
 
@@ -31,15 +31,11 @@ async function compareOutGivenIn(
   // ).to.be.true;
 
   //Relative error must be less that the max accepted
-  expect(
-    outAmountMath
-      .times((1e18).toString())
-      .dividedBy(outAmountStrategy.toString())
-      .minus(1)
-      .abs()
-      .lessThanOrEqualTo(MAX_RELATIVE_ERROR),
-    'Relative error too big'
-  ).to.be.true;
+  expectRelativeError(
+    outAmountMath.times((1e18).toString()),
+    new Decimal(outAmountStrategy.toString()),
+    new Decimal(MAX_RELATIVE_ERROR)
+  );
 }
 
 async function compareInGivenOut(
@@ -67,15 +63,11 @@ async function compareInGivenOut(
   // ).to.be.true;
 
   //Relative error must be less that the max accepted
-  expect(
-    inAmountMath
-      .times((1e18).toString())
-      .dividedBy(inAmountStrategy.toString())
-      .minus(1)
-      .abs()
-      .lessThanOrEqualTo(MAX_RELATIVE_ERROR),
-    'Relative error too big'
-  ).to.be.true;
+  expectRelativeError(
+    inAmountMath.times((1e18).toString()),
+    new Decimal(inAmountStrategy.toString()),
+    new Decimal(MAX_RELATIVE_ERROR)
+  );
 }
 
 describe('Stable Lib', function () {

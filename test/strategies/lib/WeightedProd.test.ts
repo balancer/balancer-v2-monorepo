@@ -1,7 +1,8 @@
-import { expect } from 'chai';
 import { deploy } from '../../../scripts/helpers/deploy';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/strategies/weightedProd';
+import { expectRelativeError } from '../../helpers/relativeError';
 import { Contract } from 'ethers';
+import { Decimal } from 'decimal.js';
 
 const MAX_RELATIVE_ERROR = 0.0001; //Max relative error
 
@@ -29,10 +30,7 @@ async function compareOutGivenIn(
   // ).to.be.true;
 
   //Relative error must be less that the max accepted
-  expect(
-    outAmountMath.dividedBy(outAmountStrategy.toString()).minus(1).abs().lessThanOrEqualTo(MAX_RELATIVE_ERROR),
-    'Relative error too big'
-  ).to.be.true;
+  expectRelativeError(outAmountMath, new Decimal(outAmountStrategy.toString()), new Decimal(MAX_RELATIVE_ERROR));
 }
 
 async function compareInGivenOut(
@@ -60,10 +58,7 @@ async function compareInGivenOut(
   // ).to.be.true;
 
   //Relative error must be less that the max accepted
-  expect(
-    inAmountMath.dividedBy(inAmountStrategy.toString()).minus(1).abs().lessThanOrEqualTo(MAX_RELATIVE_ERROR),
-    'Relative error too big'
-  ).to.be.true;
+  expectRelativeError(inAmountMath, new Decimal(inAmountStrategy.toString()), new Decimal(MAX_RELATIVE_ERROR));
 }
 
 describe('WeightedProd Lib', function () {
@@ -161,28 +156,6 @@ describe('WeightedProd Lib', function () {
         (1e18).toString(), //tokenWeightOut
         (50e18).toString() //tokenAmountIn
       );
-    });
-    it('outGivenIn - failed weights relation', async () => {
-      await expect(
-        compareOutGivenIn(
-          mockWeightedProdLib,
-          (100e18).toString(), //tokenBalanceIn
-          (130.8e18).toString(), //tokenWeightIn
-          (100e18).toString(), //tokenBalanceOut
-          (1e18).toString(), //tokenWeightOut
-          (50e18).toString() //tokenAmountIn
-        )
-      ).to.be.revertedWith('ERR_WEIGHT_RATIO');
-      await expect(
-        compareOutGivenIn(
-          mockWeightedProdLib,
-          (100e18).toString(), //tokenBalanceIn
-          (0.005e18).toString(), //tokenWeightIn
-          (100e18).toString(), //tokenBalanceOut
-          (1e18).toString(), //tokenWeightOut
-          (50e18).toString() //tokenAmountIn
-        )
-      ).to.be.revertedWith('ERR_WEIGHT_RATIO');
     });
   });
 });

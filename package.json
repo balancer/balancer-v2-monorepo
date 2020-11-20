@@ -5,16 +5,17 @@
   "author": "Nicolás Venturo <nico@balancer.finance>",
   "license": "GPL-3.0-only",
   "scripts": {
-    "benchmark-wp": "hardhat run scripts/gas/measureWPSwap.ts",
-    "benchmark-stable": "hardhat run scripts/gas/measureStableSwap.ts",
-    "benchmark": "yarn benchmark-wp && yarn benchmark-stable",
+    "benchmark-cwp": "hardhat run scripts/gas/measureCWPSwap.ts",
+    "benchmark-flattened": "hardhat run scripts/gas/measureFlattenedSwap.ts",
+    "benchmark": "yarn benchmark-cwp && yarn benchmark-flattened",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "solhint 'contracts/**/*.sol'",
     "lint:typescript": "eslint . --ext .ts",
     "test": "hardhat test --no-compile",
-    "test:watch": "nodemon --ext js,ts --watch test --watch scripts --watch cache/solidity-files-cache.json --exec 'clear && yarn test'"
+    "test:watch": "nodemon --ext js,ts --watch test --watch scripts --watch cache/solidity-files-cache.json --exec 'clear && yarn test'",
+    "coverage": "hardhat coverage --solcoverjs ./.solcover.ts"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
@@ -27,6 +28,7 @@
     "@typescript-eslint/eslint-plugin": "^4.1.1",
     "@typescript-eslint/parser": "^4.1.1",
     "chai": "^4.2.0",
+    "decimal.js": "^10.2.1",
     "eslint": "^7.9.0",
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^3.1.4",
@@ -40,10 +42,8 @@
     "prettier-plugin-solidity": "^1.0.0-alpha.59",
     "solhint": "^3.2.0",
     "solhint-plugin-prettier": "^0.0.4",
+    "solidity-coverage": "^0.7.12",
     "ts-node": "^8.10.2",
     "typescript": "^4.0.2"
-  },
-  "dependencies": {
-    "decimal.js": "^10.2.1"
   }
 }

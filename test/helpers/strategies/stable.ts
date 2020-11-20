@@ -1,5 +1,8 @@
 import { Decimal } from 'decimal.js';
 
+//TODO: Test this math by checking  extremes values for the amplification field (0 and infinite)
+//to verify that it equals constant sum and constant product invariants.
+
 function _invariant(amp: Decimal, balances: Decimal[]): Decimal {
   const n = new Decimal(balances.length);
   //Sum
