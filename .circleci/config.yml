@@ -83,3 +83,6 @@ workflows:
       - benchmark:
           requires:
             - build
+      - slither:
+          requires:
+            - build
