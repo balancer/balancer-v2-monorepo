@@ -42,5 +42,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     'authorizeTrustedOperatorReporter',
     stablecoinPoolFactory.address
   );
+
+  await execute(
+    'Vault',
+    {
+      from: deployer,
+      log: true,
+    },
+    'authorizeTrustedOperatorReporter',
+    constantProductPoolFactory.address
+  );
 };
 export default func;
