@@ -16,6 +16,12 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       saveDeployments: false,
     },
+    rinkeby: {
+      url: `https://rinkeby.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      accounts: [
+        `0x${process.env.RINKEBY_PRIVATE_KEY}`
+      ],
+    }
   },
   namedAccounts: {
     deployer: {
