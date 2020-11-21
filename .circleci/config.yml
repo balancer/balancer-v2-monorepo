@@ -60,7 +60,6 @@ jobs:
   slither:
     docker:
       - image: trailofbits/eth-security-toolbox
-    working_directory: ~/balancer
     steps:
       - checkout
       - restore_cache:
