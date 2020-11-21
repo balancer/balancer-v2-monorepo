@@ -63,7 +63,6 @@ jobs:
     working_directory: ~/balancer
     steps:
       - checkout
-      - run: yarn compile
       - run: slither . --compile-force-framework hardhat
 workflows:
   version: 2
