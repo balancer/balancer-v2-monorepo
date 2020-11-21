@@ -19,7 +19,7 @@ import "../../vendor/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-import "../WeightedProdStrategy.sol";
+import "../CWPTradingStrategy.sol";
 
 contract WeightedProdFactory {
     using Address for address;
@@ -36,12 +36,11 @@ contract WeightedProdFactory {
     function create(
         IERC20[] memory tokens,
         uint256[] memory weights,
-        uint8 totalTokens,
         uint256 swapFee
     ) external returns (address) {
         bytes memory creationCode = abi.encodePacked(
-            type(WeightedProdStrategy).creationCode,
-            abi.encode(tokens, weights, totalTokens, swapFee)
+            type(CWPTradingStrategy).creationCode,
+            abi.encode(tokens, weights, swapFee)
         );
 
         address expectedStrategy = Create2.computeAddress(0, keccak256(creationCode));
