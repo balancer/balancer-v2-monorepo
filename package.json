@@ -11,6 +11,7 @@
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "deploy:local": "hardhat --network localhost deploy",
+    "deploy:rinkeby": "hardhat --network rinkeby deploy",
     "export": "hardhat export --export-all deployments/addresses.json",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "solhint 'contracts/**/*.sol'",
@@ -47,5 +48,8 @@
     "solidity-coverage": "^0.7.12",
     "ts-node": "^8.10.2",
     "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "dotenv": "^8.2.0"
   }
 }
