@@ -18,7 +18,7 @@ describe('BasePoolControllerFactory', function () {
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { from: admin, args: [] });
+    vault = await deploy('Vault', { from: admin, args: [admin.address] });
     factory = await deploy('MockPoolControllerFactory', { args: [vault.address] });
   });
 

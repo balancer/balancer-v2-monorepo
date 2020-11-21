@@ -28,8 +28,8 @@ describe('Vault - swaps', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [] });
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX']);
+    vault = await deploy('Vault', { args: [controller.address] });
+    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     poolIds = [];

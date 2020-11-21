@@ -26,13 +26,13 @@ describe('InvestmentManager', function () {
   beforeEach(async function () {
     [, admin, owner] = await ethers.getSigners();
 
-    vault = await deploy('Vault', { from: admin, args: [] });
+    vault = await deploy('Vault', { from: admin, args: [admin.address] });
 
     strategy = await deploy('MockTradingStrategy', { args: [] });
 
     const tokenNames = ['WETH', 'DAI'];
     tokens = await deployTokens(tokenNames, [18, 18]);
-    
+
     await Promise.all(
       ['WETH', 'DAI'].map(async (token) => {
         await tokens[token].mint(owner.address, (200e18).toString());
