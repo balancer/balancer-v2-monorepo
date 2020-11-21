@@ -18,7 +18,7 @@ const config: HardhatUserConfig = {
       default: 0, // here this will by default take the first account as deployer
       1: 0,
       4: '', // rinkeby
-    }
+    },
   },
   solidity: {
     version: '0.7.1',

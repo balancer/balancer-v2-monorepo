@@ -26,5 +26,5 @@ import "./Admin.sol";
 // solhint-disable no-empty-blocks
 
 contract Vault is IVault, Settings, VaultAccounting, UserBalance, PoolRegistry, Swaps, Admin {
-    constructor() Admin(msg.sender) {}
+    constructor(address _admin) Admin(_admin) {}
 }

@@ -7,9 +7,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy('Vault', {
+  const vault = await deployments.get('Vault');
+
+  await deploy('TradeScript', {
     from: deployer,
-    args: [deployer],
+    args: [vault.address],
     log: true,
     deterministicDeployment: true,
   });

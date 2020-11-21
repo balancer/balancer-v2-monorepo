@@ -3,15 +3,27 @@ import { DeployFunction } from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const { deploy, execute } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy('Vault', {
+  const vault = await deployments.get('Vault');
+
+  const fixedSetFactory = await deploy('FixedSetPoolTokenizerFactory', {
     from: deployer,
-    args: [deployer],
+    args: [vault.address],
     log: true,
     deterministicDeployment: true,
   });
+
+  await execute(
+    'Vault',
+    {
+      from: deployer,
+      log: true,
+    },
+    'authorizeTrustedOperatorReporter',
+    fixedSetFactory.address
+  );
 };
 export default func;

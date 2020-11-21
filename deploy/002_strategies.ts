@@ -7,9 +7,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy('Vault', {
+  await deploy('WeightedProdFactory', {
     from: deployer,
-    args: [deployer],
+    args: [],
     log: true,
     deterministicDeployment: true,
   });
