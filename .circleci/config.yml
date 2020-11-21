@@ -57,6 +57,14 @@ jobs:
             - v1-dependencies-{{ checksum "package.json" }}
             - v1-dependencies
       - run: yarn benchmark
+  slither:
+    docker:
+      - image: trailofbits/eth-security-toolbox
+    working_directory: ~/balancer
+    steps:
+      - checkout
+      - run: yarn compile
+      - run: slither . --compile-force-framework hardhat
 workflows:
   version: 2
   build_lint_test:
