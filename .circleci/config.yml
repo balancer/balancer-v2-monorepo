@@ -63,6 +63,10 @@ jobs:
     working_directory: ~/balancer
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies
       - run: slither . --compile-force-framework hardhat
 workflows:
   version: 2
