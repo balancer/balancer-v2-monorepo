@@ -19,28 +19,24 @@ import "../../vendor/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-import "../CWPTradingStrategy.sol";
+import "../FlattenedTradingStrategy.sol";
 
-contract CWPFactory {
+contract FlattenedFactory {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // TODO: Decide if we need an enumerable set for anything
-    EnumerableSet.AddressSet private _weightedProdStrategies;
+    EnumerableSet.AddressSet private _flattenedStrategies;
 
     event StrategyCreated(address indexed strategy);
 
     // solhint-disable-next-line no-empty-blocks
     constructor() {}
 
-    function create(
-        IERC20[] memory tokens,
-        uint256[] memory weights,
-        uint256 swapFee
-    ) external returns (address) {
+    function create(uint128 amp, uint256 swapFee) external returns (address) {
         bytes memory creationCode = abi.encodePacked(
-            type(CWPTradingStrategy).creationCode,
-            abi.encode(tokens, weights, swapFee)
+            type(FlattenedTradingStrategy).creationCode,
+            abi.encode(amp, swapFee)
         );
 
         address expectedStrategy = Create2.computeAddress(0, keccak256(creationCode));
@@ -51,7 +47,7 @@ contract CWPFactory {
             address strategy = Create2.deploy(0, 0, creationCode);
             assert(strategy == expectedStrategy);
 
-            _weightedProdStrategies.add(strategy);
+            _flattenedStrategies.add(strategy);
             emit StrategyCreated(strategy);
 
             return strategy;

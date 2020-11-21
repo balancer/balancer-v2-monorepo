@@ -16,6 +16,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     deterministicDeployment: true,
   });
 
+  const ownableFixedSetFactory = await deploy('OwnableFixedSetPoolTokenizerFactory', {
+    from: deployer,
+    args: [vault.address],
+    log: true,
+    deterministicDeployment: true,
+  });
+
   await execute(
     'Vault',
     {
@@ -24,6 +31,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
     'authorizeTrustedOperatorReporter',
     fixedSetFactory.address
+  );
+
+  await execute(
+    'Vault',
+    {
+      from: deployer,
+      log: true,
+    },
+    'authorizeTrustedOperatorReporter',
+    ownableFixedSetFactory.address
   );
 };
 export default func;
