@@ -20,7 +20,7 @@ const BATCHED_SWAP_TOTAL_POOLS = 8;
 async function main() {
   [, controller, trader] = await ethers.getSigners();
 
-  vault = await deploy('Vault', { args: [] });
+  vault = await deploy('Vault', { args: [controller.address] });
 
   await vaultStats();
 
