@@ -1,8 +1,8 @@
 {
-    "detectors_to_exclude": "naming-convention,constable-states,solc-version,external-function",
-    "exclude_informational": false,
-    "solc": "solc",
-    "solc_args": "",
-    "solc_disable_warnings": false,
-    "filter_paths": "test"
+  "detectors_to_exclude": "naming-convention,constable-states,solc-version,external-function",
+  "exclude_informational": false,
+  "solc": "solc",
+  "solc_args": "",
+  "solc_disable_warnings": false,
+  "filter_paths": "test"
 }
