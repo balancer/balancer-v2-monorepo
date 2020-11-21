@@ -26,12 +26,12 @@ contract TestToken is AccessControl, ERC20 {
         uint8 decimals
     ) ERC20(name, symbol) {
         _setupDecimals(decimals);
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _setupRole(MINTER_ROLE, _msgSender());
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(MINTER_ROLE, msg.sender);
     }
 
     function mint(address destinatary, uint256 amount) external {
-        require(hasRole(MINTER_ROLE, _msgSender()), "ERR_MINTER_ROLE");
+        require(hasRole(MINTER_ROLE, msg.sender), "ERR_MINTER_ROLE");
         _mint(destinatary, amount);
     }
 }

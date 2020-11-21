@@ -16,7 +16,8 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: {
       default: 0, // here this will by default take the first account as deployer
-      1: 0,
+      // We use explicit chain IDs so that export-all works correctly: https://github.com/wighawag/hardhat-deploy#options-2
+      1: 0, // mainnet
       4: '', // rinkeby
     },
   },
