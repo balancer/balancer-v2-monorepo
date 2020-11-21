@@ -2,6 +2,8 @@ import { HardhatUserConfig } from 'hardhat/config';
 import 'hardhat-deploy';
 import '@nomiclabs/hardhat-waffle';
 
+import 'solidity-coverage';
+
 const config: HardhatUserConfig = {
   networks: {
     hardhat: {

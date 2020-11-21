@@ -18,9 +18,9 @@ pragma experimental ABIEncoderV2;
 import "../vault/IVault.sol";
 
 import "./BasePoolControllerFactory.sol";
-import "./FixedSetPoolTokenizer.sol";
+import "./OwnableFixedSetPoolTokenizer.sol";
 
-contract FixedSetPoolTokenizerFactory is BasePoolControllerFactory {
+contract OwnableFixedSetPoolTokenizerFactory is BasePoolControllerFactory {
     constructor(IVault _vault) BasePoolControllerFactory(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -31,16 +31,19 @@ contract FixedSetPoolTokenizerFactory is BasePoolControllerFactory {
         uint256 initialBPT,
         address[] memory tokens,
         uint128[] memory amounts,
+        address owner,
         bytes32 salt
     ) external returns (address) {
-        return
-            _create(
-                abi.encodePacked(
-                    type(FixedSetPoolTokenizer).creationCode,
-                    // Make the sender the `from` address
-                    abi.encode(vault, strategy, strategyType, initialBPT, tokens, amounts, msg.sender)
-                ),
-                salt
-            );
+        address tokenizer = _create(
+            abi.encodePacked(
+                type(OwnableFixedSetPoolTokenizer).creationCode,
+                // Make the sender the `from` address
+                abi.encode(vault, strategy, strategyType, initialBPT, tokens, amounts, msg.sender)
+            ),
+            salt
+        );
+
+        OwnableFixedSetPoolTokenizer(tokenizer).transferOwnership(owner);
+        return tokenizer;
     }
 }

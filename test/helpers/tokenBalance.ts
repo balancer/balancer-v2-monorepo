@@ -55,7 +55,7 @@ export async function currentBalance(account: Account, token: Contract): Promise
 
 type BigNumberish = string | number | BigNumber;
 
-type CompareFunction = 'equal' | 'eq' | 'above' | 'gt' | 'gte' | 'below' | 'lt' | 'lte' | 'least' | 'most';
+type CompareFunction = 'equal' | 'eq' | 'above' | 'gt' | 'gte' | 'below' | 'lt' | 'lte' | 'least' | 'most' | 'near';
 type Comparison = [CompareFunction, BigNumberish];
 
 // Measures the ERC20 balance of an account for multiple tokens before and after an async operation (which
@@ -99,9 +99,14 @@ export async function expectBalanceChange(
       expect(delta).to.equal(0);
     } else {
       const compare: CompareFunction = Array.isArray(change) ? change[0] : 'equal';
-      const value: BigNumberish = Array.isArray(change) ? change[1] : change;
+      const value = BigNumber.from((Array.isArray(change) ? change[1] : change).toString());
 
-      expect(delta).to[compare](value.toString());
+      if (compare == 'near') {
+        expect(delta).to.be.at.least(value.sub(value.div(10)));
+        expect(delta).to.be.at.most(value.add(value.div(10)));
+      } else {
+        expect(delta).to[compare](value.toString());
+      }
     }
   }
 }

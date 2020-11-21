@@ -24,52 +24,17 @@ import "../math/FixedPoint.sol";
 import "../vault/IVault.sol";
 
 interface ITradeScript {
-    // Used to store data in memory and avoid stack-too-deep errors
     struct OverallInfoIn {
         IERC20 overallTokenIn;
         IERC20 overallTokenOut;
-        uint128 minAmountOut;
-        uint128 maxPrice;
-    }
-
-    // Used to store data in memory and avoid stack-too-deep errors
-    struct OverallInfoOut {
-        IERC20 overallTokenIn;
-        IERC20 overallTokenOut;
         uint128 maxAmountIn;
-        uint128 maxPrice;
-    }
-
-    // Used to store data in memory and avoid stack-too-deep errors
-    struct Helper {
-        uint128 toSend;
-        uint128 toReceive;
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint128 amountUsedToCalculate;
-        uint128 amountCalculated;
-    }
-
-    struct SwapTokenIndexes {
-        uint256 tokenIndexIn;
-        uint256 tokenIndexOut;
+        uint128 minAmountOut;
     }
 
     function swapExactAmountIn(
         OverallInfoIn memory info,
-        IVault.Diff[] memory diffs,
-        IVault.Swap[] memory swaps,
-        SwapTokenIndexes[] memory indexes,
-        uint128[] memory amountsIn,
-        bool withdrawTokens
-    ) external;
-
-    function swapExactAmountOut(
-        OverallInfoOut memory info,
-        IVault.Diff[] memory diffs,
-        IVault.Swap[] memory swaps,
-        SwapTokenIndexes[] memory indexes,
-        uint128[] memory amountsOut,
+        IVault.SwapIn[] memory swaps,
+        IERC20[] memory tokens,
         bool withdrawTokens
     ) external;
 }
