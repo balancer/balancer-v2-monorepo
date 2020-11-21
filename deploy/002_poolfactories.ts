@@ -48,5 +48,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     addUniversalAgentRole,
     stablePoolFactory.address
   );
+
+  await execute(
+    'Vault',
+    {
+      from: deployer,
+      log: true,
+    },
+    'authorizeTrustedOperatorReporter',
+    constantProductPoolFactory.address
+  );
 };
 export default func;
