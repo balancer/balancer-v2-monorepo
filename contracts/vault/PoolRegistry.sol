@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 import "../vendor/EnumerableSet.sol";
 
 import "../utils/Lock.sol";
@@ -195,44 +196,34 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         bytes32 poolId,
         address from,
         IERC20[] calldata tokens,
-        uint128[] calldata totalAmounts,
-        uint128[] calldata amountsToTransfer
+        uint128[] calldata amounts,
+        bool withdrawFromUserBalance
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
-        require(tokens.length == totalAmounts.length, "Tokens and total amounts length mismatch");
-
-        require(totalAmounts.length == amountsToTransfer.length, "Amount arrays length mismatch");
+        require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         require(isOperatorFor(from, msg.sender), "Caller is not operator");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             {
-                // scope for received - avoids 'stack too deep' error
+                uint128 toReceive = amounts[i];
+                if (withdrawFromUserBalance) {
+                    uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][tokens[i]], toReceive));
 
-                uint128 received = _pullTokens(tokens[i], from, amountsToTransfer[i]);
-
-                {
-                    // scope for amountFromuserBalance - avoids 'stack too deep' error
-
-                    // This checks totalAmounts[i] >= amountsTransferred[i] (assuming amountsTransferred[i] >= received)
-                    uint128 amountFromUserBalance = totalAmounts[i].sub128(received);
-
-                    if (amountFromUserBalance > 0) {
-                        _userTokenBalance[from][tokens[i]] = _userTokenBalance[from][tokens[i]].sub128(
-                            amountFromUserBalance
-                        );
-                    }
+                    _userTokenBalance[from][tokens[i]] -= toWithdraw;
+                    toReceive -= toWithdraw;
                 }
+
+                uint128 received = _pullTokens(tokens[i], from, toReceive);
+                require(received == toReceive, "Not enough tokens received");
             }
-
-            if (totalAmounts[i] > 0) {
+            if (amounts[i] > 0) {
                 BalanceLib.Balance memory currentBalance = _poolTokenBalance[poolId][tokens[i]];
-
                 if (currentBalance.total == 0) {
                     // No tokens with zero balance should ever be in the _poolTokens set
                     assert(_poolTokens[poolId].add(address(tokens[i])));
                 }
 
-                _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].increase(totalAmounts[i]);
+                _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].increase(amounts[i]);
             }
         }
     }
@@ -241,26 +232,23 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         bytes32 poolId,
         address to,
         IERC20[] calldata tokens,
-        uint128[] calldata totalAmounts,
-        uint128[] calldata amountsToTransfer
+        uint128[] calldata amounts,
+        bool depositToUserBalance
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
-        require(tokens.length == totalAmounts.length, "Tokens and total amounts length mismatch");
-
-        require(totalAmounts.length == amountsToTransfer.length, "Amount arrays length mismatch");
+        require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             require(_poolTokens[poolId].contains(address(tokens[i])), "Token not in pool");
 
-            // This asserts  totalAmounts[i] >= amountsToTransfer[i]
-            uint128 amountToUserBalance = totalAmounts[i].sub128(amountsToTransfer[i]);
-
-            _pushTokens(tokens[i], to, amountsToTransfer[i], true);
-
-            if (amountToUserBalance > 0) {
-                _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amountToUserBalance);
+            if (depositToUserBalance) {
+                // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
+                _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amounts[i]);
+            } else {
+                // Actually transfer the tokens to the recipient
+                _pushTokens(tokens[i], to, amounts[i], true);
             }
 
-            _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].decrease(totalAmounts[i]);
+            _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].decrease(amounts[i]);
 
             if (_poolTokenBalance[poolId][tokens[i]].total == 0) {
                 _poolTokens[poolId].remove(address(tokens[i]));

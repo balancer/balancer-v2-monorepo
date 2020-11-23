@@ -67,7 +67,7 @@ describe('Vault - unaccounted for tokens', () => {
           controller.address,
           [tokens.DAI.address, tokens.MKR.address],
           [(2e18).toString(), (2e18).toString()],
-          [(2e18).toString(), (2e18).toString()]
+          false
         );
 
       await tokens.DAI.connect(other).transfer(vault.address, (0.5e18).toString());

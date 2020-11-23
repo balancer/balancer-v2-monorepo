@@ -45,7 +45,7 @@ contract FixedSetPoolTokenizer is BToken {
         address from
     ) {
         bytes32 _poolId = _vault.newPool(strategy, strategyType);
-        _vault.addLiquidity(_poolId, from, tokens, amounts, amounts);
+        _vault.addLiquidity(_poolId, from, tokens, amounts, false);
 
         _mintPoolShare(initialBPT);
         _pushPoolShare(from, initialBPT);
@@ -75,21 +75,12 @@ contract FixedSetPoolTokenizer is BToken {
         require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
 
         uint128[] memory amountsIn = new uint128[](tokens.length);
-        uint128[] memory amountsToTransfer = new uint128[](tokens.length);
-
         for (uint256 i = 0; i < tokens.length; i++) {
             amountsIn[i] = balances[i].mul128(ratio);
             require(amountsIn[i] <= maxAmountsIn[i], "ERR_LIMIT_IN");
-
-            if (transferTokens) {
-                amountsToTransfer[i] = amountsIn[i];
-            } else {
-                // This leads into user balance withdrawals
-                amountsToTransfer[i] = 0;
-            }
         }
 
-        vault.addLiquidity(poolId, msg.sender, tokens, amountsIn, amountsToTransfer);
+        vault.addLiquidity(poolId, msg.sender, tokens, amountsIn, !transferTokens);
 
         _mintPoolShare(poolAmountOut);
         _pushPoolShare(beneficiary, poolAmountOut);
@@ -111,21 +102,12 @@ contract FixedSetPoolTokenizer is BToken {
         require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
 
         uint128[] memory amountsOut = new uint128[](tokens.length);
-        uint128[] memory amountsToTransfer = new uint128[](tokens.length);
-
         for (uint256 i = 0; i < tokens.length; i++) {
             amountsOut[i] = balances[i].mul128(ratio);
             require(amountsOut[i] >= minAmountsOut[i], "NOT EXITING ENOUGH");
-
-            if (withdrawTokens) {
-                amountsToTransfer[i] = amountsOut[i];
-            } else {
-                // This leads into user balance deposits
-                amountsToTransfer[i] = 0;
-            }
         }
 
-        vault.removeLiquidity(poolId, beneficiary, tokens, amountsOut, amountsToTransfer);
+        vault.removeLiquidity(poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
