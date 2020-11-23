@@ -21,6 +21,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../vendor/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
 import "../math/FixedPoint.sol";
@@ -34,7 +35,7 @@ import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
 import "./UserBalance.sol";
 
-abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
+abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using BalanceLib for BalanceLib.Balance;
@@ -132,7 +133,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry {
         IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
-    ) private returns (int256[] memory) {
+    ) private nonReentrant returns (int256[] memory) {
         //TODO: avoid reentrancy
 
         // Any net token amount going into the Vault will be taken from `funds.sender`, so they must have
