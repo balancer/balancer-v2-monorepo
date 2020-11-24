@@ -18,8 +18,8 @@ describe('Vault - flashloans', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [] });
-    tokens = await deployTokens(['DAI', 'MKR']);
+    vault = await deploy('Vault', { args: [admin.address] });
+    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
     mockFlashLoanReceiver = await deploy('MockFlashLoanReceiver', { args: [vault.address] });
 
