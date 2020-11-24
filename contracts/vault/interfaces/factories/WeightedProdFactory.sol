@@ -25,13 +25,28 @@ contract CWPFactory {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // TODO: Decide if we need an enumerable set for anything
+    // TODO: Move set getters to a base factory contract
     EnumerableSet.AddressSet private _weightedProdStrategies;
 
     event StrategyCreated(address indexed strategy);
 
     // solhint-disable-next-line no-empty-blocks
     constructor() {}
+
+    function getTotalStrategies() external view returns (uint256) {
+        return _weightedProdStrategies.length();
+    }
+
+    function getStrategies(uint256 start, uint256 end) external view returns (address[] memory) {
+        require((end >= start) && (end - start) <= _weightedProdStrategies.length(), "Bad indices");
+
+        address[] memory strategy = new address[](end - start);
+        for (uint256 i = 0; i < strategy.length; ++i) {
+            strategy[i] = _weightedProdStrategies.at(i + start);
+        }
+
+        return strategy;
+    }
 
     function create(
         IERC20[] memory tokens,
