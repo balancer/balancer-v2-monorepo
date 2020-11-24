@@ -109,6 +109,11 @@ interface IVault {
      */
     function reportTrustedOperator(address operator) external;
 
+    /**
+     * @dev Removes `operator` as a Trusted Operator. Can only be called by a Trusted Operator Reporter.
+     */
+    function revokeTrustedOperator(address operator) external;
+
     // Pools
 
     // There are two variants of Trading Strategies for Pools: Pair Trading Strategies, and Tuple Trading Strategies.
@@ -319,6 +324,12 @@ interface IVault {
      * only be called by the admin.
      */
     function authorizeTrustedOperatorReporter(address reporter) external;
+
+    /**
+     * @dev Remove authorization for `reporter` to call `reportTrustedOperator`. This is typically called on factory
+     * contracts. Can only be called by the admin.
+     */
+    function revokeTrustedOperatorReporter(address reporter) external;
 
     /**
      * @dev Transfers to `recipient` the requested amounts of unnaccounted-for tokens. Can only be called by the admin.
