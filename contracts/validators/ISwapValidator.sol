@@ -23,18 +23,14 @@ import "../math/FixedPoint.sol";
 
 import "../vault/IVault.sol";
 
-interface ITradeScript {
-    struct OverallInfoIn {
-        IERC20 overallTokenIn;
-        IERC20 overallTokenOut;
-        uint128 maxAmountIn;
-        uint128 minAmountOut;
-    }
-
-    function swapExactAmountIn(
-        OverallInfoIn memory info,
-        IVault.SwapIn[] memory swaps,
+interface ISwapValidator {
+    function validate(
+        IVault.SwapKind kind,
         IERC20[] memory tokens,
-        bool withdrawTokens
+        int256[] memory vaultDeltas,
+        address caller, //TODO: is it useful to validate?
+        address from, //TODO: is it useful to validate?
+        address to, //TODO: is it useful to validate?
+        bytes memory data
     ) external;
 }

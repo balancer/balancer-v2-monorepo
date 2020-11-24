@@ -30,6 +30,8 @@ import "../strategies/ITradingStrategy.sol";
 import "../strategies/IPairTradingStrategy.sol";
 import "../strategies/ITupleTradingStrategy.sol";
 
+import "../validators/ISwapValidator.sol";
+
 import "./IVault.sol";
 import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
@@ -44,10 +46,6 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry, R
     using SafeCast for uint256;
     using SafeCast for uint128;
 
-    // Despite the external API having two separate functions for given in and given out, internally their are handled
-    // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
-    enum SwapKind { GIVEN_IN, GIVEN_OUT }
-
     // This struct is identical in layout to SwapIn and SwapOut, except the 'amountIn/Out' field is named 'amount'.
     struct SwapInternal {
         bytes32 poolId;
@@ -58,19 +56,41 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry, R
     }
 
     function batchSwapGivenIn(
+        ISwapValidator validator,
+        bytes memory validatorData,
         SwapIn[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds
-    ) external override returns (int256[] memory) {
-        return _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
+    ) external override {
+        int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
+        validator.validate(
+            SwapKind.GIVEN_IN,
+            tokens,
+            tokenDeltas,
+            msg.sender,
+            funds.sender,
+            funds.recipient,
+            validatorData
+        );
     }
 
     function batchSwapGivenOut(
+        ISwapValidator validator,
+        bytes memory validatorData,
         SwapOut[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds
-    ) external override returns (int256[] memory) {
-        return _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
+    ) external override {
+        int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
+        validator.validate(
+            SwapKind.GIVEN_OUT,
+            tokens,
+            tokenDeltas,
+            msg.sender,
+            funds.sender,
+            funds.recipient,
+            validatorData
+        );
     }
 
     // We use inline assembly to cast from the external struct types to the internal one. This doesn't trigger any
