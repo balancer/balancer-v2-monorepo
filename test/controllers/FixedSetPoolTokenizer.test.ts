@@ -206,7 +206,7 @@ describe('FixedSetPoolTokenizer', function () {
         expect(await vault.getUserTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
       });
 
-      it('withdraw from user balance and missing amount from token balance', async () => {
+      it('transfers missing tokens if user balance is not enough', async () => {
         await vault.connect(lp).deposit(tokens.DAI.address, BigNumber.from((0.1e18).toString()).sub(1), lp.address);
         await vault.connect(lp).deposit(tokens.MKR.address, (0.2e18).toString(), lp.address);
 
