@@ -35,7 +35,7 @@ import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
 import "./UserBalance.sol";
 
-abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry, ReentrancyGuard {
+abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using BalanceLib for BalanceLib.Balance;
