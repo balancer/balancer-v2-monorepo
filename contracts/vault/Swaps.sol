@@ -63,12 +63,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry, R
         FundManagement calldata funds
     ) external override {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
-        validator.validate(
-            SwapKind.GIVEN_IN,
-            tokens,
-            tokenDeltas,
-            validatorData
-        );
+        validator.validate(SwapKind.GIVEN_IN, tokens, tokenDeltas, validatorData);
     }
 
     function batchSwapGivenOut(
@@ -79,12 +74,7 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry, R
         FundManagement calldata funds
     ) external override {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
-        validator.validate(
-            SwapKind.GIVEN_OUT,
-            tokens,
-            tokenDeltas,
-            validatorData
-        );
+        validator.validate(SwapKind.GIVEN_OUT, tokens, tokenDeltas, validatorData);
     }
 
     // We use inline assembly to cast from the external struct types to the internal one. This doesn't trigger any
