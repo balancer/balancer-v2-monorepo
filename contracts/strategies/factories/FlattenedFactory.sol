@@ -25,8 +25,23 @@ contract FlattenedFactory {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // TODO: Decide if we need an enumerable set for anything
+    // TODO: Move set getters to a base factory contract
     EnumerableSet.AddressSet private _flattenedStrategies;
+
+    function getTotalStrategies() external view returns (uint256) {
+        return _flattenedStrategies.length();
+    }
+
+    function getStrategies(uint256 start, uint256 end) external view returns (address[] memory) {
+        require((end >= start) && (end - start) <= _flattenedStrategies.length(), "Bad indices");
+
+        address[] memory strategy = new address[](end - start);
+        for (uint256 i = 0; i < strategy.length; ++i) {
+            strategy[i] = _flattenedStrategies.at(i + start);
+        }
+
+        return strategy;
+    }
 
     event StrategyCreated(address indexed strategy);
 

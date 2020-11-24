@@ -12,15 +12,16 @@ let vault: Contract;
 let script: Contract;
 let tokens: TokenList;
 
+let admin: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
 
 const BATCHED_SWAP_TOTAL_POOLS = 8;
 
 async function main() {
-  [, controller, trader] = await ethers.getSigners();
+  [, admin, controller, trader] = await ethers.getSigners();
 
-  vault = await deploy('Vault', { args: [controller.address] });
+  vault = await deploy('Vault', { args: [admin.address] });
 
   await vaultStats();
 

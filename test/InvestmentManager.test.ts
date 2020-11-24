@@ -26,7 +26,7 @@ describe('InvestmentManager', function () {
   beforeEach(async function () {
     [, admin, owner] = await ethers.getSigners();
 
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    vault = await deploy('Vault', { args: [admin.address] });
 
     strategy = await deploy('MockTradingStrategy', { args: [] });
 
