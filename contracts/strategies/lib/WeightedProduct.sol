@@ -28,6 +28,7 @@ import "../../math/LogExpMath.sol";
 
 contract WeightedProduct {
     using SafeCast for uint256;
+    using SafeCast for int256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -52,7 +53,9 @@ contract WeightedProduct {
 
         uint256 quotient = tokenBalanceIn.div(tokenBalanceIn.add(tokenAmountIn));
         uint256 weightRatio = tokenWeightIn.div(tokenWeightOut);
-        uint256 ratio = FixedPoint.ONE.sub(uint128(LogExpMath.exp(int256(quotient), int256(weightRatio))));
+        uint256 ratio = FixedPoint.ONE.sub(
+            LogExpMath.exp(int256(quotient), int256(weightRatio)).toUint256().toUint128()
+        );
 
         return tokenBalanceOut.mul(ratio).toUint128();
     }
@@ -78,7 +81,9 @@ contract WeightedProduct {
 
         uint256 quotient = tokenBalanceOut.div(tokenBalanceOut.sub(tokenAmountOut));
         uint256 weightRatio = tokenWeightOut.div(tokenWeightIn);
-        uint256 ratio = uint128(LogExpMath.exp(int256(quotient), int256(weightRatio))).sub(FixedPoint.ONE);
+        uint256 ratio = LogExpMath.exp(int256(quotient), int256(weightRatio)).toUint256().toUint128().sub(
+            FixedPoint.ONE
+        );
 
         return tokenBalanceIn.mul(ratio).toUint128();
     }
