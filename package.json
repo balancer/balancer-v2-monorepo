@@ -7,7 +7,9 @@
   "scripts": {
     "benchmark-cwp": "hardhat run scripts/gas/measureCWPSwap.ts",
     "benchmark-flattened": "hardhat run scripts/gas/measureFlattenedSwap.ts",
-    "benchmark": "yarn benchmark-cwp && yarn benchmark-flattened",
+    "benchmark-multihop": "hardhat run scripts/gas/measureMultihop.ts",
+    "benchmark-fanout": "hardhat run scripts/gas/measureFanout.ts",
+    "benchmark": "yarn benchmark-cwp && yarn benchmark-flattened && yarn benchmark-multihop && yarn benchmark-fanout",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",

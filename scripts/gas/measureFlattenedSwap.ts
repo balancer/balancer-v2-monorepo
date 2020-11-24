@@ -2,11 +2,11 @@ import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
 import { setupPool } from '../helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
-import { toFixedPoint } from '../helpers/fixedPoint';
 import { Contract } from 'ethers';
 import { getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
+import { vaultStats, printGas } from './setup';
 
 let vault: Contract;
 let script: Contract;
@@ -22,7 +22,7 @@ async function main() {
 
   vault = await deploy('Vault', { args: [] });
 
-  await vaultStats();
+  await vaultStats(vault);
 
   script = await deploy('TradeScript', { args: [vault.address] });
 
@@ -45,18 +45,6 @@ async function main() {
 
   await batchedSwap(false);
   await batchedSwap(true);
-}
-
-async function vaultStats() {
-  console.log('# Vault');
-
-  const deployReceipt = await ethers.provider.getTransactionReceipt(vault.deployTransaction.hash);
-  console.log(`Deployment costs ${printGas(deployReceipt.gasUsed.toNumber())}`);
-
-  const deployedBytecode = await ethers.provider.getCode(vault.address);
-  const bytecodeSizeKb = deployedBytecode.slice(2).length / 2 / 1024;
-
-  console.log(`Deployed bytecode size is ${bytecodeSizeKb} kB`);
 }
 
 async function batchedSwap(withdrawTokens: boolean) {
@@ -110,10 +98,6 @@ async function batchedSwap(withdrawTokens: boolean) {
       `Using ${poolAmount} pools: ${printGas(receipt.gasUsed)} (${printGas(receipt.gasUsed / poolAmount)} per pool)`
     );
   }
-}
-
-function printGas(gas: number): string {
-  return `${Math.trunc(gas / 1000)}k`;
 }
 
 main()
