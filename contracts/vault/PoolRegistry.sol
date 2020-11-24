@@ -205,7 +205,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             {
-                 // scope for toReceive and received - avoids 'stack too deep' error 
+                // scope for toReceive and received - avoids 'stack too deep' error
                 uint128 toReceive = amounts[i];
                 if (withdrawFromUserBalance) {
                     uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][tokens[i]], toReceive));
