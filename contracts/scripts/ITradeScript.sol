@@ -35,6 +35,7 @@ interface ITradeScript {
         OverallInfoIn memory info,
         IVault.SwapIn[] memory swaps,
         IERC20[] memory tokens,
-        bool withdrawTokens
+        bool withdrawTokens,
+        uint256 deadline
     ) external;
 }

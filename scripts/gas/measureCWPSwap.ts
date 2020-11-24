@@ -92,6 +92,8 @@ async function batchedSwap(withdrawTokens: boolean) {
       })
     );
 
+    const latestBlock = await ethers.provider.getBlock('latest');
+
     const receipt = await (
       await script.connect(trader).swapExactAmountIn(
         {
@@ -102,7 +104,8 @@ async function batchedSwap(withdrawTokens: boolean) {
         },
         toSwapIn(swaps),
         tokenAddresses,
-        withdrawTokens
+        withdrawTokens,
+        latestBlock.timestamp + 100
       )
     ).wait();
 

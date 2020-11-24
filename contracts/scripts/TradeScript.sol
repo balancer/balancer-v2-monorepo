@@ -33,12 +33,18 @@ contract TradeScript is ITradeScript {
         _vault = vault;
     }
 
+    modifier beforeDeadline(uint256 deadline) {
+        require(deadline >= block.timestamp, "Expired transaction");
+        _;
+    }
+
     function swapExactAmountIn(
         OverallInfoIn memory info,
         IVault.SwapIn[] memory swaps,
         IERC20[] memory tokens,
-        bool withdrawTokens
-    ) public override {
+        bool withdrawTokens,
+        uint256 deadline
+    ) public override beforeDeadline(deadline) {
         int256[] memory vaultDeltas = _vault.batchSwapGivenIn(
             swaps,
             tokens,
