@@ -29,18 +29,17 @@ contract SwapValidator is ISwapValidator {
 
     function validate(
         IVault.SwapKind kind,
-        IERC20[] memory tokens,
-        int256[] memory vaultDeltas,
-        address,
-        address,
-        address,
-        bytes memory data
-    ) public pure override {
+        IERC20[] calldata tokens,
+        int256[] calldata vaultDeltas,
+        bytes calldata data
+    ) external pure override {
+        //Decode data
         (IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut) = abi.decode(
             (data),
             (IERC20, IERC20, uint128, uint128)
         );
 
+        //Validate
         if (kind == IVault.SwapKind.GIVEN_IN) {
             for (uint256 i = 0; i < tokens.length; ++i) {
                 if (tokens[i] == overallTokenIn) {

@@ -57,38 +57,32 @@ abstract contract Swaps is IVault, VaultAccounting, UserBalance, PoolRegistry, R
 
     function batchSwapGivenIn(
         ISwapValidator validator,
-        bytes memory validatorData,
+        bytes calldata validatorData,
         SwapIn[] memory swaps,
-        IERC20[] memory tokens,
-        FundManagement memory funds
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
     ) external override {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
         validator.validate(
             SwapKind.GIVEN_IN,
             tokens,
             tokenDeltas,
-            msg.sender,
-            funds.sender,
-            funds.recipient,
             validatorData
         );
     }
 
     function batchSwapGivenOut(
         ISwapValidator validator,
-        bytes memory validatorData,
+        bytes calldata validatorData,
         SwapOut[] memory swaps,
-        IERC20[] memory tokens,
-        FundManagement memory funds
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
     ) external override {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
         validator.validate(
             SwapKind.GIVEN_OUT,
             tokens,
             tokenDeltas,
-            msg.sender,
-            funds.sender,
-            funds.recipient,
             validatorData
         );
     }
