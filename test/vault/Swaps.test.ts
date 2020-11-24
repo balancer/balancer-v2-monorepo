@@ -530,4 +530,36 @@ describe('Vault - swaps', () => {
       expect(daiBalance).to.equal((2e18).toString());
     });
   });
+
+  describe('reentrancy', () => {
+    let swaps: SwapIn[];
+
+    beforeEach(async () => {
+      //Create a strategy that reenters the vault batchswap function.
+      const strategy = await deploy('MockTradingStrategyReentrancy', {
+        args: [vault.address],
+      });
+
+      const poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
+        ['DAI', (100e18).toString()],
+        ['MKR', (100e18).toString()],
+        ['SNX', (100e18).toString()],
+      ]);
+      swaps = [
+        {
+          poolId,
+          tokenInIndex: 1,
+          tokenOutIndex: 0,
+          amountIn: (1e18).toString(), // Sell 1e18 MKR for 2e18 DAI
+          userData: '0x',
+        },
+      ];
+    });
+
+    it('reverts if batchswap is called twice', async () => {
+      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
+        'reentrant call'
+      );
+    });
+  });
 });
