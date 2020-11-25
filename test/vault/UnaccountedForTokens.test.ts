@@ -24,8 +24,8 @@ describe('Vault - unaccounted for tokens', () => {
   });
 
   beforeEach(async () => {
-    vault = await deploy('Vault', { from: admin, args: [] });
-    tokens = await deployTokens(['DAI', 'MKR']);
+    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {
       await mintTokens(tokens, symbol, controller, 100e18);

@@ -24,9 +24,9 @@ describe('Vault - pool registry', () => {
   const tokenSupply = ethers.BigNumber.from(500);
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [] });
+    vault = await deploy('Vault', { args: [controller.address] });
     strategy = await deploy('MockTradingStrategy', { args: [] });
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX']);
+    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
 
     for (const symbol in tokens) {
       await mintTokens(tokens, symbol, controller, tokenSupply.toString());
