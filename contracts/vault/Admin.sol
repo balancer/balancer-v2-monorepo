@@ -67,6 +67,12 @@ abstract contract Admin is IVault, Settings, UserBalance {
         _trustedOperatorReporters.add(reporter);
     }
 
+    function revokeTrustedOperatorReporter(address reporter) external override {
+        require(msg.sender == _admin, "Caller is not the admin");
+
+        _trustedOperatorReporters.remove(reporter);
+    }
+
     function claimUnaccountedForTokens(
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
