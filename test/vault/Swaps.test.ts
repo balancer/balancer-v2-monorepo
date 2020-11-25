@@ -1,14 +1,14 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { TokenList, deployTokens } from '../helpers/tokens';
+import { TokenList, deployTokens, deployToken } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { FundManagement, SwapIn, SwapOut } from '../../scripts/helpers/trading';
+import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
 describe('Vault - swaps', () => {
   let controller: SignerWithAddress;
@@ -29,7 +29,7 @@ describe('Vault - swaps', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [] });
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX', 'TST']);
+    tokens = await deployTokens(['DAI', 'MKR', 'SNX']);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     poolIds = [];
@@ -88,72 +88,6 @@ describe('Vault - swaps', () => {
           DAI: 2e18,
           MKR: -1e18,
         }
-      );
-    });
-
-    it('reverts if token A not in pool', async () => {
-      const tokenAddressesWithInvalid = tokenAddresses.concat([tokens.TST.address]);
-      const swaps: SwapIn[] = [
-        {
-          poolId: poolIds[0],
-          tokenInIndex: 3,
-          tokenOutIndex: 0,
-          amountIn: (1e18).toString(),
-          userData: '0x',
-        },
-      ];
-
-      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddressesWithInvalid, funds)).to.be.revertedWith(
-        'Token A not in pool'
-      );
-    });
-
-    it('reverts if token B not in pool', async () => {
-      const tokenAddressesWithInvalid = tokenAddresses.concat([tokens.TST.address]);
-      const swaps: SwapIn[] = [
-        {
-          poolId: poolIds[0],
-          tokenInIndex: 1,
-          tokenOutIndex: 3,
-          amountIn: (1e18).toString(),
-          userData: '0x',
-        },
-      ];
-
-      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddressesWithInvalid, funds)).to.be.revertedWith(
-        'Token B not in pool'
-      );
-    });
-
-    it('reverts if there is insufficient balance in the pool', async () => {
-      const swaps: SwapIn[] = [
-        {
-          poolId: poolIds[0],
-          tokenInIndex: 1,
-          tokenOutIndex: 0,
-          amountIn: (101e18).toString(),
-          userData: '0x',
-        },
-      ];
-
-      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
-        'ERR_SUB_UNDERFLOW'
-      );
-    });
-
-    it('reverts if trying to swap for same token', async () => {
-      const swaps: SwapIn[] = [
-        {
-          poolId: poolIds[0],
-          tokenInIndex: 1,
-          tokenOutIndex: 1,
-          amountIn: (1e18).toString(),
-          userData: '0x',
-        },
-      ];
-
-      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
-        'Swap for same token'
       );
     });
 
@@ -625,6 +559,109 @@ describe('Vault - swaps', () => {
     it('reverts if batchswap is called twice', async () => {
       await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
         'reentrant call'
+      );
+    });
+  });
+
+  describe('failure conditions', async () => {
+    let tokenAddressesWithInvalid: string[];
+    let invalidTokenIndex: number;
+
+    beforeEach(async () => {
+      const invalidToken = await deployToken('INV');
+      tokenAddressesWithInvalid = tokenAddresses.concat(invalidToken.address);
+      invalidTokenIndex = tokenAddressesWithInvalid.length - 1;
+    });
+
+    it('reverts if token in is not in the pool', async () => {
+      const swaps: Swap[] = [
+        {
+          poolId: poolIds[0],
+          tokenInIndex: invalidTokenIndex,
+          tokenOutIndex: 0,
+          amount: (1e18).toString(),
+          userData: '0x',
+        },
+      ];
+
+      await expect(
+        vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokenAddressesWithInvalid, funds)
+      ).to.be.revertedWith('Token A not in pool');
+
+      await expect(
+        vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokenAddressesWithInvalid, funds)
+      ).to.be.revertedWith('Token A not in pool');
+    });
+
+    it('reverts if token B not in pool', async () => {
+      const swaps: Swap[] = [
+        {
+          poolId: poolIds[0],
+          tokenInIndex: 0,
+          tokenOutIndex: invalidTokenIndex,
+          amount: (1e18).toString(),
+          userData: '0x',
+        },
+      ];
+
+      await expect(
+        vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokenAddressesWithInvalid, funds)
+      ).to.be.revertedWith('Token B not in pool');
+
+      await expect(
+        vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokenAddressesWithInvalid, funds)
+      ).to.be.revertedWith('Token B not in pool');
+    });
+
+    it('reverts if the pool has insufficient cash for token out on given in', async () => {
+      const swaps: SwapIn[] = [
+        {
+          poolId: poolIds[0],
+          tokenInIndex: 1,
+          tokenOutIndex: 0,
+          amountIn: BigNumber.from((50e18).toString()).add(1).toString(),
+          userData: '0x',
+        },
+      ];
+
+      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
+        'ERR_SUB_UNDERFLOW'
+      );
+    });
+
+    it('reverts if the pool has insufficient cash for token out on given out', async () => {
+      const swaps: SwapOut[] = [
+        {
+          poolId: poolIds[0],
+          tokenInIndex: 1,
+          tokenOutIndex: 0,
+          amountOut: BigNumber.from((100e18).toString()).add(1).toString(),
+          userData: '0x',
+        },
+      ];
+
+      await expect(vault.connect(trader).batchSwapGivenOut(swaps, tokenAddresses, funds)).to.be.revertedWith(
+        'ERR_SUB_UNDERFLOW'
+      );
+    });
+
+    it('reverts if trying to swap for same token', async () => {
+      const swaps: Swap[] = [
+        {
+          poolId: poolIds[0],
+          tokenInIndex: 1,
+          tokenOutIndex: 1,
+          amount: (1e18).toString(),
+          userData: '0x',
+        },
+      ];
+
+      await expect(vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokenAddresses, funds)).to.be.revertedWith(
+        'Swap for same token'
+      );
+
+      await expect(vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokenAddresses, funds)).to.be.revertedWith(
+        'Swap for same token'
       );
     });
   });
