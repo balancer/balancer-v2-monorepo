@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 
 export async function vaultStats(vault: Contract) {
   console.log('# Vault');
@@ -13,6 +13,10 @@ export async function vaultStats(vault: Contract) {
   console.log(`Deployed bytecode size is ${bytecodeSizeKb} kB`);
 }
 
-export function printGas(gas: number): string {
-  return `${Math.trunc(gas / 1000)}k`;
+export function printGas(gas: number | BigNumber): string {
+  if (typeof gas !== 'number') {
+    gas = gas.toNumber();
+  }
+
+  return `${(gas / 1000).toFixed(1)}k`;
 }
