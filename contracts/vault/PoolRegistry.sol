@@ -17,17 +17,15 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../vendor/EnumerableSet.sol";
-
-import "../utils/Lock.sol";
-import "../utils/Logs.sol";
 
 import "./IVault.sol";
 import "./VaultAccounting.sol";
 import "./UserBalance.sol";
 import "../investmentManagers/IInvestmentManager.sol";
 
-abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Logs {
+abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, UserBalance {
     using EnumerableSet for EnumerableSet.BytesSet;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -115,7 +113,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         return _pools.length();
     }
 
-    function getPoolIds(uint256 start, uint256 end) external view override _viewlock_ returns (bytes32[] memory) {
+    function getPoolIds(uint256 start, uint256 end) external view override returns (bytes32[] memory) {
         require((end >= start) && (end - start) <= _pools.length(), "Bad indices");
 
         bytes32[] memory poolIds = new bytes32[](end - start);
@@ -126,14 +124,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         return poolIds;
     }
 
-    function getPoolTokens(bytes32 poolId)
-        external
-        view
-        override
-        _viewlock_
-        withExistingPool(poolId)
-        returns (IERC20[] memory)
-    {
+    function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
         IERC20[] memory tokens = new IERC20[](_poolTokens[poolId].length());
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokens[i] = IERC20(_poolTokens[poolId].at(i));
@@ -158,14 +149,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         return balances;
     }
 
-    function getPoolController(bytes32 poolId)
-        external
-        view
-        override
-        withExistingPool(poolId)
-        _viewlock_
-        returns (address)
-    {
+    function getPoolController(bytes32 poolId) external view override withExistingPool(poolId) returns (address) {
         return _poolController[poolId];
     }
 
@@ -174,7 +158,6 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         view
         override
         withExistingPool(poolId)
-        _viewlock_
         returns (address, StrategyType)
     {
         (address strategy, StrategyType strategyType) = fromPoolId(poolId);
@@ -184,8 +167,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
     function setPoolController(bytes32 poolId, address controller)
         external
         override
-        _logs_
-        _lock_
+        nonReentrant
         withExistingPool(poolId)
         onlyPoolController(poolId)
     {
@@ -261,7 +243,6 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         external
         view
         override
-        _viewlock_
         withExistingPool(poolId)
         returns (uint128)
     {
@@ -272,7 +253,7 @@ abstract contract PoolRegistry is IVault, VaultAccounting, UserBalance, Lock, Lo
         bytes32 poolId,
         IERC20 token,
         uint128 percentage
-    ) external override _logs_ _lock_ withExistingPool(poolId) onlyPoolController(poolId) {
+    ) external override nonReentrant withExistingPool(poolId) onlyPoolController(poolId) {
         require(percentage <= FixedPoint.ONE, "Percentage must be between 0 and 100%");
         _investablePercentage[poolId][token] = percentage;
     }

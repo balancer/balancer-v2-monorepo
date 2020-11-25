@@ -13,27 +13,20 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../vault/IVault.sol";
 import "../math/FixedPoint.sol";
 
 import "./BToken.sol";
 
-contract FixedSetPoolTokenizer is BToken {
+contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
     using FixedPoint for uint128;
     using FixedPoint for uint256;
     using SafeCast for uint256;
 
     IVault public immutable vault;
     bytes32 public immutable poolId;
-    bool private _mutex;
-
-    modifier _lock_() {
-        require(!_mutex, "ERR_REENTRY");
-        _mutex = true;
-        _;
-        _mutex = false;
-    }
 
     constructor(
         IVault _vault,
@@ -64,7 +57,7 @@ contract FixedSetPoolTokenizer is BToken {
         uint128[] calldata maxAmountsIn,
         bool transferTokens,
         address beneficiary
-    ) external _lock_ {
+    ) external nonReentrant {
         uint256 poolTotal = totalSupply();
         uint128 ratio = poolAmountOut.div(poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
@@ -91,7 +84,7 @@ contract FixedSetPoolTokenizer is BToken {
         uint256[] calldata minAmountsOut,
         bool withdrawTokens,
         address beneficiary
-    ) external _lock_ {
+    ) external nonReentrant {
         uint256 poolTotal = totalSupply();
         uint128 ratio = poolAmountIn.div(poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
