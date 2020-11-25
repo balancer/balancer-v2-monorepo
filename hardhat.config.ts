@@ -52,6 +52,11 @@ const config: HardhatUserConfig = {
     hardhat: {
       allowUnlimitedContractSize: true,
       chainId: chainIds.hardhat,
+      saveDeployments: true,
+    },
+    localhost: {
+      allowUnlimitedContractSize: true,
+      saveDeployments: true,
     },
     goerli: createTestnetConfig("goerli"),
     kovan: createTestnetConfig("kovan"),
