@@ -7,7 +7,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { toFixedPoint } from '../helpers/fixedPoint';
-import { vaultStats, printGas } from './setup';
+import { printGas } from './misc';
 
 let vault: Contract;
 let script: Contract;
@@ -22,8 +22,6 @@ async function main() {
   [, controller, trader] = await ethers.getSigners();
 
   vault = await deploy('Vault', { args: [] });
-
-  await vaultStats(vault);
 
   script = await deploy('TradeScript', { args: [vault.address] });
 

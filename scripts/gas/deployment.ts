@@ -1,8 +1,11 @@
+import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { printGas } from './misc';
 
-export async function vaultStats(vault: Contract) {
+async function main() {
   console.log('# Vault');
+
+  const vault = await deploy('Vault', { args: [] });
 
   const deployReceipt = await ethers.provider.getTransactionReceipt(vault.deployTransaction.hash);
   console.log(`Deployment costs ${printGas(deployReceipt.gasUsed.toNumber())}`);
@@ -13,10 +16,9 @@ export async function vaultStats(vault: Contract) {
   console.log(`Deployed bytecode size is ${bytecodeSizeKb} kB`);
 }
 
-export function printGas(gas: number | BigNumber): string {
-  if (typeof gas !== 'number') {
-    gas = gas.toNumber();
-  }
-
-  return `${(gas / 1000).toFixed(1)}k`;
-}
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

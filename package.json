@@ -5,11 +5,12 @@
   "author": "Nicolás Venturo <nico@balancer.finance>",
   "license": "GPL-3.0-only",
   "scripts": {
+    "measure-gas-deployment": "hardhat run scripts/gas/deployment.ts",
     "benchmark-cwp": "hardhat run scripts/gas/measureCWPSwap.ts",
     "benchmark-flattened": "hardhat run scripts/gas/measureFlattenedSwap.ts",
     "benchmark-multihop": "hardhat run scripts/gas/measureMultihop.ts",
     "benchmark-fanout": "hardhat run scripts/gas/measureFanout.ts",
-    "benchmark": "yarn benchmark-cwp && yarn benchmark-flattened && yarn benchmark-multihop && yarn benchmark-fanout",
+    "benchmark": "yarn measure-gas-deployment && yarn benchmark-cwp && yarn benchmark-flattened && yarn benchmark-multihop && yarn benchmark-fanout",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",
