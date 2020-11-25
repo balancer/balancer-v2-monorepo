@@ -121,7 +121,7 @@ async function batchedSwap(strategyName: string, withdrawTokens: boolean) {
     console.log(
       `Using ${numPools} pools: ${printGas(receipt.gasUsed)} (${printGas(
         receipt.gasUsed / numPools
-      )} per pool) ${tokenNames.slice(0, numPools).join(' -> ')}`
+      )} per pool) ${tokenNames.slice(0, numPools + 1).join(' -> ')}`
     );
   }
 }
