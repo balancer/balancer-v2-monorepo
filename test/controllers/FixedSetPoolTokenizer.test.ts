@@ -206,15 +206,21 @@ describe('FixedSetPoolTokenizer', function () {
         expect(await vault.getUserTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
       });
 
-      it('fails if withdrawing from user balance with insufficient balance', async () => {
+      it('transfers missing tokens if user balance is not enough', async () => {
         await vault.connect(lp).deposit(tokens.DAI.address, BigNumber.from((0.1e18).toString()).sub(1), lp.address);
         await vault.connect(lp).deposit(tokens.MKR.address, (0.2e18).toString(), lp.address);
 
-        await expect(
-          tokenizer
-            .connect(lp)
-            .joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], false, lp.address)
-        ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+        await expectBalanceChange(
+          () =>
+            tokenizer
+              .connect(lp)
+              .joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], false, lp.address),
+          lp,
+          tokens,
+          {
+            DAI: -1,
+          }
+        );
       });
     });
 
