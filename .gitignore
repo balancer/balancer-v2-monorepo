@@ -111,3 +111,6 @@ artifacts/
 *.js
 
 !.eslintrc.js
+
+# hardhat deploy
+deployments/localhost

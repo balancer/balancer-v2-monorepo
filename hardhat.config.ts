@@ -8,11 +8,11 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
-      saveDeployments: false,
+      saveDeployments: true,
     },
     localhost: {
       allowUnlimitedContractSize: true,
-      saveDeployments: false,
+      saveDeployments: true,
     },
   },
   namedAccounts: {
