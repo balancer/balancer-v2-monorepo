@@ -34,7 +34,7 @@ contract TradeScript is ITradeScript {
     }
 
     modifier beforeDeadline(uint256 deadline) {
-        require(deadline >= block.timestamp, "Expired transaction");
+        require(block.timestamp <= deadline, "Expired transaction");
         _;
     }
 
