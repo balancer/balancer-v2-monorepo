@@ -6,8 +6,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { PairTS, setupPool, TradingStrategyType, TupleTS } from '../helpers/pools';
 import { toFixedPoint } from '../helpers/fixedPoint';
+import { pick } from 'lodash';
 
-export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF'];
+export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III'];
 
 export async function setupEnvironment(): Promise<{
   vault: Contract;
@@ -58,6 +59,19 @@ export async function setupStrategyAndPool(
     controller,
     symbols.map((symbol) => [symbol, (100e18).toString()])
   );
+}
+
+export async function getCWPPool(vault: Contract, tokens: TokenList): Promise<string> {
+  return setupStrategyAndPool('CWP', vault, tokens);
+}
+
+export async function getFlattenedPool(
+  vault: Contract,
+  tokens: TokenList,
+  size: number,
+  offset?: number
+): Promise<string> {
+  return setupStrategyAndPool('Flattened', vault, pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0))));
 }
 
 async function getSigners(): Promise<{ trader: SignerWithAddress; controller: SignerWithAddress }> {

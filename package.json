@@ -7,9 +7,8 @@
   "scripts": {
     "measure-gas-deployment": "hardhat run scripts/gas-measurement/deployment.ts",
     "measure-gas-single-pair": "hardhat run scripts/gas-measurement/singlePair.ts",
-    "benchmark-multihop": "hardhat run scripts/gas-measurement/measureMultihop.ts",
-    "benchmark-fanout": "hardhat run scripts/gas-measurement/measureFanout.ts",
-    "benchmark": "yarn measure-gas-deployment && yarn measure-gas-single-pair && yarn benchmark-multihop && yarn benchmark-fanout",
+    "measure-gas-multihop": "hardhat run scripts/gas-measurement/multihop.ts",
+    "benchmark": "yarn measure-gas-deployment && yarn measure-gas-single-pair && yarn measure-gas-multihop",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "lint": "yarn lint:solidity && yarn lint:typescript",

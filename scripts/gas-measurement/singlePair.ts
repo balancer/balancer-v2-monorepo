@@ -2,9 +2,8 @@ import { getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { printGas, setupEnvironment, setupStrategyAndPool, tokenSymbols } from './misc';
+import { getCWPPool, getFlattenedPool, printGas, setupEnvironment, tokenSymbols } from './misc';
 import { MAX_UINT128 } from '../../test/helpers/constants';
-import { pick } from 'lodash';
 
 let vault: Contract;
 let script: Contract;
@@ -12,39 +11,34 @@ let tokens: TokenList;
 
 let trader: SignerWithAddress;
 
-const TOTAL_POOLS = 8;
+const MAX_POOLS = 8;
 
 async function main() {
   ({ vault, script, tokens, trader } = await setupEnvironment());
 
   console.log('== Single token pair in multiple pools ==');
 
-  const getCWPPool = () => setupStrategyAndPool('CWP', vault, tokens);
-
-  const getFlattenedPool = (size: number) => () =>
-    setupStrategyAndPool('Flattened', vault, pick(tokens, tokenSymbols.slice(0, size)));
-
   console.log(`\n# Constant Weighted Product Trading Strategy`);
 
-  await batchedSwap(getCWPPool, false);
-  await batchedSwap(getCWPPool, true);
+  await singlePair(() => getCWPPool(vault, tokens), false);
+  await singlePair(() => getCWPPool(vault, tokens), true);
 
   console.log(`\n# Flattened Trading Strategy with 2 tokens`);
 
-  await batchedSwap(getFlattenedPool(2), false);
-  await batchedSwap(getFlattenedPool(2), true);
+  await singlePair(() => getFlattenedPool(vault, tokens, 2), false);
+  await singlePair(() => getFlattenedPool(vault, tokens, 2), true);
 
   console.log(`\n# Flattened Trading Strategy with 4 tokens`);
 
-  await batchedSwap(getFlattenedPool(4), false);
-  await batchedSwap(getFlattenedPool(4), true);
+  await singlePair(() => getFlattenedPool(vault, tokens, 4), false);
+  await singlePair(() => getFlattenedPool(vault, tokens, 4), true);
 }
 
-async function batchedSwap(getPool: () => Promise<string>, withdrawTokens: boolean) {
+async function singlePair(getPool: () => Promise<string>, withdrawTokens: boolean) {
   console.log(`\n## ${withdrawTokens ? 'Withdrawing tokens' : 'Depositing into User Balance'}`);
 
   const pools: Array<string> = [];
-  for (let i = 0; i < TOTAL_POOLS; ++i) {
+  for (let i = 0; i < MAX_POOLS; ++i) {
     pools.push(await getPool());
   }
 
@@ -52,7 +46,7 @@ async function batchedSwap(getPool: () => Promise<string>, withdrawTokens: boole
   const tokenIn = tokenSymbols[0];
   const tokenOut = tokenSymbols[1];
 
-  for (let poolAmount = 1; poolAmount <= TOTAL_POOLS; ++poolAmount) {
+  for (let poolAmount = 1; poolAmount <= MAX_POOLS; ++poolAmount) {
     const [tokenAddresses, swaps] = getTokensSwaps(
       tokens,
       pools.slice(0, poolAmount).map((poolId) => {
