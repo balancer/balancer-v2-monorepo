@@ -20,7 +20,7 @@ import "hardhat/console.sol";
 
 import "../validators/ISwapValidator.sol";
 
-contract MockSwapValidator is ISwapValidator {
+contract MockOneToOneSwapValidator is ISwapValidator {
     event ValidationData(IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut);
 
     function validate(

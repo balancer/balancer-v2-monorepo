@@ -20,7 +20,7 @@ import "hardhat/console.sol";
 
 import "./ISwapValidator.sol";
 
-contract SwapValidator is ISwapValidator {
+contract OneToOneSwapValidator is ISwapValidator {
     using SafeCast for uint256;
     using SafeCast for int256;
     using FixedPoint for uint256;

@@ -25,7 +25,7 @@ async function main() {
 
   await vaultStats();
 
-  validator = await deploy('SwapValidator', { args: [] });
+  validator = await deploy('OneToOneSwapValidator', { args: [] });
 
   tokens = await deployTokens(['DAI', 'MKR', 'BAT'], [18, 18, 18]);
 
