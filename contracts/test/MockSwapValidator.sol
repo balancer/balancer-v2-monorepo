@@ -16,26 +16,26 @@ pragma experimental ABIEncoderV2;
 
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "hardhat/console.sol";
 
-import "../math/FixedPoint.sol";
+import "../validators/ISwapValidator.sol";
 
-import "../vault/IVault.sol";
+contract MockSwapValidator is ISwapValidator {
+    event ValidationData(IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut);
 
-interface ITradeScript {
-    struct OverallInfoIn {
-        IERC20 overallTokenIn;
-        IERC20 overallTokenOut;
-        uint128 maxAmountIn;
-        uint128 minAmountOut;
+    function validate(
+        IVault.SwapKind,
+        IERC20[] calldata,
+        int256[] calldata,
+        bytes calldata data
+    ) external override {
+        //Decode data
+        (IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut) = abi.decode(
+            (data),
+            (IERC20, IERC20, uint128, uint128)
+        );
+
+        //Validate
+        emit ValidationData(overallTokenIn, overallTokenOut, maxAmountIn, minAmountOut);
     }
-
-    function swapExactAmountIn(
-        OverallInfoIn memory info,
-        IVault.SwapIn[] memory swaps,
-        IERC20[] memory tokens,
-        bool withdrawTokens,
-        uint256 deadline
-    ) external;
 }

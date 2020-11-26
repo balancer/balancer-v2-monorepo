@@ -34,6 +34,9 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
 
     uint8 public constant MIN_TOKENS = 2;
     uint8 public constant MAX_TOKENS = 16;
+    //TODO: MIN_WEIGHT and MAX_WEIGHT should depend on lib max and min weight ratino
+    //Max weight ratio = 130
+    //Min weight ratio = 0.008
     uint8 public constant MIN_WEIGHT = 1;
 
     uint256 private immutable _swapFee;

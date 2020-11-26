@@ -5,11 +5,15 @@
   "author": "Nicolás Venturo <nico@balancer.finance>",
   "license": "GPL-3.0-only",
   "scripts": {
-    "benchmark-cwp": "hardhat run scripts/gas/measureCWPSwap.ts",
-    "benchmark-flattened": "hardhat run scripts/gas/measureFlattenedSwap.ts",
-    "benchmark": "yarn benchmark-cwp && yarn benchmark-flattened",
+    "measure-gas-deployment": "hardhat run scripts/gas-measurement/deployment.ts",
+    "measure-gas-single-pair": "hardhat run scripts/gas-measurement/singlePair.ts",
+    "measure-gas-multihop": "hardhat run scripts/gas-measurement/multihop.ts",
+    "benchmark": "yarn measure-gas-deployment && yarn measure-gas-single-pair && yarn measure-gas-multihop",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
+    "deploy:local": "hardhat --network localhost deploy",
+    "deploy:rinkeby": "hardhat --network rinkeby deploy",
+    "export": "hardhat export --export-all deployments/addresses.json",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "solhint 'contracts/**/*.sol'",
     "lint:typescript": "eslint . --ext .ts",
@@ -28,13 +32,16 @@
     "@typescript-eslint/eslint-plugin": "^4.1.1",
     "@typescript-eslint/parser": "^4.1.1",
     "chai": "^4.2.0",
+    "decimal.js": "^10.2.1",
     "eslint": "^7.9.0",
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^3.1.4",
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.0.8",
     "hardhat": "^2.0.1",
+    "hardhat-deploy": "^0.7.0-beta.28",
     "lodash.frompairs": "^4.0.1",
+    "lodash.pick": "^4.4.0",
     "mocha": "^8.1.1",
     "nodemon": "^2.0.4",
     "prettier": "^2.1.2",
@@ -44,5 +51,8 @@
     "solidity-coverage": "^0.7.12",
     "ts-node": "^8.10.2",
     "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "dotenv": "^8.2.0"
   }
 }

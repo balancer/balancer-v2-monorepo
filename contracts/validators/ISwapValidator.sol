@@ -12,21 +12,25 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./IVault.sol";
-import "./Settings.sol";
-import "./VaultAccounting.sol";
-import "./UserBalance.sol";
-import "./PoolRegistry.sol";
-import "./FlashLoanProvider.sol";
-import "./Settings.sol";
-import "./Swaps.sol";
-import "./Admin.sol";
+pragma solidity ^0.7.1;
 
-// solhint-disable no-empty-blocks
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-contract Vault is IVault, Settings, VaultAccounting, UserBalance, PoolRegistry, FlashLoanProvider, Swaps, Admin {
-    constructor(address _admin) Admin(_admin) {}
+import "../math/FixedPoint.sol";
+
+import "../vault/IVault.sol";
+
+interface ISwapValidator {
+    function validate(
+        IVault.SwapKind kind,
+        IERC20[] calldata tokens,
+        int256[] calldata vaultDeltas,
+        //address caller, //TODO: is it useful to validate?
+        //address from, //TODO: is it useful to validate?
+        //address to, //TODO: is it useful to validate?
+        bytes calldata data
+    ) external;
 }
