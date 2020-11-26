@@ -8,9 +8,9 @@ import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { FundManagement, SwapIn } from '../../scripts/helpers/trading';
+import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
 
-describe('SwapValidator', () => {
+describe('OneToOneSwapValidator', () => {
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
 
@@ -78,78 +78,98 @@ describe('SwapValidator', () => {
       withdrawFromUserBalance: false,
       depositToUserBalance: false,
     };
+
+    validator = await deploy('OneToOneSwapValidator', { args: [] });
   });
 
-  describe('OneToOneSwapValidator', () => {
-    beforeEach('deploy validator', async () => {
-      validator = await deploy('OneToOneSwapValidator', { args: [] });
+  it('validates correctly', async () => {
+    const validatorData = encodeValidatorData({
+      overallTokenIn: tokens.MKR.address,
+      overallTokenOut: tokens.DAI.address,
+      maximumAmountIn: (1e18).toString(),
+      minimumAmountOut: (2e18).toString(),
+      deadline: MAX_UINT256,
     });
 
-    it('validate correctly', async () => {
-      const validatorData = ethers.utils.defaultAbiCoder.encode(
-        ['address', 'address', 'uint128', 'uint128'],
-        [tokens.MKR.address, tokens.DAI.address, (1e18).toString(), (2e18).toString()]
-      );
+    await expectBalanceChange(
+      () => vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds),
+      trader,
+      tokens,
+      {
+        DAI: 2e18,
+        MKR: -1e18,
+      }
+    );
+  });
 
-      await expectBalanceChange(
-        () => vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds),
-        trader,
-        tokens,
-        {
-          DAI: 2e18,
-          MKR: -1e18,
-        }
-      );
+  it('reverts if too many tokens in requested', async () => {
+    const validatorData = encodeValidatorData({
+      overallTokenIn: tokens.MKR.address,
+      overallTokenOut: tokens.DAI.address,
+      maximumAmountIn: (0.2e18).toString(),
+      minimumAmountOut: (1e18).toString(),
+      deadline: MAX_UINT256,
     });
 
-    it('reverts if too many tokens in requested', async () => {
-      const validatorData = ethers.utils.defaultAbiCoder.encode(
-        ['address', 'address', 'uint128', 'uint128'],
-        [tokens.MKR.address, tokens.DAI.address, (0.2e18).toString(), (1e18).toString()]
-      );
+    await expect(
+      vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
+    ).to.be.revertedWith('Excessive amount in');
+  });
 
-      await expect(
-        vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
-      ).to.be.revertedWith('Excessive amount in');
+  it('reverts if too little tokens out received', async () => {
+    const validatorData = encodeValidatorData({
+      overallTokenIn: tokens.MKR.address,
+      overallTokenOut: tokens.DAI.address,
+      maximumAmountIn: (1e18).toString(),
+      minimumAmountOut: (3e18).toString(),
+      deadline: MAX_UINT256,
+    });
+    await expect(
+      vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
+    ).to.be.revertedWith('Not enough tokens out');
+  });
+
+  it('reverts if other tokens end up with non-zero balance', async () => {
+    const validatorData = encodeValidatorData({
+      overallTokenIn: tokens.MKR.address,
+      overallTokenOut: tokens.DAI.address,
+      maximumAmountIn: (2e18).toString(),
+      minimumAmountOut: (2e18).toString(),
+      deadline: MAX_UINT256,
     });
 
-    it('reverts if too little tokens out received', async () => {
-      const validatorData = ethers.utils.defaultAbiCoder.encode(
-        ['address', 'address', 'uint128', 'uint128'],
-        [tokens.MKR.address, tokens.DAI.address, (1e18).toString(), (3e18).toString()]
-      );
+    swaps = [
+      {
+        poolId: poolIds[0],
+        tokenInIndex: 1,
+        tokenOutIndex: 0,
+        amountIn: (1e18).toString(),
+        userData: '0x',
+      },
+      {
+        poolId: poolIds[0],
+        tokenInIndex: 1,
+        tokenOutIndex: 2,
+        amountIn: (1e18).toString(),
+        userData: '0x',
+      },
+    ];
 
-      await expect(
-        vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
-      ).to.be.revertedWith('Not enough tokens out');
+    await expect(
+      vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
+    ).to.be.revertedWith('Intermediate non-zero balance');
+  });
+
+  it('reverts if the deadline is in the past', async () => {
+    const validatorData = encodeValidatorData({
+      overallTokenIn: tokens.MKR.address,
+      overallTokenOut: tokens.DAI.address,
+      maximumAmountIn: (1e18).toString(),
+      minimumAmountOut: (3e18).toString(),
+      deadline: (await ethers.provider.getBlock('latest')).timestamp - 10,
     });
-
-    it('reverts if other tokens end up with non-zero balance', async () => {
-      const validatorData = ethers.utils.defaultAbiCoder.encode(
-        ['address', 'address', 'uint128', 'uint128'],
-        [tokens.MKR.address, tokens.DAI.address, (2e18).toString(), (2e18).toString()]
-      );
-
-      swaps = [
-        {
-          poolId: poolIds[0],
-          tokenInIndex: 1,
-          tokenOutIndex: 0,
-          amountIn: (1e18).toString(),
-          userData: '0x',
-        },
-        {
-          poolId: poolIds[0],
-          tokenInIndex: 1,
-          tokenOutIndex: 2,
-          amountIn: (1e18).toString(),
-          userData: '0x',
-        },
-      ];
-
-      await expect(
-        vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
-      ).to.be.revertedWith('Intermediate non-zero balance');
-    });
+    await expect(
+      vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
+    ).to.be.revertedWith('Deadline expired');
   });
 });

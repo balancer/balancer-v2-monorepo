@@ -32,12 +32,17 @@ contract OneToOneSwapValidator is ISwapValidator {
         IERC20[] calldata tokens,
         int256[] calldata vaultDeltas,
         bytes calldata data
-    ) external pure override {
+    ) external view override {
         //Decode data
-        (IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut) = abi.decode(
-            (data),
-            (IERC20, IERC20, uint128, uint128)
-        );
+        (
+            IERC20 overallTokenIn,
+            IERC20 overallTokenOut,
+            uint128 maxAmountIn,
+            uint128 minAmountOut,
+            uint256 deadline
+        ) = abi.decode((data), (IERC20, IERC20, uint128, uint128, uint256));
+
+        require(block.timestamp <= deadline, "Deadline expired");
 
         //Validate
         for (uint256 i = 0; i < tokens.length; ++i) {

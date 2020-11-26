@@ -3,7 +3,7 @@ import { TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { getCWPPool, getFlattenedPool, printGas, setupEnvironment, tokenSymbols } from './misc';
-import { MAX_UINT128 } from '../../test/helpers/constants';
+import { MAX_UINT128, MAX_UINT256 } from '../../test/helpers/constants';
 
 let vault: Contract;
 let validator: Contract;
@@ -77,6 +77,7 @@ async function multihop(getPool: (index: number) => Promise<string>, useUserBala
           overallTokenOut,
           minimumAmountOut: 0,
           maximumAmountIn: MAX_UINT128,
+          deadline: MAX_UINT256,
         }),
         toSwapIn(swaps),
         tokenAddresses,

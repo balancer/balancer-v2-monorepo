@@ -45,6 +45,7 @@ export type OneToOneValidatorData = {
   overallTokenOut: string;
   maximumAmountIn: number | string | BigNumber;
   minimumAmountOut: number | string | BigNumber;
+  deadline: number | string | BigNumber;
 };
 
 export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<Swap>] {
@@ -80,8 +81,8 @@ export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<
 
 export function encodeValidatorData(data: OneToOneValidatorData): string {
   return ethers.utils.defaultAbiCoder.encode(
-    ['address', 'address', 'uint128', 'uint128'],
-    [data.overallTokenIn, data.overallTokenOut, data.maximumAmountIn, data.minimumAmountOut]
+    ['address', 'address', 'uint128', 'uint128', 'uint256'],
+    [data.overallTokenIn, data.overallTokenOut, data.maximumAmountIn, data.minimumAmountOut, data.deadline]
   );
 }
 

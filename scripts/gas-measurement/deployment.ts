@@ -5,7 +5,8 @@ import { printGas } from './misc';
 async function main() {
   console.log('# Vault');
 
-  const vault = await deploy('Vault', { args: [] });
+  const [, admin] = await ethers.getSigners();
+  const vault = await deploy('Vault', { args: [admin.address] });
 
   const deployReceipt = await ethers.provider.getTransactionReceipt(vault.deployTransaction.hash);
   console.log(`Deployment costs ${printGas(deployReceipt.gasUsed.toNumber())}`);
