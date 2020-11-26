@@ -582,7 +582,7 @@ describe('Vault - swaps', () => {
 
   describe('validators', () => {
     beforeEach('deploy validator', async () => {
-      validator = await deploy('MockOneToOneSwapValidator', { args: [] });
+      validator = await deploy('MockSwapValidator', { args: [] });
     });
 
     it.skip('call validator with correct data', async () => {
