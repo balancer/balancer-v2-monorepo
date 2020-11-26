@@ -42,6 +42,9 @@ contract OneToOneSwapValidator is ISwapValidator {
             uint256 deadline
         ) = abi.decode((data), (IERC20, IERC20, uint128, uint128, uint256));
 
+        // Using timestamps is fine here, since the potential for griefing is minimal here. At the worst, a miner could
+        // force a swap to fail by advancing the timestamp.
+        // solhint-disable-next-line not-rely-on-time
         require(block.timestamp <= deadline, "Deadline expired");
 
         //Validate
