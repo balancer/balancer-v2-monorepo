@@ -1,11 +1,13 @@
 import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
 import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
-import { BigNumber, Contract, Signer } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { PairTS, setupPool, TradingStrategyType, TupleTS } from '../helpers/pools';
 import { toFixedPoint } from '../helpers/fixedPoint';
+
+export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF'];
 
 export async function setupEnvironment(): Promise<{
   vault: Contract;
@@ -13,18 +15,15 @@ export async function setupEnvironment(): Promise<{
   tokens: TokenList;
   trader: SignerWithAddress;
 }> {
-  const { trader, controller } = await getSigners();
+  const { trader } = await getSigners();
 
   const vault = await deploy('Vault', { args: [] });
 
   const script = await deploy('TradeScript', { args: [vault.address] });
 
-  const tokens = await deployTokens(['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF']);
+  const tokens = await deployTokens(tokenSymbols);
 
   for (const symbol in tokens) {
-    // controller tokens are used to initialize pools
-    await mintTokens(tokens, symbol, controller, 100e18);
-
     // trader tokens are used to trade and not have non-zero balances
     await mintTokens(tokens, symbol, trader, 200e18);
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
@@ -39,7 +38,7 @@ export async function setupEnvironment(): Promise<{
   return { vault, script, tokens, trader };
 }
 
-type TradingStrategy = 'CWP' | 'Flattened';
+export type TradingStrategy = 'CWP' | 'Flattened';
 
 export async function setupStrategyAndPool(
   strategyKind: TradingStrategy,
