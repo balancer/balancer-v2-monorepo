@@ -31,9 +31,9 @@ describe('SwapValidator - swaps', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [] });
+    vault = await deploy('Vault', { args: [controller.address] });
 
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX']);
+    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     poolIds = [];
@@ -82,7 +82,7 @@ describe('SwapValidator - swaps', () => {
   });
 
   describe('vault', () => {
-    beforeEach(async () => {
+    beforeEach('deploy validator', async () => {
       validator = await deploy('MockSwapValidator', { args: [] });
     });
 
@@ -110,7 +110,7 @@ describe('SwapValidator - swaps', () => {
     });
   });
   describe('swap validation', () => {
-    beforeEach(async () => {
+    beforeEach('deploy validator', async () => {
       validator = await deploy('SwapValidator', { args: [] });
     });
 
@@ -131,7 +131,7 @@ describe('SwapValidator - swaps', () => {
       );
     });
 
-    it('reverts if too many tokens in', async () => {
+    it('reverts if too many tokens in requested', async () => {
       const validatorData = ethers.utils.defaultAbiCoder.encode(
         ['address', 'address', 'uint128', 'uint128'],
         [tokens.MKR.address, tokens.DAI.address, (0.2e18).toString(), (1e18).toString()]
@@ -142,7 +142,7 @@ describe('SwapValidator - swaps', () => {
       ).to.be.revertedWith('Excessive amount in');
     });
 
-    it('reverts if not enough tokens out', async () => {
+    it('reverts if too little tokens out received', async () => {
       const validatorData = ethers.utils.defaultAbiCoder.encode(
         ['address', 'address', 'uint128', 'uint128'],
         [tokens.MKR.address, tokens.DAI.address, (1e18).toString(), (3e18).toString()]

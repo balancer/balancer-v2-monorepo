@@ -12,21 +12,22 @@ let vault: Contract;
 let validator: Contract;
 let tokens: TokenList;
 
+let admin: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
 
 const BATCHED_SWAP_TOTAL_POOLS = 8;
 
 async function main() {
-  [, controller, trader] = await ethers.getSigners();
+  [, admin, controller, trader] = await ethers.getSigners();
 
-  vault = await deploy('Vault', { args: [] });
+  vault = await deploy('Vault', { args: [admin.address] });
 
   await vaultStats();
 
   validator = await deploy('SwapValidator', { args: [] });
 
-  tokens = await deployTokens(['DAI', 'MKR', 'BAT']);
+  tokens = await deployTokens(['DAI', 'MKR', 'BAT'], [18, 18, 18]);
 
   for (const symbol in tokens) {
     // controller tokens are used to initialize pools
