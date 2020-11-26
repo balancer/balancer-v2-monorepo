@@ -9,7 +9,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { MAX_UINT256 } from '../../test/helpers/constants';
 
 let vault: Contract;
-let script: Contract;
+let validator: Contract;
 let tokens: TokenList;
 
 let controller: SignerWithAddress;
@@ -24,7 +24,7 @@ async function main() {
 
   await vaultStats();
 
-  script = await deploy('TradeScript', { args: [vault.address] });
+  validator = await deploy('SwapValidator', { args: [] });
 
   tokens = await deployTokens(['DAI', 'MKR']);
 
@@ -38,9 +38,6 @@ async function main() {
 
     // deposit user balance for trader to make it non-zero
     await vault.connect(trader).deposit(tokens[symbol].address, (300e18).toString(), trader.address);
-
-    // Approve script to use tokens
-    await vault.connect(trader).authorizeOperator(script.address);
   }
 
   await batchedSwap(false);
@@ -90,20 +87,20 @@ async function batchedSwap(withdrawTokens: boolean) {
       })
     );
 
+    const validatorData = ethers.utils.defaultAbiCoder.encode(
+      ['address', 'address', 'uint128', 'uint128'],
+      [tokens.DAI.address, tokens.MKR.address, (2e18 * poolAmount).toString(), (1e18 * poolAmount).toString()]
+    );
+
     indexes.push([0, 1]);
 
     const receipt = await (
-      await script.connect(trader).swapExactAmountIn(
-        {
-          overallTokenIn: tokens.DAI.address,
-          overallTokenOut: tokens.MKR.address,
-          minAmountOut: (1e18 * poolAmount).toString(),
-          maxAmountIn: (2e18 * poolAmount).toString(),
-        },
-        toSwapIn(swaps),
-        tokenAddresses,
-        withdrawTokens
-      )
+      await vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, toSwapIn(swaps), tokenAddresses, {
+        sender: trader.address,
+        recipient: trader.address,
+        withdrawFromUserBalance: false,
+        depositToUserBalance: !withdrawTokens,
+      })
     ).wait();
 
     console.log(

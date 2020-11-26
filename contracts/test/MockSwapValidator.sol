@@ -18,21 +18,17 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
-import "./ISwapValidator.sol";
+import "../validators/ISwapValidator.sol";
 
-contract SwapValidator is ISwapValidator {
-    using SafeCast for uint256;
-    using SafeCast for int256;
-    using FixedPoint for uint256;
-    using FixedPoint for int256;
-    using FixedPoint for uint128;
+contract MockSwapValidator is ISwapValidator {
+    event ValidationData(IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut);
 
     function validate(
         IVault.SwapKind,
-        IERC20[] calldata tokens,
-        int256[] calldata vaultDeltas,
+        IERC20[] calldata,
+        int256[] calldata,
         bytes calldata data
-    ) external pure override {
+    ) external override {
         //Decode data
         (IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut) = abi.decode(
             (data),
@@ -40,14 +36,6 @@ contract SwapValidator is ISwapValidator {
         );
 
         //Validate
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == overallTokenIn) {
-                require(vaultDeltas[i] <= maxAmountIn, "Excessive amount in");
-            } else if (tokens[i] == overallTokenOut) {
-                require(vaultDeltas[i].abs() >= minAmountOut, "Not enough tokens out");
-            } else {
-                require(vaultDeltas[i] == 0, "Intermediate non-zero balance");
-            }
-        }
+        emit ValidationData(overallTokenIn, overallTokenOut, maxAmountIn, minAmountOut);
     }
 }

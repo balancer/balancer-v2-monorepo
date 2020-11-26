@@ -29,6 +29,7 @@ describe('Vault - swaps', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [] });
+
     tokens = await deployTokens(['DAI', 'MKR', 'SNX']);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
