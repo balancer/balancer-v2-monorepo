@@ -12,17 +12,17 @@ export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'H
 
 export async function setupEnvironment(): Promise<{
   vault: Contract;
-  script: Contract;
+  validator: Contract;
   tokens: TokenList;
   trader: SignerWithAddress;
 }> {
-  const { trader } = await getSigners();
+  const { admin, trader } = await getSigners();
 
-  const vault = await deploy('Vault', { args: [] });
+  const vault = await deploy('Vault', { args: [admin.address] });
 
-  const script = await deploy('TradeScript', { args: [vault.address] });
+  const validator = await deploy('OneToOneSwapValidator', { args: [] });
 
-  const tokens = await deployTokens(tokenSymbols);
+  const tokens = await deployTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 
   for (const symbol in tokens) {
     // trader tokens are used to trade and not have non-zero balances
@@ -31,12 +31,9 @@ export async function setupEnvironment(): Promise<{
 
     // deposit user balance for trader to make it non-zero
     await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), trader.address);
-
-    // Approve script to use tokens
-    await vault.connect(trader).authorizeOperator(script.address);
   }
 
-  return { vault, script, tokens, trader };
+  return { vault, validator, tokens, trader };
 }
 
 export type TradingStrategy = 'CWP' | 'Flattened';
@@ -74,10 +71,14 @@ export async function getFlattenedPool(
   return setupStrategyAndPool('Flattened', vault, pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0))));
 }
 
-async function getSigners(): Promise<{ trader: SignerWithAddress; controller: SignerWithAddress }> {
-  const [, trader, controller] = await ethers.getSigners();
+async function getSigners(): Promise<{
+  admin: SignerWithAddress;
+  trader: SignerWithAddress;
+  controller: SignerWithAddress;
+}> {
+  const [, admin, trader, controller] = await ethers.getSigners();
 
-  return { trader, controller };
+  return { admin, trader, controller };
 }
 
 async function setupTradingStrategy(

@@ -12,25 +12,25 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+pragma experimental ABIEncoderV2;
+
 pragma solidity ^0.7.1;
 
-contract Logs {
-    event LogSwap(
-        address indexed caller,
-        address indexed tokenIn,
-        address indexed tokenOut,
-        uint256 tokenAmountIn,
-        uint256 tokenAmountOut
-    );
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-    event LogJoin(address indexed caller, address indexed tokenIn, uint256 tokenAmountIn);
+import "../math/FixedPoint.sol";
 
-    event LogExit(address indexed caller, address indexed tokenOut, uint256 tokenAmountOut);
+import "../vault/IVault.sol";
 
-    event LogCall(bytes4 indexed sig, address indexed caller, bytes data);
-
-    modifier _logs_() {
-        emit LogCall(msg.sig, msg.sender, msg.data);
-        _;
-    }
+interface ISwapValidator {
+    function validate(
+        IVault.SwapKind kind,
+        IERC20[] calldata tokens,
+        int256[] calldata vaultDeltas,
+        //address caller, //TODO: is it useful to validate?
+        //address from, //TODO: is it useful to validate?
+        //address to, //TODO: is it useful to validate?
+        bytes calldata data
+    ) external;
 }

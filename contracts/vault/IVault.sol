@@ -16,6 +16,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "../validators/ISwapValidator.sol";
+
 pragma solidity ^0.7.1;
 
 // Full external interface for the Vault core contract - no external or public methods exist in the contract that don't
@@ -109,6 +111,11 @@ interface IVault {
      */
     function reportTrustedOperator(address operator) external;
 
+    /**
+     * @dev Removes `operator` as a Trusted Operator. Can only be called by a Trusted Operator Reporter.
+     */
+    function revokeTrustedOperator(address operator) external;
+
     // Pools
 
     // There are two variants of Trading Strategies for Pools: Pair Trading Strategies, and Tuple Trading Strategies.
@@ -197,8 +204,8 @@ interface IVault {
         bytes32 poolId,
         address from,
         IERC20[] calldata tokens,
-        uint128[] calldata totalAmounts,
-        uint128[] calldata amountsToTransfer
+        uint128[] calldata amounts,
+        bool withdrawFromUserBalance
     ) external;
 
     /**
@@ -215,11 +222,15 @@ interface IVault {
         bytes32 poolId,
         address to,
         IERC20[] calldata tokens,
-        uint128[] calldata totalAmounts,
-        uint128[] calldata amountsToTransfer
+        uint128[] calldata amounts,
+        bool depositToUserBalance
     ) external;
 
     // Trading interface
+
+    // Despite the external API having two separate functions for given in and given out, internally their are handled
+    // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
 
     /**
      * @dev Performs a series of swaps with one or multiple Pools. Each swap is validated and executed in order.
@@ -241,16 +252,20 @@ interface IVault {
      * Funds will be received according to the data in `fundsIn`, and sent according to `fundsOut`.
      */
     function batchSwapGivenIn(
+        ISwapValidator validator,
+        bytes calldata validatorData,
         SwapIn[] calldata swaps,
         IERC20[] memory tokens,
         FundManagement calldata funds
-    ) external returns (int256[] memory vaultDeltas);
+    ) external;
 
     function batchSwapGivenOut(
+        ISwapValidator validator,
+        bytes calldata validatorData,
         SwapOut[] calldata swaps,
         IERC20[] memory tokens,
         FundManagement calldata funds
-    ) external returns (int256[] memory vaultDeltas);
+    ) external;
 
     // batchSwap helper data structures
 
@@ -319,6 +334,12 @@ interface IVault {
      * only be called by the admin.
      */
     function authorizeTrustedOperatorReporter(address reporter) external;
+
+    /**
+     * @dev Remove authorization for `reporter` to call `reportTrustedOperator`. This is typically called on factory
+     * contracts. Can only be called by the admin.
+     */
+    function revokeTrustedOperatorReporter(address reporter) external;
 
     /**
      * @dev Transfers to `recipient` the requested amounts of unnaccounted-for tokens. Can only be called by the admin.

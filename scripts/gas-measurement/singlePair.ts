@@ -1,4 +1,4 @@
-import { getTokensSwaps, toSwapIn } from '../helpers/trading';
+import { encodeValidatorData, FundManagement, getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -6,7 +6,7 @@ import { getCWPPool, getFlattenedPool, printGas, setupEnvironment, tokenSymbols 
 import { MAX_UINT128 } from '../../test/helpers/constants';
 
 let vault: Contract;
-let script: Contract;
+let validator: Contract;
 let tokens: TokenList;
 
 let trader: SignerWithAddress;
@@ -14,7 +14,7 @@ let trader: SignerWithAddress;
 const MAX_POOLS = 8;
 
 async function main() {
-  ({ vault, script, tokens, trader } = await setupEnvironment());
+  ({ vault, validator, tokens, trader } = await setupEnvironment());
 
   console.log('== Single token pair in multiple pools ==');
 
@@ -34,8 +34,15 @@ async function main() {
   await singlePair(() => getFlattenedPool(vault, tokens, 4), true);
 }
 
-async function singlePair(getPool: () => Promise<string>, withdrawTokens: boolean) {
-  console.log(`\n## ${withdrawTokens ? 'Withdrawing tokens' : 'Depositing into User Balance'}`);
+async function singlePair(getPool: () => Promise<string>, useUserBalance: boolean) {
+  console.log(`\n## ${useUserBalance ? 'Using User Balance' : 'Sending and receiving tokens'}`);
+
+  const funds: FundManagement = {
+    sender: trader.address,
+    recipient: trader.address,
+    withdrawFromUserBalance: useUserBalance,
+    depositToUserBalance: useUserBalance,
+  };
 
   const pools: Array<string> = [];
   for (let i = 0; i < MAX_POOLS; ++i) {
@@ -55,16 +62,17 @@ async function singlePair(getPool: () => Promise<string>, withdrawTokens: boolea
     );
 
     const receipt = await (
-      await script.connect(trader).swapExactAmountIn(
-        {
+      await vault.connect(trader).batchSwapGivenIn(
+        validator.address,
+        encodeValidatorData({
           overallTokenIn: tokens[tokenIn].address,
           overallTokenOut: tokens[tokenOut].address,
-          minAmountOut: 0,
-          maxAmountIn: MAX_UINT128,
-        },
+          minimumAmountOut: 0,
+          maximumAmountIn: MAX_UINT128,
+        }),
         toSwapIn(swaps),
         tokenAddresses,
-        withdrawTokens
+        funds
       )
     ).wait();
 

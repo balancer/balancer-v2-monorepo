@@ -1,3 +1,5 @@
+import { BigNumber } from 'ethers';
+import { ethers } from 'hardhat';
 import { TokenList } from '../../test/helpers/tokens';
 
 export type Trade = {
@@ -38,6 +40,13 @@ export type FundManagement = {
   depositToUserBalance: boolean;
 };
 
+export type OneToOneValidatorData = {
+  overallTokenIn: string;
+  overallTokenOut: string;
+  maximumAmountIn: number | string | BigNumber;
+  minimumAmountOut: number | string | BigNumber;
+};
+
 export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<Swap>] {
   const swaps: Array<Swap> = [];
 
@@ -67,6 +76,13 @@ export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<
   }
 
   return [tokenAddresses, swaps];
+}
+
+export function encodeValidatorData(data: OneToOneValidatorData): string {
+  return ethers.utils.defaultAbiCoder.encode(
+    ['address', 'address', 'uint128', 'uint128'],
+    [data.overallTokenIn, data.overallTokenOut, data.maximumAmountIn, data.minimumAmountOut]
+  );
 }
 
 export function toSwapIn(swaps: Array<Swap>): Array<SwapIn> {

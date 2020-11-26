@@ -1,4 +1,4 @@
-import { getTokensSwaps, toSwapIn } from '../helpers/trading';
+import { encodeValidatorData, FundManagement, getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -6,7 +6,7 @@ import { getCWPPool, getFlattenedPool, printGas, setupEnvironment, tokenSymbols 
 import { MAX_UINT128 } from '../../test/helpers/constants';
 
 let vault: Contract;
-let script: Contract;
+let validator: Contract;
 let tokens: TokenList;
 
 let trader: SignerWithAddress;
@@ -14,7 +14,7 @@ let trader: SignerWithAddress;
 const MAX_HOPS = 6;
 
 async function main() {
-  ({ vault, script, tokens, trader } = await setupEnvironment());
+  ({ vault, validator, tokens, trader } = await setupEnvironment());
 
   console.log('== One token in for one token out, multiple hops ==');
 
@@ -34,8 +34,15 @@ async function main() {
   await multihop((index: number) => getFlattenedPool(vault, tokens, 4, index), true);
 }
 
-async function multihop(getPool: (index: number) => Promise<string>, withdrawTokens: boolean) {
-  console.log(`\n## ${withdrawTokens ? 'Withdrawing tokens' : 'Depositing into User Balance'}`);
+async function multihop(getPool: (index: number) => Promise<string>, useUserBalance: boolean) {
+  console.log(`\n## ${useUserBalance ? 'Using User Balance' : 'Sending and receiving tokens'}`);
+
+  const funds: FundManagement = {
+    sender: trader.address,
+    recipient: trader.address,
+    withdrawFromUserBalance: useUserBalance,
+    depositToUserBalance: useUserBalance,
+  };
 
   const pools: Array<string> = [];
   for (let i = 0; i < MAX_HOPS + 1; ++i) {
@@ -63,16 +70,17 @@ async function multihop(getPool: (index: number) => Promise<string>, withdrawTok
     const overallTokenOut = tokenAddresses[swaps[swaps.length - 1].tokenOutIndex];
 
     const receipt = await (
-      await script.connect(trader).swapExactAmountIn(
-        {
+      await vault.connect(trader).batchSwapGivenIn(
+        validator.address,
+        encodeValidatorData({
           overallTokenIn,
           overallTokenOut,
-          minAmountOut: 0,
-          maxAmountIn: MAX_UINT128,
-        },
+          minimumAmountOut: 0,
+          maximumAmountIn: MAX_UINT128,
+        }),
         toSwapIn(swaps),
         tokenAddresses,
-        withdrawTokens
+        funds
       )
     ).wait();
 
