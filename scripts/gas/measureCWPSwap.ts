@@ -9,7 +9,7 @@ import { MAX_UINT256 } from '../../test/helpers/constants';
 import { toFixedPoint } from '../helpers/fixedPoint';
 
 let vault: Contract;
-let script: Contract;
+let validator: Contract;
 let tokens: TokenList;
 
 let admin: SignerWithAddress;
@@ -25,7 +25,7 @@ async function main() {
 
   await vaultStats();
 
-  script = await deploy('TradeScript', { args: [vault.address] });
+  validator = await deploy('OneToOneSwapValidator', { args: [] });
 
   tokens = await deployTokens(['DAI', 'MKR', 'BAT'], [18, 18, 18]);
 
@@ -39,9 +39,6 @@ async function main() {
 
     // deposit user balance for trader to make it non-zero
     await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), trader.address);
-
-    // Approve script to use tokens
-    await vault.connect(trader).authorizeOperator(script.address);
   }
 
   await batchedSwap(false);
@@ -93,18 +90,18 @@ async function batchedSwap(withdrawTokens: boolean) {
       })
     );
 
+    const validatorData = ethers.utils.defaultAbiCoder.encode(
+      ['address', 'address', 'uint128', 'uint128'],
+      [tokens.DAI.address, tokens.MKR.address, 500 * poolAmount, 500 * poolAmount]
+    );
+
     const receipt = await (
-      await script.connect(trader).swapExactAmountIn(
-        {
-          overallTokenIn: tokens.DAI.address,
-          overallTokenOut: tokens.MKR.address,
-          minAmountOut: 500 * poolAmount,
-          maxAmountIn: 500 * poolAmount,
-        },
-        toSwapIn(swaps),
-        tokenAddresses,
-        withdrawTokens
-      )
+      await vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, toSwapIn(swaps), tokenAddresses, {
+        sender: trader.address,
+        recipient: trader.address,
+        withdrawFromUserBalance: false, //TODO: test withdrawing from user balance?
+        depositToUserBalance: !withdrawTokens,
+      })
     ).wait();
 
     console.log(

@@ -18,43 +18,33 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
-import "./ITradeScript.sol";
+import "./ISwapValidator.sol";
 
-contract TradeScript is ITradeScript {
+contract OneToOneSwapValidator is ISwapValidator {
     using SafeCast for uint256;
     using SafeCast for int256;
     using FixedPoint for uint256;
     using FixedPoint for int256;
     using FixedPoint for uint128;
 
-    IVault private immutable _vault;
-
-    constructor(IVault vault) {
-        _vault = vault;
-    }
-
-    function swapExactAmountIn(
-        OverallInfoIn memory info,
-        IVault.SwapIn[] memory swaps,
-        IERC20[] memory tokens,
-        bool withdrawTokens
-    ) public override {
-        int256[] memory vaultDeltas = _vault.batchSwapGivenIn(
-            swaps,
-            tokens,
-            IVault.FundManagement({
-                sender: msg.sender,
-                recipient: msg.sender,
-                withdrawFromUserBalance: false,
-                depositToUserBalance: !withdrawTokens
-            })
+    function validate(
+        IVault.SwapKind,
+        IERC20[] calldata tokens,
+        int256[] calldata vaultDeltas,
+        bytes calldata data
+    ) external pure override {
+        //Decode data
+        (IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut) = abi.decode(
+            (data),
+            (IERC20, IERC20, uint128, uint128)
         );
 
+        //Validate
         for (uint256 i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == info.overallTokenIn) {
-                require(vaultDeltas[i] <= info.maxAmountIn, "Excessive amount in");
-            } else if (tokens[i] == info.overallTokenOut) {
-                require(vaultDeltas[i].abs() >= info.minAmountOut, "Not enough tokens out");
+            if (tokens[i] == overallTokenIn) {
+                require(vaultDeltas[i] <= maxAmountIn, "Excessive amount in");
+            } else if (tokens[i] == overallTokenOut) {
+                require(vaultDeltas[i].abs() >= minAmountOut, "Not enough tokens out");
             } else {
                 require(vaultDeltas[i] == 0, "Intermediate non-zero balance");
             }

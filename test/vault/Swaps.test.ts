@@ -1,8 +1,9 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { MAX_UINT256 } from '../helpers/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
+import * as expectEvent from '../helpers/expectEvent';
 import { TokenList, deployTokens, deployToken } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -16,6 +17,7 @@ describe('Vault - swaps', () => {
   let other: SignerWithAddress;
 
   let vault: Contract;
+  let validator: Contract;
   let tokens: TokenList = {};
   let tokenAddresses: string[];
 
@@ -81,7 +83,7 @@ describe('Vault - swaps', () => {
       ];
 
       await expectBalanceChange(
-        () => vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds),
+        () => vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
         trader,
         tokens,
         {
@@ -112,7 +114,7 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         async () => {
-          await vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds);
+          await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
         },
         trader,
         tokens,
@@ -142,7 +144,7 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         async () => {
-          await vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds);
+          await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
         },
         trader,
         tokens,
@@ -172,7 +174,7 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         async () => {
-          await vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds);
+          await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
         },
         trader,
         tokens,
@@ -191,9 +193,9 @@ describe('Vault - swaps', () => {
         },
       ];
 
-      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
-        'Unknown amount in on first swap'
-      );
+      await expect(
+        vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds)
+      ).to.be.revertedWith('Unknown amount in on first swap');
     });
 
     it('reverts on multihop token in and out mismatch', async () => {
@@ -214,9 +216,9 @@ describe('Vault - swaps', () => {
         },
       ];
 
-      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
-        'Misconstructed multihop swap'
-      );
+      await expect(
+        vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds)
+      ).to.be.revertedWith('Misconstructed multihop swap');
     });
 
     it('only transfers tokens for the net vault balance change', async () => {
@@ -249,9 +251,11 @@ describe('Vault - swaps', () => {
       // Note the caller didn't even have any tokens to begin with.
       await expectBalanceChange(
         async () => {
-          await vault
-            .connect(other)
-            .batchSwapGivenIn(swaps, tokenAddresses, { ...funds, sender: other.address, recipient: other.address });
+          await vault.connect(other).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, {
+            ...funds,
+            sender: other.address,
+            recipient: other.address,
+          });
         },
         other,
         tokens,
@@ -274,7 +278,7 @@ describe('Vault - swaps', () => {
       ];
 
       await expectBalanceChange(
-        () => vault.connect(trader).batchSwapGivenOut(swaps, tokenAddresses, funds),
+        () => vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
         trader,
         tokens,
         {
@@ -305,7 +309,7 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         async () => {
-          await vault.connect(trader).batchSwapGivenOut(swaps, tokenAddresses, funds);
+          await vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
         },
         trader,
         tokens,
@@ -335,7 +339,7 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         async () => {
-          await vault.connect(trader).batchSwapGivenOut(swaps, tokenAddresses, funds);
+          await vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
         },
         trader,
         tokens,
@@ -365,7 +369,7 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         async () => {
-          await vault.connect(trader).batchSwapGivenOut(swaps, tokenAddresses, funds);
+          await vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
         },
         trader,
         tokens,
@@ -384,9 +388,9 @@ describe('Vault - swaps', () => {
         },
       ];
 
-      await expect(vault.connect(trader).batchSwapGivenOut(swaps, tokenAddresses, funds)).to.be.revertedWith(
-        'Unknown amount in on first swap'
-      );
+      await expect(
+        vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds)
+      ).to.be.revertedWith('Unknown amount in on first swap');
     });
 
     it('reverts on multihop token in and out mismatch', async () => {
@@ -407,9 +411,9 @@ describe('Vault - swaps', () => {
         },
       ];
 
-      await expect(vault.connect(trader).batchSwapGivenOut(swaps, tokenAddresses, funds)).to.be.revertedWith(
-        'Misconstructed multihop swap'
-      );
+      await expect(
+        vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds)
+      ).to.be.revertedWith('Misconstructed multihop swap');
     });
 
     it('only transfers tokens for the net vault balance change', async () => {
@@ -442,9 +446,11 @@ describe('Vault - swaps', () => {
       // Note the caller didn't even have tokens to begin with.
       await expectBalanceChange(
         async () => {
-          await vault
-            .connect(other)
-            .batchSwapGivenOut(swaps, tokenAddresses, { ...funds, sender: other.address, recipient: other.address });
+          await vault.connect(other).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, {
+            ...funds,
+            sender: other.address,
+            recipient: other.address,
+          });
         },
         other,
         tokens,
@@ -470,7 +476,11 @@ describe('Vault - swaps', () => {
 
     it('can send funds to arbitrary recipient', async () => {
       await expectBalanceChange(
-        () => vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, { ...funds, recipient: other.address }),
+        () =>
+          vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, {
+            ...funds,
+            recipient: other.address,
+          }),
         other,
         tokens,
         {
@@ -481,7 +491,7 @@ describe('Vault - swaps', () => {
 
     it('cannot withdraw funds from arbitrary sender recipient', async () => {
       await expect(
-        vault.connect(other).batchSwapGivenIn(swaps, tokenAddresses, funds) // funds.sender is trader
+        vault.connect(other).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds) // funds.sender is trader
       ).to.be.revertedWith('Caller is not operator');
     });
 
@@ -489,7 +499,7 @@ describe('Vault - swaps', () => {
       await vault.connect(trader).authorizeOperator(other.address);
 
       await expectBalanceChange(
-        () => vault.connect(other).batchSwapGivenIn(swaps, tokenAddresses, funds), // funds.sender is trader
+        () => vault.connect(other).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds), // funds.sender is trader
         trader,
         tokens,
         {
@@ -504,7 +514,10 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         () =>
-          vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, { ...funds, withdrawFromUserBalance: true }),
+          vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, {
+            ...funds,
+            withdrawFromUserBalance: true,
+          }),
         trader,
         tokens,
         {
@@ -518,7 +531,11 @@ describe('Vault - swaps', () => {
 
     it('can deposit into user balance', async () => {
       await expectBalanceChange(
-        () => vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, { ...funds, depositToUserBalance: true }),
+        () =>
+          vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, {
+            ...funds,
+            depositToUserBalance: true,
+          }),
         trader,
         tokens,
         {
@@ -557,9 +574,49 @@ describe('Vault - swaps', () => {
     });
 
     it('reverts if batchswap is called twice', async () => {
-      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
-        'reentrant call'
+      await expect(
+        vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds)
+      ).to.be.revertedWith('reentrant call');
+    });
+  });
+
+  describe('validators', () => {
+    beforeEach('deploy validator', async () => {
+      validator = await deploy('MockSwapValidator', { args: [] });
+    });
+
+    it.skip('call validator with correct data', async () => {
+      const overallTokenIn = tokens.MKR.address;
+      const overallTokenOut = tokens.DAI.address;
+      const maxAmountIn = (33e18).toString();
+      const minAmountOut = (22e18).toString();
+
+      const validatorData = ethers.utils.defaultAbiCoder.encode(
+        ['address', 'address', 'uint128', 'uint128'],
+        [overallTokenIn, overallTokenOut, maxAmountIn, minAmountOut]
       );
+
+      // Send 1e18 MKR, get 2e18 DAI back
+      const swaps: SwapIn[] = [
+        {
+          poolId: poolIds[0],
+          tokenInIndex: 1,
+          tokenOutIndex: 0,
+          amountIn: (1e18).toString(),
+          userData: '0x',
+        },
+      ];
+
+      const receipt = await (
+        await vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
+      ).wait();
+
+      expectEvent.inReceipt(receipt, 'ValidationData', {
+        overallTokenIn,
+        overallTokenOut,
+        maxAmountIn,
+        minAmountOut: maxAmountIn,
+      });
     });
   });
 
@@ -585,11 +642,11 @@ describe('Vault - swaps', () => {
       ];
 
       await expect(
-        vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokenAddressesWithInvalid, funds)
+        vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', toSwapIn(swaps), tokenAddressesWithInvalid, funds)
       ).to.be.revertedWith('Token A not in pool');
 
       await expect(
-        vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokenAddressesWithInvalid, funds)
+        vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', toSwapOut(swaps), tokenAddressesWithInvalid, funds)
       ).to.be.revertedWith('Token A not in pool');
     });
 
@@ -605,11 +662,11 @@ describe('Vault - swaps', () => {
       ];
 
       await expect(
-        vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokenAddressesWithInvalid, funds)
+        vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', toSwapIn(swaps), tokenAddressesWithInvalid, funds)
       ).to.be.revertedWith('Token B not in pool');
 
       await expect(
-        vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokenAddressesWithInvalid, funds)
+        vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', toSwapOut(swaps), tokenAddressesWithInvalid, funds)
       ).to.be.revertedWith('Token B not in pool');
     });
 
@@ -624,9 +681,9 @@ describe('Vault - swaps', () => {
         },
       ];
 
-      await expect(vault.connect(trader).batchSwapGivenIn(swaps, tokenAddresses, funds)).to.be.revertedWith(
-        'ERR_SUB_UNDERFLOW'
-      );
+      await expect(
+        vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds)
+      ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
     });
 
     it('reverts if the pool has insufficient cash for token out on given out', async () => {
@@ -640,9 +697,9 @@ describe('Vault - swaps', () => {
         },
       ];
 
-      await expect(vault.connect(trader).batchSwapGivenOut(swaps, tokenAddresses, funds)).to.be.revertedWith(
-        'ERR_SUB_UNDERFLOW'
-      );
+      await expect(
+        vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds)
+      ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
     });
 
     it('reverts if trying to swap for same token', async () => {
@@ -656,13 +713,13 @@ describe('Vault - swaps', () => {
         },
       ];
 
-      await expect(vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokenAddresses, funds)).to.be.revertedWith(
-        'Swap for same token'
-      );
+      await expect(
+        vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', toSwapIn(swaps), tokenAddresses, funds)
+      ).to.be.revertedWith('Swap for same token');
 
-      await expect(vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokenAddresses, funds)).to.be.revertedWith(
-        'Swap for same token'
-      );
+      await expect(
+        vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', toSwapOut(swaps), tokenAddresses, funds)
+      ).to.be.revertedWith('Swap for same token');
     });
   });
 });
