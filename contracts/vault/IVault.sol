@@ -310,13 +310,6 @@ interface IVault {
         uint128 amountInvested
     ) external;
 
-    // Unaccounted-for Tokens
-
-    /**
-     * @dev Returns the number of unaccounted-for tokens for `token`.
-     */
-    function getTotalUnaccountedForTokens(IERC20 token) external view returns (uint256);
-
     // Admin Controls
 
     /**
@@ -330,15 +323,6 @@ interface IVault {
      * contracts. Can only be called by the admin.
      */
     function revokeTrustedOperatorReporter(address reporter) external;
-
-    /**
-     * @dev Transfers to `recipient` the requested amounts of unnaccounted-for tokens. Can only be called by the admin.
-     */
-    function claimUnaccountedForTokens(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        address recipient
-    ) external;
 
     // Missing here: setting protocol fees, changing admin
 }

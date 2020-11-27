@@ -142,9 +142,6 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         int256[] memory tokenDeltas = new int256[](tokens.length);
 
-        // Contains the swap protocol fees charged for each token
-        uint128[] memory tokenSwapProtocolFees = new uint128[](tokens.length);
-
         LastSwapData memory previous;
         SwapInternal memory swap;
 
@@ -155,7 +152,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
 
-            (uint128 amountIn, uint128 amountOut, uint128 protocolSwapFee) = _swapWithPool(
+            (uint128 amountIn, uint128 amountOut) = _swapWithPool(
                 tokens,
                 swap,
                 funds.sender,
@@ -167,14 +164,10 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             // 3: Accumulate token diffs
             tokenDeltas[swap.tokenInIndex] += amountIn;
             tokenDeltas[swap.tokenOutIndex] -= amountOut;
-
-            // 3b: Accumulate token swap protocol fees
-            tokenSwapProtocolFees[swap.tokenInIndex] = tokenSwapProtocolFees[swap.tokenInIndex].add128(protocolSwapFee);
         }
 
         // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
         // Step 5: Send tokens due to the recipient
-        // Step 6: Deduct swap protocol swap fees from the Vault's balance - this makes them unaccounted-for
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
 
@@ -204,8 +197,6 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                     _pushTokens(token, funds.recipient, toSend, false);
                 }
             }
-
-            _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(tokenSwapProtocolFees[i]);
         }
 
         return tokenDeltas;
@@ -255,14 +246,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         address to,
         LastSwapData memory previous,
         SwapKind kind
-    )
-        private
-        returns (
-            uint128 amountIn,
-            uint128 amountOut,
-            uint128 protocolSwapFee
-        )
-    {
+    ) private returns (uint128 amountIn, uint128 amountOut) {
         IERC20 tokenIn = tokens[swap.tokenInIndex];
         IERC20 tokenOut = tokens[swap.tokenOutIndex];
         require(tokenIn != tokenOut, "Swap for same token");
@@ -285,8 +269,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             userData: swap.userData
         });
 
-        uint128 amountQuoted;
-        (amountQuoted, protocolSwapFee) = _processQuoteRequest(request, kind);
+        uint128 amountQuoted = _processQuoteRequest(request, kind);
 
         previous.tokenQuoted = _tokenQuoted(kind, tokenIn, tokenOut);
         previous.amountQuoted = amountQuoted;
@@ -296,7 +279,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
     function _processQuoteRequest(QuoteRequestInternal memory request, SwapKind kind)
         private
-        returns (uint128 amountQuoted, uint128 protocolSwapFee)
+        returns (uint128 amountQuoted)
     {
         (address strategy, StrategyType strategyType) = fromPoolId(request.poolId);
 
@@ -304,19 +287,17 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         BalanceLib.Balance memory tokenOutFinalBalance;
 
         if (strategyType == StrategyType.PAIR) {
-            (
-                tokenInFinalBalance,
-                tokenOutFinalBalance,
-                amountQuoted,
-                protocolSwapFee
-            ) = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(strategy), kind);
+            (tokenInFinalBalance, tokenOutFinalBalance, amountQuoted) = _processPairTradingStrategyQuoteRequest(
+                request,
+                IPairTradingStrategy(strategy),
+                kind
+            );
         } else if (strategyType == StrategyType.TUPLE) {
-            (
-                tokenInFinalBalance,
-                tokenOutFinalBalance,
-                amountQuoted,
-                protocolSwapFee
-            ) = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(strategy), kind);
+            (tokenInFinalBalance, tokenOutFinalBalance, amountQuoted) = _processTupleTradingStrategyQuoteRequest(
+                request,
+                ITupleTradingStrategy(strategy),
+                kind
+            );
         } else {
             revert("Unknown strategy type");
         }
@@ -335,8 +316,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         returns (
             BalanceLib.Balance memory poolTokenInBalance,
             BalanceLib.Balance memory poolTokenOutBalance,
-            uint128,
-            uint128 protocolSwapFee
+            uint128
         )
     {
         poolTokenInBalance = _poolTokenBalance[request.poolId][request.tokenIn];
@@ -346,35 +326,21 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         require(poolTokenOutBalance.total > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
-            (uint128 amountOut, uint128 tokenInFeeAmount) = strategy.quoteOutGivenIn(
+            (uint128 amountOut, ) = strategy.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
                 poolTokenInBalance.total,
                 poolTokenOutBalance.total
             );
 
-            protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
-
-            return (
-                poolTokenInBalance.increase(request.amount.sub128(protocolSwapFee)),
-                poolTokenOutBalance.decrease(amountOut),
-                amountOut,
-                protocolSwapFee
-            );
+            return (poolTokenInBalance.increase(request.amount), poolTokenOutBalance.decrease(amountOut), amountOut);
         } else {
-            (uint128 amountIn, uint128 tokenInFeeAmount) = strategy.quoteInGivenOut(
+            (uint128 amountIn, ) = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
                 poolTokenInBalance.total,
                 poolTokenOutBalance.total
             );
 
-            protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
-
-            return (
-                poolTokenInBalance.increase(amountIn.sub128(protocolSwapFee)),
-                poolTokenOutBalance.decrease(request.amount),
-                amountIn,
-                protocolSwapFee
-            );
+            return (poolTokenInBalance.increase(amountIn), poolTokenOutBalance.decrease(request.amount), amountIn);
         }
     }
 
@@ -393,8 +359,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         returns (
             BalanceLib.Balance memory poolTokenInBalance,
             BalanceLib.Balance memory poolTokenOutBalance,
-            uint128,
-            uint128 protocolSwapFee
+            uint128
         )
     {
         uint128[] memory currentBalances = new uint128[](_poolTokens[request.poolId].length());
@@ -420,37 +385,23 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         require(poolTokenOutBalance.total > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
-            (uint128 amountOut, uint128 tokenInFeeAmount) = strategy.quoteOutGivenIn(
+            (uint128 amountOut, ) = strategy.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
                 currentBalances,
                 helper.indexIn,
                 helper.indexOut
             );
 
-            protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
-
-            return (
-                poolTokenInBalance.increase(request.amount.sub128(protocolSwapFee)),
-                poolTokenOutBalance.decrease(amountOut),
-                amountOut,
-                protocolSwapFee
-            );
+            return (poolTokenInBalance.increase(request.amount), poolTokenOutBalance.decrease(amountOut), amountOut);
         } else {
-            (uint128 amountIn, uint128 tokenInFeeAmount) = strategy.quoteInGivenOut(
+            (uint128 amountIn, ) = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
                 currentBalances,
                 helper.indexIn,
                 helper.indexOut
             );
 
-            protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
-
-            return (
-                poolTokenInBalance.increase(amountIn.sub128(protocolSwapFee)),
-                poolTokenOutBalance.decrease(request.amount),
-                amountIn,
-                protocolSwapFee
-            );
+            return (poolTokenInBalance.increase(amountIn), poolTokenOutBalance.decrease(request.amount), amountIn);
         }
     }
 }
