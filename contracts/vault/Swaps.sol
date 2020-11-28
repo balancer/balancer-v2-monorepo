@@ -213,7 +213,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                 }
             }
 
-            _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(tokenSwapProtocolFees[i]);
+            _vaultTokenBalance[token] = _vaultTokenBalance[token].decreaseCash(tokenSwapProtocolFees[i]);
         }
 
         return tokenDeltas;
@@ -363,8 +363,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
 
             return (
-                poolTokenInBalance.increase(request.amount.sub128(protocolSwapFee)),
-                poolTokenOutBalance.decrease(amountOut),
+                poolTokenInBalance.increaseCash(request.amount.sub128(protocolSwapFee)),
+                poolTokenOutBalance.decreaseCash(amountOut),
                 amountOut,
                 protocolSwapFee
             );
@@ -378,8 +378,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
 
             return (
-                poolTokenInBalance.increase(amountIn.sub128(protocolSwapFee)),
-                poolTokenOutBalance.decrease(request.amount),
+                poolTokenInBalance.increaseCash(amountIn.sub128(protocolSwapFee)),
+                poolTokenOutBalance.decreaseCash(request.amount),
                 amountIn,
                 protocolSwapFee
             );
@@ -438,8 +438,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
 
             return (
-                poolTokenInBalance.increase(request.amount.sub128(protocolSwapFee)),
-                poolTokenOutBalance.decrease(amountOut),
+                poolTokenInBalance.increaseCash(request.amount.sub128(protocolSwapFee)),
+                poolTokenOutBalance.decreaseCash(amountOut),
                 amountOut,
                 protocolSwapFee
             );
@@ -454,8 +454,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
 
             return (
-                poolTokenInBalance.increase(amountIn.sub128(protocolSwapFee)),
-                poolTokenOutBalance.decrease(request.amount),
+                poolTokenInBalance.increaseCash(amountIn.sub128(protocolSwapFee)),
+                poolTokenOutBalance.decreaseCash(request.amount),
                 amountIn,
                 protocolSwapFee
             );

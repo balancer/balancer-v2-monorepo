@@ -206,7 +206,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
                     assert(_poolTokens[poolId].add(address(tokens[i])));
                 }
 
-                _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].increase(amounts[i]);
+                _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].increaseCash(amounts[i]);
             }
         }
     }
@@ -231,7 +231,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
                 _pushTokens(tokens[i], to, amounts[i], true);
             }
 
-            _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].decrease(amounts[i]);
+            _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].decreaseCash(amounts[i]);
 
             if (_poolTokenBalance[poolId][tokens[i]].total() == 0) {
                 _poolTokens[poolId].remove(address(tokens[i]));
@@ -323,7 +323,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
             "over investment amount - cannot invest"
         );
 
-        //        _poolTokenBalance[poolId][token].cash() = _poolTokenBalance[poolId][token].cash().sub128(amountToInvest);
+        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].cashToInvested(amountToInvest);
 
         _pushTokens(token, investmentManager, amountToInvest, false);
         IInvestmentManager(investmentManager).recordPoolInvestment(poolId, amountToInvest);
@@ -343,7 +343,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
             "under investment amount - cannot divest"
         );
 
-        //   _poolTokenBalance[poolId][token].cash() = _poolTokenBalance[poolId][token].cash().add128(amountToDivest);
+        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].investedToCash(amountToDivest);
 
         // think about what happens with tokens that charge a transfer fee
         _pullTokens(token, investmentManager, amountToDivest);
@@ -361,13 +361,13 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
 
         if (targetInvestableAmount > investedAmount) {
             uint128 amountToInvest = targetInvestableAmount.sub128(investedAmount);
-            //_poolTokenBalance[poolId][token].cash() = _poolTokenBalance[poolId][token].cash().sub128(amountToInvest);
+            _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].cashToInvested(amountToInvest);
 
             _pushTokens(token, investmentManager, amountToInvest, false);
             IInvestmentManager(investmentManager).recordPoolInvestment(poolId, amountToInvest);
         } else if (targetInvestableAmount < investedAmount) {
             uint128 amountToDivest = investedAmount.sub128(targetInvestableAmount);
-            //     _poolTokenBalance[poolId][token].cash() = _poolTokenBalance[poolId][token].cash().add128(amountToDivest);
+            _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].investedToCash(amountToDivest);
 
             // think about what happens with tokens that charge a transfer fee
             _pullTokens(token, investmentManager, amountToDivest);
@@ -383,6 +383,6 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         IERC20 token,
         uint128 amountInvested
     ) public override onlyPoolInvestmentManager(poolId, token, msg.sender) {
-        //_poolTokenBalance[poolId][token].total() = amountInvested.add128(_poolTokenBalance[poolId][token].cash());
+        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].setInvested(amountInvested);
     }
 }

@@ -43,40 +43,66 @@ library BalanceLib {
         return uint128(uint256(balance)) & (2**(128) - 1);
     }
 
-    function total(bytes32 balance) internal pure returns (uint128) {
-        return uint128((uint256(balance) >> 128) & (2**(128) - 1));
-    }
-
-    function toBalance(uint128 cashBalance, uint128 totalBalance) internal pure returns (bytes32) {
-        return bytes32((uint256(totalBalance) << 128) | cashBalance);
-    }
-
     /**
      * @dev The number of invested assets. This is simply the difference between 'total' and 'cash' - the Vault has no
      * insights into how the assets are used by the Investment Manager.
      */
     function invested(bytes32 balance) internal pure returns (uint128) {
-        return total(balance) - cash(balance);
+        return uint128((uint256(balance) >> 128) & (2**(128) - 1));
+    }
+
+    function total(bytes32 balance) internal pure returns (uint128) {
+        return cash(balance).add128(invested(balance));
+    }
+
+    function toBalance(uint128 cashBalance, uint128 investedBalance) internal pure returns (bytes32) {
+        return bytes32((uint256(investedBalance) << 128) | cashBalance);
     }
 
     /**
      * @dev Increases a Pool's balance. Called when tokens are added to the Pool (except from the Investment Manager).
      */
-    function increase(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
+    function increaseCash(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
         uint128 newCash = cash(balance).add128(amount);
-        uint128 newTotal = total(balance).add128(amount);
+        uint128 newInvested = invested(balance);
 
-        return toBalance(newCash, newTotal);
+        return toBalance(newCash, newInvested);
     }
 
     /**
      * @dev Decreases a Pool's balance. Called when tokens are removed from the Pool (except to the Investment Manager).
      */
-    function decrease(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
+    function decreaseCash(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
         uint128 newCash = cash(balance).sub128(amount);
-        uint128 newTotal = total(balance).sub128(amount);
+        uint128 newInvested = invested(balance);
 
-        return toBalance(newCash, newTotal);
+        return toBalance(newCash, newInvested);
+    }
+
+    /**
+     * @dev Increases a Pool's balance. Called when tokens are added to the Pool (except from the Investment Manager).
+     */
+    function cashToInvested(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
+        uint128 newCash = cash(balance).sub128(amount);
+        uint128 newInvested = invested(balance).add128(amount);
+
+        return toBalance(newCash, newInvested);
+    }
+
+    /**
+     * @dev Decreases a Pool's balance. Called when tokens are removed from the Pool (except to the Investment Manager).
+     */
+    function investedToCash(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
+        uint128 newCash = cash(balance).add128(amount);
+        uint128 newInvested = invested(balance).sub128(amount);
+
+        return toBalance(newCash, newInvested);
+    }
+
+    function setInvested(bytes32 balance, uint128 newInvested) internal pure returns (bytes32) {
+        uint128 newCash = cash(balance);
+
+        return toBalance(newCash, newInvested);
     }
 }
 
@@ -123,7 +149,7 @@ abstract contract VaultAccounting is IVault, Settings {
 
         uint128 received = newBalance.sub(currentBalance).toUint128();
 
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].increase(received);
+        _vaultTokenBalance[token] = _vaultTokenBalance[token].increaseCash(received);
 
         return received;
     }
@@ -142,7 +168,7 @@ abstract contract VaultAccounting is IVault, Settings {
             return;
         }
 
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(amount);
+        _vaultTokenBalance[token] = _vaultTokenBalance[token].decreaseCash(amount);
 
         uint128 amountToSend = chargeFee ? _applyProtocolWithdrawFee(amount) : amount;
 
