@@ -21,6 +21,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../vendor/EnumerableSet.sol";
 
 import "./IVault.sol";
+import "./PoolBalance.sol";
 import "./VaultAccounting.sol";
 import "./UserBalance.sol";
 import "../investmentManagers/IInvestmentManager.sol";
@@ -29,7 +30,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     using EnumerableSet for EnumerableSet.BytesSet;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    using BalanceLib for bytes32;
+    using PoolBalance for bytes32;
 
     using FixedPoint for uint128;
 
