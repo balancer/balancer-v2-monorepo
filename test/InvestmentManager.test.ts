@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { deploy } from '../scripts/helpers/deploy';
 import { PairTS } from '../scripts/helpers/pools';
 import { deployTokens, TokenList } from './helpers/tokens';
@@ -31,11 +31,11 @@ describe('InvestmentManager', function () {
     strategy = await deploy('MockTradingStrategy', { args: [] });
 
     const tokenNames = ['WETH', 'DAI'];
-    tokens = await deployTokens(tokenNames, [18, 18]);
+    tokens = await deployTokens(admin.address, tokenNames, [18, 18]);
 
     await Promise.all(
       ['WETH', 'DAI'].map(async (token) => {
-        await tokens[token].mint(owner.address, (200e18).toString());
+        await tokens[token].connect(admin).mint(owner.address, (200e18).toString());
         await tokens[token].connect(owner).approve(vault.address, MAX_UINT256);
       })
     );

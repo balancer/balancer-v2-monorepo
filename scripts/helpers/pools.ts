@@ -1,4 +1,4 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { Contract, ContractReceipt } from 'ethers';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { TokenList } from '../../test/helpers/tokens';
@@ -39,7 +39,7 @@ export async function setupPool(
   for (const entry of makeup) {
     const token = tokens[entry[0]];
 
-    await token.mint(controller.address, entry[1]);
+    await token.connect(controller).mint(controller.address, entry[1]);
     await token.connect(controller).approve(vault.address, MAX_UINT256);
 
     // Transfer tokens, don't withdraw from user balance

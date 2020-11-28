@@ -3,9 +3,9 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
+import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
 describe('Vault - user balance', () => {
@@ -29,9 +29,9 @@ describe('Vault - user balance', () => {
   describe('deposit & withdraw', () => {
     beforeEach('deploy vault & tokens', async () => {
       vault = await deploy('Vault', { from: admin, args: [admin.address] });
-      tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
+      tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
 
-      await mintTokens(tokens, 'DAI', trader, amount.toString());
+      await tokens['DAI'].connect(admin).mint(trader.address, amount.toString());
     });
 
     it('user can deposit tokens', async () => {

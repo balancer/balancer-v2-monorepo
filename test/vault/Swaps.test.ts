@@ -5,7 +5,7 @@ import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { FundManagement, SwapIn, SwapOut } from '../../scripts/helpers/trading';
@@ -29,7 +29,7 @@ describe('Vault - swaps', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [controller.address] });
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     poolIds = [];
@@ -54,7 +54,7 @@ describe('Vault - swaps', () => {
 
     for (const symbol in tokens) {
       // Mint tokens for trader
-      await tokens[symbol].mint(trader.address, (200e18).toString());
+      await tokens[symbol].connect(controller).mint(trader.address, (200e18).toString());
       // Approve Vault by trader
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
     }

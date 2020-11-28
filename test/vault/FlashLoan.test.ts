@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 
 describe('Vault - flashloans', () => {
   let admin: SignerWithAddress;
@@ -19,7 +19,7 @@ describe('Vault - flashloans', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [admin.address] });
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
+    tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
 
     mockFlashLoanReceiver = await deploy('MockFlashLoanReceiver', { args: [vault.address] });
 

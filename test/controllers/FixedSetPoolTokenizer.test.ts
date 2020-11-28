@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { deploy } from '../../scripts/helpers/deploy';
 import { PairTS } from '../../scripts/helpers/pools';
 import { deployTokens, TokenList } from '../helpers/tokens';
@@ -30,13 +30,13 @@ describe('FixedSetPoolTokenizer', function () {
   beforeEach(async function () {
     vault = await deploy('Vault', { from: admin, args: [admin.address] });
 
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
+    tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
     await Promise.all(
       ['DAI', 'MKR'].map(async (token) => {
-        await tokens[token].mint(lp.address, (100e18).toString());
+        await tokens[token].connect(admin).mint(lp.address, (100e18).toString());
         await tokens[token].connect(lp).approve(vault.address, MAX_UINT256);
 
-        await tokens[token].mint(other.address, (100e18).toString());
+        await tokens[token].connect(admin).mint(other.address, (100e18).toString());
         await tokens[token].connect(other).approve(vault.address, MAX_UINT256);
       })
     );

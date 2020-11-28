@@ -5,7 +5,7 @@ import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
 import { toFixedPoint } from '../helpers/fixedPoint';
 import { Contract } from 'ethers';
 import { getTokensSwaps, toSwapIn } from '../helpers/trading';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 
 let vault: Contract;

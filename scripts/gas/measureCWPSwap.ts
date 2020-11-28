@@ -4,7 +4,7 @@ import { getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { setupPool } from '../helpers/pools';
 import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { toFixedPoint } from '../helpers/fixedPoint';
 
@@ -12,20 +12,19 @@ let vault: Contract;
 let script: Contract;
 let tokens: TokenList;
 
-let admin: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
 
 const BATCHED_SWAP_TOTAL_POOLS = 8;
 
 async function main() {
-  [, admin, controller, trader] = await ethers.getSigners();
+  [, controller, trader] = await ethers.getSigners();
 
-  vault = await deploy('Vault', { args: [admin.address] });
+  vault = await ethers.getContract('Vault');
 
-  await vaultStats();
+  // await vaultStats();
 
-  script = await deploy('TradeScript', { args: [vault.address] });
+  script = await ethers.getContract('TradeScript');
 
   tokens = await deployTokens(['DAI', 'MKR', 'BAT'], [18, 18, 18]);
 
