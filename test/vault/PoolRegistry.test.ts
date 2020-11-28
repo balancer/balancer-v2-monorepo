@@ -4,7 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { PairTS, TradingStrategyType, TupleTS } from '../../scripts/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';

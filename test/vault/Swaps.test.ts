@@ -5,13 +5,16 @@ import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../scripts/helpers/deploy';
+import { MAX_UINT256 } from '../helpers/constants';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+import { TokenList, deployTokens } from '../helpers/tokens';
+import { PairTS, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { PairTS, TradingStrategyType, TupleTS } from '../../scripts/helpers/pools';
+import { TradingStrategyType } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
-import { deployTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
-import { BigNumberish, Comparison, expectBalanceChange } from '../helpers/tokenBalance';
+import { BigNumberish, Comparison } from '../helpers/tokenBalance';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
