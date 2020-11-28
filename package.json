@@ -15,6 +15,7 @@
     "deploy:hardhat": "hardhat --network hardhat deploy",
     "deploy:local": "hardhat --network localhost deploy",
     "deploy:rinkeby": "hardhat --network rinkeby deploy",
+    "deploy:kovan": "hardhat --network kovan deploy",
     "export": "hardhat export --export-all deployments/addresses.json",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "solhint 'contracts/**/*.sol'",
@@ -27,6 +28,7 @@
     "@nomiclabs/hardhat-ethers": "^2.0.0",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@openzeppelin/contracts": "3.3.0-solc-0.7",
+    "@tenderly/hardhat-tenderly": "1.0.6",
     "@types/chai": "^4.2.12",
     "@types/lodash": "^4.14.161",
     "@types/mocha": "^8.0.3",
@@ -35,6 +37,7 @@
     "@typescript-eslint/parser": "^4.1.1",
     "chai": "^4.2.0",
     "decimal.js": "^10.2.1",
+    "dotenv": "^8.2.0",
     "eslint": "^7.9.0",
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^3.1.4",
@@ -43,6 +46,7 @@
     "hardhat": "^2.0.7",
     "hardhat-abi-exporter": "^2.0.6",
     "hardhat-deploy": "^0.7.0-beta.28",
+    "hardhat-deploy-ethers": "^0.3.0-beta.6",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
     "lodash.zip": "^4.2.0",
@@ -55,8 +59,5 @@
     "solidity-coverage": "^0.7.12",
     "ts-node": "^8.10.2",
     "typescript": "^4.0.2"
-  },
-  "dependencies": {
-    "dotenv": "^8.2.0"
   }
 }

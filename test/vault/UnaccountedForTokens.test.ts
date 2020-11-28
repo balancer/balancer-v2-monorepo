@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { createPool, PairTS, setupPool } from '../../scripts/helpers/pools';
 import { MAX_UINT256 } from '../helpers/constants';
 import { Diff, Swap } from '../../scripts/helpers/trading';
@@ -25,16 +25,16 @@ describe('Vault - unaccounted for tokens', () => {
 
   beforeEach(async () => {
     vault = await deploy('Vault', { from: admin, args: [admin.address] });
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
+    tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {
-      await mintTokens(tokens, symbol, controller, 100e18);
+      await tokens[symbol].connect(admin).mint(controller.address, (100e18).toString());
       await tokens[symbol].connect(controller).approve(vault.address, MAX_UINT256);
 
-      await mintTokens(tokens, symbol, trader, 100e18);
+      await tokens[symbol].connect(admin).mint(trader.address, (100e18).toString());
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
-      await mintTokens(tokens, symbol, other, 100e18);
+      await tokens[symbol].connect(admin).mint(other.address, (100e18).toString());
     }
   });
 

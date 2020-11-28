@@ -114,3 +114,7 @@ artifacts/
 *.js
 
 !.eslintrc.js
+
+# Ignore local evm network deployments
+deployments/localhost
+deployments/hardhat
