@@ -38,36 +38,50 @@ library BalanceLib {
     //
     // The Vault disallows the Pool's 'cash' ever becoming negative, in other words, it can never use any tokens that
     // are not inside of the Vault.
-    struct Balance {
-        uint128 cash;
-        uint128 total;
+
+    function cash(bytes32 balance) internal pure returns (uint128) {
+        return uint128(uint256(balance)) & (2**(128) - 1);
+    }
+
+    function total(bytes32 balance) internal pure returns (uint128) {
+        return uint128((uint256(balance) >> 128) & (2**(128) - 1));
+    }
+
+    function toBalance(uint128 cashBalance, uint128 totalBalance) internal pure returns (bytes32) {
+        return bytes32((uint256(totalBalance) << 128) | cashBalance);
     }
 
     /**
      * @dev The number of invested assets. This is simply the difference between 'total' and 'cash' - the Vault has no
      * insights into how the assets are used by the Investment Manager.
      */
-    function invested(Balance memory self) internal pure returns (uint128) {
-        return self.total - self.cash;
+    function invested(bytes32 balance) internal pure returns (uint128) {
+        return total(balance) - cash(balance);
     }
 
     /**
      * @dev Increases a Pool's balance. Called when tokens are added to the Pool (except from the Investment Manager).
      */
-    function increase(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
-        return Balance({ cash: self.cash.add128(amount), total: self.total.add128(amount) });
+    function increase(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
+        uint128 newCash = cash(balance).add128(amount);
+        uint128 newTotal = total(balance).add128(amount);
+
+        return toBalance(newCash, newTotal);
     }
 
     /**
      * @dev Decreases a Pool's balance. Called when tokens are removed from the Pool (except to the Investment Manager).
      */
-    function decrease(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
-        return Balance({ cash: self.cash.sub128(amount), total: self.total.sub128(amount) });
+    function decrease(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
+        uint128 newCash = cash(balance).sub128(amount);
+        uint128 newTotal = total(balance).sub128(amount);
+
+        return toBalance(newCash, newTotal);
     }
 }
 
 abstract contract VaultAccounting is IVault, Settings {
-    using BalanceLib for BalanceLib.Balance;
+    using BalanceLib for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -76,13 +90,13 @@ abstract contract VaultAccounting is IVault, Settings {
     // The Vault's accounted-for balance for each token. This should always be equal to the sum of all User Balance
     // tokens, plus all 'cash' of all Pools.
     // TODO: make this uint128 and not Balance, since it consists exclusively of 'cash'.
-    mapping(IERC20 => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
+    mapping(IERC20 => bytes32) internal _vaultTokenBalance; // token -> vault balance
 
     function getTotalUnaccountedForTokens(IERC20 token) public view override returns (uint256) {
         uint256 totalBalance = token.balanceOf(address(this));
-        assert(totalBalance >= _vaultTokenBalance[token].cash);
+        assert(totalBalance >= _vaultTokenBalance[token].cash());
 
-        return totalBalance - _vaultTokenBalance[token].cash;
+        return totalBalance - _vaultTokenBalance[token].cash();
     }
 
     /**

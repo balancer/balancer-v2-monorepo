@@ -40,7 +40,7 @@ import "./UserBalance.sol";
 abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using BalanceLib for BalanceLib.Balance;
+    using BalanceLib for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -308,8 +308,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
     {
         (address strategy, StrategyType strategyType) = fromPoolId(request.poolId);
 
-        BalanceLib.Balance memory tokenInFinalBalance;
-        BalanceLib.Balance memory tokenOutFinalBalance;
+        bytes32 tokenInFinalBalance;
+        bytes32 tokenOutFinalBalance;
 
         if (strategyType == StrategyType.PAIR) {
             (
@@ -341,23 +341,23 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
     )
         private
         returns (
-            BalanceLib.Balance memory poolTokenInBalance,
-            BalanceLib.Balance memory poolTokenOutBalance,
+            bytes32 poolTokenInBalance,
+            bytes32 poolTokenOutBalance,
             uint128,
             uint128 protocolSwapFee
         )
     {
         poolTokenInBalance = _poolTokenBalance[request.poolId][request.tokenIn];
-        require(poolTokenInBalance.total > 0, "Token A not in pool");
+        require(poolTokenInBalance.total() > 0, "Token A not in pool");
 
         poolTokenOutBalance = _poolTokenBalance[request.poolId][request.tokenOut];
-        require(poolTokenOutBalance.total > 0, "Token B not in pool");
+        require(poolTokenOutBalance.total() > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             (uint128 amountOut, uint128 tokenInFeeAmount) = strategy.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
-                poolTokenInBalance.total,
-                poolTokenOutBalance.total
+                poolTokenInBalance.total(),
+                poolTokenOutBalance.total()
             );
 
             protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
@@ -371,8 +371,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         } else {
             (uint128 amountIn, uint128 tokenInFeeAmount) = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
-                poolTokenInBalance.total,
-                poolTokenOutBalance.total
+                poolTokenInBalance.total(),
+                poolTokenOutBalance.total()
             );
 
             protocolSwapFee = _calculateProtocolSwapFee(tokenInFeeAmount);
@@ -399,8 +399,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
     )
         private
         returns (
-            BalanceLib.Balance memory poolTokenInBalance,
-            BalanceLib.Balance memory poolTokenOutBalance,
+            bytes32 poolTokenInBalance,
+            bytes32 poolTokenOutBalance,
             uint128,
             uint128 protocolSwapFee
         )
@@ -411,9 +411,9 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         for (uint256 i = 0; i < _poolTokens[request.poolId].length(); i++) {
             IERC20 token = IERC20(_poolTokens[request.poolId].at(i));
-            BalanceLib.Balance memory balance = _poolTokenBalance[request.poolId][token];
+            bytes32 balance = _poolTokenBalance[request.poolId][token];
 
-            currentBalances[i] = balance.total;
+            currentBalances[i] = balance.total();
 
             if (token == request.tokenIn) {
                 helper.indexIn = i;
@@ -424,8 +424,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             }
         }
 
-        require(poolTokenInBalance.total > 0, "Token A not in pool");
-        require(poolTokenOutBalance.total > 0, "Token B not in pool");
+        require(poolTokenInBalance.total() > 0, "Token A not in pool");
+        require(poolTokenOutBalance.total() > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             (uint128 amountOut, uint128 tokenInFeeAmount) = strategy.quoteOutGivenIn(
