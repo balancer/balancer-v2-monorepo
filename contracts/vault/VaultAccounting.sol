@@ -113,18 +113,6 @@ abstract contract VaultAccounting is IVault, Settings {
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
-    // The Vault's accounted-for balance for each token. This should always be equal to the sum of all User Balance
-    // tokens, plus all 'cash' of all Pools.
-    // TODO: make this uint128 and not Balance, since it consists exclusively of 'cash'.
-    mapping(IERC20 => bytes32) internal _vaultTokenBalance; // token -> vault balance
-
-    function getTotalUnaccountedForTokens(IERC20 token) public view override returns (uint256) {
-        uint256 totalBalance = token.balanceOf(address(this));
-        assert(totalBalance >= _vaultTokenBalance[token].cash());
-
-        return totalBalance - _vaultTokenBalance[token].cash();
-    }
-
     /**
      * @dev Transfers tokens into the Vault from `from`. The caller must verify that this action was authorized by
      * `from` (typically by the entry-point function being called by an operator for `from`).
@@ -147,16 +135,11 @@ abstract contract VaultAccounting is IVault, Settings {
 
         uint256 newBalance = token.balanceOf(address(this));
 
-        uint128 received = newBalance.sub(currentBalance).toUint128();
-
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].increaseCash(received);
-
-        return received;
+        return newBalance.sub(currentBalance).toUint128();
     }
 
     /**
-     * @dev Transfers tokens from the Vault to `to`. If `chargeFee` is true, a withdrawal fee will be charged as
-     * unaccounted-for tokens.
+     * @dev Transfers tokens from the Vault to `to`. If `chargeFee` is true, a withdrawal fee will be collected.
      */
     function _pushTokens(
         IERC20 token,
@@ -167,9 +150,6 @@ abstract contract VaultAccounting is IVault, Settings {
         if (amount == 0) {
             return;
         }
-
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].decreaseCash(amount);
-
         uint128 amountToSend = chargeFee ? _applyProtocolWithdrawFee(amount) : amount;
 
         token.safeTransfer(to, amountToSend);
