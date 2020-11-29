@@ -2,7 +2,7 @@ import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
 import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
 import { BigNumber, Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { deployPoolFromFactory, PoolName } from '../helpers/pools';
 import { toFixedPoint } from '../helpers/fixedPoint';

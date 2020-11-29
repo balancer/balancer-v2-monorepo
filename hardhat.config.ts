@@ -4,7 +4,7 @@ import { NetworkUserConfig } from 'hardhat/types';
 import '@tenderly/hardhat-tenderly';
 import 'hardhat-deploy';
 import 'hardhat-abi-exporter';
-import 'hardhat-deploy-ethers';
+import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
 import 'solidity-coverage';
 
