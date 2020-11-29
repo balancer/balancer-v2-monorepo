@@ -1,7 +1,7 @@
 import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
 import { setupPool } from '../helpers/pools';
-import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
+import { deployTokens, TokenList } from '../../test/helpers/tokens';
 import { toFixedPoint } from '../helpers/fixedPoint';
 import { Contract } from 'ethers';
 import { getTokensSwaps, toSwapIn } from '../helpers/trading';
@@ -21,20 +21,20 @@ const BATCHED_SWAP_TOTAL_POOLS = 8;
 async function main() {
   [, admin, controller, trader] = await ethers.getSigners();
 
-  vault = await deploy('Vault', { args: [admin.address] });
+  vault = await ethers.getContract('Vault');
 
-  await vaultStats();
+  // await vaultStats();
 
-  script = await deploy('TradeScript', { args: [vault.address] });
+  script = await ethers.getContract('TradeScript');
 
   tokens = await deployTokens(controller.address, ['DAI', 'MKR'], [18, 18]);
 
   for (const symbol in tokens) {
     // controller tokens are used to initialize pools
-    await mintTokens(tokens, symbol, controller, (600e18).toString());
+    tokens[symbol].connect(controller).mint(controller.address, 600e18.toString());
 
     // trader tokens are used to trade and not have non-zero balances
-    await mintTokens(tokens, symbol, trader, (600e18).toString());
+    tokens[symbol].connect(controller).mint(trader.address, 600e18.toString());
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
     // deposit user balance for trader to make it non-zero

@@ -2,7 +2,7 @@ import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
 import { getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { setupPool } from '../helpers/pools';
-import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
+import { deployTokens, TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
@@ -30,10 +30,10 @@ async function main() {
 
   for (const symbol in tokens) {
     // controller tokens are used to initialize pools
-    await mintTokens(tokens, symbol, controller, 100e18);
+    tokens[symbol].connect(controller).mint(controller.address, 100e18.toString());
 
     // trader tokens are used to trade and not have non-zero balances
-    await mintTokens(tokens, symbol, trader, 200e18);
+    tokens[symbol].connect(controller).mint(trader.address, 200e18.toString());
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
     // deposit user balance for trader to make it non-zero
