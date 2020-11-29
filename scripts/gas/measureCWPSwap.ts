@@ -26,7 +26,7 @@ async function main() {
 
   script = await ethers.getContract('TradeScript');
 
-  tokens = await deployTokens(['DAI', 'MKR', 'BAT'], [18, 18, 18]);
+  tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'BAT'], [18, 18, 18]);
 
   for (const symbol in tokens) {
     // controller tokens are used to initialize pools
