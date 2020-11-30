@@ -91,7 +91,7 @@ describe('Vault - protocol fees', () => {
 
     it('protocol fees cannot be over-withdrawn', async () => {
       await expect(
-        vault.connect(admin).withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((1e18).toString()).add(1)])
+        vault.connect(other).withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((1e18).toString()).add(1)])
       ).to.be.revertedWith('Insufficient protocol fees');
     });
   });
