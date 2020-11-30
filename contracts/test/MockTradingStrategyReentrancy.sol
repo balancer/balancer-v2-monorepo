@@ -38,7 +38,7 @@ contract MockTradingStrategyReentrancy is IPairTradingStrategy {
         ITradingStrategy.QuoteRequestGivenIn calldata request,
         uint128,
         uint128
-    ) external override returns (uint128, uint128) {
+    ) external override returns (uint128) {
         //Reenter Vault
         IVault.SwapIn[] memory swaps = new IVault.SwapIn[](0);
         IERC20[] memory tokens = new IERC20[](0);
@@ -54,14 +54,14 @@ contract MockTradingStrategyReentrancy is IPairTradingStrategy {
                 depositToUserBalance: false
             })
         );
-        return (request.amountIn, 0);
+        return request.amountIn;
     }
 
     function quoteInGivenOut(
         ITradingStrategy.QuoteRequestGivenOut calldata request,
         uint128,
         uint128
-    ) external pure override returns (uint128, uint128) {
-        return (request.amountOut, 0);
+    ) external pure override returns (uint128) {
+        return request.amountOut;
     }
 }
