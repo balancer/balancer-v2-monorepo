@@ -15,7 +15,7 @@ describe('FlattenedTradingStrategy', function () {
 
     const StableStrategyFactory: ContractFactory = await ethers.getContractFactory('FlattenedTradingStrategy');
 
-    strategy = await StableStrategyFactory.deploy((7.6e18).toString(), (0.05e18).toString()); //fee: 0.05%
+    strategy = await StableStrategyFactory.deploy((7.6e18).toString());
     await strategy.deployed();
   });
 
@@ -35,7 +35,7 @@ describe('FlattenedTradingStrategy', function () {
         0,
         1
       );
-      expect(result[0]).to.be.at.least((3.7928e18).toString());
+      expect(result).to.be.at.least((3.7928e18).toString());
     });
     it('should validate correctly three tokens', async () => {
       const result = await strategy.quoteOutGivenIn(
@@ -52,7 +52,7 @@ describe('FlattenedTradingStrategy', function () {
         0,
         1
       );
-      expect(result[0]).to.be.at.least('100888873');
+      expect(result).to.be.at.least('100888873');
     });
   });
 });
