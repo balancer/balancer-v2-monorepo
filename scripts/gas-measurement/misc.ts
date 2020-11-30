@@ -92,7 +92,6 @@ async function setupTradingStrategy(
       args: [
         symbols.map((symbol) => tokens[symbol].address),
         Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
-        toFixedPoint(0.02), // 2% fee
       ],
     });
 
@@ -101,7 +100,6 @@ async function setupTradingStrategy(
     const strategy = await deploy('FlattenedTradingStrategy', {
       args: [
         (30e18).toString(), // amp
-        toFixedPoint(0.02), // 2% fee
       ],
     });
 
