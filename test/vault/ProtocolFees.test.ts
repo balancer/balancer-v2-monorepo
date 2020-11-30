@@ -5,7 +5,7 @@ import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool } from '../../scripts/helpers/pools';
-import { MAX_UINT256 } from '../helpers/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 describe('Vault - protocol fees', () => {
@@ -38,6 +38,12 @@ describe('Vault - protocol fees', () => {
   it('admin can set protocol fee collector', async () => {
     await vault.connect(admin).setProtocolFeeCollector(collector.address);
     expect(await vault.protocolFeeCollector()).to.equal(collector.address);
+  });
+
+  it('cannot set protocol fee collector to zero address', async () => {
+    await expect(vault.connect(admin).setProtocolFeeCollector(ZERO_ADDRESS)).to.be.revertedWith(
+      'Protocol fee collector cannot be set to zero address'
+    );
   });
 
   it('non-admin cannot set protocol fee collector', async () => {
@@ -89,7 +95,14 @@ describe('Vault - protocol fees', () => {
       expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal((0.06e18).toString());
     });
 
+    it('protocol fees cannot withdrawn if collector is not set', async () => {
+      await expect(
+        vault.connect(admin).withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((0.03e18).toString()).add(1)])
+      ).to.be.revertedWith('Protocol fee collector recipient is not set');
+    });
+
     it('protocol fees cannot be over-withdrawn', async () => {
+      await vault.connect(admin).setProtocolFeeCollector(collector.address);
       await expect(
         vault.connect(admin).withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((1e18).toString()).add(1)])
       ).to.be.revertedWith('Insufficient protocol fees');

@@ -48,6 +48,8 @@ abstract contract Admin is IVault, Settings, UserBalance {
 
     function setProtocolFeeCollector(address protocolFeeCollector) external {
         require(msg.sender == _admin, "Caller is not the admin");
+        require(protocolFeeCollector != address(0), "Protocol fee collector cannot be set to zero address");
+
         _setProtocolFeeCollector(protocolFeeCollector);
     }
 
@@ -81,10 +83,13 @@ abstract contract Admin is IVault, Settings, UserBalance {
     function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external override {
         require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
+        address recipient = protocolFeeCollector();
+        require(recipient != address(0), "Protocol fee collector recipient is not set");
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             require(_collectedProtocolFees[tokens[i]] >= amounts[i], "Insufficient protocol fees");
             _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]] - amounts[i];
-            tokens[i].safeTransfer(protocolFeeCollector(), amounts[i]);
+            tokens[i].safeTransfer(recipient, amounts[i]);
         }
     }
 }
