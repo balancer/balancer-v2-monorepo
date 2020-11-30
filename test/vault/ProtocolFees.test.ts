@@ -76,7 +76,7 @@ describe('Vault - protocol fees', () => {
       expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal((0.1e18).toString());
     });
 
-    it('protocol fees are withdraw to collector address', async () => {
+    it('anybody can withdraw protocol fees to the collector address', async () => {
       await vault.connect(admin).setProtocolFeeCollector(collector.address);
       await expectBalanceChange(
         () =>
@@ -104,7 +104,7 @@ describe('Vault - protocol fees', () => {
     it('protocol fees cannot be over-withdrawn', async () => {
       await vault.connect(admin).setProtocolFeeCollector(collector.address);
       await expect(
-        vault.connect(admin).withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((1e18).toString()).add(1)])
+        vault.connect(other).withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((1e18).toString()).add(1)])
       ).to.be.revertedWith('Insufficient protocol fees');
     });
   });
