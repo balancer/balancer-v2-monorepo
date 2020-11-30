@@ -341,13 +341,9 @@ interface IVault {
     function revokeTrustedOperatorReporter(address reporter) external;
 
     /**
-     * @dev Transfers to `recipient` the requested amounts of protocol fees. Can only be called by the admin.
+     * @dev Transfers to protocolFeeCollector address the requested amounts of protocol fees. Anyone can call it.
      */
-    function withdrawProtocolFees(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        address recipient
-    ) external;
+    function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external;
 
     // Missing here: setting protocol fees, changing admin
 }

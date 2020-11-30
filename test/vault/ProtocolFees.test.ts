@@ -11,14 +11,14 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
   let controller: SignerWithAddress;
-  let recipient: SignerWithAddress;
+  let collector: SignerWithAddress;
   let other: SignerWithAddress;
 
   let vault: Contract;
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, controller, recipient, other] = await ethers.getSigners();
+    [, admin, controller, collector, other] = await ethers.getSigners();
   });
 
   beforeEach(async () => {
@@ -33,6 +33,17 @@ describe('Vault - protocol fees', () => {
 
   it('initially is zero', async () => {
     expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(0);
+  });
+
+  it('admin can set protocol fee collector', async () => {
+    await vault.connect(admin).setProtocolFeeCollector(collector.address);
+    expect(await vault.protocolFeeCollector()).to.equal(collector.address);
+  });
+
+  it('non-admin cannot set protocol fee collector', async () => {
+    await expect(vault.connect(other).setProtocolFeeCollector(collector.address)).to.be.revertedWith(
+      'Caller is not the admin'
+    );
   });
 
   describe('protocol fee charged', () => {
@@ -59,17 +70,17 @@ describe('Vault - protocol fees', () => {
       expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal((0.1e18).toString());
     });
 
-    it('protocol fees can be withdraw by admin', async () => {
+    it('protocol fees are withdraw to collector address', async () => {
+      await vault.connect(admin).setProtocolFeeCollector(collector.address);
       await expectBalanceChange(
         () =>
           vault
-            .connect(admin)
+            .connect(other)
             .withdrawProtocolFees(
               [tokens.DAI.address, tokens.MKR.address],
-              [(0.02e18).toString(), (0.04e18).toString()],
-              recipient.address
+              [(0.02e18).toString(), (0.04e18).toString()]
             ),
-        recipient,
+        collector,
         tokens,
         { DAI: (0.02e18).toString(), MKR: (0.04e18).toString() }
       );
@@ -78,17 +89,9 @@ describe('Vault - protocol fees', () => {
       expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal((0.06e18).toString());
     });
 
-    it('non-admin cannot withdraw protocol fees', async () => {
-      await expect(
-        vault.connect(other).withdrawProtocolFees([tokens.DAI.address], [(0.02e18).toString()], recipient.address)
-      ).to.be.revertedWith('Caller is not the admin');
-    });
-
     it('protocol fees cannot be over-withdrawn', async () => {
       await expect(
-        vault
-          .connect(admin)
-          .withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((1e18).toString()).add(1)], recipient.address)
+        vault.connect(admin).withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((1e18).toString()).add(1)])
       ).to.be.revertedWith('Insufficient protocol fees');
     });
   });

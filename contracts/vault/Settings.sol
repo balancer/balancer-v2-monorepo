@@ -27,6 +27,9 @@ abstract contract Settings is IVault {
     // Stores the fee collected per each token that is only withdrawable by the admin.
     mapping(IERC20 => uint256) internal _collectedProtocolFees;
 
+    //Fee collector entity to which protocol fees are sent when withdrawn.
+    address private _protocolFeeCollector;
+
     // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
     // percentage of the tokens exiting
     uint128 private _protocolWithdrawFee;
@@ -43,6 +46,14 @@ abstract contract Settings is IVault {
     uint128 private immutable _MAX_PROTOCOL_SWAP_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
     uint256 private immutable _MAX_PROTOCOL_FLASH_LOAN_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
+
+    function _setProtocolFeeCollector(address protocolFeeCollector) internal {
+        _protocolFeeCollector = protocolFeeCollector;
+    }
+
+    function protocolFeeCollector() public view returns (address) {
+        return _protocolFeeCollector;
+    }
 
     function _setProtocolWithdrawFee(uint128 newFee) internal {
         require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
