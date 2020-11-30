@@ -83,7 +83,7 @@ abstract contract FlashLoanProvider is IVault, Settings {
             "The actual balance of the protocol is inconsistent"
         );
 
-        //collect protocol fee
+        //collects protocol fee
         _collectedProtocolFees[IERC20(_token)] = _collectedProtocolFees[IERC20(_token)].add(amountFee);
 
         emit FlashLoan(_receiver, _token, _amount, amountFee, block.timestamp);
