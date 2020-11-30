@@ -72,4 +72,19 @@ abstract contract Admin is IVault, Settings, UserBalance {
 
         _trustedOperatorReporters.remove(reporter);
     }
+
+    function withdrawProtocolFees(
+        IERC20[] calldata tokens,
+        uint256[] calldata amounts,
+        address recipient
+    ) external override {
+        require(msg.sender == _admin, "Caller is not the admin");
+        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            require(_collectedProtocolFees[tokens[i]] >= amounts[i], "Insufficient protocol fees");
+            _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]] - amounts[i];
+            tokens[i].safeTransfer(recipient, amounts[i]);
+        }
+    }
 }

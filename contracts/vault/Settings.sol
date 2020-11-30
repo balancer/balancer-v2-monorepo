@@ -24,6 +24,9 @@ abstract contract Settings is IVault {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
+    // Stores the fee collected per each token that is only withdrawable by the admin.
+    mapping(IERC20 => uint256) internal _collectedProtocolFees;
+
     // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
     // percentage of the tokens exiting
     uint128 private _protocolWithdrawFee;
@@ -50,9 +53,8 @@ abstract contract Settings is IVault {
         return _protocolWithdrawFee;
     }
 
-    function _applyProtocolWithdrawFee(uint128 amount) internal view returns (uint128) {
-        uint128 fee = amount.mul128(_protocolWithdrawFee);
-        return amount.sub128(fee);
+    function _calculateProtocolWithdrawFee(uint128 amount) internal view returns (uint128) {
+        return amount.mul128(_protocolWithdrawFee);
     }
 
     function _setProtocolSwapFee(uint128 newFee) internal {
