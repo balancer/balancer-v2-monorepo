@@ -70,7 +70,7 @@ describe('Vault - protocol fees', () => {
       expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal((0.1e18).toString());
     });
 
-    it('protocol fees are withdraw to collector address', async () => {
+    it('anybody can withdraw protocol fees to the collector address', async () => {
       await vault.connect(admin).setProtocolFeeCollector(collector.address);
       await expectBalanceChange(
         () =>
