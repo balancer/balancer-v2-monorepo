@@ -20,6 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../math/FixedPoint.sol";
 
 import "../vault/IFlashLoanReceiver.sol";
+import "../vault/IVault.sol";
 
 import "./TestToken.sol";
 
@@ -29,14 +30,20 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
 
     address public immutable vault;
     bool public repayLoan;
+    bool public reenter;
 
     constructor(address _vault) {
         vault = _vault;
         repayLoan = true;
+        reenter = false;
     }
 
-    function setRepayLoan(bool repay) public {
-        repayLoan = repay;
+    function setRepayLoan(bool _repayLoan) public {
+        repayLoan = _repayLoan;
+    }
+
+    function setReenter(bool _reenter) public {
+        reenter = _reenter;
     }
 
     // Repays loan unless setRepayLoan was called with 'false'
@@ -44,11 +51,15 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
         IERC20 token,
         uint256 amount,
         uint256 fee,
-        bytes calldata
+        bytes calldata userData
     ) external override {
         require(msg.sender == vault, "Flash loan callbacks can only be called by the Vault");
 
         require(IERC20(token).balanceOf(address(this)) == amount, "Invalid balance, was the flashLoan successful?");
+
+        if (reenter) {
+            IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), token, amount, userData);
+        }
 
         if (!repayLoan) {
             return;

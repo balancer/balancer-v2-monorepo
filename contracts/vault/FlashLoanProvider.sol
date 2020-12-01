@@ -20,13 +20,15 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
-import "../math/FixedPoint.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 import "./IFlashLoanReceiver.sol";
 import "./IVault.sol";
 import "./Settings.sol";
 
-abstract contract FlashLoanProvider is IVault, Settings {
+import "../math/FixedPoint.sol";
+
+abstract contract FlashLoanProvider is ReentrancyGuard, IVault, Settings {
     using FixedPoint for uint256;
 
     /**
@@ -37,8 +39,7 @@ abstract contract FlashLoanProvider is IVault, Settings {
         IERC20 token,
         uint256 amount,
         bytes calldata userData
-    ) external override {
-        //TODO check for reentrancy
+    ) external override nonReentrant {
         //check that the token has enough available liquidity
         uint256 availableLiquidityBefore = token.balanceOf(address(this));
 

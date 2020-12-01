@@ -30,7 +30,7 @@ describe('Vault - flash loans', () => {
       // Grant token balance to the Vault - typically this would happen by the pool controllers adding liquidity
       await tokens[symbol].connect(minter).mint(vault.address, (100e18).toString());
 
-      // The receiver will mint the fees it pays
+      // The receiver will mint the fees it
       await tokens[symbol].connect(minter).grantRole(ethers.utils.id('MINTER_ROLE'), receiver.address);
     }
   });
@@ -64,6 +64,14 @@ describe('Vault - flash loans', () => {
         vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (1e18).toString(), '0x10')
       ).to.be.revertedWith('The actual balance of the protocol is inconsistent');
     });
+
+    it('reverts if the borrower reenters the Vault', async () => {
+      await receiver.setReenter(true);
+
+      await expect(
+        vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (1e18).toString(), '0x10')
+      ).to.be.revertedWith('ReentrancyGuard: reentrant call');
+    });
   });
 
   context('with protocol fees', () => {
@@ -88,6 +96,14 @@ describe('Vault - flash loans', () => {
       await expect(
         vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (1e18).toString(), '0x10')
       ).to.be.revertedWith('The actual balance of the protocol is inconsistent');
+    });
+
+    it('reverts if the borrower reenters the Vault', async () => {
+      await receiver.setReenter(true);
+
+      await expect(
+        vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (1e18).toString(), '0x10')
+      ).to.be.revertedWith('ReentrancyGuard: reentrant call');
     });
   });
 });
