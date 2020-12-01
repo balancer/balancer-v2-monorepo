@@ -5,7 +5,7 @@ import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool } from '../../scripts/helpers/pools';
-import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
+import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 describe('Vault - protocol fees', () => {
@@ -38,12 +38,6 @@ describe('Vault - protocol fees', () => {
   it('admin can set protocol fee collector', async () => {
     await vault.connect(admin).setProtocolFeeCollector(collector.address);
     expect(await vault.protocolFeeCollector()).to.equal(collector.address);
-  });
-
-  it('cannot set protocol fee collector to zero address', async () => {
-    await expect(vault.connect(admin).setProtocolFeeCollector(ZERO_ADDRESS)).to.be.revertedWith(
-      'Protocol fee collector cannot be set to zero address'
-    );
   });
 
   it('non-admin cannot set protocol fee collector', async () => {
