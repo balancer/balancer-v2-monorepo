@@ -47,18 +47,18 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
     }
 
     // Repays loan unless setRepayLoan was called with 'false'
-    function executeOperation(
+    function receiveFlashLoan(
         IERC20 token,
         uint256 amount,
         uint256 fee,
-        bytes calldata userData
+        bytes calldata receiverData
     ) external override {
         require(msg.sender == vault, "Flash loan callbacks can only be called by the Vault");
 
         require(IERC20(token).balanceOf(address(this)) == amount, "Invalid balance, was the flashLoan successful?");
 
         if (reenter) {
-            IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), token, amount, userData);
+            IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), token, amount, receiverData);
         }
 
         if (!repayLoan) {

@@ -20,6 +20,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./IFlashLoanReceiver.sol";
@@ -30,36 +31,27 @@ import "../math/FixedPoint.sol";
 
 abstract contract FlashLoanProvider is ReentrancyGuard, IVault, Settings {
     using FixedPoint for uint256;
+    using SafeERC20 for IERC20;
 
-    /**
-     * @dev allows smartcontracts to access the liquidity of the vault within one transaction,
-     **/
     function flashLoan(
         IFlashLoanReceiver receiver,
         IERC20 token,
         uint256 amount,
-        bytes calldata userData
+        bytes calldata receiverData
     ) external override nonReentrant {
-        //check that the token has enough available liquidity
-        uint256 availableLiquidityBefore = token.balanceOf(address(this));
+        uint256 preLoanBalance = token.balanceOf(address(this));
+        require(preLoanBalance >= amount, "Insufficient balance to borrow");
 
-        require(availableLiquidityBefore >= amount, "There is not enough liquidity available to borrow");
+        token.safeTransfer(address(receiver), amount);
 
-        //calculate fee on amount
-        uint256 amountFee = _calculateProtocolFlashLoanFee(amount);
+        uint256 feeAmount = _calculateProtocolFlashLoanFee(amount);
+        receiver.receiveFlashLoan(token, amount, feeAmount, receiverData);
 
-        //transfer funds to the receiver
-        IERC20(token).transfer(address(receiver), amount);
+        uint256 postLoanBalance = token.balanceOf(address(this));
 
-        //execute action of the receiver
-        receiver.executeOperation(token, amount, amountFee, userData);
+        uint256 receivedFees = postLoanBalance.sub(preLoanBalance);
+        require(receivedFees >= feeAmount, "Insufficient protocol fees");
 
-        //check that the actual balance of the core contract includes the returned amount
-        uint256 availableLiquidityAfter = IERC20(token).balanceOf(address(this));
-
-        require(
-            availableLiquidityAfter == availableLiquidityBefore.add(amountFee),
-            "The actual balance of the protocol is inconsistent"
-        );
+        // TODO: store protocol fees in fee collector balance
     }
 }

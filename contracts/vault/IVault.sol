@@ -301,12 +301,21 @@ interface IVault {
     }
 
     // Flash Loan interface
-    // Flash Loan interface
+
+    /**
+     * @dev Performs a flash loan where 'amount' tokens of 'token' are sent to 'receiver', which must implement the
+     * IFlashLoanReceiver interface. An arbitrary user-provided 'receiverData' is forwarded to this contract.
+     *
+     * Before returning from the IFlashLoanReceiver.receiveFlashLoan call, the receiver must transfer back the loaned
+     * tokens, plus a proportional protocol fee.
+     *
+     * This is a non-reentrant call: swaps, adding liquidity, etc., are all disabled until the flash loan finishes.
+     */
     function flashLoan(
         IFlashLoanReceiver receiver,
         IERC20 token,
         uint256 amount,
-        bytes calldata userData
+        bytes calldata receiverData
     ) external;
 
     // Investment interface

@@ -19,10 +19,10 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IFlashLoanReceiver {
-    function executeOperation(
+    function receiveFlashLoan(
         IERC20 token,
         uint256 amount,
         uint256 fee,
-        bytes calldata userData
+        bytes calldata receiverData
     ) external;
 }

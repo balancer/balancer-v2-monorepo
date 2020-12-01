@@ -49,12 +49,16 @@ describe('Vault - flash loans', () => {
       );
     });
 
+    it('all balance can be loaned', async () => {
+      await vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (100e18).toString(), '0x10');
+    });
+
     it('reverts if the loan is larger than available balance', async () => {
       await expect(
         vault
           .connect(other)
           .flashLoan(receiver.address, tokens.DAI.address, BigNumber.from((100e18).toString()).add(1), '0x10')
-      ).to.be.revertedWith('There is not enough liquidity available to borrow');
+      ).to.be.revertedWith('Insufficient balance to borrow');
     });
 
     it('reverts if the borrower does not repay the loan', async () => {
@@ -62,15 +66,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (1e18).toString(), '0x10')
-      ).to.be.revertedWith('The actual balance of the protocol is inconsistent');
-    });
-
-    it('reverts if the borrower reenters the Vault', async () => {
-      await receiver.setReenter(true);
-
-      await expect(
-        vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (1e18).toString(), '0x10')
-      ).to.be.revertedWith('ReentrancyGuard: reentrant call');
+      ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
     });
   });
 
@@ -90,12 +86,16 @@ describe('Vault - flash loans', () => {
       );
     });
 
+    it('all balance can be loaned', async () => {
+      await vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (100e18).toString(), '0x10');
+    });
+
     it('reverts if the borrower does not repay the loan', async () => {
       await receiver.setRepayLoan(false);
 
       await expect(
         vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (1e18).toString(), '0x10')
-      ).to.be.revertedWith('The actual balance of the protocol is inconsistent');
+      ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
     });
 
     it('reverts if the borrower reenters the Vault', async () => {
