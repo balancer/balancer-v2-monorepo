@@ -320,6 +320,12 @@ interface IVault {
         uint128 amountInvested
     ) external;
 
+    //Protocol Fees
+    /**
+     * @dev Returns the amount in protocol fees collected for a specific `token`.
+     */
+    function getCollectedFeesByToken(IERC20 token) external view returns (uint256);
+
     // Admin Controls
 
     /**
@@ -333,6 +339,11 @@ interface IVault {
      * contracts. Can only be called by the admin.
      */
     function revokeTrustedOperatorReporter(address reporter) external;
+
+    /**
+     * @dev Transfers to protocolFeeCollector address the requested amounts of protocol fees. Anyone can call it.
+     */
+    function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external;
 
     // Missing here: setting protocol fees, changing admin
 }
