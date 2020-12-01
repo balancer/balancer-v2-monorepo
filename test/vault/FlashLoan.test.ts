@@ -7,7 +7,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { FIXED_POINT_SCALING, toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
-describe('Vault - flash loans', () => {
+describe.only('Vault - flash loans', () => {
   let admin: SignerWithAddress;
   let minter: SignerWithAddress;
   let other: SignerWithAddress;
@@ -95,7 +95,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (1e18).toString(), '0x10')
-      ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+      ).to.be.revertedWith('Insufficient protocol fees');
     });
 
     it('reverts if the borrower reenters the Vault', async () => {

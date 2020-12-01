@@ -22,7 +22,7 @@ interface IFlashLoanReceiver {
     function receiveFlashLoan(
         IERC20 token,
         uint256 amount,
-        uint256 fee,
+        uint256 feeAmount,
         bytes calldata receiverData
     ) external;
 }
