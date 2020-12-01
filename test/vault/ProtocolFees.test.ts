@@ -40,6 +40,10 @@ describe('Vault - protocol fees', () => {
     expect(await vault.protocolFeeCollector()).to.equal(collector.address);
   });
 
+  it('can set protocol fee collector to zero address', async () => {
+    await vault.connect(admin).setProtocolFeeCollector(ZERO_ADDRESS);
+    expect(await vault.protocolFeeCollector()).to.equal(ZERO_ADDRESS);
+  });
   it('non-admin cannot set protocol fee collector', async () => {
     await expect(vault.connect(other).setProtocolFeeCollector(collector.address)).to.be.revertedWith(
       'Caller is not the admin'
