@@ -30,16 +30,22 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
 
     address public immutable vault;
     bool public repayLoan;
+    bool public repayInExcess;
     bool public reenter;
 
     constructor(address _vault) {
         vault = _vault;
         repayLoan = true;
+        repayInExcess = false;
         reenter = false;
     }
 
     function setRepayLoan(bool _repayLoan) public {
         repayLoan = _repayLoan;
+    }
+
+    function setRepayInExcess(bool _repayInExcess) public {
+        repayInExcess = _repayInExcess;
     }
 
     function setReenter(bool _reenter) public {
@@ -61,12 +67,14 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
             IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), token, amount, receiverData);
         }
 
-        TestToken(address(token)).mint(address(this), feeAmount);
+        TestToken(address(token)).mint(address(this), repayInExcess ? feeAmount.add(1) : feeAmount);
 
         uint256 totalDebt = amount.add(feeAmount);
 
         if (!repayLoan) {
             totalDebt = totalDebt.sub(1);
+        } else if (repayInExcess) {
+            totalDebt = totalDebt.add(1);
         }
 
         token.safeTransfer(vault, totalDebt);

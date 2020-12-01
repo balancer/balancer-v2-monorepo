@@ -7,7 +7,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { FIXED_POINT_SCALING, toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
-describe.only('Vault - flash loans', () => {
+describe('Vault - flash loans', () => {
   let admin: SignerWithAddress;
   let minter: SignerWithAddress;
   let other: SignerWithAddress;
@@ -83,6 +83,18 @@ describe.only('Vault - flash loans', () => {
         vault.address,
         tokens,
         { DAI: BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING) }
+      );
+    });
+
+    it('excess fees can be paid', async () => {
+      await receiver.setRepayInExcess(true);
+
+      await expectBalanceChange(
+        () => vault.connect(other).flashLoan(receiver.address, tokens.DAI.address, (1e18).toString(), '0x10'),
+        vault.address,
+        tokens,
+        // The receiver pays one extra token
+        { DAI: BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING).add(1) }
       );
     });
 
