@@ -48,6 +48,9 @@ library PoolBalance {
     }
 
     function toBalance(uint128 cashBalance, uint128 investedBalance) internal pure returns (bytes32) {
+        uint128 totalBalance = cashBalance + investedBalance;
+        require(totalBalance >= cashBalance, "BALANCE_TOTAL_OVERFLOW");
+
         return bytes32((uint256(investedBalance) << 128) | cashBalance);
     }
 
