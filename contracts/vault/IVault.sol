@@ -16,6 +16,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "./IFlashLoanReceiver.sol";
 import "../validators/ISwapValidator.sol";
 
 pragma solidity ^0.7.1;
@@ -300,11 +301,21 @@ interface IVault {
     }
 
     // Flash Loan interface
+
+    /**
+     * @dev Performs a flash loan where 'amount' tokens of 'token' are sent to 'receiver', which must implement the
+     * IFlashLoanReceiver interface. An arbitrary user-provided 'receiverData' is forwarded to this contract.
+     *
+     * Before returning from the IFlashLoanReceiver.receiveFlashLoan call, the receiver must transfer back the loaned
+     * tokens, plus a proportional protocol fee.
+     *
+     * This is a non-reentrant call: swaps, adding liquidity, etc., are all disabled until the flash loan finishes.
+     */
     function flashLoan(
-        address _receiver,
-        address _token,
-        uint256 _amount,
-        bytes memory _params //TODO check for reentrancy
+        IFlashLoanReceiver receiver,
+        IERC20[] calldata tokens,
+        uint256[] calldata amounts,
+        bytes calldata receiverData
     ) external;
 
     // Investment interface

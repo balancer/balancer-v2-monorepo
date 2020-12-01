@@ -20,72 +20,48 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
-import "../math/FixedPoint.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 import "./IFlashLoanReceiver.sol";
 import "./IVault.sol";
 import "./Settings.sol";
 
-abstract contract FlashLoanProvider is IVault, Settings {
+import "../math/FixedPoint.sol";
+
+abstract contract FlashLoanProvider is ReentrancyGuard, IVault, Settings {
     using FixedPoint for uint256;
+    using SafeERC20 for IERC20;
 
-    /**
-     * @dev emitted when a flashloan is executed
-     * @param _target the address of the flashLoanReceiver
-     * @param _token the address of the ERC20 token
-     * @param _amount the amount requested
-     * @param _fee the fee on the amount
-     * @param _timestamp the timestamp of the action
-     **/
-    event FlashLoan(address indexed _target, address indexed _token, uint256 _amount, uint256 _fee, uint256 _timestamp);
-
-    /**
-     * @dev allows smartcontracts to access the liquidity of the vault within one transaction,
-     * as long as the amount taken plus a fee is returned. NOTE There are security concerns for developers of flashloan
-     * receiver contracts that must be kept into consideration.
-     * For further details please visit https://developers.aave.com
-     * @param _receiver The address of the contract receiving the funds. The receiver should implement the
-     * IFlashLoanReceiver interface.
-     * @param _token the address of the principal ERC-20 token
-     * @param _amount the amount requested for this flashloan
-     **/
     function flashLoan(
-        address _receiver,
-        address _token,
-        uint256 _amount,
-        bytes memory _params //TODO check for reentrancy
-    ) external override {
-        //check that the token has enough available liquidity
-        uint256 availableLiquidityBefore = IERC20(_token).balanceOf(address(this));
+        IFlashLoanReceiver receiver,
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        bytes calldata receiverData
+    ) external override nonReentrant {
+        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
-        require(availableLiquidityBefore >= _amount, "There is not enough liquidity available to borrow");
+        uint256[] memory feeAmounts = new uint256[](tokens.length);
+        uint256[] memory preLoanBalances = new uint256[](tokens.length);
 
-        //calculate fee on amount
-        uint256 amountFee = _calculateProtocolFlashLoanFee(_amount);
-        require(amountFee > 0, "The requested amount is too small for a flashLoan.");
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            preLoanBalances[i] = tokens[i].balanceOf(address(this));
+            require(preLoanBalances[i] >= amounts[i], "Insufficient balance to borrow");
 
-        //get the FlashLoanReceiver instance
-        IFlashLoanReceiver receiver = IFlashLoanReceiver(_receiver);
+            feeAmounts[i] = _calculateProtocolFlashLoanFee(amounts[i]);
 
-        address payable userPayable = address(uint160(_receiver));
+            tokens[i].safeTransfer(address(receiver), amounts[i]);
+        }
 
-        //transfer funds to the receiver
-        IERC20(_token).transfer(userPayable, _amount);
+        receiver.receiveFlashLoan(tokens, amounts, feeAmounts, receiverData);
 
-        //execute action of the receiver
-        receiver.executeOperation(_token, _amount, amountFee, _params);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint256 postLoanBalance = tokens[i].balanceOf(address(this));
 
-        //check that the actual balance of the core contract includes the returned amount
-        uint256 availableLiquidityAfter = IERC20(_token).balanceOf(address(this));
+            uint256 receivedFees = postLoanBalance.sub(preLoanBalances[i]);
+            require(receivedFees >= feeAmounts[i], "Insufficient protocol fees");
 
-        require(
-            availableLiquidityAfter == availableLiquidityBefore.add(amountFee),
-            "The actual balance of the protocol is inconsistent"
-        );
-
-        //collects protocol fee
-        _collectedProtocolFees[IERC20(_token)] = _collectedProtocolFees[IERC20(_token)].add(amountFee);
-
-        emit FlashLoan(_receiver, _token, _amount, amountFee, block.timestamp);
+            _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(receivedFees);
+        }
     }
 }
