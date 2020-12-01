@@ -89,7 +89,7 @@ describe('Vault - protocol fees', () => {
       expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal((0.06e18).toString());
     });
 
-    it('protocol fees cannot withdrawn if collector is not set', async () => {
+    it('protocol fees cannot be withdrawn if collector is not set', async () => {
       await expect(
         vault.connect(admin).withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((0.03e18).toString()).add(1)])
       ).to.be.revertedWith('Protocol fee collector recipient is not set');
