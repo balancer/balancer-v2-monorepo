@@ -14,18 +14,26 @@
 
 pragma solidity ^0.7.1;
 
-contract Lock {
-    modifier _lock_() {
-        require(!_mutex, "ERR_REENTRY");
-        _mutex = true;
-        _;
-        _mutex = false;
+import "../strategies/lib/Stable.sol";
+
+contract MockStableLib is Stable {
+    function outGivenIn(
+        uint128 amp,
+        uint128[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint128 tokenAmountIn
+    ) external pure returns (uint128) {
+        return _outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
     }
 
-    modifier _viewlock_() {
-        require(!_mutex, "ERR_REENTRY");
-        _;
+    function inGivenOut(
+        uint128 amp,
+        uint128[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint128 tokenAmountOut
+    ) external pure returns (uint128) {
+        return _inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
     }
-
-    bool private _mutex;
 }

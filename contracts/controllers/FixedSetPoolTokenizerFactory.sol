@@ -21,8 +21,9 @@ import "./BasePoolControllerFactory.sol";
 import "./FixedSetPoolTokenizer.sol";
 
 contract FixedSetPoolTokenizerFactory is BasePoolControllerFactory {
-    // solhint-disable-next-line no-empty-blocks
-    constructor(IVault _vault) BasePoolControllerFactory(_vault) {}
+    constructor(IVault _vault) BasePoolControllerFactory(_vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function create(
         address strategy,

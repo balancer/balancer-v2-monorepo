@@ -9,6 +9,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress;
+  let minter: SignerWithAddress;
   let other: SignerWithAddress;
 
   let vault: Contract;
@@ -16,18 +17,21 @@ describe('Vault - flash loans', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, other] = await ethers.getSigners();
+    [, admin, minter, other] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { from: admin, args: [] });
-    tokens = await deployTokens(['DAI', 'MKR']);
-
+    vault = await deploy('Vault', { args: [admin.address] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
+
+    tokens = await deployTokens(['DAI', 'MKR'], [18, 18], minter);
 
     for (const symbol in tokens) {
       // Grant token balance to the Vault - typically this would happen by the pool controllers adding liquidity
-      await tokens[symbol].mint(vault.address, (100e18).toString());
+      await tokens[symbol].connect(minter).mint(vault.address, (100e18).toString());
+
+      // The receiver will mint the fees it pays
+      await tokens[symbol].connect(minter).grantRole(ethers.utils.id('MINTER_ROLE'), receiver.address);
     }
   });
 

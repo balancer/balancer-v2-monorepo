@@ -24,9 +24,6 @@ abstract contract Settings is IVault {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
-    // Protocol fees: these are charged as unaccounted for tokens, and can therefore be claimed and distributed by the
-    // system admin.
-
     // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
     // percentage of the tokens exiting
     uint128 private _protocolWithdrawFee;

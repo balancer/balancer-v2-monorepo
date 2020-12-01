@@ -67,19 +67,9 @@ abstract contract Admin is IVault, Settings, UserBalance {
         _trustedOperatorReporters.add(reporter);
     }
 
-    function claimUnaccountedForTokens(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        address recipient
-    ) external override {
+    function revokeTrustedOperatorReporter(address reporter) external override {
         require(msg.sender == _admin, "Caller is not the admin");
-        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 totalUnaccountedFor = getTotalUnaccountedForTokens(tokens[i]);
-            require(totalUnaccountedFor >= amounts[i], "Insufficient unaccounted for tokens");
-
-            tokens[i].safeTransfer(recipient, amounts[i]);
-        }
+        _trustedOperatorReporters.remove(reporter);
     }
 }

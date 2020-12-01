@@ -17,11 +17,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "./StrategyFee.sol";
 import "./ITupleTradingStrategy.sol";
 import "./lib/Stable.sol";
+import "./StrategyFee.sol";
 
-contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
+contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable {
     using SafeCast for uint256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -37,31 +37,33 @@ contract StableStrategy is ITupleTradingStrategy, StrategyFee, Stable {
     }
 
     //Because it is not possible to overriding external calldata, function is public and balances are in memory
-    function validateTuple(
-        ITradingStrategy.Swap calldata swap,
+    function quoteOutGivenIn(
+        ITradingStrategy.QuoteRequestGivenIn calldata request,
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external view override returns (bool, uint128) {
-        //Calculate old invariant
-        uint256 oldInvariant = _invariant(_amp, balances);
+    ) external view override returns (uint128) {
+        // Substract fee
+        uint128 amountInFees = request.amountIn.mul(_swapFee).toUint128();
+        uint128 adjustedIn = request.amountIn.sub128(amountInFees);
 
-        //Substract fee
-        uint128 feeAmount = swap.amountIn.mul(_swapFee).toUint128();
+        uint128 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
 
-        //Update Balances
-        balances[indexIn] = balances[indexIn].add128(swap.amountIn.sub128(feeAmount));
-        balances[indexOut] = balances[indexOut].sub128(swap.amountOut);
+        return maximumAmountOut;
+    }
 
-        //Calculate new invariant
-        uint256 newInvariant = _invariant(_amp, balances);
+    function quoteInGivenOut(
+        ITradingStrategy.QuoteRequestGivenOut calldata request,
+        uint128[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) external view override returns (uint128) {
+        uint128 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
 
-        //Check new invariant is greater or relative error is small
-        if (newInvariant >= oldInvariant) {
-            return (true, feeAmount);
-        } else {
-            return ((oldInvariant - newInvariant) * 100 < oldInvariant, feeAmount);
-        }
+        // Add fee
+        uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
+
+        return adjustedIn;
     }
 
     function getAmp() external view returns (uint128) {

@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./IFlashLoanReceiver.sol";
+import "../validators/ISwapValidator.sol";
 
 pragma solidity ^0.7.1;
 
@@ -111,6 +112,11 @@ interface IVault {
      */
     function reportTrustedOperator(address operator) external;
 
+    /**
+     * @dev Removes `operator` as a Trusted Operator. Can only be called by a Trusted Operator Reporter.
+     */
+    function revokeTrustedOperator(address operator) external;
+
     // Pools
 
     // There are two variants of Trading Strategies for Pools: Pair Trading Strategies, and Tuple Trading Strategies.
@@ -172,17 +178,6 @@ interface IVault {
      */
     function setPoolController(bytes32 poolId, address controller) external;
 
-    /**
-     * @dev Sets a new Trading Strategy for a Pool. Can only be called by its controller.
-     *
-     * The StrategyType must match the one of the Pool's current Trading Strategy - it can never be changed.
-     */
-    function setPoolStrategy(
-        bytes32 poolId,
-        address strategy,
-        StrategyType strategyType
-    ) external;
-
     function authorizePoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
@@ -210,8 +205,8 @@ interface IVault {
         bytes32 poolId,
         address from,
         IERC20[] calldata tokens,
-        uint128[] calldata totalAmounts,
-        uint128[] calldata amountsToTransfer
+        uint128[] calldata amounts,
+        bool withdrawFromUserBalance
     ) external;
 
     /**
@@ -228,11 +223,15 @@ interface IVault {
         bytes32 poolId,
         address to,
         IERC20[] calldata tokens,
-        uint128[] calldata totalAmounts,
-        uint128[] calldata amountsToTransfer
+        uint128[] calldata amounts,
+        bool depositToUserBalance
     ) external;
 
     // Trading interface
+
+    // Despite the external API having two separate functions for given in and given out, internally their are handled
+    // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
 
     /**
      * @dev Performs a series of swaps with one or multiple Pools. Each swap is validated and executed in order.
@@ -253,13 +252,55 @@ interface IVault {
      *
      * Funds will be received according to the data in `fundsIn`, and sent according to `fundsOut`.
      */
-    function batchSwap(
-        Diff[] calldata diffs,
-        Swap[] calldata swaps,
-        FundsIn calldata fundsIn,
-        FundsOut calldata fundsOut
+    function batchSwapGivenIn(
+        ISwapValidator validator,
+        bytes calldata validatorData,
+        SwapIn[] calldata swaps,
+        IERC20[] memory tokens,
+        FundManagement calldata funds
     ) external;
 
+    function batchSwapGivenOut(
+        ISwapValidator validator,
+        bytes calldata validatorData,
+        SwapOut[] calldata swaps,
+        IERC20[] memory tokens,
+        FundManagement calldata funds
+    ) external;
+
+    // batchSwap helper data structures
+
+    // A batched swap is made up of a number of Swaps. Each swap indicates a token balance increasing (tokenIn) and one
+    // decreasing (tokenOut) in a pool.
+    // Indexes instead of token addresses to not perform lookup in the tokens array.
+    struct SwapIn {
+        bytes32 poolId;
+        uint128 tokenInIndex;
+        uint128 tokenOutIndex;
+        uint128 amountIn;
+        bytes userData;
+    }
+
+    struct SwapOut {
+        bytes32 poolId;
+        uint128 tokenInIndex;
+        uint128 tokenOutIndex;
+        uint128 amountOut;
+        bytes userData;
+    }
+
+    // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are
+    // withdrawn from withdrawFrom's User Balance.
+    // In any case, the caller must be an operator for withdrawFrom.
+    // Funds out are deposited to recipient's User Balance, or transferred out if transferToRecipient is true.
+    struct FundManagement {
+        address sender;
+        address recipient;
+        bool withdrawFromUserBalance;
+        bool depositToUserBalance;
+    }
+
+    // Flash Loan interface
     // Flash Loan interface
     function flashLoan(
         IFlashLoanReceiver receiver,
@@ -281,56 +322,6 @@ interface IVault {
         uint128 amountInvested
     ) external;
 
-    // batchSwap helper data structures
-
-    // An array of Diffs with unique token addresses will store the net effect of a trade
-    // on the entire Vault. Callers provide this array pre-populated with the address of
-    // each token involved in the swap, and an initial vaultDelta value of 0.
-    // This saves the contract from having to compute the list of tokens that need to be
-    // sent or received as part of the trade.
-    struct Diff {
-        IERC20 token;
-        int256 vaultDelta; // Positive delta means the vault receives tokens
-        uint256 amountIn;
-    }
-
-    // A batched swap is made up of a number of Swaps. Each swap indicates a token balance increasing (tokenIn) and one
-    // decreasing (tokenOut) in a pool.
-    struct Swap {
-        bytes32 poolId;
-        TokenData tokenIn;
-        TokenData tokenOut;
-        bytes userData;
-    }
-
-    // 'amount' can mean tokens going either into or out of the Vault, depending on context.
-    // If TokenData also included the token address, then the swap function would need to look up the index of this
-    // token in the Diffs array. Instead, the caller provides the indices for the Diffs array, leading to gas savings.
-    struct TokenData {
-        uint128 amount;
-        uint128 tokenDiffIndex;
-    }
-
-    // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are
-    // withdrawn from withdrawFrom's User Balance.
-    // In any case, the caller must be an operator for withdrawFrom.
-    struct FundsIn {
-        address withdrawFrom;
-    }
-
-    // Funds out are deposited to recipient's User Balance, or transferred out if transferToRecipient is true.
-    struct FundsOut {
-        address recipient;
-        bool transferToRecipient;
-    }
-
-    // Unaccounted-for Tokens
-
-    /**
-     * @dev Returns the number of unaccounted-for tokens for `token`.
-     */
-    function getTotalUnaccountedForTokens(IERC20 token) external view returns (uint256);
-
     // Admin Controls
 
     /**
@@ -340,13 +331,10 @@ interface IVault {
     function authorizeTrustedOperatorReporter(address reporter) external;
 
     /**
-     * @dev Transfers to `recipient` the requested amounts of unnaccounted-for tokens. Can only be called by the admin.
+     * @dev Remove authorization for `reporter` to call `reportTrustedOperator`. This is typically called on factory
+     * contracts. Can only be called by the admin.
      */
-    function claimUnaccountedForTokens(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        address recipient
-    ) external;
+    function revokeTrustedOperatorReporter(address reporter) external;
 
     // Missing here: setting protocol fees, changing admin
 }

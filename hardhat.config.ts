@@ -1,11 +1,27 @@
+import 'dotenv/config';
 import { HardhatUserConfig } from 'hardhat/config';
-
+import 'hardhat-deploy';
 import '@nomiclabs/hardhat-waffle';
+
+import 'solidity-coverage';
 
 const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+      saveDeployments: false,
+    },
+    localhost: {
+      allowUnlimitedContractSize: true,
+      saveDeployments: false,
+    },
+  },
+  namedAccounts: {
+    deployer: {
+      default: 0, // here this will by default take the first account as deployer
+      // We use explicit chain IDs so that export-all works correctly: https://github.com/wighawag/hardhat-deploy#options-2
+      1: 0, // mainnet
+      4: 0, // rinkeby
     },
   },
   solidity: {

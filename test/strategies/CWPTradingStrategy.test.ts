@@ -20,27 +20,27 @@ const generateAddressArray = (num: number): string[] => {
     '0x0000000000000000000000000000000000000014',
     '0x0000000000000000000000000000000000000015',
     '0x0000000000000000000000000000000000000016',
+    '0x0000000000000000000000000000000000000017',
   ].slice(0, num);
 };
 
-describe('WeightedProdStrategy', function () {
+describe('CWPTradingStrategy', function () {
   let poolId: string;
   let strategy: Contract;
-  let WeightedProdStrategyFactory: ContractFactory;
+  let CWPTradingStrategyFactory: ContractFactory;
   let traderAddress: string;
 
   beforeEach(async function () {
     poolId = ethers.utils.id('Test');
     traderAddress = '0x0000000000000000000000000000000000000001';
-    WeightedProdStrategyFactory = await ethers.getContractFactory('WeightedProdStrategy');
+    CWPTradingStrategyFactory = await ethers.getContractFactory('CWPTradingStrategy');
   });
 
   describe('TS Creation', () => {
     it('Creates correctly TS', async () => {
-      strategy = await WeightedProdStrategyFactory.deploy(
+      strategy = await CWPTradingStrategyFactory.deploy(
         generateAddressArray(2),
         [(2e18).toString(), (8e18).toString()],
-        2,
         (0.05e18).toString()
       );
       expect(await strategy.getTotalTokens()).to.equal(2);
@@ -53,10 +53,9 @@ describe('WeightedProdStrategy', function () {
         'ERR_INVALID_ADDRESS'
       );
 
-      strategy = await WeightedProdStrategyFactory.deploy(
+      strategy = await CWPTradingStrategyFactory.deploy(
         generateAddressArray(5),
         [(2.15e18).toString(), (24.3e18).toString(), (12.11e18).toString(), (2e18).toString(), (6e18).toString()],
-        5,
         (0.05e18).toString()
       );
       expect(await strategy.getTotalTokens()).to.equal(5);
@@ -66,7 +65,7 @@ describe('WeightedProdStrategy', function () {
         'ERR_INVALID_TOKEN'
       );
 
-      strategy = await WeightedProdStrategyFactory.deploy(
+      strategy = await CWPTradingStrategyFactory.deploy(
         generateAddressArray(16),
         [
           (1e18).toString(),
@@ -86,7 +85,6 @@ describe('WeightedProdStrategy', function () {
           (15e18).toString(),
           (16e18).toString(),
         ],
-        16,
         (0.05e18).toString()
       );
       expect(await strategy.getTotalTokens()).to.equal(16);
@@ -98,20 +96,19 @@ describe('WeightedProdStrategy', function () {
     });
     it('Fails creating below MIN WEIGHT', async () => {
       await expect(
-        WeightedProdStrategyFactory.deploy(generateAddressArray(2), [0, 8], 2, (0.05e18).toString())
+        CWPTradingStrategyFactory.deploy(generateAddressArray(2), [0, 8], (0.05e18).toString())
       ).to.be.revertedWith('ERR_MIN_WEIGHT');
     });
     it('Fails creating below MIN TOKENS', async () => {
       await expect(
-        WeightedProdStrategyFactory.deploy(generateAddressArray(1), [8], 1, (0.05e18).toString())
+        CWPTradingStrategyFactory.deploy(generateAddressArray(1), [8], (0.05e18).toString())
       ).to.be.revertedWith('ERR_MIN_TOKENS');
     });
     it('Fails creating above MAX TOKENS', async () => {
       await expect(
-        WeightedProdStrategyFactory.deploy(
-          generateAddressArray(16),
+        CWPTradingStrategyFactory.deploy(
+          generateAddressArray(17),
           [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
-          17,
           (0.05e18).toString()
         ) //fee: 5%
       ).to.be.revertedWith('ERR_MAX_TOKENS');
@@ -122,14 +119,13 @@ describe('WeightedProdStrategy', function () {
     it('Validates correctly two tokens', async () => {
       //weights: [8, 2]
       const tokens = generateAddressArray(2);
-      strategy = await WeightedProdStrategyFactory.deploy(
+      strategy = await CWPTradingStrategyFactory.deploy(
         tokens,
         [(8e18).toString(), (2e18).toString()],
-        2,
         (0.05e18).toString()
       ); //fee: 5%
       await strategy.deployed();
-      const result = await strategy.validatePair(
+      const result = await strategy.quoteOutGivenIn(
         {
           poolId,
           from: traderAddress,
@@ -137,25 +133,23 @@ describe('WeightedProdStrategy', function () {
           tokenIn: tokens[0],
           tokenOut: tokens[1],
           amountIn: (15e18 / (1 - 0.05)).toString(), //15e18 + fee
-          amountOut: (85.64935e18).toString(),
           userData: '0x',
         },
         (100e18).toString(),
         (200e18).toString()
       );
-      expect(result[0]).to.be.true;
+      expect(result).to.be.at.least((85.64935e18).toString());
     });
     it('Validates correctly three tokens', async () => {
       //weights: [4, 4, 2]
       const tokens = generateAddressArray(3);
-      strategy = await WeightedProdStrategyFactory.deploy(
+      strategy = await CWPTradingStrategyFactory.deploy(
         tokens,
         [(4e18).toString(), (4e18).toString(), (2e18).toString()],
-        3,
         (0.05e18).toString()
       ); //fee: 5%
       await strategy.deployed();
-      const result = await strategy.validatePair(
+      const result = await strategy.quoteOutGivenIn(
         {
           poolId,
           from: traderAddress,
@@ -163,13 +157,12 @@ describe('WeightedProdStrategy', function () {
           tokenIn: tokens[0],
           tokenOut: tokens[1],
           amountIn: (15e18 / (1 - 0.05)).toString(), //15e18 + fee
-          amountOut: (26.08695652e18).toString(),
           userData: '0x',
         },
         (100e18).toString(),
         (200e18).toString()
       );
-      expect(result[0]).to.be.true;
+      expect(result).to.be.at.least((26.08695652e18).toString());
     });
   });
 });

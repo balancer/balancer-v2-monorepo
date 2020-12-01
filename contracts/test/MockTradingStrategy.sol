@@ -12,27 +12,59 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity 0.7.1;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../strategies/IPairTradingStrategy.sol";
 import "../strategies/ITupleTradingStrategy.sol";
 
+import "../math/FixedPoint.sol";
+
 contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
-    function validatePair(
-        ITradingStrategy.Swap calldata,
-        uint128,
-        uint128
-    ) external pure override returns (bool, uint128) {
-        return (true, 0);
+    using FixedPoint for uint128;
+
+    // Amounts in are multiplied by the multiplier, amounts out divided by it
+    uint128 private _multiplier = FixedPoint.ONE;
+
+    function setMultiplier(uint128 newMultiplier) external {
+        _multiplier = newMultiplier;
     }
 
-    function validateTuple(
-        ITradingStrategy.Swap calldata,
+    // IPairTradingStrategy
+    function quoteOutGivenIn(
+        ITradingStrategy.QuoteRequestGivenIn calldata request,
+        uint128,
+        uint128
+    ) external view override returns (uint128) {
+        return request.amountIn.mul128(_multiplier);
+    }
+
+    function quoteInGivenOut(
+        ITradingStrategy.QuoteRequestGivenOut calldata request,
+        uint128,
+        uint128
+    ) external view override returns (uint128) {
+        uint128 amountIn = request.amountOut.div128(_multiplier);
+        return amountIn;
+    }
+
+    // ITupleTradingStrategy
+    function quoteOutGivenIn(
+        ITradingStrategy.QuoteRequestGivenIn calldata request,
         uint128[] calldata,
         uint256,
         uint256
-    ) external pure override returns (bool, uint128) {
-        return (true, 0);
+    ) external view override returns (uint128) {
+        return request.amountIn.mul128(_multiplier);
+    }
+
+    function quoteInGivenOut(
+        ITradingStrategy.QuoteRequestGivenOut calldata request,
+        uint128[] calldata,
+        uint256,
+        uint256
+    ) external view override returns (uint128) {
+        uint128 amountIn = request.amountOut.div128(_multiplier);
+        return amountIn;
     }
 }

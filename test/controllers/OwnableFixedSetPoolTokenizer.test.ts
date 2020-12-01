@@ -2,76 +2,98 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PairTS, TupleTS } from '../../scripts/helpers/pools';
+import { PairTS } from '../../scripts/helpers/pools';
 import { deploy } from '../../scripts/helpers/deploy';
+import { setupController } from '../../scripts/helpers/controllers';
+import { deployTokens, TokenList } from '../helpers/tokens';
+import { MAX_UINT256 } from '../helpers/constants';
 
-// We need to have a factory for this type of tokenizer in order to deploy it
-describe.skip('OwnableFixedSetPoolTokenizer', function () {
+describe('OwnableFixedSetPoolTokenizer', function () {
+  let admin: SignerWithAddress;
+  let lp: SignerWithAddress;
   let owner: SignerWithAddress;
   let other: SignerWithAddress;
 
   let vault: Contract;
+  let tokens: TokenList;
   let strategy: Contract;
-  let tokenizer: Contract;
+
+  let callSetupController: () => Promise<Contract>;
 
   before(async function () {
-    [, owner, other] = await ethers.getSigners();
+    [, admin, lp, owner, other] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { args: [] });
+    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+
+    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
+    await Promise.all(
+      ['DAI', 'MKR'].map(async (token) => {
+        await tokens[token].mint(lp.address, (100e18).toString());
+        await tokens[token].connect(lp).approve(vault.address, MAX_UINT256);
+      })
+    );
+
     strategy = await deploy('MockTradingStrategy', { args: [] });
 
-    tokenizer = await deploy('OwnableFixedSetPoolTokenizer', {
-      from: owner,
-      args: [vault.address, strategy.address, PairTS],
-    });
-  });
-
-  it('has control of the created pool', async function () {
-    const poolId = await tokenizer.poolId();
-    expect(await vault.getPoolController(poolId)).to.equal(tokenizer.address);
-  });
-
-  describe('changePoolController', () => {
-    it('owner can transfer control of the pool', async () => {
-      await tokenizer.connect(owner).changePoolController(other.address);
-
-      const poolId = await tokenizer.poolId();
-      expect(await vault.getPoolController(poolId)).to.equal(other.address);
-    });
-
-    it('non-owner cannot transfer control of the pool', async () => {
-      await expect(tokenizer.connect(other).changePoolController(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
+    callSetupController = () =>
+      setupController(
+        vault,
+        admin,
+        lp,
+        'OwnableFixedSetPoolTokenizer',
+        strategy.address,
+        PairTS,
+        (100e18).toString(),
+        [tokens.DAI.address, tokens.MKR.address],
+        [(1e18).toString(), (2e18).toString()],
+        owner.address
       );
+  });
+
+  describe('creation via factory', async () => {
+    it('grants ownership', async () => {
+      const tokenizer = await callSetupController();
+      expect(await tokenizer.owner()).to.equal(owner.address);
     });
   });
 
-  describe('changePoolStrategy', () => {
-    let otherStrategy: Contract;
+  context('with tokenizer', () => {
+    let tokenizer: Contract;
 
     beforeEach(async () => {
-      otherStrategy = await deploy('MockTradingStrategy', { args: [] });
+      tokenizer = await callSetupController();
     });
 
-    it('owner can change the pool trading stategy', async () => {
-      await tokenizer.connect(owner).changePoolStrategy(otherStrategy.address, PairTS);
+    describe('changePoolController', () => {
+      it('owner can transfer control of the pool', async () => {
+        await tokenizer.connect(owner).changePoolController(other.address);
 
-      const poolId = await tokenizer.poolId();
-      expect(await vault.getPoolStrategy(poolId)).to.have.members([otherStrategy.address, PairTS]);
+        const poolId = await tokenizer.poolId();
+        expect(await vault.getPoolController(poolId)).to.equal(other.address);
+      });
+
+      it('non-owner cannot transfer control of the pool', async () => {
+        await expect(tokenizer.connect(other).changePoolController(other.address)).to.be.revertedWith(
+          'Ownable: caller is not the owner'
+        );
+      });
     });
 
-    it('non-owner cannot change the pool trading stategy', async () => {
-      await expect(tokenizer.connect(other).changePoolStrategy(otherStrategy.address, PairTS)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      );
-    });
+    describe('authorizePoolInvestmentManager', () => {
+      it('owner can authorize an investment manager', async () => {
+        await tokenizer.connect(owner).authorizePoolInvestmentManager(tokens.DAI.address, other.address);
 
-    it('owner cannot change the pool trading stategy to a different type', async () => {
-      await expect(tokenizer.connect(owner).changePoolStrategy(otherStrategy.address, TupleTS)).to.be.revertedWith(
-        'Trading strategy type cannot change'
-      );
+        const poolId = await tokenizer.poolId();
+        expect(await vault.isPoolInvestmentManager(poolId, tokens.DAI.address, other.address)).to.equal(true);
+      });
+
+      it('non-owner cannot transfer control of the pool', async () => {
+        await expect(
+          tokenizer.connect(other).authorizePoolInvestmentManager(tokens.DAI.address, other.address)
+        ).to.be.revertedWith('Ownable: caller is not the owner');
+      });
     });
   });
 });

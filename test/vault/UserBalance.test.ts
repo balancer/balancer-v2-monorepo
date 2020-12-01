@@ -28,8 +28,8 @@ describe('Vault - user balance', () => {
 
   describe('deposit & withdraw', () => {
     beforeEach('deploy vault & tokens', async () => {
-      vault = await deploy('Vault', { from: admin, args: [] });
-      tokens = await deployTokens(['DAI', 'MKR']);
+      vault = await deploy('Vault', { from: admin, args: [admin.address] });
+      tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
       await mintTokens(tokens, 'DAI', trader, amount.toString());
     });
@@ -211,21 +211,37 @@ describe('Vault - user balance', () => {
         expect(await vault.getTrustedOperators(0, 1)).to.have.members([trustedOperator.address]);
       });
 
-      it('trusted operators are operators for all accounts', async () => {
-        await vault.connect(reporter).reportTrustedOperator(trustedOperator.address);
-        expect(await vault.isOperatorFor(other.address, trustedOperator.address)).to.equal(true);
-      });
-
-      it('trusted operators cannot be revoked', async () => {
-        await vault.connect(reporter).reportTrustedOperator(trustedOperator.address);
-        await vault.connect(other).revokeOperator(trustedOperator.address);
-        expect(await vault.isOperatorFor(other.address, trustedOperator.address)).to.equal(true);
-      });
-
       it('non-reporter cannot report new trusted operators', async () => {
         await expect(vault.connect(other).reportTrustedOperator(trustedOperator.address)).to.be.revertedWith(
           'Caller is not trusted operator reporter'
         );
+      });
+
+      context('with trusted operator', () => {
+        beforeEach(async () => {
+          await vault.connect(reporter).reportTrustedOperator(trustedOperator.address);
+        });
+
+        it('trusted operators are operators for all accounts', async () => {
+          expect(await vault.isOperatorFor(other.address, trustedOperator.address)).to.equal(true);
+        });
+
+        it('revoking trusted operators as regular operators does nothing', async () => {
+          await vault.connect(other).revokeOperator(trustedOperator.address);
+          expect(await vault.isOperatorFor(other.address, trustedOperator.address)).to.equal(true);
+        });
+
+        it('reporter can revoke trusted operators', async () => {
+          await vault.connect(reporter).revokeTrustedOperator(trustedOperator.address);
+
+          expect(await vault.getTotalTrustedOperators()).to.equal(0);
+        });
+
+        it('non-reporter cannot revoke trusted operators', async () => {
+          await expect(vault.connect(other).revokeTrustedOperator(trustedOperator.address)).to.be.revertedWith(
+            'Caller is not trusted operator reporter'
+          );
+        });
       });
     });
   });
