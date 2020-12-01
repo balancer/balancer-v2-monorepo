@@ -15,57 +15,48 @@
 pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../math/FixedPoint.sol";
 
-import "../vault/IVault.sol";
 import "../vault/IFlashLoanReceiver.sol";
 
-contract MockFlashLoanReceiver is Ownable, IFlashLoanReceiver {
+import "./TestToken.sol";
+
+contract MockFlashLoanReceiver is IFlashLoanReceiver {
     using FixedPoint for uint256;
-    IVault public vault;
-    bool public failExecution = false;
+    using SafeERC20 for IERC20;
 
-    constructor(address _vault) public Ownable() {
-        vault = IVault(_vault);
+    address public immutable vault;
+    bool public repayLoan;
+
+    constructor(address _vault) {
+        vault = _vault;
+        repayLoan = true;
     }
 
-    receive() external payable {}
-
-    function setFailExecutionTransfer(bool _fail) public {
-        failExecution = _fail;
+    function setRepayLoan(bool repay) public {
+        repayLoan = repay;
     }
 
-    /**
-        This function is called after your contract has received the flash loaned amount
-     */
+    // Repays loan unless setRepayLoan was called with 'false'
     function executeOperation(
-        address _token,
-        uint256 _amount,
-        uint256 _fee,
-        bytes calldata _params
+        IERC20 token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata
     ) external override {
-        require(IERC20(_token).balanceOf(address(this)) >= _amount, "Invalid balance, was the flashLoan successful?");
+        require(msg.sender == vault, "Flash loan callbacks can only be called by the Vault");
 
-        if (failExecution) {
+        require(IERC20(token).balanceOf(address(this)) == amount, "Invalid balance, was the flashLoan successful?");
+
+        if (!repayLoan) {
             return;
         }
-        //
-        // Logic goes here.
-        //
 
-        uint256 totalDebt = _amount.add(_fee);
-        IERC20(_token).transfer(address(vault), totalDebt);
-    }
+        TestToken(address(token)).mint(address(this), fee);
 
-    /**
-        Flash loan 1000000000000000000 wei (1 ether) worth of `_asset`
-     */
-    function flashloan(address _asset) public onlyOwner {
-        bytes memory data = "";
-        uint256 amount = 10**20; // 100 tokens
-
-        vault.flashLoan(address(this), _asset, amount, data);
+        uint256 totalDebt = amount.add(fee);
+        IERC20(token).safeTransfer(vault, totalDebt);
     }
 }

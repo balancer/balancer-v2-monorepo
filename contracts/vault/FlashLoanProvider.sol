@@ -31,58 +31,47 @@ abstract contract FlashLoanProvider is IVault, Settings {
 
     /**
      * @dev emitted when a flashloan is executed
-     * @param _target the address of the flashLoanReceiver
-     * @param _token the address of the ERC20 token
-     * @param _amount the amount requested
-     * @param _fee the fee on the amount
-     * @param _timestamp the timestamp of the action
      **/
-    event FlashLoan(address indexed _target, address indexed _token, uint256 _amount, uint256 _fee, uint256 _timestamp);
+    event FlashLoan(
+        IFlashLoanReceiver indexed receiver,
+        IERC20 indexed token,
+        uint256 amount,
+        uint256 fee,
+        uint256 timestamp
+    );
 
     /**
      * @dev allows smartcontracts to access the liquidity of the vault within one transaction,
-     * as long as the amount taken plus a fee is returned. NOTE There are security concerns for developers of flashloan
-     * receiver contracts that must be kept into consideration.
-     * For further details please visit https://developers.aave.com
-     * @param _receiver The address of the contract receiving the funds. The receiver should implement the
-     * IFlashLoanReceiver interface.
-     * @param _token the address of the principal ERC-20 token
-     * @param _amount the amount requested for this flashloan
      **/
     function flashLoan(
-        address _receiver,
-        address _token,
-        uint256 _amount,
-        bytes memory _params //TODO check for reentrancy
+        IFlashLoanReceiver receiver,
+        IERC20 token,
+        uint256 amount,
+        bytes calldata userData
     ) external override {
+        //TODO check for reentrancy
         //check that the token has enough available liquidity
-        uint256 availableLiquidityBefore = IERC20(_token).balanceOf(address(this));
+        uint256 availableLiquidityBefore = token.balanceOf(address(this));
 
-        require(availableLiquidityBefore >= _amount, "There is not enough liquidity available to borrow");
+        require(availableLiquidityBefore >= amount, "There is not enough liquidity available to borrow");
 
         //calculate fee on amount
-        uint256 amountFee = _calculateProtocolFlashLoanFee(_amount);
-        require(amountFee > 0, "The requested amount is too small for a flashLoan.");
-
-        //get the FlashLoanReceiver instance
-        IFlashLoanReceiver receiver = IFlashLoanReceiver(_receiver);
-
-        address payable userPayable = address(uint160(_receiver));
+        uint256 amountFee = _calculateProtocolFlashLoanFee(amount);
 
         //transfer funds to the receiver
-        IERC20(_token).transfer(userPayable, _amount);
+        IERC20(token).transfer(address(receiver), amount);
 
         //execute action of the receiver
-        receiver.executeOperation(_token, _amount, amountFee, _params);
+        receiver.executeOperation(token, amount, amountFee, userData);
 
         //check that the actual balance of the core contract includes the returned amount
-        uint256 availableLiquidityAfter = IERC20(_token).balanceOf(address(this));
+        uint256 availableLiquidityAfter = IERC20(token).balanceOf(address(this));
 
         require(
             availableLiquidityAfter == availableLiquidityBefore.add(amountFee),
             "The actual balance of the protocol is inconsistent"
         );
 
-        emit FlashLoan(_receiver, _token, _amount, amountFee, block.timestamp);
+        emit FlashLoan(receiver, token, amount, amountFee, block.timestamp);
     }
 }

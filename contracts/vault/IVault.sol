@@ -16,6 +16,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "./IFlashLoanReceiver.sol";
+
 pragma solidity ^0.7.1;
 
 // Full external interface for the Vault core contract - no external or public methods exist in the contract that don't
@@ -260,10 +262,10 @@ interface IVault {
 
     // Flash Loan interface
     function flashLoan(
-        address _receiver,
-        address _token,
-        uint256 _amount,
-        bytes memory _params //TODO check for reentrancy
+        IFlashLoanReceiver receiver,
+        IERC20 token,
+        uint256 amount,
+        bytes calldata userData
     ) external;
 
     // Investment interface
