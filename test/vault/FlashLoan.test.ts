@@ -117,5 +117,38 @@ describe('Vault - flash loans', () => {
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10')
       ).to.be.revertedWith('ReentrancyGuard: reentrant call');
     });
+
+    describe('multi asset loan', () => {
+      it('the Vault receives protocol fees proportial to each loan', async () => {
+        await expectBalanceChange(
+          () =>
+            vault
+              .connect(other)
+              .flashLoan(
+                receiver.address,
+                [tokens.DAI.address, tokens.MKR.address],
+                [(1e18).toString(), (2e18).toString()],
+                '0x10'
+              ),
+          vault.address,
+          tokens,
+          {
+            DAI: BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING),
+            MKR: BigNumber.from((2e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING),
+          }
+        );
+      });
+
+      it('all balance can be loaned', async () => {
+        await vault
+          .connect(other)
+          .flashLoan(
+            receiver.address,
+            [tokens.DAI.address, tokens.MKR.address],
+            [(100e18).toString(), (100e18).toString()],
+            '0x10'
+          );
+      });
+    });
   });
 });
