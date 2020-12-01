@@ -30,17 +30,6 @@ abstract contract FlashLoanProvider is IVault, Settings {
     using FixedPoint for uint256;
 
     /**
-     * @dev emitted when a flashloan is executed
-     **/
-    event FlashLoan(
-        IFlashLoanReceiver indexed receiver,
-        IERC20 indexed token,
-        uint256 amount,
-        uint256 fee,
-        uint256 timestamp
-    );
-
-    /**
      * @dev allows smartcontracts to access the liquidity of the vault within one transaction,
      **/
     function flashLoan(
@@ -71,7 +60,5 @@ abstract contract FlashLoanProvider is IVault, Settings {
             availableLiquidityAfter == availableLiquidityBefore.add(amountFee),
             "The actual balance of the protocol is inconsistent"
         );
-
-        emit FlashLoan(receiver, token, amount, amountFee, block.timestamp);
     }
 }
