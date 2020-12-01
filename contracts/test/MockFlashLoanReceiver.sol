@@ -54,29 +54,33 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
 
     // Repays loan unless setRepayLoan was called with 'false'
     function receiveFlashLoan(
-        IERC20 token,
-        uint256 amount,
-        uint256 feeAmount,
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        uint256[] memory feeAmounts,
         bytes calldata receiverData
     ) external override {
-        require(msg.sender == vault, "Flash loan callbacks can only be called by the Vault");
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            uint256 amount = amounts[i];
+            uint256 feeAmount = feeAmounts[i];
 
-        require(token.balanceOf(address(this)) == amount, "Invalid balance, was the flashLoan successful?");
+            require(token.balanceOf(address(this)) == amount, "Invalid balance, was the flashLoan successful?");
 
-        if (reenter) {
-            IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), token, amount, receiverData);
+            if (reenter) {
+                IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), tokens, amounts, receiverData);
+            }
+
+            TestToken(address(token)).mint(address(this), repayInExcess ? feeAmount.add(1) : feeAmount);
+
+            uint256 totalDebt = amount.add(feeAmount);
+
+            if (!repayLoan) {
+                totalDebt = totalDebt.sub(1);
+            } else if (repayInExcess) {
+                totalDebt = totalDebt.add(1);
+            }
+
+            token.safeTransfer(vault, totalDebt);
         }
-
-        TestToken(address(token)).mint(address(this), repayInExcess ? feeAmount.add(1) : feeAmount);
-
-        uint256 totalDebt = amount.add(feeAmount);
-
-        if (!repayLoan) {
-            totalDebt = totalDebt.sub(1);
-        } else if (repayInExcess) {
-            totalDebt = totalDebt.add(1);
-        }
-
-        token.safeTransfer(vault, totalDebt);
     }
 }

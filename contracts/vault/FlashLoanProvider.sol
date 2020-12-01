@@ -35,23 +35,32 @@ abstract contract FlashLoanProvider is ReentrancyGuard, IVault, Settings {
 
     function flashLoan(
         IFlashLoanReceiver receiver,
-        IERC20 token,
-        uint256 amount,
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
         bytes calldata receiverData
     ) external override nonReentrant {
-        uint256 preLoanBalance = token.balanceOf(address(this));
-        require(preLoanBalance >= amount, "Insufficient balance to borrow");
+        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
-        token.safeTransfer(address(receiver), amount);
+        uint256[] memory feeAmounts = new uint256[](tokens.length);
+        uint256[] memory preLoanBalances = new uint256[](tokens.length);
 
-        uint256 feeAmount = _calculateProtocolFlashLoanFee(amount);
-        receiver.receiveFlashLoan(token, amount, feeAmount, receiverData);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            preLoanBalances[i] = tokens[i].balanceOf(address(this));
+            require(preLoanBalances[i] >= amounts[i], "Insufficient balance to borrow");
 
-        uint256 postLoanBalance = token.balanceOf(address(this));
+            feeAmounts[i] = _calculateProtocolFlashLoanFee(amounts[i]);
 
-        uint256 receivedFees = postLoanBalance.sub(preLoanBalance);
-        require(receivedFees >= feeAmount, "Insufficient protocol fees");
+            tokens[i].safeTransfer(address(receiver), amounts[i]);
+        }
 
-        // TODO: store protocol fees in fee collector balance
+        receiver.receiveFlashLoan(tokens, amounts, feeAmounts, receiverData);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint256 postLoanBalance = tokens[i].balanceOf(address(this));
+
+            uint256 receivedFees = postLoanBalance.sub(preLoanBalances[i]);
+            require(receivedFees >= feeAmounts[i], "Insufficient protocol fees");
+            // TODO: store protocol fees in fee collector balance
+        }
     }
 }

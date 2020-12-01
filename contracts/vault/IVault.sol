@@ -313,8 +313,8 @@ interface IVault {
      */
     function flashLoan(
         IFlashLoanReceiver receiver,
-        IERC20 token,
-        uint256 amount,
+        IERC20[] calldata tokens,
+        uint256[] calldata amounts,
         bytes calldata receiverData
     ) external;
 

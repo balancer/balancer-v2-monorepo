@@ -20,9 +20,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IFlashLoanReceiver {
     function receiveFlashLoan(
-        IERC20 token,
-        uint256 amount,
-        uint256 feeAmount,
+        IERC20[] calldata tokens,
+        uint256[] calldata amounts,
+        uint256[] calldata feeAmounts,
         bytes calldata receiverData
     ) external;
 }
