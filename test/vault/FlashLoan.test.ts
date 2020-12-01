@@ -78,24 +78,32 @@ describe('Vault - flash loans', () => {
     });
 
     it('the Vault receives protocol fees', async () => {
+      const feeAmount = BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING);
+
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
         vault.address,
         tokens,
-        { DAI: BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING) }
+        { DAI: feeAmount }
       );
+
+      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(feeAmount);
     });
 
     it('excess fees can be paid', async () => {
       await receiver.setRepayInExcess(true);
 
+      // The receiver pays one extra token
+      const feeAmount = BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING).add(1);
+
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
         vault.address,
         tokens,
-        // The receiver pays one extra token
-        { DAI: BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING).add(1) }
+        { DAI: feeAmount }
       );
+
+      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(feeAmount);
     });
 
     it('all balance can be loaned', async () => {
@@ -120,23 +128,22 @@ describe('Vault - flash loans', () => {
 
     describe('multi asset loan', () => {
       it('the Vault receives protocol fees proportial to each loan', async () => {
+        const amounts = [1e18, 2e18].map((value) => BigNumber.from(value.toString()));
+        const feeAmounts = amounts.map((amount) => amount.mul(feePercentage).div(FIXED_POINT_SCALING));
+
         await expectBalanceChange(
           () =>
-            vault
-              .connect(other)
-              .flashLoan(
-                receiver.address,
-                [tokens.DAI.address, tokens.MKR.address],
-                [(1e18).toString(), (2e18).toString()],
-                '0x10'
-              ),
+            vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address, tokens.MKR.address], amounts, '0x10'),
           vault.address,
           tokens,
           {
-            DAI: BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING),
-            MKR: BigNumber.from((2e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING),
+            DAI: feeAmounts[0],
+            MKR: feeAmounts[1],
           }
         );
+
+        expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(feeAmounts[0]);
+        expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal(feeAmounts[1]);
       });
 
       it('all balance can be loaned', async () => {

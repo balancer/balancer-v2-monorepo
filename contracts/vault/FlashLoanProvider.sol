@@ -60,7 +60,8 @@ abstract contract FlashLoanProvider is ReentrancyGuard, IVault, Settings {
 
             uint256 receivedFees = postLoanBalance.sub(preLoanBalances[i]);
             require(receivedFees >= feeAmounts[i], "Insufficient protocol fees");
-            // TODO: store protocol fees in fee collector balance
+
+            _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(receivedFees);
         }
     }
 }
