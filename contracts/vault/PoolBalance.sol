@@ -17,7 +17,7 @@ pragma solidity ^0.7.1;
 import "../math/FixedPoint.sol";
 
 // This library is used to create a data structure that represents a token's balance for a Pool. 'cash' is how many
-// tokens the Pool has sitting inside of the Vault. 'invested' is how many tokens where withdrawn from the Vault by the
+// tokens the Pool has sitting inside of the Vault. 'invested' is how many tokens were withdrawn from the Vault by the
 // Pool's Investment Manager. 'total' is the sum of these two, and represents the Pool's total token balance, including
 // tokens that are *not* inside of the Vault.
 //
