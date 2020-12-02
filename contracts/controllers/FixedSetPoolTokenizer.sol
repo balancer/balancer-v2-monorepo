@@ -15,6 +15,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import "../strategies/StrategyInvariant.sol";
+
 import "../vault/IVault.sol";
 import "../math/FixedPoint.sol";
 
@@ -27,17 +29,20 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
 
     IVault public immutable vault;
     bytes32 public immutable poolId;
+    address public immutable strategy;
+
+    uint256 private _invariant;
 
     constructor(
         IVault _vault,
-        address strategy,
+        address _strategy,
         IVault.StrategyType strategyType,
         uint256 initialBPT,
         IERC20[] memory tokens,
         uint128[] memory amounts,
         address from
     ) {
-        bytes32 _poolId = _vault.newPool(strategy, strategyType);
+        bytes32 _poolId = _vault.newPool(_strategy, strategyType);
         _vault.addLiquidity(_poolId, from, tokens, amounts, false);
 
         _mintPoolShare(initialBPT);
@@ -46,6 +51,32 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
         // Set immutable state variables - these cannot be read from during construction
         vault = _vault;
         poolId = _poolId;
+        strategy = _strategy;
+
+        //Update invariant
+        _invariant = StrategyInvariant(_strategy).getInvariant(amounts);
+    }
+
+    // Pays protocol fees
+    function payProtocolFees() internal {
+        //Load tokens
+        IERC20[] memory tokens = vault.getPoolTokens(poolId);
+        //Load balances
+        uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
+
+        //Get new invariant
+        uint256 newInvariant = StrategyInvariant(strategy).getInvariant(balances);
+
+        //Calculates how much it grew
+        if (newInvariant > _invariant) {
+            uint128 increaseRatio = FixedPoint.ONE.sub(_invariant.div(newInvariant)).toUint128();
+
+            uint128[] memory swapFeesCollected = new uint128[](tokens.length);
+
+            //TODO: pick random token, temporary using first token
+            swapFeesCollected[0] = balances[0].mul128(increaseRatio);
+            vault.collectSwapProtocolFees(poolId, tokens, swapFeesCollected);
+        }
     }
 
     // Joining a pool
@@ -58,6 +89,9 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
         bool transferTokens,
         address beneficiary
     ) external nonReentrant {
+        //Pay protocol fees to have balances up to date
+        payProtocolFees();
+
         uint256 poolTotal = totalSupply();
         uint128 ratio = poolAmountOut.div(poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");
@@ -85,6 +119,9 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
         bool withdrawTokens,
         address beneficiary
     ) external nonReentrant {
+        //Pay protocol fees to have balances up to date
+        payProtocolFees();
+
         uint256 poolTotal = totalSupply();
         uint128 ratio = poolAmountIn.div(poolTotal).toUint128();
         require(ratio != 0, "ERR_MATH_APPROX");

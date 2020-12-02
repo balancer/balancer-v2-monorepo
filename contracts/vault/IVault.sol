@@ -300,6 +300,18 @@ interface IVault {
         bool depositToUserBalance;
     }
 
+    // Collect Swap Protocol Fee interface
+     /**
+     * @dev Receives an array of tokens and their corresponding amounts to which swap protocol fees will be applied.
+     * If amounts are greater than zero, it uses them to calculate the corresponding swap protocol fee for the token
+     * which is collected by substracting it from the token pool balance.
+     */
+    function collectSwapProtocolFees(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        uint128[] calldata collectedFees
+    ) external;
+
     // Flash Loan interface
 
     /**

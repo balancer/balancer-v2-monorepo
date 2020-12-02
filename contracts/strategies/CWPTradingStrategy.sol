@@ -23,13 +23,15 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "./IPairTradingStrategy.sol";
 import "./lib/WeightedProduct.sol";
 import "./StrategyFee.sol";
+import "./StrategyInvariant.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduct {
+contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, StrategyInvariant, WeightedProduct {
     using SafeCast for uint256;
+    using FixedPoint for uint256;
     using FixedPoint for uint128;
 
     uint8 public constant MIN_TOKENS = 2;
@@ -76,6 +78,8 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
     uint256 private immutable _weight14;
     uint256 private immutable _weight15;
 
+    uint256 private _sumWeights;
+
     constructor(
         IERC20[] memory tokens,
         uint256[] memory weights,
@@ -90,6 +94,7 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
         require(tokens.length == weights.length, "ERR_WEIGHTS_LIST");
         for (uint8 i = 0; i < tokens.length; i++) {
             require(weights[i] >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
+            _sumWeights = _sumWeights + weights[i];
         }
 
         uint256 totalTokens = tokens.length;
@@ -175,6 +180,42 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
         }
     }
 
+    function getWeights(bool normalized) public view returns (uint256[] memory weights) {
+        if (_totalTokens > 0) {
+            weights[0] = normalized ? _weight0.div(_sumWeights) : _weight0;
+        } else if (_totalTokens > 1) {
+            weights[1] = normalized ? _weight1.div(_sumWeights) : _weight1;
+        } else if (_totalTokens > 2) {
+            weights[2] = normalized ? _weight1.div(_sumWeights) : _weight2;
+        } else if (_totalTokens > 3) {
+            weights[3] = normalized ? _weight1.div(_sumWeights) : _weight3;
+        } else if (_totalTokens > 4) {
+            weights[4] = normalized ? _weight1.div(_sumWeights) : _weight4;
+        } else if (_totalTokens > 5) {
+            weights[5] = normalized ? _weight1.div(_sumWeights) : _weight5;
+        } else if (_totalTokens > 6) {
+            weights[6] = normalized ? _weight1.div(_sumWeights) : _weight6;
+        } else if (_totalTokens > 7) {
+            weights[7] = normalized ? _weight1.div(_sumWeights) : _weight7;
+        } else if (_totalTokens > 8) {
+            weights[8] = normalized ? _weight1.div(_sumWeights) : _weight8;
+        } else if (_totalTokens > 9) {
+            weights[9] = normalized ? _weight1.div(_sumWeights) : _weight9;
+        } else if (_totalTokens > 10) {
+            weights[10] = normalized ? _weight1.div(_sumWeights) : _weight10;
+        } else if (_totalTokens > 11) {
+            weights[11] = normalized ? _weight1.div(_sumWeights) : _weight11;
+        } else if (_totalTokens > 12) {
+            weights[12] = normalized ? _weight1.div(_sumWeights) : _weight12;
+        } else if (_totalTokens > 13) {
+            weights[13] = normalized ? _weight1.div(_sumWeights) : _weight13;
+        } else if (_totalTokens > 14) {
+            weights[14] = normalized ? _weight1.div(_sumWeights) : _weight14;
+        } else if (_totalTokens > 15) {
+            weights[15] = normalized ? _weight1.div(_sumWeights) : _weight15;
+        }
+    }
+
     function quoteOutGivenIn(
         QuoteRequestGivenIn calldata request,
         uint128 currentBalanceTokenIn,
@@ -214,6 +255,10 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
         uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
 
         return adjustedIn;
+    }
+
+    function getInvariant(uint128[] memory balances) external view override returns (uint256) {
+        return _invariant(getWeights(true), balances);
     }
 
     function getSwapFee() external view override returns (uint256) {

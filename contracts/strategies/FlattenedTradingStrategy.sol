@@ -20,9 +20,11 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "./ITupleTradingStrategy.sol";
 import "./lib/Stable.sol";
 import "./StrategyFee.sol";
+import "./StrategyInvariant.sol";
 
-contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable {
+contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, StrategyInvariant, Stable {
     using SafeCast for uint256;
+    using SafeCast for int256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -64,6 +66,10 @@ contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable 
         uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
 
         return adjustedIn;
+    }
+
+    function getInvariant(uint128[] memory balances) external view override returns (uint256) {
+        return _invariant(_amp, balances).toUint256();
     }
 
     function getAmp() external view returns (uint128) {

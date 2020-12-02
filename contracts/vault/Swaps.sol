@@ -412,4 +412,24 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             return (poolTokenInBalance.increase(amountIn), poolTokenOutBalance.decrease(request.amount), amountIn);
         }
     }
+
+    //Collect swap protocol fees
+    function collectSwapProtocolFees(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        uint128[] calldata collectedFees
+    ) external override withExistingPool(poolId) onlyPoolController(poolId) {
+        require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (collectedFees[i] > 0) {
+                BalanceLib.Balance memory currentBalance = _poolTokenBalance[poolId][tokens[i]];
+
+                uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
+                require(currentBalance.cash >= feeToCollect, "Not enough cash to pay for protocol swap fee");
+
+                _poolTokenBalance[poolId][tokens[i]] = currentBalance.decrease(feeToCollect);
+            }
+        }
+    }
 }

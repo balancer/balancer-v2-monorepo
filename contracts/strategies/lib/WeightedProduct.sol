@@ -87,4 +87,18 @@ contract WeightedProduct {
 
         return tokenBalanceIn.mul(ratio).toUint128();
     }
+
+    // Computes the invariant given the current balances and normalized weights.
+    function _invariant(uint256[] memory normalizedWeights, uint128[] memory balances)
+        internal
+        pure
+        returns (uint256 invariant)
+    {
+        require(normalizedWeights.length == balances.length, "ERR_BALANCES_LENGTH");
+
+        invariant = FixedPoint.ONE;
+        for (uint8 i = 0; i < normalizedWeights.length; i++) {
+            invariant = invariant.mul(LogExpMath.exp(int256(balances[i]), int256(normalizedWeights[i])).toUint256());
+        }
+    }
 }
