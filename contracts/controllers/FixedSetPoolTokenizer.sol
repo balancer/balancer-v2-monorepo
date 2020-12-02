@@ -69,7 +69,11 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
 
         //Calculates how much it grew
         if (newInvariant > _invariant) {
+            //Calculates ratio
             uint128 increaseRatio = FixedPoint.ONE.sub(_invariant.div(newInvariant)).toUint128();
+
+            //Updates the invariant
+            _invariant = newInvariant;
 
             uint128[] memory swapFeesCollected = new uint128[](tokens.length);
 
