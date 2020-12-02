@@ -1,153 +1,45 @@
-import { ethers } from 'hardhat';
-import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import * as expectEvent from '../helpers/expectEvent';
 import { deploy } from '../../scripts/helpers/deploy';
-import { zip } from 'lodash';
-
-let accountA: string;
-let accountB: string;
-let accountC: string;
-
-let map: Contract;
+import { shouldBehaveLikeMap } from './EnumerableMap.behavior';
 
 describe('EnumerableMap', () => {
-  const keyA = BigNumber.from('7891');
-  const keyB = BigNumber.from('451');
-  const keyC = BigNumber.from('9592328');
+  describe('EnumerableUintToAddressMap', () => {
+    const keys = [BigNumber.from('7891'), BigNumber.from('451'), BigNumber.from('9592328')];
 
-  before(async () => {
-    [, accountA, accountB, accountC] = (await ethers.getSigners()).map((signer) => signer.address);
+    const values = [
+      '0x8B40ECf815AC8d53aB4AD2a00248DE77296344Db',
+      '0x638141Eb8905D9A55D81610f45bC2B47120059e7',
+      '0x7571A57e94F046725612f786Aa9bf44ce6b56894',
+    ];
+
+    const store: { map?: Contract } = {};
+
+    beforeEach(async () => {
+      store.map = await deploy('EnumerableUintToAddressMapMock', { args: [] });
+    });
+
+    shouldBehaveLikeMap(store as { map: Contract }, keys, values);
   });
 
-  beforeEach(async () => {
-    map = await deploy('EnumerableMapMock', { args: [] });
-  });
+  describe('EnumerableIERC20ToBytes32Map', () => {
+    const keys = [
+      '0x8B40ECf815AC8d53aB4AD2a00248DE77296344Db',
+      '0x638141Eb8905D9A55D81610f45bC2B47120059e7',
+      '0x7571A57e94F046725612f786Aa9bf44ce6b56894',
+    ];
 
-  async function expectMembersMatch(map: Contract, keys: Array<BigNumber>, values: Array<string>) {
-    expect(keys.length).to.equal(values.length);
+    const values = [
+      '0x41b1a0649752af1b28b3dc29a1556eee781e4a4c3a1f7f53f90fa834de098c4d',
+      '0x435cd288e3694b535549c3af56ad805c149f92961bf84a1c647f7d86fc2431b4',
+      '0xf2d05ec5c5729fb559780c70a93ca7b4ee2ca37f64e62fa31046b324f60d9447',
+    ];
 
-    await Promise.all(keys.map(async (key) => expect(await map.contains(key)).to.equal(true)));
+    const store: { map?: Contract } = {};
 
-    expect(await map.length()).to.equal(keys.length.toString());
-
-    expect(await Promise.all(keys.map((key) => map.get(key)))).to.have.same.members(values);
-
-    // To compare key-value pairs, we zip keys and values, and convert BNs to
-    // strings to workaround Chai limitations when dealing with nested arrays
-    expect(
-      await Promise.all(
-        [...Array(keys.length).keys()].map(async (index) => {
-          const entry = await map.at(index);
-          return [entry.key.toString(), entry.value];
-        })
-      )
-    ).to.have.same.deep.members(
-      zip(
-        keys.map((k) => k.toString()),
-        values
-      )
-    );
-  }
-
-  it('starts empty', async () => {
-    expect(await map.contains(keyA)).to.equal(false);
-
-    await expectMembersMatch(map, [], []);
-  });
-
-  describe('set', () => {
-    it('adds a key', async () => {
-      const receipt = await (await map.set(keyA, accountA)).wait();
-      expectEvent.inReceipt(receipt, 'OperationResult', { result: true });
-
-      await expectMembersMatch(map, [keyA], [accountA]);
+    beforeEach(async () => {
+      store.map = await deploy('EnumerableIERC20ToBytes32MapMock', { args: [] });
     });
 
-    it('adds several keys', async () => {
-      await map.set(keyA, accountA);
-      await map.set(keyB, accountB);
-
-      await expectMembersMatch(map, [keyA, keyB], [accountA, accountB]);
-      expect(await map.contains(keyC)).to.equal(false);
-    });
-
-    it('returns false when adding keys already in the set', async () => {
-      await map.set(keyA, accountA);
-
-      const receipt = await (await map.set(keyA, accountA)).wait();
-      expectEvent.inReceipt(receipt, 'OperationResult', { result: false });
-
-      await expectMembersMatch(map, [keyA], [accountA]);
-    });
-
-    it('updates values for keys already in the set', async () => {
-      await map.set(keyA, accountA);
-
-      await map.set(keyA, accountB);
-
-      await expectMembersMatch(map, [keyA], [accountB]);
-    });
-  });
-
-  describe('remove', () => {
-    it('removes added keys', async () => {
-      await map.set(keyA, accountA);
-
-      const receipt = await (await map.remove(keyA)).wait();
-      expectEvent.inReceipt(receipt, 'OperationResult', { result: true });
-
-      expect(await map.contains(keyA)).to.equal(false);
-      await expectMembersMatch(map, [], []);
-    });
-
-    it('returns false when removing keys not in the set', async () => {
-      const receipt = await (await map.remove(keyA)).wait();
-      expectEvent.inReceipt(receipt, 'OperationResult', { result: false });
-
-      expect(await map.contains(keyA)).to.equal(false);
-    });
-
-    it('adds and removes multiple keys', async () => {
-      // []
-
-      await map.set(keyA, accountA);
-      await map.set(keyC, accountC);
-
-      // [A, C]
-
-      await map.remove(keyA);
-      await map.remove(keyB);
-
-      // [C]
-
-      await map.set(keyB, accountB);
-
-      // [C, B]
-
-      await map.set(keyA, accountA);
-      await map.remove(keyC);
-
-      // [A, B]
-
-      await map.set(keyA, accountA);
-      await map.set(keyB, accountB);
-
-      // [A, B]
-
-      await map.set(keyC, accountC);
-      await map.remove(keyA);
-
-      // [B, C]
-
-      await map.set(keyA, accountA);
-      await map.remove(keyB);
-
-      // [A, C]
-
-      await expectMembersMatch(map, [keyA, keyC], [accountA, accountC]);
-
-      expect(await map.contains(keyB)).to.equal(false);
-    });
+    shouldBehaveLikeMap(store as { map: Contract }, keys, values);
   });
 });

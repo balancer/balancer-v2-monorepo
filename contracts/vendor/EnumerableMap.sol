@@ -2,6 +2,14 @@
 
 pragma solidity ^0.7.0;
 
+// Based on the EnumerableSet library from OpenZeppelin contracts, altered to include
+// the following:
+//  * a map from IERC20 to bytes32
+//  * entries are stored in mappings instead of arrays, to allow for unchecked access
+//  * keys and values can be retrieved independently
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 /**
  * @dev Library for managing an enumerable variant of Solidity's
  * https://solidity.readthedocs.io/en/latest/types.html#mapping-types[`mapping`]
@@ -22,9 +30,6 @@ pragma solidity ^0.7.0;
  *     EnumerableMap.UintToAddressMap private myMap;
  * }
  * ```
- *
- * As of v3.0.0, only maps of type `uint256 -> address` (`UintToAddressMap`) are
- * supported.
  */
 library EnumerableMap {
     // To implement this library for multiple types with as little code
@@ -42,6 +47,7 @@ library EnumerableMap {
     }
 
     struct Map {
+        // Number of entries in the map
         uint256 _amount;
         // Storage of map keys and values
         mapping(uint256 => MapEntry) _entries;
@@ -255,5 +261,74 @@ library EnumerableMap {
         string memory errorMessage
     ) internal view returns (address) {
         return address(uint256(_get(map._inner, bytes32(key), errorMessage)));
+    }
+
+    // IERC20ToBytes32Map
+
+    struct IERC20ToBytes32Map {
+        Map _inner;
+    }
+
+    /**
+     * @dev Adds a key-value pair to a map, or updates the value for an existing
+     * key. O(1).
+     *
+     * Returns true if the key was added to the map, that is if it was not
+     * already present.
+     */
+    function set(
+        IERC20ToBytes32Map storage map,
+        IERC20 key,
+        bytes32 value
+    ) internal returns (bool) {
+        return _set(map._inner, bytes32(uint256(address(key))), value);
+    }
+
+    /**
+     * @dev Removes a value from a set. O(1).
+     *
+     * Returns true if the key was removed from the map, that is if it was present.
+     */
+    function remove(IERC20ToBytes32Map storage map, IERC20 key) internal returns (bool) {
+        return _remove(map._inner, bytes32(uint256(address(key))));
+    }
+
+    /**
+     * @dev Returns true if the key is in the map. O(1).
+     */
+    function contains(IERC20ToBytes32Map storage map, IERC20 key) internal view returns (bool) {
+        return _contains(map._inner, bytes32(uint256(address(key))));
+    }
+
+    /**
+     * @dev Returns the number of elements in the map. O(1).
+     */
+    function length(IERC20ToBytes32Map storage map) internal view returns (uint256) {
+        return _length(map._inner);
+    }
+
+    /**
+     * @dev Returns the element stored at position `index` in the set. O(1).
+     * Note that there are no guarantees on the ordering of values inside the
+     * array, and it may change when more values are added or removed.
+     *
+     * Requirements:
+     *
+     * - `index` must be strictly less than {length}.
+     */
+    function at(IERC20ToBytes32Map storage map, uint256 index) internal view returns (IERC20, bytes32) {
+        (bytes32 key, bytes32 value) = _at(map._inner, index);
+        return (IERC20(uint256(key)), value);
+    }
+
+    /**
+     * @dev Returns the value associated with `key`.  O(1).
+     *
+     * Requirements:
+     *
+     * - `key` must be in the map.
+     */
+    function get(IERC20ToBytes32Map storage map, IERC20 key) internal view returns (bytes32) {
+        return _get(map._inner, bytes32(uint256(address(key))));
     }
 }
