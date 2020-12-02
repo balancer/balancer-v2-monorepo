@@ -330,8 +330,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         }
 
         // 2: Update Pool balances - these have been deducted the swap protocol fees
-        _poolTokenBalance[request.poolId][request.tokenIn] = tokenInFinalBalance;
-        _poolTokenBalance[request.poolId][request.tokenOut] = tokenOutFinalBalance;
+        _poolPairTokenBalance[request.poolId][request.tokenIn] = tokenInFinalBalance;
+        _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutFinalBalance;
     }
 
     function _processPairTradingStrategyQuoteRequest(
@@ -347,10 +347,10 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             uint128 protocolSwapFee
         )
     {
-        poolTokenInBalance = _poolTokenBalance[request.poolId][request.tokenIn];
+        poolTokenInBalance = _poolPairTokenBalance[request.poolId][request.tokenIn];
         require(poolTokenInBalance.total > 0, "Token A not in pool");
 
-        poolTokenOutBalance = _poolTokenBalance[request.poolId][request.tokenOut];
+        poolTokenOutBalance = _poolPairTokenBalance[request.poolId][request.tokenOut];
         require(poolTokenOutBalance.total > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
@@ -405,13 +405,13 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             uint128 protocolSwapFee
         )
     {
-        uint128[] memory currentBalances = new uint128[](_poolTokens[request.poolId].length());
+        uint128[] memory currentBalances = new uint128[](_poolPairTokens[request.poolId].length());
 
         Helper memory helper;
 
-        for (uint256 i = 0; i < _poolTokens[request.poolId].length(); i++) {
-            IERC20 token = IERC20(_poolTokens[request.poolId].at(i));
-            BalanceLib.Balance memory balance = _poolTokenBalance[request.poolId][token];
+        for (uint256 i = 0; i < _poolPairTokens[request.poolId].length(); i++) {
+            IERC20 token = IERC20(_poolPairTokens[request.poolId].at(i));
+            BalanceLib.Balance memory balance = _poolPairTokenBalance[request.poolId][token];
 
             currentBalances[i] = balance.total;
 
