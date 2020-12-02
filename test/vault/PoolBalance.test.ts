@@ -60,6 +60,61 @@ describe('Vault - pool balance', () => {
     });
   });
 
+  describe('set invested', () => {
+    async function testSetInvested(
+      cash: number | BigNumber,
+      invested: number | BigNumber,
+      newInvested: number | BigNumber
+    ) {
+      cash = BigNumber.from(cash);
+      invested = BigNumber.from(invested);
+
+      const balance = await poolBalance.setInvested(await poolBalance.toBalance(cash, invested), newInvested);
+
+      expect(await poolBalance.cash(balance)).to.equal(cash);
+      expect(await poolBalance.invested(balance)).to.equal(newInvested);
+      expect(await poolBalance.total(balance)).to.equal(cash.add(newInvested));
+    }
+
+    it('sets invested to zero', async () => {
+      await testSetInvested(0, 0, 0);
+
+      await testSetInvested(42, 0, 0);
+      await testSetInvested(0, 23, 0);
+      await testSetInvested(42, 23, 0);
+
+      await testSetInvested(MAX_UINT128, 0, 0);
+      await testSetInvested(0, MAX_UINT128, 0);
+      await testSetInvested(MAX_UINT128.div(2), MAX_UINT128.div(2), 0);
+    });
+
+    it('sets invsted to non-zero', async () => {
+      await testSetInvested(0, 0, 58);
+
+      await testSetInvested(42, 0, 58);
+      await testSetInvested(0, 23, 58);
+      await testSetInvested(42, 23, 58);
+
+      await testSetInvested(MAX_UINT128.div(2), 0, 58);
+      await testSetInvested(0, MAX_UINT128.div(2), 58);
+      await testSetInvested(MAX_UINT128.div(2), MAX_UINT128.div(2), 58);
+    });
+
+    it('sets invested to extreme value', async () => {
+      await testSetInvested(42, 0, MAX_UINT128.sub(42));
+      await testSetInvested(0, 23, MAX_UINT128);
+      await testSetInvested(42, 23, MAX_UINT128.sub(42));
+    });
+
+    it('reverts on total overflow', async () => {
+      await expect(testSetInvested(MAX_UINT128, 0, 1)).to.be.revertedWith('BALANCE_TOTAL_OVERFLOW');
+      await expect(testSetInvested(1, 0, MAX_UINT128)).to.be.revertedWith('BALANCE_TOTAL_OVERFLOW');
+      await expect(testSetInvested(MAX_UINT128.div(2).add(1), 0, MAX_UINT128.div(2).add(1))).to.be.revertedWith(
+        'BALANCE_TOTAL_OVERFLOW'
+      );
+    });
+  });
+
   describe('cash', () => {
     describe('increase', () => {
       async function testIncreaseCash(

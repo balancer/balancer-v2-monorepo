@@ -50,4 +50,8 @@ contract PoolBalanceMock {
     function investedToCash(bytes32 balance, uint128 amount) public pure returns (bytes32) {
         return balance.investedToCash(amount);
     }
+
+    function setInvested(bytes32 balance, uint128 newInvested) public pure returns (bytes32) {
+        return balance.setInvested(newInvested);
+    }
 }
