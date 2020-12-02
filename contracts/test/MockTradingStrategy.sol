@@ -35,17 +35,17 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         ITradingStrategy.QuoteRequestGivenIn calldata request,
         uint128,
         uint128
-    ) external view override returns (uint128, uint128) {
-        return (request.amountIn.mul128(_multiplier), 0);
+    ) external view override returns (uint128) {
+        return request.amountIn.mul128(_multiplier);
     }
 
     function quoteInGivenOut(
         ITradingStrategy.QuoteRequestGivenOut calldata request,
         uint128,
         uint128
-    ) external view override returns (uint128, uint128) {
+    ) external view override returns (uint128) {
         uint128 amountIn = request.amountOut.div128(_multiplier);
-        return (amountIn, 0);
+        return amountIn;
     }
 
     // ITupleTradingStrategy
@@ -54,8 +54,8 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint128[] calldata,
         uint256,
         uint256
-    ) external view override returns (uint128, uint128) {
-        return (request.amountIn.mul128(_multiplier), 0);
+    ) external view override returns (uint128) {
+        return request.amountIn.mul128(_multiplier);
     }
 
     function quoteInGivenOut(
@@ -63,8 +63,8 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
         uint128[] calldata,
         uint256,
         uint256
-    ) external view override returns (uint128, uint128) {
+    ) external view override returns (uint128) {
         uint128 amountIn = request.amountOut.div128(_multiplier);
-        return (amountIn, 0);
+        return amountIn;
     }
 }

@@ -4,7 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
-import { TokenList, deployTokens, deployToken } from '../helpers/tokens';
+import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
@@ -625,7 +625,7 @@ describe('Vault - swaps', () => {
     let invalidTokenIndex: number;
 
     beforeEach(async () => {
-      const invalidToken = await deployToken('INV');
+      const { INV: invalidToken } = await deployTokens(['INV'], [18]);
       tokenAddressesWithInvalid = tokenAddresses.concat(invalidToken.address);
       invalidTokenIndex = tokenAddressesWithInvalid.length - 1;
     });

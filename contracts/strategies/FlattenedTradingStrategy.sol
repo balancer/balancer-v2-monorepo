@@ -42,14 +42,14 @@ contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable 
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external view override returns (uint128, uint128) {
+    ) external view override returns (uint128) {
         // Substract fee
         uint128 amountInFees = request.amountIn.mul(_swapFee).toUint128();
         uint128 adjustedIn = request.amountIn.sub128(amountInFees);
 
         uint128 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
 
-        return (maximumAmountOut, amountInFees);
+        return maximumAmountOut;
     }
 
     function quoteInGivenOut(
@@ -57,14 +57,13 @@ contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable 
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external view override returns (uint128, uint128) {
+    ) external view override returns (uint128) {
         uint128 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
 
         // Add fee
         uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
-        uint128 amountInFees = adjustedIn.sub128(minimumAmountIn);
 
-        return (adjustedIn, amountInFees);
+        return adjustedIn;
     }
 
     function getAmp() external view returns (uint128) {

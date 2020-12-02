@@ -24,8 +24,11 @@ abstract contract Settings is IVault {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
-    // Protocol fees: these are charged as unaccounted for tokens, and can therefore be claimed and distributed by the
-    // system admin.
+    // Stores the fee collected per each token that is only withdrawable by the admin.
+    mapping(IERC20 => uint256) internal _collectedProtocolFees;
+
+    //Fee collector entity to which protocol fees are sent when withdrawn.
+    address private _protocolFeeCollector;
 
     // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
     // percentage of the tokens exiting
@@ -44,6 +47,14 @@ abstract contract Settings is IVault {
 
     uint256 private immutable _MAX_PROTOCOL_FLASH_LOAN_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
+    function _setProtocolFeeCollector(address protocolFeeCollector) internal {
+        _protocolFeeCollector = protocolFeeCollector;
+    }
+
+    function protocolFeeCollector() public view returns (address) {
+        return _protocolFeeCollector;
+    }
+
     function _setProtocolWithdrawFee(uint128 newFee) internal {
         require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
         _protocolWithdrawFee = newFee;
@@ -53,9 +64,8 @@ abstract contract Settings is IVault {
         return _protocolWithdrawFee;
     }
 
-    function _applyProtocolWithdrawFee(uint128 amount) internal view returns (uint128) {
-        uint128 fee = amount.mul128(_protocolWithdrawFee);
-        return amount.sub128(fee);
+    function _calculateProtocolWithdrawFee(uint128 amount) internal view returns (uint128) {
+        return amount.mul128(_protocolWithdrawFee);
     }
 
     function _setProtocolSwapFee(uint128 newFee) internal {

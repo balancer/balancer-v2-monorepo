@@ -21,6 +21,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../vendor/EnumerableSet.sol";
 
 import "./IVault.sol";
+import "./PoolBalance.sol";
 import "./VaultAccounting.sol";
 import "./UserBalance.sol";
 import "../investmentManagers/IInvestmentManager.sol";
@@ -29,7 +30,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     using EnumerableSet for EnumerableSet.BytesSet;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    using BalanceLib for BalanceLib.Balance;
+    using PoolBalance for bytes32;
 
     using FixedPoint for uint128;
 
@@ -56,11 +57,11 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     // Data for pools with Pair Trading Strategies
 
     mapping(bytes32 => EnumerableSet.AddressSet) internal _poolPairTokens;
-    mapping(bytes32 => mapping(IERC20 => BalanceLib.Balance)) internal _poolPairTokenBalance;
+    mapping(bytes32 => mapping(IERC20 => bytes32)) internal _poolPairTokenBalance;
 
     // Data for pools with Tuple Trading Strategies
 
-    mapping(bytes32 => mapping(uint256 => BalanceLib.Balance)) internal _poolTupleTokenBalance;
+    mapping(bytes32 => mapping(uint256 => bytes32)) internal _poolTupleTokenBalance;
     mapping(bytes32 => mapping(IERC20 => uint256)) internal _poolTupleTokenIndex;
 
     modifier withExistingPool(bytes32 poolId) {
@@ -148,7 +149,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     {
         uint128[] memory balances = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _getPoolTokenBalance(poolId, tokens[i]).total;
+            balances[i] = _getPoolTokenBalance(poolId, tokens[i]).total();
         }
 
         return balances;
@@ -206,18 +207,18 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
                     require(received == toReceive, "Not enough tokens received");
                 }
 
-                BalanceLib.Balance memory currentBalance = _getPoolTokenBalance(poolId, tokens[i]);
-                if (currentBalance.total == 0) {
+                bytes32 currentBalance = _getPoolTokenBalance(poolId, tokens[i]);
+                if (currentBalance.total() == 0) {
                     // No tokens with zero balance should ever be in the _poolPairTokens set
                     assert(_poolPairTokens[poolId].add(address(tokens[i])));
                 }
 
-                _setPoolTokenBalance(poolId, tokens[i], currentBalance.increase(amounts[i]));
+                _setPoolTokenBalance(poolId, tokens[i], currentBalance.increaseCash(amounts[i]));
             }
         }
     }
 
-    function _getPoolTokenBalance(bytes32 poolId, IERC20 token) internal view returns (BalanceLib.Balance memory) {
+    function _getPoolTokenBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         (, StrategyType strategyType) = fromPoolId(poolId);
 
         if (strategyType == StrategyType.PAIR) {
@@ -231,7 +232,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     function _setPoolTokenBalance(
         bytes32 poolId,
         IERC20 token,
-        BalanceLib.Balance memory balance
+        bytes32 balance
     ) internal {
         (, StrategyType strategyType) = fromPoolId(poolId);
 
@@ -263,9 +264,11 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
                 _pushTokens(tokens[i], to, amounts[i], true);
             }
 
-            _poolPairTokenBalance[poolId][tokens[i]] = _poolPairTokenBalance[poolId][tokens[i]].decrease(amounts[i]);
+            _poolPairTokenBalance[poolId][tokens[i]] = _poolPairTokenBalance[poolId][tokens[i]].decreaseCash(
+                amounts[i]
+            );
 
-            if (_poolPairTokenBalance[poolId][tokens[i]].total == 0) {
+            if (_poolPairTokenBalance[poolId][tokens[i]].total() == 0) {
                 _poolPairTokens[poolId].remove(address(tokens[i]));
             }
         }
@@ -297,7 +300,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     ) external override onlyPoolController(poolId) {
         require(
             _poolInvestmentManagers[poolId][token] == address(0) ||
-                _poolPairTokenBalance[poolId][token].cash == _poolPairTokenBalance[poolId][token].total,
+                _poolPairTokenBalance[poolId][token].cash() == _poolPairTokenBalance[poolId][token].total(),
             "Cannot set a new investment manager with outstanding investment"
         );
         _poolInvestmentManagers[poolId][token] = operator;
@@ -311,7 +314,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     ) external override onlyPoolController(poolId) {
         require(
             _poolInvestmentManagers[poolId][token] != address(0) &&
-                _poolPairTokenBalance[poolId][token].cash == _poolPairTokenBalance[poolId][token].total,
+                _poolPairTokenBalance[poolId][token].cash() == _poolPairTokenBalance[poolId][token].total(),
             "Cannot remove an investment manager with outstanding investment"
         );
 
@@ -346,7 +349,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         uint128 amountToInvest // must be less than total allowed
     ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
         uint128 targetUtilization = _investablePercentage[poolId][token];
-        uint128 targetInvestableAmount = _poolPairTokenBalance[poolId][token].total.mul128(targetUtilization);
+        uint128 targetInvestableAmount = _poolPairTokenBalance[poolId][token].total().mul128(targetUtilization);
 
         uint128 investedAmount = _poolPairTokenBalance[poolId][token].invested();
 
@@ -355,7 +358,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
             "over investment amount - cannot invest"
         );
 
-        _poolPairTokenBalance[poolId][token].cash = _poolPairTokenBalance[poolId][token].cash.sub128(amountToInvest);
+        _poolPairTokenBalance[poolId][token] = _poolPairTokenBalance[poolId][token].cashToInvested(amountToInvest);
 
         _pushTokens(token, investmentManager, amountToInvest, false);
         IInvestmentManager(investmentManager).recordPoolInvestment(poolId, amountToInvest);
@@ -368,14 +371,15 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         uint128 amountToDivest // must be less than total allowed
     ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
         uint128 targetUtilization = _investablePercentage[poolId][token];
-        uint128 targetInvestableAmount = _poolPairTokenBalance[poolId][token].total.mul128(targetUtilization);
+        uint128 targetInvestableAmount = _poolPairTokenBalance[poolId][token].total().mul128(targetUtilization);
         uint128 investedAmount = _poolPairTokenBalance[poolId][token].invested();
+
         require(
             investedAmount.sub128(amountToDivest) >= targetInvestableAmount,
             "under investment amount - cannot divest"
         );
 
-        _poolPairTokenBalance[poolId][token].cash = _poolPairTokenBalance[poolId][token].cash.add128(amountToDivest);
+        _poolPairTokenBalance[poolId][token] = _poolPairTokenBalance[poolId][token].investedToCash(amountToDivest);
 
         // think about what happens with tokens that charge a transfer fee
         _pullTokens(token, investmentManager, amountToDivest);
@@ -388,22 +392,20 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         address investmentManager
     ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
         uint128 targetUtilization = _investablePercentage[poolId][token];
-        uint128 targetInvestableAmount = _poolPairTokenBalance[poolId][token].total.mul128(targetUtilization);
+
+        uint128 targetInvestableAmount = _poolPairTokenBalance[poolId][token].total().mul128(targetUtilization);
         uint128 investedAmount = _poolPairTokenBalance[poolId][token].invested();
 
         if (targetInvestableAmount > investedAmount) {
             uint128 amountToInvest = targetInvestableAmount.sub128(investedAmount);
-            _poolPairTokenBalance[poolId][token].cash = _poolPairTokenBalance[poolId][token].cash.sub128(
-                amountToInvest
-            );
+            _poolPairTokenBalance[poolId][token] = _poolPairTokenBalance[poolId][token].cashToInvested(amountToInvest);
 
             _pushTokens(token, investmentManager, amountToInvest, false);
             IInvestmentManager(investmentManager).recordPoolInvestment(poolId, amountToInvest);
         } else if (targetInvestableAmount < investedAmount) {
             uint128 amountToDivest = investedAmount.sub128(targetInvestableAmount);
-            _poolPairTokenBalance[poolId][token].cash = _poolPairTokenBalance[poolId][token].cash.add128(
-                amountToDivest
-            );
+
+            _poolPairTokenBalance[poolId][token] = _poolPairTokenBalance[poolId][token].investedToCash(amountToDivest);
 
             // think about what happens with tokens that charge a transfer fee
             _pullTokens(token, investmentManager, amountToDivest);
@@ -419,6 +421,6 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         IERC20 token,
         uint128 amountInvested
     ) public override onlyPoolInvestmentManager(poolId, token, msg.sender) {
-        _poolPairTokenBalance[poolId][token].total = amountInvested.add128(_poolPairTokenBalance[poolId][token].cash);
+        _poolPairTokenBalance[poolId][token] = _poolPairTokenBalance[poolId][token].setInvested(amountInvested);
     }
 }

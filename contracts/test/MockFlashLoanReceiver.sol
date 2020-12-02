@@ -15,57 +15,72 @@
 pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../math/FixedPoint.sol";
 
-import "../vault/IVault.sol";
 import "../vault/IFlashLoanReceiver.sol";
+import "../vault/IVault.sol";
 
-contract MockFlashLoanReceiver is Ownable, IFlashLoanReceiver {
+import "./TestToken.sol";
+
+contract MockFlashLoanReceiver is IFlashLoanReceiver {
     using FixedPoint for uint256;
-    IVault public vault;
-    bool public failExecution = false;
+    using SafeERC20 for IERC20;
 
-    constructor(address _vault) public Ownable() {
-        vault = IVault(_vault);
+    address public immutable vault;
+    bool public repayLoan;
+    bool public repayInExcess;
+    bool public reenter;
+
+    constructor(address _vault) {
+        vault = _vault;
+        repayLoan = true;
+        repayInExcess = false;
+        reenter = false;
     }
 
-    receive() external payable {}
-
-    function setFailExecutionTransfer(bool _fail) public {
-        failExecution = _fail;
+    function setRepayLoan(bool _repayLoan) public {
+        repayLoan = _repayLoan;
     }
 
-    /**
-        This function is called after your contract has received the flash loaned amount
-     */
-    function executeOperation(
-        address _token,
-        uint256 _amount,
-        uint256 _fee,
-        bytes calldata _params
+    function setRepayInExcess(bool _repayInExcess) public {
+        repayInExcess = _repayInExcess;
+    }
+
+    function setReenter(bool _reenter) public {
+        reenter = _reenter;
+    }
+
+    // Repays loan unless setRepayLoan was called with 'false'
+    function receiveFlashLoan(
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        uint256[] memory feeAmounts,
+        bytes calldata receiverData
     ) external override {
-        require(IERC20(_token).balanceOf(address(this)) >= _amount, "Invalid balance, was the flashLoan successful?");
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            uint256 amount = amounts[i];
+            uint256 feeAmount = feeAmounts[i];
 
-        if (failExecution) {
-            return;
+            require(token.balanceOf(address(this)) == amount, "Invalid balance, was the flashLoan successful?");
+
+            if (reenter) {
+                IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), tokens, amounts, receiverData);
+            }
+
+            TestToken(address(token)).mint(address(this), repayInExcess ? feeAmount.add(1) : feeAmount);
+
+            uint256 totalDebt = amount.add(feeAmount);
+
+            if (!repayLoan) {
+                totalDebt = totalDebt.sub(1);
+            } else if (repayInExcess) {
+                totalDebt = totalDebt.add(1);
+            }
+
+            token.safeTransfer(vault, totalDebt);
         }
-        //
-        // Logic goes here.
-        //
-
-        uint256 totalDebt = _amount.add(_fee);
-        IERC20(_token).transfer(address(vault), totalDebt);
-    }
-
-    /**
-        Flash loan 1000000000000000000 wei (1 ether) worth of `_asset`
-     */
-    function flashloan(address _asset) public onlyOwner {
-        bytes memory data = "";
-        uint256 amount = 10**20; // 100 tokens
-
-        vault.flashLoan(address(this), _asset, amount, data);
     }
 }
