@@ -32,6 +32,14 @@ abstract contract VaultAccounting is IVault, Settings {
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
+    //Protocol Fees
+    /**
+     * @dev Returns the amount in protocol fees collected for a specific `token`.
+     */
+    function getCollectedFeesByToken(IERC20 token) external view override returns (uint256) {
+        return _collectedProtocolFees[token];
+    }
+
     /**
      * @dev Transfers tokens into the Vault from `from`. The caller must verify that this action was authorized by
      * `from` (typically by the entry-point function being called by an operator for `from`).
@@ -69,8 +77,15 @@ abstract contract VaultAccounting is IVault, Settings {
         if (amount == 0) {
             return;
         }
-        uint128 amountToSend = chargeFee ? _applyProtocolWithdrawFee(amount) : amount;
 
-        token.safeTransfer(to, amountToSend);
+        if (chargeFee) {
+            //Collects withdrawal fee
+            uint128 fee = _calculateProtocolWithdrawFee(amount);
+            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(fee);
+
+            token.safeTransfer(to, amount.sub128(fee));
+        } else {
+            token.safeTransfer(to, amount);
+        }
     }
 }

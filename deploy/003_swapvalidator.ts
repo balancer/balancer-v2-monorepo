@@ -7,11 +7,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { deployer } = await getNamedAccounts();
 
-  const vault = await deployments.get('Vault');
-
-  await deploy('TradeScript', {
+  await deploy('OneToOneSwapValidator', {
     from: deployer,
-    args: [vault.address],
+    args: [],
     log: true,
     deterministicDeployment: true,
   });

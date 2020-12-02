@@ -22,11 +22,11 @@ interface IPairTradingStrategy is ITradingStrategy {
         QuoteRequestGivenIn calldata request,
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
-    ) external returns (uint128 amountOut, uint128 amountInFees);
+    ) external returns (uint128 amountOut);
 
     function quoteInGivenOut(
         QuoteRequestGivenOut calldata request,
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
-    ) external returns (uint128 amountIn, uint128 amountInFees);
+    ) external returns (uint128 amountIn);
 }

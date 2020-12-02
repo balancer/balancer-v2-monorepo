@@ -138,7 +138,7 @@ describe('CWPTradingStrategy', function () {
         (100e18).toString(),
         (200e18).toString()
       );
-      expect(result[0]).to.be.at.least((85.64935e18).toString());
+      expect(result).to.be.at.least((85.64935e18).toString());
     });
     it('Validates correctly three tokens', async () => {
       //weights: [4, 4, 2]
@@ -162,7 +162,7 @@ describe('CWPTradingStrategy', function () {
         (100e18).toString(),
         (200e18).toString()
       );
-      expect(result[0]).to.be.at.least((26.08695652e18).toString());
+      expect(result).to.be.at.least((26.08695652e18).toString());
     });
   });
 });

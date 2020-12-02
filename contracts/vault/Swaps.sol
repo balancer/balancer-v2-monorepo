@@ -335,7 +335,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         require(poolTokenOutBalance.total() > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
-            (uint128 amountOut, ) = strategy.quoteOutGivenIn(
+            uint128 amountOut = strategy.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
                 poolTokenInBalance.total(),
                 poolTokenOutBalance.total()
@@ -347,7 +347,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                 amountOut
             );
         } else {
-            (uint128 amountIn, ) = strategy.quoteInGivenOut(
+            uint128 amountIn = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
                 poolTokenInBalance.total(),
                 poolTokenOutBalance.total()
@@ -402,7 +402,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         require(poolTokenOutBalance.total() > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
-            (uint128 amountOut, ) = strategy.quoteOutGivenIn(
+            uint128 amountOut = strategy.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
                 currentBalances,
                 helper.indexIn,
@@ -415,7 +415,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                 amountOut
             );
         } else {
-            (uint128 amountIn, ) = strategy.quoteInGivenOut(
+            uint128 amountIn = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
                 currentBalances,
                 helper.indexIn,
