@@ -19,6 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../vendor/EnumerableSet.sol";
+import "../vendor/EnumerableMap.sol";
 
 import "./IVault.sol";
 import "./PoolBalance.sol";
@@ -29,6 +30,7 @@ import "../investmentManagers/IInvestmentManager.sol";
 abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, UserBalance {
     using EnumerableSet for EnumerableSet.BytesSet;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     using PoolBalance for bytes32;
 
@@ -55,14 +57,11 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     // at once if a) a pool exists and b) a token is in that pool.
 
     // Data for pools with Pair Trading Strategies
-
     mapping(bytes32 => EnumerableSet.AddressSet) internal _poolPairTokens;
     mapping(bytes32 => mapping(IERC20 => bytes32)) internal _poolPairTokenBalance;
 
     // Data for pools with Tuple Trading Strategies
-
-    mapping(bytes32 => mapping(uint256 => bytes32)) internal _poolTupleTokenBalance;
-    mapping(bytes32 => mapping(IERC20 => uint256)) internal _poolTupleTokenIndex;
+    mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _poolTupleTokenBalance;
 
     modifier withExistingPool(bytes32 poolId) {
         require(_pools.contains(poolId), "Inexistent pool");
@@ -131,10 +130,23 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     }
 
     function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
-        IERC20[] memory tokens = new IERC20[](_poolPairTokens[poolId].length());
+        (, StrategyType strategyType) = fromPoolId(poolId);
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            tokens[i] = IERC20(_poolPairTokens[poolId].at(i));
+        IERC20[] memory tokens;
+
+        if (strategyType == StrategyType.PAIR) {
+            tokens = new IERC20[](_poolPairTokens[poolId].length());
+
+            for (uint256 i = 0; i < tokens.length; ++i) {
+                tokens[i] = IERC20(_poolPairTokens[poolId].at(i));
+            }
+        } else {
+            tokens = new IERC20[](_poolTupleTokenBalance[poolId].length());
+
+            for (uint256 i = 0; i < tokens.length; ++i) {
+                (IERC20 token, ) = _poolTupleTokenBalance[poolId].at(i);
+                tokens[i] = token;
+            }
         }
 
         return tokens;
@@ -193,27 +205,75 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             if (amounts[i] > 0) {
-                {
-                    // scope for toReceive and received - avoids 'stack too deep' error
-                    uint128 toReceive = amounts[i];
-                    if (withdrawFromUserBalance) {
-                        uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][tokens[i]], toReceive));
+                uint128 toReceive = amounts[i];
+                if (withdrawFromUserBalance) {
+                    uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][tokens[i]], toReceive));
 
-                        _userTokenBalance[from][tokens[i]] -= toWithdraw;
-                        toReceive -= toWithdraw;
-                    }
-
-                    uint128 received = _pullTokens(tokens[i], from, toReceive);
-                    require(received == toReceive, "Not enough tokens received");
+                    _userTokenBalance[from][tokens[i]] -= toWithdraw;
+                    toReceive -= toWithdraw;
                 }
 
-                bytes32 currentBalance = _getPoolTokenBalance(poolId, tokens[i]);
-                if (currentBalance.total() == 0) {
-                    // No tokens with zero balance should ever be in the _poolPairTokens set
-                    assert(_poolPairTokens[poolId].add(address(tokens[i])));
-                }
+                uint128 received = _pullTokens(tokens[i], from, toReceive);
+                require(received == toReceive, "Not enough tokens received");
 
-                _setPoolTokenBalance(poolId, tokens[i], currentBalance.increaseCash(amounts[i]));
+                _increasePoolCash(poolId, tokens[i], amounts[i]);
+            }
+        }
+    }
+
+    function _increasePoolCash(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) private {
+        (, StrategyType strategyType) = fromPoolId(poolId);
+
+        if (strategyType == StrategyType.PAIR) {
+            bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+            if (currentBalance.total() == 0) {
+                // No tokens with zero balance should ever be in the _poolPairTokens set
+                assert(_poolPairTokens[poolId].add(address(token)));
+            }
+
+            _poolPairTokenBalance[poolId][token] = currentBalance.increaseCash(amount);
+        } else {
+            bytes32 currentBalance = _poolTupleTokenBalance[poolId].contains(token)
+                ? _poolTupleTokenBalance[poolId].get(token)
+                : PoolBalance.toBalance(0, 0);
+
+            // amount is always non-zero, so we're never adding a zero-balance token to the map
+            _poolTupleTokenBalance[poolId].set(token, currentBalance.increaseCash(amount));
+        }
+    }
+
+    function _decreasePoolCash(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) private {
+        (, StrategyType strategyType) = fromPoolId(poolId);
+
+        if (strategyType == StrategyType.PAIR) {
+            require(_poolPairTokens[poolId].contains(address(token)), "Token not in pool");
+
+            bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+            bytes32 newBalance = currentBalance.decreaseCash(amount);
+
+            _poolPairTokenBalance[poolId][token] = newBalance;
+
+            if (newBalance.total() == 0) {
+                _poolPairTokens[poolId].remove(address(token));
+            }
+        } else {
+            require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+
+            bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
+            bytes32 newBalance = currentBalance.decreaseCash(amount);
+
+            if (newBalance.total() == 0) {
+                _poolTupleTokenBalance[poolId].remove(token);
+            } else {
+                _poolTupleTokenBalance[poolId].set(token, newBalance);
             }
         }
     }
@@ -224,23 +284,8 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         if (strategyType == StrategyType.PAIR) {
             return _poolPairTokenBalance[poolId][token];
         } else {
-            uint256 tokenIndex = _poolTupleTokenIndex[poolId][token];
-            return _poolTupleTokenBalance[poolId][tokenIndex];
-        }
-    }
-
-    function _setPoolTokenBalance(
-        bytes32 poolId,
-        IERC20 token,
-        bytes32 balance
-    ) internal {
-        (, StrategyType strategyType) = fromPoolId(poolId);
-
-        if (strategyType == StrategyType.PAIR) {
-            _poolPairTokenBalance[poolId][token] = balance;
-        } else {
-            uint256 tokenIndex = _poolTupleTokenIndex[poolId][token];
-            _poolTupleTokenBalance[poolId][tokenIndex] = balance;
+            bytes32 balance = _poolTupleTokenBalance[poolId].get(token);
+            return balance;
         }
     }
 
@@ -254,22 +299,16 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            require(_poolPairTokens[poolId].contains(address(tokens[i])), "Token not in pool");
+            if (amounts[i] > 0) {
+                if (depositToUserBalance) {
+                    // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
+                    _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amounts[i]);
+                } else {
+                    // Actually transfer the tokens to the recipient
+                    _pushTokens(tokens[i], to, amounts[i], true);
+                }
 
-            if (depositToUserBalance) {
-                // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amounts[i]);
-            } else {
-                // Actually transfer the tokens to the recipient
-                _pushTokens(tokens[i], to, amounts[i], true);
-            }
-
-            _poolPairTokenBalance[poolId][tokens[i]] = _poolPairTokenBalance[poolId][tokens[i]].decreaseCash(
-                amounts[i]
-            );
-
-            if (_poolPairTokenBalance[poolId][tokens[i]].total() == 0) {
-                _poolPairTokens[poolId].remove(address(tokens[i]));
+                _decreasePoolCash(poolId, tokens[i], amounts[i]);
             }
         }
     }

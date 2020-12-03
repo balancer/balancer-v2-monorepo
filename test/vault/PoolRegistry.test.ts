@@ -21,16 +21,18 @@ describe('Vault - pool registry', () => {
     [, controller, other] = await ethers.getSigners();
   });
 
-  const tokenSupply = ethers.BigNumber.from(500);
-
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [controller.address] });
     strategy = await deploy('MockTradingStrategy', { args: [] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
 
     for (const symbol in tokens) {
-      await mintTokens(tokens, symbol, controller, tokenSupply.toString());
+      // Mint tokens for the controller to deposit in the Vault
+      await mintTokens(tokens, symbol, controller, 500);
       await tokens[symbol].connect(controller).approve(vault.address, MAX_UINT256);
+
+      // Also grant some initial tokens to the Vault, simulating other pools, user balance, or locked tokens
+      await mintTokens(tokens, symbol, vault.address, 500);
     }
   });
 
@@ -256,9 +258,18 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
       );
     });
 
-    it('controller cannot remove liquidity not in pool', async () => {
+    it('controller can remove zero liquidity not in pool', async () => {
+      await expectBalanceChange(
+        () => vault.connect(controller).removeLiquidity(poolId, controller.address, [tokens.SNX.address], [0], false),
+        controller,
+        tokens,
+        {}
+      );
+    });
+
+    it('controller cannot remove non-zero liquidity not in pool', async () => {
       await expect(
-        vault.connect(controller).removeLiquidity(poolId, controller.address, [tokens.SNX.address], [0], false)
+        vault.connect(controller).removeLiquidity(poolId, controller.address, [tokens.SNX.address], [1], false)
       ).to.be.revertedWith('Token not in pool');
     });
 
