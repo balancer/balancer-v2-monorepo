@@ -14,7 +14,16 @@
 
 pragma solidity ^0.7.1;
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
+import "../math/FixedPoint.sol";
+
+
 abstract contract StrategyFee {
+    using SafeCast for uint256;
+    using FixedPoint for uint256;
+    using FixedPoint for uint128;
+
     uint256 public constant MIN_FEE = 0;
     //uint256 public constant MIN_FEE = 10**12; //0.000001%
     uint256 public constant MAX_FEE = 10**17; //0.1%
@@ -22,5 +31,18 @@ abstract contract StrategyFee {
     /**
      * @dev Returns the swap fee for the Trading Strategy.
      */
-    function getSwapFee() external view virtual returns (uint256);
+    function getSwapFee() external view returns (uint256) {
+        return _getSwapFee();
+    }
+
+    function _addFee(uint128 amount) internal view returns (uint128) {
+        return amount.div128(FixedPoint.ONE.sub128(_getSwapFee().toUint128()));
+    }
+
+    function _subtractFee(uint128 amount) internal view returns (uint128) {
+        uint128 fees = amount.mul128(_getSwapFee().toUint128());
+        return amount.sub128(fees);
+    }
+
+    function _getSwapFee() internal view virtual returns (uint256);
 }

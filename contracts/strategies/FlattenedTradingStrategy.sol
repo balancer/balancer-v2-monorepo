@@ -15,17 +15,12 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-
 import "./ITupleTradingStrategy.sol";
 import "./lib/Stable.sol";
 import "./StrategyFee.sol";
 
-contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable {
-    using SafeCast for uint256;
-    using FixedPoint for uint256;
-    using FixedPoint for uint128;
 
+contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable {
     uint128 private immutable _amp;
     uint256 private immutable _swapFee;
 
@@ -38,14 +33,12 @@ contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable 
 
     //Because it is not possible to overriding external calldata, function is public and balances are in memory
     function quoteOutGivenIn(
-        ITradingStrategy.QuoteRequestGivenIn calldata request,
+        QuoteRequestGivenIn calldata request,
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint128) {
-        // Substract fee
-        uint128 amountInFees = request.amountIn.mul(_swapFee).toUint128();
-        uint128 adjustedIn = request.amountIn.sub128(amountInFees);
+        uint128 adjustedIn = _subtractFee(request.amountIn);
 
         uint128 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
 
@@ -53,24 +46,20 @@ contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable 
     }
 
     function quoteInGivenOut(
-        ITradingStrategy.QuoteRequestGivenOut calldata request,
+        QuoteRequestGivenOut calldata request,
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint128) {
         uint128 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
-
-        // Add fee
-        uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
-
-        return adjustedIn;
+        return _addFee(minimumAmountIn);
     }
 
     function getAmp() external view returns (uint128) {
         return _amp;
     }
 
-    function getSwapFee() external view override returns (uint256) {
+    function _getSwapFee() internal view override returns (uint256) {
         return _swapFee;
     }
 }

@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "./IPairTradingStrategy.sol";
 import "./lib/WeightedProduct.sol";
@@ -29,9 +28,6 @@ import "./StrategyFee.sol";
 // solhint-disable max-states-count
 
 contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduct {
-    using SafeCast for uint256;
-    using FixedPoint for uint128;
-
     uint8 public constant MIN_TOKENS = 2;
     uint8 public constant MAX_TOKENS = 16;
     //TODO: MIN_WEIGHT and MAX_WEIGHT should depend on lib max and min weight ratino
@@ -180,9 +176,7 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
     ) external view override returns (uint128) {
-        // Subtract fee
-        uint128 amountInFees = request.amountIn.mul128(_swapFee.toUint128());
-        uint128 adjustedIn = request.amountIn.sub128(amountInFees);
+        uint128 adjustedIn = _subtractFee(request.amountIn);
 
         // Calculate the maximum amount that can be taken out of the pool
         uint128 maximumAmountOut = _outGivenIn(
@@ -210,13 +204,10 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
             request.amountOut
         );
 
-        // Add fee
-        uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
-
-        return adjustedIn;
+        return _addFee(minimumAmountIn);
     }
 
-    function getSwapFee() external view override returns (uint256) {
+    function _getSwapFee() internal view override returns (uint256) {
         return _swapFee;
     }
 }
