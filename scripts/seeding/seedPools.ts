@@ -2,9 +2,13 @@ import * as hre from 'hardhat';
 import { ethers } from 'hardhat';
 import { deployTokens, TokenList } from '../../test/helpers/tokens';
 import { MAX_UINT256 } from '../../test/helpers/constants';
+import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 
 const allPools = require('./allPools.json');
+
+let controller: SignerWithAddress;
+let trader: SignerWithAddress;
 
 interface Pool {
     id: string;
@@ -28,14 +32,11 @@ interface Token {
 
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
 async function main() {
-  const { deployments } = hre;
+
+  [, controller, trader] = await ethers.getSigners();
 
   // Get deployed vault
-  const vault = await deployments.getOrNull('Vault');
-  if(!vault){
-    console.log('Vault Contracts Not Deployed.');
-    return;
-  }
+  const vault = await ethers.getContract('Vault');
 
   // Format pools to BigNumber/scaled format
   const formattedPools: Pool[] = formatPools(allPools);
@@ -49,7 +50,7 @@ async function main() {
   // TODO: Use WETH9 Contract - Mike will probably include this as part of deploy
   console.log(`\nDeploying tokens...`)
   // Deploy tokens
-  let tokens: TokenList = await deployTokens(symbols, decimals);
+  let tokens: TokenList = await deployTokens(controller.address, symbols, decimals);
 
   console.log(`Deployed Tokens:`);
   symbols.forEach(symbol => {
