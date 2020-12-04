@@ -5,8 +5,12 @@ pragma solidity ^0.7.0;
 // Based on the EnumerableSet library from OpenZeppelin contracts, altered to include
 // the following:
 //  * a map from IERC20 to bytes32
-//  * entries are stored in mappings instead of arrays, to allow for unchecked access
-//  * keys and values can be retrieved independently
+//  * entries are stored in mappings instead of arrays, reducing implicit storage reads for out-of-bounds checks
+//  * _unchecked_at and _unchecked_valueAt, which allow for more gas efficient data reads in some scenarios
+//  * _indexOf and _unchecked_setAt, which allow for more gas efficient data writes in some scenarios
+
+// We're using non-standard casing for the unchecked functions to differentiatet them, so we need to turn off that rule
+// solhint-disable func-name-mixedcase
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -88,6 +92,35 @@ library EnumerableMap {
     }
 
     /**
+     * @dev Returns the index for `key`, which can be used alongside the {at} family of functions, including critically
+     * {unchecked_setAt}. O(1).
+     *
+     * Requirements:
+     *
+     * - `key` must be in the map.
+     */
+    function _indexOf(Map storage map, bytes32 key) private view returns (uint256) {
+        uint256 index = map._indexes[key];
+        require(index > 0, "EnumerableMap: nonexistent key");
+        return index - 1;
+    }
+
+    /**
+     * @dev Updates the value for an entry, given its key's index. The key index can be retrieved via {indexOf}, and it
+     * should be noted that key indices may change when calling {add} or {remove}. O(1).
+     *
+     * This function performs one less storage read than {set}, but it should only be used when `index` is known to be
+     * whithin bounds.
+     */
+    function _unchecked_setAt(
+        Map storage map,
+        uint256 index,
+        bytes32 value
+    ) private {
+        map._entries[index]._value = value;
+    }
+
+    /**
      * @dev Removes a key-value pair from a map. O(1).
      *
      * Returns true if the key was removed from the map, that is if it was present.
@@ -160,6 +193,26 @@ library EnumerableMap {
     }
 
     /**
+     * @dev Same as {at}, except this doesn't revert if `index` it outside of the map (i.e. if it is
+     * equal or larger than {length}). O(1).
+     *
+     * This function performs one less storage read than {at}, but should only be used when `index` is known to be
+     * within bounds.
+     */
+    function _unchecked_at(Map storage map, uint256 index) private view returns (bytes32, bytes32) {
+        MapEntry storage entry = map._entries[index];
+        return (entry._key, entry._value);
+    }
+
+    /**
+     * @dev Same as {unchecked_valueAt}, except it only returns the value and not the key (performing one less storage
+     * read). O(1).
+     */
+    function _unchecked_valueAt(Map storage map, uint256 index) private view returns (bytes32) {
+        return map._entries[index]._value;
+    }
+
+    /**
      * @dev Returns the value associated with `key`.  O(1).
      *
      * Requirements:
@@ -205,6 +258,33 @@ library EnumerableMap {
     }
 
     /**
+     * @dev Returns the index for `key`, which can be used alongside the {at} family of functions, including critically
+     * {unchecked_setAt}. O(1).
+     *
+     * Requirements:
+     *
+     * - `key` must be in the map.
+     */
+    function indexOf(UintToAddressMap storage map, uint256 key) internal view returns (uint256) {
+        return _indexOf(map._inner, bytes32(uint256(address(key))));
+    }
+
+    /**
+     * @dev Updates the value for an entry, given its key's index. The key index can be retrieved via {indexOf}, and it
+     * should be noted that key indices may change when calling {add} or {remove}. O(1).
+     *
+     * This function performs one less storage read than {set}, but it should only be used when `index` is known to be
+     * whithin bounds.
+     */
+    function unchecked_setAt(
+        UintToAddressMap storage map,
+        uint256 index,
+        address value
+    ) internal {
+        _unchecked_setAt(map._inner, index, bytes32(uint256(value)));
+    }
+
+    /**
      * @dev Removes a value from a set. O(1).
      *
      * Returns true if the key was removed from the map, that is if it was present.
@@ -239,6 +319,26 @@ library EnumerableMap {
     function at(UintToAddressMap storage map, uint256 index) internal view returns (uint256, address) {
         (bytes32 key, bytes32 value) = _at(map._inner, index);
         return (uint256(key), address(uint256(value)));
+    }
+
+    /**
+     * @dev Same as {at}, except this doesn't revert if `index` it outside of the map (i.e. if it is
+     * equal or larger than {length}). O(1).
+     *
+     * This function performs one less storage read than {at}, but should only be used when `index` is known to be
+     * within bounds.
+     */
+    function unchecked_at(UintToAddressMap storage map, uint256 index) internal view returns (uint256, address) {
+        (bytes32 key, bytes32 value) = _unchecked_at(map._inner, index);
+        return (uint256(key), address(uint256(value)));
+    }
+
+    /**
+     * @dev Same as {unchecked_valueAt}, except it only returns the value and not the key (performing one less storage
+     * read). O(1).
+     */
+    function unchecked_valueAt(UintToAddressMap storage map, uint256 index) internal view returns (address) {
+        return address(uint256(_unchecked_valueAt(map._inner, index)));
     }
 
     /**
@@ -285,6 +385,33 @@ library EnumerableMap {
     }
 
     /**
+     * @dev Returns the index for `key`, which can be used alongside the {at} family of functions, including critically
+     * {unchecked_setAt}. O(1).
+     *
+     * Requirements:
+     *
+     * - `key` must be in the map.
+     */
+    function indexOf(IERC20ToBytes32Map storage map, IERC20 key) internal view returns (uint256) {
+        return _indexOf(map._inner, bytes32(uint256(address(key))));
+    }
+
+    /**
+     * @dev Updates the value for an entry, given its key's index. The key index can be retrieved via {indexOf}, and it
+     * should be noted that key indices may change when calling {add} or {remove}. O(1).
+     *
+     * This function performs one less storage read than {set}, but it should only be used when `index` is known to be
+     * whithin bounds.
+     */
+    function unchecked_setAt(
+        IERC20ToBytes32Map storage map,
+        uint256 index,
+        bytes32 value
+    ) internal {
+        _unchecked_setAt(map._inner, index, value);
+    }
+
+    /**
      * @dev Removes a value from a set. O(1).
      *
      * Returns true if the key was removed from the map, that is if it was present.
@@ -319,6 +446,26 @@ library EnumerableMap {
     function at(IERC20ToBytes32Map storage map, uint256 index) internal view returns (IERC20, bytes32) {
         (bytes32 key, bytes32 value) = _at(map._inner, index);
         return (IERC20(uint256(key)), value);
+    }
+
+    /**
+     * @dev Same as {at}, except this doesn't revert if `index` it outside of the map (i.e. if it is
+     * equal or larger than {length}). O(1).
+     *
+     * This function performs one less storage read than {at}, but should only be used when `index` is known to be
+     * within bounds.
+     */
+    function unchecked_at(IERC20ToBytes32Map storage map, uint256 index) internal view returns (IERC20, bytes32) {
+        (bytes32 key, bytes32 value) = _unchecked_at(map._inner, index);
+        return (IERC20(uint256(key)), value);
+    }
+
+    /**
+     * @dev Same as {unchecked_valueAt}, except it only returns the value and not the key (performing one less storage
+     * read). O(1).
+     */
+    function unchecked_valueAt(IERC20ToBytes32Map storage map, uint256 index) internal view returns (bytes32) {
+        return _unchecked_valueAt(map._inner, index);
     }
 
     /**
