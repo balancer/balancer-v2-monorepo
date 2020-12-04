@@ -18,7 +18,6 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../math/FixedPoint.sol";
 
-
 abstract contract StrategyFee {
     using SafeCast for uint256;
     using FixedPoint for uint256;

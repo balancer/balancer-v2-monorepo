@@ -100,8 +100,8 @@ async function setupTradingStrategy(
   } else if (strategyKind == 'Flattened') {
     const strategy = await deploy('FlattenedTradingStrategy', {
       args: [
-        (30e18).toString(), // amp
-        toFixedPoint(0.02), // 2% fee
+        [false, (30e18).toString()], // amp
+        [false, toFixedPoint(0.02)], // 2% fee
       ],
     });
 
