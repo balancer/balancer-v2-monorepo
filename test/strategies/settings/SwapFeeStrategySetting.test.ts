@@ -41,6 +41,12 @@ describe('SwapFeeStrategySetting', function () {
       const currentSwapFee = await strategy.getSwapFee();
       expect(currentSwapFee).to.equal(newSwapFee);
     });
+
+    it('cannot be changed to an invalid fee', async () => {
+      const invalidSwapFee = (0.11e18).toString();
+
+      await expect(strategy.setSwapFee(invalidSwapFee)).to.be.revertedWith('ERR_MAX_FEE');
+    });
   });
 
   context('when the setting is immutable', () => {

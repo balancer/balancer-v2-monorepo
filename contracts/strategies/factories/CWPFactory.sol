@@ -15,10 +15,10 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../../vendor/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
+import "../../vendor/EnumerableSet.sol";
 import "../CWPTradingStrategy.sol";
 
 contract CWPFactory {
@@ -30,32 +30,17 @@ contract CWPFactory {
 
     event StrategyCreated(address indexed strategy);
 
-    // solhint-disable-next-line no-empty-blocks
-    constructor() {}
-
-    function getTotalStrategies() external view returns (uint256) {
-        return _weightedProdStrategies.length();
-    }
-
-    function getStrategies(uint256 start, uint256 end) external view returns (address[] memory) {
-        require((end >= start) && (end - start) <= _weightedProdStrategies.length(), "Bad indices");
-
-        address[] memory strategy = new address[](end - start);
-        for (uint256 i = 0; i < strategy.length; ++i) {
-            strategy[i] = _weightedProdStrategies.at(i + start);
-        }
-
-        return strategy;
+    constructor() {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function create(
-        IERC20[] memory tokens,
-        uint256[] memory weights,
-        uint256 swapFee
+        WeightsStrategySetting.TokenWeights calldata weights,
+        SwapFeeStrategySetting.SwapFee calldata swapFee
     ) external returns (address) {
         bytes memory creationCode = abi.encodePacked(
             type(CWPTradingStrategy).creationCode,
-            abi.encode(tokens, weights, swapFee)
+            abi.encode(weights, swapFee)
         );
 
         address expectedStrategy = Create2.computeAddress(0, keccak256(creationCode));
@@ -71,5 +56,20 @@ contract CWPFactory {
 
             return strategy;
         }
+    }
+
+    function getTotalStrategies() external view returns (uint256) {
+        return _weightedProdStrategies.length();
+    }
+
+    function getStrategies(uint256 start, uint256 end) external view returns (address[] memory) {
+        require((end >= start) && (end - start) <= _weightedProdStrategies.length(), "Bad indices");
+
+        address[] memory strategy = new address[](end - start);
+        for (uint256 i = 0; i < strategy.length; ++i) {
+            strategy[i] = _weightedProdStrategies.at(i + start);
+        }
+
+        return strategy;
     }
 }

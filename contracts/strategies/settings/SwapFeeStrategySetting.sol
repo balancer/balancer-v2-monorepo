@@ -29,7 +29,7 @@ contract SwapFeeStrategySetting {
 
     uint256 private _mutableSwapFee;
     uint256 private immutable _immutableSwapFee;
-    bool private immutable _isSwapFeeMutable;
+    bool private immutable _isMutable;
 
     struct SwapFee {
         bool isMutable;
@@ -39,7 +39,8 @@ contract SwapFeeStrategySetting {
     event SwapFeeSet(uint256 swapFee);
 
     constructor(SwapFee memory swapFee) {
-        _isSwapFeeMutable = swapFee.isMutable;
+        _validateSwapFee(swapFee.value);
+        _isMutable = swapFee.isMutable;
         _immutableSwapFee = swapFee.isMutable ? 0 : swapFee.value;
 
         if (swapFee.isMutable) {
@@ -53,7 +54,8 @@ contract SwapFeeStrategySetting {
      */
     function setSwapFee(uint256 newSwapFee) external {
         // TODO: auth
-        require(_isSwapFeeMutable, "Swap fee is not mutable");
+        require(_isMutable, "Swap fee is not mutable");
+        _validateSwapFee(newSwapFee);
         _setSwapFee(newSwapFee);
     }
 
@@ -65,7 +67,7 @@ contract SwapFeeStrategySetting {
     }
 
     function _swapFee() internal view returns (uint256) {
-        return _isSwapFeeMutable ? _mutableSwapFee : _immutableSwapFee;
+        return _isMutable ? _mutableSwapFee : _immutableSwapFee;
     }
 
     function _addSwapFee(uint128 amount) internal view returns (uint128) {
@@ -80,5 +82,10 @@ contract SwapFeeStrategySetting {
     function _setSwapFee(uint256 swapFee) private {
         _mutableSwapFee = swapFee;
         emit SwapFeeSet(swapFee);
+    }
+
+    function _validateSwapFee(uint256 swapFee) private pure {
+        require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
+        require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
     }
 }

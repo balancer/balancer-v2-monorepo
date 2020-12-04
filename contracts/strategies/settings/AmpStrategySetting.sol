@@ -26,7 +26,7 @@ contract AmpStrategySetting {
 
     uint128 private _mutableAmp;
     uint128 private immutable _immutableAmp;
-    bool private immutable _isAmpMutable;
+    bool private immutable _isMutable;
 
     struct Amp {
         bool isMutable;
@@ -36,7 +36,7 @@ contract AmpStrategySetting {
     event AmpSet(uint256 amp);
 
     constructor(Amp memory amp) {
-        _isAmpMutable = amp.isMutable;
+        _isMutable = amp.isMutable;
         _immutableAmp = amp.isMutable ? 0 : amp.value;
 
         if (amp.isMutable) {
@@ -50,7 +50,7 @@ contract AmpStrategySetting {
      */
     function setAmp(uint128 newAmp) external {
         // TODO: auth
-        require(_isAmpMutable, "Amp is not mutable");
+        require(_isMutable, "Amp is not mutable");
         _setAmp(newAmp);
     }
 
@@ -62,7 +62,7 @@ contract AmpStrategySetting {
     }
 
     function _amp() internal view returns (uint128) {
-        return _isAmpMutable ? _mutableAmp : _immutableAmp;
+        return _isMutable ? _mutableAmp : _immutableAmp;
     }
 
     function _setAmp(uint128 amp) private {

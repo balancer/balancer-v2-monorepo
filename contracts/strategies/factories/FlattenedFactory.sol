@@ -34,7 +34,7 @@ contract FlattenedFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create(AmpStrategySetting.Amp memory amp, SwapFeeStrategySetting.SwapFee memory swapFee)
+    function create(AmpStrategySetting.Amp calldata amp, SwapFeeStrategySetting.SwapFee calldata swapFee)
         external
         returns (address)
     {

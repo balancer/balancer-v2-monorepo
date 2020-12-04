@@ -90,9 +90,8 @@ async function setupTradingStrategy(
   if (strategyKind == 'CWP') {
     const strategy = await deploy('CWPTradingStrategy', {
       args: [
-        symbols.map((symbol) => tokens[symbol].address),
-        Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
-        toFixedPoint(0.02), // 2% fee
+        [false, symbols.map((symbol) => tokens[symbol].address), Array(symbols.length).fill(toFixedPoint(1))], // Equal weight to all tokens
+        [false, toFixedPoint(0.02)], // 2% fee
       ],
     });
 
