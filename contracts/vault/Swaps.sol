@@ -34,7 +34,7 @@ import "../strategies/ITupleTradingStrategy.sol";
 import "../validators/ISwapValidator.sol";
 
 import "./IVault.sol";
-import "./PoolBalance.sol";
+import "./CashInvestedBalance.sol";
 import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
 import "./UserBalance.sol";
@@ -44,7 +44,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
-    using PoolBalance for bytes32;
+    using CashInvestedBalance for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;

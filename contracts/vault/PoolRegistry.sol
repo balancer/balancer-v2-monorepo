@@ -22,7 +22,7 @@ import "../vendor/EnumerableSet.sol";
 import "../vendor/EnumerableMap.sol";
 
 import "./IVault.sol";
-import "./PoolBalance.sol";
+import "./CashInvestedBalance.sol";
 import "./VaultAccounting.sol";
 import "./UserBalance.sol";
 import "../investmentManagers/IInvestmentManager.sol";
@@ -32,7 +32,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
-    using PoolBalance for bytes32;
+    using CashInvestedBalance for bytes32;
 
     using FixedPoint for uint128;
 
@@ -239,7 +239,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         } else {
             bytes32 currentBalance = _poolTupleTokenBalance[poolId].contains(token)
                 ? _poolTupleTokenBalance[poolId].get(token)
-                : PoolBalance.toBalance(0, 0);
+                : CashInvestedBalance.toBalance(0, 0);
 
             // amount is always non-zero, so we're never adding a zero-balance token to the map
             _poolTupleTokenBalance[poolId].set(token, currentBalance.increaseCash(amount));

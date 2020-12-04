@@ -39,7 +39,7 @@ import "../math/FixedPoint.sol";
 // 128 bit values), using memory is strictly less gas performant. Therefore, we do manual packing and unpacking. The
 // type we use to represent these values is bytes32, as it doesn't have any arithmetic operations and therefore reduces
 // the chance of misuse.
-library PoolBalance {
+library CashInvestedBalance {
     using FixedPoint for uint128;
 
     // The 'cash' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the
