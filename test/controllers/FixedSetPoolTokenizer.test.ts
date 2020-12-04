@@ -1,8 +1,7 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
-import { deploy } from '../../scripts/helpers/deploy';
 import { PairTS } from '../../scripts/helpers/pools';
 import { deployTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT256 } from '../helpers/constants';
@@ -24,11 +23,13 @@ describe('FixedSetPoolTokenizer', function () {
   let callSetupController: () => Promise<Contract>;
 
   before(async function () {
-    [, admin, lp, other, beneficiary] = await ethers.getSigners();
+    [admin, lp, other, beneficiary] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
+    strategy = await ethers.getContract('MockTradingStrategy');
 
     tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
     await Promise.all(
@@ -40,8 +41,6 @@ describe('FixedSetPoolTokenizer', function () {
         await tokens[token].connect(other).approve(vault.address, MAX_UINT256);
       })
     );
-
-    strategy = await deploy('MockTradingStrategy', { args: [] });
 
     callSetupController = () =>
       setupController(

@@ -1,9 +1,8 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
-import { deploy } from '../../scripts/helpers/deploy';
 
 describe('BasePoolControllerFactory', function () {
   let admin: SignerWithAddress;
@@ -14,12 +13,13 @@ describe('BasePoolControllerFactory', function () {
   const salt = ethers.utils.id('salt');
 
   before(async function () {
-    [, admin] = await ethers.getSigners();
+    [admin] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
-    factory = await deploy('MockPoolControllerFactory', { args: [vault.address] });
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
+    factory = await ethers.getContract('MockPoolControllerFactory');
   });
 
   it('fails if not trusted by the vault', async () => {

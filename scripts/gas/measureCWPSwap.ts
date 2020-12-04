@@ -30,10 +30,10 @@ async function main() {
 
   for (const symbol in tokens) {
     // controller tokens are used to initialize pools
-    tokens[symbol].connect(controller).mint(controller.address, 100e18.toString());
+    tokens[symbol].connect(controller).mint(controller.address, (100e18).toString());
 
     // trader tokens are used to trade and not have non-zero balances
-    tokens[symbol].connect(controller).mint(trader.address, 200e18.toString());
+    tokens[symbol].connect(controller).mint(trader.address, (200e18).toString());
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
     // deposit user balance for trader to make it non-zero

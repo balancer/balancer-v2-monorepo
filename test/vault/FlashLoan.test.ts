@@ -1,8 +1,7 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { TokenList, deployTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 
 describe('Vault - flashloans', () => {
@@ -18,10 +17,10 @@ describe('Vault - flashloans', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [admin.address] });
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
+    mockFlashLoanReceiver = await ethers.getContract('MockFlashLoanReceiver');
     tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
-
-    mockFlashLoanReceiver = await deploy('MockFlashLoanReceiver', { args: [vault.address] });
 
     const token = tokens.DAI;
     await token.mint(vault.address, (100e18).toString());

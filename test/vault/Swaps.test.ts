@@ -1,10 +1,9 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, ContractFactory } from 'ethers';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
@@ -16,6 +15,7 @@ describe('Vault - swaps', () => {
   let other: SignerWithAddress;
 
   let vault: Contract;
+  let strategyFactory: ContractFactory;
   let tokens: TokenList = {};
   let tokenAddresses: string[];
 
@@ -28,7 +28,10 @@ describe('Vault - swaps', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [controller.address] });
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
+    strategyFactory = await ethers.getContractFactory('MockTradingStrategy');
+
     tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
@@ -36,9 +39,7 @@ describe('Vault - swaps', () => {
 
     for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
       // All pools have mock strategies with an in-out multiplier of 2
-      const strategy = await deploy('MockTradingStrategy', {
-        args: [],
-      });
+      const strategy = await strategyFactory.deploy();
 
       strategy.setMultiplier(toFixedPoint(2));
 
@@ -536,9 +537,7 @@ describe('Vault - swaps', () => {
 
     beforeEach(async () => {
       //Create a strategy that reenters the vault batchswap function.
-      const strategy = await deploy('MockTradingStrategyReentrancy', {
-        args: [vault.address],
-      });
+      const strategy = await ethers.getContract('MockTradingStrategyReentrancy');
 
       const poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
         ['DAI', (100e18).toString()],

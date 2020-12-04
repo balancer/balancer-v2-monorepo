@@ -2,10 +2,12 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts } = hre;
+  const { deployments, getChainId, getNamedAccounts } = hre;
   const { deploy, execute } = deployments;
 
   const { deployer } = await getNamedAccounts();
+
+  const chainId = await getChainId();
 
   const vault = await deployments.get('Vault');
 
@@ -23,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     deterministicDeployment: true,
   });
 
-  if (fixedSetFactory.newlyDeployed) {
+  if (fixedSetFactory.newlyDeployed && chainId != '31337') {
     await execute(
       'Vault',
       {
@@ -35,7 +37,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     );
   }
 
-  if (ownableFixedSetFactory.newlyDeployed) {
+  if (ownableFixedSetFactory.newlyDeployed && chainId != '31337') {
     await execute(
       'Vault',
       {

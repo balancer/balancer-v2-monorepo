@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
@@ -21,11 +21,13 @@ describe('OwnableFixedSetPoolTokenizer', function () {
   let callSetupController: () => Promise<Contract>;
 
   before(async function () {
-    [, admin, lp, owner, other] = await ethers.getSigners();
+    [admin, lp, owner, other] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
+    strategy = await ethers.getContract('MockTradingStrategy');
 
     tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
     await Promise.all(

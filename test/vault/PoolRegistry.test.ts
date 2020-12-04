@@ -1,9 +1,8 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { TupleTS } from '../../scripts/helpers/pools';
@@ -24,8 +23,10 @@ describe('Vault - pool registry', () => {
   const tokenSupply = ethers.BigNumber.from(500);
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [controller.address] });
-    strategy = await deploy('MockTradingStrategy', { args: [] });
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
+    strategy = await ethers.getContract('MockTradingStrategy');
+
     tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
 
     for (const symbol in tokens) {
