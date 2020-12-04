@@ -1,10 +1,9 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
@@ -21,14 +20,15 @@ describe('Vault - user balance', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, trader, user, operator, reporter, trustedOperator, other] = await ethers.getSigners();
+    [admin, trader, user, operator, reporter, trustedOperator, other] = await ethers.getSigners();
   });
 
   const amount = BigNumber.from(500);
 
   describe('deposit & withdraw', () => {
     beforeEach('deploy vault & tokens', async () => {
-      vault = await deploy('Vault', { from: admin, args: [admin.address] });
+      await deployments.fixture();
+      vault = await ethers.getContract('Vault');
       tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
 
       await tokens['DAI'].connect(admin).mint(trader.address, amount.toString());

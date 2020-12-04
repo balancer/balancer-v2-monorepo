@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
@@ -20,11 +20,12 @@ describe('Vault - unaccounted for tokens', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, trader, controller, recipient, other] = await ethers.getSigners();
+    [admin, trader, controller, recipient, other] = await ethers.getSigners();
   });
 
   beforeEach(async () => {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
     tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {

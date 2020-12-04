@@ -19,20 +19,19 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract WETH9 is AccessControl {
-
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    string public name     = "Wrapped Ether";
-    string public symbol   = "WETH";
-    uint8  public decimals = 18;
+    string public name = "Wrapped Ether";
+    string public symbol = "WETH";
+    uint8 public decimals = 18;
 
-    event  Approval(address indexed src, address indexed guy, uint wad);
-    event  Transfer(address indexed src, address indexed dst, uint wad);
-    event  Deposit(address indexed dst, uint wad);
-    event  Withdrawal(address indexed src, uint wad);
+    event Approval(address indexed src, address indexed guy, uint256 wad);
+    event Transfer(address indexed src, address indexed dst, uint256 wad);
+    event Deposit(address indexed dst, uint256 wad);
+    event Withdrawal(address indexed src, uint256 wad);
 
-    mapping (address => uint)                       public  balanceOf;
-    mapping (address => mapping (address => uint))  public  allowance;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
 
     constructor(address _admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -42,11 +41,13 @@ contract WETH9 is AccessControl {
     receive() external payable {
         deposit();
     }
+
     function deposit() public payable {
         balanceOf[msg.sender] += msg.value;
         emit Deposit(msg.sender, msg.value);
     }
-    function withdraw(uint wad) public {
+
+    function withdraw(uint256 wad) public {
         require(balanceOf[msg.sender] >= wad, "ERR_BALANCE");
         balanceOf[msg.sender] -= wad;
         msg.sender.transfer(wad);
@@ -54,33 +55,34 @@ contract WETH9 is AccessControl {
     }
 
     // For testing purposes
-    function mint(uint amount) public {
+    function mint(address destinatary, uint256 amount) external {
         require(hasRole(MINTER_ROLE, msg.sender), "ERR_MINTER_ROLE");
-        balanceOf[msg.sender] += amount;
-        emit Deposit(msg.sender, amount);
+        balanceOf[destinatary] += amount;
+        emit Deposit(destinatary, amount);
     }
 
-    function totalSupply() public view returns (uint) {
+    function totalSupply() public view returns (uint256) {
         return address(this).balance;
     }
 
-    function approve(address guy, uint wad) public returns (bool) {
+    function approve(address guy, uint256 wad) public returns (bool) {
         allowance[msg.sender][guy] = wad;
         emit Approval(msg.sender, guy, wad);
         return true;
     }
 
-    function transfer(address dst, uint wad) public returns (bool) {
+    function transfer(address dst, uint256 wad) public returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    function transferFrom(address src, address dst, uint wad)
-        public
-        returns (bool)
-    {
+    function transferFrom(
+        address src,
+        address dst,
+        uint256 wad
+    ) public returns (bool) {
         require(balanceOf[src] >= wad, "ERR_BALANCE");
 
-        if (src != msg.sender && allowance[src][msg.sender] != uint(-1)) {
+        if (src != msg.sender && allowance[src][msg.sender] != uint256(-1)) {
             require(allowance[src][msg.sender] >= wad, "ERR_ALLOWANCE");
             allowance[src][msg.sender] -= wad;
         }

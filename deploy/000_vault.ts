@@ -17,9 +17,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (hre.network.live && vault.newlyDeployed) {
     await tenderly.push({
       name: 'Vault',
-      address: vault.address
+      address: vault.address,
     });
   }
-
 };
 export default func;

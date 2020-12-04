@@ -21,20 +21,20 @@ const chainIds = {
 // Ensure that we have all the environment variables we need.
 let mnemonic: string;
 if (!process.env.MNEMONIC) {
-  throw new Error("Please set your MNEMONIC in a .env file");
+  throw new Error('Please set your MNEMONIC in a .env file');
 } else {
   mnemonic = process.env.MNEMONIC;
 }
 
 let infuraApiKey: string;
 if (!process.env.INFURA_API_KEY) {
-  throw new Error("Please set your INFURA_API_KEY in a .env file");
+  throw new Error('Please set your INFURA_API_KEY in a .env file');
 } else {
   infuraApiKey = process.env.INFURA_API_KEY;
 }
 
 function createTestnetConfig(network: keyof typeof chainIds): NetworkUserConfig {
-  const url: string = "https://" + network + ".infura.io/v3/" + infuraApiKey;
+  const url: string = 'https://' + network + '.infura.io/v3/' + infuraApiKey;
   return {
     accounts: {
       count: 10,
@@ -58,10 +58,10 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       saveDeployments: true,
     },
-    goerli: createTestnetConfig("goerli"),
-    kovan: createTestnetConfig("kovan"),
-    rinkeby: createTestnetConfig("rinkeby"),
-    ropsten: createTestnetConfig("ropsten"),
+    goerli: createTestnetConfig('goerli'),
+    kovan: createTestnetConfig('kovan'),
+    rinkeby: createTestnetConfig('rinkeby'),
+    ropsten: createTestnetConfig('ropsten'),
   },
   namedAccounts: {
     deployer: {

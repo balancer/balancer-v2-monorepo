@@ -19,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (hre.network.live && tradescript.newlyDeployed) {
     await tenderly.push({
       name: 'TradeScript',
-      address: tradescript.address
+      address: tradescript.address,
     });
   }
 };

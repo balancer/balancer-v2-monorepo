@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { TokenList, deployTokens } from '../helpers/tokens';
@@ -21,7 +21,10 @@ describe('Vault - flash loans', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [admin.address] });
+    await deployments.fixture();
+    //vault = await deploy('Vault', { args: [admin.address] });
+    vault = await ethers.getContract('Vault');
+    //receiver = await ethers.getContract('MockFlashLoanReceiver');
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
 
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18], minter);
