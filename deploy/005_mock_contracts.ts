@@ -9,16 +9,32 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const chainId = await getChainId();
 
-  if (chainId != '1') {
-    await deploy('TokenFactory', {
+  const vault = await deployments.get('Vault');
+
+  if (chainId == '31337') {
+    await deploy('MockPoolControllerFactory', {
+      from: deployer,
+      args: [vault.address],
+      log: true,
+      deterministicDeployment: true,
+    });
+
+    await deploy('MockTradingStrategy', {
       from: deployer,
       log: true,
       deterministicDeployment: true,
     });
 
-    await deploy('WETH9', {
+    await deploy('MockTradingStrategyReentrancy', {
       from: deployer,
-      args: [deployer],
+      args: [vault.address],
+      log: true,
+      deterministicDeployment: true,
+    });
+
+    await deploy('MockFlashLoanReceiver', {
+      from: deployer,
+      args: [vault.address],
       log: true,
       deterministicDeployment: true,
     });

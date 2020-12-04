@@ -5,30 +5,30 @@ import { BigNumber } from 'ethers';
 import { Dictionary } from 'lodash';
 import { Contract } from 'ethers';
 
-const allPools = require('./allPools.json');
+import * as allPools from './allPools.json';
 
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
 
 interface Pool {
-    id: string;
-    finalized: Boolean;
-    publicSwap: Boolean;
-    liquidity: number;
-    swapFee: BigNumber;
-    totalWeight: BigNumber;
-    tokens: Token[];
-    tokensList: string[];
+  id: string;
+  finalized: boolean;
+  publicSwap: boolean;
+  liquidity: number;
+  swapFee: BigNumber;
+  totalWeight: BigNumber;
+  tokens: Token[];
+  tokensList: string[];
 }
 
 interface Token {
-    address: string;
-    symbol: string;
-    name: string;
-    balance: BigNumber;
-    decimals: number;
-    denormWeight: BigNumber;
+  address: string;
+  symbol: string;
+  name: string;
+  balance: BigNumber;
+  decimals: number;
+  denormWeight: BigNumber;
 }
 
 type TokenDict = Dictionary<string>;
@@ -36,7 +36,6 @@ type ContractList = Dictionary<Contract>;
 
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
 async function main() {
-
   [deployer, controller, trader] = await ethers.getSigners();
 
   // Get deployed vault
@@ -45,28 +44,21 @@ async function main() {
   // Format pools to BigNumber/scaled format
   const formattedPools: Pool[] = formatPools(allPools);
 
-  // Currently filters pools by top 50 liquidity
-  const filteredPools: Pool[] = filterPools(formattedPools);
+  // Currently filters pools by top 5 liquidity
+  const filteredPools: Pool[] = filterPools(formattedPools, 5);
 
   // Get token symbols and decimals to deploy test tokens
-  let [symbols, decimals, balances] = getTokenInfoForDeploy(filteredPools);
+  const [symbols, decimals, balances] = getTokenInfoForDeploy(filteredPools);
 
-  console.log(`\nDeploying tokens...`)
+  console.log(`\nDeploying tokens...`);
   // Will deploy tokens if not already deployed
-  const tokenContracts: ContractList = await deployTokens(controller.address, symbols, decimals);
+  const tokenContracts: ContractList = await deployTokens(deployer.address, symbols, decimals);
 
   console.log(`Minting & Approving tokens...`);
-  for(let i = 0;i < symbols.length;i++){
+  for (let i = 0; i < symbols.length; i++) {
     console.log(`${symbols[i]}: ${tokenContracts[symbols[i]].address}`);
-    if(symbols[i] === 'WETH'){
-      await tokenContracts[symbols[i]].connect(controller).approve(vault.address, MAX_UINT256);
-      await tokenContracts[symbols[i]].connect(deployer).mint(balances[i]);
-      await tokenContracts[symbols[i]].connect(deployer).transfer(controller.address, balances[i]);
-      // await tokenContracts[symbols[i]].connect(controller).deposit({value: balances[i]});
-      continue;
-    }
     await tokenContracts[symbols[i]].connect(controller).approve(vault.address, MAX_UINT256);
-    await tokenContracts[symbols[i]].connect(controller).mint(controller.address, balances[i]);
+    await tokenContracts[symbols[i]].connect(deployer).mint(controller.address, balances[i]);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
@@ -75,15 +67,14 @@ async function main() {
   return;
 }
 
-async function deployPools(filteredPools: Pool[], tokens: ContractList){
+async function deployPools(filteredPools: Pool[], tokens: ContractList) {
+  for (let i = 0; i < filteredPools.length; i++) {
+    const tokensList: Array<string> = [];
+    const weights: Array<BigNumber> = [];
+    const balances: Array<BigNumber> = [];
+    const swapFee: BigNumber = filteredPools[i].swapFee;
 
-  for(let i = 0;i < filteredPools.length;i++){
-    let tokensList: Array<string> = [];
-    let weights: Array<BigNumber> = [];
-    let balances: Array<BigNumber> = [];
-    let swapFee: BigNumber = filteredPools[i].swapFee;
-
-    for(let j = 0;j < filteredPools[i].tokens.length;j++){
+    for (let j = 0; j < filteredPools[i].tokens.length; j++) {
       tokensList.push(tokens[filteredPools[i].tokens[j].symbol].address);
       weights.push(filteredPools[i].tokens[j].denormWeight);
       balances.push(filteredPools[i].tokens[j].balance);
@@ -96,12 +87,17 @@ async function deployPools(filteredPools: Pool[], tokens: ContractList){
 
 // Deploy strategy then newPool with that strategy
 // Finally Add liquidity to pool
-async function deployStrategyPool(tokens: Array<string>, weights: Array<BigNumber>, balances: Array<BigNumber>, swapFee: BigNumber, deployer: SignerWithAddress){
-
+async function deployStrategyPool(
+  tokens: Array<string>,
+  weights: Array<BigNumber>,
+  balances: Array<BigNumber>,
+  swapFee: BigNumber,
+  deployer: SignerWithAddress
+) {
   const vault = await ethers.getContract('Vault');
   const cwpFactory = await ethers.getContract('CWPFactory');
 
-  if(!cwpFactory || !vault){
+  if (!cwpFactory || !vault) {
     console.log('CWPFactory and/or Vault Contracts Not Deployed.');
     return;
   }
@@ -115,8 +111,8 @@ async function deployStrategyPool(tokens: Array<string>, weights: Array<BigNumbe
   const deployedStrategies = await cwpFactory.getStrategies(0, totalStrategies);
 
   const strategyAddr = await cwpFactory.connect(deployer).callStatic.create(tokens, weights, swapFee);
-  if(!deployedStrategies.includes(strategyAddr)){
-    console.log('Deploying new strategy...')
+  if (!deployedStrategies.includes(strategyAddr)) {
+    console.log('Deploying new strategy...');
     const tx = await cwpFactory.connect(deployer).create(tokens, weights, swapFee);
     const receipt = await tx.wait();
     const event = receipt.events?.find((e: any) => e.event == 'StrategyCreated');
@@ -124,19 +120,18 @@ async function deployStrategyPool(tokens: Array<string>, weights: Array<BigNumbe
       throw new Error('Could not find StrategyCreated event');
     }
 
-    if(strategyAddr !== event.args.strategy)
-      console.log(`STRATEGY DEPLOY ERROR`)
+    if (strategyAddr !== event.args.strategy) console.log(`STRATEGY DEPLOY ERROR`);
   }
 
   console.log(`Strategy deployed at: ${strategyAddr}`);
 
-  let strategyType = 0; // 0 for Pair
-  if(tokens.length > 2)
-    strategyType = 1;
+  const strategyType = 0; // 0 for Pair
+  // if(tokens.length > 2)
+  //   strategyType = 1;
 
   // Create new pool with strategy
   let tx = await vault.connect(deployer).newPool(strategyAddr, strategyType);
-  let receipt = await tx.wait();
+  const receipt = await tx.wait();
   const event = receipt.events?.find((e: any) => e.event == 'PoolCreated');
   if (event == undefined) {
     throw new Error('Could not find PoolCreated event');
@@ -151,15 +146,14 @@ async function deployStrategyPool(tokens: Array<string>, weights: Array<BigNumbe
 }
 
 // Convert all pools to BigNumber/scaled format
-function formatPools(allPools: any): Pool[]{
-  let formattedPools: Pool[] = [];
-  for(let i = 0;i < allPools.pools.length;i++){
-
-    if(allPools.pools[i].tokens.length < 2){
+function formatPools(allPools: any): Pool[] {
+  const formattedPools: Pool[] = [];
+  for (let i = 0; i < allPools.pools.length; i++) {
+    if (allPools.pools[i].tokens.length < 2) {
       continue;
     }
 
-    let tokens: Token[] = [];
+    const tokens: Token[] = [];
     const pool: Pool = {
       id: allPools.pools[i].id,
       finalized: allPools.pools[i].finalized,
@@ -172,50 +166,50 @@ function formatPools(allPools: any): Pool[]{
     };
 
     // For each token in pool convert weights/decimals and scale balances
-    for(let j = 0;j < allPools.pools[i].tokens.length;j++){
-        const token: Token = {
-          balance: ethers.utils.parseUnits(allPools.pools[i].tokens[j].balance, Number(allPools.pools[i].tokens[j].decimals)),
-          decimals: Number(allPools.pools[i].tokens[j].decimals),
-          denormWeight: ethers.utils.parseUnits(allPools.pools[i].tokens[j].denormWeight, 18),
-          symbol: allPools.pools[i].tokens[j].symbol,
-          name: allPools.pools[i].tokens[j].name,
-          address: allPools.pools[i].tokens[j].address,
-        }
+    for (let j = 0; j < allPools.pools[i].tokens.length; j++) {
+      const token: Token = {
+        balance: ethers.utils.parseUnits(
+          allPools.pools[i].tokens[j].balance,
+          Number(allPools.pools[i].tokens[j].decimals)
+        ),
+        decimals: Number(allPools.pools[i].tokens[j].decimals),
+        denormWeight: ethers.utils.parseUnits(allPools.pools[i].tokens[j].denormWeight, 18),
+        symbol: allPools.pools[i].tokens[j].symbol,
+        name: allPools.pools[i].tokens[j].name,
+        address: allPools.pools[i].tokens[j].address,
+      };
 
-        pool.tokens.push(token);
-    };
+      pool.tokens.push(token);
+    }
 
     formattedPools.push(pool);
-  };
+  }
 
   return formattedPools;
 }
 
-function filterPools(allPools: Pool[]): Pool[]{
+function filterPools(allPools: Pool[], count: number): Pool[] {
   // Order by liquidity
   allPools.sort((a, b) => b.liquidity - a.liquidity);
 
-  return allPools.slice(0, 50);
+  return allPools.slice(0, count);
 }
 
 // Find array of token symbols, decimals and total balances for pools of interest
-function getTokenInfoForDeploy(pools: Pool[]): [Array<string>, Array<number>, Array<BigNumber>]{
-  let symbols: Array<string> = [];
-  let decimals: Array<number> = [];
-  let balanceArray: Array<BigNumber> = [];
-  let balances: any = {};
-  let buckets: any = {};
+function getTokenInfoForDeploy(pools: Pool[]): [Array<string>, Array<number>, Array<BigNumber>] {
+  const symbols: Array<string> = [];
+  const decimals: Array<number> = [];
+  const balanceArray: Array<BigNumber> = [];
+  const balances: any = {};
+  const buckets: any = {};
 
   // for each pool check tokens, if not exists add to list
-  for(let i = 0;i < pools.length;i++){
-    for(let j = 0;j < pools[i].tokens.length;j++){
-        if(!buckets[pools[i].tokens[j].address])
-          buckets[pools[i].tokens[j].address] = pools[i].tokens[j];
+  for (let i = 0; i < pools.length; i++) {
+    for (let j = 0; j < pools[i].tokens.length; j++) {
+      if (!buckets[pools[i].tokens[j].address]) buckets[pools[i].tokens[j].address] = pools[i].tokens[j];
 
-        if(!balances[pools[i].tokens[j].address])
-          balances[pools[i].tokens[j].address] = pools[i].tokens[j].balance;
-        else
-          balances[pools[i].tokens[j].address] = balances[pools[i].tokens[j].address].add(pools[i].tokens[j].balance);
+      if (!balances[pools[i].tokens[j].address]) balances[pools[i].tokens[j].address] = pools[i].tokens[j].balance;
+      else balances[pools[i].tokens[j].address] = balances[pools[i].tokens[j].address].add(pools[i].tokens[j].balance);
     }
   }
 
@@ -233,14 +227,9 @@ async function deployToken(admin: string, symbol: string, decimals?: number): Pr
   // Get deployed Token Factory
   const tokenFactory = await ethers.getContract('TokenFactory');
 
-  const tx = await tokenFactory.create(
-      admin,
-      symbol,
-      symbol,
-      decimals ?? 18
-  );
-  const receipt = await tx.wait()
-  const event = receipt.events?.find((e:any) => e.event == 'TokenCreated');
+  const tx = await tokenFactory.create(admin, symbol, symbol, decimals ?? 18);
+  const receipt = await tx.wait();
+  const event = receipt.events?.find((e: any) => e.event == 'TokenCreated');
   if (event == undefined) {
     throw new Error('Could not find TokenCreated event');
   }
@@ -250,32 +239,26 @@ async function deployToken(admin: string, symbol: string, decimals?: number): Pr
 
 // Deploys multiple tokens and returns a symbol -> token dictionary
 async function deployTokens(admin: string, symbols: Array<string>, decimals: Array<number>): Promise<ContractList> {
-  let tokenContracts: ContractList = {};
+  const tokenContracts: ContractList = {};
 
   // Get artifact for TestToken
-  const Token = await ethers.getContractFactory("TestToken");
+  const Token = await ethers.getContractFactory('TestToken');
   // Get deployed Token Factory
   const tokenFactory = await ethers.getContract('TokenFactory');
   // Find list of tokens already deployed by factory
   const totalTokens = await tokenFactory.getTotalTokens();
   const deployedTokens = await tokenFactory.getTokens(0, totalTokens);
   // For each token deploy if not already deployed
-  for(let i = 0;i < symbols.length;i++){
-    if(symbols[i] === 'WETH'){
+  for (let i = 0; i < symbols.length; i++) {
+    if (symbols[i] === 'WETH') {
       const wethFactory = await ethers.getContract('WETH9');
       tokenContracts[symbols[i]] = wethFactory;
       continue;
     }
-    const address = await tokenFactory.callStatic.create(
-        admin,
-        symbols[i],
-        symbols[i],
-        decimals[i]
-    );
-    if(!deployedTokens.includes(address)){
-      let addr = await deployToken(admin, symbols[i], decimals[i]);
-      if(addr !== address)
-        console.log(`TOKEN DEPLOY ERROR`)
+    const address = await tokenFactory.callStatic.create(admin, symbols[i], symbols[i], decimals[i]);
+    if (!deployedTokens.includes(address)) {
+      const addr = await deployToken(admin, symbols[i], decimals[i]);
+      if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
     }
     // Get token contract
     const tokenContract = await Token.attach(address);

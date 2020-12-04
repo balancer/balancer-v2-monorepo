@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
