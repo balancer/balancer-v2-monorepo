@@ -48,10 +48,10 @@ contract FlattenedFactory {
     // solhint-disable-next-line no-empty-blocks
     constructor() {}
 
-    function create(uint128 amp, uint256 swapFee) external returns (address) {
+    function create(bool isAmpMutable, uint128 amp, bool isSwapFeeMutable, uint256 swapFee) external returns (address) {
         bytes memory creationCode = abi.encodePacked(
             type(FlattenedTradingStrategy).creationCode,
-            abi.encode(amp, swapFee)
+            abi.encode(isAmpMutable, amp, isSwapFeeMutable, swapFee)
         );
 
         address expectedStrategy = Create2.computeAddress(0, keccak256(creationCode));
