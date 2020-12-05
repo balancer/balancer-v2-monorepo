@@ -339,6 +339,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             amountQuoted = amountIn;
         }
 
+        require(tokenOutBalance.total() > 0, "Fully draining token out");
+
         // 2: Update Pool balances - these have been deducted the swap protocol fees
         _poolPairTokenBalance[request.poolId][request.tokenIn] = tokenInBalance;
         _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
@@ -388,6 +390,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             tokenInBalance = tokenInBalance.increaseCash(amountIn);
             tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
         }
+
+        require(tokenOutBalance.total() > 0, "Fully draining token out");
 
         _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexIn, tokenInBalance);
         _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexOut, tokenOutBalance);
