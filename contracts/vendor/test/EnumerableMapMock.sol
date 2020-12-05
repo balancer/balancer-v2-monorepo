@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../EnumerableMap.sol";
 
+// solhint-disable func-name-mixedcase
+
 contract EnumerableUintToAddressMapMock {
     using EnumerableMap for EnumerableMap.UintToAddressMap;
 
@@ -22,6 +24,14 @@ contract EnumerableUintToAddressMapMock {
         emit OperationResult(result);
     }
 
+    function indexOf(uint256 key) public view returns (uint256) {
+        return _map.indexOf(key);
+    }
+
+    function unchecked_setAt(uint256 index, address value) public {
+        _map.unchecked_setAt(index, value);
+    }
+
     function remove(uint256 key) public {
         bool result = _map.remove(key);
         emit OperationResult(result);
@@ -33,6 +43,14 @@ contract EnumerableUintToAddressMapMock {
 
     function at(uint256 index) public view returns (uint256 key, address value) {
         return _map.at(index);
+    }
+
+    function unchecked_at(uint256 index) public view returns (uint256 key, address value) {
+        return _map.unchecked_at(index);
+    }
+
+    function unchecked_valueAt(uint256 index) public view returns (address value) {
+        return _map.unchecked_valueAt(index);
     }
 
     function get(uint256 key) public view returns (address) {
@@ -56,6 +74,14 @@ contract EnumerableIERC20ToBytes32MapMock {
         emit OperationResult(result);
     }
 
+    function indexOf(IERC20 key) public view returns (uint256) {
+        return _map.indexOf(key);
+    }
+
+    function unchecked_setAt(uint256 index, bytes32 value) public {
+        _map.unchecked_setAt(index, value);
+    }
+
     function remove(IERC20 key) public {
         bool result = _map.remove(key);
         emit OperationResult(result);
@@ -67,6 +93,14 @@ contract EnumerableIERC20ToBytes32MapMock {
 
     function at(uint256 index) public view returns (IERC20 key, bytes32 value) {
         return _map.at(index);
+    }
+
+    function unchecked_at(uint256 index) public view returns (IERC20 key, bytes32 value) {
+        return _map.unchecked_at(index);
+    }
+
+    function unchecked_valueAt(uint256 index) public view returns (bytes32 value) {
+        return _map.unchecked_valueAt(index);
     }
 
     function get(IERC20 key) public view returns (bytes32) {

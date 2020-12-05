@@ -25,8 +25,15 @@ export function shouldBehaveLikeMap(
     expect(
       await Promise.all(
         [...Array(keys.length).keys()].map(async (index) => {
-          const entry = await map.at(index);
-          return [entry.key.toString(), entry.value];
+          const entryAt = await map.at(index);
+          const entryAtUnchecked = await map.unchecked_at(index);
+          const valueAtUnchecked = await map.unchecked_valueAt(index);
+
+          expect(entryAt.key).to.equal(entryAtUnchecked.key);
+          expect(entryAt.value).to.equal(entryAtUnchecked.value);
+          expect(entryAt.value).to.equal(valueAtUnchecked);
+
+          return [entryAt.key.toString(), entryAt.value];
         })
       )
     ).to.have.same.deep.members(
@@ -74,6 +81,89 @@ export function shouldBehaveLikeMap(
       await store.map.set(keyA, valueB);
 
       await expectMembersMatch(store.map, [keyA], [valueB]);
+    });
+  });
+
+  describe('indexOf', () => {
+    it('returns the index of an added key', async () => {
+      await store.map.set(keyA, valueA);
+      await store.map.set(keyB, valueB);
+
+      expect(await store.map.indexOf(keyA)).to.equal(0);
+      expect(await store.map.indexOf(keyB)).to.equal(1);
+    });
+
+    it('adding and removing keys can change the index', async () => {
+      await store.map.set(keyA, valueA);
+      await store.map.set(keyB, valueB);
+
+      await store.map.remove(keyA);
+
+      // B is now the only element; its index must be 0
+      expect(await store.map.indexOf(keyB)).to.equal(0);
+    });
+
+    it('reverts if the key is not in the map', async () => {
+      await expect(store.map.indexOf(keyA)).to.be.revertedWith('EnumerableMap: nonexistent key');
+    });
+  });
+
+  describe('unchecked_setAt', () => {
+    it('updates a value', async () => {
+      await store.map.set(keyA, valueA);
+
+      const indexA = await store.map.indexOf(keyA);
+      await store.map.unchecked_setAt(indexA, valueB);
+
+      await expectMembersMatch(store.map, [keyA], [valueB]);
+    });
+
+    it('updates several values', async () => {
+      await store.map.set(keyA, valueA);
+      await store.map.set(keyB, valueB);
+
+      const indexA = await store.map.indexOf(keyA);
+      const indexB = await store.map.indexOf(keyB);
+
+      await store.map.unchecked_setAt(indexA, valueC);
+      await store.map.unchecked_setAt(indexB, valueA);
+
+      await expectMembersMatch(store.map, [keyA, keyB], [valueC, valueA]);
+    });
+
+    it('does not revert when setting indexes outside of the map', async () => {
+      await store.map.unchecked_setAt(5, valueC);
+    });
+  });
+
+  describe('unchecked_at', () => {
+    it('returns an entry at an index', async () => {
+      await store.map.set(keyA, valueA);
+
+      const indexA = await store.map.indexOf(keyA);
+      const entry = await store.map.unchecked_at(indexA);
+
+      expect(entry.key).to.equal(keyA);
+      expect(entry.value).to.equal(valueA);
+    });
+
+    it('does not revert when accessing indexes outside of the map', async () => {
+      await store.map.unchecked_at(5);
+    });
+  });
+
+  describe('unchecked_valueAt', () => {
+    it('returns a value at an index', async () => {
+      await store.map.set(keyA, valueA);
+
+      const indexA = await store.map.indexOf(keyA);
+      const value = await store.map.unchecked_valueAt(indexA);
+
+      expect(value).to.equal(valueA);
+    });
+
+    it('does not revert when accessing indexes outside of the map', async () => {
+      await store.map.unchecked_valueAt(5);
     });
   });
 
