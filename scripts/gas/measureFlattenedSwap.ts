@@ -1,15 +1,15 @@
-import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
 import { setupPool } from '../helpers/pools';
 import { deployTokens, TokenList } from '../../test/helpers/tokens';
 import { toFixedPoint } from '../helpers/fixedPoint';
-import { Contract } from 'ethers';
+import { Contract, ContractFactory } from 'ethers';
 import { getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 
 let vault: Contract;
 let script: Contract;
+let FlattenedTradingStrategyFactory: ContractFactory;
 let tokens: TokenList;
 
 let admin: SignerWithAddress;
@@ -69,9 +69,11 @@ async function batchedSwap(withdrawTokens: boolean) {
 
   // 50-50 DAI-MKR pools
 
+  FlattenedTradingStrategyFactory = await ethers.getContractFactory('FlattenedTradingStrategy');
+
   const pools: Array<string> = [];
   const amp = (30e18).toString();
-  const curve = await deploy('FlattenedTradingStrategy', { args: [amp, (0.02e18).toString()] }); // 2% fee
+  const curve = await FlattenedTradingStrategyFactory.deploy(amp, (0.02e18).toString()); // 2% fee
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
       await setupPool(vault, curve, 1, tokens, controller, [

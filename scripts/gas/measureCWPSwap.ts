@@ -1,15 +1,15 @@
-import { deploy } from '../helpers/deploy';
 import { ethers } from 'hardhat';
 import { getTokensSwaps, toSwapIn } from '../helpers/trading';
 import { setupPool } from '../helpers/pools';
 import { deployTokens, TokenList } from '../../test/helpers/tokens';
-import { Contract } from 'ethers';
+import { Contract, ContractFactory } from 'ethers';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { toFixedPoint } from '../helpers/fixedPoint';
 
 let vault: Contract;
 let script: Contract;
+let CWPTradingStrategyFactory: ContractFactory;
 let tokens: TokenList;
 
 let controller: SignerWithAddress;
@@ -70,9 +70,9 @@ async function batchedSwap(withdrawTokens: boolean) {
 
   const pools: Array<string> = [];
 
-  const strategy = await deploy('CWPTradingStrategy', {
-    args: [[tokens.MKR.address, tokens.DAI.address], [50, 50], toFixedPoint(0.02)], // 2% fee
-  });
+  CWPTradingStrategyFactory = await ethers.getContractFactory('CWPTradingStrategy');
+
+  const strategy = await CWPTradingStrategyFactory.deploy([tokens.MKR.address, tokens.DAI.address], [50, 50], toFixedPoint(0.02));
   for (let i = 0; i < BATCHED_SWAP_TOTAL_POOLS; ++i) {
     pools.push(
       await setupPool(vault, strategy, 0, tokens, controller, [
