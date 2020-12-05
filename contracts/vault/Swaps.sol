@@ -309,42 +309,39 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         IPairTradingStrategy strategy,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
-        bytes32 currentTokenInBalance = _poolPairTokenBalance[request.poolId][request.tokenIn];
-        require(currentTokenInBalance.total() > 0, "Token A not in pool");
+        bytes32 tokenInBalance = _poolPairTokenBalance[request.poolId][request.tokenIn];
+        require(tokenInBalance.total() > 0, "Token A not in pool");
 
-        bytes32 currentTokenOutBalance = _poolPairTokenBalance[request.poolId][request.tokenOut];
-        require(currentTokenOutBalance.total() > 0, "Token B not in pool");
-
-        bytes32 newTokenInBalance;
-        bytes32 newTokenOutBalance;
+        bytes32 tokenOutBalance = _poolPairTokenBalance[request.poolId][request.tokenOut];
+        require(tokenOutBalance.total() > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             uint128 amountOut = strategy.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
-                currentTokenInBalance.total(),
-                currentTokenOutBalance.total()
+                tokenInBalance.total(),
+                tokenOutBalance.total()
             );
 
-            newTokenInBalance = currentTokenInBalance.increaseCash(request.amount);
-            newTokenOutBalance = currentTokenOutBalance.decreaseCash(amountOut);
+            tokenInBalance = tokenInBalance.increaseCash(request.amount);
+            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
 
             amountQuoted = amountOut;
         } else {
             uint128 amountIn = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
-                currentTokenInBalance.total(),
-                currentTokenOutBalance.total()
+                tokenInBalance.total(),
+                tokenOutBalance.total()
             );
 
-            newTokenInBalance = currentTokenInBalance.increaseCash(amountIn);
-            newTokenOutBalance = currentTokenOutBalance.decreaseCash(request.amount);
+            tokenInBalance = tokenInBalance.increaseCash(amountIn);
+            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
 
             amountQuoted = amountIn;
         }
 
         // 2: Update Pool balances - these have been deducted the swap protocol fees
-        _poolPairTokenBalance[request.poolId][request.tokenIn] = newTokenInBalance;
-        _poolPairTokenBalance[request.poolId][request.tokenOut] = newTokenOutBalance;
+        _poolPairTokenBalance[request.poolId][request.tokenIn] = tokenInBalance;
+        _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
     }
 
     // TODO: Temporary struct to workaround stack-too-deep: remove once #73 is implemented
@@ -358,54 +355,41 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         ITupleTradingStrategy strategy,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
-        uint128[] memory currentBalances = new uint128[](_poolTupleTokenBalance[request.poolId].length());
-
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
-        Helper memory helper;
 
-        for (uint256 i = 0; i < _poolTupleTokenBalance[request.poolId].length(); i++) {
-            (IERC20 token, bytes32 balance) = _poolTupleTokenBalance[request.poolId].at(i);
+        uint256 indexIn = _poolTupleTokenBalance[request.poolId].indexOf(request.tokenIn);
+        uint256 indexOut = _poolTupleTokenBalance[request.poolId].indexOf(request.tokenOut);
+
+        uint128[] memory currentBalances = new uint128[](_poolTupleTokenBalance[request.poolId].length());
+
+        for (uint256 i = 0; i < currentBalances.length; i++) {
+            bytes32 balance = _poolTupleTokenBalance[request.poolId].unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
 
-            if (token == request.tokenIn) {
-                helper.indexIn = i;
+            if (i == indexIn) {
                 tokenInBalance = balance;
-            } else if (token == request.tokenOut) {
-                helper.indexOut = i;
+            } else if (i == indexOut) {
                 tokenOutBalance = balance;
             }
         }
 
-        require(tokenInBalance.total() > 0, "Token A not in pool");
-        require(tokenOutBalance.total() > 0, "Token B not in pool");
-
         if (kind == SwapKind.GIVEN_IN) {
-            uint128 amountOut = strategy.quoteOutGivenIn(
-                _toQuoteGivenIn(request),
-                currentBalances,
-                helper.indexIn,
-                helper.indexOut
-            );
+            uint128 amountOut = strategy.quoteOutGivenIn(_toQuoteGivenIn(request), currentBalances, indexIn, indexOut);
 
             amountQuoted = amountOut;
             tokenInBalance = tokenInBalance.increaseCash(request.amount);
             tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
         } else {
-            uint128 amountIn = strategy.quoteInGivenOut(
-                _toQuoteGivenOut(request),
-                currentBalances,
-                helper.indexIn,
-                helper.indexOut
-            );
+            uint128 amountIn = strategy.quoteInGivenOut(_toQuoteGivenOut(request), currentBalances, indexIn, indexOut);
 
             amountQuoted = amountIn;
             tokenInBalance = tokenInBalance.increaseCash(amountIn);
             tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
         }
 
-        _poolTupleTokenBalance[request.poolId].set(request.tokenIn, tokenInBalance);
-        _poolTupleTokenBalance[request.poolId].set(request.tokenOut, tokenOutBalance);
+        _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexIn, tokenInBalance);
+        _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexOut, tokenOutBalance);
     }
 }
