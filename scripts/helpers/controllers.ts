@@ -1,7 +1,6 @@
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { Contract, ContractReceipt } from 'ethers';
 import { ethers } from 'hardhat';
-import { deploy } from './deploy';
 
 /**
  * Deploys a Pool Controller via a Factory contract.
@@ -20,7 +19,7 @@ export async function setupController(
   controllerName: string,
   ...parameters: Array<unknown>
 ): Promise<Contract> {
-  const factory = await deploy(`${controllerName}Factory`, { args: [vault.address] });
+  const factory = await ethers.getContract(`${controllerName}Factory`);
   // We could reuse this factory if we saved it accross tokenizer deployments
 
   // Authorize factory so that created controllers are trusted operators

@@ -1,8 +1,7 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, ContractFactory } from 'ethers';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
-import { deploy } from '../scripts/helpers/deploy';
 import { PairTS } from '../scripts/helpers/pools';
 import { deployTokens, TokenList } from './helpers/tokens';
 import { MAX_UINT256 } from './helpers/constants';
@@ -14,6 +13,8 @@ describe('InvestmentManager', function () {
   let admin: SignerWithAddress;
   let owner: SignerWithAddress;
 
+  let investmentManagerFactory: ContractFactory;
+
   let vault: Contract;
   let strategy: Contract;
   let investmentManager: Contract;
@@ -24,11 +25,11 @@ describe('InvestmentManager', function () {
   const investablePercentage = (0.8e18).toString();
 
   beforeEach(async function () {
-    [, admin, owner] = await ethers.getSigners();
-
-    vault = await deploy('Vault', { args: [admin.address] });
-
-    strategy = await deploy('MockTradingStrategy', { args: [] });
+    [admin, owner] = await ethers.getSigners();
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
+    strategy = await ethers.getContract('MockTradingStrategy');
+    investmentManagerFactory = await ethers.getContractFactory('MockInvestmentManager');
 
     const tokenNames = ['WETH', 'DAI'];
     tokens = await deployTokens(admin.address, tokenNames, [18, 18]);
@@ -55,7 +56,7 @@ describe('InvestmentManager', function () {
 
     poolId = await tokenizer.poolId();
 
-    investmentManager = await deploy('MockInvestmentManager', { args: [vault.address, tokens.DAI.address] });
+    investmentManager = await investmentManagerFactory.deploy(vault.address, tokens.DAI.address);
     await investmentManager.initialize();
 
     await tokenizer.connect(owner).authorizePoolInvestmentManager(tokens.DAI.address, investmentManager.address);

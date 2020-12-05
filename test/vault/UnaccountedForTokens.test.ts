@@ -1,8 +1,7 @@
 import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
+import { TokenList, deployTokens } from '../helpers/tokens';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { createPool, PairTS, setupPool } from '../../scripts/helpers/pools';
 import { MAX_UINT256 } from '../helpers/constants';
@@ -54,7 +53,7 @@ describe('Vault - unaccounted for tokens', () => {
     let poolId: string;
 
     beforeEach(async () => {
-      const strategy = await deploy('MockTradingStrategy', { args: [] });
+      const strategy = await ethers.getContract('MockTradingStrategy');
       poolId = await createPool(vault, strategy, PairTS, controller);
     });
 
@@ -82,7 +81,7 @@ describe('Vault - unaccounted for tokens', () => {
     let poolId: string;
 
     beforeEach(async () => {
-      const strategy = await deploy('MockTradingStrategy', { args: [] });
+      const strategy = await ethers.getContract('MockTradingStrategy');
       poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
         ['DAI', (2e18).toString()],
         ['MKR', (2e18).toString()],

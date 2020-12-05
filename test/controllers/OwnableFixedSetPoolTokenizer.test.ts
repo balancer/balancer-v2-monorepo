@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { PairTS, TupleTS } from '../../scripts/helpers/pools';
-import { deploy } from '../../scripts/helpers/deploy';
 import { setupController } from '../../scripts/helpers/controllers';
 import { deployTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT256 } from '../helpers/constants';
@@ -37,7 +36,7 @@ describe('OwnableFixedSetPoolTokenizer', function () {
       })
     );
 
-    strategy = await deploy('MockTradingStrategy', { args: [] });
+    strategy = await ethers.getContract('MockTradingStrategy');
 
     callSetupController = () =>
       setupController(
