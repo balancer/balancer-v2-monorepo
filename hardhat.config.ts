@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { HardhatUserConfig } from 'hardhat/config';
 import 'hardhat-deploy';
+import 'hardhat-abi-exporter';
 import '@nomiclabs/hardhat-waffle';
 
 import 'solidity-coverage';
@@ -32,6 +33,10 @@ const config: HardhatUserConfig = {
         runs: 9999,
       },
     },
+  },
+  abiExporter: {
+    only: ['Vault', 'FixedSetPoolTokenizer', 'BToken'],
+    flat: true,
   },
 };
 
