@@ -22,6 +22,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       log: true,
       deterministicDeployment: true,
     });
+
+    const multicall = await deploy('Multicall', {
+      from: deployer,
+      log: true,
+      deterministicDeployment: true,
+    });
   }
 };
 export default func;
