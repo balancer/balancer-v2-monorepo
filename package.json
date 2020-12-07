@@ -13,7 +13,6 @@
     "compile:watch": "nodemon --ext sol --exec yarn compile",
     "deploy:local": "hardhat --network localhost deploy",
     "deploy:rinkeby": "hardhat --network rinkeby deploy",
-    "deploy:docker-ganache": "hardhat --network docker-ganache deploy",
     "export": "hardhat export --export-all deployments/addresses.json",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "solhint 'contracts/**/*.sol'",
