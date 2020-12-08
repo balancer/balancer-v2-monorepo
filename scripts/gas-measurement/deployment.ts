@@ -1,5 +1,5 @@
+import { ethers, deployments } from 'hardhat';
 import { deploy } from '../helpers/deploy';
-import { ethers } from 'hardhat';
 import { printGas } from './misc';
 import { Contract } from 'ethers';
 
