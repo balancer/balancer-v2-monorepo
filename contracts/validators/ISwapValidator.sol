@@ -12,23 +12,25 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./ITradingStrategy.sol";
+pragma solidity ^0.7.1;
 
-interface ITupleTradingStrategy is ITradingStrategy {
-    function quoteOutGivenIn(
-        QuoteRequestGivenIn calldata request,
-        uint128[] calldata balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) external returns (uint128 amountOut);
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-    function quoteInGivenOut(
-        QuoteRequestGivenOut calldata request,
-        uint128[] calldata balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) external returns (uint128 amountIn);
+import "../math/FixedPoint.sol";
+
+import "../vault/IVault.sol";
+
+interface ISwapValidator {
+    function validate(
+        IVault.SwapKind kind,
+        IERC20[] calldata tokens,
+        int256[] calldata vaultDeltas,
+        //address caller, //TODO: is it useful to validate?
+        //address from, //TODO: is it useful to validate?
+        //address to, //TODO: is it useful to validate?
+        bytes calldata data
+    ) external;
 }

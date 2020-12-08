@@ -30,8 +30,9 @@ contract Stable {
     struct Data {
         int256 amp;
         int256 invariant;
-        int256 sum;
+        int256 n;
         int256 nn;
+        int256 sum;
         int256 prod;
     }
 
@@ -56,7 +57,7 @@ contract Stable {
     }
 
     function _getDataOutGivenIn(
-        int256 amp,
+        uint128 amp,
         uint128[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
@@ -79,11 +80,11 @@ contract Stable {
             }
             nn = nn * int256(n);
         }
-        return Data({ amp: amp, invariant: invariant, sum: sum, nn: nn, prod: prod });
+        return Data({ amp: int256(amp), invariant: invariant, sum: sum, n: int256(n), nn: nn, prod: prod });
     }
 
     function _getDataInGivenOut(
-        int256 amp,
+        uint128 amp,
         uint128[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
@@ -106,11 +107,11 @@ contract Stable {
             }
             nn = nn * int256(n);
         }
-        return Data({ amp: amp, invariant: invariant, sum: sum, nn: nn, prod: prod });
+        return Data({ amp: int256(amp), invariant: invariant, sum: sum, n: int256(n), nn: nn, prod: prod });
     }
 
     function _outGivenIn(
-        int256 amp,
+        uint128 amp,
         uint128[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
@@ -122,7 +123,7 @@ contract Stable {
     }
 
     function _inGivenOut(
-        int256 amp,
+        uint128 amp,
         uint128[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
@@ -133,7 +134,8 @@ contract Stable {
         return _approximateAmount(data, approxTokenAmountIn) - balances[tokenIndexIn];
     }
 
-    function _invariant(int256 amp, uint128[] memory balances) internal pure returns (int256) {
+    function _invariant(uint128 amp, uint128[] memory balances) internal pure returns (int256) {
+        int256 _amp = int256(amp);
         int256 sum = 0;
         int256 prod = FixedPoint.ONE;
         uint256 n = balances.length;
@@ -145,10 +147,10 @@ contract Stable {
         }
         int256 invariant = sum;
         int256 newInvariant;
-        int256 c2 = amp - FixedPoint.ONE / nn;
+        int256 c2 = _amp - FixedPoint.ONE / nn;
         int256 c1 = (nn * nn * prod);
         for (int256 i = 0; i < 255; i++) {
-            int256 f1 = (c2 * invariant + (((invariant * invariant) / c1) * invariant) - amp * sum) / FixedPoint.ONE;
+            int256 f1 = (c2 * invariant + (((invariant * invariant) / c1) * invariant) - _amp * sum) / FixedPoint.ONE;
             int256 f2 = (c2 * FixedPoint.ONE + 3 * ((invariant * FixedPoint.ONE) / c1) * invariant) / FixedPoint.ONE;
             newInvariant =
                 invariant -

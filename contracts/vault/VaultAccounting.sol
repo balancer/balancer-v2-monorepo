@@ -23,66 +23,21 @@ import "../math/FixedPoint.sol";
 
 import "./IVault.sol";
 import "./Settings.sol";
-
-library BalanceLib {
-    using FixedPoint for uint128;
-
-    // This data structure is used to represent a token's balance for a Pool. 'cash' is how many tokens the Pool has
-    // sitting inside of the Vault. 'total' is always larger or equal to 'cash', and represents the Pool's total token
-    // balance, including tokens that are *not* inside of the Vault.
-    //
-    // Cash and total are updated in concordance whenever tokens are added/removed from a Pool, except when interacting
-    // with the Pool's Investment Manager. The Investment Manager updates the new 'total' value (according to its own)
-    // internal logic, which the Vault uses when validating swaps with the Pool's Trading Strategy, as well as returns
-    // profits by returning invested 'cash'.
-    //
-    // The Vault disallows the Pool's 'cash' ever becoming negative, in other words, it can never use any tokens that
-    // are not inside of the Vault.
-    struct Balance {
-        uint128 cash;
-        uint128 total;
-    }
-
-    /**
-     * @dev The number of invested assets. This is simply the difference between 'total' and 'cash' - the Vault has no
-     * insights into how the assets are used by the Investment Manager.
-     */
-    function invested(Balance memory self) internal pure returns (uint128) {
-        return self.total - self.cash;
-    }
-
-    /**
-     * @dev Increases a Pool's balance. Called when tokens are added to the Pool (except from the Investment Manager).
-     */
-    function increase(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
-        return Balance({ cash: self.cash.add128(amount), total: self.total.add128(amount) });
-    }
-
-    /**
-     * @dev Decreases a Pool's balance. Called when tokens are removed from the Pool (except to the Investment Manager).
-     */
-    function decrease(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
-        return Balance({ cash: self.cash.sub128(amount), total: self.total.sub128(amount) });
-    }
-}
+import "./PoolBalance.sol";
 
 abstract contract VaultAccounting is IVault, Settings {
-    using BalanceLib for BalanceLib.Balance;
+    using PoolBalance for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
-    // The Vault's accounted-for balance for each token. This should always be equal to the sum of all User Balance
-    // tokens, plus all 'cash' of all Pools.
-    // TODO: make this uint128 and not Balance, since it consists exclusively of 'cash'.
-    mapping(IERC20 => BalanceLib.Balance) internal _vaultTokenBalance; // token -> vault balance
-
-    function getTotalUnaccountedForTokens(IERC20 token) public view override returns (uint256) {
-        uint256 totalBalance = token.balanceOf(address(this));
-        assert(totalBalance >= _vaultTokenBalance[token].cash);
-
-        return totalBalance - _vaultTokenBalance[token].cash;
+    //Protocol Fees
+    /**
+     * @dev Returns the amount in protocol fees collected for a specific `token`.
+     */
+    function getCollectedFeesByToken(IERC20 token) external view override returns (uint256) {
+        return _collectedProtocolFees[token];
     }
 
     /**
@@ -107,16 +62,11 @@ abstract contract VaultAccounting is IVault, Settings {
 
         uint256 newBalance = token.balanceOf(address(this));
 
-        uint128 received = newBalance.sub(currentBalance).toUint128();
-
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].increase(received);
-
-        return received;
+        return newBalance.sub(currentBalance).toUint128();
     }
 
     /**
-     * @dev Transfers tokens from the Vault to `to`. If `chargeFee` is true, a withdrawal fee will be charged as
-     * unaccounted-for tokens.
+     * @dev Transfers tokens from the Vault to `to`. If `chargeFee` is true, a withdrawal fee will be collected.
      */
     function _pushTokens(
         IERC20 token,
@@ -128,10 +78,14 @@ abstract contract VaultAccounting is IVault, Settings {
             return;
         }
 
-        _vaultTokenBalance[token] = _vaultTokenBalance[token].decrease(amount);
+        if (chargeFee) {
+            //Collects withdrawal fee
+            uint128 fee = _calculateProtocolWithdrawFee(amount);
+            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(fee);
 
-        uint128 amountToSend = chargeFee ? _applyProtocolWithdrawFee(amount) : amount;
-
-        token.safeTransfer(to, amountToSend);
+            token.safeTransfer(to, amount.sub128(fee));
+        } else {
+            token.safeTransfer(to, amount);
+        }
     }
 }

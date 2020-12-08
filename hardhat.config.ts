@@ -5,6 +5,7 @@ import '@tenderly/hardhat-tenderly';
 import 'hardhat-deploy';
 import 'hardhat-deploy-ethers';
 import '@nomiclabs/hardhat-waffle';
+import 'hardhat-abi-exporter';
 import 'solidity-coverage';
 
 const chainIds = {
@@ -78,6 +79,10 @@ const config: HardhatUserConfig = {
     username: 'balancer',
     project: 'v2',
   },
+  abiExporter: {
+    only: ['Vault', 'FixedSetPoolTokenizer', 'BToken'],
+    flat: true,
+  }
 };
 
 export default config;

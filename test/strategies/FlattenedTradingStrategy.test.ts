@@ -35,7 +35,7 @@ describe('FlattenedTradingStrategy', function () {
         0,
         1
       );
-      expect(result[0]).to.be.at.least((3.7928e18).toString());
+      expect(result).to.be.at.least((3.7928e18).toString());
     });
     it('should validate correctly three tokens', async () => {
       const result = await strategy.quoteOutGivenIn(
@@ -52,7 +52,7 @@ describe('FlattenedTradingStrategy', function () {
         0,
         1
       );
-      expect(result[0]).to.be.at.least('100888873');
+      expect(result).to.be.at.least('100888873');
     });
   });
 });

@@ -46,6 +46,12 @@ abstract contract Admin is IVault, Settings, UserBalance {
         _admin = newAdmin;
     }
 
+    function setProtocolFeeCollector(address protocolFeeCollector) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+
+        _setProtocolFeeCollector(protocolFeeCollector);
+    }
+
     function setProtocolWithdrawFee(uint128 fee) external {
         require(msg.sender == _admin, "Caller is not the admin");
         _setProtocolWithdrawFee(fee);
@@ -67,18 +73,21 @@ abstract contract Admin is IVault, Settings, UserBalance {
         _trustedOperatorReporters.add(reporter);
     }
 
-    function claimUnaccountedForTokens(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        address recipient
-    ) external override {
+    function revokeTrustedOperatorReporter(address reporter) external override {
         require(msg.sender == _admin, "Caller is not the admin");
+
+        _trustedOperatorReporters.remove(reporter);
+    }
+
+    function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external override {
         require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 totalUnaccountedFor = getTotalUnaccountedForTokens(tokens[i]);
-            require(totalUnaccountedFor >= amounts[i], "Insufficient unaccounted for tokens");
+        address recipient = protocolFeeCollector();
+        require(recipient != address(0), "Protocol fee collector recipient is not set");
 
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            require(_collectedProtocolFees[tokens[i]] >= amounts[i], "Insufficient protocol fees");
+            _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]] - amounts[i];
             tokens[i].safeTransfer(recipient, amounts[i]);
         }
     }

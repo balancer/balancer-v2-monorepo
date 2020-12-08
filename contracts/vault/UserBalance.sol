@@ -48,6 +48,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
     event RevokedOperator(address indexed user, address indexed operator);
 
     event AuthorizedTrustedOperator(address indexed operator);
+    event RevokedTrustedOperator(address indexed operator);
 
     function getUserTokenBalance(address user, IERC20 token) public view override returns (uint128) {
         return _userTokenBalance[user][token];
@@ -153,11 +154,20 @@ abstract contract UserBalance is IVault, VaultAccounting {
         return operatorReporters;
     }
 
-    function reportTrustedOperator(address operator) external override {
+    modifier onlyTrustedOperatorReporters() {
         require(_trustedOperatorReporters.contains(msg.sender), "Caller is not trusted operator reporter");
+        _;
+    }
 
+    function reportTrustedOperator(address operator) external override onlyTrustedOperatorReporters {
         if (_trustedOperators.add(operator)) {
             emit AuthorizedTrustedOperator(operator);
+        }
+    }
+
+    function revokeTrustedOperator(address operator) external override onlyTrustedOperatorReporters {
+        if (_trustedOperators.remove(operator)) {
+            emit RevokedTrustedOperator(operator);
         }
     }
 }

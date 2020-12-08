@@ -34,6 +34,9 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
 
     uint8 public constant MIN_TOKENS = 2;
     uint8 public constant MAX_TOKENS = 16;
+    //TODO: MIN_WEIGHT and MAX_WEIGHT should depend on lib max and min weight ratino
+    //Max weight ratio = 130
+    //Min weight ratio = 0.008
     uint8 public constant MIN_WEIGHT = 1;
 
     uint256 private immutable _swapFee;
@@ -176,7 +179,7 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
         QuoteRequestGivenIn calldata request,
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
-    ) external view override returns (uint128, uint128) {
+    ) external view override returns (uint128) {
         // Subtract fee
         uint128 amountInFees = request.amountIn.mul128(_swapFee.toUint128());
         uint128 adjustedIn = request.amountIn.sub128(amountInFees);
@@ -190,14 +193,14 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
             adjustedIn
         );
 
-        return (maximumAmountOut, amountInFees);
+        return maximumAmountOut;
     }
 
     function quoteInGivenOut(
         QuoteRequestGivenOut calldata request,
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
-    ) external view override returns (uint128, uint128) {
+    ) external view override returns (uint128) {
         // Calculate the minimum amount that must be put into the pool
         uint128 minimumAmountIn = _inGivenOut(
             currentBalanceTokenIn,
@@ -209,9 +212,8 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduc
 
         // Add fee
         uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
-        uint128 amountInFees = adjustedIn.sub128(minimumAmountIn);
 
-        return (adjustedIn, amountInFees);
+        return adjustedIn;
     }
 
     function getSwapFee() external view override returns (uint256) {

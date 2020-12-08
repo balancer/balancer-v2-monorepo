@@ -18,6 +18,8 @@ pragma experimental ABIEncoderV2;
 import "../strategies/IPairTradingStrategy.sol";
 import "../strategies/ITupleTradingStrategy.sol";
 
+import "../validators/ISwapValidator.sol";
+
 import "../math/FixedPoint.sol";
 
 import "../vault/IVault.sol";
@@ -36,11 +38,13 @@ contract MockTradingStrategyReentrancy is IPairTradingStrategy {
         ITradingStrategy.QuoteRequestGivenIn calldata request,
         uint128,
         uint128
-    ) external override returns (uint128, uint128) {
+    ) external override returns (uint128) {
         //Reenter Vault
         IVault.SwapIn[] memory swaps = new IVault.SwapIn[](0);
         IERC20[] memory tokens = new IERC20[](0);
         vault.batchSwapGivenIn(
+            ISwapValidator(0),
+            "",
             swaps,
             tokens,
             IVault.FundManagement({
@@ -50,14 +54,14 @@ contract MockTradingStrategyReentrancy is IPairTradingStrategy {
                 depositToUserBalance: false
             })
         );
-        return (request.amountIn, 0);
+        return request.amountIn;
     }
 
     function quoteInGivenOut(
         ITradingStrategy.QuoteRequestGivenOut calldata request,
         uint128,
         uint128
-    ) external view override returns (uint128, uint128) {
-        return (request.amountOut, 0);
+    ) external pure override returns (uint128) {
+        return request.amountOut;
     }
 }

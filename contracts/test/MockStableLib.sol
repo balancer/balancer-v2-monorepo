@@ -13,22 +13,27 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
-pragma experimental ABIEncoderV2;
 
-import "./ITradingStrategy.sol";
+import "../strategies/lib/Stable.sol";
 
-interface ITupleTradingStrategy is ITradingStrategy {
-    function quoteOutGivenIn(
-        QuoteRequestGivenIn calldata request,
-        uint128[] calldata balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) external returns (uint128 amountOut);
+contract MockStableLib is Stable {
+    function outGivenIn(
+        uint128 amp,
+        uint128[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint128 tokenAmountIn
+    ) external pure returns (uint128) {
+        return _outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
+    }
 
-    function quoteInGivenOut(
-        QuoteRequestGivenOut calldata request,
-        uint128[] calldata balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) external returns (uint128 amountIn);
+    function inGivenOut(
+        uint128 amp,
+        uint128[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint128 tokenAmountOut
+    ) external pure returns (uint128) {
+        return _inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
+    }
 }
