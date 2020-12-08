@@ -34,7 +34,7 @@ export async function setupPool(
   controller: SignerWithAddress,
   makeup: Array<[string, string]>
 ): Promise<string> {
-  const poolId = createPool(vault, strategy, strategyType, controller);
+  const poolId = await createPool(vault, strategy, strategyType, controller);
 
   for (const entry of makeup) {
     const token = tokens[entry[0]];

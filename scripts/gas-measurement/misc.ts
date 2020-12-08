@@ -1,7 +1,6 @@
-import { deploy } from '../helpers/deploy';
-import { ethers } from 'hardhat';
-import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
-import { BigNumber, Contract } from 'ethers';
+import { ethers, deployments } from 'hardhat';
+import { deployTokens, TokenList } from '../../test/helpers/tokens';
+import { BigNumber, Contract, ContractFactory } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { PairTS, setupPool, TradingStrategyType, TupleTS } from '../helpers/pools';
@@ -16,17 +15,17 @@ export async function setupEnvironment(): Promise<{
   tokens: TokenList;
   trader: SignerWithAddress;
 }> {
-  const { admin, trader } = await getSigners();
+  const { admin, trader, controller } = await getSigners();
+  await deployments.fixture();
+  const vault = await ethers.getContract('Vault');
+  const validator = await ethers.getContract('OneToOneSwapValidator');
 
-  const vault = await deploy('Vault', { args: [admin.address] });
-
-  const validator = await deploy('OneToOneSwapValidator', { args: [] });
-
-  const tokens = await deployTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
+  const tokens = await deployTokens(admin.address, tokenSymbols, Array(tokenSymbols.length).fill(18));
 
   for (const symbol in tokens) {
     // trader tokens are used to trade and not have non-zero balances
-    await mintTokens(tokens, symbol, trader, 200e18);
+    await tokens[symbol].connect(admin).mint(trader.address, (200e18).toString());
+    await tokens[symbol].connect(admin).grantRole(ethers.utils.id('MINTER_ROLE'), controller.address);
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
     // deposit user balance for trader to make it non-zero
@@ -87,23 +86,23 @@ async function setupTradingStrategy(
 ): Promise<{ strategy: Contract; strategyType: TradingStrategyType }> {
   const symbols = Object.keys(tokens);
 
+  const CWPTradingStrategyFactory: ContractFactory = await ethers.getContractFactory('CWPTradingStrategy');
+
   if (strategyKind == 'CWP') {
-    const strategy = await deploy('CWPTradingStrategy', {
-      args: [
+    const strategy = await CWPTradingStrategyFactory.deploy(
         symbols.map((symbol) => tokens[symbol].address),
         Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
         toFixedPoint(0.02), // 2% fee
-      ],
-    });
+    );
 
     return { strategy, strategyType: PairTS };
   } else if (strategyKind == 'Flattened') {
-    const strategy = await deploy('FlattenedTradingStrategy', {
-      args: [
-        (30e18).toString(), // amp
-        toFixedPoint(0.02), // 2% fee
-      ],
-    });
+    const StableStrategyFactory: ContractFactory = await ethers.getContractFactory('FlattenedTradingStrategy');
+
+    const strategy = await StableStrategyFactory.deploy(
+      (30e18).toString(), // amp
+      toFixedPoint(0.02), // 2% fee
+    );
 
     return { strategy, strategyType: TupleTS };
   } else {

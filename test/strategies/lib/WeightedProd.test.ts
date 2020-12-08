@@ -1,4 +1,4 @@
-import { deploy } from '../../../scripts/helpers/deploy';
+import { ethers } from 'hardhat';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/strategies/weightedProd';
 import { expectRelativeError } from '../../helpers/relativeError';
 import { Contract } from 'ethers';
@@ -65,7 +65,8 @@ describe('WeightedProd Lib', function () {
   let mockWeightedProdLib: Contract;
 
   beforeEach(async function () {
-    mockWeightedProdLib = await deploy('MockWeightedProdLib', { args: [] });
+    const mockWeightedProdLibFactory = await ethers.getContractFactory('MockWeightedProdLib');
+    mockWeightedProdLib = await mockWeightedProdLibFactory.deploy();
   });
 
   describe('Simple swap', () => {

@@ -16,14 +16,14 @@ describe('Vault - flash loans', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, minter, other] = await ethers.getSigners();
+    [admin, minter, other] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
     await deployments.fixture();
     vault = await ethers.getContract('Vault');
-    mockFlashLoanReceiver = await ethers.getContract('MockFlashLoanReceiver');
-    tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
+    receiver = await ethers.getContract('MockFlashLoanReceiver');
+    tokens = await deployTokens(minter.address, ['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {
       // Grant token balance to the Vault - typically this would happen by the pool controllers adding liquidity

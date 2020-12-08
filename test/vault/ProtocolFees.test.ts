@@ -1,8 +1,7 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
+import { TokenList, deployTokens } from '../helpers/tokens';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool } from '../../scripts/helpers/pools';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
@@ -18,15 +17,16 @@ describe('Vault - protocol fees', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, controller, collector, other] = await ethers.getSigners();
+    [admin, controller, collector, other] = await ethers.getSigners();
   });
 
   beforeEach(async () => {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
+    tokens = await deployTokens(controller.address, ['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {
-      await mintTokens(tokens, symbol, controller, 100e18);
+      await tokens[symbol].connect(controller).mint(controller.address, (100e18).toString());
       await tokens[symbol].connect(controller).approve(vault.address, MAX_UINT256);
     }
   });
@@ -54,11 +54,21 @@ describe('Vault - protocol fees', () => {
     let poolId: string;
 
     beforeEach(async () => {
-      const strategy = await deploy('MockTradingStrategy', { args: [] });
+      await deployments.fixture();
+      vault = await ethers.getContract('Vault');
+      tokens = await deployTokens(controller.address, ['DAI', 'MKR'], [18, 18]);
+
+      for (const symbol in tokens) {
+        await tokens[symbol].connect(controller).mint(controller.address, (100e18).toString());
+        await tokens[symbol].connect(controller).approve(vault.address, MAX_UINT256);
+      }
+
+      const strategy = await ethers.getContract('MockTradingStrategy');
       poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
         ['DAI', (5e18).toString()],
         ['MKR', (10e18).toString()],
       ]);
+
       await vault.connect(admin).setProtocolWithdrawFee((0.01e18).toString());
 
       await vault

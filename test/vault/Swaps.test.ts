@@ -16,7 +16,6 @@ describe('Vault - swaps', () => {
   let other: SignerWithAddress;
 
   let vault: Contract;
-  let strategyFactory: ContractFactory;
   let validator: Contract;
   let tokens: TokenList = {};
   let tokenAddresses: string[];
@@ -32,7 +31,7 @@ describe('Vault - swaps', () => {
   beforeEach('deploy vault & tokens', async () => {
     await deployments.fixture();
     vault = await ethers.getContract('Vault');
-    strategyFactory = await ethers.getContractFactory('MockTradingStrategy');
+    const strategyFactory: ContractFactory = await ethers.getContractFactory('MockTradingStrategy');
 
     tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
@@ -581,7 +580,8 @@ describe('Vault - swaps', () => {
 
   describe('validators', () => {
     beforeEach('deploy validator', async () => {
-      validator = await deploy('MockSwapValidator', { args: [] });
+      const MockSwapValidatorFactory: ContractFactory = await ethers.getContractFactory('MockSwapValidator');
+      validator = await MockSwapValidatorFactory.deploy();
     });
 
     it.skip('call validator with correct data', async () => {
@@ -624,7 +624,7 @@ describe('Vault - swaps', () => {
     let invalidTokenIndex: number;
 
     beforeEach(async () => {
-      const { INV: invalidToken } = await deployTokens(['INV'], [18]);
+      const { INV: invalidToken } = await deployTokens(controller.address, ['INV'], [18]);
       tokenAddressesWithInvalid = tokenAddresses.concat(invalidToken.address);
       invalidTokenIndex = tokenAddressesWithInvalid.length - 1;
     });

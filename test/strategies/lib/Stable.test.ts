@@ -1,4 +1,4 @@
-import { deploy } from '../../../scripts/helpers/deploy';
+import { ethers } from 'hardhat';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/strategies/stable';
 import { expectRelativeError } from '../../helpers/relativeError';
 import { Contract } from 'ethers';
@@ -74,7 +74,8 @@ describe('Stable Lib', function () {
   let mockStableLib: Contract;
 
   beforeEach(async function () {
-    mockStableLib = await deploy('MockStableLib', { args: [] });
+    const mockStableLibFactory = await ethers.getContractFactory('MockStableLib');
+    mockStableLib = await mockStableLibFactory.deploy();
   });
 
   describe('Simple swap', () => {

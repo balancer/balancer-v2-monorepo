@@ -1,10 +1,9 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
@@ -30,18 +29,17 @@ describe('OneToOneSwapValidator', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [controller.address] });
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
 
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     poolIds = [];
 
     for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
       // All pools have mock strategies with an in-out multiplier of 2
-      const strategy = await deploy('MockTradingStrategy', {
-        args: [],
-      });
+      const strategy = await ethers.getContract('MockTradingStrategy');
 
       strategy.setMultiplier(toFixedPoint(2));
 
@@ -57,7 +55,7 @@ describe('OneToOneSwapValidator', () => {
 
     for (const symbol in tokens) {
       // Mint tokens for trader
-      await tokens[symbol].mint(trader.address, (200e18).toString());
+      await tokens[symbol].connect(controller).mint(trader.address, (200e18).toString());
       // Approve Vault by trader
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
     }
@@ -79,7 +77,7 @@ describe('OneToOneSwapValidator', () => {
       depositToUserBalance: false,
     };
 
-    validator = await deploy('OneToOneSwapValidator', { args: [] });
+    validator = await ethers.getContract('OneToOneSwapValidator');
   });
 
   it('validates correctly', async () => {
