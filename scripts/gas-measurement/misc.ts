@@ -114,9 +114,9 @@ async function setupTradingStrategy(
 
   if (strategyKind == 'CWP') {
     const strategy = await CWPTradingStrategyFactory.deploy(
-        symbols.map((symbol) => tokens[symbol].address),
-        Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
-        toFixedPoint(0.02), // 2% fee
+      symbols.map((symbol) => tokens[symbol].address),
+      Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
+      toFixedPoint(0.02) // 2% fee
     );
 
     return { strategy, strategyType: PairTS };
@@ -125,7 +125,7 @@ async function setupTradingStrategy(
 
     const strategy = await StableStrategyFactory.deploy(
       (30e18).toString(), // amp
-      toFixedPoint(0.02), // 2% fee
+      toFixedPoint(0.02) // 2% fee
     );
 
     return { strategy, strategyType: TupleTS };

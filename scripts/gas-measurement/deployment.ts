@@ -5,7 +5,7 @@ async function main() {
   console.log('# Vault');
   let receipt;
   let vaultDeployment: any = await deployments.getOrNull('Vault');
-  if(vaultDeployment === null || vaultDeployment === undefined){
+  if (vaultDeployment === null || vaultDeployment === undefined) {
     const [deployer] = await ethers.getSigners();
 
     const { deploy } = deployments;
@@ -19,7 +19,7 @@ async function main() {
 
     receipt = vaultDeployment.receipt;
     console.log(`Deployment costs ${printGas(receipt.gasUsed.toNumber())}`);
-  }else{
+  } else {
     receipt = vaultDeployment.receipt;
     console.log(`Deployment costs ${printGas(ethers.BigNumber.from(receipt.gasUsed))}`);
   }
@@ -28,7 +28,6 @@ async function main() {
   const bytecodeSizeKb = deployedBytecode.slice(2).length / 2 / 1024;
 
   console.log(`Deployed bytecode size is ${bytecodeSizeKb} kB`);
-
 }
 
 main()
