@@ -4,7 +4,6 @@ import { Contract } from 'ethers';
 import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../scripts/helpers/deploy';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
@@ -38,6 +37,7 @@ describe('Vault - swaps', () => {
   let poolIds: string[], poolId: string, anotherPoolId: string;
   let admin: SignerWithAddress, lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
 
+
   before('setup', async () => {
     [, admin, lp, trader, other] = await ethers.getSigners();
 
@@ -46,7 +46,7 @@ describe('Vault - swaps', () => {
     // or rely on user balance or operators).
 
     vault = await deploy('Vault', { args: [admin.address] });
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deployTokens(admin.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     for (const symbol in tokens) {

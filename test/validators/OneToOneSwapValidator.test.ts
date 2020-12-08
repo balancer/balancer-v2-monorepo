@@ -1,10 +1,9 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
@@ -33,7 +32,7 @@ describe('OneToOneSwapValidator', () => {
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [admin.address] });
 
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     for (const symbol in tokens) {
@@ -84,7 +83,7 @@ describe('OneToOneSwapValidator', () => {
       depositToUserBalance: false,
     };
 
-    validator = await deploy('OneToOneSwapValidator', { args: [] });
+    validator = await ethers.getContract('OneToOneSwapValidator');
   });
 
   it('validates correctly', async () => {

@@ -1,8 +1,7 @@
-import { ethers } from 'hardhat';
+import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
+import { TokenList, deployTokens } from '../helpers/tokens';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS } from '../../scripts/helpers/pools';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
@@ -22,8 +21,9 @@ describe('Vault - protocol fees', () => {
   });
 
   beforeEach(async () => {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
+    await deployments.fixture();
+    vault = await ethers.getContract('Vault');
+    tokens = await deployTokens(controller.address, ['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {
       await mintTokens(tokens, symbol, lp, 100e18);

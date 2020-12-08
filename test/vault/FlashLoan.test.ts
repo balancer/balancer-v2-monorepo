@@ -17,14 +17,11 @@ describe('Vault - flash loans', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, minter, other] = await ethers.getSigners();
+    [admin, minter, other] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    await deployments.fixture();
-    //vault = await deploy('Vault', { args: [admin.address] });
-    vault = await ethers.getContract('Vault');
-    //receiver = await ethers.getContract('MockFlashLoanReceiver');
+    vault = await deploy('Vault', { args: [admin.address] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
 
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18], minter);

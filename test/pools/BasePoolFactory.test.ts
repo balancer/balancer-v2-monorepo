@@ -17,10 +17,8 @@ describe('BasePoolFactory', function () {
   });
 
   beforeEach(async function () {
-    await deployments.fixture();
-    vault = await ethers.getContract('Vault');
-    factory = await ethers.getContract('MockPoolFactory');
-    //factory = await deploy('MockPoolFactory', { args: [vault.address] });
+    vault = await deploy('Vault', { args: [admin.address] });
+    factory = await deploy('MockPoolFactory', { args: [vault.address] });
   });
 
   it('fails if not trusted by the vault', async () => {
