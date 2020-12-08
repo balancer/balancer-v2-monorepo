@@ -1,4 +1,4 @@
-import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { Contract, ContractReceipt } from 'ethers';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { TokenList } from '../../test/helpers/tokens';

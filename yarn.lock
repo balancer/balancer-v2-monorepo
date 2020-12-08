@@ -223,10 +223,10 @@
     "@ethersproject/logger" "^5.0.5"
     "@ethersproject/properties" "^5.0.3"
 
-"@ethersproject/hash@5.0.8", "@ethersproject/hash@>=5.0.0-beta.128", "@ethersproject/hash@^5.0.4":
-  version "5.0.8"
-  resolved "https://registry.yarnpkg.com/@ethersproject/hash/-/hash-5.0.8.tgz#368a60addc3c5cd18e28f78c80dc94e1bacb82d8"
-  integrity sha512-Qay01tcFyFreYjSMt82rOQGMfQDmLm1sj3iNNO1BhrVf840xgBZuJ7gBATERzAjTuTCHUHw9BuGwxErJUS95yg==
+"@ethersproject/hash@5.0.9", "@ethersproject/hash@>=5.0.0-beta.128", "@ethersproject/hash@^5.0.4":
+  version "5.0.9"
+  resolved "https://registry.yarnpkg.com/@ethersproject/hash/-/hash-5.0.9.tgz#81252a848185b584aa600db4a1a68cad9229a4d4"
+  integrity sha512-e8/i2ZDeGSgCxXT0vocL54+pMbw5oX5fNjb2E3bAIvdkh5kH29M7zz1jHu1QDZnptIuvCZepIbhUH8lxKE2/SQ==
   dependencies:
     "@ethersproject/abstract-signer" "^5.0.6"
     "@ethersproject/address" "^5.0.5"
@@ -498,7 +498,7 @@
     safe-buffer "^5.1.1"
     util.promisify "^1.0.0"
 
-"@nomiclabs/hardhat-ethers@npm:hardhat-deploy-ethers", hardhat-deploy-ethers@^0.3.0-beta.7:
+"@nomiclabs/hardhat-ethers@npm:hardhat-deploy-ethers":
   version "0.3.0-beta.7"
   resolved "https://registry.yarnpkg.com/hardhat-deploy-ethers/-/hardhat-deploy-ethers-0.3.0-beta.7.tgz#860d86b84ed3c4fdef64283ccf1e8d5623454d02"
   integrity sha512-JKMNte6vudu9LSNqgmBtNxc1gfxp3NUcPKVAf/FANHfl9pa/mBGg6hpQO7tD8CLkAbe6f4K5BjyYIPWX3p7MKw==
@@ -3695,9 +3695,9 @@ ethers@^4.0.32:
     xmlhttprequest "1.8.0"
 
 ethers@^5.0.0, ethers@^5.0.1, ethers@^5.0.8:
-  version "5.0.23"
-  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.23.tgz#461a6e63c4906d5ea64126d53975ddf2ca81a979"
-  integrity sha512-f3pTcgYpMhtmMTMG9KO6pWHYjrCiGz7yVnvMsTQgAYfAVAeUxKy2H1cxQJyqyghRjtAvgVYJlnXQo8mMCD63BA==
+  version "5.0.24"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.24.tgz#fbb8e4d35070d134f2eb846c07500b8c0eaef6d3"
+  integrity sha512-77CEtVC88fJGEhxGXRvQqAEH6e2A+ZFiv2FBT6ikXndlty5sw6vMatAhg1v+w3CaaGZOf1CP81jl4Mc8Zrj08A==
   dependencies:
     "@ethersproject/abi" "5.0.9"
     "@ethersproject/abstract-provider" "5.0.7"
@@ -3709,7 +3709,7 @@ ethers@^5.0.0, ethers@^5.0.1, ethers@^5.0.8:
     "@ethersproject/bytes" "5.0.8"
     "@ethersproject/constants" "5.0.7"
     "@ethersproject/contracts" "5.0.8"
-    "@ethersproject/hash" "5.0.8"
+    "@ethersproject/hash" "5.0.9"
     "@ethersproject/hdnode" "5.0.7"
     "@ethersproject/json-wallets" "5.0.9"
     "@ethersproject/keccak256" "5.0.6"

@@ -5,7 +5,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
 import { TokenList, deployTokens } from '../helpers/tokens';
-import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';

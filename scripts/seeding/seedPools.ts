@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { MAX_UINT256 } from '../../test/helpers/constants';
-import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { Dictionary } from 'lodash';
 import { Contract } from 'ethers';

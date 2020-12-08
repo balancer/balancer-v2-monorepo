@@ -4,7 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
-import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
 describe('Vault - user balance', () => {

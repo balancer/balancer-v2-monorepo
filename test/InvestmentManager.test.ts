@@ -1,7 +1,7 @@
 import { ethers, deployments } from 'hardhat';
 import { expect } from 'chai';
 import { Contract, ContractFactory } from 'ethers';
-import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS } from '../scripts/helpers/pools';
 import { deployTokens, TokenList } from './helpers/tokens';
 import { MAX_UINT256 } from './helpers/constants';

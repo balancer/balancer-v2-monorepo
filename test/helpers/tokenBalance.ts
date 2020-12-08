@@ -2,7 +2,7 @@ import { Contract, BigNumber } from 'ethers';
 import { TokenList } from './tokens';
 import { Dictionary } from 'lodash';
 import { expect } from 'chai';
-import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 // Ported from @openzeppelin/test-helpers to use with ERC20 tokens and Ethers
 

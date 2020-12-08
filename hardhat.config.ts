@@ -3,7 +3,7 @@ import { HardhatUserConfig } from 'hardhat/config';
 import { NetworkUserConfig } from 'hardhat/types';
 import '@tenderly/hardhat-tenderly';
 import 'hardhat-deploy';
-import 'hardhat-deploy-ethers';
+import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
 import 'hardhat-abi-exporter';
 import 'solidity-coverage';
@@ -82,7 +82,7 @@ const config: HardhatUserConfig = {
   abiExporter: {
     only: ['Vault', 'FixedSetPoolTokenizer', 'BToken'],
     flat: true,
-  }
+  },
 };
 
 export default config;
