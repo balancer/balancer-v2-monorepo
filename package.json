@@ -11,6 +11,7 @@
     "benchmark": "yarn measure-gas-deployment && yarn measure-gas-single-pair && yarn measure-gas-multihop",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
+    "deploy:hardhat": "hardhat --network hardhat deploy",
     "deploy:local": "hardhat --network localhost deploy",
     "deploy:rinkeby": "hardhat --network rinkeby deploy",
     "export": "hardhat export --export-all deployments/addresses.json",

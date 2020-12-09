@@ -47,6 +47,17 @@ jobs:
       - run: yarn coverage
       - store_artifacts:
           path: coverage
+  deploy-hardhat:
+    docker:
+      - image: circleci/node:14.6
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies
+      - run: yarn compile
+      - run: yarn deploy:hardhat
   benchmark:
     docker:
       - image: circleci/node:14.6
@@ -73,5 +84,8 @@ workflows:
             - build
             - test # only run if tests pass, redundantly runs tests
       - benchmark:
+          requires:
+            - build
+      - deploy-hardhat:
           requires:
             - build
