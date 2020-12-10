@@ -169,8 +169,6 @@ interface IVault {
      */
     function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint128[] memory);
 
-    function getInvestablePercentage(bytes32 poolId, IERC20 token) external view returns (uint128);
-
     // Pool Management
 
     /**
@@ -319,12 +317,30 @@ interface IVault {
     ) external;
 
     // Investment interface
-    function setInvestablePercentage(
+
+    /**
+     * @dev Increase the invested amount of an investment manager for a given pool and token
+     */
+    function investPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 percentage
+        address investmentManager,
+        uint128 amount
     ) external;
 
+    /**
+     * @dev Decrease the invested amount of an investment manager for a given pool and token
+     */
+    function divestPoolBalance(
+        bytes32 poolId,
+        IERC20 token,
+        address investmentManager,
+        uint128 amount
+    ) external;
+
+    /**
+     * @dev Update invested amount of the sender for a given pool and token
+     */
     function updateInvested(
         bytes32 poolId,
         IERC20 token,
@@ -332,6 +348,7 @@ interface IVault {
     ) external;
 
     //Protocol Fees
+
     /**
      * @dev Returns the amount in protocol fees collected for a specific `token`.
      */

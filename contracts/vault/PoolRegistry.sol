@@ -64,9 +64,6 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         _;
     }
 
-    // investable percentage per token
-    mapping(bytes32 => mapping(IERC20 => uint128)) internal _investablePercentage;
-
     // operators are allowed to use a pools tokens for an investment
     mapping(bytes32 => mapping(IERC20 => address)) private _poolInvestmentManagers;
 
@@ -240,25 +237,6 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         }
     }
 
-    function getInvestablePercentage(bytes32 poolId, IERC20 token)
-        external
-        view
-        override
-        withExistingPool(poolId)
-        returns (uint128)
-    {
-        return _investablePercentage[poolId][token];
-    }
-
-    function setInvestablePercentage(
-        bytes32 poolId,
-        IERC20 token,
-        uint128 percentage
-    ) external override nonReentrant withExistingPool(poolId) onlyPoolController(poolId) {
-        require(percentage <= FixedPoint.ONE, "Percentage must be between 0 and 100%");
-        _investablePercentage[poolId][token] = percentage;
-    }
-
     function authorizePoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
@@ -293,7 +271,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         IERC20 token,
         address operator
     ) {
-        require(isPoolInvestmentManager(poolId, token, operator), "Only pool investment operator");
+        require(isPoolInvestmentManager(poolId, token, operator), "SENDER_NOT_INVESTMENT_MANAGER");
         _;
     }
 
@@ -306,84 +284,54 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     }
 
     // Investments
-    // how the investment manager receives more tokens to invest
-    // callable by anyone
+
     function investPoolBalance(
         bytes32 poolId,
         IERC20 token,
         address investmentManager,
-        uint128 amountToInvest // must be less than total allowed
-    ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
-        uint128 targetUtilization = _investablePercentage[poolId][token];
-        uint128 targetInvestableAmount = _poolTokenBalance[poolId][token].total().mul128(targetUtilization);
-
-        uint128 investedAmount = _poolTokenBalance[poolId][token].invested();
-
-        require(
-            investedAmount.add128(amountToInvest) <= targetInvestableAmount,
-            "over investment amount - cannot invest"
-        );
-
-        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].cashToInvested(amountToInvest);
-
-        _pushTokens(token, investmentManager, amountToInvest, false);
-        IInvestmentManager(investmentManager).recordPoolInvestment(poolId, amountToInvest);
+        uint128 amount
+    ) external override onlyPoolInvestmentManager(poolId, token, investmentManager) {
+        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].cashToInvested(amount);
+        _pushTokens(token, investmentManager, amount, false);
+        IInvestmentManager(investmentManager).recordPoolInvestment(poolId, amount);
     }
 
     function divestPoolBalance(
         bytes32 poolId,
         IERC20 token,
         address investmentManager,
-        uint128 amountToDivest // must be less than total allowed
-    ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
-        uint128 targetUtilization = _investablePercentage[poolId][token];
-        uint128 targetInvestableAmount = _poolTokenBalance[poolId][token].total().mul128(targetUtilization);
-        uint128 investedAmount = _poolTokenBalance[poolId][token].invested();
-        require(
-            investedAmount.sub128(amountToDivest) >= targetInvestableAmount,
-            "under investment amount - cannot divest"
-        );
-
-        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].investedToCash(amountToDivest);
-
-        // think about what happens with tokens that charge a transfer fee
-        _pullTokens(token, investmentManager, amountToDivest);
-        IInvestmentManager(investmentManager).recordPoolDivestment(poolId, amountToDivest);
+        uint128 amount
+    ) external override onlyPoolInvestmentManager(poolId, token, investmentManager) {
+        // TODO: Think about what happens with tokens that charge a transfer fee
+        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].investedToCash(amount);
+        _pullTokens(token, investmentManager, amount);
+        IInvestmentManager(investmentManager).recordPoolDivestment(poolId, amount);
     }
 
-    function rebalancePoolInvestment(
-        bytes32 poolId,
-        IERC20 token,
-        address investmentManager
-    ) public onlyPoolInvestmentManager(poolId, token, investmentManager) {
-        uint128 targetUtilization = _investablePercentage[poolId][token];
-        uint128 targetInvestableAmount = _poolTokenBalance[poolId][token].total().mul128(targetUtilization);
-        uint128 investedAmount = _poolTokenBalance[poolId][token].invested();
-
-        if (targetInvestableAmount > investedAmount) {
-            uint128 amountToInvest = targetInvestableAmount.sub128(investedAmount);
-            _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].cashToInvested(amountToInvest);
-
-            _pushTokens(token, investmentManager, amountToInvest, false);
-            IInvestmentManager(investmentManager).recordPoolInvestment(poolId, amountToInvest);
-        } else if (targetInvestableAmount < investedAmount) {
-            uint128 amountToDivest = investedAmount.sub128(targetInvestableAmount);
-            _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].investedToCash(amountToDivest);
-
-            // think about what happens with tokens that charge a transfer fee
-            _pullTokens(token, investmentManager, amountToDivest);
-            IInvestmentManager(investmentManager).recordPoolDivestment(poolId, amountToDivest);
-        } else {
-            revert("Pool balance is already balanced between cash and investment");
-        }
-    }
-
-    // how the investment manager updates the value of invested tokens to the curves knowledge
     function updateInvested(
         bytes32 poolId,
         IERC20 token,
-        uint128 amountInvested
-    ) public override onlyPoolInvestmentManager(poolId, token, msg.sender) {
-        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].setInvested(amountInvested);
+        uint128 amount
+    ) external override onlyPoolInvestmentManager(poolId, token, msg.sender) {
+        bytes32 previousBalance = _poolTokenBalance[poolId][token];
+        uint128 previousInvestedAmount = previousBalance.invested();
+        bytes32 currentBalance = previousBalance.setInvested(amount);
+        uint128 currentInvestedAmount = currentBalance.invested();
+        _poolTokenBalance[poolId][token] = currentBalance;
+
+        if (currentInvestedAmount > previousInvestedAmount) {
+            // No need for SafeMath: It was checked right above as part of the 'if' statement condition
+            uint128 amountToInvest = currentInvestedAmount - previousInvestedAmount;
+            _pushTokens(token, msg.sender, amountToInvest, false);
+            IInvestmentManager(msg.sender).recordPoolInvestment(poolId, amountToInvest);
+        } else if (currentInvestedAmount < previousInvestedAmount) {
+            // TODO: think about what happens with tokens that charge a transfer fee
+            // No need for SafeMath: It was checked right above as part of the 'else if' statement condition
+            uint128 amountToDivest = previousInvestedAmount - currentInvestedAmount;
+            _pullTokens(token, msg.sender, amountToDivest);
+            IInvestmentManager(msg.sender).recordPoolDivestment(poolId, amountToDivest);
+        } else {
+            revert("INVESTMENT_ALREADY_UP_TO_DATE");
+        }
     }
 }

@@ -12,13 +12,12 @@ export async function deployTokens(
   from?: SignerWithAddress
 ): Promise<TokenList> {
   return fromPairs(
-    await Promise.all(
-      symbols.map(async (symbol, index) => [
-        symbol,
-        await deploy('TestToken', { from, args: [symbol, symbol, decimals[index]] }),
-      ])
-    )
+    await Promise.all(symbols.map(async (symbol, index) => [symbol, await deployToken(symbol, decimals[index], from)]))
   );
+}
+
+export async function deployToken(symbol: string, decimals: number, from?: SignerWithAddress): Promise<Contract> {
+  return deploy('TestToken', { from, args: [symbol, symbol, decimals] });
 }
 
 export async function mintTokens(
