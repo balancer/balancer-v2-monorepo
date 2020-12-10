@@ -17,7 +17,10 @@ describe('FlattenedTradingStrategy', function () {
     tokens = ['0x0000000000000000000000000000000000000002', '0x0000000000000000000000000000000000000003'];
 
     const StableStrategyFactory: ContractFactory = await ethers.getContractFactory('FlattenedTradingStrategy');
-    strategy = await StableStrategyFactory.deploy([false, AMP], [false, SWAP_FEE]);
+    strategy = await StableStrategyFactory.deploy(
+      { isMutable: false, value: AMP },
+      { isMutable: false, value: SWAP_FEE }
+    );
     await strategy.deployed();
   });
 
