@@ -81,7 +81,7 @@ async function deployPools(filteredPools: Pool[], tokens: ContractList) {
     }
 
     // Deploy strategy, pool and provide liquidity
-    await deployStrategyPool(tokensList, weights, balances, swapFee, controller);
+    await deployStrategyPool(tokensList, weights, balances, swapFee);
   }
 }
 
@@ -91,8 +91,7 @@ async function deployStrategyPool(
   tokens: Array<string>,
   weights: Array<BigNumber>,
   balances: Array<BigNumber>,
-  swapFee: BigNumber,
-  deployer: SignerWithAddress
+  swapFee: BigNumber
 ) {
   const vault = await ethers.getContract('Vault');
   const cwpFactory = await ethers.getContract('CWPFactory');
@@ -130,7 +129,7 @@ async function deployStrategyPool(
   //   strategyType = 1;
 
   // Create new pool with strategy
-  let tx = await vault.connect(deployer).newPool(strategyAddr, strategyType);
+  let tx = await vault.connect(controller).newPool(strategyAddr, strategyType);
   const receipt = await tx.wait();
   const event = receipt.events?.find((e: any) => e.event == 'PoolCreated');
   if (event == undefined) {
@@ -142,7 +141,7 @@ async function deployStrategyPool(
 
   // Token approval should already be done for vault
   // Add liquidity using pull method
-  tx = await vault.connect(deployer).addLiquidity(poolId, deployer.address, tokens, balances, balances);
+  tx = await vault.connect(controller).addLiquidity(poolId, controller.address, tokens, balances, balances);
 }
 
 // Convert all pools to BigNumber/scaled format
