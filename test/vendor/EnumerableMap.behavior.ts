@@ -132,7 +132,8 @@ export function shouldBehaveLikeMap(
     });
 
     it('does not revert when setting indexes outside of the map', async () => {
-      await store.map.unchecked_setAt(5, valueC);
+      const length = await store.map.length();
+      await store.map.unchecked_setAt(length, valueC);
     });
   });
 
@@ -148,7 +149,8 @@ export function shouldBehaveLikeMap(
     });
 
     it('does not revert when accessing indexes outside of the map', async () => {
-      await store.map.unchecked_at(5);
+      const length = await store.map.length();
+      await store.map.unchecked_at(length);
     });
   });
 
@@ -163,7 +165,8 @@ export function shouldBehaveLikeMap(
     });
 
     it('does not revert when accessing indexes outside of the map', async () => {
-      await store.map.unchecked_valueAt(5);
+      const length = await store.map.length();
+      await store.map.unchecked_valueAt(length);
     });
   });
 
