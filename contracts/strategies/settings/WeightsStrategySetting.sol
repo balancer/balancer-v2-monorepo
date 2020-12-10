@@ -138,19 +138,9 @@ contract WeightsStrategySetting {
         _areWeightsMutable = setting.isMutable;
 
         if (setting.isMutable) {
-            _setWeights(setting.weights);
+            _unsafeSetWeights(setting.weights);
         }
-    }
-
-    /**
-     * @dev Set a new list of token weights
-     * @param newWeights New list of token weights
-     */
-    function setWeights(uint256[] calldata newWeights) external {
-        // TODO: auth
-        require(_areWeightsMutable, "Token weights are not mutable");
-        _validateWeights(newWeights, _totalTokens);
-        _setWeights(newWeights);
+        emit WeightsSet();
     }
 
     /**
@@ -168,6 +158,21 @@ contract WeightsStrategySetting {
         return _totalTokens;
     }
 
+    /**
+     * @dev Internal function to set a new list of token weights
+     * @param weights New list of token weights
+     */
+    function _setWeights(uint256[] memory weights) internal {
+        require(_areWeightsMutable, "TOKEN_WEIGHTS_NOT_MUTABLE");
+        _validateWeights(weights, _totalTokens);
+        _unsafeSetWeights(weights);
+        emit WeightsSet();
+    }
+
+    /**
+     * @dev Internal function to tell the weight associated to a token
+     * @param token Address of the token querying the weight of
+     */
     function _weight(IERC20 token) internal view returns (uint256) {
         if (token == _token0) {
             return _areWeightsMutable ? _mutableWeight0 : _immutableWeight0;
@@ -206,7 +211,11 @@ contract WeightsStrategySetting {
         }
     }
 
-    function _setWeights(uint256[] memory weights) private {
+    /**
+     * @dev Private function to set a new list of token weights. This function does not perform any checks.
+     * @param weights New list of token weights
+     */
+    function _unsafeSetWeights(uint256[] memory weights) private {
         uint256 totalWeights = weights.length;
         _mutableWeight0 = totalWeights > 0 ? weights[0] : 0;
         _mutableWeight1 = totalWeights > 1 ? weights[1] : 0;
@@ -224,7 +233,6 @@ contract WeightsStrategySetting {
         _mutableWeight13 = totalWeights > 13 ? weights[13] : 0;
         _mutableWeight14 = totalWeights > 14 ? weights[14] : 0;
         _mutableWeight15 = totalWeights > 15 ? weights[15] : 0;
-        emit WeightsSet();
     }
 
     function _validateWeights(uint256[] memory weights, uint256 expectedLength) private pure {

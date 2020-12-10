@@ -15,76 +15,70 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-
 import "../../math/FixedPoint.sol";
 
 contract SwapFeeStrategySetting {
-    using SafeCast for uint256;
-    using FixedPoint for uint256;
     using FixedPoint for uint128;
 
-    uint256 public constant MIN_FEE = 0;
-    uint256 public constant MAX_FEE = 10**17; // 0.1%
+    uint128 public constant MIN_FEE = 0;
+    uint128 public constant MAX_FEE = 10**17; // 0.1%
 
-    uint256 private _mutableSwapFee;
-    uint256 private immutable _immutableSwapFee;
+    uint128 private _mutableSwapFee;
+    uint128 private immutable _immutableSwapFee;
     bool private immutable _isMutable;
 
     struct SwapFee {
         bool isMutable;
-        uint256 value;
+        uint128 value;
     }
 
-    event SwapFeeSet(uint256 swapFee);
+    event SwapFeeSet(uint128 swapFee);
 
     constructor(SwapFee memory swapFee) {
         _validateSwapFee(swapFee.value);
         _isMutable = swapFee.isMutable;
         _immutableSwapFee = swapFee.isMutable ? 0 : swapFee.value;
-
         if (swapFee.isMutable) {
-            _setSwapFee(swapFee.value);
+            _mutableSwapFee = swapFee.value;
         }
-    }
-
-    /**
-     * @dev Set a new swap fee
-     * @param newSwapFee New swap fee to be set
-     */
-    function setSwapFee(uint256 newSwapFee) external {
-        // TODO: auth
-        require(_isMutable, "Swap fee is not mutable");
-        _validateSwapFee(newSwapFee);
-        _setSwapFee(newSwapFee);
+        emit SwapFeeSet(swapFee.value);
     }
 
     /**
      * @dev Returns the swap fee for the trading strategy
      */
-    function getSwapFee() external view returns (uint256) {
+    function getSwapFee() external view returns (uint128) {
         return _swapFee();
     }
 
-    function _swapFee() internal view returns (uint256) {
-        return _isMutable ? _mutableSwapFee : _immutableSwapFee;
-    }
-
-    function _addSwapFee(uint128 amount) internal view returns (uint128) {
-        return amount.div128(FixedPoint.ONE.sub128(_swapFee().toUint128()));
-    }
-
-    function _subtractSwapFee(uint128 amount) internal view returns (uint128) {
-        uint128 fees = amount.mul128(_swapFee().toUint128());
-        return amount.sub128(fees);
-    }
-
-    function _setSwapFee(uint256 swapFee) private {
+    /**
+     * @dev Set a new swap fee
+     * @param swapFee New swap fee to be set
+     */
+    function _setSwapFee(uint128 swapFee) internal {
+        require(_isMutable, "SWAP_FEE_NOT_MUTABLE");
+        _validateSwapFee(swapFee);
         _mutableSwapFee = swapFee;
         emit SwapFeeSet(swapFee);
     }
 
-    function _validateSwapFee(uint256 swapFee) private pure {
+    /**
+     * @dev Internal function to tell the swap fee for the trading strategy
+     */
+    function _swapFee() internal view returns (uint128) {
+        return _isMutable ? _mutableSwapFee : _immutableSwapFee;
+    }
+
+    function _addSwapFee(uint128 amount) internal view returns (uint128) {
+        return amount.div128(FixedPoint.ONE.sub128(_swapFee()));
+    }
+
+    function _subtractSwapFee(uint128 amount) internal view returns (uint128) {
+        uint128 fees = amount.mul128(_swapFee());
+        return amount.sub128(fees);
+    }
+
+    function _validateSwapFee(uint128 swapFee) private pure {
         require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
         require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
     }

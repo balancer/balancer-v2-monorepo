@@ -10,7 +10,7 @@ describe('SwapFeeStrategySetting', function () {
 
   const deployStrategy = (isMutable: boolean) => {
     beforeEach('deploy strategy', async function () {
-      const SwapFeeStrategySetting: ContractFactory = await ethers.getContractFactory('SwapFeeStrategySetting');
+      const SwapFeeStrategySetting: ContractFactory = await ethers.getContractFactory('MockSwapFeeStrategySetting');
       strategy = await SwapFeeStrategySetting.deploy([isMutable, SWAP_FEE]);
       await strategy.deployed();
     });
@@ -35,7 +35,7 @@ describe('SwapFeeStrategySetting', function () {
     it('supports changing its value', async () => {
       const newSwapFee = (0.1e18).toString();
 
-      const receipt = await (await strategy.setSwapFee(newSwapFee)).wait();
+      const receipt = await (await strategy.mockSetSwapFee(newSwapFee)).wait();
       expectEvent.inReceipt(receipt, 'SwapFeeSet', { swapFee: newSwapFee });
 
       const currentSwapFee = await strategy.getSwapFee();
@@ -45,7 +45,7 @@ describe('SwapFeeStrategySetting', function () {
     it('cannot be changed to an invalid fee', async () => {
       const invalidSwapFee = (0.11e18).toString();
 
-      await expect(strategy.setSwapFee(invalidSwapFee)).to.be.revertedWith('ERR_MAX_FEE');
+      await expect(strategy.mockSetSwapFee(invalidSwapFee)).to.be.revertedWith('ERR_MAX_FEE');
     });
   });
 
@@ -58,7 +58,7 @@ describe('SwapFeeStrategySetting', function () {
 
     it('does not support changing its value', async () => {
       const newSwapFee = (0.1e18).toString();
-      await expect(strategy.setSwapFee(newSwapFee)).to.be.revertedWith('Swap fee is not mutable');
+      await expect(strategy.mockSetSwapFee(newSwapFee)).to.be.revertedWith('SWAP_FEE_NOT_MUTABLE');
     });
   });
 });

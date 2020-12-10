@@ -30,10 +30,6 @@ contract FlattenedFactory {
 
     event StrategyCreated(address indexed strategy);
 
-    constructor() {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function create(AmpStrategySetting.Amp calldata amp, SwapFeeStrategySetting.SwapFee calldata swapFee)
         external
         returns (address)

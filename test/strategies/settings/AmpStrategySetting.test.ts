@@ -10,7 +10,7 @@ describe('AmpStrategySetting', function () {
 
   const deployStrategy = (isMutable: boolean) => {
     beforeEach('deploy strategy', async function () {
-      const AmpStrategySetting: ContractFactory = await ethers.getContractFactory('AmpStrategySetting');
+      const AmpStrategySetting: ContractFactory = await ethers.getContractFactory('MockAmpStrategySetting');
       strategy = await AmpStrategySetting.deploy([isMutable, AMP]);
       await strategy.deployed();
     });
@@ -35,7 +35,7 @@ describe('AmpStrategySetting', function () {
     it('supports changing its value', async () => {
       const newAmp = (5.5e18).toString();
 
-      const receipt = await (await strategy.setAmp(newAmp)).wait();
+      const receipt = await (await strategy.mockSetAmp(newAmp)).wait();
       expectEvent.inReceipt(receipt, 'AmpSet', { amp: newAmp });
 
       const currentAmp = await strategy.getAmp();
@@ -52,7 +52,7 @@ describe('AmpStrategySetting', function () {
 
     it('does not support changing its value', async () => {
       const newAmp = (5.5e18).toString();
-      await expect(strategy.setAmp(newAmp)).to.be.revertedWith('Amp is not mutable');
+      await expect(strategy.mockSetAmp(newAmp)).to.be.revertedWith('AMP_NOT_MUTABLE');
     });
   });
 });

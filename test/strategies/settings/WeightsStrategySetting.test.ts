@@ -31,7 +31,7 @@ describe('WeightsStrategySetting', function () {
   };
 
   const deploySetting = async (isMutable: boolean, tokens: string[], weights: string[]) => {
-    const WeightsStrategySetting: ContractFactory = await ethers.getContractFactory('WeightsStrategySetting');
+    const WeightsStrategySetting: ContractFactory = await ethers.getContractFactory('MockWeightsStrategySetting');
     strategy = await WeightsStrategySetting.deploy([isMutable, tokens, weights]);
     await strategy.deployed();
   };
@@ -111,7 +111,7 @@ describe('WeightsStrategySetting', function () {
 
       const itCannotChangeWeights = (newWeights: string[]) => {
         it('does not support changing weights', async () => {
-          await expect(strategy.setWeights(newWeights)).to.be.revertedWith('Token weights are not mutable');
+          await expect(strategy.mockSetWeights(newWeights)).to.be.revertedWith('TOKEN_WEIGHTS_NOT_MUTABLE');
         });
       };
 
@@ -142,7 +142,7 @@ describe('WeightsStrategySetting', function () {
         const newWeights = ['1'];
 
         it('does not support changing weights', async () => {
-          await expect(strategy.setWeights(newWeights)).to.be.revertedWith('ERR_WEIGHTS_LIST');
+          await expect(strategy.mockSetWeights(newWeights)).to.be.revertedWith('ERR_WEIGHTS_LIST');
         });
       });
 
@@ -150,7 +150,7 @@ describe('WeightsStrategySetting', function () {
         const newWeights = ['3', '5'];
 
         it('supports changing the weights', async () => {
-          const receipt = await (await strategy.setWeights(newWeights)).wait();
+          const receipt = await (await strategy.mockSetWeights(newWeights)).wait();
           expectEvent.inReceipt(receipt, 'WeightsSet');
 
           expect(await strategy.getWeight(tokens[0])).to.equal(newWeights[0]);
@@ -162,7 +162,7 @@ describe('WeightsStrategySetting', function () {
         const newWeights = ['2', '1', '3'];
 
         it('does not support changing weights', async () => {
-          await expect(strategy.setWeights(newWeights)).to.be.revertedWith('ERR_WEIGHTS_LIST');
+          await expect(strategy.mockSetWeights(newWeights)).to.be.revertedWith('ERR_WEIGHTS_LIST');
         });
       });
     });

@@ -38,20 +38,10 @@ contract AmpStrategySetting {
     constructor(Amp memory amp) {
         _isMutable = amp.isMutable;
         _immutableAmp = amp.isMutable ? 0 : amp.value;
-
         if (amp.isMutable) {
-            _setAmp(amp.value);
+            _mutableAmp = amp.value;
         }
-    }
-
-    /**
-     * @dev Set a new amp
-     * @param newAmp New amp to be set
-     */
-    function setAmp(uint128 newAmp) external {
-        // TODO: auth
-        require(_isMutable, "Amp is not mutable");
-        _setAmp(newAmp);
+        emit AmpSet(amp.value);
     }
 
     /**
@@ -61,12 +51,20 @@ contract AmpStrategySetting {
         return _amp();
     }
 
-    function _amp() internal view returns (uint128) {
-        return _isMutable ? _mutableAmp : _immutableAmp;
-    }
-
-    function _setAmp(uint128 amp) private {
+    /**
+     * @dev Internal function to set a new amp
+     * @param amp New amp to be set
+     */
+    function _setAmp(uint128 amp) internal {
+        require(_isMutable, "AMP_NOT_MUTABLE");
         _mutableAmp = amp;
         emit AmpSet(amp);
+    }
+
+    /**
+     * @dev Internal function to tell the amp for the trading strategy
+     */
+    function _amp() internal view returns (uint128) {
+        return _isMutable ? _mutableAmp : _immutableAmp;
     }
 }

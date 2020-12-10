@@ -30,17 +30,13 @@ contract CWPFactory {
 
     event StrategyCreated(address indexed strategy);
 
-    constructor() {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function create(
-        WeightsStrategySetting.TokenWeights calldata weights,
+        WeightsStrategySetting.TokenWeights calldata tokenWeights,
         SwapFeeStrategySetting.SwapFee calldata swapFee
     ) external returns (address) {
         bytes memory creationCode = abi.encodePacked(
             type(CWPTradingStrategy).creationCode,
-            abi.encode(weights, swapFee)
+            abi.encode(tokenWeights, swapFee)
         );
 
         address expectedStrategy = Create2.computeAddress(0, keccak256(creationCode));

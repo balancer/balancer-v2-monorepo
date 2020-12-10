@@ -26,8 +26,8 @@ import "./settings/WeightsStrategySetting.sol";
 // perform efficient lookup, without resorting to storage reads.
 
 contract CWPTradingStrategy is IPairTradingStrategy, WeightedProduct, SwapFeeStrategySetting, WeightsStrategySetting {
-    constructor(TokenWeights memory weights, SwapFee memory swapFee)
-        WeightsStrategySetting(weights)
+    constructor(TokenWeights memory tokenWeights, SwapFee memory swapFee)
+        WeightsStrategySetting(tokenWeights)
         SwapFeeStrategySetting(swapFee)
     {
         // solhint-disable-previous-line no-empty-blocks
