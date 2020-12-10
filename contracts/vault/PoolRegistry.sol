@@ -24,7 +24,6 @@ import "./IVault.sol";
 import "./PoolBalance.sol";
 import "./VaultAccounting.sol";
 import "./UserBalance.sol";
-import "../investmentManagers/IInvestmentManager.sol";
 
 abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, UserBalance {
     using EnumerableSet for EnumerableSet.BytesSet;
@@ -237,101 +236,78 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         }
     }
 
+    // Investments
+
+    modifier onlyPoolInvestmentManager(bytes32 poolId, IERC20 token) {
+        require(_isPoolInvestmentManager(poolId, token, msg.sender), "SENDER_NOT_INVESTMENT_MANAGER");
+        _;
+    }
+
     function authorizePoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
-        address operator
+        address manager
     ) external override onlyPoolController(poolId) {
-        require(
-            _poolInvestmentManagers[poolId][token] == address(0) ||
-                _poolTokenBalance[poolId][token].cash() == _poolTokenBalance[poolId][token].total(),
-            "Cannot set a new investment manager with outstanding investment"
-        );
-        _poolInvestmentManagers[poolId][token] = operator;
-        emit AuthorizedPoolInvestmentManager(poolId, token, operator);
+        bool missing = _poolInvestmentManagers[poolId][token] == address(0);
+        require(missing || _poolTokenBalance[poolId][token].isNotInvested(), "CANNOT_SET_INVESTMENT_MANAGER");
+
+        _poolInvestmentManagers[poolId][token] = manager;
+        emit AuthorizedPoolInvestmentManager(poolId, token, manager);
     }
 
-    function revokePoolInvestmentManager(
-        bytes32 poolId,
-        IERC20 token,
-        address operator
-    ) external override onlyPoolController(poolId) {
-        require(
-            _poolInvestmentManagers[poolId][token] != address(0) &&
-                _poolTokenBalance[poolId][token].cash() == _poolTokenBalance[poolId][token].total(),
-            "Cannot remove an investment manager with outstanding investment"
-        );
+    function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external override onlyPoolController(poolId) {
+        address currentManager = _poolInvestmentManagers[poolId][token];
+        bool exists = currentManager != address(0);
+        require(exists && _poolTokenBalance[poolId][token].isNotInvested(), "CANNOT_REVOKE_INVESTMENT_MANAGER");
 
         delete _poolInvestmentManagers[poolId][token];
-        emit RevokedPoolInvestmentManager(poolId, token, operator);
-    }
-
-    modifier onlyPoolInvestmentManager(
-        bytes32 poolId,
-        IERC20 token,
-        address operator
-    ) {
-        require(isPoolInvestmentManager(poolId, token, operator), "SENDER_NOT_INVESTMENT_MANAGER");
-        _;
+        emit RevokedPoolInvestmentManager(poolId, token, currentManager);
     }
 
     function isPoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
-        address operator
-    ) public view returns (bool) {
-        return _poolInvestmentManagers[poolId][token] == operator;
+        address manager
+    ) external view returns (bool) {
+        return _isPoolInvestmentManager(poolId, token, manager);
     }
-
-    // Investments
 
     function investPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        address investmentManager,
         uint128 amount
-    ) external override onlyPoolInvestmentManager(poolId, token, investmentManager) {
+    ) external override onlyPoolInvestmentManager(poolId, token) {
         _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].cashToInvested(amount);
-        _pushTokens(token, investmentManager, amount, false);
-        IInvestmentManager(investmentManager).recordPoolInvestment(poolId, amount);
+        _pushTokens(token, msg.sender, amount, false);
     }
 
     function divestPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        address investmentManager,
         uint128 amount
-    ) external override onlyPoolInvestmentManager(poolId, token, investmentManager) {
+    ) external override onlyPoolInvestmentManager(poolId, token) {
         // TODO: Think about what happens with tokens that charge a transfer fee
-        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].investedToCash(amount);
-        _pullTokens(token, investmentManager, amount);
-        IInvestmentManager(investmentManager).recordPoolDivestment(poolId, amount);
+        uint128 divestedAmount = _pullTokens(token, msg.sender, amount);
+        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].investedToCash(divestedAmount);
     }
 
     function updateInvested(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
-    ) external override onlyPoolInvestmentManager(poolId, token, msg.sender) {
+    ) external override onlyPoolInvestmentManager(poolId, token) {
         bytes32 previousBalance = _poolTokenBalance[poolId][token];
-        uint128 previousInvestedAmount = previousBalance.invested();
         bytes32 currentBalance = previousBalance.setInvested(amount);
-        uint128 currentInvestedAmount = currentBalance.invested();
-        _poolTokenBalance[poolId][token] = currentBalance;
 
-        if (currentInvestedAmount > previousInvestedAmount) {
-            // No need for SafeMath: It was checked right above as part of the 'if' statement condition
-            uint128 amountToInvest = currentInvestedAmount - previousInvestedAmount;
-            _pushTokens(token, msg.sender, amountToInvest, false);
-            IInvestmentManager(msg.sender).recordPoolInvestment(poolId, amountToInvest);
-        } else if (currentInvestedAmount < previousInvestedAmount) {
-            // TODO: think about what happens with tokens that charge a transfer fee
-            // No need for SafeMath: It was checked right above as part of the 'else if' statement condition
-            uint128 amountToDivest = previousInvestedAmount - currentInvestedAmount;
-            _pullTokens(token, msg.sender, amountToDivest);
-            IInvestmentManager(msg.sender).recordPoolDivestment(poolId, amountToDivest);
-        } else {
-            revert("INVESTMENT_ALREADY_UP_TO_DATE");
-        }
+        require(previousBalance != currentBalance, "INVESTMENT_ALREADY_UP_TO_DATE");
+        _poolTokenBalance[poolId][token] = currentBalance;
+    }
+
+    function _isPoolInvestmentManager(
+        bytes32 poolId,
+        IERC20 token,
+        address manager
+    ) internal view returns (bool) {
+        return _poolInvestmentManagers[poolId][token] == manager;
     }
 }

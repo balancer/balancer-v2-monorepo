@@ -70,6 +70,13 @@ library PoolBalance {
     }
 
     /**
+     * @dev Tells whether a balance is invested
+     */
+    function isNotInvested(bytes32 balance) internal pure returns (bool) {
+        return invested(balance) == 0;
+    }
+
+    /**
      * @dev Packs together cash and invested amounts to create a balance value.
      */
     function toBalance(uint128 cashBalance, uint128 investedBalance) internal pure returns (bytes32) {

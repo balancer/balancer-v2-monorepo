@@ -176,18 +176,6 @@ interface IVault {
      */
     function setPoolController(bytes32 poolId, address controller) external;
 
-    function authorizePoolInvestmentManager(
-        bytes32 poolId,
-        IERC20 token,
-        address operator
-    ) external;
-
-    function revokePoolInvestmentManager(
-        bytes32 poolId,
-        IERC20 token,
-        address operator
-    ) external;
-
     /**
      * @dev Adds liquidity into a Pool. Can only be called by its controller.
      *
@@ -319,27 +307,39 @@ interface IVault {
     // Investment interface
 
     /**
-     * @dev Increase the invested amount of an investment manager for a given pool and token
+     * @dev Authorize an investment manager for a pool token
+     */
+    function authorizePoolInvestmentManager(
+        bytes32 poolId,
+        IERC20 token,
+        address manager
+    ) external;
+
+    /**
+     * @dev Revoke the current investment manager of a pool token
+     */
+    function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external;
+
+    /**
+     * @dev Increase the invested amount of a given pool token
      */
     function investPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        address investmentManager,
         uint128 amount
     ) external;
 
     /**
-     * @dev Decrease the invested amount of an investment manager for a given pool and token
+     * @dev Decrease the invested amount of a given pool token
      */
     function divestPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        address investmentManager,
         uint128 amount
     ) external;
 
     /**
-     * @dev Update invested amount of the sender for a given pool and token
+     * @dev Update invested amount of a given pool token
      */
     function updateInvested(
         bytes32 poolId,
