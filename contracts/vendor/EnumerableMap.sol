@@ -52,7 +52,7 @@ library EnumerableMap {
 
     struct Map {
         // Number of entries in the map
-        uint256 _amount;
+        uint256 _length;
         // Storage of map keys and values
         mapping(uint256 => MapEntry) _entries;
         // Position of the entry defined by a key in the `entries` array, plus 1
@@ -77,13 +77,13 @@ library EnumerableMap {
 
         // Equivalent to !contains(map, key)
         if (keyIndex == 0) {
-            uint256 previousAmount = map._amount;
-            map._entries[previousAmount] = MapEntry({ _key: key, _value: value });
-            map._amount = previousAmount + 1;
+            uint256 previousLength = map._length;
+            map._entries[previousLength] = MapEntry({ _key: key, _value: value });
+            map._length = previousLength + 1;
 
-            // The entry is stored at previousAmount, but we add 1 to all indexes
+            // The entry is stored at previousLength, but we add 1 to all indexes
             // and use 0 as a sentinel value
-            map._indexes[key] = previousAmount + 1;
+            map._indexes[key] = previousLength + 1;
             return true;
         } else {
             map._entries[keyIndex - 1]._value = value;
@@ -136,7 +136,7 @@ library EnumerableMap {
             // This modifies the order of the pseudo-array, as noted in {at}.
 
             uint256 toDeleteIndex = keyIndex - 1;
-            uint256 lastIndex = map._amount - 1;
+            uint256 lastIndex = map._length - 1;
 
             // When the entry to delete is the last one, the swap operation is unnecessary. However, since this occurs
             // so rarely, we still do the swap anyway to avoid the gas cost of adding an 'if' statement.
@@ -150,7 +150,7 @@ library EnumerableMap {
 
             // Delete the slot where the moved entry was stored
             delete map._entries[lastIndex];
-            map._amount = lastIndex;
+            map._length = lastIndex;
 
             // Delete the index for the deleted slot
             delete map._indexes[key];
@@ -172,7 +172,7 @@ library EnumerableMap {
      * @dev Returns the number of key-value pairs in the map. O(1).
      */
     function _length(Map storage map) private view returns (uint256) {
-        return map._amount;
+        return map._length;
     }
 
     /**
@@ -186,7 +186,7 @@ library EnumerableMap {
      * - `index` must be strictly less than {length}.
      */
     function _at(Map storage map, uint256 index) private view returns (bytes32, bytes32) {
-        require(map._amount > index, "EnumerableMap: index out of bounds");
+        require(map._length > index, "EnumerableMap: index out of bounds");
 
         MapEntry storage entry = map._entries[index];
         return (entry._key, entry._value);
