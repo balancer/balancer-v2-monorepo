@@ -346,12 +346,6 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
     }
 
-    // TODO: Temporary struct to workaround stack-too-deep: remove once #73 is implemented
-    struct Helper {
-        uint256 indexIn;
-        uint256 indexOut;
-    }
-
     function _processTupleTradingStrategyQuoteRequest(
         QuoteRequestInternal memory request,
         ITupleTradingStrategy strategy,
