@@ -23,10 +23,8 @@ import "../math/FixedPoint.sol";
 
 import "./IVault.sol";
 import "./Settings.sol";
-import "./PoolBalance.sol";
 
 abstract contract VaultAccounting is IVault, Settings {
-    using PoolBalance for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;

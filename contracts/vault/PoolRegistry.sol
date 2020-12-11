@@ -21,15 +21,15 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../vendor/EnumerableSet.sol";
 
 import "./IVault.sol";
+import "./CashInvestedBalance.sol";
 import "./PoolBalance.sol";
 import "./VaultAccounting.sol";
 import "./UserBalance.sol";
 
-abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, UserBalance {
+abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolBalance {
     using EnumerableSet for EnumerableSet.BytesSet;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
-    using PoolBalance for bytes32;
+    using CashInvestedBalance for bytes32;
 
     using FixedPoint for uint128;
 
@@ -49,14 +49,6 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     //  - remove tokens
     // The creator of a pool is the initial controller.
     mapping(bytes32 => address) internal _poolController;
-
-    // Set with all tokens in a pool
-    mapping(bytes32 => EnumerableSet.AddressSet) internal _poolTokens;
-
-    // Tokens in a pool have non-zero balances, which can be used as a shortcut to check
-    // at once if a) a pool exists and b) a token is in that pool.
-    mapping(bytes32 => mapping(IERC20 => bytes32)) internal _poolTokenBalance;
-    // poolid => token => pool balance
 
     modifier withExistingPool(bytes32 poolId) {
         require(_pools.contains(poolId), "Inexistent pool");
@@ -122,12 +114,9 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     }
 
     function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
-        IERC20[] memory tokens = new IERC20[](_poolTokens[poolId].length());
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            tokens[i] = IERC20(_poolTokens[poolId].at(i));
-        }
+        (, StrategyType strategyType) = fromPoolId(poolId);
 
-        return tokens;
+        return _getPoolTokens(poolId, strategyType);
     }
 
     function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens)
@@ -137,10 +126,11 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         withExistingPool(poolId)
         returns (uint128[] memory)
     {
-        uint128[] memory balances = new uint128[](tokens.length);
+        (, StrategyType strategyType) = fromPoolId(poolId);
 
+        uint128[] memory balances = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _poolTokenBalance[poolId][tokens[i]].total();
+            balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
         }
 
         return balances;
@@ -182,9 +172,10 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
 
         require(isOperatorFor(from, msg.sender), "Caller is not operator");
 
+        (, StrategyType strategyType) = fromPoolId(poolId);
+
         for (uint256 i = 0; i < tokens.length; ++i) {
-            {
-                // scope for toReceive and received - avoids 'stack too deep' error
+            if (amounts[i] > 0) {
                 uint128 toReceive = amounts[i];
                 if (withdrawFromUserBalance) {
                     uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][tokens[i]], toReceive));
@@ -195,15 +186,8 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
 
                 uint128 received = _pullTokens(tokens[i], from, toReceive);
                 require(received == toReceive, "Not enough tokens received");
-            }
-            if (amounts[i] > 0) {
-                bytes32 currentBalance = _poolTokenBalance[poolId][tokens[i]];
-                if (currentBalance.total() == 0) {
-                    // No tokens with zero balance should ever be in the _poolTokens set
-                    assert(_poolTokens[poolId].add(address(tokens[i])));
-                }
 
-                _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].increaseCash(amounts[i]);
+                _increasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
             }
         }
     }
@@ -217,21 +201,19 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
+        (, StrategyType strategyType) = fromPoolId(poolId);
+
         for (uint256 i = 0; i < tokens.length; ++i) {
-            require(_poolTokens[poolId].contains(address(tokens[i])), "Token not in pool");
+            if (amounts[i] > 0) {
+                if (depositToUserBalance) {
+                    // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
+                    _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amounts[i]);
+                } else {
+                    // Actually transfer the tokens to the recipient
+                    _pushTokens(tokens[i], to, amounts[i], true);
+                }
 
-            if (depositToUserBalance) {
-                // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amounts[i]);
-            } else {
-                // Actually transfer the tokens to the recipient
-                _pushTokens(tokens[i], to, amounts[i], true);
-            }
-
-            _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].decreaseCash(amounts[i]);
-
-            if (_poolTokenBalance[poolId][tokens[i]].total() == 0) {
-                _poolTokens[poolId].remove(address(tokens[i]));
+                _decreasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
             }
         }
     }
@@ -249,7 +231,8 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         address manager
     ) external override onlyPoolController(poolId) {
         bool missing = _poolInvestmentManagers[poolId][token] == address(0);
-        require(missing || _poolTokenBalance[poolId][token].isNotInvested(), "CANNOT_SET_INVESTMENT_MANAGER");
+        (, StrategyType strategyType) = fromPoolId(poolId);
+        require(missing || _isPoolInvested(poolId, strategyType, token), "CANNOT_SET_INVESTMENT_MANAGER");
 
         _poolInvestmentManagers[poolId][token] = manager;
         emit AuthorizedPoolInvestmentManager(poolId, token, manager);
@@ -258,7 +241,8 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external override onlyPoolController(poolId) {
         address currentManager = _poolInvestmentManagers[poolId][token];
         bool exists = currentManager != address(0);
-        require(exists && _poolTokenBalance[poolId][token].isNotInvested(), "CANNOT_REVOKE_INVESTMENT_MANAGER");
+        (, StrategyType strategyType) = fromPoolId(poolId);
+        require(exists && _isPoolInvested(poolId, strategyType, token), "CANNOT_REVOKE_INVESTMENT_MANAGER");
 
         delete _poolInvestmentManagers[poolId][token];
         emit RevokedPoolInvestmentManager(poolId, token, currentManager);
@@ -277,7 +261,9 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         IERC20 token,
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
-        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].cashToInvested(amount);
+        (, StrategyType strategyType) = fromPoolId(poolId);
+        _investPoolCash(poolId, strategyType, token, amount);
+
         _pushTokens(token, msg.sender, amount, false);
     }
 
@@ -288,7 +274,9 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     ) external override onlyPoolInvestmentManager(poolId, token) {
         // TODO: Think about what happens with tokens that charge a transfer fee
         uint128 divestedAmount = _pullTokens(token, msg.sender, amount);
-        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].investedToCash(divestedAmount);
+
+        (, StrategyType strategyType) = fromPoolId(poolId);
+        _divestPoolCash(poolId, strategyType, token, divestedAmount);
     }
 
     function updateInvested(
@@ -296,7 +284,8 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         IERC20 token,
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
-        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].setInvested(amount);
+        (, StrategyType strategyType) = fromPoolId(poolId);
+        _setPoolInvestment(poolId, strategyType, token, amount);
     }
 
     function _isPoolInvestmentManager(

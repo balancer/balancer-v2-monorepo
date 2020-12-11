@@ -3,11 +3,11 @@ import { BigNumber, Contract } from 'ethers';
 import { MAX_UINT128 } from '../helpers/constants';
 import { deploy } from '../../scripts/helpers/deploy';
 
-describe('Vault - pool balance', () => {
-  let poolBalance: Contract;
+describe('Vault - cash/invested balance', () => {
+  let library: Contract;
 
   before(async () => {
-    poolBalance = await deploy('PoolBalanceMock', { args: [] });
+    library = await deploy('CashInvestedBalanceMock', { args: [] });
   });
 
   describe('cash, invested & total', () => {
@@ -15,11 +15,11 @@ describe('Vault - pool balance', () => {
       cash = BigNumber.from(cash);
       invested = BigNumber.from(invested);
 
-      const balance = await poolBalance.toBalance(cash, invested);
+      const balance = await library.toBalance(cash, invested);
 
-      expect(await poolBalance.cash(balance)).to.equal(cash);
-      expect(await poolBalance.invested(balance)).to.equal(invested);
-      expect(await poolBalance.total(balance)).to.equal(cash.add(invested));
+      expect(await library.cash(balance)).to.equal(cash);
+      expect(await library.invested(balance)).to.equal(invested);
+      expect(await library.total(balance)).to.equal(cash.add(invested));
     }
 
     it('stores zero balance', async () => {
@@ -69,11 +69,11 @@ describe('Vault - pool balance', () => {
       cash = BigNumber.from(cash);
       invested = BigNumber.from(invested);
 
-      const balance = await poolBalance.setInvested(await poolBalance.toBalance(cash, invested), newInvested);
+      const balance = await library.setInvested(await library.toBalance(cash, invested), newInvested);
 
-      expect(await poolBalance.cash(balance)).to.equal(cash);
-      expect(await poolBalance.invested(balance)).to.equal(newInvested);
-      expect(await poolBalance.total(balance)).to.equal(cash.add(newInvested));
+      expect(await library.cash(balance)).to.equal(cash);
+      expect(await library.invested(balance)).to.equal(newInvested);
+      expect(await library.total(balance)).to.equal(cash.add(newInvested));
     }
 
     it('sets invested to zero', async () => {
@@ -126,12 +126,12 @@ describe('Vault - pool balance', () => {
         invested = BigNumber.from(invested);
         increase = BigNumber.from(increase);
 
-        const balance = await poolBalance.toBalance(cash, invested);
-        const increased = await poolBalance.increaseCash(balance, increase);
+        const balance = await library.toBalance(cash, invested);
+        const increased = await library.increaseCash(balance, increase);
 
-        expect(await poolBalance.cash(increased)).to.equal(cash.add(increase)); // cash increases
-        expect(await poolBalance.invested(increased)).to.equal(invested); // invested remains
-        expect(await poolBalance.total(increased)).to.equal(cash.add(increase).add(invested)); // total increases
+        expect(await library.cash(increased)).to.equal(cash.add(increase)); // cash increases
+        expect(await library.invested(increased)).to.equal(invested); // invested remains
+        expect(await library.total(increased)).to.equal(cash.add(increase).add(invested)); // total increases
       }
 
       it('increases cash by zero', async () => {
@@ -198,12 +198,12 @@ describe('Vault - pool balance', () => {
         invested = BigNumber.from(invested);
         decrease = BigNumber.from(decrease);
 
-        const balance = await poolBalance.toBalance(cash, invested);
-        const decreased = await poolBalance.decreaseCash(balance, decrease);
+        const balance = await library.toBalance(cash, invested);
+        const decreased = await library.decreaseCash(balance, decrease);
 
-        expect(await poolBalance.cash(decreased)).to.equal(cash.sub(decrease)); // cash decreases
-        expect(await poolBalance.invested(decreased)).to.equal(invested); // invested remains
-        expect(await poolBalance.total(decreased)).to.equal(cash.sub(decrease).add(invested)); // total decreases
+        expect(await library.cash(decreased)).to.equal(cash.sub(decrease)); // cash decreases
+        expect(await library.invested(decreased)).to.equal(invested); // invested remains
+        expect(await library.total(decreased)).to.equal(cash.sub(decrease).add(invested)); // total decreases
       }
 
       it('decreases cash by zero', async () => {
@@ -265,12 +265,12 @@ describe('Vault - pool balance', () => {
         invested = BigNumber.from(invested);
         investment = BigNumber.from(investment);
 
-        const balance = await poolBalance.toBalance(cash, invested);
-        const after = await poolBalance.cashToInvested(balance, investment);
+        const balance = await library.toBalance(cash, invested);
+        const after = await library.cashToInvested(balance, investment);
 
-        expect(await poolBalance.cash(after)).to.equal(cash.sub(investment)); // cash decreases
-        expect(await poolBalance.invested(after)).to.equal(invested.add(investment)); // invested increases
-        expect(await poolBalance.total(after)).to.equal(cash.add(invested)); // total remains
+        expect(await library.cash(after)).to.equal(cash.sub(investment)); // cash decreases
+        expect(await library.invested(after)).to.equal(invested.add(investment)); // invested increases
+        expect(await library.total(after)).to.equal(cash.add(invested)); // total remains
       }
 
       it('invests zero', async () => {
@@ -315,12 +315,12 @@ describe('Vault - pool balance', () => {
         invested = BigNumber.from(invested);
         divestment = BigNumber.from(divestment);
 
-        const balance = await poolBalance.toBalance(cash, invested);
-        const after = await poolBalance.investedToCash(balance, divestment);
+        const balance = await library.toBalance(cash, invested);
+        const after = await library.investedToCash(balance, divestment);
 
-        expect(await poolBalance.cash(after)).to.equal(cash.add(divestment)); // cash increases
-        expect(await poolBalance.invested(after)).to.equal(invested.sub(divestment)); // invested decreases
-        expect(await poolBalance.total(after)).to.equal(cash.add(invested)); // total remains
+        expect(await library.cash(after)).to.equal(cash.add(divestment)); // cash increases
+        expect(await library.invested(after)).to.equal(invested.sub(divestment)); // invested decreases
+        expect(await library.total(after)).to.equal(cash.add(invested)); // total remains
       }
 
       it('divests zero', async () => {
@@ -353,6 +353,29 @@ describe('Vault - pool balance', () => {
           'ERR_SUB_UNDERFLOW'
         );
       });
+    });
+  });
+
+  describe('is invested', () => {
+    async function testIsInvested(cash: number | BigNumber, invested: number | BigNumber, expected: boolean) {
+      cash = BigNumber.from(cash);
+      invested = BigNumber.from(invested);
+
+      const balance = await library.toBalance(cash, invested);
+      expect(await library.isInvested(balance)).to.equal(expected);
+    }
+
+    it('returns false if there is no invested amount', async () => {
+      await testIsInvested(0, 0, false);
+      await testIsInvested(1, 0, false);
+      await testIsInvested(MAX_UINT128, 0, false);
+    });
+
+    it('returns true if there is an invested amount', async () => {
+      await testIsInvested(0, 1, true);
+      await testIsInvested(1, 1, true);
+      await testIsInvested(MAX_UINT128.sub(1), 1, true);
+      await testIsInvested(1, MAX_UINT128.sub(1), true);
     });
   });
 });

@@ -20,6 +20,7 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../vendor/EnumerableSet.sol";
+import "../vendor/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/Math.sol";
@@ -33,7 +34,7 @@ import "../strategies/ITupleTradingStrategy.sol";
 import "../validators/ISwapValidator.sol";
 
 import "./IVault.sol";
-import "./PoolBalance.sol";
+import "./CashInvestedBalance.sol";
 import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
 import "./UserBalance.sol";
@@ -41,7 +42,9 @@ import "./UserBalance.sol";
 abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using PoolBalance for bytes32;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+
+    using CashInvestedBalance for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -292,141 +295,99 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
     {
         (address strategy, StrategyType strategyType) = fromPoolId(request.poolId);
 
-        bytes32 tokenInFinalBalance;
-        bytes32 tokenOutFinalBalance;
-
         if (strategyType == StrategyType.PAIR) {
-            (tokenInFinalBalance, tokenOutFinalBalance, amountQuoted) = _processPairTradingStrategyQuoteRequest(
-                request,
-                IPairTradingStrategy(strategy),
-                kind
-            );
+            amountQuoted = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(strategy), kind);
         } else if (strategyType == StrategyType.TUPLE) {
-            (tokenInFinalBalance, tokenOutFinalBalance, amountQuoted) = _processTupleTradingStrategyQuoteRequest(
-                request,
-                ITupleTradingStrategy(strategy),
-                kind
-            );
+            amountQuoted = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(strategy), kind);
         } else {
             revert("Unknown strategy type");
         }
-
-        // 2: Update Pool balances - these have been deducted the swap protocol fees
-        _poolTokenBalance[request.poolId][request.tokenIn] = tokenInFinalBalance;
-        _poolTokenBalance[request.poolId][request.tokenOut] = tokenOutFinalBalance;
     }
 
     function _processPairTradingStrategyQuoteRequest(
         QuoteRequestInternal memory request,
         IPairTradingStrategy strategy,
         SwapKind kind
-    )
-        private
-        returns (
-            bytes32 poolTokenInBalance,
-            bytes32 poolTokenOutBalance,
-            uint128
-        )
-    {
-        poolTokenInBalance = _poolTokenBalance[request.poolId][request.tokenIn];
-        require(poolTokenInBalance.total() > 0, "Token A not in pool");
+    ) private returns (uint128 amountQuoted) {
+        bytes32 tokenInBalance = _poolPairTokenBalance[request.poolId][request.tokenIn];
+        require(tokenInBalance.total() > 0, "Token A not in pool");
 
-        poolTokenOutBalance = _poolTokenBalance[request.poolId][request.tokenOut];
-        require(poolTokenOutBalance.total() > 0, "Token B not in pool");
+        bytes32 tokenOutBalance = _poolPairTokenBalance[request.poolId][request.tokenOut];
+        require(tokenOutBalance.total() > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             uint128 amountOut = strategy.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
-                poolTokenInBalance.total(),
-                poolTokenOutBalance.total()
+                tokenInBalance.total(),
+                tokenOutBalance.total()
             );
 
-            return (
-                poolTokenInBalance.increaseCash(request.amount),
-                poolTokenOutBalance.decreaseCash(amountOut),
-                amountOut
-            );
+            tokenInBalance = tokenInBalance.increaseCash(request.amount);
+            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
+
+            amountQuoted = amountOut;
         } else {
             uint128 amountIn = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
-                poolTokenInBalance.total(),
-                poolTokenOutBalance.total()
+                tokenInBalance.total(),
+                tokenOutBalance.total()
             );
 
-            return (
-                poolTokenInBalance.increaseCash(amountIn),
-                poolTokenOutBalance.decreaseCash(request.amount),
-                amountIn
-            );
+            tokenInBalance = tokenInBalance.increaseCash(amountIn);
+            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
+
+            amountQuoted = amountIn;
         }
-    }
 
-    // TODO: Temporary struct to workaround stack-too-deep: remove once #73 is implemented
-    struct Helper {
-        uint256 indexIn;
-        uint256 indexOut;
+        require(tokenOutBalance.total() > 0, "Fully draining token out");
+
+        // 2: Update Pool balances - these have been deducted the swap protocol fees
+        _poolPairTokenBalance[request.poolId][request.tokenIn] = tokenInBalance;
+        _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
     }
 
     function _processTupleTradingStrategyQuoteRequest(
         QuoteRequestInternal memory request,
         ITupleTradingStrategy strategy,
         SwapKind kind
-    )
-        private
-        returns (
-            bytes32 poolTokenInBalance,
-            bytes32 poolTokenOutBalance,
-            uint128
-        )
-    {
-        uint128[] memory currentBalances = new uint128[](_poolTokens[request.poolId].length());
+    ) private returns (uint128 amountQuoted) {
+        bytes32 tokenInBalance;
+        bytes32 tokenOutBalance;
 
-        Helper memory helper;
+        uint256 indexIn = _poolTupleTokenBalance[request.poolId].indexOf(request.tokenIn);
+        uint256 indexOut = _poolTupleTokenBalance[request.poolId].indexOf(request.tokenOut);
 
-        for (uint256 i = 0; i < _poolTokens[request.poolId].length(); i++) {
-            IERC20 token = IERC20(_poolTokens[request.poolId].at(i));
-            bytes32 balance = _poolTokenBalance[request.poolId][token];
+        uint128[] memory currentBalances = new uint128[](_poolTupleTokenBalance[request.poolId].length());
+
+        for (uint256 i = 0; i < currentBalances.length; i++) {
+            bytes32 balance = _poolTupleTokenBalance[request.poolId].unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
 
-            if (token == request.tokenIn) {
-                helper.indexIn = i;
-                poolTokenInBalance = balance;
-            } else if (token == request.tokenOut) {
-                helper.indexOut = i;
-                poolTokenOutBalance = balance;
+            if (i == indexIn) {
+                tokenInBalance = balance;
+            } else if (i == indexOut) {
+                tokenOutBalance = balance;
             }
         }
 
-        require(poolTokenInBalance.total() > 0, "Token A not in pool");
-        require(poolTokenOutBalance.total() > 0, "Token B not in pool");
-
         if (kind == SwapKind.GIVEN_IN) {
-            uint128 amountOut = strategy.quoteOutGivenIn(
-                _toQuoteGivenIn(request),
-                currentBalances,
-                helper.indexIn,
-                helper.indexOut
-            );
+            uint128 amountOut = strategy.quoteOutGivenIn(_toQuoteGivenIn(request), currentBalances, indexIn, indexOut);
 
-            return (
-                poolTokenInBalance.increaseCash(request.amount),
-                poolTokenOutBalance.decreaseCash(amountOut),
-                amountOut
-            );
+            amountQuoted = amountOut;
+            tokenInBalance = tokenInBalance.increaseCash(request.amount);
+            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
         } else {
-            uint128 amountIn = strategy.quoteInGivenOut(
-                _toQuoteGivenOut(request),
-                currentBalances,
-                helper.indexIn,
-                helper.indexOut
-            );
+            uint128 amountIn = strategy.quoteInGivenOut(_toQuoteGivenOut(request), currentBalances, indexIn, indexOut);
 
-            return (
-                poolTokenInBalance.increaseCash(amountIn),
-                poolTokenOutBalance.decreaseCash(request.amount),
-                amountIn
-            );
+            amountQuoted = amountIn;
+            tokenInBalance = tokenInBalance.increaseCash(amountIn);
+            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
         }
+
+        require(tokenOutBalance.total() > 0, "Fully draining token out");
+
+        _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexIn, tokenInBalance);
+        _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexOut, tokenOutBalance);
     }
 }
