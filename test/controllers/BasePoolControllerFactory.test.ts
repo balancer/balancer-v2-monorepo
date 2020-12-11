@@ -23,7 +23,7 @@ describe('BasePoolControllerFactory', function () {
   });
 
   it('fails if not trusted by the vault', async () => {
-    await expect(factory.create(salt)).to.be.revertedWith('Caller is not trusted operator reporter');
+    await expect(factory.create(salt)).to.be.revertedWith('SENDER_NOT_TRUSTED_OP_REPORTER');
   });
 
   context('once trusted by the vault', () => {

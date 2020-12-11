@@ -45,7 +45,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('pools require a non-zero strategy', async () => {
-      await expect(vault.connect(controller).newPool(ZERO_ADDRESS, TupleTS)).to.be.revertedWith('Strategy must be set');
+      await expect(vault.connect(controller).newPool(ZERO_ADDRESS, TupleTS)).to.be.revertedWith('STRATEGY_ZERO_ADDRESS');
     });
 
     it('pools require a valid strategy type', async () => {
@@ -111,7 +111,7 @@ describe('Vault - pool registry', () => {
 
       it('non-controller cannot set a new controller', async () => {
         await expect(vault.connect(other).setPoolController(poolId, other.address)).to.be.revertedWith(
-          'Caller is not the pool controller'
+          'SENDER_IS_NOT_POOL_CONTROLLER'
         );
       });
     });
@@ -195,7 +195,7 @@ describe('Vault - pool registry', () => {
     it('non-controller cannot add liquidity', async () => {
       await expect(
         vault.connect(other).addLiquidity(poolId, controller.address, [tokens.DAI.address], [5], false)
-      ).to.be.revertedWith('Caller is not the pool controller');
+      ).to.be.revertedWith('SENDER_IS_NOT_POOL_CONTROLLER');
     });
 
     context('with added liquidity', () => {
@@ -250,7 +250,7 @@ describe('Vault - pool registry', () => {
       it('non-controller cannot remove liquidity', async () => {
         await expect(
           vault.connect(other).removeLiquidity(poolId, controller.address, [tokens.MKR.address], [0], false)
-        ).to.be.revertedWith('Caller is not the pool controller');
+        ).to.be.revertedWith('SENDER_IS_NOT_POOL_CONTROLLER');
       });
     });
   });

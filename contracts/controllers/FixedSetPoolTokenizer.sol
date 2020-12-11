@@ -65,7 +65,7 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
         IERC20[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
-        require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
+        require(maxAmountsIn.length == tokens.length, "INVALID_TOKEN_AMOUNTS_LENGTH");
 
         uint128[] memory amountsIn = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -92,7 +92,7 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
         IERC20[] memory tokens = vault.getPoolTokens(poolId);
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
-        require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
+        require(minAmountsOut.length == tokens.length, "INVALID_TOKEN_AMOUNTS_LENGTH");
 
         uint128[] memory amountsOut = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {

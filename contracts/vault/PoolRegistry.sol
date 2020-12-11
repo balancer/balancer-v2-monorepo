@@ -59,7 +59,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     // poolid => token => pool balance
 
     modifier withExistingPool(bytes32 poolId) {
-        require(_pools.contains(poolId), "Inexistent pool");
+        require(_pools.contains(poolId), "POOL_DOES_NOT_EXIST");
         _;
     }
 
@@ -70,7 +70,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     event RevokedPoolInvestmentManager(bytes32 indexed poolId, IERC20 indexed token, address indexed operator);
 
     modifier onlyPoolController(bytes32 poolId) {
-        require(_poolController[poolId] == msg.sender, "Caller is not the pool controller");
+        require(_poolController[poolId] == msg.sender, "SENDER_IS_NOT_POOL_CONTROLLER");
         _;
     }
 
@@ -95,8 +95,8 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     function newPool(address strategy, StrategyType strategyType) external override returns (bytes32) {
         bytes32 poolId = toPoolId(strategy, uint16(strategyType), uint32(_pools.length()));
 
-        require(!_pools.contains(poolId), "Pool ID already exists");
-        require(strategy != address(0), "Strategy must be set");
+        require(!_pools.contains(poolId), "POOL_ALREADY_EXISTS");
+        require(strategy != address(0), "STRATEGY_ZERO_ADDRESS");
 
         _pools.add(poolId);
         _poolController[poolId] = msg.sender;
@@ -122,9 +122,10 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     }
 
     function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
-        IERC20[] memory tokens = new IERC20[](_poolTokens[poolId].length());
+        EnumerableSet.AddressSet storage poolTokens = _poolTokens[poolId];
+        IERC20[] memory tokens = new IERC20[](poolTokens.length());
         for (uint256 i = 0; i < tokens.length; ++i) {
-            tokens[i] = IERC20(_poolTokens[poolId].at(i));
+            tokens[i] = IERC20(poolTokens.at(i));
         }
 
         return tokens;
@@ -178,33 +179,32 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         uint128[] calldata amounts,
         bool withdrawFromUserBalance
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
-        require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
-
+        require(tokens.length == amounts.length, "INVALID_TOKEN_AMOUNTS_LENGTH");
         require(isOperatorFor(from, msg.sender), "Caller is not operator");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            {
-                // scope for toReceive and received - avoids 'stack too deep' error
-                uint128 toReceive = amounts[i];
-                if (withdrawFromUserBalance) {
-                    uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][tokens[i]], toReceive));
+            _addLiquidity(poolId, tokens[i], amounts[i], from, withdrawFromUserBalance);
+        }
+    }
 
-                    _userTokenBalance[from][tokens[i]] -= toWithdraw;
-                    toReceive -= toWithdraw;
-                }
+    function _addLiquidity(bytes32 poolId, IERC20 token, uint128 toReceive, address from, bool withdrawFromUserBalance) internal {
+        if (withdrawFromUserBalance) {
+            uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][token], toReceive));
+            _userTokenBalance[from][token] -= toWithdraw;
+            toReceive -= toWithdraw;
+        }
 
-                uint128 received = _pullTokens(tokens[i], from, toReceive);
-                require(received == toReceive, "Not enough tokens received");
+        uint128 received = _pullTokens(token, from, toReceive);
+        require(received == toReceive, "Not enough tokens received");
+
+        if (toReceive > 0) {
+            bytes32 currentBalance = _poolTokenBalance[poolId][token];
+            if (currentBalance.isZero()) {
+                // No tokens with zero balance should ever be in the _poolTokens set
+                assert(_poolTokens[poolId].add(address(token)));
             }
-            if (amounts[i] > 0) {
-                bytes32 currentBalance = _poolTokenBalance[poolId][tokens[i]];
-                if (currentBalance.total() == 0) {
-                    // No tokens with zero balance should ever be in the _poolTokens set
-                    assert(_poolTokens[poolId].add(address(tokens[i])));
-                }
 
-                _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].increaseCash(amounts[i]);
-            }
+            _poolTokenBalance[poolId][token] = currentBalance.increaseCash(toReceive);
         }
     }
 
@@ -215,24 +215,30 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         uint128[] calldata amounts,
         bool depositToUserBalance
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
-        require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
+        require(tokens.length == amounts.length, "INVALID_TOKEN_AMOUNTS_LENGTH");
+        EnumerableSet.AddressSet storage poolTokens = _poolTokens[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            require(_poolTokens[poolId].contains(address(tokens[i])), "Token not in pool");
+            IERC20 token = tokens[i];
+            require(poolTokens.contains(address(token)), "Token not in pool");
+            _removeLiquidity(poolId, poolTokens, token, amounts[i], to, depositToUserBalance);
+        }
+    }
 
-            if (depositToUserBalance) {
-                // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amounts[i]);
-            } else {
-                // Actually transfer the tokens to the recipient
-                _pushTokens(tokens[i], to, amounts[i], true);
-            }
+    function _removeLiquidity(bytes32 poolId, EnumerableSet.AddressSet storage poolTokens, IERC20 token, uint128 amount, address to, bool depositToUserBalance) internal {
+        if (depositToUserBalance) {
+            // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
+            _userTokenBalance[to][token] = _userTokenBalance[to][token].add128(amount);
+        } else {
+            // Actually transfer the tokens to the recipient
+            _pushTokens(token, to, amount, true);
+        }
 
-            _poolTokenBalance[poolId][tokens[i]] = _poolTokenBalance[poolId][tokens[i]].decreaseCash(amounts[i]);
+        bytes32 newBalance = _poolTokenBalance[poolId][token].decreaseCash(amount);
+        _poolTokenBalance[poolId][token] = newBalance;
 
-            if (_poolTokenBalance[poolId][tokens[i]].total() == 0) {
-                _poolTokens[poolId].remove(address(tokens[i]));
-            }
+        if (newBalance.isZero()) {
+            poolTokens.remove(address(token));
         }
     }
 

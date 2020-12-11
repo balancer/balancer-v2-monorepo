@@ -155,7 +155,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
     }
 
     modifier onlyTrustedOperatorReporters() {
-        require(_trustedOperatorReporters.contains(msg.sender), "Caller is not trusted operator reporter");
+        require(_trustedOperatorReporters.contains(msg.sender), "SENDER_NOT_TRUSTED_OP_REPORTER");
         _;
     }
 

@@ -39,7 +39,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, IVault, Settings {
         uint256[] memory amounts,
         bytes calldata receiverData
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
+        require(tokens.length == amounts.length, "INVALID_TOKEN_AMOUNTS_LENGTH");
 
         uint256[] memory feeAmounts = new uint256[](tokens.length);
         uint256[] memory preLoanBalances = new uint256[](tokens.length);

@@ -171,7 +171,7 @@ describe('FixedSetPoolTokenizer', function () {
       it('fails if not supplying all tokens', async () => {
         await expect(
           tokenizer.connect(lp).joinPool((10e18).toString(), [(0.1e18).toString()], [(0.1e18).toString()], lp.address)
-        ).to.be.revertedWith('Tokens and amounts length mismatch');
+        ).to.be.revertedWith('INVALID_TOKEN_AMOUNTS_LENGTH');
       });
 
       it('fails if supplying extra tokens', async () => {
@@ -184,7 +184,7 @@ describe('FixedSetPoolTokenizer', function () {
               true,
               lp.address
             )
-        ).to.be.revertedWith('Tokens and amounts length mismatch');
+        ).to.be.revertedWith('INVALID_TOKEN_AMOUNTS_LENGTH');
       });
 
       it('can withdraw from user balance', async () => {
@@ -257,7 +257,7 @@ describe('FixedSetPoolTokenizer', function () {
       it('fails if not requesting all tokens', async () => {
         await expect(
           tokenizer.connect(lp).exitPool((10e18).toString(), [(0.1e18).toString()], true, lp.address)
-        ).to.be.revertedWith('Tokens and amounts length mismatch');
+        ).to.be.revertedWith('INVALID_TOKEN_AMOUNTS_LENGTH');
       });
 
       it('all tokens due are pushed', async () => {
@@ -316,7 +316,7 @@ describe('FixedSetPoolTokenizer', function () {
               true,
               lp.address
             )
-        ).to.be.revertedWith('Tokens and amounts length mismatch');
+        ).to.be.revertedWith('INVALID_TOKEN_AMOUNTS_LENGTH');
       });
 
       it('can deposit into user balance', async () => {

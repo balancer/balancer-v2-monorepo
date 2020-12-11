@@ -210,7 +210,7 @@ describe('Vault - user balance', () => {
 
       it('non-reporter cannot report new trusted operators', async () => {
         await expect(vault.connect(other).reportTrustedOperator(trustedOperator.address)).to.be.revertedWith(
-          'Caller is not trusted operator reporter'
+          'SENDER_NOT_TRUSTED_OP_REPORTER'
         );
       });
 
@@ -236,7 +236,7 @@ describe('Vault - user balance', () => {
 
         it('non-reporter cannot revoke trusted operators', async () => {
           await expect(vault.connect(other).revokeTrustedOperator(trustedOperator.address)).to.be.revertedWith(
-            'Caller is not trusted operator reporter'
+            'SENDER_NOT_TRUSTED_OP_REPORTER'
           );
         });
       });

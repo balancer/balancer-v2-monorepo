@@ -77,6 +77,20 @@ library PoolBalance {
     }
 
     /**
+     * @dev Returns true if the balance doesn't have an invested component, or in other words, if it is fully liquid.
+     */
+    function isZero(bytes32 balance) internal pure returns (bool) {
+        return balance == bytes32(0);
+    }
+
+    /**
+     * @dev Returns true if the balance doesn't have an invested component, or in other words, if it is fully liquid.
+     */
+    function isNotZero(bytes32 balance) internal pure returns (bool) {
+        return balance != bytes32(0);
+    }
+
+    /**
      * @dev Packs together cash and invested amounts to create a balance value.
      */
     function toBalance(uint128 cashBalance, uint128 investedBalance) internal pure returns (bytes32) {
@@ -132,7 +146,7 @@ library PoolBalance {
 
     /**
      * @dev Sets 'invested' to an arbitrary value, changing 'total'. Called when the Investment Manager reports profits
-     * or losses. It's the Manager's responsability to provide a meaningful value.
+     * or losses. It's the Manager's responsibility to provide a meaningful value.
      */
     function setInvested(bytes32 balance, uint128 newInvested) internal pure returns (bytes32) {
         uint128 newCash = cash(balance);

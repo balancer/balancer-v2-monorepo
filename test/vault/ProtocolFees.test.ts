@@ -46,7 +46,7 @@ describe('Vault - protocol fees', () => {
   });
   it('non-admin cannot set protocol fee collector', async () => {
     await expect(vault.connect(other).setProtocolFeeCollector(collector.address)).to.be.revertedWith(
-      'Caller is not the admin'
+      'SENDER_NOT_ADMIN'
     );
   });
 
@@ -95,7 +95,7 @@ describe('Vault - protocol fees', () => {
     it('protocol fees cannot be withdrawn if collector is not set', async () => {
       await expect(
         vault.connect(admin).withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((0.03e18).toString()).add(1)])
-      ).to.be.revertedWith('Protocol fee collector recipient is not set');
+      ).to.be.revertedWith('PROTOCOL_FEE_COLLECTOR_NOT_SET');
     });
 
     it('protocol fees cannot be over-withdrawn', async () => {

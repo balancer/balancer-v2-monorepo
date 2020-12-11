@@ -329,16 +329,18 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         )
     {
         poolTokenInBalance = _poolTokenBalance[request.poolId][request.tokenIn];
-        require(poolTokenInBalance.total() > 0, "Token A not in pool");
+        uint128 poolTokenInTotal = poolTokenInBalance.total();
+        require(poolTokenInTotal > 0, "Token A not in pool");
 
         poolTokenOutBalance = _poolTokenBalance[request.poolId][request.tokenOut];
-        require(poolTokenOutBalance.total() > 0, "Token B not in pool");
+        uint128 poolTokenOutTotal = poolTokenOutBalance.total();
+        require(poolTokenOutTotal > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             uint128 amountOut = strategy.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
-                poolTokenInBalance.total(),
-                poolTokenOutBalance.total()
+                poolTokenInTotal,
+                poolTokenOutTotal
             );
 
             return (
@@ -349,8 +351,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         } else {
             uint128 amountIn = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
-                poolTokenInBalance.total(),
-                poolTokenOutBalance.total()
+                poolTokenInTotal,
+                poolTokenOutTotal
             );
 
             return (
@@ -398,8 +400,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             }
         }
 
-        require(poolTokenInBalance.total() > 0, "Token A not in pool");
-        require(poolTokenOutBalance.total() > 0, "Token B not in pool");
+        require(poolTokenInBalance.isNotZero(), "Token A not in pool");
+        require(poolTokenOutBalance.isNotZero(), "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             uint128 amountOut = strategy.quoteOutGivenIn(

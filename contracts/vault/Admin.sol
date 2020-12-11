@@ -32,6 +32,11 @@ abstract contract Admin is IVault, Settings, UserBalance {
 
     address private _admin;
 
+    modifier onlyAdmin() {
+        _validateAdmin(msg.sender);
+        _;
+    }
+
     constructor(address admin) {
         _admin = admin;
     }
@@ -40,55 +45,50 @@ abstract contract Admin is IVault, Settings, UserBalance {
         return _admin;
     }
 
-    function transferAdmin(address newAdmin) external {
-        require(msg.sender == _admin, "Caller is not the admin");
-
+    function transferAdmin(address newAdmin) external onlyAdmin {
         _admin = newAdmin;
     }
 
-    function setProtocolFeeCollector(address protocolFeeCollector) external {
-        require(msg.sender == _admin, "Caller is not the admin");
-
+    function setProtocolFeeCollector(address protocolFeeCollector) external onlyAdmin {
         _setProtocolFeeCollector(protocolFeeCollector);
     }
 
-    function setProtocolWithdrawFee(uint128 fee) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    function setProtocolWithdrawFee(uint128 fee) external onlyAdmin {
         _setProtocolWithdrawFee(fee);
     }
 
-    function setProtocolSwapFee(uint128 fee) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    function setProtocolSwapFee(uint128 fee) external onlyAdmin {
         _setProtocolSwapFee(fee);
     }
 
-    function setProtocolFlashLoanFee(uint128 fee) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    function setProtocolFlashLoanFee(uint128 fee) external onlyAdmin {
         _setProtocolFlashLoanFee(fee);
     }
 
-    function authorizeTrustedOperatorReporter(address reporter) external override {
-        require(msg.sender == _admin, "Caller is not the admin");
-
+    function authorizeTrustedOperatorReporter(address reporter) external override onlyAdmin {
         _trustedOperatorReporters.add(reporter);
     }
 
     function revokeTrustedOperatorReporter(address reporter) external override {
-        require(msg.sender == _admin, "Caller is not the admin");
+        _validateAdmin(msg.sender);
 
         _trustedOperatorReporters.remove(reporter);
     }
 
     function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external override {
-        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
+        require(tokens.length == amounts.length, "INVALID_TOKEN_AMOUNTS_LENGTH");
 
         address recipient = protocolFeeCollector();
-        require(recipient != address(0), "Protocol fee collector recipient is not set");
+        require(recipient != address(0), "PROTOCOL_FEE_COLLECTOR_NOT_SET");
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             require(_collectedProtocolFees[tokens[i]] >= amounts[i], "Insufficient protocol fees");
             _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]] - amounts[i];
             tokens[i].safeTransfer(recipient, amounts[i]);
         }
+    }
+
+    function _validateAdmin(address account) internal view {
+        require(account == _admin, "SENDER_NOT_ADMIN");
     }
 }
