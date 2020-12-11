@@ -5,21 +5,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getChainId, getNamedAccounts } = hre;
   const { deploy, execute, read } = deployments;
 
-  const { deployer } = await getNamedAccounts();
+  const { admin } = await getNamedAccounts();
 
   const chainId = await getChainId();
 
   const vault = await deployments.get('Vault');
 
   const weightedPoolFactory = await deploy('WeightedPoolFactory', {
-    from: deployer,
+    from: admin,
     args: [vault.address],
     log: true,
     deterministicDeployment: true,
   });
 
   const stablePoolFactory = await deploy('StablePoolFactory', {
-    from: deployer,
+    from: admin,
     args: [vault.address],
     log: true,
     deterministicDeployment: true,
@@ -32,7 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await execute(
     'Authorizer',
     {
-      from: deployer,
+      from: admin,
       log: true,
     },
     'grantRole',
@@ -43,7 +43,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await execute(
     'Authorizer',
     {
-      from: deployer,
+      from: admin,
       log: true,
     },
     'grantRole',

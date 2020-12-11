@@ -4,12 +4,12 @@ import { DeployFunction } from 'hardhat-deploy/types';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, tenderly} = hre;
   const { deploy } = deployments;
+  const { admin } = await getNamedAccounts();
 
-  const { deployer } = await getNamedAccounts();
   const authorizer = await deployments.get('Authorizer');
 
   const vault = await deploy('Vault', {
-    from: deployer,
+    from: admin,
     args: [authorizer.address],
     log: true,
     deterministicDeployment: true,
