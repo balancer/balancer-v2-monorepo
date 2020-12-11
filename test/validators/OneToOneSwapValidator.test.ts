@@ -32,7 +32,7 @@ describe('OneToOneSwapValidator', () => {
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [admin.address] });
 
-    tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deployTokens(admin.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     for (const symbol in tokens) {

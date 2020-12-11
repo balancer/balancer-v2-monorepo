@@ -23,7 +23,7 @@ describe('Vault - protocol fees', () => {
   beforeEach(async () => {
     await deployments.fixture();
     vault = await ethers.getContract('Vault');
-    tokens = await deployTokens(controller.address, ['DAI', 'MKR'], [18, 18]);
+    tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {
       await mintTokens(tokens, symbol, lp, 100e18);

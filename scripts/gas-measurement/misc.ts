@@ -5,6 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { deployPoolFromFactory, PoolName } from '../helpers/pools';
 import { toFixedPoint } from '../helpers/fixedPoint';
+import { PairTS, TupleTS} from '../helpers/pools';
 import { pick } from 'lodash';
 
 export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III'];
@@ -112,7 +113,7 @@ async function setupTradingStrategy(
 
   if (strategyKind == 'CWP') {
     const CWPTradingStrategyFactory: ContractFactory = await ethers.getContractFactory('CWPTradingStrategy');
-    
+
     const strategy = await CWPTradingStrategyFactory.deploy(
       symbols.map((symbol) => tokens[symbol].address),
       Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
@@ -132,7 +133,6 @@ async function setupTradingStrategy(
   } else {
     throw new Error(`Unknown trading strategy kind: ${strategyKind}`);
   }
->>>>>>> 6f8d640... WIP updating to work with deploy.
 }
 
 export function printGas(gas: number | BigNumber): string {
