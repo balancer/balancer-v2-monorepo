@@ -32,8 +32,8 @@ export async function deployTokens(admin: string, symbols: Array<string>, decima
   // For each token deploy if not already deployed
   for (let i = 0; i < symbols.length; i++) {
     if (symbols[i] === 'WETH') {
-      const wethFactory = await ethers.getContract('WETH9');
-      tokenSymbols[symbols[i]] = wethFactory;
+      const weth = await ethers.getContract('WETH9');
+      tokenSymbols[symbols[i]] = weth;
       continue;
     }
     const address = await tokenFactory.callStatic.create(admin, symbols[i], symbols[i], decimals[i]);
