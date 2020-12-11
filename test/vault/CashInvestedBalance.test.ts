@@ -355,4 +355,27 @@ describe('Vault - cash/invested balance', () => {
       });
     });
   });
+
+  describe('is invested', () => {
+    async function testIsInvested(cash: number | BigNumber, invested: number | BigNumber, expected: boolean) {
+      cash = BigNumber.from(cash);
+      invested = BigNumber.from(invested);
+
+      const balance = await library.toBalance(cash, invested);
+      expect(await library.isInvested(balance)).to.equal(expected);
+    }
+
+    it('returns false if there is no invested amount', async () => {
+      await testIsInvested(0, 0, false);
+      await testIsInvested(1, 0, false);
+      await testIsInvested(MAX_UINT128, 0, false);
+    });
+
+    it('returns true if there is an invested amount', async () => {
+      await testIsInvested(0, 1, true);
+      await testIsInvested(1, 1, true);
+      await testIsInvested(MAX_UINT128.sub(1), 1, true);
+      await testIsInvested(1, MAX_UINT128.sub(1), true);
+    });
+  });
 });

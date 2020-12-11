@@ -54,4 +54,8 @@ contract CashInvestedBalanceMock {
     function setInvested(bytes32 balance, uint128 newInvested) public pure returns (bytes32) {
         return balance.setInvested(newInvested);
     }
+
+    function isInvested(bytes32 balance) public pure returns (bool) {
+        return balance.isInvested();
+    }
 }
