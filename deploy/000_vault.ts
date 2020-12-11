@@ -5,11 +5,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, tenderly } = hre;
   const { deploy } = deployments;
 
-  const { deployer } = await getNamedAccounts();
+  const { admin } = await getNamedAccounts();
 
   const vault = await deploy('Vault', {
-    from: deployer,
-    args: [deployer],
+    from: admin,
+    args: [admin],
     log: true,
     deterministicDeployment: true,
   });

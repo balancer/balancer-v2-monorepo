@@ -5,10 +5,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts, tenderly } = hre;
   const { deploy } = deployments;
 
-  const { deployer } = await getNamedAccounts();
+  const { admin } = await getNamedAccounts();
 
   const validatorscript = await deploy('OneToOneSwapValidator', {
-    from: deployer,
+    from: admin,
     args: [],
     log: true,
     deterministicDeployment: true,

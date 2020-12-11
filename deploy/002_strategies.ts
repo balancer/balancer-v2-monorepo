@@ -5,17 +5,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
-  const { deployer } = await getNamedAccounts();
+  const { admin } = await getNamedAccounts();
 
   await deploy('CWPFactory', {
-    from: deployer,
+    from: admin,
     args: [],
     log: true,
     deterministicDeployment: true,
   });
 
   await deploy('FlattenedFactory', {
-    from: deployer,
+    from: admin,
     args: [],
     log: true,
     deterministicDeployment: true,

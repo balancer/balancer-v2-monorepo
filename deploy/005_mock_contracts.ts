@@ -5,7 +5,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getChainId, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
-  const { deployer } = await getNamedAccounts();
+  const { admin } = await getNamedAccounts();
 
   const chainId = await getChainId();
 
@@ -13,27 +13,27 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   if (chainId == '31337') {
     await deploy('MockPoolControllerFactory', {
-      from: deployer,
+      from: admin,
       args: [vault.address],
       log: true,
       deterministicDeployment: true,
     });
 
     await deploy('MockTradingStrategy', {
-      from: deployer,
+      from: admin,
       log: true,
       deterministicDeployment: true,
     });
 
     await deploy('MockTradingStrategyReentrancy', {
-      from: deployer,
+      from: admin,
       args: [vault.address],
       log: true,
       deterministicDeployment: true,
     });
 
     await deploy('MockFlashLoanReceiver', {
-      from: deployer,
+      from: admin,
       args: [vault.address],
       log: true,
       deterministicDeployment: true,
