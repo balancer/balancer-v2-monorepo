@@ -33,6 +33,7 @@ import "../strategies/ITupleTradingStrategy.sol";
 import "../validators/ISwapValidator.sol";
 
 import "./IVault.sol";
+import "./PoolBalance.sol";
 import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
 import "./UserBalance.sol";
@@ -40,7 +41,7 @@ import "./UserBalance.sol";
 abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using BalanceLib for BalanceLib.Balance;
+    using PoolBalance for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -291,8 +292,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
     {
         (address strategy, StrategyType strategyType) = fromPoolId(request.poolId);
 
-        BalanceLib.Balance memory tokenInFinalBalance;
-        BalanceLib.Balance memory tokenOutFinalBalance;
+        bytes32 tokenInFinalBalance;
+        bytes32 tokenOutFinalBalance;
 
         if (strategyType == StrategyType.PAIR) {
             (tokenInFinalBalance, tokenOutFinalBalance, amountQuoted) = _processPairTradingStrategyQuoteRequest(
@@ -322,33 +323,41 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
     )
         private
         returns (
-            BalanceLib.Balance memory poolTokenInBalance,
-            BalanceLib.Balance memory poolTokenOutBalance,
+            bytes32 poolTokenInBalance,
+            bytes32 poolTokenOutBalance,
             uint128
         )
     {
         poolTokenInBalance = _poolTokenBalance[request.poolId][request.tokenIn];
-        require(poolTokenInBalance.total > 0, "Token A not in pool");
+        require(poolTokenInBalance.total() > 0, "Token A not in pool");
 
         poolTokenOutBalance = _poolTokenBalance[request.poolId][request.tokenOut];
-        require(poolTokenOutBalance.total > 0, "Token B not in pool");
+        require(poolTokenOutBalance.total() > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             uint128 amountOut = strategy.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
-                poolTokenInBalance.total,
-                poolTokenOutBalance.total
+                poolTokenInBalance.total(),
+                poolTokenOutBalance.total()
             );
 
-            return (poolTokenInBalance.increase(request.amount), poolTokenOutBalance.decrease(amountOut), amountOut);
+            return (
+                poolTokenInBalance.increaseCash(request.amount),
+                poolTokenOutBalance.decreaseCash(amountOut),
+                amountOut
+            );
         } else {
             uint128 amountIn = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
-                poolTokenInBalance.total,
-                poolTokenOutBalance.total
+                poolTokenInBalance.total(),
+                poolTokenOutBalance.total()
             );
 
-            return (poolTokenInBalance.increase(amountIn), poolTokenOutBalance.decrease(request.amount), amountIn);
+            return (
+                poolTokenInBalance.increaseCash(amountIn),
+                poolTokenOutBalance.decreaseCash(request.amount),
+                amountIn
+            );
         }
     }
 
@@ -365,8 +374,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
     )
         private
         returns (
-            BalanceLib.Balance memory poolTokenInBalance,
-            BalanceLib.Balance memory poolTokenOutBalance,
+            bytes32 poolTokenInBalance,
+            bytes32 poolTokenOutBalance,
             uint128
         )
     {
@@ -376,9 +385,9 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         for (uint256 i = 0; i < _poolTokens[request.poolId].length(); i++) {
             IERC20 token = IERC20(_poolTokens[request.poolId].at(i));
-            BalanceLib.Balance memory balance = _poolTokenBalance[request.poolId][token];
+            bytes32 balance = _poolTokenBalance[request.poolId][token];
 
-            currentBalances[i] = balance.total;
+            currentBalances[i] = balance.total();
 
             if (token == request.tokenIn) {
                 helper.indexIn = i;
@@ -389,8 +398,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             }
         }
 
-        require(poolTokenInBalance.total > 0, "Token A not in pool");
-        require(poolTokenOutBalance.total > 0, "Token B not in pool");
+        require(poolTokenInBalance.total() > 0, "Token A not in pool");
+        require(poolTokenOutBalance.total() > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             uint128 amountOut = strategy.quoteOutGivenIn(
@@ -400,7 +409,11 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                 helper.indexOut
             );
 
-            return (poolTokenInBalance.increase(request.amount), poolTokenOutBalance.decrease(amountOut), amountOut);
+            return (
+                poolTokenInBalance.increaseCash(request.amount),
+                poolTokenOutBalance.decreaseCash(amountOut),
+                amountOut
+            );
         } else {
             uint128 amountIn = strategy.quoteInGivenOut(
                 _toQuoteGivenOut(request),
@@ -409,7 +422,11 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                 helper.indexOut
             );
 
-            return (poolTokenInBalance.increase(amountIn), poolTokenOutBalance.decrease(request.amount), amountIn);
+            return (
+                poolTokenInBalance.increaseCash(amountIn),
+                poolTokenOutBalance.decreaseCash(request.amount),
+                amountIn
+            );
         }
     }
 }
