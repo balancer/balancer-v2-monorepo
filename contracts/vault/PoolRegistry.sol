@@ -267,9 +267,9 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     function isPoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
-        address manager
+        address account
     ) external view returns (bool) {
-        return _isPoolInvestmentManager(poolId, token, manager);
+        return _isPoolInvestmentManager(poolId, token, account);
     }
 
     function investPoolBalance(
@@ -296,18 +296,14 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         IERC20 token,
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
-        bytes32 previousBalance = _poolTokenBalance[poolId][token];
-        bytes32 currentBalance = previousBalance.setInvested(amount);
-
-        require(previousBalance != currentBalance, "INVESTMENT_ALREADY_UP_TO_DATE");
-        _poolTokenBalance[poolId][token] = currentBalance;
+        _poolTokenBalance[poolId][token] = _poolTokenBalance[poolId][token].setInvested(amount);
     }
 
     function _isPoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
-        address manager
+        address account
     ) internal view returns (bool) {
-        return _poolInvestmentManagers[poolId][token] == manager;
+        return _poolInvestmentManagers[poolId][token] == account;
     }
 }

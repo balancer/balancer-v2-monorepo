@@ -84,9 +84,8 @@ describe('Vault - protocol fees', () => {
               [tokens.DAI.address, tokens.MKR.address],
               [(0.02e18).toString(), (0.04e18).toString()]
             ),
-        collector,
         tokens,
-        { DAI: (0.02e18).toString(), MKR: (0.04e18).toString() }
+        { account: collector, changes: { DAI: (0.02e18).toString(), MKR: (0.04e18).toString() } }
       );
 
       expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal((0.03e18).toString());

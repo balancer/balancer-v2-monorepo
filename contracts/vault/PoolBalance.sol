@@ -70,7 +70,7 @@ library PoolBalance {
     }
 
     /**
-     * @dev Tells whether a balance is invested
+     * @dev Returns true if the balance doesn't have an invested component, or in other words, if it is fully liquid.
      */
     function isNotInvested(bytes32 balance) internal pure returns (bool) {
         return invested(balance) == 0;

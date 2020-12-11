@@ -153,9 +153,8 @@ describe('Vault - pool registry', () => {
           vault
             .connect(controller)
             .addLiquidity(poolId, controller.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false),
-        controller,
         tokens,
-        { DAI: -5, MKR: -10 }
+        { account: controller, changes: { DAI: -5, MKR: -10 } }
       );
     });
 
@@ -168,9 +167,8 @@ describe('Vault - pool registry', () => {
           vault
             .connect(controller)
             .addLiquidity(poolId, controller.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], true),
-        controller,
         tokens,
-        {}
+        { account: controller }
       );
 
       expect(await vault.getUserTokenBalance(controller.address, tokens.DAI.address)).to.equal(45); // 5 out of 50 taken
@@ -186,9 +184,8 @@ describe('Vault - pool registry', () => {
           vault
             .connect(controller)
             .addLiquidity(poolId, controller.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], true),
-        controller,
         tokens,
-        { DAI: -2, MKR: -4 }
+        { account: controller, changes: { DAI: -2, MKR: -4 } }
       );
 
       expect(await vault.getUserTokenBalance(controller.address, tokens.DAI.address)).to.equal(0);
@@ -228,9 +225,8 @@ describe('Vault - pool registry', () => {
       it('controller can remove liquidity by depositing tokens into user balance', async () => {
         await expectBalanceChange(
           () => vault.connect(controller).removeLiquidity(poolId, controller.address, [tokens.MKR.address], [10], true),
-          controller,
           tokens,
-          {}
+          { account: controller }
         );
 
         expect(await vault.getUserTokenBalance(controller.address, tokens.MKR.address)).to.equal(10);
@@ -240,9 +236,8 @@ describe('Vault - pool registry', () => {
         await expectBalanceChange(
           () =>
             vault.connect(controller).removeLiquidity(poolId, controller.address, [tokens.MKR.address], [10], false),
-          controller,
           tokens,
-          { MKR: 10 }
+          { account: controller, changes: { MKR: 10 } }
         );
       });
 

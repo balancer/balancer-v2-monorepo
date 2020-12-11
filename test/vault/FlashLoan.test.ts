@@ -43,9 +43,8 @@ describe('Vault - flash loans', () => {
     it('causes no net balance change on the Vault', async () => {
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
-        vault.address,
         tokens,
-        {}
+        { account: vault }
       );
     });
 
@@ -82,9 +81,8 @@ describe('Vault - flash loans', () => {
 
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
-        vault.address,
         tokens,
-        { DAI: feeAmount }
+        { account: vault, changes: { DAI: feeAmount } }
       );
 
       expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(feeAmount);
@@ -98,9 +96,8 @@ describe('Vault - flash loans', () => {
 
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
-        vault.address,
         tokens,
-        { DAI: feeAmount }
+        { account: vault.address, changes: { DAI: feeAmount } }
       );
 
       expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(feeAmount);
@@ -134,12 +131,8 @@ describe('Vault - flash loans', () => {
         await expectBalanceChange(
           () =>
             vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address, tokens.MKR.address], amounts, '0x10'),
-          vault.address,
           tokens,
-          {
-            DAI: feeAmounts[0],
-            MKR: feeAmounts[1],
-          }
+          { account: vault, changes: { DAI: feeAmounts[0], MKR: feeAmounts[1] } }
         );
 
         expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(feeAmounts[0]);
