@@ -54,7 +54,7 @@ contract WETH9 is AccessControl {
         emit Withdrawal(msg.sender, wad);
     }
 
-    // For testing purposes
+    // For testing purposes - this creates WETH that cannot be redeemed for ETH via 'withdraw'
     function mint(address destinatary, uint256 amount) external {
         require(hasRole(MINTER_ROLE, msg.sender), "ERR_MINTER_ROLE");
         balanceOf[destinatary] += amount;

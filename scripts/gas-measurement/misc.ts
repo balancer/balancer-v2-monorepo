@@ -86,9 +86,9 @@ async function setupTradingStrategy(
 ): Promise<{ strategy: Contract; strategyType: TradingStrategyType }> {
   const symbols = Object.keys(tokens);
 
-  const CWPTradingStrategyFactory: ContractFactory = await ethers.getContractFactory('CWPTradingStrategy');
-
   if (strategyKind == 'CWP') {
+    const CWPTradingStrategyFactory: ContractFactory = await ethers.getContractFactory('CWPTradingStrategy');
+    
     const strategy = await CWPTradingStrategyFactory.deploy(
       symbols.map((symbol) => tokens[symbol].address),
       Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
