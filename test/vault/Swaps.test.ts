@@ -84,12 +84,8 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         () => vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
-        trader,
         tokens,
-        {
-          DAI: 2e18,
-          MKR: -1e18,
-        }
+        { account: trader, changes: { DAI: 2e18, MKR: -1e18 } }
       );
     });
 
@@ -113,12 +109,9 @@ describe('Vault - swaps', () => {
       ];
 
       await expectBalanceChange(
-        async () => {
-          await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
-        },
-        trader,
+        () => vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
         tokens,
-        { DAI: 4e18, MKR: -2e18 }
+        { account: trader, changes: { DAI: 4e18, MKR: -2e18 } }
       );
     });
 
@@ -143,12 +136,9 @@ describe('Vault - swaps', () => {
       ];
 
       await expectBalanceChange(
-        async () => {
-          await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
-        },
-        trader,
+        () => vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
         tokens,
-        { DAI: 2e18, SNX: 2e18, MKR: -2e18 }
+        { account: trader, changes: { DAI: 2e18, SNX: 2e18, MKR: -2e18 } }
       );
     });
 
@@ -173,12 +163,9 @@ describe('Vault - swaps', () => {
       ];
 
       await expectBalanceChange(
-        async () => {
-          await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
-        },
-        trader,
+        () => vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
         tokens,
-        { SNX: 4e18, MKR: -1e18 }
+        { account: trader, changes: { SNX: 4e18, MKR: -1e18 } }
       );
     });
 
@@ -250,16 +237,14 @@ describe('Vault - swaps', () => {
       // tokens and doesn't send any.
       // Note the caller didn't even have any tokens to begin with.
       await expectBalanceChange(
-        async () => {
-          await vault.connect(other).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, {
+        () =>
+          vault.connect(other).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, {
             ...funds,
             sender: other.address,
             recipient: other.address,
-          });
-        },
-        other,
+          }),
         tokens,
-        { MKR: 1e18 }
+        { account: other, changes: { MKR: 1e18 } }
       );
     });
   });
@@ -279,12 +264,8 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         () => vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
-        trader,
         tokens,
-        {
-          DAI: 1e18,
-          MKR: -0.5e18,
-        }
+        { account: trader, changes: { DAI: 1e18, MKR: -0.5e18 } }
       );
     });
 
@@ -308,12 +289,9 @@ describe('Vault - swaps', () => {
       ];
 
       await expectBalanceChange(
-        async () => {
-          await vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
-        },
-        trader,
+        () => vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
         tokens,
-        { DAI: 2e18, MKR: -1e18 }
+        { account: trader, changes: { DAI: 2e18, MKR: -1e18 } }
       );
     });
 
@@ -338,12 +316,9 @@ describe('Vault - swaps', () => {
       ];
 
       await expectBalanceChange(
-        async () => {
-          await vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
-        },
-        trader,
+        () => vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
         tokens,
-        { DAI: 1e18, SNX: 1e18, MKR: -1e18 }
+        { account: trader, changes: { DAI: 1e18, SNX: 1e18, MKR: -1e18 } }
       );
     });
 
@@ -368,12 +343,9 @@ describe('Vault - swaps', () => {
       ];
 
       await expectBalanceChange(
-        async () => {
-          await vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
-        },
-        trader,
+        () => vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
         tokens,
-        { SNX: 1e18, MKR: -0.25e18 }
+        { account: trader, changes: { SNX: 1e18, MKR: -0.25e18 } }
       );
     });
 
@@ -445,16 +417,14 @@ describe('Vault - swaps', () => {
       // tokens and doesn't send any.
       // Note the caller didn't even have tokens to begin with.
       await expectBalanceChange(
-        async () => {
-          await vault.connect(other).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, {
+        () =>
+          vault.connect(other).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, {
             ...funds,
             sender: other.address,
             recipient: other.address,
-          });
-        },
-        other,
+          }),
         tokens,
-        { MKR: 1e18 }
+        { account: other, changes: { MKR: 1e18 } }
       );
     });
   });
@@ -481,11 +451,8 @@ describe('Vault - swaps', () => {
             ...funds,
             recipient: other.address,
           }),
-        other,
         tokens,
-        {
-          DAI: 2e18, // The MKR is deducted from trader
-        }
+        { account: other, changes: { DAI: 2e18 } } // The MKR is deducted from trader
       );
     });
 
@@ -500,12 +467,8 @@ describe('Vault - swaps', () => {
 
       await expectBalanceChange(
         () => vault.connect(other).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds), // funds.sender is trader
-        trader,
         tokens,
-        {
-          DAI: 2e18,
-          MKR: -1e18,
-        }
+        { account: trader, changes: { DAI: 2e18, MKR: -1e18 } }
       );
     });
 
@@ -518,12 +481,8 @@ describe('Vault - swaps', () => {
             ...funds,
             withdrawFromUserBalance: true,
           }),
-        trader,
         tokens,
-        {
-          DAI: 2e18,
-          MKR: -0.7e18, // The 0.3e18 remaining came from User Balance
-        }
+        { account: trader, changes: { DAI: 2e18, MKR: -0.7e18 } } // The 0.3e18 remaining came from User Balance
       );
 
       expect(await vault.getUserTokenBalance(trader.address, tokens.MKR.address)).to.equal(0);
@@ -536,11 +495,8 @@ describe('Vault - swaps', () => {
             ...funds,
             depositToUserBalance: true,
           }),
-        trader,
         tokens,
-        {
-          MKR: -1e18,
-        }
+        { account: trader, changes: { MKR: -1e18 } }
       );
 
       const daiBalance = await vault.getUserTokenBalance(trader.address, tokens.DAI.address);

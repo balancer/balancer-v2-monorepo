@@ -42,6 +42,9 @@ import "../math/FixedPoint.sol";
 library PoolBalance {
     using FixedPoint for uint128;
 
+    // Mask used to encode/decode pool balances into 'cash' and 'invested' balances
+    uint128 private constant _MASK = 2**(128) - 1;
+
     // The 'cash' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the
     // 'invested' part uses the most significant 128 bits.
 
@@ -49,14 +52,14 @@ library PoolBalance {
      * @dev The amount of Pool tokens currently in the Vault.
      */
     function cash(bytes32 balance) internal pure returns (uint128) {
-        return uint128(uint256(balance)) & (2**(128) - 1);
+        return uint128(uint256(balance)) & _MASK;
     }
 
     /**
      * @dev The amount of Pool tokens that have been withdrawn by its Investment Manager.
      */
     function invested(bytes32 balance) internal pure returns (uint128) {
-        return uint128((uint256(balance) >> 128) & (2**(128) - 1));
+        return uint128((uint256(balance) >> 128) & _MASK);
     }
 
     /**
@@ -64,6 +67,13 @@ library PoolBalance {
      */
     function total(bytes32 balance) internal pure returns (uint128) {
         return cash(balance).add128(invested(balance));
+    }
+
+    /**
+     * @dev Returns true if the balance doesn't have an invested component, or in other words, if it is fully liquid.
+     */
+    function isNotInvested(bytes32 balance) internal pure returns (bool) {
+        return invested(balance) == 0;
     }
 
     /**
