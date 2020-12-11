@@ -15,8 +15,14 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-interface IInvestmentManager {
-    function recordPoolInvestment(bytes32 poolId, uint128 tokensIn) external;
+import "../strategies/settings/SwapFeeStrategySetting.sol";
 
-    function recordPoolDivestment(bytes32 poolId, uint128 tokensIn) external;
+contract MockSwapFeeStrategySetting is SwapFeeStrategySetting {
+    constructor(SwapFee memory swapFee) SwapFeeStrategySetting(swapFee) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function mockSetSwapFee(uint128 swapFee) external {
+        _setSwapFee(swapFee);
+    }
 }

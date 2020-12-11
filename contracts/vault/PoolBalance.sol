@@ -170,4 +170,61 @@ contract PoolBalance {
             }
         }
     }
+
+    function _investPoolCash(
+        bytes32 poolId,
+        IVault.StrategyType strategyType,
+        IERC20 token,
+        uint128 amount
+    ) internal {
+        if (strategyType == IVault.StrategyType.PAIR) {
+            bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+            _poolPairTokenBalance[poolId][token] = currentBalance.cashToInvested(amount);
+        } else {
+            bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
+            _poolTupleTokenBalance[poolId].set(token, currentBalance.cashToInvested(amount));
+        }
+    }
+
+    function _divestPoolCash(
+        bytes32 poolId,
+        IVault.StrategyType strategyType,
+        IERC20 token,
+        uint128 amount
+    ) internal {
+        if (strategyType == IVault.StrategyType.PAIR) {
+            bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+            _poolPairTokenBalance[poolId][token] = currentBalance.investedToCash(amount);
+        } else {
+            bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
+            _poolTupleTokenBalance[poolId].set(token, currentBalance.investedToCash(amount));
+        }
+    }
+
+    function _setPoolInvestment(
+        bytes32 poolId,
+        IVault.StrategyType strategyType,
+        IERC20 token,
+        uint128 amount
+    ) internal {
+        if (strategyType == IVault.StrategyType.PAIR) {
+            bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+            _poolPairTokenBalance[poolId][token] = currentBalance.setInvested(amount);
+        } else {
+            bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
+            _poolTupleTokenBalance[poolId].set(token, currentBalance.setInvested(amount));
+        }
+    }
+
+    function _isPoolInvested(
+        bytes32 poolId,
+        IVault.StrategyType strategyType,
+        IERC20 token
+    ) internal view returns (bool) {
+        if (strategyType == IVault.StrategyType.PAIR) {
+            return _poolPairTokenBalance[poolId][token].isInvested();
+        } else {
+            return _poolTupleTokenBalance[poolId].get(token).isInvested();
+        }
+    }
 }

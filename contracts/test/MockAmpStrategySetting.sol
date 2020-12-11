@@ -13,14 +13,16 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
+pragma experimental ABIEncoderV2;
 
-abstract contract StrategyFee {
-    uint256 public constant MIN_FEE = 0;
-    //uint256 public constant MIN_FEE = 10**12; //0.000001%
-    uint256 public constant MAX_FEE = 10**17; //0.1%
+import "../strategies/settings/AmpStrategySetting.sol";
 
-    /**
-     * @dev Returns the swap fee for the Trading Strategy.
-     */
-    function getSwapFee() external view virtual returns (uint256);
+contract MockAmpStrategySetting is AmpStrategySetting {
+    constructor(Amp memory amp) AmpStrategySetting(amp) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function mockSetAmp(uint128 newAmp) external {
+        _setAmp(newAmp);
+    }
 }

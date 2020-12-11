@@ -169,26 +169,12 @@ interface IVault {
      */
     function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint128[] memory);
 
-    function getInvestablePercentage(bytes32 poolId, IERC20 token) external view returns (uint128);
-
     // Pool Management
 
     /**
      * @dev Sets a new controller for a Pool. Can only be called by its current controller.
      */
     function setPoolController(bytes32 poolId, address controller) external;
-
-    function authorizePoolInvestmentManager(
-        bytes32 poolId,
-        IERC20 token,
-        address operator
-    ) external;
-
-    function revokePoolInvestmentManager(
-        bytes32 poolId,
-        IERC20 token,
-        address operator
-    ) external;
 
     /**
      * @dev Adds liquidity into a Pool. Can only be called by its controller.
@@ -319,12 +305,42 @@ interface IVault {
     ) external;
 
     // Investment interface
-    function setInvestablePercentage(
+
+    /**
+     * @dev Authorize an investment manager for a pool token
+     */
+    function authorizePoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
-        uint128 percentage
+        address manager
     ) external;
 
+    /**
+     * @dev Revoke the current investment manager of a pool token
+     */
+    function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external;
+
+    /**
+     * @dev Increase the invested amount of a given pool token
+     */
+    function investPoolBalance(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) external;
+
+    /**
+     * @dev Decrease the invested amount of a given pool token
+     */
+    function divestPoolBalance(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) external;
+
+    /**
+     * @dev Update invested amount of a given pool token
+     */
     function updateInvested(
         bytes32 poolId,
         IERC20 token,
@@ -332,6 +348,7 @@ interface IVault {
     ) external;
 
     //Protocol Fees
+
     /**
      * @dev Returns the amount in protocol fees collected for a specific `token`.
      */
