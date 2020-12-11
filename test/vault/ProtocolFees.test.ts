@@ -23,10 +23,10 @@ describe('Vault - protocol fees', () => {
   beforeEach(async () => {
     await deployments.fixture();
     vault = await ethers.getContract('Vault');
-    tokens = await deployTokens(controller.address, ['DAI', 'MKR'], [18, 18]);
+    tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {
-      await tokens[symbol].connect(controller).mint(controller.address, (100e18).toString());
+      await tokens[symbol].connect(admin).mint(controller.address, (100e18).toString());
       await tokens[symbol].connect(controller).approve(vault.address, MAX_UINT256);
     }
   });
@@ -56,15 +56,15 @@ describe('Vault - protocol fees', () => {
     beforeEach(async () => {
       await deployments.fixture();
       vault = await ethers.getContract('Vault');
-      tokens = await deployTokens(controller.address, ['DAI', 'MKR'], [18, 18]);
+      tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
 
       for (const symbol in tokens) {
-        await tokens[symbol].connect(controller).mint(controller.address, (100e18).toString());
+        await tokens[symbol].connect(admin).mint(controller.address, (100e18).toString());
         await tokens[symbol].connect(controller).approve(vault.address, MAX_UINT256);
       }
 
       const strategy = await ethers.getContract('MockTradingStrategy');
-      poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
+      poolId = await setupPool(vault, strategy, PairTS, tokens, admin, controller, [
         ['DAI', (5e18).toString()],
         ['MKR', (10e18).toString()],
       ]);

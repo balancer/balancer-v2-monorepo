@@ -45,13 +45,14 @@ export async function setupStrategyAndPool(
   const symbols = Object.keys(tokens);
 
   const { strategy, strategyType } = await setupTradingStrategy(strategyKind, tokens);
-  const { controller } = await getSigners();
+  const { admin, controller } = await getSigners();
 
   return setupPool(
     vault,
     strategy,
     strategyType,
     tokens,
+    admin,
     controller,
     symbols.map((symbol) => [symbol, (100e18).toString()])
   );
@@ -88,7 +89,7 @@ async function setupTradingStrategy(
 
   if (strategyKind == 'CWP') {
     const CWPTradingStrategyFactory: ContractFactory = await ethers.getContractFactory('CWPTradingStrategy');
-    
+
     const strategy = await CWPTradingStrategyFactory.deploy(
       symbols.map((symbol) => tokens[symbol].address),
       Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens

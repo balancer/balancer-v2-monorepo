@@ -31,6 +31,7 @@ export async function setupPool(
   strategy: Contract,
   strategyType: number,
   tokens: TokenList,
+  admin: SignerWithAddress,
   controller: SignerWithAddress,
   makeup: Array<[string, string]>
 ): Promise<string> {
@@ -40,7 +41,7 @@ export async function setupPool(
     const token = tokens[entry[0]];
     const amount = entry[1];
 
-    await token.connect(controller).mint(controller.address, entry[1]);
+    await token.connect(admin).mint(controller.address, entry[1]);
     await token.connect(controller).approve(vault.address, MAX_UINT256);
 
     // Transfer tokens, don't withdraw from user balance

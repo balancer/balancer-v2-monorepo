@@ -10,6 +10,7 @@ import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
 
 describe('OneToOneSwapValidator', () => {
+  let admin: SignerWithAddress;
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
 
@@ -25,14 +26,14 @@ describe('OneToOneSwapValidator', () => {
   let funds: FundManagement;
 
   before('setup', async () => {
-    [, controller, trader] = await ethers.getSigners();
+    [admin, controller, trader] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
     await deployments.fixture();
     vault = await ethers.getContract('Vault');
 
-    tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deployTokens(admin.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     poolIds = [];
@@ -45,7 +46,7 @@ describe('OneToOneSwapValidator', () => {
 
       poolIds.push(
         // Odd pools have Pair Trading Strategies, even ones Tuple
-        await setupPool(vault, strategy, poolIdIdx % 2 ? PairTS : TupleTS, tokens, controller, [
+        await setupPool(vault, strategy, poolIdIdx % 2 ? PairTS : TupleTS, tokens, admin, controller, [
           ['DAI', (100e18).toString()],
           ['MKR', (100e18).toString()],
           ['SNX', (100e18).toString()],
@@ -55,7 +56,7 @@ describe('OneToOneSwapValidator', () => {
 
     for (const symbol in tokens) {
       // Mint tokens for trader
-      await tokens[symbol].connect(controller).mint(trader.address, (200e18).toString());
+      await tokens[symbol].connect(admin).mint(trader.address, (200e18).toString());
       // Approve Vault by trader
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
     }

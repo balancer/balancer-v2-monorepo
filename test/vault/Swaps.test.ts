@@ -11,6 +11,7 @@ import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
 describe('Vault - swaps', () => {
+  let admin: SignerWithAddress;
   let controller: SignerWithAddress;
   let trader: SignerWithAddress;
   let other: SignerWithAddress;
@@ -25,7 +26,7 @@ describe('Vault - swaps', () => {
   let funds: FundManagement;
 
   before('setup', async () => {
-    [, controller, trader, other] = await ethers.getSigners();
+    [admin, controller, trader, other] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
@@ -33,7 +34,7 @@ describe('Vault - swaps', () => {
     vault = await ethers.getContract('Vault');
     const strategyFactory: ContractFactory = await ethers.getContractFactory('MockTradingStrategy');
 
-    tokens = await deployTokens(controller.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deployTokens(admin.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     poolIds = [];
@@ -46,7 +47,7 @@ describe('Vault - swaps', () => {
 
       poolIds.push(
         // Odd pools have Pair Trading Strategies, even ones Tuple
-        await setupPool(vault, strategy, poolIdIdx % 2 ? PairTS : TupleTS, tokens, controller, [
+        await setupPool(vault, strategy, poolIdIdx % 2 ? PairTS : TupleTS, tokens, admin, controller, [
           ['DAI', (100e18).toString()],
           ['MKR', (100e18).toString()],
           ['SNX', (100e18).toString()],
@@ -56,7 +57,7 @@ describe('Vault - swaps', () => {
 
     for (const symbol in tokens) {
       // Mint tokens for trader
-      await tokens[symbol].connect(controller).mint(trader.address, (200e18).toString());
+      await tokens[symbol].connect(admin).mint(trader.address, (200e18).toString());
       // Approve Vault by trader
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
     }
@@ -555,7 +556,7 @@ describe('Vault - swaps', () => {
       //Create a strategy that reenters the vault batchswap function.
       const strategy = await ethers.getContract('MockTradingStrategyReentrancy');
 
-      const poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
+      const poolId = await setupPool(vault, strategy, PairTS, tokens, admin, controller, [
         ['DAI', (100e18).toString()],
         ['MKR', (100e18).toString()],
         ['SNX', (100e18).toString()],
@@ -624,7 +625,7 @@ describe('Vault - swaps', () => {
     let invalidTokenIndex: number;
 
     beforeEach(async () => {
-      const { INV: invalidToken } = await deployTokens(controller.address, ['INV'], [18]);
+      const { INV: invalidToken } = await deployTokens(admin.address, ['INV'], [18]);
       tokenAddressesWithInvalid = tokenAddresses.concat(invalidToken.address);
       invalidTokenIndex = tokenAddressesWithInvalid.length - 1;
     });
