@@ -5,21 +5,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getChainId, getNamedAccounts } = hre;
   const { deploy, execute } = deployments;
 
-  const { deployer } = await getNamedAccounts();
+  const { admin } = await getNamedAccounts();
 
   const chainId = await getChainId();
 
   const vault = await deployments.get('Vault');
 
   const constantProductPoolFactory = await deploy('ConstantProductPoolFactory', {
-    from: deployer,
+    from: admin,
     args: [vault.address],
     log: true,
     deterministicDeployment: true,
   });
 
   const stablecoinPoolFactory = await deploy('StablecoinPoolFactory', {
-    from: deployer,
+    from: admin,
     args: [vault.address],
     log: true,
     deterministicDeployment: true,
@@ -28,7 +28,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await execute(
     'Vault',
     {
-      from: deployer,
+      from: admin,
       log: true,
     },
     'authorizeTrustedOperatorReporter',
@@ -38,7 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await execute(
     'Vault',
     {
-      from: deployer,
+      from: admin,
       log: true,
     },
     'authorizeTrustedOperatorReporter',
@@ -48,7 +48,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await execute(
     'Vault',
     {
-      from: deployer,
+      from: admin,
       log: true,
     },
     'authorizeTrustedOperatorReporter',
