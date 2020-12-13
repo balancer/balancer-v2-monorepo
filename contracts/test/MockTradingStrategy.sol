@@ -17,17 +17,25 @@ pragma experimental ABIEncoderV2;
 
 import "../strategies/IPairTradingStrategy.sol";
 import "../strategies/ITupleTradingStrategy.sol";
+import "../strategies/StrategyFee.sol";
 
 import "../math/FixedPoint.sol";
 
-contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
+contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy, StrategyFee {
+    using FixedPoint for uint256;
     using FixedPoint for uint128;
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it
     uint128 private _multiplier = FixedPoint.ONE;
 
+    uint128[] private _swapFeesCollected;
+
     function setMultiplier(uint128 newMultiplier) external {
         _multiplier = newMultiplier;
+    }
+
+    function setAccSwapFees(uint128[] memory swapFeesCollected) external {
+        _swapFeesCollected = swapFeesCollected;
     }
 
     // IPairTradingStrategy
@@ -66,5 +74,20 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy {
     ) external view override returns (uint128) {
         uint128 amountIn = request.amountOut.div128(_multiplier);
         return amountIn;
+    }
+
+    function calculateAccSwapFees(uint128[] memory) external view override returns (uint128[] memory) {
+        return _swapFeesCollected;
+    }
+
+    function resetAccSwapFees(uint128[] calldata) external override {
+        for (uint256 i = 0; i < _swapFeesCollected.length; i++) {
+            _swapFeesCollected[i] = 0;
+        }
+    }
+
+    //Not used function
+    function getSwapFee() external pure override returns (uint256) {
+        return 0;
     }
 }

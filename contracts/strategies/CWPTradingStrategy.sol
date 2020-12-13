@@ -23,13 +23,12 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "./IPairTradingStrategy.sol";
 import "./lib/WeightedProduct.sol";
 import "./StrategyFee.sol";
-import "./StrategyInvariant.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, StrategyInvariant, WeightedProduct {
+contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, WeightedProduct {
     using SafeCast for uint256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -78,7 +77,7 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, StrategyInvari
     uint256 private immutable _weight14;
     uint256 private immutable _weight15;
 
-    uint256 private _sumWeights;
+    uint256 private immutable _sumWeights;
 
     constructor(
         IERC20[] memory tokens,
@@ -92,10 +91,12 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, StrategyInvari
         require(tokens.length >= MIN_TOKENS, "ERR_MIN_TOKENS");
         require(tokens.length <= MAX_TOKENS, "ERR_MAX_TOKENS");
         require(tokens.length == weights.length, "ERR_WEIGHTS_LIST");
+        uint256 sumWeights;
         for (uint8 i = 0; i < tokens.length; i++) {
             require(weights[i] >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
-            _sumWeights = _sumWeights + weights[i];
+            sumWeights = sumWeights + weights[i];
         }
+        _sumWeights = sumWeights;
 
         uint256 totalTokens = tokens.length;
 
@@ -180,39 +181,60 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, StrategyInvari
         }
     }
 
-    function getWeights(bool normalized) public view returns (uint256[] memory weights) {
+    function getNormalizedWeights() public view returns (uint256[] memory weights) {
+        //Create array of weights
+        weights = new uint256[](_totalTokens);
         if (_totalTokens > 0) {
-            weights[0] = normalized ? _weight0.div(_sumWeights) : _weight0;
-        } else if (_totalTokens > 1) {
-            weights[1] = normalized ? _weight1.div(_sumWeights) : _weight1;
-        } else if (_totalTokens > 2) {
-            weights[2] = normalized ? _weight1.div(_sumWeights) : _weight2;
-        } else if (_totalTokens > 3) {
-            weights[3] = normalized ? _weight1.div(_sumWeights) : _weight3;
-        } else if (_totalTokens > 4) {
-            weights[4] = normalized ? _weight1.div(_sumWeights) : _weight4;
-        } else if (_totalTokens > 5) {
-            weights[5] = normalized ? _weight1.div(_sumWeights) : _weight5;
-        } else if (_totalTokens > 6) {
-            weights[6] = normalized ? _weight1.div(_sumWeights) : _weight6;
-        } else if (_totalTokens > 7) {
-            weights[7] = normalized ? _weight1.div(_sumWeights) : _weight7;
-        } else if (_totalTokens > 8) {
-            weights[8] = normalized ? _weight1.div(_sumWeights) : _weight8;
-        } else if (_totalTokens > 9) {
-            weights[9] = normalized ? _weight1.div(_sumWeights) : _weight9;
-        } else if (_totalTokens > 10) {
-            weights[10] = normalized ? _weight1.div(_sumWeights) : _weight10;
-        } else if (_totalTokens > 11) {
-            weights[11] = normalized ? _weight1.div(_sumWeights) : _weight11;
-        } else if (_totalTokens > 12) {
-            weights[12] = normalized ? _weight1.div(_sumWeights) : _weight12;
-        } else if (_totalTokens > 13) {
-            weights[13] = normalized ? _weight1.div(_sumWeights) : _weight13;
-        } else if (_totalTokens > 14) {
-            weights[14] = normalized ? _weight1.div(_sumWeights) : _weight14;
-        } else if (_totalTokens > 15) {
-            weights[15] = normalized ? _weight1.div(_sumWeights) : _weight15;
+            weights[0] = _weight0;
+        }
+        if (_totalTokens > 1) {
+            weights[1] = _weight1;
+        }
+        if (_totalTokens > 2) {
+            weights[2] = _weight2;
+        }
+        if (_totalTokens > 3) {
+            weights[3] = _weight3;
+        }
+        if (_totalTokens > 4) {
+            weights[4] = _weight4;
+        }
+        if (_totalTokens > 5) {
+            weights[5] = _weight5;
+        }
+        if (_totalTokens > 6) {
+            weights[6] = _weight6;
+        }
+        if (_totalTokens > 7) {
+            weights[7] = _weight7;
+        }
+        if (_totalTokens > 8) {
+            weights[8] = _weight8;
+        }
+        if (_totalTokens > 9) {
+            weights[9] = _weight9;
+        }
+        if (_totalTokens > 10) {
+            weights[10] = _weight10;
+        }
+        if (_totalTokens > 11) {
+            weights[11] = _weight11;
+        }
+        if (_totalTokens > 12) {
+            weights[12] = _weight12;
+        }
+        if (_totalTokens > 13) {
+            weights[13] = _weight13;
+        }
+        if (_totalTokens > 14) {
+            weights[14] = _weight14;
+        }
+        if (_totalTokens > 15) {
+            weights[15] = _weight15;
+        }
+        //Normalize weights
+        for (uint8 i = 0; i < weights.length; i++) {
+            weights[i] = weights[i].div(_sumWeights);
         }
     }
 
@@ -257,11 +279,22 @@ contract CWPTradingStrategy is IPairTradingStrategy, StrategyFee, StrategyInvari
         return adjustedIn;
     }
 
-    function getInvariant(uint128[] memory balances) external view override returns (uint256) {
-        return _invariant(getWeights(true), balances);
+    function getInvariant(uint128[] memory balances) external view returns (uint256) {
+        return _invariant(getNormalizedWeights(), balances);
     }
 
     function getSwapFee() external view override returns (uint256) {
         return _swapFee;
+    }
+
+    function calculateAccSwapFees(uint128[] memory balances) external view override returns (uint128[] memory) {
+        require(balances.length == _totalTokens, "ERR_INVALID_BALANCES_LENGTH");
+        uint128[] memory swapFeesCollected = new uint128[](_totalTokens);
+        //TODO: calculate swap fee and pick random token
+        return swapFeesCollected;
+    }
+
+    function resetAccSwapFees(uint128[] calldata balances) external override {
+        //TODO: reset swap fees
     }
 }

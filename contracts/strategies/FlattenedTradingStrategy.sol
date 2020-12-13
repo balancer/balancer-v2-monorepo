@@ -20,9 +20,8 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "./ITupleTradingStrategy.sol";
 import "./lib/Stable.sol";
 import "./StrategyFee.sol";
-import "./StrategyInvariant.sol";
 
-contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, StrategyInvariant, Stable {
+contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable {
     using SafeCast for uint256;
     using SafeCast for int256;
     using FixedPoint for uint256;
@@ -68,7 +67,7 @@ contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Strateg
         return adjustedIn;
     }
 
-    function getInvariant(uint128[] memory balances) external view override returns (uint256) {
+    function getInvariant(uint128[] memory balances) external view returns (uint256) {
         return _invariant(_amp, balances).toUint256();
     }
 
@@ -78,5 +77,15 @@ contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Strateg
 
     function getSwapFee() external view override returns (uint256) {
         return _swapFee;
+    }
+
+    function calculateAccSwapFees(uint128[] memory balances) external pure override returns (uint128[] memory) {
+        uint128[] memory swapFeesCollected = new uint128[](balances.length);
+        //TODO: calculate swap fee and pick random token
+        return swapFeesCollected;
+    }
+
+    function resetAccSwapFees(uint128[] calldata balances) external override {
+        //TODO: reset swap fees
     }
 }

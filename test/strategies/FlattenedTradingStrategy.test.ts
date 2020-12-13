@@ -1,18 +1,18 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { ContractFactory, Contract } from 'ethers';
+import { deployTokens, TokenList } from '../helpers/tokens';
 
 describe('FlattenedTradingStrategy', function () {
   let poolId: string;
   let strategy: Contract;
   let traderAddress: string;
-  let tokens: string[];
+  let tokens: TokenList = {};
 
   beforeEach(async function () {
     poolId = ethers.utils.id('Test');
     traderAddress = '0x0000000000000000000000000000000000000001';
-    tokens = ['0x0000000000000000000000000000000000000002', '0x0000000000000000000000000000000000000003'];
-
+    tokens = await deployTokens(['A', 'B', 'C'], [18, 18, 18]);
     const StableStrategyFactory: ContractFactory = await ethers.getContractFactory('FlattenedTradingStrategy');
 
     strategy = await StableStrategyFactory.deploy((7.6e18).toString(), (0.05e18).toString()); //fee: 0.05%
@@ -26,8 +26,8 @@ describe('FlattenedTradingStrategy', function () {
           poolId,
           from: traderAddress,
           to: traderAddress,
-          tokenIn: tokens[0],
-          tokenOut: tokens[1],
+          tokenIn: tokens.A.address,
+          tokenOut: tokens.B.address,
           amountIn: (4.3579e18).toString(), //4.14 / (1 - fee)
           userData: '0x',
         },
@@ -43,8 +43,8 @@ describe('FlattenedTradingStrategy', function () {
           poolId,
           from: traderAddress,
           to: traderAddress,
-          tokenIn: tokens[0],
-          tokenOut: tokens[1],
+          tokenIn: tokens.A.address,
+          tokenOut: tokens.B.address,
           amountIn: '105263157900000000000', //100 / (1 - fee)
           userData: '0x',
         },

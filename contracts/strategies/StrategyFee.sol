@@ -23,4 +23,18 @@ abstract contract StrategyFee {
      * @dev Returns the swap fee for the Trading Strategy.
      */
     function getSwapFee() external view virtual returns (uint256);
+
+    //TODO: add a view to get accSwapFees?
+
+    /**
+     * @dev Calculates accumulated swap fee since last reset.
+     */
+    //TODO: anyone can call it, when merging strategies with controllers, this function should be internal
+    function calculateAccSwapFees(uint128[] calldata balances) external virtual returns (uint128[] memory);
+
+    /**
+     * @dev Resets swap fee counter.
+     */
+    //TODO: anyone can call it, when merging strategies with controllers, this function should be internal
+    function resetAccSwapFees(uint128[] calldata balances) external virtual;
 }

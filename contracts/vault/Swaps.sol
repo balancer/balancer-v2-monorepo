@@ -413,23 +413,27 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         }
     }
 
-    //Collect swap protocol fees
-    function collectSwapProtocolFees(
+    //Pay swap protocol fees
+    function paySwapProtocolFees(
         bytes32 poolId,
         IERC20[] calldata tokens,
         uint128[] calldata collectedFees
-    ) external override withExistingPool(poolId) onlyPoolController(poolId) {
+    ) external override withExistingPool(poolId) onlyPoolController(poolId) returns (uint128[] memory balances) {
         require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
 
+        balances = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
+            BalanceLib.Balance memory balance = _poolTokenBalance[poolId][tokens[i]];
+
             if (collectedFees[i] > 0) {
-                BalanceLib.Balance memory currentBalance = _poolTokenBalance[poolId][tokens[i]];
-
                 uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
-                require(currentBalance.cash >= feeToCollect, "Not enough cash to pay for protocol swap fee");
+                require(balance.cash >= feeToCollect, "Not enough cash to pay for protocol swap fee");
 
-                _poolTokenBalance[poolId][tokens[i]] = currentBalance.decrease(feeToCollect);
+                balance = balance.decrease(feeToCollect);
+                _poolTokenBalance[poolId][tokens[i]] = balance;
             }
+            balances[i] = balance.total;
         }
+        return balances;
     }
 }
