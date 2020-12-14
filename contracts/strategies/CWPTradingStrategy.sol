@@ -77,9 +77,7 @@ contract CWPTradingStrategy is
     }
 
     function getAccSwapFees(uint128[] memory balances) external view override returns (uint128[] memory) {
-        uint256 totalTokens = getTotalTokens();
-        require(balances.length == totalTokens, "ERR_INVALID_BALANCES_LENGTH");
-        uint128[] memory swapFeesCollected = new uint128[](totalTokens);
+        uint128[] memory swapFeesCollected = new uint128[](balances.length);
         //TODO: calculate swap fee and pick random token
         return swapFeesCollected;
     }

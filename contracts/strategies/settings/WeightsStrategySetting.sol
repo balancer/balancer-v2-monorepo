@@ -154,7 +154,7 @@ contract WeightsStrategySetting {
     /**
      * @dev Tells the number of tokens configured in the strategy
      */
-    function getTotalTokens() public view returns (uint256) {
+    function getTotalTokens() external view returns (uint256) {
         return _totalTokens;
     }
 
