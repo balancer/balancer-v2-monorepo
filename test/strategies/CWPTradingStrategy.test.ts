@@ -88,17 +88,6 @@ describe('CWPTradingStrategy', function () {
       expect(await strategy.getWeight(tokens.P.address)).to.equal((16e18).toString());
       await expect(strategy.getWeight(tokens.Q.address)).to.be.revertedWith('ERR_INVALID_TOKEN');
     });
-    it.skip('Normalized weights are returned correctly', async () => {
-      strategy = await CWPTradingStrategyFactory.deploy(
-        generateAddressArray(tokens, 2),
-        [(2e18).toString(), (8e18).toString()],
-        (0.05e18).toString()
-      );
-      expect((await strategy.getNormalizedWeights()).map((value: BigNumber) => value.toString())).to.have.members([
-        (0.2e18).toString(),
-        (0.8e18).toString(),
-      ]);
-    });
     it('Fails creating below MIN WEIGHT', async () => {
       await expect(
         CWPTradingStrategyFactory.deploy(

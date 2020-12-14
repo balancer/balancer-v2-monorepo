@@ -36,8 +36,4 @@ contract MockStableLib is Stable {
     ) external pure returns (uint128) {
         return _inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
     }
-
-    function invariant(uint128 amp, uint128[] memory balances) external pure returns (int256) {
-        return _invariant(amp, balances);
-    }
 }
