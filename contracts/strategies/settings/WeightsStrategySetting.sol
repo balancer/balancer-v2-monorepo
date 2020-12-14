@@ -17,8 +17,12 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "../../math/FixedPoint.sol";
+
 // solhint-disable max-states-count
 contract WeightsStrategySetting {
+    using FixedPoint for uint256;
+
     uint8 public constant MIN_TOKENS = 2;
     uint8 public constant MAX_TOKENS = 16;
 
@@ -29,6 +33,7 @@ contract WeightsStrategySetting {
 
     bool private immutable _areWeightsMutable;
     uint256 private immutable _totalTokens;
+    uint256 private _sumWeights;
 
     IERC20 private immutable _token0;
     IERC20 private immutable _token1;
@@ -140,6 +145,10 @@ contract WeightsStrategySetting {
         if (setting.isMutable) {
             _unsafeSetWeights(setting.weights);
         }
+
+        //Saves the sum of the weights
+        _updateSumWeights(setting.weights);
+
         emit WeightsSet();
     }
 
@@ -149,6 +158,14 @@ contract WeightsStrategySetting {
      */
     function getWeight(IERC20 token) external view returns (uint256) {
         return _weight(token);
+    }
+
+    /**
+     * @dev Returns the normalized weight associated to a token
+     * @param token Address of the token querying the normalized weight of
+     */
+    function getNormalizedWeight(IERC20 token) external view returns (uint256) {
+        return _normalizedWeight(token);
     }
 
     /**
@@ -166,6 +183,7 @@ contract WeightsStrategySetting {
         require(_areWeightsMutable, "TOKEN_WEIGHTS_NOT_MUTABLE");
         _validateWeights(weights, _totalTokens);
         _unsafeSetWeights(weights);
+        _updateSumWeights(weights);
         emit WeightsSet();
     }
 
@@ -212,6 +230,14 @@ contract WeightsStrategySetting {
     }
 
     /**
+     * @dev Internal function to tell the normalized weight associated to a token
+     * @param token Address of the token querying the normalized weight of
+     */
+    function _normalizedWeight(IERC20 token) internal view returns (uint256) {
+        return _weight(token).div(_sumWeights);
+    }
+
+    /**
      * @dev Private function to set a new list of token weights. This function does not perform any checks.
      * @param weights New list of token weights
      */
@@ -240,6 +266,12 @@ contract WeightsStrategySetting {
 
         for (uint8 i = 0; i < weights.length; i++) {
             require(weights[i] >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
+        }
+    }
+
+    function _updateSumWeights(uint256[] memory weights) private {
+        for (uint8 i = 0; i < weights.length; i++) {
+            _sumWeights = _sumWeights.add(weights[i]);
         }
     }
 }

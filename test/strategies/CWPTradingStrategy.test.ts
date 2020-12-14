@@ -130,6 +130,16 @@ describe('CWPTradingStrategy', function () {
         ) //fee: 5%
       ).to.be.revertedWith('ERR_MAX_TOKENS');
     });
+    it('Normalized weights are returned correctly', async () => {
+      const tokens = generateAddressArray(2);
+      strategy = await CWPTradingStrategyFactory.deploy(
+        { isMutable: false, tokens, weights: [(2e18).toString(), (8e18).toString()] },
+        { isMutable: false, value: (0.05e18).toString() }
+      );
+
+      expect((await strategy.getNormalizedWeight(tokens[0])).toString()).to.equal((0.2e18).toString());
+      expect((await strategy.getNormalizedWeight(tokens[1])).toString()).to.equal((0.8e18).toString());
+    });
   });
 
   describe('Pair balances validation', () => {

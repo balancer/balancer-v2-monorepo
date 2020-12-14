@@ -22,10 +22,19 @@ import "./lib/WeightedProduct.sol";
 import "./settings/SwapFeeStrategySetting.sol";
 import "./settings/WeightsStrategySetting.sol";
 
+import "../math/LogExpMath.sol";
+
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 
 contract CWPTradingStrategy is IPairTradingStrategy, WeightedProduct, SwapFeeStrategySetting, WeightsStrategySetting {
+    using SafeCast for uint256;
+    using SafeCast for int256;
+    using FixedPoint for uint256;
+    using FixedPoint for uint128;
+
+    uint256 private _lastInvariant;
+
     constructor(TokenWeights memory tokenWeights, SwapFee memory swapFee)
         WeightsStrategySetting(tokenWeights)
         SwapFeeStrategySetting(swapFee)
@@ -67,5 +76,35 @@ contract CWPTradingStrategy is IPairTradingStrategy, WeightedProduct, SwapFeeStr
         );
 
         return _addSwapFee(minimumAmountIn);
+    }
+
+    function calculateAccSwapFees(IERC20[] calldata tokens, uint128[] calldata balances)
+        external
+        view
+        returns (uint128[] memory)
+    {
+        uint128[] memory swapFeesCollected = new uint128[](tokens.length);
+
+        uint256 currentInvariant = getInvariant(tokens, balances);
+        uint256 ratio = _lastInvariant.div(currentInvariant);
+        uint256 exponent = FixedPoint.ONE.div128(_normalizedWeight(tokens[0]).toUint128());
+        //TODO: picking first token for now, make it random
+        swapFeesCollected[0] = balances[0].mul128(
+            FixedPoint.ONE.sub128(LogExpMath.exp(ratio.toInt256(), exponent.toInt256()).toUint256().toUint128())
+        );
+
+        return swapFeesCollected;
+    }
+
+    function resetAccSwapFees(IERC20[] calldata tokens, uint128[] calldata balances) external {
+        _lastInvariant = getInvariant(tokens, balances);
+    }
+
+    function getInvariant(IERC20[] memory tokens, uint128[] calldata balances) private view returns (uint256) {
+        uint256[] memory normalizedWeights = new uint256[](tokens.length);
+        for (uint8 i = 0; i < tokens.length; i++) {
+            normalizedWeights[i] = _normalizedWeight(tokens[i]);
+        }
+        return _invariant(normalizedWeights, balances);
     }
 }
