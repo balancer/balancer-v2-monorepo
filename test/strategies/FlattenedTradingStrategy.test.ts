@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { ContractFactory, Contract } from 'ethers';
+import { ContractFactory, Contract, BigNumber } from 'ethers';
 
 describe('FlattenedTradingStrategy', function () {
   let poolId: string;
@@ -59,6 +59,48 @@ describe('FlattenedTradingStrategy', function () {
         1
       );
       expect(result).to.be.at.least('100888873');
+    });
+  });
+
+  describe('Accumulated swap fees', () => {
+    it.only('calculates correct accumulated swap fee', async () => {
+      //Initial balances are [100,50]
+      const balances = [BigNumber.from((100e18).toString()), BigNumber.from((50e18).toString())];
+
+      //Reset fees
+      await strategy.resetAccSwapFees(tokens, balances);
+
+      //Make a swap
+      const inAmount = (10e18).toString(); //%5 fee is 0.5
+      const outAmount = await strategy.quoteOutGivenIn(
+        {
+          poolId,
+          from: traderAddress,
+          to: traderAddress,
+          tokenIn: tokens[0],
+          tokenOut: tokens[1],
+          amountIn: inAmount,
+          userData: '0x',
+        },
+        balances,
+        0,
+        1
+      );
+
+      //Update balances
+      balances[0] = balances[0].add(inAmount);
+      balances[1] = balances[1].sub(outAmount);
+
+      //Get swap fees
+      const accSwapFees = await strategy.calculateAccSwapFees(tokens, balances);
+
+      //Swap fee for token A should be near 0.5
+      const expectedValue = BigNumber.from((0.5e18).toString());
+      expect(accSwapFees[0]).to.be.at.least(expectedValue.sub(expectedValue.div(10)));
+      expect(accSwapFees[0]).to.be.at.most(expectedValue.add(expectedValue.div(10)));
+
+      //Swap fee for token B should be 0
+      expect(accSwapFees[1]).to.equal((0).toString());
     });
   });
 });

@@ -15,12 +15,23 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "hardhat/console.sol";
+
 import "./ITupleTradingStrategy.sol";
 import "./lib/Stable.sol";
 import "./settings/AmpStrategySetting.sol";
 import "./settings/SwapFeeStrategySetting.sol";
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
+import "../math/FixedPoint.sol";
+
 contract FlattenedTradingStrategy is ITupleTradingStrategy, Stable, AmpStrategySetting, SwapFeeStrategySetting {
+    using SafeCast for uint256;
+    using SafeCast for int256;
+
+    uint256 private _lastInvariant;
+
     constructor(Amp memory amp, SwapFee memory swapFee) AmpStrategySetting(amp) SwapFeeStrategySetting(swapFee) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -45,5 +56,24 @@ contract FlattenedTradingStrategy is ITupleTradingStrategy, Stable, AmpStrategyS
     ) external view override returns (uint128) {
         uint128 minimumAmountIn = _inGivenOut(_amp(), balances, indexIn, indexOut, request.amountOut);
         return _addSwapFee(minimumAmountIn);
+    }
+
+    function calculateAccSwapFees(IERC20[] calldata tokens, uint128[] calldata balances)
+        external
+        view
+        returns (uint128[] memory)
+    {
+        uint128[] memory swapFeesCollected = new uint128[](tokens.length);
+
+        //TODO: picking first token for now, make it random
+        swapFeesCollected[0] = _calculateOneTokenSwapFee(_amp(), balances, _lastInvariant.toInt256(), 0)
+            .toUint256()
+            .toUint128();
+
+        return swapFeesCollected;
+    }
+
+    function resetAccSwapFees(IERC20[] calldata, uint128[] calldata balances) external {
+        _lastInvariant = _invariant(_amp(), balances).toUint256();
     }
 }
