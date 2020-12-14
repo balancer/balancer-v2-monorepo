@@ -76,7 +76,7 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy, IAc
         return amountIn;
     }
 
-    function calculateAccSwapFees(uint128[] memory) external view override returns (uint128[] memory) {
+    function getAccSwapFees(uint128[] memory) external view override returns (uint128[] memory) {
         return _swapFeesCollected;
     }
 

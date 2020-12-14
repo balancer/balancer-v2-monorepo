@@ -54,7 +54,7 @@ contract FlattenedTradingStrategy is
         return _addSwapFee(minimumAmountIn);
     }
 
-    function calculateAccSwapFees(uint128[] memory balances) external pure override returns (uint128[] memory) {
+    function getAccSwapFees(uint128[] memory balances) external pure override returns (uint128[] memory) {
         uint128[] memory swapFeesCollected = new uint128[](balances.length);
         //TODO: calculate swap fee and pick random token
         return swapFeesCollected;

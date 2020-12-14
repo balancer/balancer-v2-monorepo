@@ -63,7 +63,7 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
         IERC20[] memory tokens = vault.getPoolTokens(poolId);
         //Load balances
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
-        uint128[] memory swapFeesCollected = IAccSwapFeeStrategy(strategy).calculateAccSwapFees(balances);
+        uint128[] memory swapFeesCollected = IAccSwapFeeStrategy(strategy).getAccSwapFees(balances);
 
         balances = vault.paySwapProtocolFees(poolId, tokens, swapFeesCollected);
         IAccSwapFeeStrategy(strategy).resetAccSwapFees(balances);
@@ -85,7 +85,7 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
         //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = IAccSwapFeeStrategy(strategy).calculateAccSwapFees(balances);
+        uint128[] memory swapFeesCollected = IAccSwapFeeStrategy(strategy).getAccSwapFees(balances);
         balances = vault.paySwapProtocolFees(poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();
@@ -121,7 +121,7 @@ contract FixedSetPoolTokenizer is BToken, ReentrancyGuard {
         uint128[] memory balances = vault.getPoolTokenBalances(poolId, tokens);
 
         //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = IAccSwapFeeStrategy(strategy).calculateAccSwapFees(balances);
+        uint128[] memory swapFeesCollected = IAccSwapFeeStrategy(strategy).getAccSwapFees(balances);
         balances = vault.paySwapProtocolFees(poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();

@@ -18,13 +18,13 @@ interface IAccSwapFeeStrategy {
     //TODO: add a view to get accSwapFees?
 
     /**
-     * @dev Calculates accumulated swap fee since last reset.
+     * @dev Returns accumulated swap fees since last reset.
      */
     //TODO: anyone can call it, when merging strategies with controllers, this function should be internal
-    function calculateAccSwapFees(uint128[] calldata balances) external returns (uint128[] memory);
+    function getAccSwapFees(uint128[] calldata balances) external returns (uint128[] memory);
 
     /**
-     * @dev Resets swap fee counter.
+     * @dev Resets swap fees counter.
      */
     //TODO: anyone can call it, when merging strategies with controllers, this function should be internal
     function resetAccSwapFees(uint128[] calldata balances) external;
