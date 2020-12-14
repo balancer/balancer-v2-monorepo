@@ -24,50 +24,7 @@ import "../math/FixedPoint.sol";
 import "./IVault.sol";
 import "./Settings.sol";
 
-library BalanceLib {
-    using FixedPoint for uint128;
-
-    // This data structure is used to represent a token's balance for a Pool. 'cash' is how many tokens the Pool has
-    // sitting inside of the Vault. 'total' is always larger or equal to 'cash', and represents the Pool's total token
-    // balance, including tokens that are *not* inside of the Vault.
-    //
-    // Cash and total are updated in concordance whenever tokens are added/removed from a Pool, except when interacting
-    // with the Pool's Investment Manager. The Investment Manager updates the new 'total' value (according to its own)
-    // internal logic, which the Vault uses when validating swaps with the Pool's Trading Strategy, as well as returns
-    // profits by returning invested 'cash'.
-    //
-    // The Vault disallows the Pool's 'cash' ever becoming negative, in other words, it can never use any tokens that
-    // are not inside of the Vault.
-    struct Balance {
-        uint128 cash;
-        uint128 total;
-    }
-
-    /**
-     * @dev The number of invested assets. This is simply the difference between 'total' and 'cash' - the Vault has no
-     * insights into how the assets are used by the Investment Manager.
-     */
-    function invested(Balance memory self) internal pure returns (uint128) {
-        return self.total - self.cash;
-    }
-
-    /**
-     * @dev Increases a Pool's balance. Called when tokens are added to the Pool (except from the Investment Manager).
-     */
-    function increase(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
-        return Balance({ cash: self.cash.add128(amount), total: self.total.add128(amount) });
-    }
-
-    /**
-     * @dev Decreases a Pool's balance. Called when tokens are removed from the Pool (except to the Investment Manager).
-     */
-    function decrease(Balance memory self, uint128 amount) internal pure returns (Balance memory) {
-        return Balance({ cash: self.cash.sub128(amount), total: self.total.sub128(amount) });
-    }
-}
-
 abstract contract VaultAccounting is IVault, Settings {
-    using BalanceLib for BalanceLib.Balance;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -118,6 +75,7 @@ abstract contract VaultAccounting is IVault, Settings {
         if (amount == 0) {
             return;
         }
+
         if (chargeFee) {
             //Collects withdrawal fee
             uint128 fee = _calculateProtocolWithdrawFee(amount);

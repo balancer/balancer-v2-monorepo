@@ -66,7 +66,7 @@ describe('ProtocolSwapFee', function () {
       await vault.connect(admin).setProtocolSwapFee((0.1e18).toString()); //10%
     });
 
-    it.skip('pays in all tokens', async () => {
+    it('pays in all tokens', async () => {
       //Swap fees accumulated are 0.1 DAI and 0.1 MKR
       await strategy.setAccSwapFees([(0.1e18).toString(), (0.1e18).toString()]);
 
@@ -116,9 +116,7 @@ describe('ProtocolSwapFee', function () {
       await strategy.setAccSwapFees([(20e18).toString(), 0]);
 
       //Reverts when paying protocol swap fees (2 DAI and 0 MKR)
-      expect(tokenizer.connect(other).payProtocolFees()).to.be.revertedWith(
-        'Not enough cash to pay for protocol swap fee'
-      );
+      expect(tokenizer.connect(other).payProtocolFees()).to.be.revertedWith('ERR_SUB_UNDERFLOW');
     });
 
     context('joining', () => {
@@ -137,10 +135,16 @@ describe('ProtocolSwapFee', function () {
             tokenizer
               .connect(lp)
               .joinPool((10e18).toString(), [(0.099e18).toString(), (0.199e18).toString()], true, lp.address),
-
-          lp,
           tokens,
-          { DAI: -0.099e18, MKR: -0.199e18 }
+          [
+            {
+              account: lp,
+              changes: {
+                DAI: -0.099e18,
+                MKR: -0.199e18,
+              },
+            },
+          ]
         );
 
         const newBPT = await tokenizer.balanceOf(lp.address);
@@ -160,10 +164,16 @@ describe('ProtocolSwapFee', function () {
             tokenizer
               .connect(lp)
               .joinPool((10e18).toString(), [(0.099e18).toString(), (0.199e18).toString()], true, lp.address),
-
-          lp,
           tokens,
-          { DAI: -0.099e18, MKR: -0.199e18 }
+          [
+            {
+              account: lp,
+              changes: {
+                DAI: -0.099e18,
+                MKR: -0.199e18,
+              },
+            },
+          ]
         );
 
         const newBPT = await tokenizer.balanceOf(lp.address);
@@ -183,12 +193,16 @@ describe('ProtocolSwapFee', function () {
         // By returning 10% of the current BPT, an LP gets in return 10% of the current token balance
         await expectBalanceChange(
           () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address),
-          lp,
           tokens,
-          {
-            DAI: 0.099e18,
-            MKR: 0.199e18,
-          }
+          [
+            {
+              account: lp,
+              changes: {
+                DAI: 0.099e18,
+                MKR: 0.199e18,
+              },
+            },
+          ]
         );
         const newBPT = await tokenizer.balanceOf(lp.address);
         expect(newBPT.sub(previousBPT)).to.equal((-10e18).toString());
@@ -206,12 +220,16 @@ describe('ProtocolSwapFee', function () {
         it('tokens minus fee are pushed', async () => {
           await expectBalanceChange(
             () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address),
-            lp,
             tokens,
-            {
-              DAI: 0.099e18 * (1 - protocolWithdrawFee),
-              MKR: 0.199e18 * (1 - protocolWithdrawFee),
-            }
+            [
+              {
+                account: lp,
+                changes: {
+                  DAI: 0.099e18 * (1 - protocolWithdrawFee),
+                  MKR: 0.199e18 * (1 - protocolWithdrawFee),
+                },
+              },
+            ]
           );
         });
       });

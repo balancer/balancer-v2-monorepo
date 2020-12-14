@@ -17,11 +17,11 @@ pragma experimental ABIEncoderV2;
 
 import "../strategies/IPairTradingStrategy.sol";
 import "../strategies/ITupleTradingStrategy.sol";
-import "../strategies/StrategyFee.sol";
+import "../strategies/IAccSwapFeeStrategy.sol";
 
 import "../math/FixedPoint.sol";
 
-contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy, StrategyFee {
+contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy, IAccSwapFeeStrategy {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -84,10 +84,5 @@ contract MockTradingStrategy is IPairTradingStrategy, ITupleTradingStrategy, Str
         for (uint256 i = 0; i < _swapFeesCollected.length; i++) {
             _swapFeesCollected[i] = 0;
         }
-    }
-
-    //Not used function
-    function getSwapFee() external pure override returns (uint256) {
-        return 0;
     }
 }

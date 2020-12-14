@@ -90,9 +90,13 @@ async function setupTradingStrategy(
   if (strategyKind == 'CWP') {
     const strategy = await deploy('CWPTradingStrategy', {
       args: [
-        symbols.map((symbol) => tokens[symbol].address),
-        Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
-        toFixedPoint(0.02), // 2% fee
+        {
+          // Equal weight to all tokens
+          isMutable: false,
+          tokens: symbols.map((symbol) => tokens[symbol].address),
+          weights: Array(symbols.length).fill(toFixedPoint(1)),
+        },
+        { isMutable: false, value: toFixedPoint(0.02) }, // 2% swap fee
       ],
     });
 
@@ -100,8 +104,8 @@ async function setupTradingStrategy(
   } else if (strategyKind == 'Flattened') {
     const strategy = await deploy('FlattenedTradingStrategy', {
       args: [
-        (30e18).toString(), // amp
-        toFixedPoint(0.02), // 2% fee
+        { isMutable: false, value: (30e18).toString() }, // amp
+        { isMutable: false, value: toFixedPoint(0.02) }, // 2% swap fee
       ],
     });
 

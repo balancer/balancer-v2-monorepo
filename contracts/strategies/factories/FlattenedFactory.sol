@@ -15,10 +15,10 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../../vendor/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
+import "../../vendor/EnumerableSet.sol";
 import "../FlattenedTradingStrategy.sol";
 
 contract FlattenedFactory {
@@ -28,27 +28,12 @@ contract FlattenedFactory {
     // TODO: Move set getters to a base factory contract
     EnumerableSet.AddressSet private _flattenedStrategies;
 
-    function getTotalStrategies() external view returns (uint256) {
-        return _flattenedStrategies.length();
-    }
-
-    function getStrategies(uint256 start, uint256 end) external view returns (address[] memory) {
-        require((end >= start) && (end - start) <= _flattenedStrategies.length(), "Bad indices");
-
-        address[] memory strategy = new address[](end - start);
-        for (uint256 i = 0; i < strategy.length; ++i) {
-            strategy[i] = _flattenedStrategies.at(i + start);
-        }
-
-        return strategy;
-    }
-
     event StrategyCreated(address indexed strategy);
 
-    // solhint-disable-next-line no-empty-blocks
-    constructor() {}
-
-    function create(uint128 amp, uint256 swapFee) external returns (address) {
+    function create(AmpStrategySetting.Amp calldata amp, SwapFeeStrategySetting.SwapFee calldata swapFee)
+        external
+        returns (address)
+    {
         bytes memory creationCode = abi.encodePacked(
             type(FlattenedTradingStrategy).creationCode,
             abi.encode(amp, swapFee)
@@ -67,5 +52,20 @@ contract FlattenedFactory {
 
             return strategy;
         }
+    }
+
+    function getTotalStrategies() external view returns (uint256) {
+        return _flattenedStrategies.length();
+    }
+
+    function getStrategies(uint256 start, uint256 end) external view returns (address[] memory) {
+        require((end >= start) && (end - start) <= _flattenedStrategies.length(), "Bad indices");
+
+        address[] memory strategy = new address[](end - start);
+        for (uint256 i = 0; i < strategy.length; ++i) {
+            strategy[i] = _flattenedStrategies.at(i + start);
+        }
+
+        return strategy;
     }
 }

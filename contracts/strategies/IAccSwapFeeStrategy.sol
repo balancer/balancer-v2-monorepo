@@ -14,27 +14,18 @@
 
 pragma solidity ^0.7.1;
 
-abstract contract StrategyFee {
-    uint256 public constant MIN_FEE = 0;
-    //uint256 public constant MIN_FEE = 10**12; //0.000001%
-    uint256 public constant MAX_FEE = 10**17; //0.1%
-
-    /**
-     * @dev Returns the swap fee for the Trading Strategy.
-     */
-    function getSwapFee() external view virtual returns (uint256);
-
+interface IAccSwapFeeStrategy {
     //TODO: add a view to get accSwapFees?
 
     /**
      * @dev Calculates accumulated swap fee since last reset.
      */
     //TODO: anyone can call it, when merging strategies with controllers, this function should be internal
-    function calculateAccSwapFees(uint128[] calldata balances) external virtual returns (uint128[] memory);
+    function calculateAccSwapFees(uint128[] calldata balances) external returns (uint128[] memory);
 
     /**
      * @dev Resets swap fee counter.
      */
     //TODO: anyone can call it, when merging strategies with controllers, this function should be internal
-    function resetAccSwapFees(uint128[] calldata balances) external virtual;
+    function resetAccSwapFees(uint128[] calldata balances) external;
 }

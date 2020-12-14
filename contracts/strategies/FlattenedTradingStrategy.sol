@@ -15,68 +15,43 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-
 import "./ITupleTradingStrategy.sol";
 import "./lib/Stable.sol";
-import "./StrategyFee.sol";
+import "./settings/AmpStrategySetting.sol";
+import "./settings/SwapFeeStrategySetting.sol";
+import "./IAccSwapFeeStrategy.sol";
 
-contract FlattenedTradingStrategy is ITupleTradingStrategy, StrategyFee, Stable {
-    using SafeCast for uint256;
-    using SafeCast for int256;
-    using FixedPoint for uint256;
-    using FixedPoint for uint128;
-
-    uint128 private immutable _amp;
-    uint256 private immutable _swapFee;
-
-    constructor(uint128 amp, uint256 swapFee) {
-        require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
-        require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
-        _swapFee = swapFee;
-        _amp = amp;
+contract FlattenedTradingStrategy is
+    ITupleTradingStrategy,
+    Stable,
+    AmpStrategySetting,
+    SwapFeeStrategySetting,
+    IAccSwapFeeStrategy
+{
+    constructor(Amp memory amp, SwapFee memory swapFee) AmpStrategySetting(amp) SwapFeeStrategySetting(swapFee) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    //Because it is not possible to overriding external calldata, function is public and balances are in memory
+    // Because it is not possible to overriding external calldata, function is public and balances are in memory
     function quoteOutGivenIn(
-        ITradingStrategy.QuoteRequestGivenIn calldata request,
+        QuoteRequestGivenIn calldata request,
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint128) {
-        // Substract fee
-        uint128 amountInFees = request.amountIn.mul(_swapFee).toUint128();
-        uint128 adjustedIn = request.amountIn.sub128(amountInFees);
-
-        uint128 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
-
+        uint128 adjustedIn = _subtractSwapFee(request.amountIn);
+        uint128 maximumAmountOut = _outGivenIn(_amp(), balances, indexIn, indexOut, adjustedIn);
         return maximumAmountOut;
     }
 
     function quoteInGivenOut(
-        ITradingStrategy.QuoteRequestGivenOut calldata request,
+        QuoteRequestGivenOut calldata request,
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint128) {
-        uint128 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
-
-        // Add fee
-        uint128 adjustedIn = minimumAmountIn.div128(FixedPoint.ONE.sub128(_swapFee.toUint128()));
-
-        return adjustedIn;
-    }
-
-    function getInvariant(uint128[] memory balances) external view returns (uint256) {
-        return _invariant(_amp, balances).toUint256();
-    }
-
-    function getAmp() external view returns (uint128) {
-        return _amp;
-    }
-
-    function getSwapFee() external view override returns (uint256) {
-        return _swapFee;
+        uint128 minimumAmountIn = _inGivenOut(_amp(), balances, indexIn, indexOut, request.amountOut);
+        return _addSwapFee(minimumAmountIn);
     }
 
     function calculateAccSwapFees(uint128[] memory balances) external pure override returns (uint128[] memory) {

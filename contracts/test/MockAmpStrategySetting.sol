@@ -15,8 +15,14 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-interface IInvestmentManager {
-    function recordPoolInvestment(bytes32 poolId, uint128 tokensIn) external;
+import "../strategies/settings/AmpStrategySetting.sol";
 
-    function recordPoolDivestment(bytes32 poolId, uint128 tokensIn) external;
+contract MockAmpStrategySetting is AmpStrategySetting {
+    constructor(Amp memory amp) AmpStrategySetting(amp) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function mockSetAmp(uint128 newAmp) external {
+        _setAmp(newAmp);
+    }
 }
