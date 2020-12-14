@@ -21,7 +21,7 @@ const chainIds = {
 // Ensure that we have all the environment variables we need.
 let mnemonic: string;
 if (!process.env.MNEMONIC) {
-  mnemonic = "test test test test test test test test test test test junk"
+  mnemonic = 'test test test test test test test test test test test junk';
 } else {
   mnemonic = process.env.MNEMONIC;
 }
@@ -64,7 +64,7 @@ const config: HardhatUserConfig = {
       // We use explicit chain IDs so that export-all works correctly: https://github.com/wighawag/hardhat-deploy#options-2
       1: 0, // mainnet
       4: 0, // rinkeby
-    }
+    },
   },
   solidity: {
     version: '0.7.1',
