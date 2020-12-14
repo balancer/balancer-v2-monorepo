@@ -1,10 +1,10 @@
 import { ethers, deployments } from 'hardhat';
+import { Deployment } from 'hardhat-deploy/types';
 import { printGas } from './misc';
 
 async function main() {
   console.log('# Vault');
-  let receipt;
-  let vaultDeployment: any = await deployments.getOrNull('Vault');
+  let vaultDeployment: Deployment | null = await deployments.getOrNull('Vault');
   if (vaultDeployment === null || vaultDeployment === undefined) {
     const [deployer] = await ethers.getSigners();
 
@@ -16,13 +16,10 @@ async function main() {
       log: true,
       deterministicDeployment: true,
     });
-
-    receipt = vaultDeployment.receipt;
-    console.log(`Deployment costs ${printGas(receipt.gasUsed.toNumber())}`);
-  } else {
-    receipt = vaultDeployment.receipt;
-    console.log(`Deployment costs ${printGas(ethers.BigNumber.from(receipt.gasUsed))}`);
   }
+
+  const receipt = vaultDeployment.receipt;
+  console.log(`Deployment costs ${printGas(ethers.BigNumber.from(receipt?.gasUsed))}`);
 
   const deployedBytecode = await ethers.provider.getCode(vaultDeployment.address);
   const bytecodeSizeKb = deployedBytecode.slice(2).length / 2 / 1024;

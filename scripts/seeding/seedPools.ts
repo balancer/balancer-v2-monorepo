@@ -9,7 +9,6 @@ import * as allPools from './allPools.json';
 
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
-let trader: SignerWithAddress;
 
 interface Pool {
   id: string;
@@ -31,12 +30,11 @@ interface Token {
   denormWeight: BigNumber;
 }
 
-type TokenDict = Dictionary<string>;
 type ContractList = Dictionary<Contract>;
 
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
 async function main() {
-  [deployer, controller, trader] = await ethers.getSigners();
+  [deployer, controller] = await ethers.getSigners();
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
