@@ -85,7 +85,7 @@ contract CWPTradingStrategy is IPairTradingStrategy, WeightedProduct, SwapFeeStr
     {
         uint128[] memory swapFeesCollected = new uint128[](tokens.length);
 
-        uint256 currentInvariant = getInvariant(tokens, balances);
+        uint256 currentInvariant = _getInvariant(tokens, balances);
         uint256 ratio = _lastInvariant.div(currentInvariant);
         uint256 exponent = FixedPoint.ONE.div128(_normalizedWeight(tokens[0]).toUint128());
         //TODO: picking first token for now, make it random
@@ -97,10 +97,10 @@ contract CWPTradingStrategy is IPairTradingStrategy, WeightedProduct, SwapFeeStr
     }
 
     function resetAccSwapFees(IERC20[] calldata tokens, uint128[] calldata balances) external {
-        _lastInvariant = getInvariant(tokens, balances);
+        _lastInvariant = _getInvariant(tokens, balances);
     }
 
-    function getInvariant(IERC20[] memory tokens, uint128[] calldata balances) private view returns (uint256) {
+    function _getInvariant(IERC20[] memory tokens, uint128[] calldata balances) private view returns (uint256) {
         uint256[] memory normalizedWeights = new uint256[](tokens.length);
         for (uint8 i = 0; i < tokens.length; i++) {
             normalizedWeights[i] = _normalizedWeight(tokens[i]);
