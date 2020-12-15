@@ -193,8 +193,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                     toReceive -= toWithdraw;
                 }
 
-                uint128 received = _pullTokens(token, funds.sender, toReceive);
-                require(received == toReceive, "Not enough tokens received");
+                _pullTokens(token, funds.sender, toReceive);
             } else {
                 // Make delta positive
                 uint128 toSend = uint128(-tokenDeltas[i]);
