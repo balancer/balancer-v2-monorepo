@@ -14,10 +14,10 @@
 
 pragma solidity ^0.7.1;
 
-import "../vault/PoolBalance.sol";
+import "../vault/CashInvestedBalance.sol";
 
-contract PoolBalanceMock {
-    using PoolBalance for bytes32;
+contract CashInvestedBalanceMock {
+    using CashInvestedBalance for bytes32;
 
     function cash(bytes32 balance) public pure returns (uint128) {
         return balance.cash();
@@ -32,7 +32,7 @@ contract PoolBalanceMock {
     }
 
     function toBalance(uint128 cashBalance, uint128 investedBalance) public pure returns (bytes32) {
-        return PoolBalance.toBalance(cashBalance, investedBalance);
+        return CashInvestedBalance.toBalance(cashBalance, investedBalance);
     }
 
     function increaseCash(bytes32 balance, uint128 amount) public pure returns (bytes32) {
@@ -53,5 +53,9 @@ contract PoolBalanceMock {
 
     function setInvested(bytes32 balance, uint128 newInvested) public pure returns (bytes32) {
         return balance.setInvested(newInvested);
+    }
+
+    function isInvested(bytes32 balance) public pure returns (bool) {
+        return balance.isInvested();
     }
 }

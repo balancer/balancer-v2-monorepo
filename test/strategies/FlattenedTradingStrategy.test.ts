@@ -8,18 +8,23 @@ describe('FlattenedTradingStrategy', function () {
   let traderAddress: string;
   let tokens: string[];
 
+  const AMP = (7.6e18).toString();
+  const SWAP_FEE = (0.05e18).toString(); //fee: 0.05%
+
   beforeEach(async function () {
     poolId = ethers.utils.id('Test');
     traderAddress = '0x0000000000000000000000000000000000000001';
     tokens = ['0x0000000000000000000000000000000000000002', '0x0000000000000000000000000000000000000003'];
 
     const StableStrategyFactory: ContractFactory = await ethers.getContractFactory('FlattenedTradingStrategy');
-
-    strategy = await StableStrategyFactory.deploy((7.6e18).toString(), (0.05e18).toString()); //fee: 0.05%
+    strategy = await StableStrategyFactory.deploy(
+      { isMutable: false, value: AMP },
+      { isMutable: false, value: SWAP_FEE }
+    );
     await strategy.deployed();
   });
 
-  describe('All balances validation', () => {
+  describe('all balances validation', () => {
     it('should validate correctly two tokens', async () => {
       const result = await strategy.quoteOutGivenIn(
         {
@@ -37,6 +42,7 @@ describe('FlattenedTradingStrategy', function () {
       );
       expect(result).to.be.at.least((3.7928e18).toString());
     });
+
     it('should validate correctly three tokens', async () => {
       const result = await strategy.quoteOutGivenIn(
         {

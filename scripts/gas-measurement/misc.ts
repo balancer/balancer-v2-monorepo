@@ -89,20 +89,22 @@ async function setupTradingStrategy(
 
   if (strategyKind == 'CWP') {
     const CWPTradingStrategyFactory: ContractFactory = await ethers.getContractFactory('CWPTradingStrategy');
-
     const strategy = await CWPTradingStrategyFactory.deploy(
-      symbols.map((symbol) => tokens[symbol].address),
-      Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
-      toFixedPoint(0.02) // 2% fee
+      {
+        // Equal weight to all tokens
+        isMutable: false,
+        tokens: symbols.map((symbol) => tokens[symbol].address),
+        weights: Array(symbols.length).fill(toFixedPoint(1)),
+      },
+      { isMutable: false, value: toFixedPoint(0.02) } // 2% swap fee
     );
 
     return { strategy, strategyType: PairTS };
   } else if (strategyKind == 'Flattened') {
-    const StableStrategyFactory: ContractFactory = await ethers.getContractFactory('FlattenedTradingStrategy');
-
-    const strategy = await StableStrategyFactory.deploy(
-      (30e18).toString(), // amp
-      toFixedPoint(0.02) // 2% fee
+    const FlattenedStrategyFactory: ContractFactory = await ethers.getContractFactory('FlattenedTradingStrategy');
+    const strategy = await FlattenedStrategyFactory.deploy(
+      { isMutable: false, value: (30e18).toString() }, // amp
+      { isMutable: false, value: toFixedPoint(0.02) } // 2% swap fee
     );
 
     return { strategy, strategyType: TupleTS };

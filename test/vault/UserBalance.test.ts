@@ -80,18 +80,16 @@ describe('Vault - user balance', () => {
       it('user can withdraw partial tokens', async () => {
         await expectBalanceChange(
           () => vault.connect(user).withdraw(tokens.DAI.address, amount.sub(1), other.address),
-          other,
           tokens,
-          { DAI: amount.sub(1) }
+          { account: other, changes: { DAI: amount.sub(1) } }
         );
       });
 
       it('user can withdraw all tokens', async () => {
         await expectBalanceChange(
           () => vault.connect(user).withdraw(tokens.DAI.address, amount, other.address),
-          other,
           tokens,
-          { DAI: amount }
+          { account: other, changes: { DAI: amount } }
         );
       });
 
@@ -122,9 +120,8 @@ describe('Vault - user balance', () => {
         it('tokens minus fee are pushed', async () => {
           await expectBalanceChange(
             () => vault.connect(user).withdraw(tokens.DAI.address, amount, other.address),
-            other,
             tokens,
-            { DAI: amount.toNumber() * (1 - protocolWithdrawFee) }
+            { account: other, changes: { DAI: amount.toNumber() * (1 - protocolWithdrawFee) } }
           );
         });
       });

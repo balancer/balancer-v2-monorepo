@@ -35,10 +35,6 @@ contract OwnableFixedSetPoolTokenizer is FixedSetPoolTokenizer, Ownable {
         vault.setPoolController(poolId, controller);
     }
 
-    function setInvestablePercentage(IERC20 token, uint128 percentage) public onlyOwner {
-        vault.setInvestablePercentage(poolId, token, percentage);
-    }
-
     function authorizePoolInvestmentManager(IERC20 token, address investmentManager) public onlyOwner {
         vault.authorizePoolInvestmentManager(poolId, token, investmentManager);
     }

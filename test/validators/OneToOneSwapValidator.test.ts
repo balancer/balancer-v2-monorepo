@@ -92,12 +92,8 @@ describe('OneToOneSwapValidator', () => {
 
     await expectBalanceChange(
       () => vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds),
-      trader,
       tokens,
-      {
-        DAI: 2e18,
-        MKR: -1e18,
-      }
+      { account: trader, changes: { DAI: 2e18, MKR: -1e18 } }
     );
   });
 

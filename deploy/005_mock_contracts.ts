@@ -38,6 +38,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       log: true,
       deterministicDeployment: true,
     });
+
+    await deploy('EnumerableUintToAddressMapMock', {
+      from: admin,
+      log: true,
+      deterministicDeployment: true,
+    });
+
+    await deploy('EnumerableIERC20ToBytes32MapMock', {
+      from: admin,
+      log: true,
+      deterministicDeployment: true,
+    });
   }
 };
 export default func;

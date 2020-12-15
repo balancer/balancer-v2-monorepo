@@ -83,9 +83,9 @@ describe('FixedSetPoolTokenizer', function () {
     });
 
     it('pulls tokens from the LP', async () => {
-      await expectBalanceChange(() => callSetupController(), lp, tokens, {
-        DAI: (-1e18).toString(),
-        MKR: (-2e18).toString(),
+      await expectBalanceChange(() => callSetupController(), tokens, {
+        account: lp,
+        changes: { DAI: (-1e18).toString(), MKR: (-2e18).toString() },
       });
     });
   });
@@ -154,9 +154,8 @@ describe('FixedSetPoolTokenizer', function () {
             tokenizer
               .connect(lp)
               .joinPool((10e18).toString(), [(10e18).toString(), (10e18).toString()], true, lp.address),
-          lp,
           tokens,
-          { DAI: -0.1e18, MKR: -0.2e18 }
+          { account: lp, changes: { DAI: -0.1e18, MKR: -0.2e18 } }
         );
       });
 
@@ -196,9 +195,8 @@ describe('FixedSetPoolTokenizer', function () {
             tokenizer
               .connect(lp)
               .joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], false, lp.address),
-          lp,
           tokens,
-          {}
+          { account: lp }
         );
 
         expect(await vault.getUserTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.9e18).toString());
@@ -214,11 +212,8 @@ describe('FixedSetPoolTokenizer', function () {
             tokenizer
               .connect(lp)
               .joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], false, lp.address),
-          lp,
           tokens,
-          {
-            DAI: -1,
-          }
+          { account: lp, changes: { DAI: -1 } }
         );
       });
     });
@@ -267,24 +262,16 @@ describe('FixedSetPoolTokenizer', function () {
       it('all tokens due are pushed', async () => {
         await expectBalanceChange(
           () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address),
-          lp,
           tokens,
-          {
-            DAI: 0.1e18,
-            MKR: 0.2e18,
-          }
+          { account: lp, changes: { DAI: 0.1e18, MKR: 0.2e18 } }
         );
       });
 
       it('all tokens due are pushed to a specified beneficiary', async () => {
         await expectBalanceChange(
           () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, beneficiary.address),
-          beneficiary,
           tokens,
-          {
-            DAI: 0.1e18,
-            MKR: 0.2e18,
-          }
+          { account: beneficiary, changes: { DAI: 0.1e18, MKR: 0.2e18 } }
         );
       });
 
@@ -298,11 +285,13 @@ describe('FixedSetPoolTokenizer', function () {
         it('tokens minus fee are pushed', async () => {
           await expectBalanceChange(
             () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], true, lp.address),
-            lp,
             tokens,
             {
-              DAI: 0.1e18 * (1 - protocolWithdrawFee),
-              MKR: 0.2e18 * (1 - protocolWithdrawFee),
+              account: lp,
+              changes: {
+                DAI: 0.1e18 * (1 - protocolWithdrawFee),
+                MKR: 0.2e18 * (1 - protocolWithdrawFee),
+              },
             }
           );
         });
@@ -311,9 +300,8 @@ describe('FixedSetPoolTokenizer', function () {
       it('can deposit into user balance', async () => {
         await expectBalanceChange(
           () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
-          lp,
           tokens,
-          {}
+          { account: lp }
         );
       });
 
@@ -333,9 +321,8 @@ describe('FixedSetPoolTokenizer', function () {
       it('can deposit into user balance', async () => {
         await expectBalanceChange(
           () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
-          lp,
           tokens,
-          {}
+          { account: lp }
         );
 
         expect(await vault.getUserTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
@@ -345,9 +332,8 @@ describe('FixedSetPoolTokenizer', function () {
       it("can deposit into a beneficiary's user balance", async () => {
         await expectBalanceChange(
           () => tokenizer.connect(lp).exitPool((10e18).toString(), [0, 0], false, beneficiary.address),
-          beneficiary,
           tokens,
-          {}
+          { account: beneficiary }
         );
 
         expect(await vault.getUserTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal((0.1e18).toString());
