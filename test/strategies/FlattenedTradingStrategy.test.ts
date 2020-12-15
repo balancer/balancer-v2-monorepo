@@ -63,7 +63,7 @@ describe('FlattenedTradingStrategy', function () {
   });
 
   describe('Accumulated swap fees', () => {
-    it.only('calculates correct accumulated swap fee', async () => {
+    it('calculates correct accumulated swap fee', async () => {
       //Initial balances are [100,50]
       const balances = [BigNumber.from((100e18).toString()), BigNumber.from((50e18).toString())];
 
