@@ -172,9 +172,12 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
 
         require(isOperatorFor(from, msg.sender), "Caller is not operator");
 
-        (, StrategyType strategyType) = fromPoolId(poolId);
+        // Receive all tokens
 
         for (uint256 i = 0; i < tokens.length; ++i) {
+            // Not technically necessary since the transfer call would fail
+            require(tokens[i] != IERC20(0), "Token is the zero address");
+
             if (amounts[i] > 0) {
                 uint128 toReceive = amounts[i];
                 if (withdrawFromUserBalance) {
@@ -186,8 +189,24 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
 
                 uint128 received = _pullTokens(tokens[i], from, toReceive);
                 require(received == toReceive, "Not enough tokens received");
+            }
+        }
 
-                _increasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
+        // Grant tokens to pools - how this is done depends on the pool type
+
+        (, StrategyType strategyType) = fromPoolId(poolId);
+        if (strategyType == StrategyType.TWO_TOKEN) {
+            // These set both tokens at once
+            require(tokens.length == 2, "Can only add two tokens to two token pool");
+            _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0], tokens[1], amounts[1]);
+        } else {
+            // Other pool types have their tokens added one by one
+            for (uint256 i = 0; i < tokens.length; ++i) {
+                if (strategyType == StrategyType.PAIR) {
+                    _increasePairPoolCash(poolId, tokens[i], amounts[i]);
+                } else {
+                    _increaseTuplePoolCash(poolId, tokens[i], amounts[i]);
+                }
             }
         }
     }
@@ -201,9 +220,12 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     ) external override withExistingPool(poolId) onlyPoolController(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
-        (, StrategyType strategyType) = fromPoolId(poolId);
+        // Send all tokens
 
         for (uint256 i = 0; i < tokens.length; ++i) {
+            // Not technically necessary since the transfer call would fail
+            require(tokens[i] != IERC20(0));
+
             if (amounts[i] > 0) {
                 if (depositToUserBalance) {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
@@ -212,8 +234,24 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
                     // Actually transfer the tokens to the recipient
                     _pushTokens(tokens[i], to, amounts[i], true);
                 }
+            }
+        }
 
-                _decreasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
+        // Deduct tokens from pools - how this is done depends on the pool type
+
+        (, StrategyType strategyType) = fromPoolId(poolId);
+        if (strategyType == StrategyType.TWO_TOKEN) {
+            // These set both tokens at once
+            require(tokens.length == 2);
+            _decreaseTwoTokenPoolCash(poolId, tokens[0], amounts[0], tokens[1], amounts[1]);
+        } else {
+            // Other pool types have their tokens added one by one
+            for (uint256 i = 0; i < tokens.length; ++i) {
+                if (strategyType == StrategyType.PAIR) {
+                    _decreasePairPoolCash(poolId, tokens[i], amounts[i]);
+                } else {
+                    _decreaseTuplePoolCash(poolId, tokens[i], amounts[i]);
+                }
             }
         }
     }

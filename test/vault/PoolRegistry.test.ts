@@ -51,7 +51,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('pools require a valid strategy type', async () => {
-      await expect(vault.connect(controller).newPool(strategy.address, 2)).to.be.reverted;
+      await expect(vault.connect(controller).newPool(strategy.address, 3)).to.be.reverted;
     });
   });
 
@@ -253,12 +253,10 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
       );
     });
 
-    it('controller can remove zero liquidity not in pool', async () => {
-      await expectBalanceChange(
-        () => vault.connect(controller).removeLiquidity(poolId, controller.address, [tokens.SNX.address], [0], false),
-        tokens,
-        [{ account: controller }]
-      );
+    it('controller cannot remove zero liquidity not in pool', async () => {
+      await expect(
+        vault.connect(controller).removeLiquidity(poolId, controller.address, [tokens.SNX.address], [0], false)
+      ).to.be.revertedWith('Token not in pool');
     });
 
     it('controller cannot remove non-zero liquidity not in pool', async () => {

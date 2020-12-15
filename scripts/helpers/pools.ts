@@ -38,14 +38,16 @@ export async function setupPool(
 
   for (const entry of makeup) {
     const token = tokens[entry[0]];
-    const amount = entry[1];
 
     await token.mint(controller.address, entry[1]);
     await token.connect(controller).approve(vault.address, MAX_UINT256);
-
-    // Transfer tokens, don't withdraw from user balance
-    await vault.connect(controller).addLiquidity(poolId, controller.address, [token.address], [amount], [amount]);
   }
+
+  const tokenAddresses = makeup.map((entry) => tokens[entry[0]].address);
+  const amounts = makeup.map((entry) => entry[1]);
+
+  // Don't withdraw from user balance
+  await vault.connect(controller).addLiquidity(poolId, controller.address, tokenAddresses, amounts, false);
 
   return poolId;
 }

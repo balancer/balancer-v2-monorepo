@@ -8,7 +8,7 @@ import { PairTS, setupPool, TradingStrategyType, TupleTS } from '../helpers/pool
 import { toFixedPoint } from '../helpers/fixedPoint';
 import { pick } from 'lodash';
 
-export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III'];
+export const tokenSymbols = ['AAA', 'BBB'];
 
 export async function setupEnvironment(): Promise<{
   vault: Contract;

@@ -139,4 +139,28 @@ library CashInvestedBalance {
     function isInvested(bytes32 balance) internal pure returns (bool) {
         return invested(balance) > 0;
     }
+
+    // Alternate mode
+
+    function fromRawToTokenA(bytes32 cashcash, bytes32 investedinvested) internal pure returns (bytes32) {
+        return
+            CashInvestedBalance.toBalance(
+                uint128(uint256(cashcash) & _MASK),
+                uint128(uint256(investedinvested) & _MASK)
+            );
+    }
+
+    function fromRawToTokenB(bytes32 cashcash, bytes32 investedinvested) internal pure returns (bytes32) {
+        return
+            CashInvestedBalance.toBalance(
+                uint128(uint256(cashcash >> 128) & _MASK),
+                uint128(uint256(investedinvested >> 128) & _MASK)
+            );
+    }
+
+    function toCashCash(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
+        return bytes32((uint256(cash(tokenBBalance)) << 128) + cash(tokenABalance));
+    }
+
+    function toInvestedInvested(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {}
 }

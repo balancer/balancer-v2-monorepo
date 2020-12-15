@@ -54,13 +54,13 @@ abstract contract VaultAccounting is IVault, Settings {
             return 0;
         }
 
-        uint256 currentBalance = token.balanceOf(address(this));
+        //uint256 currentBalance = token.balanceOf(address(this));
 
         token.safeTransferFrom(from, address(this), amount);
 
-        uint256 newBalance = token.balanceOf(address(this));
+        //uint256 newBalance = token.balanceOf(address(this));
 
-        return newBalance.sub(currentBalance).toUint128();
+        return amount;
     }
 
     /**

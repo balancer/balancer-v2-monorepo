@@ -297,10 +297,76 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         if (strategyType == StrategyType.PAIR) {
             amountQuoted = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(strategy), kind);
+        } else if (strategyType == StrategyType.TWO_TOKEN) {
+            amountQuoted = _processTwoTokenPoolQuoteRequest(request, IPairTradingStrategy(strategy), kind);
         } else if (strategyType == StrategyType.TUPLE) {
             amountQuoted = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(strategy), kind);
         } else {
             revert("Unknown strategy type");
+        }
+    }
+
+    function _processTwoTokenPoolQuoteRequest(
+        QuoteRequestInternal memory request,
+        IPairTradingStrategy strategy,
+        SwapKind kind
+    ) private returns (uint128 amountQuoted) {
+        (
+            bytes32 tokenABalance,
+            bytes32 tokenBBalance,
+            TwoTokenBalances storage poolBalances
+        ) = _getTwoTokenPoolBalances(request.poolId, request.tokenIn, request.tokenOut);
+
+        bytes32 tokenInBalance;
+        bytes32 tokenOutBalance;
+
+        if (request.tokenIn < request.tokenOut) {
+            // in is A, out is B
+            tokenInBalance = tokenABalance;
+            tokenOutBalance = tokenBBalance;
+        } else {
+            // in is B, out is A
+            tokenOutBalance = tokenABalance;
+            tokenInBalance = tokenBBalance;
+        }
+
+        require(tokenInBalance.total() > 0, "Token A not in pool");
+        require(tokenOutBalance.total() > 0, "Token B not in pool");
+
+        if (kind == SwapKind.GIVEN_IN) {
+            uint128 amountOut = strategy.quoteOutGivenIn(
+                _toQuoteGivenIn(request),
+                tokenInBalance.total(),
+                tokenOutBalance.total()
+            );
+
+            tokenInBalance = tokenInBalance.increaseCash(request.amount);
+            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
+
+            amountQuoted = amountOut;
+        } else {
+            uint128 amountIn = strategy.quoteInGivenOut(
+                _toQuoteGivenOut(request),
+                tokenInBalance.total(),
+                tokenOutBalance.total()
+            );
+
+            tokenInBalance = tokenInBalance.increaseCash(amountIn);
+            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
+
+            amountQuoted = amountIn;
+        }
+
+        require(tokenOutBalance.total() > 0, "Fully draining token out");
+
+        // 2: Update Pool balances - these have been deducted the swap protocol fees
+
+        if (request.tokenIn < request.tokenOut) {
+            // in is A, out is B
+            poolBalances.cashcash = CashInvestedBalance.toCashCash(tokenInBalance, tokenOutBalance);
+        } else {
+            // in is B, out is A
+            poolBalances.cashcash = CashInvestedBalance.toCashCash(tokenOutBalance, tokenInBalance);
         }
     }
 

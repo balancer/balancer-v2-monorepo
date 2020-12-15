@@ -11,7 +11,7 @@ let tokens: TokenList;
 
 let trader: SignerWithAddress;
 
-const MAX_POOLS = 8;
+const MAX_POOLS = 1;
 
 async function main() {
   ({ vault, validator, tokens, trader } = await setupEnvironment());
@@ -21,17 +21,17 @@ async function main() {
   console.log(`\n# Constant Weighted Product Trading Strategy`);
 
   await singlePair(() => getCWPPool(vault, tokens), false);
-  await singlePair(() => getCWPPool(vault, tokens), true);
+  //await singlePair(() => getCWPPool(vault, tokens), true);
 
-  console.log(`\n# Flattened Trading Strategy with 2 tokens`);
-
-  await singlePair(() => getFlattenedPool(vault, tokens, 2), false);
-  await singlePair(() => getFlattenedPool(vault, tokens, 2), true);
-
-  console.log(`\n# Flattened Trading Strategy with 4 tokens`);
-
-  await singlePair(() => getFlattenedPool(vault, tokens, 4), false);
-  await singlePair(() => getFlattenedPool(vault, tokens, 4), true);
+  //console.log(`\n# Flattened Trading Strategy with 2 tokens`);
+  //
+  //  await singlePair(() => getFlattenedPool(vault, tokens, 2), false);
+  //  await singlePair(() => getFlattenedPool(vault, tokens, 2), true);
+  //
+  //  console.log(`\n# Flattened Trading Strategy with 4 tokens`);
+  //
+  //  await singlePair(() => getFlattenedPool(vault, tokens, 4), false);
+  //  await singlePair(() => getFlattenedPool(vault, tokens, 4), true);
 }
 
 async function singlePair(getPool: () => Promise<string>, useUserBalance: boolean) {

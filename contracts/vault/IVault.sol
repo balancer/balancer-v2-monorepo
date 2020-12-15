@@ -122,7 +122,7 @@ interface IVault {
     // There are two variants of Trading Strategies for Pools: Pair Trading Strategies, and Tuple Trading Strategies.
     // These require different data from the Vault, which is reflected in their differing interfaces
     // (IPairTradingStrategy and ITupleTradingStrategy, respectively).
-    enum StrategyType { PAIR, TUPLE }
+    enum StrategyType { PAIR, TUPLE, TWO_TOKEN }
 
     /**
      * @dev Creates a new Pool with a Trading Strategy and Trading Strategy Type. The caller of this function becomes

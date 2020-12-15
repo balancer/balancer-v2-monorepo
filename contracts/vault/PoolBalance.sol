@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.1;
 
+import "hardhat/console.sol";
+
 import "../vendor/EnumerableSet.sol";
 import "../vendor/EnumerableMap.sol";
 
@@ -50,6 +52,32 @@ contract PoolBalance {
     // the number of tokens in the Pool), as well as access the index of any token in a single read (required for the
     // ITupleTradingStrategy call), and update an entry's value given its index.
     mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _poolTupleTokenBalance;
+
+    // Data for Pools with Two Tokens
+    //
+    //
+
+    struct TwoTokenTokens {
+        IERC20 tokenA;
+        IERC20 tokenB;
+    }
+
+    struct TwoTokenBalances {
+        bytes32 cashcash;
+        bytes32 investedinvested;
+    }
+
+    mapping(bytes32 => TwoTokenTokens) internal _poolTwoTokenTokens;
+    mapping(bytes32 => mapping(bytes32 => TwoTokenBalances)) internal _poolTwoTokenBalances;
+
+    function _sortTokens(IERC20 tokenX, IERC20 tokenY) internal pure returns (IERC20, IERC20) {
+        return tokenX < tokenY ? (tokenX, tokenY) : (tokenY, tokenX);
+    }
+
+    function _getTokenPairHash(IERC20 tokenX, IERC20 tokenY) internal pure returns (bytes32) {
+        (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
+        return keccak256(abi.encodePacked(tokenA, tokenB));
+    }
 
     // All of these functions require that the caller indicate the Pool type of the queried Pool.
 
@@ -101,38 +129,125 @@ contract PoolBalance {
         }
     }
 
-    /**
-     * @dev Adds cash to a Pool for a given token. If the token was not previously in the Pool (if it didn't have any
-     * funds for it), the token is then added to the Pool.
-     *
-     * `amount` must be a non-zero value.
-     */
-    function _increasePoolCash(
+    function _getTwoTokenPoolBalances(
         bytes32 poolId,
-        IVault.StrategyType strategyType,
-        IERC20 token,
-        uint128 amount
-    ) internal {
-        if (strategyType == IVault.StrategyType.PAIR) {
-            bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
-            if (currentBalance.total() == 0) {
-                // No tokens with zero balance should ever be in the _poolPairTokens set
-                assert(_poolPairTokens[poolId].add(address(token)));
-            }
+        IERC20 tokenX,
+        IERC20 tokenY
+    )
+        internal
+        view
+        returns (
+            bytes32 tokenABalance,
+            bytes32 tokenBBalance,
+            TwoTokenBalances storage poolBalances
+        )
+    {
+        bytes32 pairHash = _getTokenPairHash(tokenX, tokenY);
+        poolBalances = _poolTwoTokenBalances[poolId][pairHash];
 
-            _poolPairTokenBalance[poolId][token] = currentBalance.increaseCash(amount);
-        } else {
-            bytes32 currentBalance = _poolTupleTokenBalance[poolId].contains(token)
-                ? _poolTupleTokenBalance[poolId].get(token)
-                : CashInvestedBalance.toBalance(0, 0);
+        bytes32 cashcash = poolBalances.cashcash;
+        bytes32 investedinvested = poolBalances.investedinvested;
 
-            // amount is always non-zero, so we're never adding a zero-balance token to the map
-            _poolTupleTokenBalance[poolId].set(token, currentBalance.increaseCash(amount));
-        }
+        tokenABalance = CashInvestedBalance.fromRawToTokenA(cashcash, investedinvested);
+        tokenBBalance = CashInvestedBalance.fromRawToTokenB(cashcash, investedinvested);
     }
 
     /**
-     * @dev Removes cash from a Pool for a given token. If this fully drains the Pool's balance for that token
+     * @dev Adds cash to a Tuple Pool for a given token. If the token was not previously in the Pool (if it didn't have
+     * any funds for it), the token is then added to the Pool, and 'amount' must be non-zero.
+     */
+    function _increaseTuplePoolCash(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) internal {
+        bytes32 currentBalance;
+
+        if (_poolTupleTokenBalance[poolId].contains(token)) {
+            currentBalance = _poolTupleTokenBalance[poolId].get(token);
+        } else {
+            // New token - it will be added to the map once 'set' is called
+
+            require(amount > 0, "New token amount is zero");
+            currentBalance = CashInvestedBalance.toBalance(0, 0);
+        }
+
+        // amount is always non-zero, so we're never adding a zero-balance token to the map
+        _poolTupleTokenBalance[poolId].set(token, currentBalance.increaseCash(amount));
+    }
+
+    /**
+     * @dev Adds cash to a Pair Pool for a given token. If the token was not previously in the Pool (if it didn't have
+     * any funds for it), the token is then added to the Pool, and 'amount' must be non-zero.
+     */
+    function _increasePairPoolCash(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) internal {
+        bytes32 currentBalance;
+
+        if (_poolPairTokens[poolId].contains(address(token))) {
+            currentBalance = _poolPairTokenBalance[poolId][token];
+        } else {
+            // New token - we add it to the set
+            _poolPairTokens[poolId].add(address(token));
+
+            require(amount > 0, "New token amount is zero");
+            currentBalance = CashInvestedBalance.toBalance(0, 0);
+        }
+
+        _poolPairTokenBalance[poolId][token] = currentBalance.increaseCash(amount);
+    }
+
+    /**
+     * @dev Adds cash to a Two Token Pool for two tokens. If the Pool held no tokens, they are added (and the amounts
+     * must be non-zero). If the Pool already holds two tokens, the tokens added must be the same it already has.
+     */
+    function _increaseTwoTokenPoolCash(
+        bytes32 poolId,
+        IERC20 tokenX,
+        uint128 amountX,
+        IERC20 tokenY,
+        uint128 amountY
+    ) internal {
+        require(tokenX != tokenY);
+
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+
+        if (poolTokens.tokenA != IERC20(0) || poolTokens.tokenB != IERC20(0)) {
+            // Pool is already initialized - check the tokens are the same
+            require((tokenX == poolTokens.tokenA) || (tokenX == poolTokens.tokenB));
+            require((tokenY == poolTokens.tokenA) || (tokenY == poolTokens.tokenB));
+        } else {
+            // Initialize pool
+            require(amountX != 0 && amountY != 0);
+
+            (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
+            _poolTwoTokenTokens[poolId] = TwoTokenTokens({ tokenA: tokenA, tokenB: tokenB });
+        }
+
+        (
+            bytes32 tokenABalance,
+            bytes32 tokenBBalance,
+            TwoTokenBalances storage poolBalances
+        ) = _getTwoTokenPoolBalances(poolId, tokenX, tokenY);
+
+        if (tokenX < tokenY) {
+            // X is A, Y is B
+            tokenABalance = tokenABalance.increaseCash(amountX);
+            tokenBBalance = tokenBBalance.increaseCash(amountY);
+        } else {
+            // X is B, Y is A
+            tokenABalance = tokenABalance.increaseCash(amountY);
+            tokenBBalance = tokenBBalance.increaseCash(amountX);
+        }
+
+        poolBalances.cashcash = CashInvestedBalance.toCashCash(tokenABalance, tokenBBalance);
+    }
+
+    /**
+     * @dev Removes cash from a Pair Pool for a given token. If this fully drains the Pool's balance for that token
      * (including invested balance), then the token is removed from the Pool.
      *
      * Requirements:
@@ -140,34 +255,95 @@ contract PoolBalance {
      * - `token` must be in the Pool.
      * - `amount` must be less or equal than the Pool's cash for that token.
      */
-    function _decreasePoolCash(
+    function _decreasePairPoolCash(
         bytes32 poolId,
-        IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
     ) internal {
-        if (strategyType == IVault.StrategyType.PAIR) {
-            require(_poolPairTokens[poolId].contains(address(token)), "Token not in pool");
+        require(_poolPairTokens[poolId].contains(address(token)), "Token not in pool");
 
-            bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
-            bytes32 newBalance = currentBalance.decreaseCash(amount);
+        bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+        bytes32 newBalance = currentBalance.decreaseCash(amount);
 
-            _poolPairTokenBalance[poolId][token] = newBalance;
+        _poolPairTokenBalance[poolId][token] = newBalance;
 
-            if (newBalance.total() == 0) {
-                _poolPairTokens[poolId].remove(address(token));
-            }
+        if (newBalance.total() == 0) {
+            _poolPairTokens[poolId].remove(address(token));
+        }
+    }
+
+    /**
+     * @dev Removes cash from a Tuple Pool for a given token. If this fully drains the Pool's balance for that token
+     * (including invested balance), then the token is removed from the Pool.
+     *
+     * Requirements:
+     *
+     * - `token` must be in the Pool.
+     * - `amount` must be less or equal than the Pool's cash for that token.
+     */
+    function _decreaseTuplePoolCash(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) internal {
+        require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+
+        bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
+        bytes32 newBalance = currentBalance.decreaseCash(amount);
+
+        if (newBalance.total() == 0) {
+            _poolTupleTokenBalance[poolId].remove(token);
         } else {
-            require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+            _poolTupleTokenBalance[poolId].set(token, newBalance);
+        }
+    }
 
-            bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
-            bytes32 newBalance = currentBalance.decreaseCash(amount);
+    /**
+     * @dev Removes cash from a Two Token Pool for its two tokens. If this fully drains the Pool's balance for both
+     * tokens (including invested balance), then they are removed from the Pool. A single token cannot be removed from
+     * the pool.
+     *
+     * Requirements:
+     *
+     * - `tokenX` and `tokenY` must be the Pool's tokens.
+     * - `amountX` and `amountY` must be less or equal than the Pool's cash for the respective token.
+     */
+    function _decreaseTwoTokenPoolCash(
+        bytes32 poolId,
+        IERC20 tokenX,
+        uint128 amountX,
+        IERC20 tokenY,
+        uint128 amountY
+    ) internal {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
 
-            if (newBalance.total() == 0) {
-                _poolTupleTokenBalance[poolId].remove(token);
-            } else {
-                _poolTupleTokenBalance[poolId].set(token, newBalance);
-            }
+        (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
+        require(poolTokens.tokenA == tokenA);
+        require(poolTokens.tokenB == tokenB);
+
+        (
+            bytes32 tokenABalance,
+            bytes32 tokenBBalance,
+            TwoTokenBalances storage poolBalances
+        ) = _getTwoTokenPoolBalances(poolId, tokenX, tokenY);
+
+        if (tokenX < tokenY) {
+            // X is A, Y is B
+            tokenABalance = tokenABalance.decreaseCash(amountX);
+            tokenBBalance = tokenBBalance.decreaseCash(amountY);
+        } else {
+            // X is B, Y is A
+            tokenABalance = tokenABalance.decreaseCash(amountY);
+            tokenBBalance = tokenBBalance.decreaseCash(amountX);
+        }
+
+        poolBalances.cashcash = CashInvestedBalance.toCashCash(tokenABalance, tokenBBalance);
+
+        if (tokenABalance.total() == 0 && tokenBBalance.total() == 0) {
+            delete _poolTwoTokenTokens[poolId];
+        } else {
+            // Neither can be zero
+            require(tokenABalance.total() != 0 && tokenBBalance.total() != 0);
         }
     }
 
