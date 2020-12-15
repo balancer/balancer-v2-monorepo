@@ -4,11 +4,14 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { BigNumber } from 'ethers';
 import { Dictionary } from 'lodash';
 import { Contract } from 'ethers';
+import { setupController } from '../helpers/controllers';
+import { PairTS } from '../helpers/pools';
 
 import * as allPools from './allPools.json';
 
 let deployer: SignerWithAddress;
-let controller: SignerWithAddress;
+let poolCreator: SignerWithAddress;
+let trader: SignerWithAddress;
 
 interface Pool {
   id: string;
@@ -34,7 +37,7 @@ type ContractList = Dictionary<Contract>;
 
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
 async function main() {
-  [deployer, controller] = await ethers.getSigners();
+  [deployer, poolCreator, trader] = await ethers.getSigners();
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
@@ -55,8 +58,8 @@ async function main() {
   console.log(`Minting & Approving tokens...`);
   for (let i = 0; i < symbols.length; i++) {
     console.log(`${symbols[i]}: ${tokenContracts[symbols[i]].address}`);
-    await tokenContracts[symbols[i]].connect(controller).approve(vault.address, MAX_UINT256);
-    await tokenContracts[symbols[i]].connect(deployer).mint(controller.address, balances[i]);
+    await tokenContracts[symbols[i]].connect(poolCreator).approve(vault.address, MAX_UINT256);
+    await tokenContracts[symbols[i]].connect(deployer).mint(poolCreator.address, balances[i]);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
@@ -101,7 +104,7 @@ async function deployStrategyPool(
 
   console.log(`\nNew Pool With ${tokens.length} tokens`);
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
-  tokens.forEach((token, i) => console.log(`${token} - ${balances[i].toString()}`));
+  tokens.forEach((token, i) => console.log(` ${token} - ${balances[i].toString()}`));
 
   // Deploy strategy using existing factory
   const totalStrategies = await cwpFactory.getTotalStrategies();
@@ -120,26 +123,23 @@ async function deployStrategyPool(
     if (strategyAddr !== event.args.strategy) console.log(`STRATEGY DEPLOY ERROR`);
   }
 
-  console.log(`Strategy deployed at: ${strategyAddr}`);
+  console.log(`Strategy address:\t${strategyAddr}`);
 
-  const strategyType = 0; // 0 for Pair
+  const strategyType = PairTS; // 0 for Pair, 1 for Tuple
   // if(tokens.length > 2)
   //   strategyType = 1;
 
-  // Create new pool with strategy
-  let tx = await vault.connect(controller).newPool(strategyAddr, strategyType);
-  const receipt = await tx.wait();
-  const event = receipt.events?.find((e: any) => e.event == 'PoolCreated');
-  if (event == undefined) {
-    throw new Error('Could not find PoolCreated event');
-  }
+  const initialBPT = (100e18).toString();
+  const controllerParams = [strategyAddr, strategyType, initialBPT, tokens, balances];
 
-  const poolId = event.args.poolId;
-  console.log(`New Pool ID: ${event.args.poolId}`);
+  // Deploy tokenizer using existing factory
+  const tokenizer = await setupController(vault, deployer, poolCreator, 'FixedSetPoolTokenizer', ...controllerParams);
 
-  // Token approval should already be done for vault
-  // Add liquidity using pull method
-  tx = await vault.connect(controller).addLiquidity(poolId, controller.address, tokens, balances, balances);
+  console.log(`Controller address:\t${tokenizer.address}`);
+
+  // Get new pool ID
+  const poolId = await tokenizer.poolId();
+  console.log(`New Pool ID:\t\t${poolId}`);
 }
 
 // Convert all pools to BigNumber/scaled format
