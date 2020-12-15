@@ -5070,10 +5070,10 @@ hardhat-deploy@^0.7.0-beta.32:
     murmur-128 "^0.2.1"
     qs "^6.9.4"
 
-hardhat@^2.0.1:
-  version "2.0.6"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.0.6.tgz#51f161e00b3c03f03fbf32027009d0ca50ad56db"
-  integrity sha512-wFTamcSUBMGwpgFxWu7ptg5o07FQyr8Ce8072rzE+QjpwM0uD3GRdhlqn+O1w+awQZ7AhK44njpAoRPUelOf/Q==
+hardhat@^2.0.5:
+  version "2.0.5"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.0.5.tgz#e2fb4d55b11342ee6ac914ca2eddd755db8de94b"
+  integrity sha512-Q/lXZ1rMNq54GZMB7Ak+981vyXNjFuYzFMIEcCz8jDcY3RJn44yxhkCWN8ARAtCtbMfSIUIER1P1MBQQmdZyUQ==
   dependencies:
     "@nomiclabs/ethereumjs-vm" "^4.1.1"
     "@sentry/node" "^5.18.1"
