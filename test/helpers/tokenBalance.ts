@@ -7,9 +7,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 // Ported from @openzeppelin/test-helpers to use with ERC20 tokens and Ethers
 
 type Account = string | SignerWithAddress | Contract;
-type BigNumberish = string | number | BigNumber;
+export type BigNumberish = string | number | BigNumber;
 type CompareFunction = 'equal' | 'eq' | 'above' | 'gt' | 'gte' | 'below' | 'lt' | 'lte' | 'least' | 'most' | 'near';
-type Comparison = [CompareFunction, BigNumberish];
+export type Comparison = [CompareFunction, BigNumberish];
 
 interface BalanceChange {
   account: Account;
@@ -109,7 +109,7 @@ export async function expectBalanceChange(
 
       const change = (changes || {})[symbol];
       if (change === undefined) {
-        expect(delta).to.equal(0);
+        expect(delta, `Expected ${delta} ${symbol} to be zero`).to.equal(0);
       } else {
         const compare: CompareFunction = Array.isArray(change) ? change[0] : 'equal';
         const value = BigNumber.from((Array.isArray(change) ? change[1] : change).toString());
@@ -118,7 +118,8 @@ export async function expectBalanceChange(
           expect(delta).to.be.at.least(value.sub(value.div(10)));
           expect(delta).to.be.at.most(value.add(value.div(10)));
         } else {
-          expect(delta).to[compare](value.toString());
+          const errorMessage = `Expected ${delta} ${symbol} to be ${compare} ${value} ${symbol}`;
+          expect(delta, errorMessage).to[compare](value.toString());
         }
       }
     }
