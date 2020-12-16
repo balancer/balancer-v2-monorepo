@@ -19,8 +19,15 @@ import "./ITupleTradingStrategy.sol";
 import "./lib/Stable.sol";
 import "./settings/AmpStrategySetting.sol";
 import "./settings/SwapFeeStrategySetting.sol";
+import "./IAccSwapFeeStrategy.sol";
 
-contract FlattenedTradingStrategy is ITupleTradingStrategy, Stable, AmpStrategySetting, SwapFeeStrategySetting {
+contract FlattenedTradingStrategy is
+    ITupleTradingStrategy,
+    Stable,
+    AmpStrategySetting,
+    SwapFeeStrategySetting,
+    IAccSwapFeeStrategy
+{
     constructor(Amp memory amp, SwapFee memory swapFee) AmpStrategySetting(amp) SwapFeeStrategySetting(swapFee) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -45,5 +52,15 @@ contract FlattenedTradingStrategy is ITupleTradingStrategy, Stable, AmpStrategyS
     ) external view override returns (uint128) {
         uint128 minimumAmountIn = _inGivenOut(_amp(), balances, indexIn, indexOut, request.amountOut);
         return _addSwapFee(minimumAmountIn);
+    }
+
+    function getAccSwapFees(uint128[] memory balances) external pure override returns (uint128[] memory) {
+        uint128[] memory swapFeesCollected = new uint128[](balances.length);
+        //TODO: calculate swap fee and pick random token
+        return swapFeesCollected;
+    }
+
+    function resetAccSwapFees(uint128[] calldata balances) external override {
+        //TODO: reset swap fees
     }
 }

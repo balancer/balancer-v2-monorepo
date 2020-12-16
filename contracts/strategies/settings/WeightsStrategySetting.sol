@@ -174,6 +174,7 @@ contract WeightsStrategySetting {
      * @param token Address of the token querying the weight of
      */
     function _weight(IERC20 token) internal view returns (uint256) {
+        require(token != IERC20(0), "ERR_INVALID_ADDRESS");
         if (token == _token0) {
             return _areWeightsMutable ? _mutableWeight0 : _immutableWeight0;
         } else if (token == _token1) {
@@ -242,4 +243,61 @@ contract WeightsStrategySetting {
             require(weights[i] >= MIN_WEIGHT, "ERR_MIN_WEIGHT");
         }
     }
+
+    // function getNormalizedWeights() public view returns (uint256[] memory weights) {
+    //     //Create array of weights
+    //     weights = new uint256[](_totalTokens);
+    //     if (_totalTokens > 0) {
+    //         weights[0] = _weight0;
+    //     }
+    //     if (_totalTokens > 1) {
+    //         weights[1] = _weight1;
+    //     }
+    //     if (_totalTokens > 2) {
+    //         weights[2] = _weight2;
+    //     }
+    //     if (_totalTokens > 3) {
+    //         weights[3] = _weight3;
+    //     }
+    //     if (_totalTokens > 4) {
+    //         weights[4] = _weight4;
+    //     }
+    //     if (_totalTokens > 5) {
+    //         weights[5] = _weight5;
+    //     }
+    //     if (_totalTokens > 6) {
+    //         weights[6] = _weight6;
+    //     }
+    //     if (_totalTokens > 7) {
+    //         weights[7] = _weight7;
+    //     }
+    //     if (_totalTokens > 8) {
+    //         weights[8] = _weight8;
+    //     }
+    //     if (_totalTokens > 9) {
+    //         weights[9] = _weight9;
+    //     }
+    //     if (_totalTokens > 10) {
+    //         weights[10] = _weight10;
+    //     }
+    //     if (_totalTokens > 11) {
+    //         weights[11] = _weight11;
+    //     }
+    //     if (_totalTokens > 12) {
+    //         weights[12] = _weight12;
+    //     }
+    //     if (_totalTokens > 13) {
+    //         weights[13] = _weight13;
+    //     }
+    //     if (_totalTokens > 14) {
+    //         weights[14] = _weight14;
+    //     }
+    //     if (_totalTokens > 15) {
+    //         weights[15] = _weight15;
+    //     }
+    //     //Normalize weights
+    //     for (uint8 i = 0; i < weights.length; i++) {
+    //         weights[i] = weights[i].div(_sumWeights);
+    //     }
+    // }
 }

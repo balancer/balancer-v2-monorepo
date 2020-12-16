@@ -21,11 +21,18 @@ import "./IPairTradingStrategy.sol";
 import "./lib/WeightedProduct.sol";
 import "./settings/SwapFeeStrategySetting.sol";
 import "./settings/WeightsStrategySetting.sol";
+import "./IAccSwapFeeStrategy.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 
-contract CWPTradingStrategy is IPairTradingStrategy, WeightedProduct, SwapFeeStrategySetting, WeightsStrategySetting {
+contract CWPTradingStrategy is
+    IPairTradingStrategy,
+    WeightedProduct,
+    SwapFeeStrategySetting,
+    WeightsStrategySetting,
+    IAccSwapFeeStrategy
+{
     constructor(TokenWeights memory tokenWeights, SwapFee memory swapFee)
         WeightsStrategySetting(tokenWeights)
         SwapFeeStrategySetting(swapFee)
@@ -67,5 +74,15 @@ contract CWPTradingStrategy is IPairTradingStrategy, WeightedProduct, SwapFeeStr
         );
 
         return _addSwapFee(minimumAmountIn);
+    }
+
+    function getAccSwapFees(uint128[] memory balances) external view override returns (uint128[] memory) {
+        uint128[] memory swapFeesCollected = new uint128[](balances.length);
+        //TODO: calculate swap fee and pick random token
+        return swapFeesCollected;
+    }
+
+    function resetAccSwapFees(uint128[] calldata balances) external override {
+        //TODO: reset swap fees
     }
 }
