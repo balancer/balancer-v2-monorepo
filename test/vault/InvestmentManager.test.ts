@@ -122,7 +122,10 @@ describe('InvestmentManager', function () {
 
       context('when trying to divest more than the invested balance', () => {
         it('reverts', async () => {
-          await expect(vault.connect(investmentManager).divestPoolBalance(poolId, DAI.address, 1)).to.be.revertedWith(
+          const balance = await DAI.balanceOf(investmentManager.address);
+          const amount = balance.add(1);
+
+          await expect(vault.connect(investmentManager).divestPoolBalance(poolId, DAI.address, amount)).to.be.revertedWith(
             'ERC20: transfer amount exceeds balance'
           );
         });
