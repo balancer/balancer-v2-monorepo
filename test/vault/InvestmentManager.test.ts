@@ -125,9 +125,9 @@ describe('InvestmentManager', function () {
           const balance = await DAI.balanceOf(investmentManager.address);
           const amount = balance.add(1);
 
-          await expect(vault.connect(investmentManager).divestPoolBalance(poolId, DAI.address, amount)).to.be.revertedWith(
-            'ERC20: transfer amount exceeds balance'
-          );
+          await expect(
+            vault.connect(investmentManager).divestPoolBalance(poolId, DAI.address, amount)
+          ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
         });
       });
     });
