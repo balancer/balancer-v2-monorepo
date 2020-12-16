@@ -94,6 +94,16 @@ contract PoolBalance {
             for (uint256 i = 0; i < tokens.length; ++i) {
                 tokens[i] = IERC20(_poolPairTokens[poolId].at(i));
             }
+        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+            TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+
+            if (poolTokens.tokenA != IERC20(0) && poolTokens.tokenB != IERC20(0)) {
+                tokens = new IERC20[](2);
+                tokens[0] = poolTokens.tokenA;
+                tokens[1] = poolTokens.tokenB;
+            } else {
+                tokens = new IERC20[](0);
+            }
         } else {
             tokens = new IERC20[](_poolTupleTokenBalance[poolId].length());
 
@@ -123,6 +133,22 @@ contract PoolBalance {
             require(balance.total() > 0, "Token not in pool");
 
             return balance;
+        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+            TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+
+            (bytes32 tokenABalance, bytes32 tokenBBalance, ) = _getTwoTokenPoolBalances(
+                poolId,
+                poolTokens.tokenA,
+                poolTokens.tokenB
+            );
+
+            if (token == poolTokens.tokenA) {
+                return tokenABalance;
+            } else if (token == poolTokens.tokenB) {
+                return tokenBBalance;
+            } else {
+                revert("Token not in pool");
+            }
         } else {
             bytes32 balance = _poolTupleTokenBalance[poolId].get(token);
             return balance;
@@ -211,17 +237,17 @@ contract PoolBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        require(tokenX != tokenY);
+        require(tokenX != tokenY, "Tokens are the same");
 
         TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
 
         if (poolTokens.tokenA != IERC20(0) || poolTokens.tokenB != IERC20(0)) {
             // Pool is already initialized - check the tokens are the same
-            require((tokenX == poolTokens.tokenA) || (tokenX == poolTokens.tokenB));
-            require((tokenY == poolTokens.tokenA) || (tokenY == poolTokens.tokenB));
+            require((tokenX == poolTokens.tokenA) || (tokenX == poolTokens.tokenB), "Adding to token not in pool");
+            require((tokenY == poolTokens.tokenA) || (tokenY == poolTokens.tokenB), "Adding to token not in pool");
         } else {
             // Initialize pool
-            require(amountX != 0 && amountY != 0);
+            require(amountX != 0 && amountY != 0, "New token amount is zero");
 
             (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
             _poolTwoTokenTokens[poolId] = TwoTokenTokens({ tokenA: tokenA, tokenB: tokenB });
@@ -318,8 +344,8 @@ contract PoolBalance {
         TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
 
         (IERC20 tokenA, IERC20 tokenB) = _sortTokens(tokenX, tokenY);
-        require(poolTokens.tokenA == tokenA);
-        require(poolTokens.tokenB == tokenB);
+        require(poolTokens.tokenA == tokenA, "Token not in pool");
+        require(poolTokens.tokenB == tokenB, "Token not in pool");
 
         (
             bytes32 tokenABalance,
@@ -343,7 +369,7 @@ contract PoolBalance {
             delete _poolTwoTokenTokens[poolId];
         } else {
             // Neither can be zero
-            require(tokenABalance.total() != 0 && tokenBBalance.total() != 0);
+            require(tokenABalance.total() != 0 && tokenBBalance.total() != 0, "Cannot fully remove single token");
         }
     }
 

@@ -5,8 +5,9 @@ import { TokenList } from '../../test/helpers/tokens';
 
 export const PairTS = 0;
 export const TupleTS = 1;
+export const TwoTokenTS = 2;
 
-export type TradingStrategyType = typeof PairTS | typeof TupleTS;
+export type TradingStrategyType = typeof PairTS | typeof TupleTS | typeof TwoTokenTS;
 
 export async function createPool(
   vault: Contract,
