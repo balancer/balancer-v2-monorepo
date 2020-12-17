@@ -82,8 +82,8 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
     uint128 private immutable _swapFee;
 
-    uint128 private constant MIN_FEE = 0;
-    uint128 private constant MAX_FEE = 10 * (10**16); // 10%
+    uint128 private constant MIN_SWAP_FEE = 0;
+    uint128 private constant MAX_SWAP_FEE = 10 * (10**16); // 10%
 
     constructor(
         IVault vault,
@@ -151,8 +151,8 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         _weight14 = weights.length > 14 ? weights[14] : 0;
         _weight15 = weights.length > 15 ? weights[15] : 0;
 
-        require(swapFee >= MIN_FEE, "ERR_MIN_FEE");
-        require(swapFee <= MAX_FEE, "ERR_MAX_FEE");
+        require(swapFee >= MIN_SWAP_FEE, "ERR_MIN_SWAP_FEE");
+        require(swapFee <= MAX_SWAP_FEE, "ERR_MAX_MAX_FEE");
         _swapFee = swapFee;
     }
 

@@ -41,8 +41,8 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     uint128 private immutable _amp;
     uint128 private immutable _swapFee;
 
-    uint128 public constant MIN_SWAP_FEE = 0;
-    uint128 public constant MAX_SWAP_FEE = 10**17; // 0.1%
+    uint128 private constant MIN_SWAP_FEE = 0;
+    uint128 private constant MAX_SWAP_FEE = 10 * (10**16); // 10%
 
     constructor(
         IVault vault,
@@ -53,9 +53,13 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         uint128 amp,
         uint128 swapFee
     ) {
+        require(tokens.length >= 2, "ERR_MIN_TOKENS");
+
         bytes32 poolId = vault.newPool(address(this), IVault.StrategyType.TUPLE);
 
         vault.addLiquidity(poolId, from, tokens, amounts, false);
+
+        require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
 
         _mintPoolShare(initialBPT);
         _pushPoolShare(from, initialBPT);
@@ -65,7 +69,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         _poolId = poolId;
 
         require(swapFee >= MIN_SWAP_FEE, "ERR_MIN_SWAP_FEE");
-        require(swapFee <= MAX_SWAP_FEE, "ERR_MAX_FEE");
+        require(swapFee <= MAX_SWAP_FEE, "ERR_MAX_MAX_FEE");
         _swapFee = swapFee;
 
         _amp = amp;
