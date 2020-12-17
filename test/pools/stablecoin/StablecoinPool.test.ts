@@ -9,7 +9,7 @@ import { MAX_UINT256 } from '../../helpers/constants';
 import { expectBalanceChange } from '../../helpers/tokenBalance';
 import { toFixedPoint } from '../../../scripts/helpers/fixedPoint';
 
-describe.only('StablecoinPool', function () {
+describe('StablecoinPool', function () {
   let admin: SignerWithAddress;
   let creator: SignerWithAddress;
   let lp: SignerWithAddress;
