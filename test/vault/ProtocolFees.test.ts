@@ -8,7 +8,7 @@ import { PairTS } from '../../scripts/helpers/pools';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
-describe.skip('Vault - protocol fees', () => {
+describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
   let lp: SignerWithAddress;
   let collector: SignerWithAddress;

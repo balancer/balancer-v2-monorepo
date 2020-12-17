@@ -10,7 +10,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { setupController } from '../../scripts/helpers/controllers';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
-describe('ProtocolSwapFee', function () {
+describe.skip('ProtocolSwapFee', function () {
   let admin: SignerWithAddress;
   let lp: SignerWithAddress;
   let other: SignerWithAddress;
