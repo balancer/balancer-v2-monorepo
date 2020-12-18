@@ -25,7 +25,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./IFlashLoanReceiver.sol";
+import "./interfaces/IFlashLoanReceiver.sol";
 import "./Settings.sol";
 
 import "../math/FixedPoint.sol";
@@ -41,7 +41,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Settings {
     using SafeERC20 for IERC20;
 
     // Function declarations
-    
+
     /**
      * @notice Borrow the specified funds from this contract, send them to the receiver, and add the flash loan fees to
      *         the total collected fees. After the call, check that the funds have been returned (including fees)
@@ -55,11 +55,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Settings {
         IERC20[] memory tokens,
         uint256[] memory amounts,
         bytes calldata receiverData
-    )
-        external
-        override
-        nonReentrant 
-    {   
+    ) external override nonReentrant {
         require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
         uint256[] memory feeAmounts = new uint256[](tokens.length);

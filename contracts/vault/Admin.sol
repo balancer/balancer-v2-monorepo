@@ -30,10 +30,10 @@ import "./UserBalance.sol";
 
 /**
  * @title Admin - Maintain the protocol admin address, and implement privileged functions
- *        involving protocol-wide fees and universal agent managers 
+ *        involving protocol-wide fees and universal agent managers
  * @author Balancer Labs
  */
- abstract contract Admin is UserBalance {
+abstract contract Admin is UserBalance {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
@@ -72,7 +72,7 @@ import "./UserBalance.sol";
      * @notice Set the destination address for protocol fees
      * @dev Fees are transferred in `withdrawProtocolFees`. Implemented in `Settings`
      *      The fee collector has no default, and must be manually set by the admin account;
-     *      fees cannot be withdrawn until the recipient is set 
+     *      fees cannot be withdrawn until the recipient is set
      * @param protocolFeeCollector - the destination address for protocol fees
      */
     function setProtocolFeeCollector(address protocolFeeCollector) external onlyAdmin {
@@ -125,8 +125,9 @@ import "./UserBalance.sol";
     }
 
     /**
-     * @notice Cause some portion of the accumulated protocol fees to be transferred to the registered destination address
-     * @dev Fee balances are stored in `Settings`; the amount available for each token is available through 
+     * @notice Cause some portion of the accumulated protocol fees to be transferred to the registered
+     *         destination address
+     * @dev Fee balances are stored in `Settings`; the amount available for each token is available through
      *      `getCollectedFeesByToken` in `VaultAccounting`
      * @param tokens - the list of tokens whose fees we want to collect
      * @param amounts - the amount of each token we wish to transfer (does not have to be the full amount)

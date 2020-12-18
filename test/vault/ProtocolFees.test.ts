@@ -4,13 +4,13 @@ import { BigNumber, Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PairTS, setupPool } from '../../scripts/helpers/pools';
+import { PairTS } from '../../scripts/helpers/pools';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
-  let controller: SignerWithAddress;
+  let lp: SignerWithAddress;
   let collector: SignerWithAddress;
   let other: SignerWithAddress;
 
@@ -18,7 +18,7 @@ describe('Vault - protocol fees', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, controller, collector, other] = await ethers.getSigners();
+    [, admin, lp, collector, other] = await ethers.getSigners();
   });
 
   beforeEach(async () => {
@@ -26,8 +26,8 @@ describe('Vault - protocol fees', () => {
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {
-      await mintTokens(tokens, symbol, controller, 100e18);
-      await tokens[symbol].connect(controller).approve(vault.address, MAX_UINT256);
+      await mintTokens(tokens, symbol, lp, 100e18);
+      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
     }
   });
 
@@ -51,22 +51,20 @@ describe('Vault - protocol fees', () => {
   });
 
   describe('protocol fee charged', () => {
-    let poolId: string;
-
     beforeEach(async () => {
-      const strategy = await deploy('MockTradingStrategy', { args: [] });
-      poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
-        ['DAI', (5e18).toString()],
-        ['MKR', (10e18).toString()],
-      ]);
+      const pool = await deploy('MockPool', { args: [vault.address, PairTS] });
+      await vault.connect(lp).addUserAgent(pool.address);
+
+      await pool
+        .connect(lp)
+        .addLiquidity([tokens.DAI.address, tokens.MKR.address], [(5e18).toString(), (10e18).toString()]);
+
+      // Set a non-zero withdraw fee
       await vault.connect(admin).setProtocolWithdrawFee((0.01e18).toString());
 
-      await vault
-        .connect(controller)
-        .removeLiquidity(poolId, controller.address, [tokens.DAI.address], [(5e18).toString()], false);
-      await vault
-        .connect(controller)
-        .removeLiquidity(poolId, controller.address, [tokens.MKR.address], [(10e18).toString()], false);
+      // Remove liquidity - exit fees will be charged
+      await pool.connect(lp).removeLiquidity([tokens.DAI.address], [(5e18).toString()]);
+      await pool.connect(lp).removeLiquidity([tokens.MKR.address], [(10e18).toString()]);
     });
 
     it('reports collected fee correctly', async () => {

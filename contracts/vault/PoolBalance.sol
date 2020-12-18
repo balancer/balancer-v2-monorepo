@@ -66,14 +66,7 @@ contract PoolBalance {
 
     // Returns an array with all the tokens in a Pool. This order may change when tokens are added to
     // or removed from the pool
-    function _getPoolTokens(
-        bytes32 poolId,
-        IVault.StrategyType strategyType
-    )
-        internal
-        view
-        returns (IERC20[] memory)
-    {
+    function _getPoolTokens(bytes32 poolId, IVault.StrategyType strategyType) internal view returns (IERC20[] memory) {
         IERC20[] memory tokens;
 
         if (strategyType == IVault.StrategyType.PAIR) {
@@ -101,11 +94,7 @@ contract PoolBalance {
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token
-    ) 
-        internal
-        view
-        returns (bytes32)
-    {
+    ) internal view returns (bytes32) {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 balance = _poolPairTokenBalance[poolId][token];
             require(balance.total() > 0, "Token not in pool");
@@ -125,9 +114,7 @@ contract PoolBalance {
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    )
-        internal
-    {
+    ) internal {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
             if (currentBalance.total() == 0) {
@@ -156,9 +143,7 @@ contract PoolBalance {
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    )
-        internal
-    {
+    ) internal {
         if (strategyType == IVault.StrategyType.PAIR) {
             require(_poolPairTokens[poolId].contains(address(token)), "Token not in pool");
 
@@ -184,16 +169,14 @@ contract PoolBalance {
         }
     }
 
-   // Increase a managed token balance in the given pool
-   // Increasing the managed balance will decrease the cash available
+    // Increase a managed token balance in the given pool
+    // Increasing the managed balance will decrease the cash available
     function _investPoolCash(
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    )
-        internal
-    {
+    ) internal {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
             _poolPairTokenBalance[poolId][token] = currentBalance.cashToInvested(amount);
@@ -203,16 +186,14 @@ contract PoolBalance {
         }
     }
 
-   // Decrease a managed token balance in the given pool
-   // Decreasing the managed balance will increase the cash available
-   function _divestPoolCash(
+    // Decrease a managed token balance in the given pool
+    // Decreasing the managed balance will increase the cash available
+    function _divestPoolCash(
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    )
-        internal
-    {
+    ) internal {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
             _poolPairTokenBalance[poolId][token] = currentBalance.investedToCash(amount);
@@ -230,9 +211,7 @@ contract PoolBalance {
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    )
-        internal
-    {
+    ) internal {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
             _poolPairTokenBalance[poolId][token] = currentBalance.setInvested(amount);
@@ -247,11 +226,7 @@ contract PoolBalance {
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token
-    )
-        internal
-        view
-        returns (bool)
-    {
+    ) internal view returns (bool) {
         if (strategyType == IVault.StrategyType.PAIR) {
             return _poolPairTokenBalance[poolId][token].isInvested();
         } else {

@@ -6,12 +6,13 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
+import { PairTS, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
 
 describe('OneToOneSwapValidator', () => {
-  let controller: SignerWithAddress;
+  let admin: SignerWithAddress;
+  let lp: SignerWithAddress;
   let trader: SignerWithAddress;
 
   let vault: Contract;
@@ -26,40 +27,44 @@ describe('OneToOneSwapValidator', () => {
   let funds: FundManagement;
 
   before('setup', async () => {
-    [, controller, trader] = await ethers.getSigners();
+    [, admin, lp, trader] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [controller.address] });
+    vault = await deploy('Vault', { args: [admin.address] });
 
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
-    poolIds = [];
+    for (const symbol in tokens) {
+      // Grant tokens to lp and trader, and approve the Vault to use them
+      await tokens[symbol].mint(lp.address, (200e18).toString());
+      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
 
-    for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-      // All pools have mock strategies with an in-out multiplier of 2
-      const strategy = await deploy('MockTradingStrategy', {
-        args: [],
-      });
-
-      strategy.setMultiplier(toFixedPoint(2));
-
-      poolIds.push(
-        // Odd pools have Pair Trading Strategies, even ones Tuple
-        await setupPool(vault, strategy, poolIdIdx % 2 ? PairTS : TupleTS, tokens, controller, [
-          ['DAI', (100e18).toString()],
-          ['MKR', (100e18).toString()],
-          ['SNX', (100e18).toString()],
-        ])
-      );
+      await tokens[symbol].mint(trader.address, (200e18).toString());
+      await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
     }
 
-    for (const symbol in tokens) {
-      // Mint tokens for trader
-      await tokens[symbol].mint(trader.address, (200e18).toString());
-      // Approve Vault by trader
-      await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
+    poolIds = [];
+    for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
+      const poolType = poolIdIdx % 2 ? PairTS : TupleTS;
+
+      // All pools have mock strategies with an in-out multiplier of 2
+      const pool = await deploy('MockPool', {
+        args: [vault.address, poolType],
+      });
+
+      await vault.connect(lp).addUserAgent(pool.address);
+      await pool
+        .connect(lp)
+        .addLiquidity(
+          [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address],
+          [(100e18).toString(), (100e18).toString(), (100e18).toString()]
+        );
+
+      await pool.setMultiplier(toFixedPoint(2));
+
+      poolIds.push(await pool.poolId());
     }
 
     swaps = [

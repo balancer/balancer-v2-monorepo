@@ -21,7 +21,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./IFlashLoanReceiver.sol";
+import "./interfaces/IFlashLoanReceiver.sol";
 import "../validators/ISwapValidator.sol";
 
 // Interfaces
@@ -279,22 +279,12 @@ interface IVault {
     function getPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory);
 
     /**
-     * @notice Returns a Pool's controller
-     * @dev The pool controller can add liquidity to a pool
-     *      Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
-     * @return address of the pool controller
-     */
-    function getPoolController(bytes32 poolId) external view returns (address);
-
-    /**
-     * @notice Returns a Pool's Trading Strategy and Trading Strategy Type
-     * @dev These are encoded in the poolId - could also call `PoolRegistry.fromPoolId` directly
-     *      Implemented by `PoolRegistry`
+     * @notice Returns a Pool's address and strategy type
+     * @dev Implemented by `PoolRegistry`
      * @param poolId - the encoded ID of the pool
      * @return address and strategy type of the pool
      */
-    function getPoolStrategy(bytes32 poolId) external view returns (address, StrategyType);
+    function getPool(bytes32 poolId) external view returns (address, StrategyType);
 
     /**
      * @notice Returns all tokens in the Pool (by definition, those with non-zero balances)
@@ -316,15 +306,7 @@ interface IVault {
     // Pool Management
 
     /**
-     * @notice Sets a new controller for a Pool. Can only be called by its current controller
-     * @dev The pool controller can add liquidity to a pool
-     * @param poolId - the encoded ID of the pool
-     * @param controller - the new controller address
-     */
-    function setPoolController(bytes32 poolId, address controller) external;
-
-    /**
-     * @notice Adds liquidity into a Pool. Can only be called by its controller
+     * @dev Adds liquidity into a Pool. Can only be called by its controller.
      *
      * @dev For each token, the Pool's balance will be increased by amounts[i]. This is achieved by first transferring
      *      amounts[i] tokens, and then withdrawing any amount remaining from User Balance (if the flag is set).
@@ -382,7 +364,7 @@ interface IVault {
 
     /**
      * @notice Performs a series of swaps with one or multiple Pools. Each swap is validated and executed in order.
-     * 
+     *
      * @dev Tokens are only transferred in and out of the Vault (or withdrawn/deposited from User Balance) after all
      *      swaps have been validated and the net token balance change computed. This means it is possible under
      *      certain conditions to perform arbitrage by swapping with multiple Pools in a way that results in net token
@@ -396,7 +378,7 @@ interface IVault {
      *      some amount of one of its tokens (tokenIn), and sending some amount of another (tokenOut).
      *      A swap cannot cause the tokenOut balance to go to zero. The Pools will validate each swap,
      *      possibly charging a swap fee on the amount going in. If so, the protocol will add the protocol swap fee
-     *      to the Pool's own swap fee. (Since the protocol swap fee is a percentage of the pool's fee, zero-fee 
+     *      to the Pool's own swap fee. (Since the protocol swap fee is a percentage of the pool's fee, zero-fee
      *      pools will also not incur a protocol swap fee.)
      *
      *      Interactions with User Balances will be driven by the data in the FundManagement structure.
@@ -419,7 +401,7 @@ interface IVault {
         FundManagement calldata funds
     ) external;
 
-    /** 
+    /**
      * @notice Performs a series of swaps with one or multiple Pools. Each swap is validated and executed in order
      * @dev Implemented by `Swaps`
      * @param validator - interface to a contract that will "validate" the swap (i.e., apply the price curve)
@@ -435,6 +417,26 @@ interface IVault {
         IERC20[] memory tokens,
         FundManagement calldata funds
     ) external;
+
+    // Pay Swap Protocol Fee interface
+
+    /**
+     * @notice Receives an array of tokens and their corresponding amounts to which swap protocol fees will be applied.
+     * @dev    If amounts are greater than zero, it uses them to calculate the corresponding swap protocol fee for the
+     *         token, which is collected by subtracting it from the token pool balance.
+     *         Pool swap fees are computed first (as a percentage of trading volume), then the protocol fees are applied
+     *         as a percentage of the swap fees.
+     *         Implemented in `Swaps`
+     * @param poolId - the encoded pool ID
+     * @param tokens - the tokens to which we're applying fees
+     * @param collectedFees - the pool swap fees to be collected
+     * @return balances - the pool token balances after all fees are applied
+     */
+    function paySwapProtocolFees(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        uint128[] calldata collectedFees
+    ) external returns (uint128[] memory balances);
 
     // Flash Loan interface
 
@@ -553,7 +555,7 @@ interface IVault {
     /**
      * @notice Revoke authorization for "manager" to call "addUniversalAgent".
      *         This is typically called on factory contracts.
-     * @dev Can only be called by the admin. For instance, if a factory is found to be insecure, the protocol can 
+     * @dev Can only be called by the admin. For instance, if a factory is found to be insecure, the protocol can
      *      prevent it from being used
      *      Implemented by `Admin`
      * @param manager - the universal agent manager being revoked

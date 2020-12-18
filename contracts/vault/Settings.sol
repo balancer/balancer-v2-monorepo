@@ -100,7 +100,7 @@ abstract contract Settings is IVault {
     }
 
     // Internal functions
-    
+
     function _setProtocolFeeCollector(address feeCollector) internal {
         _protocolFeeCollector = feeCollector;
     }

@@ -75,8 +75,9 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         _;
     }
 
-    modifier onlyPoolController(bytes32 poolId) {
-        require(_poolController[poolId] == msg.sender, "Caller is not the pool controller");
+    modifier onlyPool(bytes32 poolId) {
+        (address pool, ) = fromPoolId(poolId);
+        require(pool == msg.sender, "Caller is not the pool");
         _;
     }
 
@@ -93,25 +94,19 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @notice Create a new pool
      * @dev Use `fromPoolId` and `toPoolId` to encode/decode the pool ID
      *      Emits a PoolCreated event
+     *      TODO: consider making the pool address msg.sender, and potentially disallowing the same address
+     *            to be used multiple times
      * @param strategy - address of the pool contract
      * @param strategyType - pool type
      * @return encoded pool ID
      */
-    function newPool(
-        address strategy,
-        StrategyType strategyType
-    )
-        external
-        override
-        returns (bytes32)
-    {
+    function newPool(address strategy, StrategyType strategyType) external override returns (bytes32) {
         bytes32 poolId = toPoolId(strategy, uint16(strategyType), uint32(_pools.length()));
 
         require(!_pools.contains(poolId), "Pool ID already exists");
         require(strategy != address(0), "Strategy must be set");
 
         _pools.add(poolId);
-        _poolController[poolId] = msg.sender;
 
         emit PoolCreated(poolId);
 
@@ -131,15 +126,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @param start - 0-based index into the list
      * @param end - ending index (exclusive)
      */
-    function getPoolIds(
-        uint256 start,
-        uint256 end
-    )
-        external
-        view
-        override
-        returns (bytes32[] memory)
-    {
+    function getPoolIds(uint256 start, uint256 end) external view override returns (bytes32[] memory) {
         require((end >= start) && (end - start) <= _pools.length(), "Bad indices");
 
         bytes32[] memory poolIds = new bytes32[](end - start);
@@ -155,13 +142,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @param poolId - the encoded pool ID
      * @return list of token addresses
      */
-    function getPoolTokens(bytes32 poolId)
-        external
-        view
-        override
-        withExistingPool(poolId)
-        returns (IERC20[] memory)
-    {
+    function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
         (, StrategyType strategyType) = fromPoolId(poolId);
 
         return _getPoolTokens(poolId, strategyType);
@@ -191,49 +172,14 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
     }
 
     /**
-     * @notice Returns the pool contract
+     * @notice Decode a poolId into a pool address and type
+     * @dev Helper function; could also call `fromPoolId` directly
+     *      Even though fromPoolId is pure, has to be view because the modifier reads state
      * @param poolId - the encoded pool ID
-     * @return the address of the pool contract
+     * @return address and strategy type
      */
-    function getPoolController(bytes32 poolId)
-        external
-        view
-        override
-        withExistingPool(poolId)
-        returns (address)
-    {
-        return _poolController[poolId];
-    }
-
-    /**
-     * @notice Returns the pool (and its type)
-     * @param poolId - the encoded pool ID
-     * @return the pool contract address and type
-     */
-    function getPoolStrategy(bytes32 poolId)
-        external
-        view
-        override
-        withExistingPool(poolId)
-        returns (address, StrategyType)
-    {
-        (address strategy, StrategyType strategyType) = fromPoolId(poolId);
-        return (strategy, strategyType);
-    }
-
-    /**
-     * @notice Set the pool controller
-     * @param poolId - the encoded pool ID
-     * @param controller - new pool controller address
-     */
-    function setPoolController(bytes32 poolId, address controller)
-        external
-        override
-        nonReentrant
-        withExistingPool(poolId)
-        onlyPoolController(poolId)
-    {
-        _poolController[poolId] = controller;
+    function getPool(bytes32 poolId) external view override withExistingPool(poolId) returns (address, StrategyType) {
+        return fromPoolId(poolId);
     }
 
     /**
@@ -252,12 +198,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         IERC20[] calldata tokens,
         uint128[] calldata amounts,
         bool withdrawFromUserBalance
-    )
-        external
-        override
-        withExistingPool(poolId)
-        onlyPoolController(poolId)
-    {
+    ) external override withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
         require(isAgentFor(from, msg.sender), "Caller is not agent");
 
@@ -296,18 +237,15 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         IERC20[] calldata tokens,
         uint128[] calldata amounts,
         bool depositToUserBalance
-    )
-        external
-        override
-        withExistingPool(poolId)
-        onlyPoolController(poolId)
-    {
+    ) external override withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         (, StrategyType strategyType) = fromPoolId(poolId);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             if (amounts[i] > 0) {
+                _decreasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
+
                 if (depositToUserBalance) {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
                     _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amounts[i]);
@@ -315,8 +253,6 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
                     // Actually transfer the tokens to the recipient
                     _pushTokens(tokens[i], to, amounts[i], true);
                 }
-
-                _decreasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
             }
         }
     }
@@ -334,11 +270,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         bytes32 poolId,
         IERC20 token,
         address manager
-    )
-        external
-        override
-        onlyPoolController(poolId)
-    {
+    ) external override onlyPool(poolId) {
         bool missing = _poolInvestmentManagers[poolId][token] == address(0);
         (, StrategyType strategyType) = fromPoolId(poolId);
         require(missing || _isPoolInvested(poolId, strategyType, token), "CANNOT_SET_INVESTMENT_MANAGER");
@@ -353,14 +285,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @param poolId - the encoded pool ID
      * @param token - the token we're removing from management
      */
-    function revokePoolInvestmentManager(
-        bytes32 poolId,
-        IERC20 token
-    )
-        external
-        override
-        onlyPoolController(poolId)
-    {
+    function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external override onlyPool(poolId) {
         address currentManager = _poolInvestmentManagers[poolId][token];
         bool exists = currentManager != address(0);
         (, StrategyType strategyType) = fromPoolId(poolId);
@@ -382,11 +307,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         bytes32 poolId,
         IERC20 token,
         address account
-    )
-        external
-        view
-        returns (bool)
-    {
+    ) external view returns (bool) {
         return _isPoolInvestmentManager(poolId, token, account);
     }
 
@@ -403,11 +324,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         bytes32 poolId,
         IERC20 token,
         uint128 amount
-    )
-        external
-        override
-        onlyPoolInvestmentManager(poolId, token)
-    {
+    ) external override onlyPoolInvestmentManager(poolId, token) {
         (, StrategyType strategyType) = fromPoolId(poolId);
         _investPoolCash(poolId, strategyType, token, amount);
 
@@ -427,11 +344,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         bytes32 poolId,
         IERC20 token,
         uint128 amount
-    )
-        external
-        override
-        onlyPoolInvestmentManager(poolId, token)
-    {
+    ) external override onlyPoolInvestmentManager(poolId, token) {
         // Tokens that charge a transfer fee are unsupported
         uint128 divestedAmount = _pullTokens(token, msg.sender, amount);
 
@@ -474,11 +387,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         address strategy,
         uint16 strategyType,
         uint32 poolIndex
-    )
-        public
-        pure
-        returns (bytes32)
-    {
+    ) public pure returns (bytes32) {
         uint256 serialized;
         serialized |= uint256(poolIndex) << (22 * 8);
         serialized |= uint256(strategyType) << (20 * 8);
@@ -493,11 +402,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @param poolId - the encoded poolId
      * @return strategy (address) and strategyType of the pool
      */
-   function fromPoolId(bytes32 poolId)
-        public
-        pure
-        returns (address strategy, StrategyType strategyType)
-    {
+    function fromPoolId(bytes32 poolId) public pure returns (address strategy, StrategyType strategyType) {
         //|| 6 bytes empty | 4 bytes count of pools | 2 bytes strategyType | 20 bytes address ||
         strategy = address(uint256(poolId) & (2**(20 * 8) - 1));
         strategyType = StrategyType(uint256(poolId >> (20 * 8)) & (2**(2 * 8) - 1));
@@ -517,11 +422,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         bytes32 poolId,
         IERC20 token,
         address account
-    )
-        internal
-        view
-        returns (bool)
-    {
+    ) internal view returns (bool) {
         return _poolInvestmentManagers[poolId][token] == account;
     }
 }

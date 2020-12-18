@@ -68,10 +68,7 @@ abstract contract VaultAccounting is Settings {
         IERC20 token,
         address from,
         uint128 amount
-    )
-        internal
-        returns (uint128)
-    {
+    ) internal returns (uint128) {
         if (amount == 0) {
             return 0;
         }

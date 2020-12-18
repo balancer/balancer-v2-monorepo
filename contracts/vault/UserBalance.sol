@@ -80,10 +80,7 @@ abstract contract UserBalance is VaultAccounting {
         IERC20 token,
         uint128 amount,
         address user
-    )
-        external
-        override
-    {
+    ) external override {
         // Pulling from the sender - no need to check for agents
         uint128 received = _pullTokens(token, msg.sender, amount);
 
@@ -101,10 +98,7 @@ abstract contract UserBalance is VaultAccounting {
         IERC20 token,
         uint128 amount,
         address recipient
-    )
-        external
-        override
-    {
+    ) external override {
         require(_userTokenBalance[msg.sender][token] >= amount, "Vault: withdraw amount exceeds balance");
 
         _userTokenBalance[msg.sender][token] -= amount;
@@ -153,12 +147,7 @@ abstract contract UserBalance is VaultAccounting {
         address user,
         uint256 start,
         uint256 end
-    )
-        external
-        view
-        override
-        returns (address[] memory)
-    {
+    ) external view override returns (address[] memory) {
         require((end >= start) && (end - start) <= _userAgents[user].length(), "Bad indices");
 
         // Ideally we'd use a native implemenation: see
@@ -214,15 +203,7 @@ abstract contract UserBalance is VaultAccounting {
      * @param end - ending index (exclusive)
      * @return list of addresses representing a "page" of uiniversal agent managers
      */
-    function getUniversalAgentManagers(
-        uint256 start,
-        uint256 end
-    )
-        external
-        view
-        override
-        returns (address[] memory)
-    {
+    function getUniversalAgentManagers(uint256 start, uint256 end) external view override returns (address[] memory) {
         require((end >= start) && (end - start) <= _universalAgentManagers.length(), "Bad indices");
 
         // Ideally we'd use a native implemenation: see
@@ -240,7 +221,7 @@ abstract contract UserBalance is VaultAccounting {
      * @notice Register a new universal agent for all users
      * @param universalAgent - the new agent
      */
-   function addUniversalAgent(address universalAgent) external override onlyUniversalAgentManagers {
+    function addUniversalAgent(address universalAgent) external override onlyUniversalAgentManagers {
         if (_universalAgents.add(universalAgent)) {
             emit AddedUniversalAgent(universalAgent);
         }
@@ -265,15 +246,7 @@ abstract contract UserBalance is VaultAccounting {
      * @param token - the token whose balance we want
      * @return the token balance for the given user
      */
-    function getUserTokenBalance(
-        address user,
-        IERC20 token
-    )
-        public
-        view
-        override
-        returns (uint128)
-    {
+    function getUserTokenBalance(address user, IERC20 token) public view override returns (uint128) {
         return _userTokenBalance[user][token];
     }
 
@@ -283,15 +256,7 @@ abstract contract UserBalance is VaultAccounting {
      * @param agent - the account acting on behalf of the user (e.g., adding liquidity or performing swaps)
      * @return flag; true if the agent is allowed to act as an agent for the user
      */
-    function isAgentFor(
-        address user,
-        address agent
-    )
-        public
-        view
-        override
-        returns (bool)
-    {
+    function isAgentFor(address user, address agent) public view override returns (bool) {
         return (user == agent) || _universalAgents.contains(agent) || _userAgents[user].contains(agent);
     }
 }

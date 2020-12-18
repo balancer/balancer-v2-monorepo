@@ -29,9 +29,9 @@ import "@openzeppelin/contracts/math/Math.sol";
 
 import "../math/FixedPoint.sol";
 
-import "../strategies/ITradingStrategy.sol";
-import "../strategies/IPairTradingStrategy.sol";
-import "../strategies/ITupleTradingStrategy.sol";
+import "./interfaces/ITradingStrategy.sol";
+import "./interfaces/IPairTradingStrategy.sol";
+import "./interfaces/ITupleTradingStrategy.sol";
 
 import "../validators/ISwapValidator.sol";
 
@@ -45,7 +45,7 @@ import "./PoolRegistry.sol";
  * @author Balancer Labs
  * @notice The Balancer core Vault holds all assets and performs all swaps. Pools register with the vault, and contain
  *         the logic for computing validating swap data (i.e., providing price quotes), but the vault is responsible for
- *         performing the swap - including updating all token and user balances with the net result. 
+ *         performing the swap - including updating all token and user balances with the net result.
  *         Using User Balances, it is possible to make profitable arbitrage trades entirely within the vault, with no
  *         actual token transfers at all. Level 2-like functionality, on Level 1.
  * @dev Swap "direction" is defined as follows:
@@ -115,10 +115,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapIn[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    )
-        external
-        override
-    {
+    ) external override {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
 
         if (address(validator) != address(0)) {
@@ -141,15 +138,40 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapOut[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    )
-        external
-        override
-    {
+    ) external override {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
 
         if (address(validator) != address(0)) {
             validator.validate(SwapKind.GIVEN_OUT, tokens, tokenDeltas, validatorData);
         }
+    }
+
+    /**
+     * @notice Pay swap protocol fees
+     * @param poolId - the encoded pool ID
+     * @param tokens - the tokens on which to collect fees
+     * @param collectedFees - the amount of swap fees collected (can be 0)
+     * @return balances - total pool token balances after all fees
+     */
+    function paySwapProtocolFees(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        uint128[] calldata collectedFees
+    ) external override withExistingPool(poolId) onlyPool(poolId) returns (uint128[] memory balances) {
+        require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
+
+        (, StrategyType strategyType) = fromPoolId(poolId);
+
+        balances = new uint128[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (collectedFees[i] > 0) {
+                uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
+                _decreasePoolCash(poolId, strategyType, tokens[i], feeToCollect);
+                _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
+            }
+            balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
+        }
+        return balances;
     }
 
     // Private functions
@@ -203,11 +225,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
-    ) 
-        private
-        nonReentrant
-        returns (int256[] memory)
-    {
+    ) private nonReentrant returns (int256[] memory) {
         // Any net token amount going into the Vault will be taken from `funds.sender`, so they must have
         // approved the caller to use their funds.
         require(isAgentFor(funds.sender, msg.sender), "Caller is not agent");
@@ -280,11 +298,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapKind kind,
         IERC20 tokenIn,
         IERC20 tokenOut
-    )
-        private
-        pure
-        returns (IERC20)
-    {
+    ) private pure returns (IERC20) {
         return kind == SwapKind.GIVEN_IN ? tokenIn : tokenOut;
     }
 
@@ -292,11 +306,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapKind kind,
         IERC20 tokenIn,
         IERC20 tokenOut
-    )
-        private
-        pure
-        returns (IERC20)
-    {
+    ) private pure returns (IERC20) {
         return kind == SwapKind.GIVEN_IN ? tokenOut : tokenIn;
     }
 
@@ -304,11 +314,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapKind kind,
         uint128 amountGiven,
         uint128 amountQuoted
-    )
-        private
-        pure
-        returns (uint128 amountIn, uint128 amountOut)
-    {
+    ) private pure returns (uint128 amountIn, uint128 amountOut) {
         if (kind == SwapKind.GIVEN_IN) {
             (amountIn, amountOut) = (amountGiven, amountQuoted);
         } else {
@@ -325,10 +331,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         address to,
         LastSwapData memory previous,
         SwapKind kind
-    )
-        private
-        returns (uint128 amountIn, uint128 amountOut)
-    {
+    ) private returns (uint128 amountIn, uint128 amountOut) {
         IERC20 tokenIn = tokens[swap.tokenInIndex];
         IERC20 tokenOut = tokens[swap.tokenOutIndex];
         require(tokenIn != tokenOut, "Swap for same token");
@@ -380,10 +383,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         QuoteRequestInternal memory request,
         IPairTradingStrategy strategy,
         SwapKind kind
-    )
-        private
-        returns (uint128 amountQuoted)
-    {
+    ) private returns (uint128 amountQuoted) {
         bytes32 tokenInBalance = _poolPairTokenBalance[request.poolId][request.tokenIn];
         require(tokenInBalance.total() > 0, "Token A not in pool");
 
@@ -426,10 +426,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         QuoteRequestInternal memory request,
         ITupleTradingStrategy strategy,
         SwapKind kind
-    )
-        private
-        returns (uint128 amountQuoted)
-    {
+    ) private returns (uint128 amountQuoted) {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 

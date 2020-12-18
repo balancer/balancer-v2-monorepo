@@ -62,7 +62,7 @@ library CashInvestedBalance {
     // Function declarations
 
     // Internal functions
-    
+
     /**
      * @dev The amount of Pool tokens currently in the Vault.
      */
