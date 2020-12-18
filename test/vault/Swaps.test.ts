@@ -762,5 +762,50 @@ describe('Vault - swaps', () => {
         ).to.be.revertedWith('Swap for same token');
       });
     });
+
+    describe('collect protocol swap fees', async () => {
+      let pool: Contract;
+      const protocolSwapFee = 0.01;
+
+      beforeEach('deploy pool', async () => {
+        await vault.connect(admin).setProtocolSwapFee(toFixedPoint(protocolSwapFee));
+
+        const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
+        pool = await ethers.getContractAt('MockPool', poolAddress);
+      });
+
+      it('in one token', async () => {
+        await pool.paySwapProtocolFees([tokens.DAI.address], [(5e18).toString()]);
+        expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal((0.05e18).toString());
+      });
+
+      it('in many token', async () => {
+        await pool.paySwapProtocolFees(
+          [tokens.DAI.address, tokens.MKR.address],
+          [(5e18).toString(), (10e18).toString()]
+        );
+        expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal((0.05e18).toString());
+        expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal((0.1e18).toString());
+      });
+
+      it('fails if caller is not pool', async () => {
+        await expect(
+          vault.connect(other).paySwapProtocolFees(poolIds[0], [tokens.DAI.address], [(5e18).toString()])
+        ).to.be.revertedWith('Caller is not the pool');
+      });
+
+      it('fails if token not existent', async () => {
+        const newTokens = await deployTokens(['BAT'], [18]);
+        await expect(pool.paySwapProtocolFees([newTokens.BAT.address], [(5e18).toString()])).to.be.revertedWith(
+          'Token not in pool'
+        );
+      });
+
+      it('fails if not enough balance', async () => {
+        await expect(pool.paySwapProtocolFees([tokens.DAI.address], ['20000000000000000000000'])).to.be.revertedWith(
+          'ERR_SUB_UNDERFLOW'
+        );
+      });
+    });
   }
 });

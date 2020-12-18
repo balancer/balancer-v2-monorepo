@@ -43,6 +43,10 @@ contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
         _vault.removeLiquidity(poolId, msg.sender, tokens, amounts, false);
     }
 
+    function paySwapProtocolFees(IERC20[] memory tokens, uint128[] memory collectedFees) external {
+        _vault.paySwapProtocolFees(poolId, tokens, collectedFees);
+    }
+
     // Amounts in are multiplied by the multiplier, amounts out divided by it
     uint128 private _multiplier = FixedPoint.ONE;
 
