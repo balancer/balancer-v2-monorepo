@@ -9,14 +9,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const vault = await deployments.get('Vault');
 
-  const fixedSetFactory = await deploy('FixedSetPoolTokenizerFactory', {
+  const constantProductPoolFactory = await deploy('ConstantProductPoolFactory', {
     from: deployer,
     args: [vault.address],
     log: true,
     deterministicDeployment: true,
   });
 
-  const ownableFixedSetFactory = await deploy('OwnableFixedSetPoolTokenizerFactory', {
+  const stablecoinPoolFactory = await deploy('StablecoinPoolFactory', {
     from: deployer,
     args: [vault.address],
     log: true,
@@ -30,7 +30,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       log: true,
     },
     'authorizeTrustedOperatorReporter',
-    fixedSetFactory.address
+    constantProductPoolFactory.address
   );
 
   await execute(
@@ -40,7 +40,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       log: true,
     },
     'authorizeTrustedOperatorReporter',
-    ownableFixedSetFactory.address
+    stablecoinPoolFactory.address
   );
 };
 export default func;
