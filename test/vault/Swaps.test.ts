@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
+import { PairTS, TradingStrategyType, TupleTS } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
 import { deployTokens, TokenList } from '../helpers/tokens';
@@ -33,21 +33,25 @@ describe('Vault - swaps', () => {
   let vault: Contract, funds: FundManagement;
   let tokens: TokenList, tokenAddresses: string[];
   let poolIds: string[], poolId: string, anotherPoolId: string;
-  let controller: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
 
   before('setup', async () => {
-    [, controller, trader, other] = await ethers.getSigners();
+    [, admin, lp, trader, other] = await ethers.getSigners();
 
     // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
     // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
     // or rely on user balance or operators).
 
-    vault = await deploy('Vault', { args: [controller.address] });
+    vault = await deploy('Vault', { args: [admin.address] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     for (const symbol in tokens) {
-      await tokens[symbol].mint(trader.address, MAX_UINT128);
+      // lp tokens are used to seed pools
+      await tokens[symbol].mint(lp.address, MAX_UINT128.div(2));
+      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT128);
+
+      await tokens[symbol].mint(trader.address, MAX_UINT128.div(2));
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT128);
     }
   });
@@ -110,28 +114,36 @@ describe('Vault - swaps', () => {
     }));
   }
 
-  async function deployPool(type: number, tokenSymbols: string[]): Promise<string> {
-    const strategy = await deploy('MockTradingStrategy', { args: [] });
-    strategy.setMultiplier(toFixedPoint(2));
-    const tokenParams: Array<[string, string]> = tokenSymbols.map((symbol) => [symbol, (100e18).toString()]);
-    return setupPool(vault, strategy, type, tokens, controller, tokenParams);
+  async function deployPool(type: TradingStrategyType, tokenSymbols: string[]): Promise<string> {
+    const pool = await deploy('MockPool', { args: [vault.address, type] });
+    await pool.setMultiplier(toFixedPoint(2));
+
+    // Let the pool use the lp's tokens, and add liquidity
+    await vault.connect(lp).authorizeOperator(pool.address);
+
+    const tokenAddresses = tokenSymbols.map((symbol) => tokens[symbol].address);
+    const tokenAmounts = tokenSymbols.map(() => (100e18).toString());
+
+    await pool.connect(lp).addLiquidity(tokenAddresses, tokenAmounts);
+
+    return pool.getPoolId();
   }
 
-  function deployMainPool(type: number, tokenSymbols: string[]) {
+  function deployMainPool(type: TradingStrategyType, tokenSymbols: string[]) {
     beforeEach('deploy main pool', async () => {
       poolId = await deployPool(type, tokenSymbols);
       poolIds = [poolId];
     });
   }
 
-  function deployAnotherPool(type: number, tokenSymbols: string[]) {
+  function deployAnotherPool(type: TradingStrategyType, tokenSymbols: string[]) {
     beforeEach('deploy secondary pool', async () => {
       anotherPoolId = await deployPool(type, tokenSymbols);
       poolIds.push(anotherPoolId);
     });
   }
 
-  function itHandlesSwapsProperly(type: number, tokenSymbols: string[]) {
+  function itHandlesSwapsProperly(type: TradingStrategyType, tokenSymbols: string[]) {
     deployMainPool(type, tokenSymbols);
 
     describe('swap given in', () => {
@@ -276,7 +288,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: number) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: TradingStrategyType) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -303,9 +315,9 @@ describe('Vault - swaps', () => {
 
                   context('when pools do not offer same price', () => {
                     beforeEach('tweak the main pool to give back as much as it receives', async () => {
-                      const [strategyAddress] = (await vault.getPoolStrategy(poolIds[0])) as [string, unknown];
-                      const strategy = await ethers.getContractAt('MockTradingStrategy', strategyAddress);
-                      await strategy.setMultiplier(toFixedPoint(1));
+                      const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
+                      const pool = await ethers.getContractAt('MockPool', poolAddress);
+                      await pool.setMultiplier(toFixedPoint(1));
                     });
 
                     beforeEach('tweak sender and recipient to be other address', async () => {
@@ -352,7 +364,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: number) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: TradingStrategyType) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -421,7 +433,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: number) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: TradingStrategyType) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -457,7 +469,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: number) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: TradingStrategyType) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -627,7 +639,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: number) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: TradingStrategyType) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -654,9 +666,9 @@ describe('Vault - swaps', () => {
 
                   context('when pools do not offer same price', () => {
                     beforeEach('tweak the main pool to give back as much as it receives', async () => {
-                      const [strategyAddress] = (await vault.getPoolStrategy(poolIds[0])) as [string, unknown];
-                      const strategy = await ethers.getContractAt('MockTradingStrategy', strategyAddress);
-                      await strategy.setMultiplier(toFixedPoint(1));
+                      const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
+                      const pool = await ethers.getContractAt('MockPool', poolAddress);
+                      await pool.setMultiplier(toFixedPoint(1));
                     });
 
                     beforeEach('tweak sender and recipient to be other address', async () => {
@@ -703,7 +715,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: number) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: TradingStrategyType) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -770,7 +782,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: number) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: TradingStrategyType) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -806,7 +818,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: number) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: TradingStrategyType) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
