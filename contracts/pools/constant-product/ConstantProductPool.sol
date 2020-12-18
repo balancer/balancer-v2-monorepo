@@ -32,6 +32,7 @@ import "./ConstantProductMath.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
+// solhint-disable max-states-count
 
 contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, ConstantProductMath, ReentrancyGuard {
     using FixedPoint for uint128;
@@ -41,27 +42,27 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
-    uint8 internal constant MIN_TOKENS = 2;
-    uint8 internal constant MAX_TOKENS = 16;
+    uint8 private constant _MIN_TOKENS = 2;
+    uint8 private constant _MAX_TOKENS = 16;
 
-    IERC20 internal immutable _token0;
-    IERC20 internal immutable _token1;
-    IERC20 internal immutable _token2;
-    IERC20 internal immutable _token3;
-    IERC20 internal immutable _token4;
-    IERC20 internal immutable _token5;
-    IERC20 internal immutable _token6;
-    IERC20 internal immutable _token7;
-    IERC20 internal immutable _token8;
-    IERC20 internal immutable _token9;
-    IERC20 internal immutable _token10;
-    IERC20 internal immutable _token11;
-    IERC20 internal immutable _token12;
-    IERC20 internal immutable _token13;
-    IERC20 internal immutable _token14;
-    IERC20 internal immutable _token15;
+    IERC20 private immutable _token0;
+    IERC20 private immutable _token1;
+    IERC20 private immutable _token2;
+    IERC20 private immutable _token3;
+    IERC20 private immutable _token4;
+    IERC20 private immutable _token5;
+    IERC20 private immutable _token6;
+    IERC20 private immutable _token7;
+    IERC20 private immutable _token8;
+    IERC20 private immutable _token9;
+    IERC20 private immutable _token10;
+    IERC20 private immutable _token11;
+    IERC20 private immutable _token12;
+    IERC20 private immutable _token13;
+    IERC20 private immutable _token14;
+    IERC20 private immutable _token15;
 
-    uint256 internal immutable _totalTokens;
+    uint256 private immutable _totalTokens;
 
     uint128 private immutable _weight0;
     uint128 private immutable _weight1;
@@ -82,8 +83,8 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
     uint128 private immutable _swapFee;
 
-    uint128 private constant MIN_SWAP_FEE = 0;
-    uint128 private constant MAX_SWAP_FEE = 10 * (10**16); // 10%
+    uint128 private constant _MIN_SWAP_FEE = 0;
+    uint128 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
 
     constructor(
         IVault vault,
@@ -94,8 +95,8 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint128[] memory weights,
         uint128 swapFee
     ) {
-        require(tokens.length >= MIN_TOKENS, "ERR_MIN_TOKENS");
-        require(tokens.length <= MAX_TOKENS, "ERR_MAX_TOKENS");
+        require(tokens.length >= _MIN_TOKENS, "ERR__MIN_TOKENS");
+        require(tokens.length <= _MAX_TOKENS, "ERR__MAX_TOKENS");
 
         require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LENGTH");
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
@@ -151,12 +152,12 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         _weight14 = weights.length > 14 ? weights[14] : 0;
         _weight15 = weights.length > 15 ? weights[15] : 0;
 
-        require(swapFee >= MIN_SWAP_FEE, "ERR_MIN_SWAP_FEE");
-        require(swapFee <= MAX_SWAP_FEE, "ERR_MAX_MAX_FEE");
+        require(swapFee >= _MIN_SWAP_FEE, "ERR__MIN_SWAP_FEE");
+        require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_MAX_FEE");
         _swapFee = swapFee;
     }
 
-    function _weight(IERC20 token) internal view returns (uint128) {
+    function _weight(IERC20 token) private view returns (uint128) {
         if (token == _token0) {
             return _weight0;
         } else if (token == _token1) {
@@ -204,7 +205,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         return _poolId;
     }
 
-    function getWeights(IERC20[] memory tokens) public view returns (uint128[] memory) {
+    function getWeights(IERC20[] memory tokens) external view returns (uint128[] memory) {
         uint128[] memory weights = new uint128[](tokens.length);
 
         for (uint256 i = 0; i < weights.length; ++i) {
@@ -214,7 +215,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         return weights;
     }
 
-    function getSwapFee() public view returns (uint128) {
+    function getSwapFee() external view returns (uint128) {
         return _swapFee;
     }
 
@@ -258,13 +259,13 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
     //Protocol Fees
 
-    function getAccSwapFees(uint128[] memory balances) internal pure returns (uint128[] memory) {
+    function _getAccSwapFees(uint128[] memory balances) private pure returns (uint128[] memory) {
         uint128[] memory swapFeesCollected = new uint128[](balances.length);
         //TODO: calculate swap fee and pick random token
         return swapFeesCollected;
     }
 
-    function resetAccSwapFees(uint128[] memory balances) internal {
+    function _resetAccSwapFees(uint128[] memory balances) private {
         //TODO: reset swap fees
     }
 
@@ -274,10 +275,10 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         //Load balances
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-        uint128[] memory swapFeesCollected = getAccSwapFees(balances);
+        uint128[] memory swapFeesCollected = _getAccSwapFees(balances);
 
         balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-        resetAccSwapFees(balances);
+        _resetAccSwapFees(balances);
     }
 
     //Join / Exit
@@ -292,7 +293,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
         //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = getAccSwapFees(balances);
+        uint128[] memory swapFeesCollected = _getAccSwapFees(balances);
         balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();
@@ -310,7 +311,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
 
         //Reset swap fees counter
-        resetAccSwapFees(balances);
+        _resetAccSwapFees(balances);
 
         _mintPoolShare(poolAmountOut);
         _pushPoolShare(beneficiary, poolAmountOut);
@@ -326,7 +327,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
         //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = getAccSwapFees(balances);
+        uint128[] memory swapFeesCollected = _getAccSwapFees(balances);
         balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();
@@ -344,7 +345,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
 
         //Reset swap fees counter
-        resetAccSwapFees(balances);
+        _resetAccSwapFees(balances);
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
@@ -352,30 +353,30 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
     // Potential helpers
 
-    function _addSwapFee(uint128 amount) internal view returns (uint128) {
+    function _addSwapFee(uint128 amount) private view returns (uint128) {
         return amount.div128(FixedPoint.ONE.sub128(_swapFee));
     }
 
-    function _subtractSwapFee(uint128 amount) internal view returns (uint128) {
+    function _subtractSwapFee(uint128 amount) private view returns (uint128) {
         uint128 fees = amount.mul128(_swapFee);
         return amount.sub128(fees);
     }
 
     // To be moved to Balancer Pool Token
 
-    function _pullPoolShare(address from, uint256 amount) internal {
+    function _pullPoolShare(address from, uint256 amount) private {
         _pull(from, amount);
     }
 
-    function _pushPoolShare(address to, uint256 amount) internal {
+    function _pushPoolShare(address to, uint256 amount) private {
         _push(to, amount);
     }
 
-    function _mintPoolShare(uint256 amount) internal {
+    function _mintPoolShare(uint256 amount) private {
         _mint(amount);
     }
 
-    function _burnPoolShare(uint256 amount) internal {
+    function _burnPoolShare(uint256 amount) private {
         _burn(amount);
     }
 }
