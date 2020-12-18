@@ -75,6 +75,8 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         _amp = amp;
     }
 
+    //Getters
+
     function getVault() external view override returns (IVault) {
         return _vault;
     }
@@ -90,6 +92,8 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     function getSwapFee() public view returns (uint128) {
         return _swapFee;
     }
+
+    //Quote Swaps
 
     function quoteOutGivenIn(
         QuoteRequestGivenIn calldata request,
@@ -112,6 +116,32 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         return _addSwapFee(minimumAmountIn);
     }
 
+    //Protocol Fees
+
+    function getAccSwapFees(uint128[] memory balances) internal pure returns (uint128[] memory) {
+        uint128[] memory swapFeesCollected = new uint128[](balances.length);
+        //TODO: calculate swap fee and pick random token
+        return swapFeesCollected;
+    }
+
+    function resetAccSwapFees(uint128[] memory balances) internal {
+        //TODO: reset swap fees
+    }
+
+    // Pays protocol swap fees
+    function payProtocolFees() external {
+        //Load tokens
+        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
+        //Load balances
+        uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+        uint128[] memory swapFeesCollected = getAccSwapFees(balances);
+
+        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
+        resetAccSwapFees(balances);
+    }
+
+    //Join / Exit
+
     function joinPool(
         uint256 poolAmountOut,
         uint128[] calldata maxAmountsIn,
@@ -120,6 +150,10 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+
+        //Pay protocol fees to have balances up to date
+        uint128[] memory swapFeesCollected = getAccSwapFees(balances);
+        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();
         uint128 ratio = poolAmountOut.div(poolTotal).toUint128();
@@ -135,6 +169,9 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
         _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
 
+        //Reset swap fees counter
+        resetAccSwapFees(balances);
+
         _mintPoolShare(poolAmountOut);
         _pushPoolShare(beneficiary, poolAmountOut);
     }
@@ -147,6 +184,10 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+
+        //Pay protocol fees to have balances up to date
+        uint128[] memory swapFeesCollected = getAccSwapFees(balances);
+        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();
         uint128 ratio = poolAmountIn.div(poolTotal).toUint128();
@@ -162,8 +203,21 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
         _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
 
+        //Reset swap fees counter
+        resetAccSwapFees(balances);
+
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
+    }
+
+    // potential helpers
+    function _addSwapFee(uint128 amount) internal view returns (uint128) {
+        return amount.div128(FixedPoint.ONE.sub128(_swapFee));
+    }
+
+    function _subtractSwapFee(uint128 amount) internal view returns (uint128) {
+        uint128 fees = amount.mul128(_swapFee);
+        return amount.sub128(fees);
     }
 
     // Move to BalancerPoolToken (BToken)
@@ -182,15 +236,5 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     function _burnPoolShare(uint256 amount) internal {
         _burn(amount);
-    }
-
-    // potential helpers
-    function _addSwapFee(uint128 amount) internal view returns (uint128) {
-        return amount.div128(FixedPoint.ONE.sub128(_swapFee));
-    }
-
-    function _subtractSwapFee(uint128 amount) internal view returns (uint128) {
-        uint128 fees = amount.mul128(_swapFee);
-        return amount.sub128(fees);
     }
 }
