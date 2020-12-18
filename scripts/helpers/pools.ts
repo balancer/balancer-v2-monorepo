@@ -52,6 +52,8 @@ export async function setupPool(
   return poolId;
 }
 
+export type PoolName = 'ConstantProductPool' | 'StablecoinPool';
+
 /**
  * Deploys a Pool via a Factory contract.
  *
@@ -64,7 +66,7 @@ export async function setupPool(
 export async function deployPoolFromFactory(
   vault: Contract,
   admin: SignerWithAddress,
-  poolName: string,
+  poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
   const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
