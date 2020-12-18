@@ -14,10 +14,10 @@ import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
 import { BigNumberish, Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 
 type SwapData = {
-  pool?: number;
+  pool?: number; // Index in the poolIds array
   amount: number;
-  in: number;
-  out: number;
+  in: number; // Index in the tokens array
+  out: number; // Index in the tokens array
   data?: string;
   fromOther?: boolean;
   toOther?: boolean;
@@ -37,6 +37,11 @@ describe('Vault - swaps', () => {
 
   before('setup', async () => {
     [, controller, trader, other] = await ethers.getSigners();
+
+    // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
+    // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
+    // or rely on user balance or operators).
+
     vault = await deploy('Vault', { args: [controller.address] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
@@ -97,22 +102,22 @@ describe('Vault - swaps', () => {
 
   function parseSwap(input: SwapInput): Swap[] {
     return input.swaps.map((data) => ({
-      poolId: poolIds[data.pool || 0],
+      poolId: poolIds[data.pool ?? 0],
       amount: data.amount.toString(),
       tokenInIndex: data.in,
       tokenOutIndex: data.out,
-      userData: data.data || '0x',
+      userData: data.data ?? '0x',
     }));
   }
 
-  async function deployPool(type: number, tokenSymbols: string[]) {
+  async function deployPool(type: number, tokenSymbols: string[]): Promise<string> {
     const strategy = await deploy('MockTradingStrategy', { args: [] });
     strategy.setMultiplier(toFixedPoint(2));
     const tokenParams: Array<[string, string]> = tokenSymbols.map((symbol) => [symbol, (100e18).toString()]);
     return setupPool(vault, strategy, type, tokens, controller, tokenParams);
   }
 
-  async function deployMainPool(type: number, tokenSymbols: string[]) {
+  function deployMainPool(type: number, tokenSymbols: string[]) {
     beforeEach('deploy main pool', async () => {
       poolId = await deployPool(type, tokenSymbols);
       poolIds = [poolId];
@@ -169,12 +174,18 @@ describe('Vault - swaps', () => {
                     });
 
                     context('when withdrawing from user balance', () => {
-                      beforeEach('withdraw from user balance', async () => {
-                        funds.withdrawFromUserBalance = true;
-                        await vault.connect(trader).deposit(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                      context.skip('when using less than available as user balance', () => {
+                        // TODO: add tests where no token transfers are needed and user balance remains
                       });
 
-                      assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
+                      context('when using more than available as user balance', () => {
+                        beforeEach('deposit to user balance', async () => {
+                          funds.withdrawFromUserBalance = true;
+                          await vault.connect(trader).deposit(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                        });
+
+                        assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
+                      });
                     });
 
                     context('when depositing from user balance', () => {
@@ -516,12 +527,18 @@ describe('Vault - swaps', () => {
                     });
 
                     context('when withdrawing from user balance', () => {
-                      beforeEach('withdraw from user balance', async () => {
-                        funds.withdrawFromUserBalance = true;
-                        await vault.connect(trader).deposit(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                      context.skip('when using less than available as user balance', () => {
+                        // TODO: add tests where no token transfers are needed and user balance remains
                       });
 
-                      assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
+                      context('when using more than available as user balance', () => {
+                        beforeEach('deposit to user balance', async () => {
+                          funds.withdrawFromUserBalance = true;
+                          await vault.connect(trader).deposit(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                        });
+
+                        assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
+                      });
                     });
 
                     context('when depositing from user balance', () => {
