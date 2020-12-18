@@ -16,7 +16,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./IFlashLoanReceiver.sol";
+import "./interfaces/IFlashLoanReceiver.sol";
 import "../validators/ISwapValidator.sol";
 
 pragma solidity ^0.7.1;
@@ -150,14 +150,9 @@ interface IVault {
     function getPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory);
 
     /**
-     * @dev Returns a Pool's controller.
+     * @dev Returns a Pool's address.
      */
-    function getPoolController(bytes32 poolId) external view returns (address);
-
-    /**
-     * @dev Returns a Pool's Trading Strategy and Trading Strategy Type.
-     */
-    function getPoolStrategy(bytes32 poolId) external view returns (address, StrategyType);
+    function getPool(bytes32 poolId) external view returns (address, StrategyType);
 
     /**
      * @dev Returns all tokens in the Pool (tokens for which the Pool has balance).
@@ -170,11 +165,6 @@ interface IVault {
     function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint128[] memory);
 
     // Pool Management
-
-    /**
-     * @dev Sets a new controller for a Pool. Can only be called by its current controller.
-     */
-    function setPoolController(bytes32 poolId, address controller) external;
 
     /**
      * @dev Adds liquidity into a Pool. Can only be called by its controller.
