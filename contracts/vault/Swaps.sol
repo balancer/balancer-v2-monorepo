@@ -15,6 +15,8 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+// Imports
+
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -33,13 +35,25 @@ import "../strategies/ITupleTradingStrategy.sol";
 
 import "../validators/ISwapValidator.sol";
 
-import "./IVault.sol";
 import "./CashInvestedBalance.sol";
-import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
-import "./UserBalance.sol";
 
-abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolRegistry {
+// Contracts
+
+/**
+ * @title Perform batch token swaps across pools
+ * @author Balancer Labs
+ * @notice The Balancer core Vault holds all assets and performs all swaps. Pools register with the vault, and contain
+ *         the logic for computing validating swap data (i.e., providing price quotes), but the vault is responsible for
+ *         performing the swap - including updating all token and user balances with the net result. 
+ *         Using User Balances, it is possible to make profitable arbitrage trades entirely within the vault, with no
+ *         actual token transfers at all. Level 2-like functionality, on Level 1.
+ * @dev Swap "direction" is defined as follows:
+ *      "given in" means: I want to sell you X amount of token A to get token B
+ *      "given out" means: I want to sell you token A to get X amount of token B
+ *      So the "given" amount is the "known" quantity (that you have, or that you want)
+ */
+abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -50,6 +64,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
     using SafeCast for uint256;
     using SafeCast for uint128;
 
+    // Type declarations
+
     // This struct is identical in layout to SwapIn and SwapOut, except the 'amountIn/Out' field is named 'amount'.
     struct SwapInternal {
         bytes32 poolId;
@@ -59,31 +75,84 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         bytes userData;
     }
 
+    // This struct is identical in layout to QuoteRequestGivenIn and QuoteRequestGivenIn from ITradingStrategy, except
+    // the 'amountIn/Out' is named 'amount'.
+    struct QuoteRequestInternal {
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        uint128 amount;
+        bytes32 poolId;
+        address from;
+        address to;
+        bytes userData;
+    }
+
+    // This struct helps implement the multihop logic: if the amount given is not provided for a swap, then the token
+    // given must match the previous token quoted, and the previous amount quoted becomes the new amount given.
+    // For swaps of kind given in, amount in and token in are given, while amount out and token out quoted.
+    // For swaps of kind given out, amount out and token out are given, while amount in and token in quoted.
+    struct LastSwapData {
+        IERC20 tokenQuoted;
+        uint128 amountQuoted;
+    }
+
+    // Function declarations
+
+    // External functions
+
+    /**
+     * @notice Perform a set of "given in" swaps, using the tokens provided, with sources, destinations,
+     *         and User Balance interactions defined in the FundManagement parameter
+     * @param validator - validate the swaps (e.g., verifying sufficient balance, time limits)
+     * @param validatorData - any extra data required by the validator logic
+     * @param swaps - data structure defining the swap operations
+     * @param tokens - incoming set of tokens
+     * @param funds - structure defining sources and destinations, as well as whether to use User Balances
+     */
     function batchSwapGivenIn(
         ISwapValidator validator,
         bytes calldata validatorData,
         SwapIn[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external override {
+    )
+        external
+        override
+    {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
+
         if (address(validator) != address(0)) {
             validator.validate(SwapKind.GIVEN_IN, tokens, tokenDeltas, validatorData);
         }
     }
 
+    /**
+     * @notice Perform a set of "given out" swaps, using the tokens provided, with sources, destinations,
+     *         and User Balance interactions defined in the FundManagement parameter
+     * @param validator - validate the swaps (e.g., verifying sufficient balance, time limits)
+     * @param validatorData - any extra data required by the validator logic
+     * @param swaps - data structure defining the swap operations
+     * @param tokens - outgoing set of tokens
+     * @param funds - structure defining sources and destinations, as well as whether to use User Balances
+     */
     function batchSwapGivenOut(
         ISwapValidator validator,
         bytes calldata validatorData,
         SwapOut[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external override {
+    )
+        external
+        override
+    {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
+
         if (address(validator) != address(0)) {
             validator.validate(SwapKind.GIVEN_OUT, tokens, tokenDeltas, validatorData);
         }
     }
+
+    // Private functions
 
     // We use inline assembly to cast from the external struct types to the internal one. This doesn't trigger any
     // conversions or runtime analysis: it is just coercing the type system to reinterpret the data as another type.
@@ -100,18 +169,6 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         assembly {
             swapsInternal := swapsOut
         }
-    }
-
-    // This struct is identical in layout to QuoteRequestGivenIn and QuoteRequestGivenIn from ITradingStrategy, except
-    // the 'amountIn/Out' is named 'amount'.
-    struct QuoteRequestInternal {
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        uint128 amount;
-        bytes32 poolId;
-        address from;
-        address to;
-        bytes userData;
     }
 
     // We use inline assembly to cast from the internal struct type to the external ones, depending on the swap kind.
@@ -140,17 +197,20 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         }
     }
 
+    // Execute an array of internal swap operations
     function _batchSwap(
         SwapInternal[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
-    ) private nonReentrant returns (int256[] memory) {
-        //TODO: avoid reentrancy
-
+    ) 
+        private
+        nonReentrant
+        returns (int256[] memory)
+    {
         // Any net token amount going into the Vault will be taken from `funds.sender`, so they must have
         // approved the caller to use their funds.
-        require(isOperatorFor(funds.sender, msg.sender), "Caller is not operator");
+        require(isAgentFor(funds.sender, msg.sender), "Caller is not agent");
 
         int256[] memory tokenDeltas = new int256[](tokens.length);
 
@@ -214,20 +274,17 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         return tokenDeltas;
     }
 
-    // This struct helps implement the multihop logic: if the amount given is not provided for a swap, then the token
-    // given must match the previous token quoted, and the previous amount quoted becomes the new amount given.
-    // For swaps of kind given in, amount in and token in are given, while amount out and token out quoted.
-    // For swaps of kind given out, amount out and token out are given, while amount in and token in quoted.
-    struct LastSwapData {
-        IERC20 tokenQuoted;
-        uint128 amountQuoted;
-    }
+    // Helper functions to select the correct token based on the "direction" of the swap
 
     function _tokenGiven(
         SwapKind kind,
         IERC20 tokenIn,
         IERC20 tokenOut
-    ) private pure returns (IERC20) {
+    )
+        private
+        pure
+        returns (IERC20)
+    {
         return kind == SwapKind.GIVEN_IN ? tokenIn : tokenOut;
     }
 
@@ -235,7 +292,11 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         SwapKind kind,
         IERC20 tokenIn,
         IERC20 tokenOut
-    ) private pure returns (IERC20) {
+    )
+        private
+        pure
+        returns (IERC20)
+    {
         return kind == SwapKind.GIVEN_IN ? tokenOut : tokenIn;
     }
 
@@ -243,7 +304,11 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         SwapKind kind,
         uint128 amountGiven,
         uint128 amountQuoted
-    ) private pure returns (uint128 amountIn, uint128 amountOut) {
+    )
+        private
+        pure
+        returns (uint128 amountIn, uint128 amountOut)
+    {
         if (kind == SwapKind.GIVEN_IN) {
             (amountIn, amountOut) = (amountGiven, amountQuoted);
         } else {
@@ -251,6 +316,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         }
     }
 
+    // Low level swap operation with a specific pool (referenced in SwapInternal)
+    // Return (amountIn, amountOut) - deposit amountIn, withdraw amountOut from the pool
     function _swapWithPool(
         IERC20[] memory tokens,
         SwapInternal memory swap,
@@ -258,7 +325,10 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         address to,
         LastSwapData memory previous,
         SwapKind kind
-    ) private returns (uint128 amountIn, uint128 amountOut) {
+    )
+        private
+        returns (uint128 amountIn, uint128 amountOut)
+    {
         IERC20 tokenIn = tokens[swap.tokenInIndex];
         IERC20 tokenOut = tokens[swap.tokenOutIndex];
         require(tokenIn != tokenOut, "Swap for same token");
@@ -289,6 +359,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         (amountIn, amountOut) = _getAmounts(kind, amountGiven, amountQuoted);
     }
 
+    // Apply pool logic to generate a price quote (= price commitment)
     function _processQuoteRequest(QuoteRequestInternal memory request, SwapKind kind)
         private
         returns (uint128 amountQuoted)
@@ -304,11 +375,15 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         }
     }
 
+    // Compute the price quote for a Pair Trading Strategy
     function _processPairTradingStrategyQuoteRequest(
         QuoteRequestInternal memory request,
         IPairTradingStrategy strategy,
         SwapKind kind
-    ) private returns (uint128 amountQuoted) {
+    )
+        private
+        returns (uint128 amountQuoted)
+    {
         bytes32 tokenInBalance = _poolPairTokenBalance[request.poolId][request.tokenIn];
         require(tokenInBalance.total() > 0, "Token A not in pool");
 
@@ -346,11 +421,15 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
     }
 
+    // Compute the price quote for a Tuple Trading Strategy
     function _processTupleTradingStrategyQuoteRequest(
         QuoteRequestInternal memory request,
         ITupleTradingStrategy strategy,
         SwapKind kind
-    ) private returns (uint128 amountQuoted) {
+    )
+        private
+        returns (uint128 amountQuoted)
+    {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 

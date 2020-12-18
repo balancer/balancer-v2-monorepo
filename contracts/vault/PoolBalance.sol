@@ -14,18 +14,25 @@
 
 pragma solidity ^0.7.1;
 
+// Imports
 import "../vendor/EnumerableSet.sol";
 import "../vendor/EnumerableMap.sol";
-
-import "../math/FixedPoint.sol";
 
 import "./IVault.sol";
 import "./CashInvestedBalance.sol";
 
+// Contracts
+
+/**
+ * @title Store the token balances for all pools
+ * @author Balancer Labs
+ */
 contract PoolBalance {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using CashInvestedBalance for bytes32;
+
+    // State variables
 
     // Tokens in a Pool have non-zero balances, which can be used as a shortcut to check
     // at once if a) a Pool exists and b) a token is in that Pool.
@@ -51,13 +58,22 @@ contract PoolBalance {
     // ITupleTradingStrategy call), and update an entry's value given its index.
     mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _poolTupleTokenBalance;
 
+    // Function declarations
+
     // All of these functions require that the caller indicate the Pool type of the queried Pool.
 
-    /**
-     * @dev Returns an array with all the tokens in a Pool. This order may change when tokens are added to or removed
-     * from the Pool.
-     */
-    function _getPoolTokens(bytes32 poolId, IVault.StrategyType strategyType) internal view returns (IERC20[] memory) {
+    // Internal functions
+
+    // Returns an array with all the tokens in a Pool. This order may change when tokens are added to
+    // or removed from the pool
+    function _getPoolTokens(
+        bytes32 poolId,
+        IVault.StrategyType strategyType
+    )
+        internal
+        view
+        returns (IERC20[] memory)
+    {
         IERC20[] memory tokens;
 
         if (strategyType == IVault.StrategyType.PAIR) {
@@ -78,18 +94,18 @@ contract PoolBalance {
         return tokens;
     }
 
-    /**
-     * @dev Returns the balance for a token in a Pool.
-     *
-     * Requirements:
-     *
-     * - `token` must be in the Pool.
-     */
+    // Returns the balance for a token in a Pool.
+    // The token must be in the Pool.
+    // Decode the return value using the `CashInvestedBalance` library
     function _getPoolTokenBalance(
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token
-    ) internal view returns (bytes32) {
+    ) 
+        internal
+        view
+        returns (bytes32)
+    {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 balance = _poolPairTokenBalance[poolId][token];
             require(balance.total() > 0, "Token not in pool");
@@ -101,18 +117,17 @@ contract PoolBalance {
         }
     }
 
-    /**
-     * @dev Adds cash to a Pool for a given token. If the token was not previously in the Pool (if it didn't have any
-     * funds for it), the token is then added to the Pool.
-     *
-     * `amount` must be a non-zero value.
-     */
+    // Adds cash to a Pool for a given token. If the token was not previously in the Pool
+    //   (i.e., zero balance), the token is added to the Pool.
+    // amount must be greater than 0
     function _increasePoolCash(
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    ) internal {
+    )
+        internal
+    {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
             if (currentBalance.total() == 0) {
@@ -131,21 +146,19 @@ contract PoolBalance {
         }
     }
 
-    /**
-     * @dev Removes cash from a Pool for a given token. If this fully drains the Pool's balance for that token
-     * (including invested balance), then the token is removed from the Pool.
-     *
-     * Requirements:
-     *
-     * - `token` must be in the Pool.
-     * - `amount` must be less or equal than the Pool's cash for that token.
-     */
+    // Removes cash from a Pool for a given token. If this fully drains the Pool's balance for that token
+    // (including managed balance), then the token is removed from the Pool.
+    // Requirements:
+    //   - token must be in the Pool.
+    //   - amount must be less or equal than the Pool's cash for that token
     function _decreasePoolCash(
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    ) internal {
+    )
+        internal
+    {
         if (strategyType == IVault.StrategyType.PAIR) {
             require(_poolPairTokens[poolId].contains(address(token)), "Token not in pool");
 
@@ -171,12 +184,16 @@ contract PoolBalance {
         }
     }
 
+   // Increase a managed token balance in the given pool
+   // Increasing the managed balance will decrease the cash available
     function _investPoolCash(
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    ) internal {
+    )
+        internal
+    {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
             _poolPairTokenBalance[poolId][token] = currentBalance.cashToInvested(amount);
@@ -186,12 +203,16 @@ contract PoolBalance {
         }
     }
 
-    function _divestPoolCash(
+   // Decrease a managed token balance in the given pool
+   // Decreasing the managed balance will increase the cash available
+   function _divestPoolCash(
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    ) internal {
+    )
+        internal
+    {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
             _poolPairTokenBalance[poolId][token] = currentBalance.investedToCash(amount);
@@ -201,12 +222,17 @@ contract PoolBalance {
         }
     }
 
+    // Set the managed balance of a token in the given pool
+    // This is how the asset manager reports losses/gains
+    // (i.e., setting the managed portion lower than it is now would record a loss)
     function _setPoolInvestment(
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token,
         uint128 amount
-    ) internal {
+    )
+        internal
+    {
         if (strategyType == IVault.StrategyType.PAIR) {
             bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
             _poolPairTokenBalance[poolId][token] = currentBalance.setInvested(amount);
@@ -216,11 +242,16 @@ contract PoolBalance {
         }
     }
 
+    // Determine whether a token is managed (i.e., has a non-zero managed balance)
     function _isPoolInvested(
         bytes32 poolId,
         IVault.StrategyType strategyType,
         IERC20 token
-    ) internal view returns (bool) {
+    )
+        internal
+        view
+        returns (bool)
+    {
         if (strategyType == IVault.StrategyType.PAIR) {
             return _poolPairTokenBalance[poolId][token].isInvested();
         } else {

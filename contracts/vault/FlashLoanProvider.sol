@@ -19,26 +19,47 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+// Imports
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./IFlashLoanReceiver.sol";
-import "./IVault.sol";
 import "./Settings.sol";
 
 import "../math/FixedPoint.sol";
 
-abstract contract FlashLoanProvider is ReentrancyGuard, IVault, Settings {
+// Contracts
+
+/**
+ * @title FlashLoanProvider - base contract for implementing flash loans
+ * @author Balancer Labs
+ */
+abstract contract FlashLoanProvider is ReentrancyGuard, Settings {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
+    // Function declarations
+    
+    /**
+     * @notice Borrow the specified funds from this contract, send them to the receiver, and add the flash loan fees to
+     *         the total collected fees. After the call, check that the funds have been returned (including fees)
+     * @param receiver - contract that receives funds and implements what the caller wants to accomplish with the loan
+     * @param tokens - the tokens being borrowed
+     * @param amounts - the amounts being borrowed
+     * @param receiverData - any other data the flash loan receiver requires
+     */
     function flashLoan(
         IFlashLoanReceiver receiver,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         bytes calldata receiverData
-    ) external override nonReentrant {
+    )
+        external
+        override
+        nonReentrant 
+    {   
         require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
         uint256[] memory feeAmounts = new uint256[](tokens.length);

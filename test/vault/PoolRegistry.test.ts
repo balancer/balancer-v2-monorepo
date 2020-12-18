@@ -66,7 +66,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('new pool is added to pool list', async () => {
-      expect(await vault.getTotalPools()).to.equal(1);
+      expect(await vault.getNumberOfPools()).to.equal(1);
       expect(await vault.getPoolIds(0, 1)).to.have.members([poolId]);
     });
 
@@ -89,7 +89,7 @@ describe('Vault - pool registry', () => {
       const otherPoolId = event.args.poolId;
 
       expect(poolId).to.not.equal(otherPoolId);
-      expect(await vault.getTotalPools()).to.equal(2);
+      expect(await vault.getNumberOfPools()).to.equal(2);
       expect(await vault.getPoolIds(0, 2)).to.have.members([poolId, otherPoolId]);
     });
   });

@@ -13,7 +13,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
+
+// Needed for struct arguments
 pragma experimental ABIEncoderV2;
+
+// Imports
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -21,35 +25,53 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../math/FixedPoint.sol";
 
-import "./IVault.sol";
 import "./Settings.sol";
 
-abstract contract VaultAccounting is IVault, Settings {
+// Contracts
+
+/**
+ * @title Moves tokens in and out of the Vault
+ * @author Balancer Labs
+ */
+abstract contract VaultAccounting is Settings {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
-    //Protocol Fees
+    // Function declarations
+
+    // External functions
+
     /**
-     * @dev Returns the amount in protocol fees collected for a specific `token`.
+     * @notice Returns the amount of protocol fees collected for a specific token
+     * @param token - the token we've collected fees on
+     * @return total fee balance collected for the given token
      */
     function getCollectedFeesByToken(IERC20 token) external view override returns (uint256) {
         return _collectedProtocolFees[token];
     }
 
+    // Internal functions
+
     /**
-     * @dev Transfers tokens into the Vault from `from`. The caller must verify that this action was authorized by
-     * `from` (typically by the entry-point function being called by an operator for `from`).
+     * @notice Transfers tokens into the Vault from the "from" address.
+     *         The caller must verify that this action was authorized by "from" (typically the entry-point function
+     *         is called by an agent for "from").
      *
-     * The number of tokens received are measured as a delta, by calling `IERC20.balanceOf` before and after the
-     * transfer. This means tokens with a transfer fee are supported. The number of tokens received is returned.
+     *         Return the number of tokens received
+     * @param token - the token being transferred
+     * @param from - the source address
+     * @param amount - the amount being added to the vault
      */
     function _pullTokens(
         IERC20 token,
         address from,
         uint128 amount
-    ) internal returns (uint128) {
+    )
+        internal
+        returns (uint128)
+    {
         if (amount == 0) {
             return 0;
         }
@@ -64,7 +86,13 @@ abstract contract VaultAccounting is IVault, Settings {
     }
 
     /**
-     * @dev Transfers tokens from the Vault to `to`. If `chargeFee` is true, a withdrawal fee will be collected.
+     * @notice Transfers tokens out of the Vault, to the "to" address.
+     *         The caller must verify that this action was authorized by "to" (typically the entry-point function
+     *         is called by an agent for "to").
+     * @param token - the token being transferred
+     * @param to - the destination address
+     * @param amount - the amount being withdrawn from the vault
+     * @param chargeFee - flag; if set, charge a protocol withdrawal fee
      */
     function _pushTokens(
         IERC20 token,

@@ -509,11 +509,11 @@ describe('Vault - swaps', () => {
       it('cannot withdraw funds from arbitrary sender recipient', async () => {
         await expect(
           vault.connect(other).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds) // funds.sender is trader
-        ).to.be.revertedWith('Caller is not operator');
+        ).to.be.revertedWith('Caller is not agent');
       });
 
-      it('can withdraw funds as operator for sender', async () => {
-        await vault.connect(trader).authorizeOperator(other.address);
+      it('can withdraw funds as agent for sender', async () => {
+        await vault.connect(trader).addUserAgent(other.address);
 
         await expectBalanceChange(
           () => vault.connect(other).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds), // funds.sender is trader

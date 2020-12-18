@@ -23,12 +23,12 @@ describe('BasePoolControllerFactory', function () {
   });
 
   it('fails if not trusted by the vault', async () => {
-    await expect(factory.create(salt)).to.be.revertedWith('Caller is not trusted operator reporter');
+    await expect(factory.create(salt)).to.be.revertedWith('Caller is not a universal agent manager');
   });
 
   context('once trusted by the vault', () => {
     beforeEach(async () => {
-      await vault.connect(admin).authorizeTrustedOperatorReporter(factory.address);
+      await vault.connect(admin).addUniversalAgentManager(factory.address);
     });
 
     it('creates a pool controller', async () => {
@@ -51,11 +51,11 @@ describe('BasePoolControllerFactory', function () {
         controller = await ethers.getContractAt('MockPoolController', event.args.controller);
       });
 
-      it('controller is a trusted operator', async () => {
-        // The contract also asserts that it is a trusted operator at the time of its construction
+      it('controller is a universal agent', async () => {
+        // The contract also asserts that it is a universal agent at the time of its construction
 
-        expect(await vault.getTotalTrustedOperators()).to.equal(1);
-        expect(await vault.getTrustedOperators(0, 1)).to.have.members([controller.address]);
+        expect(await vault.getNumberOfUniversalAgents()).to.equal(1);
+        expect(await vault.getUniversalAgents(0, 1)).to.have.members([controller.address]);
       });
     });
   });

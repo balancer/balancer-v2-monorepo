@@ -13,72 +13,124 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
+
+// Needed for struct arguments
 pragma experimental ABIEncoderV2;
 
-import "../math/FixedPoint.sol";
+// Imports
 
 import "../vendor/EnumerableSet.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "./IVault.sol";
-import "./Settings.sol";
 import "./UserBalance.sol";
 
-abstract contract Admin is IVault, Settings, UserBalance {
+// Contracts
+
+/**
+ * @title Admin - Maintain the protocol admin address, and implement privileged functions
+ *        involving protocol-wide fees and universal agent managers 
+ * @author Balancer Labs
+ */
+ abstract contract Admin is UserBalance {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
+    // State variables
+
     address private _admin;
 
+    // Modifiers
+
+    modifier onlyAdmin {
+        require(msg.sender == _admin, "Caller is not the admin");
+        _;
+    }
+
+    // Function declarations
+
+    /**
+     * @notice Create the Admin controller contract
+     * @param admin - the privileged admin account, empowered to change fees and add/remove universal agent managers
+     */
     constructor(address admin) {
         _admin = admin;
     }
 
-    function admin() public view returns (address) {
-        return _admin;
-    }
+    // External functions
 
-    function transferAdmin(address newAdmin) external {
-        require(msg.sender == _admin, "Caller is not the admin");
-
+    /**
+     * @notice transfer control to a new admin
+     * @param newAdmin - the address of the new admin
+     */
+    function transferAdmin(address newAdmin) external onlyAdmin {
         _admin = newAdmin;
     }
 
-    function setProtocolFeeCollector(address protocolFeeCollector) external {
-        require(msg.sender == _admin, "Caller is not the admin");
-
+    /**
+     * @notice Set the destination address for protocol fees
+     * @dev Fees are transferred in `withdrawProtocolFees`. Implemented in `Settings`
+     *      The fee collector has no default, and must be manually set by the admin account;
+     *      fees cannot be withdrawn until the recipient is set 
+     * @param protocolFeeCollector - the destination address for protocol fees
+     */
+    function setProtocolFeeCollector(address protocolFeeCollector) external onlyAdmin {
         _setProtocolFeeCollector(protocolFeeCollector);
     }
 
-    function setProtocolWithdrawFee(uint128 fee) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    /**
+     * @notice Set the protocol withdrawal fee
+     * @dev Implemented in `Settings`, subject to `_MAX_PROTOCOL_WITHDRAW_FEE`
+     * @param fee - amount of the protocol fee
+     */
+    function setProtocolWithdrawFee(uint128 fee) external onlyAdmin {
         _setProtocolWithdrawFee(fee);
     }
 
-    function setProtocolSwapFee(uint128 fee) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    /**
+     * @notice Set the protocol swap fee
+     * @dev The protocol swap fee is a percentage of the pool swap fee (which can be zero)
+     *      Implemented in `Settings`, subject to `_MAX_PROTOCOL_SWAP_FEE`
+     * @param fee - the destination address for protocol fees
+     */
+    function setProtocolSwapFee(uint128 fee) external onlyAdmin {
         _setProtocolSwapFee(fee);
     }
 
-    function setProtocolFlashLoanFee(uint128 fee) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    /**
+     * @notice Set the protocol flash loan fee
+     * @dev The flash loan fee is a percentage of the total amount borrowed (per token).
+     *      Implemented in `Settings`, subject to `_MAX_PROTOCOL_FLASH_LOAN_FEE`
+     * @param fee - the destination address for protocol fees
+     */
+    function setProtocolFlashLoanFee(uint128 fee) external onlyAdmin {
         _setProtocolFlashLoanFee(fee);
     }
 
-    function authorizeTrustedOperatorReporter(address reporter) external override {
-        require(msg.sender == _admin, "Caller is not the admin");
-
-        _trustedOperatorReporters.add(reporter);
+    /**
+     * @notice Add a new universal agent manager (responsible for maintaining the list of universal agents)
+     * @param manager - the new universal agent manager
+     */
+    function addUniversalAgentManager(address manager) external override onlyAdmin {
+        _universalAgentManagers.add(manager);
     }
 
-    function revokeTrustedOperatorReporter(address reporter) external override {
-        require(msg.sender == _admin, "Caller is not the admin");
-
-        _trustedOperatorReporters.remove(reporter);
+    /**
+     * @notice Remove a universal agent manager (responsible for maintaining the list of universal agents)
+     * @param manager - the new universal agent manager
+     */
+    function removeUniversalAgentManager(address manager) external override onlyAdmin {
+        _universalAgentManagers.remove(manager);
     }
 
+    /**
+     * @notice Cause some portion of the accumulated protocol fees to be transferred to the registered destination address
+     * @dev Fee balances are stored in `Settings`; the amount available for each token is available through 
+     *      `getCollectedFeesByToken` in `VaultAccounting`
+     * @param tokens - the list of tokens whose fees we want to collect
+     * @param amounts - the amount of each token we wish to transfer (does not have to be the full amount)
+     */
     function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external override {
         require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
@@ -90,5 +142,15 @@ abstract contract Admin is IVault, Settings, UserBalance {
             _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]] - amounts[i];
             tokens[i].safeTransfer(recipient, amounts[i]);
         }
+    }
+
+    // Public functions
+
+    /**
+     * @notice Getter for the privileged admin account
+     * @return admin account address
+     */
+    function admin() public view returns (address) {
+        return _admin;
     }
 }

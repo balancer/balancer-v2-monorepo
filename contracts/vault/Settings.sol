@@ -13,16 +13,31 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
+
+// Needed for struct arguments
 pragma experimental ABIEncoderV2;
+
+// Imports
 
 import "../math/FixedPoint.sol";
 import "./IVault.sol";
 
+// Contracts
+
 // solhint-disable var-name-mixedcase
 
+/**
+ * @title Define and manage protocol-level fees
+ * @author Balancer Labs
+ * @notice Defines fees for vault withdrawals, swaps, and flash loans
+ * @dev With User Balance "wallets", users can remove liquidity from pools and perform swaps without
+ *      fees; withdrawal fees only apply to funds leaving the vault.
+ */
 abstract contract Settings is IVault {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
+
+    // State variables
 
     // Stores the fee collected per each token that is only withdrawable by the admin.
     mapping(IERC20 => uint256) internal _collectedProtocolFees;
@@ -47,21 +62,52 @@ abstract contract Settings is IVault {
 
     uint256 private immutable _MAX_PROTOCOL_FLASH_LOAN_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
-    function _setProtocolFeeCollector(address protocolFeeCollector) internal {
-        _protocolFeeCollector = protocolFeeCollector;
-    }
+    // Function declarations
 
+    // Public functions
+
+    /**
+     * @notice Getter for the protocol fee collector address
+     * @return address of the fee collector account
+     */
     function protocolFeeCollector() public view returns (address) {
         return _protocolFeeCollector;
+    }
+
+    /**
+     * @notice Getter for the protocol withdrawal fee
+     * @return amount of the fee
+     */
+    function protocolWithdrawFee() public view returns (uint128) {
+        return _protocolWithdrawFee;
+    }
+
+    /**
+     * @notice Getter for the protocol swap fee
+     * @dev This fee is a percentage of the pool's swap fee (which can be zero)
+     * @return amount of the fee
+     */
+    function protocolSwapFee() public view returns (uint128) {
+        return _protocolSwapFee;
+    }
+
+    /**
+     * @notice Getter for the protocol flash loan fee
+     * @return amount of the fee
+     */
+    function protocolFlashLoanFee() public view returns (uint256) {
+        return _protocolFlashLoanFee;
+    }
+
+    // Internal functions
+    
+    function _setProtocolFeeCollector(address feeCollector) internal {
+        _protocolFeeCollector = feeCollector;
     }
 
     function _setProtocolWithdrawFee(uint128 newFee) internal {
         require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
         _protocolWithdrawFee = newFee;
-    }
-
-    function protocolWithdrawFee() public view returns (uint128) {
-        return _protocolWithdrawFee;
     }
 
     function _calculateProtocolWithdrawFee(uint128 amount) internal view returns (uint128) {
@@ -73,10 +119,6 @@ abstract contract Settings is IVault {
         _protocolSwapFee = newFee;
     }
 
-    function protocolSwapFee() public view returns (uint128) {
-        return _protocolSwapFee;
-    }
-
     function _calculateProtocolSwapFee(uint128 swapFeeAmount) internal view returns (uint128) {
         return swapFeeAmount.mul128(_protocolSwapFee);
     }
@@ -84,10 +126,6 @@ abstract contract Settings is IVault {
     function _setProtocolFlashLoanFee(uint256 newFee) internal {
         require(newFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FlashLoan fee too high");
         _protocolFlashLoanFee = newFee;
-    }
-
-    function protocolFlashLoanFee() public view returns (uint256) {
-        return _protocolFlashLoanFee;
     }
 
     function _calculateProtocolFlashLoanFee(uint256 swapFeeAmount) internal view returns (uint256) {

@@ -15,18 +15,28 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./IVault.sol";
-import "./Settings.sol";
-import "./VaultAccounting.sol";
-import "./UserBalance.sol";
-import "./PoolRegistry.sol";
+// Imports
+
 import "./FlashLoanProvider.sol";
-import "./Settings.sol";
 import "./Swaps.sol";
 import "./Admin.sol";
 
+// Contracts
+
 // solhint-disable no-empty-blocks
 
-contract Vault is IVault, Settings, VaultAccounting, UserBalance, PoolRegistry, FlashLoanProvider, Swaps, Admin {
-    constructor(address _admin) Admin(_admin) {}
+/**
+ * @title Vault contract - stores all protocol assets, performs swaps and flash loans
+ * @author Balancer Labs
+ * @notice The core contract of Balancer v2; contains data structures that store pools in
+ *         encoded form. New pools register themselves with the vault, which performs swaps
+ *         using logic in the pool contracts.
+ */
+contract Vault is Admin, Swaps, FlashLoanProvider {
+    /**
+     * @notice Creates the vault, controlled by an admin account
+     * @dev The admin account can set protocol-level parameters, and collect fees
+     * @param admin - address of the vault controller account
+     */
+    constructor(address admin) Admin(admin) {}
 }

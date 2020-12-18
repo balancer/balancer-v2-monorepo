@@ -25,7 +25,7 @@ contract MockPoolController {
     constructor(IVault _vault) {
         vault = _vault;
 
-        require(_vault.isOperatorFor(address(0), address(this)), "Not a Trusted Operator during construction");
+        require(_vault.isAgentFor(address(0), address(this)), "Not a Universal Agent during construction");
     }
 }
 

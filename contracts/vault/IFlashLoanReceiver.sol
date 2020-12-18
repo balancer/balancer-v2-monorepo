@@ -16,9 +16,24 @@ pragma solidity ^0.7.1;
 
 // Inspired by Aave Protocol's IFlashLoanReceiver
 
+// Imports
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+// Interfaces
+
+/**
+ * @title Interface for receiving flash loans
+ * @author Balancer Labs
+ */
 interface IFlashLoanReceiver {
+    /**
+     * @notice Contracts implementing flash loans must override this function
+     * @param tokens - the tokens being borrowed
+     * @param amounts - the amount of each token
+     * @param feeAmounts - fees charged by the protocol (must return funds + fees)
+     * @param receiverData - any extra data required by the loan contract
+     */
     function receiveFlashLoan(
         IERC20[] calldata tokens,
         uint256[] calldata amounts,

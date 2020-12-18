@@ -23,8 +23,8 @@ export async function setupController(
   const factory = await deploy(`${controllerName}Factory`, { args: [vault.address] });
   // We could reuse this factory if we saved it accross tokenizer deployments
 
-  // Authorize factory so that created controllers are trusted operators
-  await vault.connect(admin).authorizeTrustedOperatorReporter(factory.address);
+  // Authorize factory so that created controllers are universal agents
+  await vault.connect(admin).addUniversalAgentManager(factory.address);
 
   const salt = ethers.utils.id(Math.random().toString());
 

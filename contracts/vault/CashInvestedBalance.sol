@@ -39,8 +39,19 @@ import "../math/FixedPoint.sol";
 // 128 bit values), using memory is strictly less gas performant. Therefore, we do manual packing and unpacking. The
 // type we use to represent these values is bytes32, as it doesn't have any arithmetic operations and therefore reduces
 // the chance of misuse.
+
+// Libraries
+
+/**
+ * @title Encode/Decode the cash/managed portions of a User Balance record
+ * @dev `PoolRegistry`, `PoolBalance`, and `Swaps` may return user balances in this encoded Bytes32 form
+ *       (to save on gas/storage). Use this library to extract numeric values
+ * @author Balancer Labs
+ */
 library CashInvestedBalance {
     using FixedPoint for uint128;
+
+    // State variables
 
     // The 'cash' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the
     // 'invested' part uses the most significant 128 bits.
@@ -48,6 +59,10 @@ library CashInvestedBalance {
     // Mask used to encode/decode pool balances into 'cash' and 'invested' balances
     uint128 private constant _MASK = 2**(128) - 1;
 
+    // Function declarations
+
+    // Internal functions
+    
     /**
      * @dev The amount of Pool tokens currently in the Vault.
      */
