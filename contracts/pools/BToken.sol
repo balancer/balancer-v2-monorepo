@@ -67,7 +67,7 @@ abstract contract BTokenBase is IERC20 {
 
     // Transfer tokens from sender to recipient
     // Adjust balances, and emit a Transfer event
-   function _move(
+    function _move(
         address sender,
         address recipient,
         uint256 amount
@@ -86,7 +86,7 @@ abstract contract BTokenBase is IERC20 {
 
     // Transfer from recipient to this contract
     // Emits a transfer event if successful
-     function _pull(address sender, uint256 amount) internal {
+    function _pull(address sender, uint256 amount) internal {
         _move(sender, address(this), amount);
     }
 }
@@ -150,7 +150,7 @@ contract BToken is BTokenBase {
      * @param amount - number of tokens being approved
      * @return bool - result of the approval (will always be true if it doesn't revert)
      */
-     function increaseApproval(address spender, uint256 amount) external returns (bool) {
+    function increaseApproval(address spender, uint256 amount) external returns (bool) {
         _allowance[msg.sender][spender] = _allowance[msg.sender][spender].add(amount);
 
         emit Approval(msg.sender, spender, _allowance[msg.sender][spender]);
