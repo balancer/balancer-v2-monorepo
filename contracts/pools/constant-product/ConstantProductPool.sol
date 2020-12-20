@@ -230,12 +230,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         QuoteRequestGivenIn calldata request,
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
-    )
-        external
-        view
-        override
-        returns (uint128)
-    {
+    ) external view override returns (uint128) {
         uint128 adjustedIn = _subtractSwapFee(request.amountIn);
 
         // Calculate the maximum amount that can be taken out of the pool
@@ -263,12 +258,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         QuoteRequestGivenOut calldata request,
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
-    )
-        external
-        view
-        override
-        returns (uint128)
-    {
+    ) external view override returns (uint128) {
         // Calculate the minimum amount that must be put into the pool
         uint128 minimumAmountIn = _inGivenOut(
             currentBalanceTokenIn,
@@ -310,11 +300,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint128[] calldata maxAmountsIn,
         bool transferTokens,
         address beneficiary
-    )
-        external
-        override
-        nonReentrant
-    {
+    ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
@@ -356,11 +342,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint256[] calldata minAmountsOut,
         bool withdrawTokens,
         address beneficiary
-    )
-        external
-        override
-        nonReentrant
-    {
+    ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
@@ -439,6 +421,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
     }
 
     function _resetAccSwapFees(uint128[] memory balances) private {
+        // solhint-disable-previous-line no-empty-blocks
         //TODO: reset swap fees
     }
 

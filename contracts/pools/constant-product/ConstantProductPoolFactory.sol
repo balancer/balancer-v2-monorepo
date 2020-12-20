@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-// Imports 
+// Imports
 import "../../vault/IVault.sol";
 import "../BasePoolFactory.sol";
 import "./ConstantProductPool.sol";

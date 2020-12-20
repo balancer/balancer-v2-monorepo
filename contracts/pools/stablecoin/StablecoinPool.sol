@@ -94,7 +94,6 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     // External functions
 
-
     /**
      * @notice Getter for the core Vault contract
      * @return Vault interface
@@ -144,12 +143,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    )
-        external
-        view
-        override
-        returns (uint128)
-    {
+    ) external view override returns (uint128) {
         uint128 adjustedIn = _subtractSwapFee(request.amountIn);
         uint128 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
         return maximumAmountOut;
@@ -170,12 +164,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    )
-        external
-        view
-        override
-        returns (uint128)
-    {
+    ) external view override returns (uint128) {
         uint128 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
         return _addSwapFee(minimumAmountIn);
     }
@@ -209,11 +198,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         uint128[] calldata maxAmountsIn,
         bool transferTokens,
         address beneficiary
-    )
-        external
-        override
-        nonReentrant
-    {
+    ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
@@ -255,11 +240,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         uint256[] calldata minAmountsOut,
         bool withdrawTokens,
         address beneficiary
-    )
-        external
-        override
-        nonReentrant
-    {
+    ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
@@ -299,6 +280,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     }
 
     function _resetAccSwapFees(uint128[] memory balances) internal {
+        // solhint-disable-previous-line no-empty-blocks
         //TODO: reset swap fees
     }
 
