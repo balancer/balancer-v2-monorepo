@@ -13,14 +13,18 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
-pragma experimental ABIEncoderV2;
 
+// Imports 
 import "../../vault/IVault.sol";
-
 import "../BasePoolFactory.sol";
-
 import "./ConstantProductPool.sol";
 
+// Contracts
+
+/**
+ * @title Create a new ConstantProductPool
+ * @author Balancer new Labs
+ */
 contract ConstantProductPoolFactory is BasePoolFactory {
     constructor(IVault _vault) BasePoolFactory(_vault) {
         // solhint-disable-previous-line no-empty-blocks

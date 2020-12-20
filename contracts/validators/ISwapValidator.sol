@@ -12,17 +12,22 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma experimental ABIEncoderV2;
-
 pragma solidity ^0.7.1;
+
+// Imports
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-
 import "../math/FixedPoint.sol";
-
 import "../vault/IVault.sol";
 
+// Interfaces
+
+/**
+ * @title Base interface for all SwapValidators
+ * @notice Swaps are performed in the vault, but validated using externally provided logic
+ * @author Balancer Labs
+ */
 interface ISwapValidator {
     function validate(
         IVault.SwapKind kind,

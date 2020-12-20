@@ -12,14 +12,21 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma experimental ABIEncoderV2;
-
 pragma solidity ^0.7.1;
+
+// Imports
 
 import "hardhat/console.sol";
 
 import "./ISwapValidator.sol";
 
+// Contracts
+
+/**
+ * @title One-to-one SwapValidator
+ * @author Balancer Labs
+ * @notice Ensure the swap is timely, and all balances are as expected
+ */
 contract OneToOneSwapValidator is ISwapValidator {
     using SafeCast for uint256;
     using SafeCast for int256;
@@ -27,6 +34,17 @@ contract OneToOneSwapValidator is ISwapValidator {
     using FixedPoint for int256;
     using FixedPoint for uint128;
 
+    // Function declarations
+
+    // External functions
+
+    /**
+     * @notice Validate a swap (approve for execution)
+     * param IVault.SwapKind - Direction (In or Out) - unused
+     * @param tokens - the tokens being swapped
+     * @param vaultDeltas - the net effect of the swap on the balances in the vault
+     * @param data - any external data needed by the validator
+     */
     function validate(
         IVault.SwapKind,
         IERC20[] calldata tokens,
@@ -47,7 +65,7 @@ contract OneToOneSwapValidator is ISwapValidator {
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp <= deadline, "Deadline expired");
 
-        //Validate
+        // Validate
         for (uint256 i = 0; i < tokens.length; ++i) {
             if (tokens[i] == overallTokenIn) {
                 require(vaultDeltas[i] <= maxAmountIn, "Excessive amount in");
