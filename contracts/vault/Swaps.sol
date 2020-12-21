@@ -491,7 +491,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         balances = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
+            balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
         }
 
         return balances;
