@@ -8,7 +8,7 @@ import { deployPoolFromFactory, PoolName } from '../helpers/pools';
 import { toFixedPoint } from '../helpers/fixedPoint';
 import { pick } from 'lodash';
 
-export const tokenSymbols = ['AAA', 'BBB'];
+export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH'];
 
 export async function setupEnvironment(): Promise<{
   vault: Contract;
@@ -39,7 +39,7 @@ export async function setupEnvironment(): Promise<{
   return { vault, validator, tokens, trader };
 }
 
-export async function setupStrategyAndPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {
+export async function deployPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {
   const { admin, creator } = await getSigners();
 
   const symbols = Object.keys(tokens);
@@ -78,8 +78,13 @@ export async function setupStrategyAndPool(vault: Contract, tokens: TokenList, p
   return pool.getPoolId();
 }
 
-export async function getConstantProductPool(vault: Contract, tokens: TokenList): Promise<string> {
-  return setupStrategyAndPool(vault, tokens, 'ConstantProductPool');
+export async function getConstantProductPool(
+  vault: Contract,
+  tokens: TokenList,
+  size: number,
+  offset?: number
+): Promise<string> {
+  return deployPool(vault, pickTokens(tokens, size, offset), 'ConstantProductPool');
 }
 
 export async function getStablecoinPool(
@@ -88,11 +93,11 @@ export async function getStablecoinPool(
   size: number,
   offset?: number
 ): Promise<string> {
-  return setupStrategyAndPool(
-    vault,
-    pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0))),
-    'StablecoinPool'
-  );
+  return deployPool(vault, pickTokens(tokens, size, offset), 'StablecoinPool');
+}
+
+function pickTokens(tokens: TokenList, size: number, offset?: number): TokenList {
+  return pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)));
 }
 
 async function getSigners(): Promise<{
