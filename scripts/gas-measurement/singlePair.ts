@@ -11,7 +11,7 @@ let tokens: TokenList;
 
 let trader: SignerWithAddress;
 
-const MAX_POOLS = 1;
+const MAX_POOLS = 8;
 
 async function main() {
   ({ vault, validator, tokens, trader } = await setupEnvironment());
