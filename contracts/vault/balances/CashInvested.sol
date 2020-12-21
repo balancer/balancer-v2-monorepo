@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "../math/FixedPoint.sol";
+import "../../math/FixedPoint.sol";
 
 // This library is used to create a data structure that represents a token's balance for a Pool. 'cash' is how many
 // tokens the Pool has sitting inside of the Vault. 'invested' is how many tokens were withdrawn from the Vault by the
@@ -39,7 +39,7 @@ import "../math/FixedPoint.sol";
 // 128 bit values), using memory is strictly less gas performant. Therefore, we do manual packing and unpacking. The
 // type we use to represent these values is bytes32, as it doesn't have any arithmetic operations and therefore reduces
 // the chance of misuse.
-library CashInvestedBalance {
+library CashInvested {
     using FixedPoint for uint128;
 
     // The 'cash' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the
@@ -140,27 +140,41 @@ library CashInvestedBalance {
         return invested(balance) > 0;
     }
 
-    // Alternate mode
+    // Alternative mode for two token pools
 
-    function fromRawToTokenA(bytes32 cashcash, bytes32 investedinvested) internal pure returns (bytes32) {
+    // Instead of storing cash and invested for each token in a single storage slot, two token pools store the cash for
+    // both tokens in the same slot, and the invested for both in another one. This reduces the gas cost for swaps,
+    // because the only slot that needs to be updated is the one with the cash. However, it also means that managing
+    // balances is more cumbersome, as both tokens need to be read/written at the same time.
+    // The field with both cash balances packed is called cashAcashB, and the one with invested amounts is called
+    // investedAinvestedB. These two are collectively called the 'shared' balance fields. In both of these, the portion
+    // that corresponds to token A is stored in the most significant 128 bits of a 256 bit word, while token B's part
+    // uses the least significant 128 bits.
+
+    /**
+     * @dev Unpacks the shared token A and token B cash and invested balances into the balance for token A.
+     */
+    function fromSharedToTokenA(bytes32 cashACashB, bytes32 investedAInvestedB) internal pure returns (bytes32) {
         return
-            CashInvestedBalance.toBalance(
-                uint128(uint256(cashcash) & _MASK),
-                uint128(uint256(investedinvested) & _MASK)
-            );
+            toBalance(uint128(uint256(cashACashB >> 128) & _MASK), uint128(uint256(investedAInvestedB >> 128) & _MASK));
     }
 
-    function fromRawToTokenB(bytes32 cashcash, bytes32 investedinvested) internal pure returns (bytes32) {
-        return
-            CashInvestedBalance.toBalance(
-                uint128(uint256(cashcash >> 128) & _MASK),
-                uint128(uint256(investedinvested >> 128) & _MASK)
-            );
+    /**
+     * @dev Unpacks the shared token A and token B cash and invested balances into the balance for token B.
+     */
+    function fromSharedToTokenB(bytes32 cashACashB, bytes32 investedAInvestedB) internal pure returns (bytes32) {
+        return toBalance(uint128(uint256(cashACashB) & _MASK), uint128(uint256(investedAInvestedB) & _MASK));
     }
 
-    function toCashCash(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
-        return bytes32((uint256(cash(tokenBBalance)) << 128) + cash(tokenABalance));
+    /**
+     * @dev Returns the cashAcashB shared field, given the current balances for tokenA and tokenB.
+     */
+    function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
+        return bytes32((uint256(cash(tokenABalance)) << 128) + cash(tokenBBalance));
     }
 
-    function toInvestedInvested(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {}
+    /**
+     * @dev Returns the investedAinvestedB shared field, given the current balances for tokenA and tokenB.
+     */
+    function toSharedInvested(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {}
 }

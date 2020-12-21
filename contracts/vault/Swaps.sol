@@ -34,17 +34,18 @@ import "./interfaces/ITupleTradingStrategy.sol";
 import "../validators/ISwapValidator.sol";
 
 import "./IVault.sol";
-import "./CashInvestedBalance.sol";
 import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
 import "./UserBalance.sol";
+
+import "./balances/CashInvested.sol";
 
 abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
-    using CashInvestedBalance for bytes32;
+    using CashInvested for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -314,8 +315,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         (
             bytes32 tokenABalance,
             bytes32 tokenBBalance,
-            TwoTokenBalances storage poolBalances
-        ) = _getTwoTokenPoolBalances(request.poolId, request.tokenIn, request.tokenOut);
+            TwoTokenSharedBalances storage poolSharedBalances
+        ) = _getTwoTokenPoolSharedBalances(request.poolId, request.tokenIn, request.tokenOut);
 
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
@@ -359,15 +360,16 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         require(tokenOutBalance.total() > 0, "Fully draining token out");
 
-        // 2: Update Pool balances - these have been deducted the swap protocol fees
-
+        bytes32 newSharedCash;
         if (request.tokenIn < request.tokenOut) {
             // in is A, out is B
-            poolBalances.cashcash = CashInvestedBalance.toCashCash(tokenInBalance, tokenOutBalance);
+            newSharedCash = CashInvested.toSharedCash(tokenInBalance, tokenOutBalance);
         } else {
             // in is B, out is A
-            poolBalances.cashcash = CashInvestedBalance.toCashCash(tokenOutBalance, tokenInBalance);
+            newSharedCash = CashInvested.toSharedCash(tokenOutBalance, tokenInBalance);
         }
+
+        poolSharedBalances.cashAcashB = newSharedCash;
     }
 
     function _processPairTradingStrategyQuoteRequest(
@@ -406,8 +408,6 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         }
 
         require(tokenOutBalance.total() > 0, "Fully draining token out");
-
-        // 2: Update Pool balances - these have been deducted the swap protocol fees
         _poolPairTokenBalance[request.poolId][request.tokenIn] = tokenInBalance;
         _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
     }

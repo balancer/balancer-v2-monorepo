@@ -21,16 +21,25 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../vendor/EnumerableSet.sol";
 
 import "./IVault.sol";
-import "./CashInvestedBalance.sol";
-import "./PoolBalance.sol";
 import "./VaultAccounting.sol";
 import "./UserBalance.sol";
 
-abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolBalance {
+import "./balances/CashInvested.sol";
+import "./balances/TuplePoolsBalance.sol";
+import "./balances/PairPoolsBalance.sol";
+import "./balances/TwoTokenPoolsBalance.sol";
+
+abstract contract PoolRegistry is
+    ReentrancyGuard,
+    IVault,
+    VaultAccounting,
+    UserBalance,
+    TuplePoolsBalance,
+    PairPoolsBalance,
+    TwoTokenPoolsBalance
+{
     using EnumerableSet for EnumerableSet.BytesSet;
-
-    using CashInvestedBalance for bytes32;
-
+    using CashInvested for bytes32;
     using FixedPoint for uint128;
 
     struct PoolStrategy {
@@ -110,7 +119,34 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
         (, StrategyType strategyType) = fromPoolId(poolId);
 
-        return _getPoolTokens(poolId, strategyType);
+        if (strategyType == IVault.StrategyType.PAIR) {
+            return _getPairPoolTokens(poolId);
+        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+            return _getTwoTokenPoolTokens(poolId);
+        } else {
+            return _getTuplePoolTokens(poolId);
+        }
+    }
+
+    /**
+     * @dev Returns the balance for a token in a Pool.
+     *
+     * Requirements:
+     *
+     * - `token` must be in the Pool.
+     */
+    function _getPoolTokenBalance(
+        bytes32 poolId,
+        IVault.StrategyType strategyType,
+        IERC20 token
+    ) internal view returns (bytes32) {
+        if (strategyType == IVault.StrategyType.PAIR) {
+            return _getPairPoolTokenBalance(poolId, token);
+        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+            return _getTwoTokenPoolBalance(poolId, token);
+        } else {
+            return _getTuplePoolBalance(poolId, token);
+        }
     }
 
     function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens)
@@ -236,6 +272,18 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         _;
     }
 
+    function _isPoolInvested(
+        bytes32 poolId,
+        IVault.StrategyType strategyType,
+        IERC20 token
+    ) internal view returns (bool) {
+        if (strategyType == IVault.StrategyType.PAIR) {
+            return _isPairPoolInvested(poolId, token);
+        } else {
+            return _isTuplePoolInvested(poolId, token);
+        }
+    }
+
     function authorizePoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
@@ -273,7 +321,11 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
         (, StrategyType strategyType) = fromPoolId(poolId);
-        _investPoolCash(poolId, strategyType, token, amount);
+        if (strategyType == IVault.StrategyType.PAIR) {
+            _investPairPoolCash(poolId, token, amount);
+        } else {
+            _investTuplePoolCash(poolId, token, amount);
+        }
 
         _pushTokens(token, msg.sender, amount, false);
     }
@@ -287,7 +339,11 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         uint128 divestedAmount = _pullTokens(token, msg.sender, amount);
 
         (, StrategyType strategyType) = fromPoolId(poolId);
-        _divestPoolCash(poolId, strategyType, token, divestedAmount);
+        if (strategyType == IVault.StrategyType.PAIR) {
+            _divestPairPoolCash(poolId, token, divestedAmount);
+        } else {
+            _divestTuplePoolCash(poolId, token, divestedAmount);
+        }
     }
 
     function updateInvested(
@@ -296,7 +352,11 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
         (, StrategyType strategyType) = fromPoolId(poolId);
-        _setPoolInvestment(poolId, strategyType, token, amount);
+        if (strategyType == IVault.StrategyType.PAIR) {
+            _setPairPoolInvestment(poolId, token, amount);
+        } else {
+            _setTuplePoolInvestment(poolId, token, amount);
+        }
     }
 
     function _isPoolInvestmentManager(

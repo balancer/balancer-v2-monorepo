@@ -14,10 +14,10 @@
 
 pragma solidity ^0.7.1;
 
-import "../vault/CashInvestedBalance.sol";
+import "../vault/balances/CashInvested.sol";
 
-contract CashInvestedBalanceMock {
-    using CashInvestedBalance for bytes32;
+contract CashInvestedMock {
+    using CashInvested for bytes32;
 
     function cash(bytes32 balance) public pure returns (uint128) {
         return balance.cash();
@@ -32,7 +32,7 @@ contract CashInvestedBalanceMock {
     }
 
     function toBalance(uint128 cashBalance, uint128 investedBalance) public pure returns (bytes32) {
-        return CashInvestedBalance.toBalance(cashBalance, investedBalance);
+        return CashInvested.toBalance(cashBalance, investedBalance);
     }
 
     function increaseCash(bytes32 balance, uint128 amount) public pure returns (bytes32) {
