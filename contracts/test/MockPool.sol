@@ -28,23 +28,27 @@ contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
     using FixedPoint for uint128;
 
     IVault private immutable _vault;
-    bytes32 public immutable poolId;
+    bytes32 private immutable _poolId;
 
     constructor(IVault vault, IVault.StrategyType strategyType) {
-        poolId = vault.newPool(address(this), strategyType);
+        _poolId = vault.newPool(address(this), strategyType);
         _vault = vault;
     }
 
+    function getPoolId() external view returns (bytes32) {
+        return _poolId;
+    }
+
     function addLiquidity(IERC20[] memory tokens, uint128[] memory amounts) external {
-        _vault.addLiquidity(poolId, msg.sender, tokens, amounts, false);
+        _vault.addLiquidity(_poolId, msg.sender, tokens, amounts, false);
     }
 
     function removeLiquidity(IERC20[] memory tokens, uint128[] memory amounts) external {
-        _vault.removeLiquidity(poolId, msg.sender, tokens, amounts, false);
+        _vault.removeLiquidity(_poolId, msg.sender, tokens, amounts, false);
     }
 
     function paySwapProtocolFees(IERC20[] memory tokens, uint128[] memory collectedFees) external {
-        _vault.paySwapProtocolFees(poolId, tokens, collectedFees);
+        _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
     }
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it

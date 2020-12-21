@@ -64,7 +64,7 @@ describe('OneToOneSwapValidator', () => {
 
       await pool.setMultiplier(toFixedPoint(2));
 
-      poolIds.push(await pool.poolId());
+      poolIds.push(await pool.getPoolId());
     }
 
     swaps = [
