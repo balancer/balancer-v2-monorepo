@@ -2,7 +2,7 @@ import { encodeValidatorData, FundManagement, getTokensSwaps, toSwapIn } from '.
 import { TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { getCWPPool, getFlattenedPool, printGas, setupEnvironment, tokenSymbols } from './misc';
+import { getConstantProductPool, getStablecoinPool, printGas, setupEnvironment, tokenSymbols } from './misc';
 import { MAX_UINT128, MAX_UINT256 } from '../../test/helpers/constants';
 
 let vault: Contract;
@@ -18,23 +18,23 @@ async function main() {
 
   console.log('== Single token pair in multiple pools ==');
 
-  console.log(`\n# Constant Weighted Product Trading Strategy`);
+  console.log(`\n# Constant Product Pools`);
 
-  await singlePair(() => getCWPPool(vault, tokens), false);
-  //await singlePair(() => getCWPPool(vault, tokens), true);
+  await singlePair(() => getConstantProductPool(vault, tokens), false);
+  await singlePair(() => getConstantProductPool(vault, tokens), true);
 
-  //console.log(`\n# Flattened Trading Strategy with 2 tokens`);
-  //
-  //  await singlePair(() => getFlattenedPool(vault, tokens, 2), false);
-  //  await singlePair(() => getFlattenedPool(vault, tokens, 2), true);
-  //
-  //  console.log(`\n# Flattened Trading Strategy with 4 tokens`);
-  //
-  //  await singlePair(() => getFlattenedPool(vault, tokens, 4), false);
-  //  await singlePair(() => getFlattenedPool(vault, tokens, 4), true);
+  console.log(`\n# Stablecoin Pools with 2 tokens`);
+
+  await singlePair(() => getStablecoinPool(vault, tokens, 2), false);
+  await singlePair(() => getStablecoinPool(vault, tokens, 2), true);
+
+  console.log(`\n# Stablecoin Pools with 4 tokens`);
+
+  await singlePair(() => getStablecoinPool(vault, tokens, 4), false);
+  await singlePair(() => getStablecoinPool(vault, tokens, 4), true);
 }
 
-async function singlePair(getPool: () => Promise<string>, useUserBalance: boolean) {
+async function singlePair(getPoolId: () => Promise<string>, useUserBalance: boolean) {
   console.log(`\n## ${useUserBalance ? 'Using User Balance' : 'Sending and receiving tokens'}`);
 
   const funds: FundManagement = {
@@ -44,9 +44,9 @@ async function singlePair(getPool: () => Promise<string>, useUserBalance: boolea
     depositToUserBalance: useUserBalance,
   };
 
-  const pools: Array<string> = [];
+  const poolIds: Array<string> = [];
   for (let i = 0; i < MAX_POOLS; ++i) {
-    pools.push(await getPool());
+    poolIds.push(await getPoolId());
   }
 
   // Trade token 0 for token 1, putting 500 of 0 into each pool
@@ -56,7 +56,7 @@ async function singlePair(getPool: () => Promise<string>, useUserBalance: boolea
   for (let poolAmount = 1; poolAmount <= MAX_POOLS; ++poolAmount) {
     const [tokenAddresses, swaps] = getTokensSwaps(
       tokens,
-      pools.slice(0, poolAmount).map((poolId) => {
+      poolIds.slice(0, poolAmount).map((poolId) => {
         return { poolId, tokenIn, tokenOut, amount: 500 };
       })
     );

@@ -27,9 +27,9 @@ import "@openzeppelin/contracts/math/Math.sol";
 
 import "../math/FixedPoint.sol";
 
-import "../strategies/ITradingStrategy.sol";
-import "../strategies/IPairTradingStrategy.sol";
-import "../strategies/ITupleTradingStrategy.sol";
+import "./interfaces/ITradingStrategy.sol";
+import "./interfaces/IPairTradingStrategy.sol";
+import "./interfaces/ITupleTradingStrategy.sol";
 
 import "../validators/ISwapValidator.sol";
 
@@ -455,5 +455,45 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexIn, tokenInBalance);
         _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexOut, tokenOutBalance);
+    }
+
+    //Pay swap protocol fees
+    function paySwapProtocolFees(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        uint128[] calldata collectedFees
+    ) external override withExistingPool(poolId) onlyPool(poolId) returns (uint128[] memory balances) {
+        require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
+
+        (, StrategyType strategyType) = fromPoolId(poolId);
+
+        if (strategyType == StrategyType.TWO_TOKEN) {
+            require(tokens.length == 2);
+
+            IERC20 tokenX = tokens[0];
+            IERC20 tokenY = tokens[1];
+            uint128 feeToCollectTokenX = collectedFees[0].mul128(protocolSwapFee());
+            uint128 feeToCollectTokenY = collectedFees[1].mul128(protocolSwapFee());
+
+            _decreaseTwoTokenPoolCash(poolId, tokenX, feeToCollectTokenX, tokenY, feeToCollectTokenY);
+        } else {
+            for (uint256 i = 0; i < tokens.length; ++i) {
+                uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
+                _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
+
+                if (strategyType == StrategyType.PAIR) {
+                    _decreasePairPoolCash(poolId, tokens[i], feeToCollect);
+                } else {
+                    _decreaseTuplePoolCash(poolId, tokens[i], feeToCollect);
+                }
+            }
+        }
+
+        balances = new uint128[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
+        }
+
+        return balances;
     }
 }

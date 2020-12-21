@@ -7,12 +7,13 @@ import * as expectEvent from '../helpers/expectEvent';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PairTS, setupPool, TupleTS } from '../../scripts/helpers/pools';
+import { PairTS, TupleTS } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
 describe('Vault - swaps', () => {
-  let controller: SignerWithAddress;
+  let admin: SignerWithAddress;
+  let lp: SignerWithAddress;
   let trader: SignerWithAddress;
   let other: SignerWithAddress;
 
@@ -26,7 +27,7 @@ describe('Vault - swaps', () => {
   let funds: FundManagement;
 
   before('setup', async () => {
-    [, controller, trader, other] = await ethers.getSigners();
+    [, admin, lp, trader, other] = await ethers.getSigners();
   });
 
   context('with odd pools using Pair Trading Strategies', () => {
@@ -39,39 +40,45 @@ describe('Vault - swaps', () => {
 
   function testSwaps(oddPairs: boolean) {
     beforeEach('deploy vault & tokens', async () => {
-      vault = await deploy('Vault', { args: [controller.address] });
+      vault = await deploy('Vault', { args: [admin.address] });
       tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
       tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
-
-      poolIds = [];
-
-      for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-        // All pools have mock strategies with an in-out multiplier of 2
-        const strategy = await deploy('MockTradingStrategy', {
-          args: [],
-        });
-
-        strategy.setMultiplier(toFixedPoint(2));
-
-        poolIds.push(
-          await (() => {
-            // Odd pools have Pair Trading Strategies, even ones Tuple
-            const poolType = poolIdIdx % 2 ? (oddPairs ? PairTS : TupleTS) : oddPairs ? TupleTS : PairTS;
-
-            return setupPool(vault, strategy, poolType, tokens, controller, [
-              ['DAI', (100e18).toString()],
-              ['MKR', (100e18).toString()],
-              ['SNX', (100e18).toString()],
-            ]);
-          })()
-        );
-      }
 
       for (const symbol in tokens) {
         // Mint tokens for trader
         await tokens[symbol].mint(trader.address, (200e18).toString());
         // Approve Vault by trader
         await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
+
+        // Mint tokens for lp
+        await tokens[symbol].mint(lp.address, (200e18).toString());
+        // Approve Vault by lp
+        await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
+      }
+
+      poolIds = [];
+      for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
+        // Odd pools have Pair Trading Strategies, even ones Tuple
+        const poolType = poolIdIdx % 2 ? (oddPairs ? PairTS : TupleTS) : oddPairs ? TupleTS : PairTS;
+
+        const pool = await deploy('MockPool', {
+          args: [vault.address, poolType],
+        });
+
+        // Let pool use lp's tokens
+        await vault.connect(lp).authorizeOperator(pool.address);
+
+        await pool
+          .connect(lp)
+          .addLiquidity(
+            [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address],
+            [(100e18).toString(), (100e18).toString(), (100e18).toString()]
+          );
+
+        // Set the initial mock pool in-out multiplier to 2
+        await pool.setMultiplier(toFixedPoint(2));
+
+        poolIds.push(await pool.poolId());
       }
 
       funds = {
@@ -237,10 +244,10 @@ describe('Vault - swaps', () => {
 
       it('only transfers tokens for the net vault balance change', async () => {
         // Make the first pool give back as much as it receives
-        const [strategyAddress] = (await vault.getPoolStrategy(poolIds[0])) as [string, unknown];
-        const strategy = await ethers.getContractAt('MockTradingStrategy', strategyAddress);
+        const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
+        const pool = await ethers.getContractAt('MockPool', poolAddress);
 
-        await strategy.setMultiplier(toFixedPoint(1));
+        await pool.setMultiplier(toFixedPoint(1));
 
         // Sell DAI in the pool where it is valuable, buy it in the one where it has a regular price
         const swaps: SwapIn[] = [
@@ -432,10 +439,10 @@ describe('Vault - swaps', () => {
 
       it('only transfers tokens for the net vault balance change', async () => {
         // Make the first pool give back as much as it receives
-        const [strategyAddress] = (await vault.getPoolStrategy(poolIds[0])) as [string, unknown];
-        const strategy = await ethers.getContractAt('MockTradingStrategy', strategyAddress);
+        const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
+        const pool = await ethers.getContractAt('MockPool', poolAddress);
 
-        await strategy.setMultiplier(toFixedPoint(1));
+        await pool.setMultiplier(toFixedPoint(1));
 
         // Sell DAI in the pool where it is valuable, buy it in the one where it has a regular price
         const swaps: SwapOut[] = [
@@ -574,38 +581,6 @@ describe('Vault - swaps', () => {
 
         const daiBalance = await vault.getUserTokenBalance(trader.address, tokens.DAI.address);
         expect(daiBalance).to.equal((2e18).toString());
-      });
-    });
-
-    describe('reentrancy', () => {
-      let swaps: SwapIn[];
-
-      beforeEach(async () => {
-        //Create a strategy that reenters the vault batchswap function.
-        const strategy = await deploy('MockTradingStrategyReentrancy', {
-          args: [vault.address],
-        });
-
-        const poolId = await setupPool(vault, strategy, PairTS, tokens, controller, [
-          ['DAI', (100e18).toString()],
-          ['MKR', (100e18).toString()],
-          ['SNX', (100e18).toString()],
-        ]);
-        swaps = [
-          {
-            poolId,
-            tokenInIndex: 1,
-            tokenOutIndex: 0,
-            amountIn: (1e18).toString(), // Sell 1e18 MKR for 2e18 DAI
-            userData: '0x',
-          },
-        ];
-      });
-
-      it('reverts if batchswap is called twice', async () => {
-        await expect(
-          vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds)
-        ).to.be.revertedWith('reentrant call');
       });
     });
 
@@ -785,6 +760,51 @@ describe('Vault - swaps', () => {
         await expect(
           vault.connect(trader).batchSwapGivenOut(ZERO_ADDRESS, '0x', toSwapOut(swaps), tokenAddresses, funds)
         ).to.be.revertedWith('Swap for same token');
+      });
+    });
+
+    describe('collect protocol swap fees', async () => {
+      let pool: Contract;
+      const protocolSwapFee = 0.01;
+
+      beforeEach('deploy pool', async () => {
+        await vault.connect(admin).setProtocolSwapFee(toFixedPoint(protocolSwapFee));
+
+        const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
+        pool = await ethers.getContractAt('MockPool', poolAddress);
+      });
+
+      it('in one token', async () => {
+        await pool.paySwapProtocolFees([tokens.DAI.address], [(5e18).toString()]);
+        expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal((0.05e18).toString());
+      });
+
+      it('in many token', async () => {
+        await pool.paySwapProtocolFees(
+          [tokens.DAI.address, tokens.MKR.address],
+          [(5e18).toString(), (10e18).toString()]
+        );
+        expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal((0.05e18).toString());
+        expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal((0.1e18).toString());
+      });
+
+      it('fails if caller is not pool', async () => {
+        await expect(
+          vault.connect(other).paySwapProtocolFees(poolIds[0], [tokens.DAI.address], [(5e18).toString()])
+        ).to.be.revertedWith('Caller is not the pool');
+      });
+
+      it('fails if token not existent', async () => {
+        const newTokens = await deployTokens(['BAT'], [18]);
+        await expect(pool.paySwapProtocolFees([newTokens.BAT.address], [(5e18).toString()])).to.be.revertedWith(
+          'Token not in pool'
+        );
+      });
+
+      it('fails if not enough balance', async () => {
+        await expect(pool.paySwapProtocolFees([tokens.DAI.address], ['20000000000000000000000'])).to.be.revertedWith(
+          'ERR_SUB_UNDERFLOW'
+        );
       });
     });
   }
