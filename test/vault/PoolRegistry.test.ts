@@ -241,7 +241,7 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
     it('the pool cannot add liquidity to single token', async () => {
       await expect(
         vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false)
-      ).to.be.revertedWith('Can only add two tokens to two token pool');
+      ).to.be.revertedWith('Must interact with all tokens in two token pool');
     });
 
     it('the pool cannot add liquidity to more than two tokens', async () => {
@@ -255,7 +255,7 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
             [5, 10, 15],
             false
           )
-      ).to.be.revertedWith('Can only add two tokens to two token pool');
+      ).to.be.revertedWith('Must interact with all tokens in two token pool');
     });
 
     it('the pool cannot add liquidity to repeated tokens', async () => {

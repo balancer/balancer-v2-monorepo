@@ -468,7 +468,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         (, StrategyType strategyType) = fromPoolId(poolId);
 
         if (strategyType == StrategyType.TWO_TOKEN) {
-            require(tokens.length == 2);
+            require(tokens.length == 2, "Must interact with all tokens in two token pool");
 
             IERC20 tokenX = tokens[0];
             IERC20 tokenY = tokens[1];

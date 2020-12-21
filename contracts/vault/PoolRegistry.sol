@@ -170,7 +170,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         (, StrategyType strategyType) = fromPoolId(poolId);
         if (strategyType == StrategyType.TWO_TOKEN) {
             // These set both tokens at once
-            require(tokens.length == 2, "Can only add two tokens to two token pool");
+            require(tokens.length == 2, "Must interact with all tokens in two token pool");
             _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0], tokens[1], amounts[1]);
         } else {
             // Other pool types have their tokens added one by one
@@ -198,7 +198,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         (, StrategyType strategyType) = fromPoolId(poolId);
         if (strategyType == StrategyType.TWO_TOKEN) {
             // These set both tokens at once
-            require(tokens.length == 2);
+            require(tokens.length == 2, "Must interact with all tokens in two token pool");
             _decreaseTwoTokenPoolCash(poolId, tokens[0], amounts[0], tokens[1], amounts[1]);
         } else {
             // Other pool types have their tokens added one by one
@@ -215,7 +215,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Not technically necessary since the transfer call would fail
-            require(tokens[i] != IERC20(0));
+            require(tokens[i] != IERC20(0), "Token is the zero address");
 
             if (amounts[i] > 0) {
                 if (depositToUserBalance) {
