@@ -157,8 +157,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
                     toReceive -= toWithdraw;
                 }
 
-                uint128 received = _pullTokens(tokens[i], from, toReceive);
-                require(received == toReceive, "Not enough tokens received");
+                _pullTokens(tokens[i], from, toReceive);
 
                 _increasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
             }
@@ -245,11 +244,10 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         IERC20 token,
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
-        // TODO: Think about what happens with tokens that charge a transfer fee
-        uint128 divestedAmount = _pullTokens(token, msg.sender, amount);
+        _pullTokens(token, msg.sender, amount);
 
         (, StrategyType strategyType) = fromPoolId(poolId);
-        _divestPoolCash(poolId, strategyType, token, divestedAmount);
+        _divestPoolCash(poolId, strategyType, token, amount);
     }
 
     function updateInvested(

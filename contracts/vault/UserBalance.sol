@@ -60,11 +60,11 @@ abstract contract UserBalance is IVault, VaultAccounting {
         address user
     ) external override {
         // Pulling from the sender - no need to check for operators
-        uint128 received = _pullTokens(token, msg.sender, amount);
+        _pullTokens(token, msg.sender, amount);
 
         // TODO: check overflow
-        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(received);
-        emit Deposited(msg.sender, user, token, received);
+        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(amount);
+        emit Deposited(msg.sender, user, token, amount);
     }
 
     function withdraw(
