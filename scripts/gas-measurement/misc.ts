@@ -1,11 +1,11 @@
 import { ethers, deployments } from 'hardhat';
-import { deployTokens, TokenList } from '../../test/helpers/tokens';
+import { deployTokens, TokenList, mintTokens } from '../../test/helpers/tokens';
 import { BigNumber, Contract, ContractFactory } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { deployPoolFromFactory, PoolName } from '../helpers/pools';
 import { toFixedPoint } from '../helpers/fixedPoint';
-import { PairTS, TupleTS} from '../helpers/pools';
+import { PairTS, TupleTS } from '../helpers/pools';
 import { pick } from 'lodash';
 
 export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH', 'III'];
@@ -16,12 +16,12 @@ export async function setupEnvironment(): Promise<{
   tokens: TokenList;
   trader: SignerWithAddress;
 }> {
-  const { admin, trader, creator} = await getSigners();
+  const { admin, trader, creator } = await getSigners();
   await deployments.fixture();
   const vault = await ethers.getContract('Vault');
   const validator = await ethers.getContract('OneToOneSwapValidator');
 
-  const tokens = await deployTokens(admin.address, tokenSymbols, Array(tokenSymbols.length).fill(18));
+  const tokens = await deployTokens(tokenSymbols, Array(tokenSymbols.length).fill(18), admin);
 
   for (const symbol in tokens) {
     // creator tokens are used to add liquidity to pools, but minted when required
@@ -103,36 +103,6 @@ async function getSigners(): Promise<{
   const [, admin, trader, creator] = await ethers.getSigners();
 
   return { admin, trader, creator };
-}
-
-async function setupTradingStrategy(
-  strategyKind: TradingStrategy,
-  tokens: TokenList
-): Promise<{ strategy: Contract; strategyType: TradingStrategyType }> {
-  const symbols = Object.keys(tokens);
-
-  if (strategyKind == 'CWP') {
-    const CWPTradingStrategyFactory: ContractFactory = await ethers.getContractFactory('CWPTradingStrategy');
-
-    const strategy = await CWPTradingStrategyFactory.deploy(
-      symbols.map((symbol) => tokens[symbol].address),
-      Array(symbols.length).fill(toFixedPoint(1)), // Equal weight to all tokens
-      toFixedPoint(0.02) // 2% fee
-    );
-
-    return { strategy, strategyType: PairTS };
-  } else if (strategyKind == 'Flattened') {
-    const StableStrategyFactory: ContractFactory = await ethers.getContractFactory('FlattenedTradingStrategy');
-
-    const strategy = await StableStrategyFactory.deploy(
-      (30e18).toString(), // amp
-      toFixedPoint(0.02) // 2% fee
-    );
-
-    return { strategy, strategyType: TupleTS };
-  } else {
-    throw new Error(`Unknown trading strategy kind: ${strategyKind}`);
-  }
 }
 
 export function printGas(gas: number | BigNumber): string {

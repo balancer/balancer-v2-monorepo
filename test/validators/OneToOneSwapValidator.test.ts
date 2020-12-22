@@ -6,6 +6,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, TupleTS } from '../../scripts/helpers/pools';
+import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
 
@@ -32,15 +33,15 @@ describe('OneToOneSwapValidator', () => {
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [admin.address] });
 
-    tokens = await deployTokens(admin.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     for (const symbol in tokens) {
       // Grant tokens to lp and trader, and approve the Vault to use them
-      await tokens[symbol].mint(lp.address, (200e18).toString());
+      await tokens[symbol].connect(admin).mint(lp.address, (200e18).toString());
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
 
-      await tokens[symbol].mint(trader.address, (200e18).toString());
+      await tokens[symbol].connect(admin).mint(trader.address, (200e18).toString());
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
     }
 
@@ -83,7 +84,7 @@ describe('OneToOneSwapValidator', () => {
       depositToUserBalance: false,
     };
 
-    validator = await ethers.getContract('OneToOneSwapValidator');
+    validator = await deploy('OneToOneSwapValidator', { args: [] });
   });
 
   it('validates correctly', async () => {

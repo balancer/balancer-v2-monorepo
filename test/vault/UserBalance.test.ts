@@ -6,6 +6,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
+import { deploy } from '../../scripts/helpers/deploy';
 
 describe('Vault - user balance', () => {
   let admin: SignerWithAddress;
@@ -27,9 +28,8 @@ describe('Vault - user balance', () => {
 
   describe('deposit & withdraw', () => {
     beforeEach('deploy vault & tokens', async () => {
-      await deployments.fixture();
-      vault = await ethers.getContract('Vault');
-      tokens = await deployTokens(admin.address, ['DAI', 'MKR'], [18, 18]);
+      vault = await deploy('Vault', { from: admin, args: [admin.address] });
+      tokens = await deployTokens(['DAI', 'MKR'], [18, 18], admin);
 
       await tokens['DAI'].connect(admin).mint(trader.address, amount.toString());
     });

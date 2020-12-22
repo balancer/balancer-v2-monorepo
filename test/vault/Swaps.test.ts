@@ -8,6 +8,7 @@ import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { PairTS, TupleTS } from '../../scripts/helpers/pools';
+import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { TradingStrategyType } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
@@ -37,7 +38,6 @@ describe('Vault - swaps', () => {
   let poolIds: string[], poolId: string, anotherPoolId: string;
   let admin: SignerWithAddress, lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
 
-
   before('setup', async () => {
     [, admin, lp, trader, other] = await ethers.getSigners();
 
@@ -46,15 +46,15 @@ describe('Vault - swaps', () => {
     // or rely on user balance or operators).
 
     vault = await deploy('Vault', { args: [admin.address] });
-    tokens = await deployTokens(admin.address, ['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
     for (const symbol in tokens) {
       // lp tokens are used to seed pools
-      await tokens[symbol].mint(lp.address, MAX_UINT128.div(2));
+      await tokens[symbol].connect(admin).mint(lp.address, MAX_UINT128.div(2));
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT128);
 
-      await tokens[symbol].mint(trader.address, MAX_UINT128.div(2));
+      await tokens[symbol].connect(admin).mint(trader.address, MAX_UINT128.div(2));
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT128);
     }
   });
