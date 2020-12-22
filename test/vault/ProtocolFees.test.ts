@@ -25,7 +25,7 @@ describe('Vault - protocol fees', () => {
 
   beforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    vault = await deploy('Vault', { from: admin, args: [authorizer.address] });
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
     for (const symbol in tokens) {

@@ -1,4 +1,3 @@
-import { ethers } from 'hardhat';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { SignerWithAddress } from 'hardhat-deploy-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
@@ -6,6 +5,8 @@ import { Dictionary } from 'lodash';
 import { Contract } from 'ethers';
 
 import * as allPools from './allPools.json';
+import { task } from 'hardhat/config';
+import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
@@ -32,8 +33,13 @@ interface Token {
 
 type ContractList = Dictionary<Contract>;
 
+task('seed', 'Add seed data').setAction(async (args, hre) => action(hre));
+
+let ethers: any;
+
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
-async function main() {
+async function action(hre: HardhatRuntimeEnvironment) {
+  ethers = hre.ethers;
   [deployer, controller] = await ethers.getSigners();
 
   // Get deployed vault
@@ -50,7 +56,7 @@ async function main() {
 
   console.log(`\nDeploying tokens...`);
   // Will deploy tokens if not already deployed
-  const tokenContracts: ContractList = await deployTokens(deployer.address, symbols, decimals);
+  const tokenContracts: ContractList = await deployTokens(deployer, symbols, decimals);
 
   console.log(`Minting & Approving tokens...`);
   for (let i = 0; i < symbols.length; i++) {
@@ -78,7 +84,7 @@ async function deployPools(filteredPools: Pool[], tokens: ContractList) {
       balances.push(filteredPools[i].tokens[j].balance);
     }
 
-    // Deploy strategy, pool and provide liquidity
+    // Deploy pool and provide liquidity
     await deployStrategyPool(tokensList, weights, balances, swapFee);
   }
 }
@@ -92,10 +98,10 @@ async function deployStrategyPool(
   swapFee: BigNumber
 ) {
   const vault = await ethers.getContract('Vault');
-  const cwpFactory = await ethers.getContract('CWPFactory');
+  const cppFactory = await ethers.getContract('ConstantProductPoolFactory');
 
-  if (!cwpFactory || !vault) {
-    console.log('CWPFactory and/or Vault Contracts Not Deployed.');
+  if (!cppFactory || !vault) {
+    console.log('ConstantProductPoolFactory and/or Vault Contracts Not Deployed.');
     return;
   }
 
@@ -103,43 +109,20 @@ async function deployStrategyPool(
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
   tokens.forEach((token, i) => console.log(`${token} - ${balances[i].toString()}`));
 
-  // Deploy strategy using existing factory
-  const totalStrategies = await cwpFactory.getTotalStrategies();
-  const deployedStrategies = await cwpFactory.getStrategies(0, totalStrategies);
+  const initialBPT = (100e18).toString();
+  const salt = ethers.utils.id(Math.random().toString());
 
-  const strategyAddr = await cwpFactory.connect(deployer).callStatic.create(tokens, weights, swapFee);
-  if (!deployedStrategies.includes(strategyAddr)) {
-    console.log('Deploying new strategy...');
-    const tx = await cwpFactory.connect(deployer).create(tokens, weights, swapFee);
-    const receipt = await tx.wait();
-    const event = receipt.events?.find((e: any) => e.event == 'StrategyCreated');
-    if (event == undefined) {
-      throw new Error('Could not find StrategyCreated event');
-    }
+  const parameters = [initialBPT, tokens, balances, weights, swapFee, salt];
 
-    if (strategyAddr !== event.args.strategy) console.log(`STRATEGY DEPLOY ERROR`);
-  }
-
-  console.log(`Strategy deployed at: ${strategyAddr}`);
-
-  const strategyType = 0; // 0 for Pair
-  // if(tokens.length > 2)
-  //   strategyType = 1;
-
-  // Create new pool with strategy
-  let tx = await vault.connect(controller).newPool(strategyAddr, strategyType);
+  const tx = await cppFactory.connect(controller).create(...parameters);
   const receipt = await tx.wait();
   const event = receipt.events?.find((e: any) => e.event == 'PoolCreated');
   if (event == undefined) {
     throw new Error('Could not find PoolCreated event');
   }
+  const poolAddress = event.args.pool;
 
-  const poolId = event.args.poolId;
-  console.log(`New Pool ID: ${event.args.poolId}`);
-
-  // Token approval should already be done for vault
-  // Add liquidity using pull method
-  tx = await vault.connect(controller).addLiquidity(poolId, controller.address, tokens, balances, balances);
+  console.log(`New Pool Address: ${poolAddress}`);
 }
 
 // Convert all pools to BigNumber/scaled format
@@ -220,11 +203,14 @@ function getTokenInfoForDeploy(pools: Pool[]): [Array<string>, Array<number>, Ar
 }
 
 // Deploys a vanilla ERC20 token that can be minted by any account
-async function deployToken(admin: string, symbol: string, decimals?: number): Promise<string> {
+async function deployToken(admin: SignerWithAddress, symbol: string, decimals?: number): Promise<string> {
   // Get deployed Token Factory
   const tokenFactory = await ethers.getContract('TokenFactory');
 
-  const tx = await tokenFactory.create(admin, symbol, symbol, decimals ?? 18);
+  const salt = ethers.utils.id(Math.random().toString());
+  const parameters = [admin.address, symbol, symbol, decimals ?? 18]
+
+  const tx = await tokenFactory.connect(admin).create(...parameters);
   const receipt = await tx.wait();
   const event = receipt.events?.find((e: any) => e.event == 'TokenCreated');
   if (event == undefined) {
@@ -235,7 +221,7 @@ async function deployToken(admin: string, symbol: string, decimals?: number): Pr
 }
 
 // Deploys multiple tokens and returns a symbol -> token dictionary
-async function deployTokens(admin: string, symbols: Array<string>, decimals: Array<number>): Promise<ContractList> {
+async function deployTokens(admin: SignerWithAddress, symbols: Array<string>, decimals: Array<number>): Promise<ContractList> {
   const tokenContracts: ContractList = {};
 
   // Get artifact for TestToken
@@ -252,11 +238,12 @@ async function deployTokens(admin: string, symbols: Array<string>, decimals: Arr
       tokenContracts[symbols[i]] = wethFactory;
       continue;
     }
-    const address = await tokenFactory.callStatic.create(admin, symbols[i], symbols[i], decimals[i]);
-    if (!deployedTokens.includes(address)) {
+    //const address = await tokenFactory.callStatic.create(admin, symbols[i], symbols[i], decimals[i]);
+    //if (!deployedTokens.includes(address)) {
       const addr = await deployToken(admin, symbols[i], decimals[i]);
-      if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
-    }
+      //if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
+    //}
+    const address = addr;
     // Get token contract
     const tokenContract = await Token.attach(address);
     tokenContracts[symbols[i]] = tokenContract;
@@ -264,10 +251,3 @@ async function deployTokens(admin: string, symbols: Array<string>, decimals: Arr
 
   return tokenContracts;
 }
-
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
