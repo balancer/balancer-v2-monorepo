@@ -42,14 +42,6 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     // TODO do we need this? can pools be deleted? if not, an array should be good enough
     EnumerableSet.BytesSet internal _pools;
 
-    // The controller of a pool is the only account that can:
-    //  - change the controller
-    //  - change the trading strategy
-    //  - add tokens
-    //  - remove tokens
-    // The creator of a pool is the initial controller.
-    mapping(bytes32 => address) internal _poolController;
-
     modifier withExistingPool(bytes32 poolId) {
         require(_pools.contains(poolId), "Inexistent pool");
         _;
@@ -61,8 +53,9 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
     event AuthorizedPoolInvestmentManager(bytes32 indexed poolId, IERC20 indexed token, address indexed operator);
     event RevokedPoolInvestmentManager(bytes32 indexed poolId, IERC20 indexed token, address indexed operator);
 
-    modifier onlyPoolController(bytes32 poolId) {
-        require(_poolController[poolId] == msg.sender, "Caller is not the pool controller");
+    modifier onlyPool(bytes32 poolId) {
+        (address pool, ) = fromPoolId(poolId);
+        require(pool == msg.sender, "Caller is not the pool");
         _;
     }
 
@@ -84,6 +77,8 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         strategyType = StrategyType(uint256(serialized >> (20 * 8)) & (2**(2 * 8) - 1));
     }
 
+    // TODO: consider making the pool address msg.sender, and potentially disallowing the same address to be used
+    // multiple times
     function newPool(address strategy, StrategyType strategyType) external override returns (bytes32) {
         bytes32 poolId = toPoolId(strategy, uint16(strategyType), uint32(_pools.length()));
 
@@ -91,7 +86,6 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         require(strategy != address(0), "Strategy must be set");
 
         _pools.add(poolId);
-        _poolController[poolId] = msg.sender;
 
         emit PoolCreated(poolId);
 
@@ -136,29 +130,8 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         return balances;
     }
 
-    function getPoolController(bytes32 poolId) external view override withExistingPool(poolId) returns (address) {
-        return _poolController[poolId];
-    }
-
-    function getPoolStrategy(bytes32 poolId)
-        external
-        view
-        override
-        withExistingPool(poolId)
-        returns (address, StrategyType)
-    {
-        (address strategy, StrategyType strategyType) = fromPoolId(poolId);
-        return (strategy, strategyType);
-    }
-
-    function setPoolController(bytes32 poolId, address controller)
-        external
-        override
-        nonReentrant
-        withExistingPool(poolId)
-        onlyPoolController(poolId)
-    {
-        _poolController[poolId] = controller;
+    function getPool(bytes32 poolId) external view override withExistingPool(poolId) returns (address, StrategyType) {
+        return fromPoolId(poolId);
     }
 
     function addLiquidity(
@@ -167,7 +140,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         IERC20[] calldata tokens,
         uint128[] calldata amounts,
         bool withdrawFromUserBalance
-    ) external override withExistingPool(poolId) onlyPoolController(poolId) {
+    ) external override withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         require(isOperatorFor(from, msg.sender), "Caller is not operator");
@@ -198,13 +171,15 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         IERC20[] calldata tokens,
         uint128[] calldata amounts,
         bool depositToUserBalance
-    ) external override withExistingPool(poolId) onlyPoolController(poolId) {
+    ) external override withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         (, StrategyType strategyType) = fromPoolId(poolId);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             if (amounts[i] > 0) {
+                _decreasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
+
                 if (depositToUserBalance) {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
                     _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amounts[i]);
@@ -212,8 +187,6 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
                     // Actually transfer the tokens to the recipient
                     _pushTokens(tokens[i], to, amounts[i], true);
                 }
-
-                _decreasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
             }
         }
     }
@@ -229,7 +202,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         bytes32 poolId,
         IERC20 token,
         address manager
-    ) external override onlyPoolController(poolId) {
+    ) external override onlyPool(poolId) {
         bool missing = _poolInvestmentManagers[poolId][token] == address(0);
         (, StrategyType strategyType) = fromPoolId(poolId);
         require(missing || _isPoolInvested(poolId, strategyType, token), "CANNOT_SET_INVESTMENT_MANAGER");
@@ -238,7 +211,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         emit AuthorizedPoolInvestmentManager(poolId, token, manager);
     }
 
-    function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external override onlyPoolController(poolId) {
+    function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external override onlyPool(poolId) {
         address currentManager = _poolInvestmentManagers[poolId][token];
         bool exists = currentManager != address(0);
         (, StrategyType strategyType) = fromPoolId(poolId);

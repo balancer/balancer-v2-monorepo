@@ -4,7 +4,7 @@ import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
-import { PairTS, setupPool, TradingStrategyType, TupleTS } from '../helpers/pools';
+import { deployPoolFromFactory, PoolName } from '../helpers/pools';
 import { toFixedPoint } from '../helpers/fixedPoint';
 import { pick } from 'lodash';
 
@@ -16,7 +16,7 @@ export async function setupEnvironment(): Promise<{
   tokens: TokenList;
   trader: SignerWithAddress;
 }> {
-  const { admin, trader } = await getSigners();
+  const { admin, trader, creator } = await getSigners();
 
   const vault = await deploy('Vault', { args: [admin.address] });
 
@@ -25,6 +25,9 @@ export async function setupEnvironment(): Promise<{
   const tokens = await deployTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 
   for (const symbol in tokens) {
+    // creator tokens are used to add liquidity to pools, but minted when required
+    await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
+
     // trader tokens are used to trade and not have non-zero balances
     await mintTokens(tokens, symbol, trader, 200e18);
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
@@ -36,83 +39,70 @@ export async function setupEnvironment(): Promise<{
   return { vault, validator, tokens, trader };
 }
 
-export type TradingStrategy = 'CWP' | 'Flattened';
+export async function setupStrategyAndPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {
+  const { admin, creator } = await getSigners();
 
-export async function setupStrategyAndPool(
-  strategyKind: TradingStrategy,
-  vault: Contract,
-  tokens: TokenList
-): Promise<string> {
   const symbols = Object.keys(tokens);
 
-  const { strategy, strategyType } = await setupTradingStrategy(strategyKind, tokens);
-  const { controller } = await getSigners();
+  const tokenBalance = (100e18).toString();
+  for (const symbol of symbols) {
+    await mintTokens(tokens, symbol, creator, tokenBalance);
+  }
 
-  return setupPool(
-    vault,
-    strategy,
-    strategyType,
-    tokens,
-    controller,
-    symbols.map((symbol) => [symbol, (100e18).toString()])
-  );
+  const initialBPT = (100e18).toString();
+  const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
+  const initialBalances = symbols.map(() => tokenBalance);
+
+  const swapFee = toFixedPoint(0.02); // 2%
+
+  let pool: Contract;
+
+  if (poolName == 'ConstantProductPool') {
+    const weights = symbols.map(() => toFixedPoint(1)); // Equal weights for all tokens
+
+    pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      from: creator,
+      parameters: [initialBPT, tokenAddresses, initialBalances, weights, swapFee],
+    });
+  } else if (poolName == 'StablecoinPool') {
+    const amp = (30e18).toString();
+
+    pool = await deployPoolFromFactory(vault, admin, 'StablecoinPool', {
+      from: creator,
+      parameters: [initialBPT, tokenAddresses, initialBalances, amp, swapFee],
+    });
+  } else {
+    throw new Error(`Unhandled pool: ${poolName}`);
+  }
+
+  return pool.getPoolId();
 }
 
-export async function getCWPPool(vault: Contract, tokens: TokenList): Promise<string> {
-  return setupStrategyAndPool('CWP', vault, tokens);
+export async function getConstantProductPool(vault: Contract, tokens: TokenList): Promise<string> {
+  return setupStrategyAndPool(vault, tokens, 'ConstantProductPool');
 }
 
-export async function getFlattenedPool(
+export async function getStablecoinPool(
   vault: Contract,
   tokens: TokenList,
   size: number,
   offset?: number
 ): Promise<string> {
-  return setupStrategyAndPool('Flattened', vault, pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0))));
+  return setupStrategyAndPool(
+    vault,
+    pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0))),
+    'StablecoinPool'
+  );
 }
 
 async function getSigners(): Promise<{
   admin: SignerWithAddress;
   trader: SignerWithAddress;
-  controller: SignerWithAddress;
+  creator: SignerWithAddress;
 }> {
-  const [, admin, trader, controller] = await ethers.getSigners();
+  const [, admin, trader, creator] = await ethers.getSigners();
 
-  return { admin, trader, controller };
-}
-
-async function setupTradingStrategy(
-  strategyKind: TradingStrategy,
-  tokens: TokenList
-): Promise<{ strategy: Contract; strategyType: TradingStrategyType }> {
-  const symbols = Object.keys(tokens);
-
-  if (strategyKind == 'CWP') {
-    const strategy = await deploy('CWPTradingStrategy', {
-      args: [
-        {
-          // Equal weight to all tokens
-          isMutable: false,
-          tokens: symbols.map((symbol) => tokens[symbol].address),
-          weights: Array(symbols.length).fill(toFixedPoint(1)),
-        },
-        { isMutable: false, value: toFixedPoint(0.02) }, // 2% swap fee
-      ],
-    });
-
-    return { strategy, strategyType: PairTS };
-  } else if (strategyKind == 'Flattened') {
-    const strategy = await deploy('FlattenedTradingStrategy', {
-      args: [
-        { isMutable: false, value: (30e18).toString() }, // amp
-        { isMutable: false, value: toFixedPoint(0.02) }, // 2% swap fee
-      ],
-    });
-
-    return { strategy, strategyType: TupleTS };
-  } else {
-    throw new Error(`Unknown trading strategy kind: ${strategyKind}`);
-  }
+  return { admin, trader, creator };
 }
 
 export function printGas(gas: number | BigNumber): string {
