@@ -8,6 +8,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { PairTS, TradingStrategyType, TupleTS } from '../../scripts/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
+import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
 let admin: SignerWithAddress;
 let pool: SignerWithAddress;
@@ -30,11 +31,11 @@ describe('Vault - pool registry', () => {
 
     for (const symbol in tokens) {
       // Mint tokens for the lp to deposit in the Vault
-      await mintTokens(tokens, symbol, lp, 500);
+      await mintTokens(tokens, symbol, lp, 50000);
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
 
       // Also mint some tokens for the pool itself
-      await mintTokens(tokens, symbol, pool, 500);
+      await mintTokens(tokens, symbol, pool, 50000);
       await tokens[symbol].connect(pool).approve(vault.address, MAX_UINT256);
     }
   });
@@ -100,6 +101,59 @@ describe('Vault - pool registry', () => {
 
     describe('with tuple trading strategies', () => {
       itManagesTokensCorrectly(TupleTS);
+    });
+  });
+
+  describe('collect protocol swap fees', async () => {
+    let mockPool: Contract;
+    let mockPoolId: string;
+
+    const protocolSwapFee = 0.01;
+
+    beforeEach('deploy pool', async () => {
+      await vault.connect(admin).setProtocolSwapFee(toFixedPoint(protocolSwapFee));
+
+      mockPool = await deploy('MockPool', {
+        args: [vault.address, PairTS],
+      });
+
+      mockPoolId = await mockPool.getPoolId();
+
+      // Let pool use lp's tokens
+      await vault.connect(lp).authorizeOperator(mockPool.address);
+
+      await mockPool.connect(lp).addLiquidity([tokens.DAI.address, tokens.MKR.address], [1000, 1000]);
+    });
+
+    it('in one token', async () => {
+      await mockPool.paySwapProtocolFees([tokens.DAI.address], [500]);
+      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('5');
+    });
+
+    it('in many token', async () => {
+      await mockPool.paySwapProtocolFees(
+        [tokens.DAI.address, tokens.MKR.address],
+        [(500).toString(), (1000).toString()]
+      );
+      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('5');
+      expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal('10');
+    });
+
+    it('fails if caller is not pool', async () => {
+      await expect(vault.connect(other).paySwapProtocolFees(mockPoolId, [tokens.DAI.address], [5])).to.be.revertedWith(
+        'Caller is not the pool'
+      );
+    });
+
+    it('fails if token not existent', async () => {
+      const newTokens = await deployTokens(['BAT'], [18]);
+      await expect(mockPool.paySwapProtocolFees([newTokens.BAT.address], [5])).to.be.revertedWith('Token not in pool');
+    });
+
+    it('fails if not enough balance', async () => {
+      await expect(mockPool.paySwapProtocolFees([tokens.DAI.address], [200000])).to.be.revertedWith(
+        'ERR_SUB_UNDERFLOW'
+      );
     });
   });
 });
