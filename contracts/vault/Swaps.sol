@@ -27,9 +27,9 @@ import "@openzeppelin/contracts/math/Math.sol";
 
 import "../math/FixedPoint.sol";
 
-import "../strategies/ITradingStrategy.sol";
-import "../strategies/IPairTradingStrategy.sol";
-import "../strategies/ITupleTradingStrategy.sol";
+import "./interfaces/ITradingStrategy.sol";
+import "./interfaces/IPairTradingStrategy.sol";
+import "./interfaces/ITupleTradingStrategy.sol";
 
 import "../validators/ISwapValidator.sol";
 
@@ -389,5 +389,27 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexIn, tokenInBalance);
         _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexOut, tokenOutBalance);
+    }
+
+    //Pay swap protocol fees
+    function paySwapProtocolFees(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        uint128[] calldata collectedFees
+    ) external override withExistingPool(poolId) onlyPool(poolId) returns (uint128[] memory balances) {
+        require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
+
+        (, StrategyType strategyType) = fromPoolId(poolId);
+
+        balances = new uint128[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (collectedFees[i] > 0) {
+                uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
+                _decreasePoolCash(poolId, strategyType, tokens[i], feeToCollect);
+                _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
+            }
+            balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
+        }
+        return balances;
     }
 }
