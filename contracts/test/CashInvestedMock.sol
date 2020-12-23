@@ -58,4 +58,20 @@ contract CashInvestedMock {
     function isInvested(bytes32 balance) public pure returns (bool) {
         return balance.isInvested();
     }
+
+    function fromSharedToBalanceA(bytes32 cashACashB, bytes32 investedAInvestedB) public pure returns (bytes32) {
+        return CashInvested.fromSharedToBalanceA(cashACashB, investedAInvestedB);
+    }
+
+    function fromSharedToBalanceB(bytes32 cashACashB, bytes32 investedAInvestedB) public pure returns (bytes32) {
+        return CashInvested.fromSharedToBalanceB(cashACashB, investedAInvestedB);
+    }
+
+    function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) public pure returns (bytes32) {
+        return CashInvested.toSharedCash(tokenABalance, tokenBBalance);
+    }
+
+    function toSharedInvested(bytes32 tokenABalance, bytes32 tokenBBalance) public pure returns (bytes32) {
+        return CashInvested.toSharedInvested(tokenABalance, tokenBBalance);
+    }
 }

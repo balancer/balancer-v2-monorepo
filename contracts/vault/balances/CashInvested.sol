@@ -146,35 +146,34 @@ library CashInvested {
     // both tokens in the same slot, and the invested for both in another one. This reduces the gas cost for swaps,
     // because the only slot that needs to be updated is the one with the cash. However, it also means that managing
     // balances is more cumbersome, as both tokens need to be read/written at the same time.
-    // The field with both cash balances packed is called cashAcashB, and the one with invested amounts is called
-    // investedAinvestedB. These two are collectively called the 'shared' balance fields. In both of these, the portion
+    // The field with both cash balances packed is called sharedCash, and the one with invested amounts is called
+    // sharedInvested. These two are collectively called the 'shared' balance fields. In both of these, the portion
     // that corresponds to token A is stored in the most significant 128 bits of a 256 bit word, while token B's part
     // uses the least significant 128 bits.
 
     /**
      * @dev Unpacks the shared token A and token B cash and invested balances into the balance for token A.
      */
-    function fromSharedToTokenA(bytes32 cashACashB, bytes32 investedAInvestedB) internal pure returns (bytes32) {
-        return
-            toBalance(uint128(uint256(cashACashB >> 128) & _MASK), uint128(uint256(investedAInvestedB >> 128) & _MASK));
+    function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedInvested) internal pure returns (bytes32) {
+        return toBalance(uint128(uint256(sharedCash >> 128) & _MASK), uint128(uint256(sharedInvested >> 128) & _MASK));
     }
 
     /**
      * @dev Unpacks the shared token A and token B cash and invested balances into the balance for token B.
      */
-    function fromSharedToTokenB(bytes32 cashACashB, bytes32 investedAInvestedB) internal pure returns (bytes32) {
-        return toBalance(uint128(uint256(cashACashB) & _MASK), uint128(uint256(investedAInvestedB) & _MASK));
+    function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedInvested) internal pure returns (bytes32) {
+        return toBalance(uint128(uint256(sharedCash) & _MASK), uint128(uint256(sharedInvested) & _MASK));
     }
 
     /**
-     * @dev Returns the cashAcashB shared field, given the current balances for tokenA and tokenB.
+     * @dev Returns the sharedCash shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
         return bytes32((uint256(cash(tokenABalance)) << 128) + cash(tokenBBalance));
     }
 
     /**
-     * @dev Returns the investedAinvestedB shared field, given the current balances for tokenA and tokenB.
+     * @dev Returns the sharedInvested shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedInvested(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
         return bytes32((uint256(invested(tokenABalance)) << 128) + invested(tokenBBalance));

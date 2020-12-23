@@ -363,7 +363,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             newSharedCash = CashInvested.toSharedCash(tokenOutBalance, tokenInBalance);
         }
 
-        poolSharedBalances.cashAcashB = newSharedCash;
+        poolSharedBalances.sharedCash = newSharedCash;
     }
 
     function _processPairTradingStrategyQuoteRequest(

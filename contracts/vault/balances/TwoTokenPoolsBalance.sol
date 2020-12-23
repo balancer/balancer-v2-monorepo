@@ -59,8 +59,8 @@ contract TwoTokenPoolsBalance {
     }
 
     struct TwoTokenSharedBalances {
-        bytes32 cashAcashB;
-        bytes32 investedAinvestedB;
+        bytes32 sharedCash;
+        bytes32 sharedInvested;
     }
 
     mapping(bytes32 => TwoTokenTokens) internal _poolTwoTokenTokens;
@@ -154,11 +154,11 @@ contract TwoTokenPoolsBalance {
         bytes32 pairHash = _getTwoTokenPairHash(tokenX, tokenY);
         poolSharedBalance = _poolTwoTokenSharedBalancess[poolId][pairHash];
 
-        bytes32 cashAcashB = poolSharedBalance.cashAcashB;
-        bytes32 investedAinvestedB = poolSharedBalance.investedAinvestedB;
+        bytes32 sharedCash = poolSharedBalance.sharedCash;
+        bytes32 sharedInvested = poolSharedBalance.sharedInvested;
 
-        tokenABalance = CashInvested.fromSharedToTokenA(cashAcashB, investedAinvestedB);
-        tokenBBalance = CashInvested.fromSharedToTokenB(cashAcashB, investedAinvestedB);
+        tokenABalance = CashInvested.fromSharedToBalanceA(sharedCash, sharedInvested);
+        tokenBBalance = CashInvested.fromSharedToBalanceB(sharedCash, sharedInvested);
     }
 
     /**
@@ -210,8 +210,8 @@ contract TwoTokenPoolsBalance {
             tokenBBalance = tokenBBalance.increaseCash(amountX);
         }
 
-        poolSharedBalances.cashAcashB = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-        // We don't need to write to the investedAinvestedB entry, since it is already initialized with zeroes
+        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
+        // We don't need to write to the sharedInvested entry, since it is already initialized with zeroes
     }
 
     /**
@@ -253,7 +253,7 @@ contract TwoTokenPoolsBalance {
             tokenBBalance = tokenBBalance.decreaseCash(amountX);
         }
 
-        poolSharedBalances.cashAcashB = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
+        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
 
         if (tokenABalance.total() == 0 && tokenBBalance.total() == 0) {
             delete _poolTwoTokenTokens[poolId];
