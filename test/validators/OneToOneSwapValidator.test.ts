@@ -1,12 +1,12 @@
-import { ethers, deployments } from 'hardhat';
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
+import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS, TupleTS } from '../../scripts/helpers/pools';
-import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
 
@@ -38,10 +38,10 @@ describe('OneToOneSwapValidator', () => {
 
     for (const symbol in tokens) {
       // Grant tokens to lp and trader, and approve the Vault to use them
-      await tokens[symbol].connect(admin).mint(lp.address, (200e18).toString());
+      await tokens[symbol].mint(lp.address, (200e18).toString());
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
 
-      await tokens[symbol].connect(admin).mint(trader.address, (200e18).toString());
+      await tokens[symbol].mint(trader.address, (200e18).toString());
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
     }
 

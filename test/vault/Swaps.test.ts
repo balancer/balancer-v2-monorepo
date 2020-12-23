@@ -1,20 +1,17 @@
-import { ethers, deployments } from 'hardhat';
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { MAX_UINT256 } from '../helpers/constants';
-import { expectBalanceChange } from '../helpers/tokenBalance';
-import { TokenList, deployTokens } from '../helpers/tokens';
-import { PairTS, TupleTS } from '../../scripts/helpers/pools';
 import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { TradingStrategyType } from '../../scripts/helpers/pools';
+import { PairTS, TradingStrategyType, TupleTS } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
+import { deployTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
-import { BigNumberish, Comparison } from '../helpers/tokenBalance';
+import { BigNumberish, Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -51,10 +48,10 @@ describe('Vault - swaps', () => {
 
     for (const symbol in tokens) {
       // lp tokens are used to seed pools
-      await tokens[symbol].connect(admin).mint(lp.address, MAX_UINT128.div(2));
+      await tokens[symbol].mint(lp.address, MAX_UINT128.div(2));
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT128);
 
-      await tokens[symbol].connect(admin).mint(trader.address, MAX_UINT128.div(2));
+      await tokens[symbol].mint(trader.address, MAX_UINT128.div(2));
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT128);
     }
   });

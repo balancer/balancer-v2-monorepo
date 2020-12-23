@@ -1,4 +1,3 @@
-import { ethers } from 'hardhat';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
@@ -6,6 +5,9 @@ import { Dictionary } from 'lodash';
 import { Contract } from 'ethers';
 
 import * as allPools from './allPools.json';
+import { task } from 'hardhat/config';
+import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import { deployPoolFromFactory, PairTS } from '../helpers/pools';
 
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
@@ -32,9 +34,17 @@ interface Token {
 
 type ContractList = Dictionary<Contract>;
 
+task('seed', 'Add seed data').setAction(async (args, hre) => action(hre));
+
+let ethers: any;
+
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
-async function main() {
+async function action(hre: HardhatRuntimeEnvironment) {
+  const { getNamedAccounts } = hre;
+  ethers = hre.ethers;
   [deployer, controller] = await ethers.getSigners();
+  const { admin } = await getNamedAccounts();
+  console.log(deployer.address, admin)
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
@@ -92,7 +102,7 @@ async function deployStrategyPool(
   swapFee: BigNumber
 ) {
   const vault = await ethers.getContract('Vault');
-  const cwpFactory = await ethers.getContract('CWPFactory');
+  const cwpFactory = await ethers.getContract('ConstantProductPoolFactory');
 
   if (!cwpFactory || !vault) {
     console.log('CWPFactory and/or Vault Contracts Not Deployed.');
@@ -103,43 +113,23 @@ async function deployStrategyPool(
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
   tokens.forEach((token, i) => console.log(`${token} - ${balances[i].toString()}`));
 
-  // Deploy strategy using existing factory
-  const totalStrategies = await cwpFactory.getTotalStrategies();
-  const deployedStrategies = await cwpFactory.getStrategies(0, totalStrategies);
+  //const initialBPT = BigNumber.from(10e18);
+  const initialBPT = 10e18.toString();
+  //const amounts = tokens.map((t) => BigNumber.from(50e18));
+  const amounts = tokens.map((t) => 50e18.toString());
+  const salt = ethers.utils.id('NaCl2');
 
-  const strategyAddr = await cwpFactory.connect(deployer).callStatic.create(tokens, weights, swapFee);
-  if (!deployedStrategies.includes(strategyAddr)) {
-    console.log('Deploying new strategy...');
-    const tx = await cwpFactory.connect(deployer).create(tokens, weights, swapFee);
-    const receipt = await tx.wait();
-    const event = receipt.events?.find((e: any) => e.event == 'StrategyCreated');
-    if (event == undefined) {
-      throw new Error('Could not find StrategyCreated event');
-    }
-
-    if (strategyAddr !== event.args.strategy) console.log(`STRATEGY DEPLOY ERROR`);
-  }
-
-  console.log(`Strategy deployed at: ${strategyAddr}`);
-
-  const strategyType = 0; // 0 for Pair
-  // if(tokens.length > 2)
-  //   strategyType = 1;
-
-  // Create new pool with strategy
-  let tx = await vault.connect(controller).newPool(strategyAddr, strategyType);
+  const parameters = [initialBPT, tokens, amounts, weights, swapFee, salt];
+  //await deployPoolFromFactory(vault, deployer, 'ConstantProductPool', {from: controller, parameters})
+  const tx = await cwpFactory.connect(deployer).create(...parameters);
   const receipt = await tx.wait();
   const event = receipt.events?.find((e: any) => e.event == 'PoolCreated');
   if (event == undefined) {
     throw new Error('Could not find PoolCreated event');
   }
+  const poolAddress = event.args.pool;
 
-  const poolId = event.args.poolId;
-  console.log(`New Pool ID: ${event.args.poolId}`);
-
-  // Token approval should already be done for vault
-  // Add liquidity using pull method
-  tx = await vault.connect(controller).addLiquidity(poolId, controller.address, tokens, balances, balances);
+  console.log(`New Pool Address: ${poolAddress}`);
 }
 
 // Convert all pools to BigNumber/scaled format
@@ -264,10 +254,3 @@ async function deployTokens(admin: string, symbols: Array<string>, decimals: Arr
 
   return tokenContracts;
 }
-
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });

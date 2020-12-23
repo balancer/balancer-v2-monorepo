@@ -1,4 +1,4 @@
-import { ethers, deployments } from 'hardhat';
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
@@ -14,11 +14,11 @@ describe('BasePoolFactory', function () {
   const salt = ethers.utils.id('salt');
 
   before(async function () {
-    [admin] = await ethers.getSigners();
+    [, admin] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { args: [admin.address] });
+    vault = await deploy('Vault', { from: admin, args: [admin.address] });
     factory = await deploy('MockPoolFactory', { args: [vault.address] });
   });
 

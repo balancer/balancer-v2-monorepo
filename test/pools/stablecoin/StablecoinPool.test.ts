@@ -36,10 +36,10 @@ describe('StablecoinPool', function () {
 
     tokens = await deployTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
     for (const symbol in tokens) {
-      await tokens[symbol].connect(admin).mint(creator.address, (100e18).toString());
+      await tokens[symbol].mint(creator.address, (100e18).toString());
       await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
 
-      await tokens[symbol].connect(admin).mint(lp.address, (100e18).toString());
+      await tokens[symbol].mint(lp.address, (100e18).toString());
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
     }
 

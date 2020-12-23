@@ -1,4 +1,4 @@
-import { ethers, deployments } from 'hardhat';
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { TokenList, deployTokens } from '../helpers/tokens';
@@ -17,7 +17,7 @@ describe('Vault - flash loans', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [admin, minter, other] = await ethers.getSigners();
+    [, admin, minter, other] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {

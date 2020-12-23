@@ -1,6 +1,5 @@
 import { deploy } from '../../../scripts/helpers/deploy';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/weightedProduct';
-import { ethers } from 'hardhat';
 import { expectRelativeError } from '../../helpers/relativeError';
 import { Contract } from 'ethers';
 import { Decimal } from 'decimal.js';

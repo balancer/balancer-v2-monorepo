@@ -1,12 +1,12 @@
-import { ethers, deployments } from 'hardhat';
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { TokenList, deployTokens } from '../helpers/tokens';
+import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
+import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { deploy } from '../../scripts/helpers/deploy';
 
 describe('Vault - user balance', () => {
   let admin: SignerWithAddress;
@@ -21,7 +21,7 @@ describe('Vault - user balance', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [admin, trader, user, operator, reporter, trustedOperator, other] = await ethers.getSigners();
+    [, admin, trader, user, operator, reporter, trustedOperator, other] = await ethers.getSigners();
   });
 
   const amount = BigNumber.from(500);
@@ -29,9 +29,9 @@ describe('Vault - user balance', () => {
   describe('deposit & withdraw', () => {
     beforeEach('deploy vault & tokens', async () => {
       vault = await deploy('Vault', { from: admin, args: [admin.address] });
-      tokens = await deployTokens(['DAI', 'MKR'], [18, 18], admin);
+      tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
-      await tokens['DAI'].connect(admin).mint(trader.address, amount.toString());
+      await mintTokens(tokens, 'DAI', trader, amount.toString());
     });
 
     it('user can deposit tokens', async () => {

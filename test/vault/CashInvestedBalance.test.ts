@@ -1,4 +1,3 @@
-import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { MAX_UINT128 } from '../helpers/constants';

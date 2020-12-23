@@ -1,12 +1,12 @@
-import { ethers, deployments } from 'hardhat';
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
+import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { PairTS, TradingStrategyType, TupleTS } from '../../scripts/helpers/pools';
-import { deploy } from '../../scripts/helpers/deploy';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 let admin: SignerWithAddress;
@@ -25,17 +25,16 @@ describe('Vault - pool registry', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
-
+    vault = await deploy('Vault', { args: [admin.address] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
 
     for (const symbol in tokens) {
       // Mint tokens for the lp to deposit in the Vault
-      await mintTokens(tokens, symbol, lp, 500, admin);
+      await mintTokens(tokens, symbol, lp, 500);
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
 
       // Also mint some tokens for the pool itself
-      await mintTokens(tokens, symbol, pool, 500, admin);
+      await mintTokens(tokens, symbol, pool, 500);
       await tokens[symbol].connect(pool).approve(vault.address, MAX_UINT256);
     }
   });
