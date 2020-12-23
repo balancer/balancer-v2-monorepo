@@ -38,9 +38,7 @@ describe('Vault - swaps', () => {
   before('setup', async () => {
     [, admin, lp, trader, other] = await ethers.getSigners();
 
-    // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
-    // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
-    // or rely on user balance or operators).
+    // All of the tests in this suite have no side effects, so we deploy and initially contracts only one to save time
 
     vault = await deploy('Vault', { args: [admin.address] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
