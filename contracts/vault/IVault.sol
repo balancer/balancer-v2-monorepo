@@ -276,6 +276,46 @@ interface IVault {
         bool depositToUserBalance;
     }
 
+    // Swap query methods
+
+    /**
+     * @dev Simulates a call to batchSwapGivenIn, returning an array of Vault token deltas. Each element in the array
+     * corresponds to the token at the same index, and indicates the number of tokens the Vault would take from the
+     * sender (if positive) or send to the recipient (if negative). The arguments it receives are the same that
+     * an equivalent batchSwapGivenIn would receive.
+     *
+     * Unlike batchSwapGivenIn, this function performs no checks on its caller nor the sender and recipient fields in
+     * the FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
+     * needing to hold tokens, approve them for the Vault, or even know a user's address.
+     *
+     * Note however that this function is not 'view' (due to implementation details): the client code must explicitly
+     * execute eth_call instead of eth_sendTransaction.
+     */
+    function queryBatchSwapGivenIn(
+        SwapIn[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external returns (int256[] memory);
+
+    /**
+     * @dev Simulates a call to batchSwapGivenOut, returning an array of Vault token deltas. Each element in the array
+     * corresponds to the token at the same index, and indicates the number of tokens the Vault would take from the
+     * sender (if positive) or send to the recipient (if negative). The arguments it receives are the same that
+     * an equivalent batchSwapGivenOut would receive.
+     *
+     * Unlike batchSwapGivenIn, this function performs no checks on its caller nor the sender and recipient fields in
+     * the FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
+     * needing to hold tokens, approve them for the Vault, or even know a user's address.
+     *
+     * Note however that this function is not 'view' (due to implementation details): the client code must explicitly
+     * execute eth_call instead of eth_sendTransaction.
+     */
+    function queryBatchSwapGivenOut(
+        SwapOut[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external returns (int256[] memory);
+
     // Pay Swap Protocol Fee interface
     /**
      * @dev Receives an array of tokens and their corresponding amounts to which swap protocol fees will be applied.

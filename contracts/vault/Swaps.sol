@@ -424,13 +424,11 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         return balances;
     }
 
-    // Swap query methods
-
     function queryBatchSwapGivenIn(
         SwapIn[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external returns (int256[] memory) {
+    ) external override returns (int256[] memory) {
         return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
     }
 
@@ -438,7 +436,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         SwapOut[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external returns (int256[] memory) {
+    ) external override returns (int256[] memory) {
         return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
     }
 
@@ -455,6 +453,18 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         }
     }
 
+    /**
+     * @dev Despite this function being external, it can only be called by the Vault itself, and should not be
+     * considered part of the Vault's external API.
+     *
+     * It executes the Pool interaction part of a batch swap, asking Pools for quotes and computing the Vault deltas,
+     * but without performing any token transfers. It then reverts unconditionally, returning the Vault  deltas array as
+     * the revert data.
+     *
+     * This enables an accurate implementation of queryBatchSwapGivenIn and queryBatchSwapGivenOut, since the array
+     * 'returned' by this function is the result of the exact same computation a swap would perform, including Pool
+     * calls.
+     */
     function queryBatchSwapHelper(
         SwapInternal[] memory swaps,
         IERC20[] calldata tokens,
