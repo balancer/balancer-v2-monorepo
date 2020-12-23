@@ -24,7 +24,7 @@ import "./PoolBalance.sol";
 import "./UserBalance.sol";
 
 abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
-    using EnumerableSet for EnumerableSet.BytesSet;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     using CashInvestedBalance for bytes32;
 
@@ -37,7 +37,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
 
     // Set with all pools in the system
     // TODO do we need this? can pools be deleted? if not, an array should be good enough
-    EnumerableSet.BytesSet internal _pools;
+    EnumerableSet.Bytes32Set internal _pools;
 
     modifier withExistingPool(bytes32 poolId) {
         require(_pools.contains(poolId), "Nonexistent pool");
