@@ -21,10 +21,9 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../math/FixedPoint.sol";
 
-import "./IVault.sol";
 import "./Settings.sol";
 
-abstract contract VaultAccounting is IVault, Settings {
+abstract contract VaultAccounting is Settings {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -40,7 +39,7 @@ abstract contract VaultAccounting is IVault, Settings {
 
     /**
      * @dev Transfers tokens into the Vault from `from`. The caller must verify that this action was authorized by
-     * `from` (typically by the entry-point function being called by an operator for `from`).
+     * `from` (typically by the entry-point function being called by an agent for `from`).
      */
     function _pullTokens(
         IERC20 token,

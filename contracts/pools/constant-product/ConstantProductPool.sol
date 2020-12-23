@@ -266,6 +266,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
     }
 
     function _resetAccSwapFees(uint128[] memory balances) private {
+        // solhint-disable-previous-line no-empty-blocks
         //TODO: reset swap fees
     }
 
