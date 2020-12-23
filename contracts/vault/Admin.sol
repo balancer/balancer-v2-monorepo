@@ -41,13 +41,6 @@ abstract contract Admin is UserBalance {
 
     address private _admin;
 
-    // Modifiers
-
-    modifier onlyAdmin {
-        require(msg.sender == _admin, "Caller is not the admin");
-        _;
-    }
-
     // Function declarations
 
     /**
@@ -64,7 +57,9 @@ abstract contract Admin is UserBalance {
      * @notice transfer control to a new admin
      * @param newAdmin - the address of the new admin
      */
-    function transferAdmin(address newAdmin) external onlyAdmin {
+    function transferAdmin(address newAdmin) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+
         _admin = newAdmin;
     }
 
@@ -75,7 +70,9 @@ abstract contract Admin is UserBalance {
      *      fees cannot be withdrawn until the recipient is set
      * @param protocolFeeCollector - the destination address for protocol fees
      */
-    function setProtocolFeeCollector(address protocolFeeCollector) external onlyAdmin {
+    function setProtocolFeeCollector(address protocolFeeCollector) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+
         _setProtocolFeeCollector(protocolFeeCollector);
     }
 
@@ -84,7 +81,9 @@ abstract contract Admin is UserBalance {
      * @dev Implemented in `Settings`, subject to `_MAX_PROTOCOL_WITHDRAW_FEE`
      * @param fee - amount of the protocol fee
      */
-    function setProtocolWithdrawFee(uint128 fee) external onlyAdmin {
+    function setProtocolWithdrawFee(uint128 fee) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+
         _setProtocolWithdrawFee(fee);
     }
 
@@ -94,7 +93,9 @@ abstract contract Admin is UserBalance {
      *      Implemented in `Settings`, subject to `_MAX_PROTOCOL_SWAP_FEE`
      * @param fee - the destination address for protocol fees
      */
-    function setProtocolSwapFee(uint128 fee) external onlyAdmin {
+    function setProtocolSwapFee(uint128 fee) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+
         _setProtocolSwapFee(fee);
     }
 
@@ -104,7 +105,9 @@ abstract contract Admin is UserBalance {
      *      Implemented in `Settings`, subject to `_MAX_PROTOCOL_FLASH_LOAN_FEE`
      * @param fee - the destination address for protocol fees
      */
-    function setProtocolFlashLoanFee(uint128 fee) external onlyAdmin {
+    function setProtocolFlashLoanFee(uint128 fee) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+
         _setProtocolFlashLoanFee(fee);
     }
 
@@ -112,7 +115,9 @@ abstract contract Admin is UserBalance {
      * @notice Add a new universal agent manager (responsible for maintaining the list of universal agents)
      * @param manager - the new universal agent manager
      */
-    function addUniversalAgentManager(address manager) external override onlyAdmin {
+    function addUniversalAgentManager(address manager) external override {
+        require(msg.sender == _admin, "Caller is not the admin");
+
         _universalAgentManagers.add(manager);
     }
 
@@ -120,7 +125,9 @@ abstract contract Admin is UserBalance {
      * @notice Remove a universal agent manager (responsible for maintaining the list of universal agents)
      * @param manager - the new universal agent manager
      */
-    function removeUniversalAgentManager(address manager) external override onlyAdmin {
+    function removeUniversalAgentManager(address manager) external override {
+        require(msg.sender == _admin, "Caller is not the admin");
+        
         _universalAgentManagers.remove(manager);
     }
 

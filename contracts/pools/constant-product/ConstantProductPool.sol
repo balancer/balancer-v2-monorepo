@@ -118,7 +118,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LENGTH");
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
-        IVault.StrategyType strategyType = IVault.StrategyType.PAIR; // TODO: make it TWO_TOKEN if tokens.lenght == 2
+        IVault.StrategyType strategyType = IVault.StrategyType.PAIR; // TODO: make it TWO_TOKEN if tokens.length == 2
 
         bytes32 poolId = vault.newPool(address(this), strategyType);
         vault.addLiquidity(poolId, from, tokens, amounts, false);
