@@ -2,12 +2,17 @@
 import { Contract, ContractFactory } from 'ethers';
 import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { deploy } from '../../scripts/helpers/deploy';
+import { deploy } from './deploy';
 
 export type TokenList = Dictionary<Contract>;
 
 // Deploys a vanilla ERC20 token that can be minted by any account
-export async function deployTokenFromFactory(ethers: any, admin: string, symbol: string, decimals?: number): Promise<string> {
+export async function deployTokenFromFactory(
+  ethers: any,
+  admin: string,
+  symbol: string,
+  decimals?: number
+): Promise<string> {
   // Get deployed Token Factory
   const tokenFactory = await ethers.getContract('TokenFactory');
 
@@ -21,7 +26,12 @@ export async function deployTokenFromFactory(ethers: any, admin: string, symbol:
   return event.args.token;
 }
 
-export async function deployToken(ethers: any, symbol: string, decimals?: number, from?: SignerWithAddress): Promise<string> {
+export async function deployToken(
+  ethers: any,
+  symbol: string,
+  decimals?: number,
+  from?: SignerWithAddress
+): Promise<string> {
   const [_, defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
   const testToken = await deploy('TestToken', { from: deployer, args: [deployer.address, symbol, symbol, decimals] });

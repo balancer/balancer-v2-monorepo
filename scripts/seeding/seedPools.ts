@@ -7,7 +7,6 @@ import { Contract } from 'ethers';
 import * as allPools from './allPools.json';
 import { task } from 'hardhat/config';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { deployPoolFromFactory, PairTS } from '../helpers/pools';
 
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
@@ -40,7 +39,6 @@ let ethers: any;
 
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
 async function action(hre: HardhatRuntimeEnvironment) {
-  const { getNamedAccounts } = hre;
   ethers = hre.ethers;
   [deployer, controller] = await ethers.getSigners();
 
@@ -111,7 +109,7 @@ async function deployStrategyPool(
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
   tokens.forEach((token, i) => console.log(`${token} - ${balances[i].toString()}`));
 
-  const initialBPT = 100e18.toString();
+  const initialBPT = (100e18).toString();
   const salt = ethers.utils.id(Math.random().toString());
 
   const parameters = [initialBPT, tokens, balances, weights, swapFee, salt];

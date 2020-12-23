@@ -13,7 +13,7 @@ export async function deployTokens(
   from?: SignerWithAddress,
   admin?: SignerWithAddress
 ): Promise<TokenList> {
-  const adminAddress = admin?.address || (await ethers.getSigners())[0].address
+  const adminAddress = admin?.address || (await ethers.getSigners())[0].address;
   return fromPairs(
     await Promise.all(
       symbols.map(async (symbol, index) => [
