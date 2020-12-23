@@ -273,6 +273,8 @@ abstract contract PoolRegistry is
     ) internal view returns (bool) {
         if (strategyType == IVault.StrategyType.PAIR) {
             return _isPairPoolInvested(poolId, token);
+        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+            _isTwoTokenPoolInvested(poolId, token);
         } else {
             return _isTuplePoolInvested(poolId, token);
         }
@@ -317,6 +319,8 @@ abstract contract PoolRegistry is
         (, StrategyType strategyType) = fromPoolId(poolId);
         if (strategyType == IVault.StrategyType.PAIR) {
             _investPairPoolCash(poolId, token, amount);
+        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+            _investTwoTokenPoolCash(poolId, token, amount);
         } else {
             _investTuplePoolCash(poolId, token, amount);
         }
@@ -334,6 +338,8 @@ abstract contract PoolRegistry is
         (, StrategyType strategyType) = fromPoolId(poolId);
         if (strategyType == IVault.StrategyType.PAIR) {
             _divestPairPoolCash(poolId, token, amount);
+        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+            _divestTwoTokenPoolCash(poolId, token, amount);
         } else {
             _divestTuplePoolCash(poolId, token, amount);
         }
@@ -347,6 +353,8 @@ abstract contract PoolRegistry is
         (, StrategyType strategyType) = fromPoolId(poolId);
         if (strategyType == IVault.StrategyType.PAIR) {
             _setPairPoolInvestment(poolId, token, amount);
+        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+            _setTwoTokenPoolInvestment(poolId, token, amount);
         } else {
             _setTuplePoolInvestment(poolId, token, amount);
         }

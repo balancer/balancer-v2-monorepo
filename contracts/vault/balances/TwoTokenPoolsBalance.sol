@@ -262,4 +262,72 @@ contract TwoTokenPoolsBalance {
             require(tokenABalance.total() != 0 && tokenBBalance.total() != 0, "Cannot fully remove single token");
         }
     }
+
+    function _mutateTwoTokenPoolTokenBalance(
+        bytes32 poolId,
+        IERC20 token,
+        function(bytes32, uint128) pure returns (bytes32) mutation,
+        uint128 mutationArgument
+    ) private {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+
+        (
+            bytes32 tokenABalance,
+            bytes32 tokenBBalance,
+            TwoTokenSharedBalances storage poolSharedBalances
+        ) = _getTwoTokenPoolSharedBalances(poolId, poolTokens.tokenA, poolTokens.tokenB);
+
+        if (token == poolTokens.tokenA) {
+            tokenABalance = mutation(tokenABalance, mutationArgument);
+        } else if (token == poolTokens.tokenB) {
+            tokenBBalance = mutation(tokenBBalance, mutationArgument);
+        } else {
+            revert("Token not in pool");
+        }
+
+        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
+        poolSharedBalances.sharedInvested = CashInvested.toSharedInvested(tokenABalance, tokenBBalance);
+    }
+
+    function _investTwoTokenPoolCash(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) internal {
+        _mutateTwoTokenPoolTokenBalance(poolId, token, CashInvested.cashToInvested, amount);
+    }
+
+    function _divestTwoTokenPoolCash(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) internal {
+        _mutateTwoTokenPoolTokenBalance(poolId, token, CashInvested.investedToCash, amount);
+    }
+
+    function _setTwoTokenPoolInvestment(
+        bytes32 poolId,
+        IERC20 token,
+        uint128 amount
+    ) internal {
+        _mutateTwoTokenPoolTokenBalance(poolId, token, CashInvested.setInvested, amount);
+    }
+
+    function _isTwoTokenPoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+
+        (bytes32 tokenABalance, bytes32 tokenBBalance, ) = _getTwoTokenPoolSharedBalances(
+            poolId,
+            poolTokens.tokenA,
+            poolTokens.tokenB
+        );
+
+        if (token == poolTokens.tokenA) {
+            return tokenABalance.isInvested();
+        } else if (token == poolTokens.tokenB) {
+            return tokenBBalance.isInvested();
+        } else {
+            revert("Token not in pool");
+        }
+    }
 }
