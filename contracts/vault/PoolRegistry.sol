@@ -44,7 +44,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         _;
     }
 
-    // agents are allowed to use a pools tokens for an investment
+    // investment managers are allowed to use a pools tokens for an investment
     mapping(bytes32 => mapping(IERC20 => address)) private _poolInvestmentManagers;
 
     event PoolInvestmentManagerAdded(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);

@@ -59,7 +59,7 @@ interface IVault {
 
     /**
      * @dev Revokes `agent` so that it no longer is an agent for the caller. An account is always its own agent
-     * and cannot revoke itself.
+     * and cannot revoke itself. Universal Agents also cannot be revoked.
      */
     function removeUserAgent(address agent) external;
 
@@ -113,7 +113,7 @@ interface IVault {
     function addUniversalAgent(address agent) external;
 
     /**
-     * @dev Removes `agent` as a TUniversal Agent. Can only be called by a Universal Agent Manager.
+     * @dev Removes `agent` as a Universal Agent. Can only be called by a Universal Agent Manager.
      */
     function removeUniversalAgent(address agent) external;
 
@@ -360,13 +360,13 @@ interface IVault {
 
     /**
      * @dev Authorizes `agent` to call `addUniversalAgent` or `removeUniversalAgent`.
-     *      This is typically called on factory contracts. Can only be called by the admin.
+     * This is typically called on factory contracts. Can only be called by the admin.
      */
     function addUniversalAgentManager(address agent) external;
 
     /**
      * @dev Remove authorization for `agent` to call `addUniversalAgent` or `removeUniversalAgent`.
-     *      This is typically called on factory contracts. Can only be called by the admin.
+     * This is typically called on factory contracts. Can only be called by the admin.
      */
     function removeUniversalAgentManager(address agent) external;
 

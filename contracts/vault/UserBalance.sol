@@ -32,7 +32,8 @@ abstract contract UserBalance is VaultAccounting {
     // Agents are allowed to use a user's tokens in a swap
     mapping(address => EnumerableSet.AddressSet) private _userAgents;
 
-    // Universal agents are agents for all users, without needing to be authorized.
+    // Universal agents are agents for all users, without needing to be authorized. They cannot be revoked by individual
+    // users, only by an Universal Agent Manager.
     EnumerableSet.AddressSet private _universalAgents;
 
     // Universal Agent managers can report new Universal Agents
