@@ -301,6 +301,14 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
       });
     }
 
+    if (strategyType == TwoTokenTS) {
+      it('the pool cannot remove zero liquidity from single token', async () => {
+        await expect(
+          vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [0], false)
+        ).to.be.revertedWith('Must interact with all tokens in two token pool');
+      });
+    }
+
     it('the pool can remove zero liquidity from multiple tokens', async () => {
       await vault
         .connect(pool)
