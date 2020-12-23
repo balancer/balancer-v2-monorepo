@@ -43,8 +43,6 @@ async function action(hre: HardhatRuntimeEnvironment) {
   const { getNamedAccounts } = hre;
   ethers = hre.ethers;
   [deployer, controller] = await ethers.getSigners();
-  const { admin } = await getNamedAccounts();
-  console.log(deployer.address, admin)
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
@@ -88,7 +86,7 @@ async function deployPools(filteredPools: Pool[], tokens: ContractList) {
       balances.push(filteredPools[i].tokens[j].balance);
     }
 
-    // Deploy strategy, pool and provide liquidity
+    // Deploy pool and provide liquidity
     await deployStrategyPool(tokensList, weights, balances, swapFee);
   }
 }
@@ -102,10 +100,10 @@ async function deployStrategyPool(
   swapFee: BigNumber
 ) {
   const vault = await ethers.getContract('Vault');
-  const cwpFactory = await ethers.getContract('ConstantProductPoolFactory');
+  const cppFactory = await ethers.getContract('ConstantProductPoolFactory');
 
-  if (!cwpFactory || !vault) {
-    console.log('CWPFactory and/or Vault Contracts Not Deployed.');
+  if (!cppFactory || !vault) {
+    console.log('ConstantProductPoolFactory and/or Vault Contracts Not Deployed.');
     return;
   }
 
@@ -113,15 +111,12 @@ async function deployStrategyPool(
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
   tokens.forEach((token, i) => console.log(`${token} - ${balances[i].toString()}`));
 
-  //const initialBPT = BigNumber.from(10e18);
-  const initialBPT = 10e18.toString();
-  //const amounts = tokens.map((t) => BigNumber.from(50e18));
-  const amounts = tokens.map((t) => 50e18.toString());
-  const salt = ethers.utils.id('NaCl2');
+  const initialBPT = 100e18.toString();
+  const salt = ethers.utils.id(Math.random().toString());
 
-  const parameters = [initialBPT, tokens, amounts, weights, swapFee, salt];
-  //await deployPoolFromFactory(vault, deployer, 'ConstantProductPool', {from: controller, parameters})
-  const tx = await cwpFactory.connect(deployer).create(...parameters);
+  const parameters = [initialBPT, tokens, balances, weights, swapFee, salt];
+
+  const tx = await cppFactory.connect(controller).create(...parameters);
   const receipt = await tx.wait();
   const event = receipt.events?.find((e: any) => e.event == 'PoolCreated');
   if (event == undefined) {
