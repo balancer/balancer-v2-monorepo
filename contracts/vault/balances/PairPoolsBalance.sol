@@ -130,6 +130,7 @@ contract PairPoolsBalance {
         uint128 amount
     ) internal {
         bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+        require(currentBalance.total() > 0, "Token not in pool");
         _poolPairTokenBalance[poolId][token] = currentBalance.cashToInvested(amount);
     }
 
@@ -139,6 +140,7 @@ contract PairPoolsBalance {
         uint128 amount
     ) internal {
         bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+        require(currentBalance.total() > 0, "Token not in pool");
         _poolPairTokenBalance[poolId][token] = currentBalance.investedToCash(amount);
     }
 
@@ -148,6 +150,7 @@ contract PairPoolsBalance {
         uint128 amount
     ) internal {
         bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+        require(currentBalance.total() > 0, "Token not in pool");
         _poolPairTokenBalance[poolId][token] = currentBalance.setInvested(amount);
     }
 

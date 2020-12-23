@@ -11,6 +11,7 @@ import { PairTS, TradingStrategyType, TupleTS, TwoTokenTS } from '../../scripts/
 
 describe('InvestmentManager', function () {
   let tokens: TokenList;
+  let otherToken: Contract;
   let vault: Contract;
 
   let admin: SignerWithAddress;
@@ -25,6 +26,8 @@ describe('InvestmentManager', function () {
   beforeEach('set up investment manager', async () => {
     vault = await deploy('Vault', { args: [admin.address] });
     tokens = await deployTokens(['DAI', 'USDT'], [18, 18]);
+
+    otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
   });
 
   context('with two token pool', () => {
@@ -41,6 +44,7 @@ describe('InvestmentManager', function () {
 
   function itManagesInvestmentsCorrectly(poolType: TradingStrategyType) {
     let poolId: string;
+    const tokenInitialBalance = BigNumber.from((200e18).toString());
 
     beforeEach(async () => {
       const receipt = await (await vault.newPool(pool.address, poolType)).wait();
@@ -52,11 +56,10 @@ describe('InvestmentManager', function () {
       const tokenAmounts = [];
       for (const symbol in tokens) {
         // Mint tokens for the pool to add liquidity with
-        const amount = (200e18).toString();
-        await mintTokens(tokens, symbol, pool, amount);
+        await mintTokens(tokens, symbol, pool, tokenInitialBalance);
 
         tokenAddresses.push(tokens[symbol].address);
-        tokenAmounts.push(amount);
+        tokenAmounts.push(tokenInitialBalance);
 
         await tokens[symbol].connect(pool).approve(vault.address, MAX_UINT256);
 
@@ -70,7 +73,7 @@ describe('InvestmentManager', function () {
     });
 
     describe('invest', () => {
-      context('when the sender is an allowed manager', () => {
+      context('when the sender the manager', () => {
         context('when trying to invest less than the vault balance', () => {
           const amount = BigNumber.from((10e18).toString());
 
@@ -97,23 +100,27 @@ describe('InvestmentManager', function () {
           });
         });
 
-        context('when trying to invest more than the vault balance', () => {
-          const amount = BigNumber.from((500e18).toString());
+        it('reverts when investing a token not in the pool', async () => {
+          await vault
+            .connect(pool)
+            .authorizePoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
 
-          it('reverts', async () => {
-            await expect(
-              vault.connect(investmentManager).investPoolBalance(poolId, tokens.DAI.address, amount)
-            ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
-          });
+          await expect(
+            vault.connect(investmentManager).investPoolBalance(poolId, otherToken.address, 0)
+          ).to.be.revertedWith('Token not in pool');
+        });
+
+        it('reverts when investing more than the pool balance', async () => {
+          await expect(
+            vault.connect(investmentManager).investPoolBalance(poolId, tokens.DAI.address, tokenInitialBalance.add(1))
+          ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
         });
       });
 
-      context('when the sender is not an allowed manager', () => {
-        it('reverts', async () => {
-          await expect(vault.connect(other).investPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
-            'SENDER_NOT_INVESTMENT_MANAGER'
-          );
-        });
+      it('reverts if the sender is not the manager', async () => {
+        await expect(vault.connect(other).investPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
+          'SENDER_NOT_INVESTMENT_MANAGER'
+        );
       });
     });
 
@@ -150,21 +157,35 @@ describe('InvestmentManager', function () {
           });
         });
 
-        context('when trying to divest more than the invested balance', () => {
-          it('reverts', async () => {
-            await expect(
-              vault.connect(investmentManager).divestPoolBalance(poolId, tokens.DAI.address, 1)
-            ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
-          });
+        it('does nothing when divesting zero tokens', async () => {
+          await expectBalanceChange(
+            () => vault.connect(investmentManager).divestPoolBalance(poolId, tokens.DAI.address, 0),
+            tokens,
+            { account: vault.address }
+          );
+        });
+
+        it('reverts when divesting more than the invested balance', async () => {
+          await expect(
+            vault.connect(investmentManager).divestPoolBalance(poolId, tokens.DAI.address, 1)
+          ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+        });
+
+        it('reverts when divesting a token not in the pool', async () => {
+          await vault
+            .connect(pool)
+            .authorizePoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
+
+          await expect(
+            vault.connect(investmentManager).divestPoolBalance(poolId, otherToken.address, 0)
+          ).to.be.revertedWith('Token not in pool');
         });
       });
 
-      context('when the sender is not an allowed manager', () => {
-        it('reverts', async () => {
-          await expect(vault.connect(other).divestPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
-            'SENDER_NOT_INVESTMENT_MANAGER'
-          );
-        });
+      it('reverts if the sender is not the manager', async () => {
+        await expect(vault.connect(other).divestPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
+          'SENDER_NOT_INVESTMENT_MANAGER'
+        );
       });
     });
 
@@ -223,12 +244,18 @@ describe('InvestmentManager', function () {
         });
       });
 
-      context('when the sender is not an allowed manager', () => {
-        it('reverts', async () => {
-          await expect(vault.connect(other).updateInvested(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
-            'SENDER_NOT_INVESTMENT_MANAGER'
-          );
-        });
+      it('revert if setting a token not in the pool', async () => {
+        await vault.connect(pool).authorizePoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
+
+        await expect(vault.connect(investmentManager).updateInvested(poolId, otherToken.address, 0)).to.be.revertedWith(
+          'Token not in pool'
+        );
+      });
+
+      it('revert if the sender is not the manager', async () => {
+        await expect(vault.connect(other).updateInvested(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
+          'SENDER_NOT_INVESTMENT_MANAGER'
+        );
       });
     });
   }

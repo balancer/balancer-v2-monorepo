@@ -129,6 +129,8 @@ contract TuplePoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
+        require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+
         bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
         _poolTupleTokenBalance[poolId].set(token, currentBalance.cashToInvested(amount));
     }
@@ -138,6 +140,8 @@ contract TuplePoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
+        require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+
         bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
         _poolTupleTokenBalance[poolId].set(token, currentBalance.investedToCash(amount));
     }
@@ -147,6 +151,8 @@ contract TuplePoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
+        require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+
         bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
         _poolTupleTokenBalance[poolId].set(token, currentBalance.setInvested(amount));
     }
