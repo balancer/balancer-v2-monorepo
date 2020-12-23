@@ -68,18 +68,10 @@ abstract contract VaultAccounting is Settings {
         IERC20 token,
         address from,
         uint128 amount
-    ) internal returns (uint128) {
-        if (amount == 0) {
-            return 0;
+    ) internal {
+        if (amount != 0) {
+            token.safeTransferFrom(from, address(this), amount);
         }
-
-        uint256 currentBalance = token.balanceOf(address(this));
-
-        token.safeTransferFrom(from, address(this), amount);
-
-        uint256 newBalance = token.balanceOf(address(this));
-
-        return newBalance.sub(currentBalance).toUint128();
     }
 
     /**

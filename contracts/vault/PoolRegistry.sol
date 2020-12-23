@@ -65,8 +65,8 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
 
     // Event declarations
 
-    event AuthorizedPoolInvestmentManager(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
-    event RevokedPoolInvestmentManager(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
+    event PoolInvestmentManagerAdded(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
+    event PoolInvestmentManagerRemoved(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
 
     // Modifiers
 
@@ -98,7 +98,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      *            to be used multiple times
      * @param strategy - address of the pool contract
      * @param strategyType - pool type
-     * @return encoded pool ID
+     * @return Pool ID
      */
     function newPool(address strategy, StrategyType strategyType) external override returns (bytes32) {
         bytes32 poolId = toPoolId(strategy, uint16(strategyType), uint32(_pools.length()));
@@ -139,7 +139,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
 
     /**
      * @notice Returns the list of tokens for a given pool
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @return list of token addresses
      */
     function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
@@ -150,7 +150,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
 
     /**
      * @notice Returns the token balances in a given pool
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param tokens - the list of tokens for which we want balances
      * @return list of balances (parallel to the token list)
      */
@@ -175,7 +175,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @notice Decode a poolId into a pool address and type
      * @dev Helper function; could also call `fromPoolId` directly
      *      Even though fromPoolId is pure, has to be view because the modifier reads state
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @return address and strategy type
      */
     function getPool(bytes32 poolId) external view override withExistingPool(poolId) returns (address, StrategyType) {
@@ -185,7 +185,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
     /**
      * @notice Add liquidity to a pool
      * @dev The caller must be an agent for "from"
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param from - address we're pulling the tokens from
      * @param tokens - the tokens we're depositing
      * @param amounts - the amounts we're depositing
@@ -214,8 +214,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
                     toReceive -= toWithdraw;
                 }
 
-                uint128 received = _pullTokens(tokens[i], from, toReceive);
-                require(received == toReceive, "Not enough tokens received");
+                _pullTokens(tokens[i], from, toReceive);
 
                 _increasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
             }
@@ -224,7 +223,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
 
     /**
      * @notice Remove liquidity from a pool
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param to - address we're sending the tokens to
      * @param tokens - the tokens we're depositing
      * @param amounts - the amounts we're depositing
@@ -262,7 +261,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
     /**
      * @notice Add a pool asset manager for a token
      * @dev The asset manager cannot be changed if there are funds under management
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param token - the token we're placing under management
      * @param manager - the asset manager in charge of this token
      */
@@ -276,13 +275,13 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         require(missing || _isPoolInvested(poolId, strategyType, token), "CANNOT_SET_INVESTMENT_MANAGER");
 
         _poolInvestmentManagers[poolId][token] = manager;
-        emit AuthorizedPoolInvestmentManager(poolId, token, manager);
+        emit PoolInvestmentManagerAdded(poolId, token, manager);
     }
 
     /**
      * @notice Remove a pool asset manager for a token
      * @dev The asset manager cannot be removed unless there are funds under management
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param token - the token we're removing from management
      */
     function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external override onlyPool(poolId) {
@@ -292,13 +291,13 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         require(exists && _isPoolInvested(poolId, strategyType, token), "CANNOT_REVOKE_INVESTMENT_MANAGER");
 
         delete _poolInvestmentManagers[poolId][token];
-        emit RevokedPoolInvestmentManager(poolId, token, currentManager);
+        emit PoolInvestmentManagerRemoved(poolId, token, currentManager);
     }
 
     /**
      * @notice Determine whether an address is the asset manager for a token in a pool
      * @dev delegate to internal function
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param token - the token we're checking
      * @param account - the potential asset manager
      * @return boolean flag; true if the account is an asset manager
@@ -316,7 +315,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @dev Implemented in `PoolBalance`
      *      Each token has cash and managed portions, where cash + managed = total
      *      Increasing the managed balance decreases the cash available
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param token - the token we're changing the balance of
      * @param amount - the amount we're moving from cash to managed
      */
@@ -336,7 +335,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @dev Implemented in `PoolBalance`
      *      Each token has cash and managed portions, where cash + managed = total
      *      Decreasing the managed balance increases the cash available
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param token - the token we're changing the balance of
      * @param amount - the amount we're moving from managed to cash
      */
@@ -345,11 +344,10 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         IERC20 token,
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
-        // Tokens that charge a transfer fee are unsupported
-        uint128 divestedAmount = _pullTokens(token, msg.sender, amount);
+        _pullTokens(token, msg.sender, amount);
 
         (, StrategyType strategyType) = fromPoolId(poolId);
-        _divestPoolCash(poolId, strategyType, token, divestedAmount);
+        _divestPoolCash(poolId, strategyType, token, amount);
     }
 
     /**
@@ -359,7 +357,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      *      Setting the managed value directly without changing the cash will alter the total
      *      This is how the asset manager reports gains/losses
      *      (i.e., setting the managed balance to a higher value represents a gain)
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param token - the token we're changing the balance of
      * @param amount - the amount we're setting the managed balance to
      */
@@ -381,7 +379,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @param strategy - the pool contract address
      * @param strategyType - the pool type
      * @param poolIndex - the index of the pool
-     * @return the encoded pool ID
+     * @return the Pool ID
      */
     function toPoolId(
         address strategy,
@@ -399,7 +397,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
      * @notice Decode a Bytes32 "poolId" into a pool address and type
      * @dev Pools are deployed as contracts, then registered with the vault, which holds the assets and performs swaps
      *      (based on logic in the pool contract)
-     * @param poolId - the encoded poolId
+     * @param poolId - the PoolId
      * @return strategy (address) and strategyType of the pool
      */
     function fromPoolId(bytes32 poolId) public pure returns (address strategy, StrategyType strategyType) {
@@ -413,7 +411,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
     /**
      * @notice Determine whether an address is the asset manager for a token in a pool
      * @dev Could also pass in the ZERO_ADDRESS to check if there is no asset manager assigned
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param token - the token we're checking
      * @param account - the potential asset manager
      * @return boolean flag; true if the account is an asset manager

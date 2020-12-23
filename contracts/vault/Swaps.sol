@@ -148,7 +148,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     /**
      * @notice Pay swap protocol fees
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param tokens - the tokens on which to collect fees
      * @param collectedFees - the amount of swap fees collected (can be 0)
      * @return balances - total pool token balances after all fees
@@ -271,8 +271,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                     toReceive -= toWithdraw;
                 }
 
-                uint128 received = _pullTokens(token, funds.sender, toReceive);
-                require(received == toReceive, "Not enough tokens received");
+                _pullTokens(token, funds.sender, toReceive);
             } else {
                 // Make delta positive
                 uint128 toSend = uint128(-tokenDeltas[i]);

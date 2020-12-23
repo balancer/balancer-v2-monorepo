@@ -53,11 +53,11 @@ abstract contract UserBalance is VaultAccounting {
 
     event Withdrawn(address indexed user, address indexed recipient, IERC20 indexed token, uint128 amount);
 
-    event AddedUserAgent(address indexed user, address indexed agent);
-    event RemovedUserAgent(address indexed user, address indexed agent);
+    event UserAgentAdded(address indexed user, address indexed agent);
+    event UserAgentRemoved(address indexed user, address indexed agent);
 
-    event AddedUniversalAgent(address indexed agent);
-    event RemovedUniversalAgent(address indexed agent);
+    event UniversalAgentAdded(address indexed agent);
+    event UniversalAgentRemoved(address indexed agent);
 
     // Modifiers
 
@@ -82,10 +82,11 @@ abstract contract UserBalance is VaultAccounting {
         address user
     ) external override {
         // Pulling from the sender - no need to check for agents
-        uint128 received = _pullTokens(token, msg.sender, amount);
+        _pullTokens(token, msg.sender, amount);
 
-        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(received);
-        emit Deposited(msg.sender, user, token, received);
+        // TODO: check overflow
+        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(amount);
+        emit Deposited(msg.sender, user, token, amount);
     }
 
     /**
@@ -113,7 +114,7 @@ abstract contract UserBalance is VaultAccounting {
      */
     function addUserAgent(address agent) external override {
         if (_userAgents[msg.sender].add(agent)) {
-            emit AddedUserAgent(msg.sender, agent);
+            emit UserAgentAdded(msg.sender, agent);
         }
     }
 
@@ -123,7 +124,7 @@ abstract contract UserBalance is VaultAccounting {
      */
     function removeUserAgent(address agent) external override {
         if (_userAgents[msg.sender].remove(agent)) {
-            emit RemovedUserAgent(msg.sender, agent);
+            emit UserAgentRemoved(msg.sender, agent);
         }
     }
 
@@ -223,7 +224,7 @@ abstract contract UserBalance is VaultAccounting {
      */
     function addUniversalAgent(address universalAgent) external override onlyUniversalAgentManagers {
         if (_universalAgents.add(universalAgent)) {
-            emit AddedUniversalAgent(universalAgent);
+            emit UniversalAgentAdded(universalAgent);
         }
     }
 
@@ -234,7 +235,7 @@ abstract contract UserBalance is VaultAccounting {
      */
     function removeUniversalAgent(address universalAgent) external override onlyUniversalAgentManagers {
         if (_universalAgents.remove(universalAgent)) {
-            emit RemovedUniversalAgent(universalAgent);
+            emit UniversalAgentRemoved(universalAgent);
         }
     }
 

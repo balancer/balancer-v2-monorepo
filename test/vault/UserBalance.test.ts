@@ -141,7 +141,7 @@ describe('Vault - user balance', () => {
       expect(await vault.isAgentFor(user.address, agent.address)).to.equal(false);
 
       const receipt = await (await vault.connect(user).addUserAgent(agent.address)).wait();
-      expectEvent.inReceipt(receipt, 'AddedUserAgent', {
+      expectEvent.inReceipt(receipt, 'UserAgentAdded', {
         user: user.address,
         agent: agent.address,
       });
@@ -172,7 +172,7 @@ describe('Vault - user balance', () => {
 
       it('accounts can revoke agents', async () => {
         const receipt = await (await vault.connect(user).removeUserAgent(agent.address)).wait();
-        expectEvent.inReceipt(receipt, 'RemovedUserAgent', {
+        expectEvent.inReceipt(receipt, 'UserAgentRemoved', {
           user: user.address,
           agent: agent.address,
         });

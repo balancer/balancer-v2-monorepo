@@ -47,8 +47,8 @@ abstract contract BTokenBase is IERC20 {
 
     // Internal functions
 
-    // Mint an amount of new tokens, and add them to the balance (and total supply)
-    // Emit a transfer amount from the null address to this contract
+    // Creates "amount" pool tokens (i.e., transfers them from the zero address to this contract),
+    // and adds them to the contract balance (and total supply)
     function _mint(uint256 amount) internal {
         _balance[address(this)] = _balance[address(this)].add(amount);
         _totalSupply = _totalSupply.add(amount);
@@ -56,8 +56,8 @@ abstract contract BTokenBase is IERC20 {
         emit Transfer(address(0), address(this), amount);
     }
 
-    // Burn an amount of new tokens, and subtract them from the balance (and total supply)
-    // Emit a transfer amount from this contract to the null address
+    // Destroys "amount" pool tokens (i.e., transfers them from this contract to the zero address),
+    // and subtracts them from the balance (and total supply)
     function _burn(uint256 amount) internal {
         _balance[address(this)] = _balance[address(this)].sub(amount, "ERR_INSUFFICIENT_BAL");
         _totalSupply = _totalSupply.sub(amount);
@@ -65,8 +65,7 @@ abstract contract BTokenBase is IERC20 {
         emit Transfer(address(this), address(0), amount);
     }
 
-    // Transfer tokens from sender to recipient
-    // Adjust balances, and emit a Transfer event
+    // Transfers tokens from sender to recipient, and adjusts balances
     function _move(
         address sender,
         address recipient,
@@ -78,14 +77,12 @@ abstract contract BTokenBase is IERC20 {
         emit Transfer(sender, recipient, amount);
     }
 
-    // Transfer from this contract to recipient
-    // Emits a transfer event if successful
+    // Transfers "amount" pool tokens from this contract to a recipient
     function _push(address recipient, uint256 amount) internal {
         _move(address(this), recipient, amount);
     }
 
-    // Transfer from recipient to this contract
-    // Emits a transfer event if successful
+    // Transfers "amount" of pool tokens from the sender to this contract
     function _pull(address sender, uint256 amount) internal {
         _move(sender, address(this), amount);
     }
@@ -110,7 +107,7 @@ contract BToken is BTokenBase {
     // External functions
 
     /**
-     * @notice Getter for allowance: amount spender will be allowed to spend on behalf of owner
+     * @notice Getter for allowance: the amount spender will be allowed to spend on behalf of owner
      * @param owner - owner of the tokens
      * @param spender - entity allowed to spend the tokens
      * @return remaining amount spender is allowed to transfer
@@ -129,8 +126,7 @@ contract BToken is BTokenBase {
     }
 
     /**
-     * @notice Approve owner (sender) to spend a certain amount
-     * @dev emits an Approval event
+     * @notice Approves owner (sender) to spend a certain amount
      * @param spender - entity the owner (sender) is approving to spend his tokens
      * @param amount - number of tokens being approved
      * @return bool - result of the approval (will always be true if it doesn't revert)
@@ -144,8 +140,7 @@ contract BToken is BTokenBase {
     }
 
     /**
-     * @notice Increase the amount the spender is allowed to spend on behalf of the owner (sender)
-     * @dev emits an Approval event
+     * @notice Increases the amount the spender is allowed to spend on behalf of the owner (sender)
      * @param spender - entity the owner (sender) is approving to spend his tokens
      * @param amount - number of tokens being approved
      * @return bool - result of the approval (will always be true if it doesn't revert)
@@ -159,8 +154,7 @@ contract BToken is BTokenBase {
     }
 
     /**
-     * @notice Decrease the amount the spender is allowed to spend on behalf of the owner (sender)
-     * @dev emits an Approval event
+     * @notice Decreases the amount the spender is allowed to spend on behalf of the owner (sender)
      * @dev If you try to decrease it below the current limit, it's just set to zero (not an error)
      * @param spender - entity the owner (sender) is approving to spend his tokens
      * @param amount - number of tokens being approved
@@ -182,7 +176,6 @@ contract BToken is BTokenBase {
 
     /**
      * @notice Transfer the given amount from sender (caller) to recipient
-     * @dev _move emits a Transfer event if successful
      * @param recipient - entity receiving the tokens
      * @param amount - number of tokens being transferred
      * @return bool - result of the transfer (will always be true if it doesn't revert)
@@ -194,8 +187,7 @@ contract BToken is BTokenBase {
     }
 
     /**
-     * @notice Transfer the given amount from sender to recipient
-     * @dev _move emits a Transfer event if successful; may also emit an Approval event
+     * @notice Transfers the given amount from sender to recipient
      * @param sender - entity sending the tokens (must be caller or allowed to spend on behalf of caller)
      * @param recipient - recipient of the tokens
      * @param amount - number of tokens being transferred

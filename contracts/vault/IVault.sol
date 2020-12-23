@@ -52,8 +52,6 @@ interface IVault {
 
     // A batched swap is made up of a number of individual swaps. Each swap with a pool involves
     // increasing the balance of one token (tokenIn), and decreasing the balance of another (tokenOut).
-    // It uses indexes instead of token addresses to avoid expensive token array lookups.
-    // Balances are uint128 for space efficiency, so that "cash" and "total" fit in one storage slot.
     struct SwapIn {
         bytes32 poolId;
         uint128 tokenInIndex;
@@ -71,8 +69,9 @@ interface IVault {
     }
 
     // Incoming funds are transfered from the sender address using `IERC20.transferFrom`.
-    // If withdrawFromUserBalance is true, and the funds in sender's wallet are insufficient,
-    //   the contract will attempt to draw the remainder from sender's User Balance.
+    // If withdrawFromUserBalance is true, assets are deducted from sender's user balance
+    // instead of being transferred. If this internal balance is not enough, then it will
+    // pull them from sender's wallet.
     // In any case, the caller must be an agent for sender.
     // Outgoing funds are deposited to the recipient's User Balance, or if transferToRecipient is true,
     //   transferred to recipient's wallet.
@@ -98,7 +97,9 @@ interface IVault {
     /**
      * @notice Returns user's User Balance for a specific token.
      * @dev User balances are effectively a "wallet" inside the protocol,
-     *      that can be used to fund or receive proceeds from swaps or other operations.
+     *      Transactions that use User Balance can skip the ERC20 transfers and therefore use less gas,
+     *      for example when swapping or adding liquidity to a Pool.
+     *      Among other uses, UserBalance can be funded by calling `deposit` and retrieved by calling `withdraw`.
      *      Implemented by `UserBalance`
      * @param user - account with the balance; not necessarily the caller
      * @param token - the token whose balance we want
@@ -111,8 +112,6 @@ interface IVault {
      * @dev User balances are effectively a "wallet" inside the protocol,
      *      that can be used to fund or receive proceeds from swaps or other operations.
      *      Since the user need not be the caller, this enables authorized third party transfers
-     *      (for instance, a GUI proxy can transfer tokens directly from a destination wallet
-     *       in a single transfer).
      *      Implemented by `UserBalance`
      * @param token - the token to deposit
      * @param amount - amount of the deposit
@@ -148,8 +147,9 @@ interface IVault {
     /**
      * @notice Authorizes an address to act as an agent for the caller.
      * @dev Overriden in UserBalance - adds an agent to the caller's account.
-     *      Agency applies to adding liquidity (PoolRegistry) and trading (Swaps).
-     *      Emits an event if successful (i.e., agent was not already on the list).
+     *      An account's agents can use any of their approved tokens to perform swaps or add liquidity.
+     *      Therefore, agents should only be smart contracts that perform authorization checks on the addresses
+     *      whose funds they manage, such as using msg.sender or validating signed messages.
      *      Implemented by `UserBalance`
      * @param agent - can add liquidity/swap for the caller
      */
@@ -158,7 +158,6 @@ interface IVault {
     /**
      * @notice Revokes agent's permission to act on behalf of the caller.
      * @dev An account is always its own agent. and cannot revoke itself.
-     *      Emits an event if successful (i.e., agent was already on the list).
      *      Implemented by `UserBalance`
      * @param agent - can no longer add liquidity/swap for the caller
      */
@@ -166,7 +165,10 @@ interface IVault {
 
     /**
      * @notice Returns true if the "agent" address is an agent for user
-     * @dev This will return true for both user-level and universal agents (and the user account itself).
+     * @dev This will return true for three types of accounts:
+     *      - agents added via `addUserAgent`
+     *      - universal agents, added via `addUniversalAgent` by a Universal Agent Manager
+     *      - the account itself (i.e., all accounts are agents for themselves)"
      *      Implemented by `UserBalance`
      * @param user - the user we're checking
      * @param agent - the potential agent for this user
@@ -257,7 +259,7 @@ interface IVault {
      *      Implemented by `PoolRegistry`
      * @param strategy - the address of the deployed pool contract
      * @param strategyType - the type of the strategy (will be encoded into the poolId)
-     * @return the encoded poolId (managed by `PoolRegistry` functions `fromPoolId` and `toPoolId`)
+     * @return the PoolId (managed by `PoolRegistry` functions `fromPoolId` and `toPoolId`)
      */
     function newPool(address strategy, StrategyType strategyType) external returns (bytes32);
 
@@ -281,7 +283,7 @@ interface IVault {
     /**
      * @notice Returns a Pool's address and strategy type
      * @dev Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @return address and strategy type of the pool
      */
     function getPool(bytes32 poolId) external view returns (address, StrategyType);
@@ -289,7 +291,7 @@ interface IVault {
     /**
      * @notice Returns all tokens in the Pool (by definition, those with non-zero balances)
      * @dev    Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @return list of ERC20 token addresses
      */
     function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory);
@@ -297,7 +299,7 @@ interface IVault {
     /**
      * @notice Returns the Pool's balances for a set of tokens. These can be zero if the tokens are not in the Pool
      * @dev    Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @param tokens - list of ERC20 token addresses to check
      * @return list of numeric balances (in wei)
      */
@@ -308,15 +310,15 @@ interface IVault {
     /**
      * @dev Adds liquidity into a Pool. Can only be called by its controller.
      *
-     * @dev For each token, the Pool's balance will be increased by amounts[i]. This is achieved by first transferring
-     *      amounts[i] tokens, and then withdrawing any amount remaining from User Balance (if the flag is set).
+     * @dev For each token, the Pool's balance will be increased by amounts[i]. This is achieved by first withdrawing
+     *      amounts[i] from User Balance (if the flag is set), then transferring any amount remaining from the sender.
      *      In both cases, the tokens will come from the "from" address. "from" must have granted allowance to the
      *      Vault, and the caller (Pool controller) must be an agent for "from".
      *
      *      If a token that was not previously in the Pool is granted balance by this function, it will become part
      *      of the Pool. This is the only way tokens can be added to a Pool.
      *      Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @param from - the source of the funds (and a reference to the User Balance if needed)
      * @param tokens - the tokens to be added (can be any set of tokens, whether or not they're already in the pool)
      * @param amounts - balances of the tokens in the list
@@ -345,7 +347,7 @@ interface IVault {
      *      If a token that was previously in the Pool has all of its balance removed by this function, it will be
      *      removed from the Pool. This is the only way tokens can be removed from a Pool.
      *      Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @param to - the destination of the funds (and a reference to the User Balance if needed)
      * @param tokens - the tokens to be withdrawn from the Pool
      * @param amounts - the amount of each token to be withdrawn
@@ -427,7 +429,7 @@ interface IVault {
      *         Pool swap fees are computed first (as a percentage of trading volume), then the protocol fees are applied
      *         as a percentage of the swap fees.
      *         Implemented in `Swaps`
-     * @param poolId - the encoded pool ID
+     * @param poolId - the Pool ID
      * @param tokens - the tokens to which we're applying fees
      * @param collectedFees - the pool swap fees to be collected
      * @return balances - the pool token balances after all fees are applied
@@ -467,7 +469,7 @@ interface IVault {
      * @notice Authorize an investment manager for a pool token
      * @dev The manager can only access a certain percentage of the pool balance, which can vary by token
      *      Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @param token - the token asset we are putting under management
      * @param manager - the asset manager now allowed to manage this pool token
      */
@@ -480,7 +482,7 @@ interface IVault {
     /**
      * @notice Revoke the current investment manager of a pool token
      * @dev    Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @param token - the token asset we are reclaiming from management
      */
     function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external;
@@ -490,7 +492,7 @@ interface IVault {
      * @dev Each token has cash and managed portions, where cash + managed = total
      *      Increasing the managed amount will decrease the cash available
      *      Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @param token - the token asset under management
      * @param amount - the amount we are adding to the managed balance
      */
@@ -505,7 +507,7 @@ interface IVault {
      * @dev Each token has cash and managed portions, where cash + managed = total
      *      Decreasing the managed amount will increase the cash available
      *      Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @param token - the token asset under management
      * @param amount - the amount we are withdrawing from the managed balance
      */
@@ -522,7 +524,7 @@ interface IVault {
      *      Asset managers call this to report profits or losses
      *        (i.e., if the new amount is greater than the current managed value, the manager made a profit)
      *      Implemented by `PoolRegistry`
-     * @param poolId - the encoded ID of the pool
+     * @param poolId - the ID of the pool
      * @param token - the token asset under management
      * @param amountInvested - the new value of the managed portion of the total balance
      */

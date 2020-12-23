@@ -49,7 +49,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     // Reference to the core Vault contract
     IVault private immutable _vault;
-    // Encoded pool ID, unique to each deployed pool (and registered in the Vault)
+    // Pool ID, unique to each deployed pool (and registered in the Vault)
     // Decode with `fromPoolId` in `PoolRegistry`
     bytes32 private immutable _poolId;
 
@@ -103,8 +103,8 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     }
 
     /**
-     * @notice Getter for the encoded Pool ID
-     * @return encoded Pool ID (decode with `fromPoolId` in `PoolRegistry`)
+     * @notice Getter for the Pool ID
+     * @return Pool ID (decode with `fromPoolId` in `PoolRegistry`)
      */
     function getPoolId() external view override returns (bytes32) {
         return _poolId;
@@ -187,11 +187,9 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     /**
      * @notice Add Liquidity to the pool
-     * @dev The set of tokens is not specified because it is read from the Vault - and remains immutable
-     * @param poolAmountOut - how much BPT the user expects to get
-     * @param maxAmountsIn - the max amounts of each token the user is willing to add to the vault
-     * @param transferTokens - whether or not tokens are transferred (vs taken from User Balance)
-     * @param beneficiary - destination of the BPT tokens
+     * @dev Implements the IBPTPool interface function
+     *      Pays protocol fees, which adjusts balances, before calculating the amountsIn and
+     *      joining the pool 
      */
     function joinPool(
         uint256 poolAmountOut,
@@ -229,11 +227,9 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     /**
      * @notice Remove Liquidity from a pool
-     * @dev The set of tokens is not specified because it is read from the Vault - and remains immutable
-     * @param poolAmountIn - how much BPT the user is supplying (burning)
-     * @param minAmountsOut - the max amounts of each token the user is willing to withdraw from the vault
-     * @param withdrawTokens - whether or not tokens are transferred out of the vault (vs added to User Balance)
-     * @param beneficiary - destination of the constituent tokens
+     * @dev Implements the IBPTPool interface function
+     *      Pays protocol fees, which adjusts balances, before calculating the amountsOut and
+     *      exiting the pool 
      */
     function exitPool(
         uint256 poolAmountIn,
