@@ -26,7 +26,6 @@ import "../vault/IVault.sol";
  * @author Balancer Labs
  */
 interface IBPTPool {
-    
     // Function delcarations
 
     // External functions
@@ -85,7 +84,7 @@ interface IBPTPool {
      *
      *      Note that if the pool charges swap fees, the balances of incoming tokens will increase over time,
      *      so that ideally LPs would withdraw more than they put in, as a proportional reward for providing liquidity.
-     *      However, a user exiting a pool will receive tokens according to the current proportions of the pool 
+     *      However, a user exiting a pool will receive tokens according to the current proportions of the pool
      *      constituents, regardless of what they were on entry. (This can result in impermanent loss.)
      *
      * @param poolAmountIn - how much BPT the user is supplying (burning)

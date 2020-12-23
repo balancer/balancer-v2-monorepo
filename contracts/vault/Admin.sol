@@ -127,7 +127,7 @@ abstract contract Admin is UserBalance {
      */
     function removeUniversalAgentManager(address manager) external override {
         require(msg.sender == _admin, "Caller is not the admin");
-        
+
         _universalAgentManagers.remove(manager);
     }
 

@@ -291,7 +291,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
      * @notice Add Liquidity to the pool
      * @dev Implements the IBPTPool interface function
      *      Pays protocol fees, which adjusts balances, before calculating the amountsIn and
-     *      joining the pool 
+     *      joining the pool
      */
     function joinPool(
         uint256 poolAmountOut,
@@ -331,7 +331,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
      * @notice Remove Liquidity from a pool
      * @dev Implements the IBPTPool interface function
      *      Pays protocol fees, which adjusts balances, before calculating the amountsOut and
-     *      exiting the pool 
+     *      exiting the pool
      */
     function exitPool(
         uint256 poolAmountIn,
