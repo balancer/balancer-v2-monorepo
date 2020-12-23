@@ -176,5 +176,7 @@ library CashInvested {
     /**
      * @dev Returns the investedAinvestedB shared field, given the current balances for tokenA and tokenB.
      */
-    function toSharedInvested(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {}
+    function toSharedInvested(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
+        return bytes32((uint256(invested(tokenABalance)) << 128) + invested(tokenBBalance));
+    }
 }
