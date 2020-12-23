@@ -19,7 +19,7 @@ import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../vendor/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "../vendor/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";

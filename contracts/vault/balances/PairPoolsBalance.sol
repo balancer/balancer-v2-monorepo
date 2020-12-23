@@ -16,7 +16,7 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
-import "../../vendor/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../../math/FixedPoint.sol";
 
