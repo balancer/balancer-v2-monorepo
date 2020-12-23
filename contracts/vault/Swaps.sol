@@ -152,31 +152,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         // approved the caller to use their funds.
         require(isOperatorFor(funds.sender, msg.sender), "Caller is not operator");
 
-        int256[] memory tokenDeltas = new int256[](tokens.length);
-
-        LastSwapData memory previous;
-        SwapInternal memory swap;
-
-        // Steps 1, 2 & 3:
-        //  - check swaps are valid
-        //  - update pool balances
-        //  - accumulate token diffs
-        for (uint256 i = 0; i < swaps.length; ++i) {
-            swap = swaps[i];
-
-            (uint128 amountIn, uint128 amountOut) = _swapWithPool(
-                tokens,
-                swap,
-                funds.sender,
-                funds.recipient,
-                previous,
-                kind
-            );
-
-            // 3: Accumulate token diffs
-            tokenDeltas[swap.tokenInIndex] += amountIn;
-            tokenDeltas[swap.tokenOutIndex] -= amountOut;
-        }
+        int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
         // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
         // Step 5: Send tokens due to the recipient
@@ -249,6 +225,41 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         } else {
             (amountIn, amountOut) = (amountQuoted, amountGiven);
         }
+    }
+
+    function _swapWithPools(
+        SwapInternal[] memory swaps,
+        IERC20[] memory tokens,
+        FundManagement memory funds,
+        SwapKind kind
+    ) private returns (int256[] memory tokenDeltas) {
+        tokenDeltas = new int256[](tokens.length);
+
+        LastSwapData memory previous;
+        SwapInternal memory swap;
+
+        // Steps 1, 2 & 3:
+        //  - check swaps are valid
+        //  - update pool balances
+        //  - accumulate token diffs
+        for (uint256 i = 0; i < swaps.length; ++i) {
+            swap = swaps[i];
+
+            (uint128 amountIn, uint128 amountOut) = _swapWithPool(
+                tokens,
+                swap,
+                funds.sender,
+                funds.recipient,
+                previous,
+                kind
+            );
+
+            // 3: Accumulate token diffs
+            tokenDeltas[swap.tokenInIndex] += amountIn;
+            tokenDeltas[swap.tokenOutIndex] -= amountOut;
+        }
+
+        return tokenDeltas;
     }
 
     function _swapWithPool(
@@ -411,5 +422,47 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
             balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
         }
         return balances;
+    }
+
+    // Swap query methods
+
+    function queryBatchSwapGivenIn(
+        SwapIn[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external returns (int256[] memory) {
+        return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
+    }
+
+    function queryBatchSwapGivenOut(
+        SwapOut[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external returns (int256[] memory) {
+        return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
+    }
+
+    function _callQueryBatchSwapHelper(
+        SwapInternal[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds,
+        SwapKind kind
+    ) private returns (int256[] memory tokenDeltas) {
+        try this.queryBatchSwapHelper(swaps, tokens, funds, kind)  {
+            assert(false);
+        } catch Error(string memory reason) {
+            tokenDeltas = abi.decode(bytes(reason), (int256[]));
+        }
+    }
+
+    function queryBatchSwapHelper(
+        SwapInternal[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds,
+        SwapKind kind
+    ) external {
+        require(msg.sender == address(this), "Caller is not the Vault");
+        int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
+        revert(string(abi.encode(tokenDeltas)));
     }
 }
