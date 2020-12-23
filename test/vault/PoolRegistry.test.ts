@@ -69,7 +69,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('new pool is added to pool list', async () => {
-      expect(await vault.getTotalPools()).to.equal(1);
+      expect(await vault.getNumberOfPools()).to.equal(1);
       expect(await vault.getPoolIds(0, 1)).to.have.members([poolId]);
     });
 
@@ -88,7 +88,7 @@ describe('Vault - pool registry', () => {
       const otherPoolId = event.args.poolId;
 
       expect(poolId).to.not.equal(otherPoolId);
-      expect(await vault.getTotalPools()).to.equal(2);
+      expect(await vault.getNumberOfPools()).to.equal(2);
       expect(await vault.getPoolIds(0, 2)).to.have.members([poolId, otherPoolId]);
     });
   });
@@ -121,16 +121,16 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
     expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
   });
 
-  it('pool cannot add liquidity from other accounts if not an operator', async () => {
-    expect(await vault.isOperatorFor(pool.address, lp.address));
+  it('pool cannot add liquidity from other accounts if not an agent', async () => {
+    expect(await vault.isAgentFor(pool.address, lp.address));
     await expect(
       vault.connect(pool).addLiquidity(poolId, lp.address, [tokens.DAI.address], [5], false)
-    ).to.be.revertedWith('Caller is not operator');
+    ).to.be.revertedWith('Caller is not an agent');
   });
 
-  context('with pool approved as lp operator', () => {
+  context('with pool approved as lp agent', () => {
     beforeEach(async () => {
-      await vault.connect(lp).authorizeOperator(pool.address);
+      await vault.connect(lp).addUserAgent(pool.address);
     });
 
     it('pool can add liquidity', async () => {

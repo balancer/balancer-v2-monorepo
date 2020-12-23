@@ -29,7 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       from: deployer,
       log: true,
     },
-    'authorizeTrustedOperatorReporter',
+    'addUniversalAgentManager',
     constantProductPoolFactory.address
   );
 
@@ -39,7 +39,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       from: deployer,
       log: true,
     },
-    'authorizeTrustedOperatorReporter',
+    'addUniversalAgentManager',
     stablecoinPoolFactory.address
   );
 };
