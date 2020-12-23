@@ -40,7 +40,7 @@ describe('Vault - swaps', () => {
 
     // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
     // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
-    // or rely on user balance or operators).
+    // or rely on user balance or agents).
 
     vault = await deploy('Vault', { args: [admin.address] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
@@ -108,7 +108,7 @@ describe('Vault - swaps', () => {
     await pool.setMultiplier(toFixedPoint(2));
 
     // Let the pool use the lp's tokens, and add liquidity
-    await vault.connect(lp).authorizeOperator(pool.address);
+    await vault.connect(lp).addUserAgent(pool.address);
 
     const tokenAddresses = tokenSymbols.map((symbol) => tokens[symbol].address);
     const tokenAmounts = tokenSymbols.map(() => (100e18).toString());
@@ -201,20 +201,20 @@ describe('Vault - swaps', () => {
                   context('when the sender is using tokens from other user', () => {
                     const fromOther = true;
 
-                    context('when the sender is allowed as an operator', async () => {
-                      beforeEach('authorize operator', async () => {
-                        await vault.connect(trader).authorizeOperator(other.address);
+                    context('when the sender is allowed as an agent', async () => {
+                      beforeEach('add user agent', async () => {
+                        await vault.connect(trader).addUserAgent(other.address);
                       });
 
                       assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
                     });
 
-                    context('when the sender is not allowed as an operator', async () => {
-                      beforeEach('revoke operator', async () => {
-                        await vault.connect(trader).revokeOperator(other.address);
+                    context('when the sender is not allowed as an agent', async () => {
+                      beforeEach('remove user agent', async () => {
+                        await vault.connect(trader).removeUserAgent(other.address);
                       });
 
-                      assertSwapGivenInReverts({ swaps, fromOther }, 'Caller is not operator');
+                      assertSwapGivenInReverts({ swaps, fromOther }, 'Caller is not an agent');
                     });
                   });
                 });
@@ -532,20 +532,20 @@ describe('Vault - swaps', () => {
                   });
 
                   context('when the sender is using tokens from other user', () => {
-                    context('when the sender is allowed as an operator', async () => {
-                      beforeEach('authorize operator', async () => {
-                        await vault.connect(trader).authorizeOperator(other.address);
+                    context('when the sender is allowed as an agent', async () => {
+                      beforeEach('add user agent', async () => {
+                        await vault.connect(trader).addUserAgent(other.address);
                       });
 
                       assertSwapGivenOut({ swaps, fromOther: true }, { DAI: 1e18, MKR: -0.5e18 });
                     });
 
-                    context('when the sender is not allowed as an operator', async () => {
-                      beforeEach('revoke operator', async () => {
-                        await vault.connect(trader).revokeOperator(other.address);
+                    context('when the sender is not allowed as an agent', async () => {
+                      beforeEach('remove user agent', async () => {
+                        await vault.connect(trader).removeUserAgent(other.address);
                       });
 
-                      assertSwapGivenOutReverts({ swaps, fromOther: true }, 'Caller is not operator');
+                      assertSwapGivenOutReverts({ swaps, fromOther: true }, 'Caller is not an agent');
                     });
                   });
                 });

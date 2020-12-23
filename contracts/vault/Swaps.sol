@@ -25,22 +25,17 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
-import "../math/FixedPoint.sol";
-
 import "./interfaces/ITradingStrategy.sol";
 import "./interfaces/IPairTradingStrategy.sol";
 import "./interfaces/ITupleTradingStrategy.sol";
-
-import "../validators/ISwapValidator.sol";
-
-import "./IVault.sol";
-import "./VaultAccounting.sol";
-import "./PoolRegistry.sol";
-import "./UserBalance.sol";
-
 import "./balances/CashInvested.sol";
 
-abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolRegistry {
+import "../math/FixedPoint.sol";
+import "../validators/ISwapValidator.sol";
+
+import "./PoolRegistry.sol";
+
+abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -151,7 +146,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         // Any net token amount going into the Vault will be taken from `funds.sender`, so they must have
         // approved the caller to use their funds.
-        require(isOperatorFor(funds.sender, msg.sender), "Caller is not operator");
+        require(isAgentFor(funds.sender, msg.sender), "Caller is not an agent");
 
         int256[] memory tokenDeltas = new int256[](tokens.length);
 
@@ -194,8 +189,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                     toReceive -= toWithdraw;
                 }
 
-                uint128 received = _pullTokens(token, funds.sender, toReceive);
-                require(received == toReceive, "Not enough tokens received");
+                _pullTokens(token, funds.sender, toReceive);
             } else {
                 // Make delta positive
                 uint128 toSend = uint128(-tokenDeltas[i]);

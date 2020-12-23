@@ -28,8 +28,8 @@ export async function deployPoolFromFactory(
   const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
   // We could reuse this factory if we saved it accross tokenizer deployments
 
-  // Authorize factory so that created pool are trusted operators
-  await vault.connect(admin).authorizeTrustedOperatorReporter(factory.address);
+  // Authorize factory so that created pool are universal agents
+  await vault.connect(admin).addUniversalAgentManager(factory.address);
 
   const salt = ethers.utils.id(Math.random().toString());
 

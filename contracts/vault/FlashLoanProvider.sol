@@ -24,12 +24,11 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IFlashLoanReceiver.sol";
-import "./IVault.sol";
 import "./Settings.sol";
 
 import "../math/FixedPoint.sol";
 
-abstract contract FlashLoanProvider is ReentrancyGuard, IVault, Settings {
+abstract contract FlashLoanProvider is ReentrancyGuard, Settings {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 

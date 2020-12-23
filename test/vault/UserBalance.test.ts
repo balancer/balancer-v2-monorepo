@@ -12,16 +12,16 @@ describe('Vault - user balance', () => {
   let admin: SignerWithAddress;
   let trader: SignerWithAddress;
   let user: SignerWithAddress;
-  let operator: SignerWithAddress;
-  let reporter: SignerWithAddress;
-  let trustedOperator: SignerWithAddress;
+  let agent: SignerWithAddress;
+  let universalAgentManager: SignerWithAddress;
+  let universalAgent: SignerWithAddress;
   let other: SignerWithAddress;
 
   let vault: Contract;
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, trader, user, operator, reporter, trustedOperator, other] = await ethers.getSigners();
+    [, admin, trader, user, agent, universalAgentManager, universalAgent, other] = await ethers.getSigners();
   });
 
   const amount = BigNumber.from(500);
@@ -128,115 +128,115 @@ describe('Vault - user balance', () => {
     });
   });
 
-  describe('operators', () => {
-    it('accounts start with no operators', async () => {
-      expect(await vault.getUserTotalOperators(user.address)).to.equal(0);
+  describe('agents', () => {
+    it('accounts start with no agents', async () => {
+      expect(await vault.getNumberOfUserAgents(user.address)).to.equal(0);
     });
 
-    it('accounts are their own operator', async () => {
-      expect(await vault.isOperatorFor(user.address, user.address)).to.equal(true);
+    it('accounts are their own agent', async () => {
+      expect(await vault.isAgentFor(user.address, user.address)).to.equal(true);
     });
 
-    it('accounts can add operators', async () => {
-      expect(await vault.isOperatorFor(user.address, operator.address)).to.equal(false);
+    it('accounts can add agents', async () => {
+      expect(await vault.isAgentFor(user.address, agent.address)).to.equal(false);
 
-      const receipt = await (await vault.connect(user).authorizeOperator(operator.address)).wait();
-      expectEvent.inReceipt(receipt, 'AuthorizedOperator', {
+      const receipt = await (await vault.connect(user).addUserAgent(agent.address)).wait();
+      expectEvent.inReceipt(receipt, 'UserAgentAdded', {
         user: user.address,
-        operator: operator.address,
+        agent: agent.address,
       });
 
-      expect(await vault.isOperatorFor(user.address, operator.address)).to.equal(true);
+      expect(await vault.isAgentFor(user.address, agent.address)).to.equal(true);
     });
 
-    context('with operators', () => {
-      beforeEach('authorize operator', async () => {
-        await vault.connect(user).authorizeOperator(operator.address);
+    context('with agents', () => {
+      beforeEach('add user agent', async () => {
+        await vault.connect(user).addUserAgent(agent.address);
       });
 
-      it('operators can be listed', async () => {
-        const amount = await vault.getUserTotalOperators(user.address);
-        const operators = await vault.getUserOperators(user.address, 0, amount);
+      it('agents can be listed', async () => {
+        const amount = await vault.getNumberOfUserAgents(user.address);
+        const agents = await vault.getUserAgents(user.address, 0, amount);
 
-        expect(operators).to.have.members([operator.address]);
+        expect(agents).to.have.members([agent.address]);
       });
 
-      it('new operators can be added to the list', async () => {
-        await vault.connect(user).authorizeOperator(other.address);
+      it('new agents can be added to the list', async () => {
+        await vault.connect(user).addUserAgent(other.address);
 
-        const amount = await vault.getUserTotalOperators(user.address);
-        const operators = await vault.getUserOperators(user.address, 0, amount);
+        const amount = await vault.getNumberOfUserAgents(user.address);
+        const agents = await vault.getUserAgents(user.address, 0, amount);
 
-        expect(operators).to.have.members([operator.address, other.address]);
+        expect(agents).to.have.members([agent.address, other.address]);
       });
 
-      it('accounts can revoke operators', async () => {
-        const receipt = await (await vault.connect(user).revokeOperator(operator.address)).wait();
-        expectEvent.inReceipt(receipt, 'RevokedOperator', {
+      it('accounts can remove agents', async () => {
+        const receipt = await (await vault.connect(user).removeUserAgent(agent.address)).wait();
+        expectEvent.inReceipt(receipt, 'UserAgentRemoved', {
           user: user.address,
-          operator: operator.address,
+          agent: agent.address,
         });
 
-        expect(await vault.isOperatorFor(user.address, operator.address)).to.equal(false);
+        expect(await vault.isAgentFor(user.address, agent.address)).to.equal(false);
       });
     });
   });
 
-  describe('trusted operators', () => {
-    it('the vault starts with no trusted operators', async () => {
-      expect(await vault.getTotalTrustedOperators()).to.equal(0);
+  describe('universal agents', () => {
+    it('the vault starts with no universal agents', async () => {
+      expect(await vault.getNumberOfUniversalAgents()).to.equal(0);
     });
 
-    it('the vault starts with no reporters', async () => {
-      expect(await vault.getTotalTrustedOperatorReporters()).to.equal(0);
+    it('the vault starts with no universal agent managers', async () => {
+      expect(await vault.getNumberOfUniversalAgentManagers()).to.equal(0);
     });
 
-    context('with trusted operator reporter', () => {
+    context('with universal agent manager', () => {
       beforeEach(async () => {
-        await vault.connect(admin).authorizeTrustedOperatorReporter(reporter.address);
+        await vault.connect(admin).addUniversalAgentManager(universalAgentManager.address);
       });
 
-      it('reporters can be queried', async () => {
-        expect(await vault.getTotalTrustedOperatorReporters()).to.equal(1);
-        expect(await vault.getTrustedOperatorReporters(0, 1)).to.have.members([reporter.address]);
+      it('universal agent managers can be queried', async () => {
+        expect(await vault.getNumberOfUniversalAgentManagers()).to.equal(1);
+        expect(await vault.getUniversalAgentManagers(0, 1)).to.have.members([universalAgentManager.address]);
       });
 
-      it('reporter can report new trusted operators', async () => {
-        await vault.connect(reporter).reportTrustedOperator(trustedOperator.address);
+      it('universal agent managers can add new universal agents', async () => {
+        await vault.connect(universalAgentManager).addUniversalAgent(universalAgent.address);
 
-        expect(await vault.getTotalTrustedOperators()).to.equal(1);
-        expect(await vault.getTrustedOperators(0, 1)).to.have.members([trustedOperator.address]);
+        expect(await vault.getNumberOfUniversalAgents()).to.equal(1);
+        expect(await vault.getUniversalAgents(0, 1)).to.have.members([universalAgent.address]);
       });
 
-      it('non-reporter cannot report new trusted operators', async () => {
-        await expect(vault.connect(other).reportTrustedOperator(trustedOperator.address)).to.be.revertedWith(
-          'Caller is not trusted operator reporter'
+      it('non-universal agent manager cannot add new universal agents', async () => {
+        await expect(vault.connect(other).addUniversalAgent(universalAgent.address)).to.be.revertedWith(
+          'Caller is not a universal agent manager'
         );
       });
 
-      context('with trusted operator', () => {
+      context('with universal agent', () => {
         beforeEach(async () => {
-          await vault.connect(reporter).reportTrustedOperator(trustedOperator.address);
+          await vault.connect(universalAgentManager).addUniversalAgent(universalAgent.address);
         });
 
-        it('trusted operators are operators for all accounts', async () => {
-          expect(await vault.isOperatorFor(other.address, trustedOperator.address)).to.equal(true);
+        it('universal agents are agents for all accounts', async () => {
+          expect(await vault.isAgentFor(other.address, universalAgent.address)).to.equal(true);
         });
 
-        it('revoking trusted operators as regular operators does nothing', async () => {
-          await vault.connect(other).revokeOperator(trustedOperator.address);
-          expect(await vault.isOperatorFor(other.address, trustedOperator.address)).to.equal(true);
+        it('removing universal agents as regular agents does nothing', async () => {
+          await vault.connect(other).removeUserAgent(universalAgent.address);
+          expect(await vault.isAgentFor(other.address, universalAgent.address)).to.equal(true);
         });
 
-        it('reporter can revoke trusted operators', async () => {
-          await vault.connect(reporter).revokeTrustedOperator(trustedOperator.address);
+        it('universal agent managers can remove universal agents', async () => {
+          await vault.connect(universalAgentManager).removeUniversalAgent(universalAgent.address);
 
-          expect(await vault.getTotalTrustedOperators()).to.equal(0);
+          expect(await vault.getNumberOfUniversalAgents()).to.equal(0);
         });
 
-        it('non-reporter cannot revoke trusted operators', async () => {
-          await expect(vault.connect(other).revokeTrustedOperator(trustedOperator.address)).to.be.revertedWith(
-            'Caller is not trusted operator reporter'
+        it('non-universal agent managers cannot revoke universal agents', async () => {
+          await expect(vault.connect(other).removeUniversalAgent(universalAgent.address)).to.be.revertedWith(
+            'Caller is not a universal agent manager'
           );
         });
       });

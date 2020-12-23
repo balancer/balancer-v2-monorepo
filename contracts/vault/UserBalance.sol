@@ -19,36 +19,35 @@ import "hardhat/console.sol";
 
 import "../vendor/EnumerableSet.sol";
 
-import "./IVault.sol";
 import "./VaultAccounting.sol";
 
 import "../math/FixedPoint.sol";
 
-abstract contract UserBalance is IVault, VaultAccounting {
+abstract contract UserBalance is VaultAccounting {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixedPoint for uint128;
 
     mapping(address => mapping(IERC20 => uint128)) internal _userTokenBalance; // user -> token -> user balance
 
-    // Operators are allowed to use a user's tokens in a swap
-    mapping(address => EnumerableSet.AddressSet) private _userOperators;
+    // Agents are allowed to use a user's tokens in a swap
+    mapping(address => EnumerableSet.AddressSet) private _userAgents;
 
-    // Trusted operators are operators for all users, without needing to be authorized. Trusted operators cannot be
-    // revoked.
-    EnumerableSet.AddressSet private _trustedOperators;
+    // Universal agents are agents for all users, without needing to be authorized. They cannot be revoked by individual
+    // users, only by an Universal Agent Manager.
+    EnumerableSet.AddressSet private _universalAgents;
 
-    // Trusted operators reporters can report new trusted operators
-    EnumerableSet.AddressSet internal _trustedOperatorReporters;
+    // Universal Agent managers can report new Universal Agents
+    EnumerableSet.AddressSet internal _universalAgentManagers;
 
     event Deposited(address indexed depositor, address indexed user, IERC20 indexed token, uint128 amount);
 
     event Withdrawn(address indexed user, address indexed recipient, IERC20 indexed token, uint128 amount);
 
-    event AuthorizedOperator(address indexed user, address indexed operator);
-    event RevokedOperator(address indexed user, address indexed operator);
+    event UserAgentAdded(address indexed user, address indexed agent);
+    event UserAgentRemoved(address indexed user, address indexed agent);
 
-    event AuthorizedTrustedOperator(address indexed operator);
-    event RevokedTrustedOperator(address indexed operator);
+    event UniversalAgentAdded(address indexed agent);
+    event UniversalAgentRemoved(address indexed agent);
 
     function getUserTokenBalance(address user, IERC20 token) public view override returns (uint128) {
         return _userTokenBalance[user][token];
@@ -59,12 +58,12 @@ abstract contract UserBalance is IVault, VaultAccounting {
         uint128 amount,
         address user
     ) external override {
-        // Pulling from the sender - no need to check for operators
-        uint128 received = _pullTokens(token, msg.sender, amount);
+        // Pulling from the sender - no need to check for agents
+        _pullTokens(token, msg.sender, amount);
 
         // TODO: check overflow
-        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(received);
-        emit Deposited(msg.sender, user, token, received);
+        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(amount);
+        emit Deposited(msg.sender, user, token, amount);
     }
 
     function withdraw(
@@ -80,94 +79,94 @@ abstract contract UserBalance is IVault, VaultAccounting {
         emit Withdrawn(msg.sender, recipient, token, amount);
     }
 
-    function authorizeOperator(address operator) external override {
-        if (_userOperators[msg.sender].add(operator)) {
-            emit AuthorizedOperator(msg.sender, operator);
+    function addUserAgent(address agent) external override {
+        if (_userAgents[msg.sender].add(agent)) {
+            emit UserAgentAdded(msg.sender, agent);
         }
     }
 
-    function revokeOperator(address operator) external override {
-        if (_userOperators[msg.sender].remove(operator)) {
-            emit RevokedOperator(msg.sender, operator);
+    function removeUserAgent(address agent) external override {
+        if (_userAgents[msg.sender].remove(agent)) {
+            emit UserAgentRemoved(msg.sender, agent);
         }
     }
 
-    function isOperatorFor(address user, address operator) public view override returns (bool) {
-        return (user == operator) || _trustedOperators.contains(operator) || _userOperators[user].contains(operator);
+    function isAgentFor(address user, address agent) public view override returns (bool) {
+        return (user == agent) || _universalAgents.contains(agent) || _userAgents[user].contains(agent);
     }
 
-    function getUserTotalOperators(address user) external view override returns (uint256) {
-        return _userOperators[user].length();
+    function getNumberOfUserAgents(address user) external view override returns (uint256) {
+        return _userAgents[user].length();
     }
 
-    function getUserOperators(
+    function getUserAgents(
         address user,
         uint256 start,
         uint256 end
     ) external view override returns (address[] memory) {
-        require((end >= start) && (end - start) <= _userOperators[user].length(), "Bad indices");
+        require((end >= start) && (end - start) <= _userAgents[user].length(), "Bad indices");
 
         // Ideally we'd use a native implemenation: see
         // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
-        address[] memory operators = new address[](end - start);
+        address[] memory agents = new address[](end - start);
 
-        for (uint256 i = 0; i < operators.length; ++i) {
-            operators[i] = _userOperators[user].at(i + start);
+        for (uint256 i = 0; i < agents.length; ++i) {
+            agents[i] = _userAgents[user].at(i + start);
         }
 
-        return operators;
+        return agents;
     }
 
-    function getTotalTrustedOperators() external view override returns (uint256) {
-        return _trustedOperators.length();
+    function getNumberOfUniversalAgents() external view override returns (uint256) {
+        return _universalAgents.length();
     }
 
-    function getTrustedOperators(uint256 start, uint256 end) external view override returns (address[] memory) {
-        require((end >= start) && (end - start) <= _trustedOperators.length(), "Bad indices");
+    function getUniversalAgents(uint256 start, uint256 end) external view override returns (address[] memory) {
+        require((end >= start) && (end - start) <= _universalAgents.length(), "Bad indices");
 
         // Ideally we'd use a native implemenation: see
         // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
-        address[] memory operators = new address[](end - start);
+        address[] memory agents = new address[](end - start);
 
-        for (uint256 i = 0; i < operators.length; ++i) {
-            operators[i] = _trustedOperators.at(i + start);
+        for (uint256 i = 0; i < agents.length; ++i) {
+            agents[i] = _universalAgents.at(i + start);
         }
 
-        return operators;
+        return agents;
     }
 
-    function getTotalTrustedOperatorReporters() external view override returns (uint256) {
-        return _trustedOperatorReporters.length();
+    function getNumberOfUniversalAgentManagers() external view override returns (uint256) {
+        return _universalAgentManagers.length();
     }
 
-    function getTrustedOperatorReporters(uint256 start, uint256 end) external view override returns (address[] memory) {
-        require((end >= start) && (end - start) <= _trustedOperatorReporters.length(), "Bad indices");
+    function getUniversalAgentManagers(uint256 start, uint256 end) external view override returns (address[] memory) {
+        require((end >= start) && (end - start) <= _universalAgentManagers.length(), "Bad indices");
 
         // Ideally we'd use a native implemenation: see
         // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
-        address[] memory operatorReporters = new address[](end - start);
+        address[] memory agentManagers = new address[](end - start);
 
-        for (uint256 i = 0; i < operatorReporters.length; ++i) {
-            operatorReporters[i] = _trustedOperatorReporters.at(i + start);
+        for (uint256 i = 0; i < agentManagers.length; ++i) {
+            agentManagers[i] = _universalAgentManagers.at(i + start);
         }
 
-        return operatorReporters;
+        return agentManagers;
     }
 
-    modifier onlyTrustedOperatorReporters() {
-        require(_trustedOperatorReporters.contains(msg.sender), "Caller is not trusted operator reporter");
+    modifier onlyUniversalAgentManagers() {
+        require(_universalAgentManagers.contains(msg.sender), "Caller is not a universal agent manager");
         _;
     }
 
-    function reportTrustedOperator(address operator) external override onlyTrustedOperatorReporters {
-        if (_trustedOperators.add(operator)) {
-            emit AuthorizedTrustedOperator(operator);
+    function addUniversalAgent(address agent) external override onlyUniversalAgentManagers {
+        if (_universalAgents.add(agent)) {
+            emit UniversalAgentAdded(agent);
         }
     }
 
-    function revokeTrustedOperator(address operator) external override onlyTrustedOperatorReporters {
-        if (_trustedOperators.remove(operator)) {
-            emit RevokedTrustedOperator(operator);
+    function removeUniversalAgent(address agent) external override onlyUniversalAgentManagers {
+        if (_universalAgents.remove(agent)) {
+            emit UniversalAgentRemoved(agent);
         }
     }
 }
