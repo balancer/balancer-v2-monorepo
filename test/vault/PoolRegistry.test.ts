@@ -147,7 +147,7 @@ describe('Vault - pool registry', () => {
 
     it('fails if token not existent', async () => {
       const newTokens = await deployTokens(['BAT'], [18]);
-      await expect(mockPool.paySwapProtocolFees([newTokens.BAT.address], [5])).to.be.revertedWith('Token not in pool');
+      await expect(mockPool.paySwapProtocolFees([newTokens.BAT.address], [0])).to.be.revertedWith('Token not in pool');
     });
 
     it('fails if not enough balance', async () => {
