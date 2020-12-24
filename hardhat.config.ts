@@ -19,6 +19,7 @@ const chainIds = {
   mainnet: 1,
   rinkeby: 4,
   ropsten: 3,
+  dockerParity: 17
 };
 
 // Ensure that we have all the environment variables we need.
@@ -55,6 +56,14 @@ const config: HardhatUserConfig = {
     hardhat: {
       allowUnlimitedContractSize: true,
       chainId: chainIds.hardhat,
+      saveDeployments: true,
+    },
+    dockerParity: {
+      gas: 10000000,
+      live: false,
+      chainId: chainIds.dockerParity,
+      url: 'http://localhost:8545',
+      allowUnlimitedContractSize: true,
       saveDeployments: true,
     },
     localhost: {

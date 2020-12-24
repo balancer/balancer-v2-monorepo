@@ -56,7 +56,7 @@ async function action(hre: HardhatRuntimeEnvironment) {
 
   console.log(`\nDeploying tokens...`);
   // Will deploy tokens if not already deployed
-  const tokenContracts: ContractList = await deployTokens(deployer.address, symbols, decimals);
+  const tokenContracts: ContractList = await deployTokens(deployer, symbols, decimals);
 
   console.log(`Minting & Approving tokens...`);
   for (let i = 0; i < symbols.length; i++) {
@@ -203,11 +203,14 @@ function getTokenInfoForDeploy(pools: Pool[]): [Array<string>, Array<number>, Ar
 }
 
 // Deploys a vanilla ERC20 token that can be minted by any account
-async function deployToken(admin: string, symbol: string, decimals?: number): Promise<string> {
+async function deployToken(admin: SignerWithAddress, symbol: string, decimals?: number): Promise<string> {
   // Get deployed Token Factory
   const tokenFactory = await ethers.getContract('TokenFactory');
 
-  const tx = await tokenFactory.create(admin, symbol, symbol, decimals ?? 18);
+  const salt = ethers.utils.id(Math.random().toString());
+  const parameters = [admin.address, symbol, symbol, decimals ?? 18]
+
+  const tx = await tokenFactory.connect(admin).create(...parameters);
   const receipt = await tx.wait();
   const event = receipt.events?.find((e: any) => e.event == 'TokenCreated');
   if (event == undefined) {
@@ -218,7 +221,7 @@ async function deployToken(admin: string, symbol: string, decimals?: number): Pr
 }
 
 // Deploys multiple tokens and returns a symbol -> token dictionary
-async function deployTokens(admin: string, symbols: Array<string>, decimals: Array<number>): Promise<ContractList> {
+async function deployTokens(admin: SignerWithAddress, symbols: Array<string>, decimals: Array<number>): Promise<ContractList> {
   const tokenContracts: ContractList = {};
 
   // Get artifact for TestToken
@@ -235,11 +238,12 @@ async function deployTokens(admin: string, symbols: Array<string>, decimals: Arr
       tokenContracts[symbols[i]] = wethFactory;
       continue;
     }
-    const address = await tokenFactory.callStatic.create(admin, symbols[i], symbols[i], decimals[i]);
-    if (!deployedTokens.includes(address)) {
+    //const address = await tokenFactory.callStatic.create(admin, symbols[i], symbols[i], decimals[i]);
+    //if (!deployedTokens.includes(address)) {
       const addr = await deployToken(admin, symbols[i], decimals[i]);
-      if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
-    }
+      //if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
+    //}
+    const address = addr;
     // Get token contract
     const tokenContract = await Token.attach(address);
     tokenContracts[symbols[i]] = tokenContract;
