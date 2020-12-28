@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../vault/IVault.sol";
+import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IPairTradingStrategy.sol";
 import "../vault/interfaces/ITupleTradingStrategy.sol";
 

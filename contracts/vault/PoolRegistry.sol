@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -25,10 +26,12 @@ import "./UserBalance.sol";
 
 abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
     using EnumerableSet for EnumerableSet.Bytes32Set;
+    using SafeERC20 for IERC20;
 
     using CashInvestedBalance for bytes32;
 
     using FixedPoint for uint128;
+    using FixedPoint for uint256;
 
     struct PoolStrategy {
         address strategy;
@@ -154,8 +157,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
                     toReceive -= toWithdraw;
                 }
 
-                _pullTokens(tokens[i], from, toReceive);
-
+                tokens[i].safeTransferFrom(from, address(this), toReceive);
                 _increasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
             }
         }
@@ -173,15 +175,20 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         (, StrategyType strategyType) = fromPoolId(poolId);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+
             if (amounts[i] > 0) {
                 _decreasePoolCash(poolId, strategyType, tokens[i], amounts[i]);
 
                 if (depositToUserBalance) {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                    _userTokenBalance[to][tokens[i]] = _userTokenBalance[to][tokens[i]].add128(amounts[i]);
+                    _userTokenBalance[to][token] = _userTokenBalance[to][token].add128(amounts[i]);
                 } else {
-                    // Actually transfer the tokens to the recipient
-                    _pushTokens(tokens[i], to, amounts[i], true);
+                    // Transfer the tokens to the recipient, charging the protocol exit fee
+                    uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amounts[i]);
+
+                    _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
+                    token.safeTransfer(to, amounts[i].sub128(feeAmount));
                 }
             }
         }
@@ -233,7 +240,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         (, StrategyType strategyType) = fromPoolId(poolId);
         _investPoolCash(poolId, strategyType, token, amount);
 
-        _pushTokens(token, msg.sender, amount, false);
+        token.safeTransfer(msg.sender, amount);
     }
 
     function divestPoolBalance(
@@ -241,7 +248,7 @@ abstract contract PoolRegistry is ReentrancyGuard, UserBalance, PoolBalance {
         IERC20 token,
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
-        _pullTokens(token, msg.sender, amount);
+        token.safeTransferFrom(msg.sender, address(this), amount);
 
         (, StrategyType strategyType) = fromPoolId(poolId);
         _divestPoolCash(poolId, strategyType, token, amount);

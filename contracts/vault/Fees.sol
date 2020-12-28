@@ -15,12 +15,16 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+
 import "../math/FixedPoint.sol";
-import "./IVault.sol";
 
-// solhint-disable var-name-mixedcase
+import "./interfaces/IVault.sol";
+import "./Admin.sol";
 
-abstract contract Settings is IVault {
+abstract contract Fees is IVault, Admin {
+    using SafeERC20 for IERC20;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -47,50 +51,75 @@ abstract contract Settings is IVault {
 
     uint256 private immutable _MAX_PROTOCOL_FLASH_LOAN_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
-    function _setProtocolFeeCollector(address protocolFeeCollector) internal {
-        _protocolFeeCollector = protocolFeeCollector;
-    }
-
     function protocolFeeCollector() public view returns (address) {
         return _protocolFeeCollector;
-    }
-
-    function _setProtocolWithdrawFee(uint128 newFee) internal {
-        require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
-        _protocolWithdrawFee = newFee;
     }
 
     function protocolWithdrawFee() public view returns (uint128) {
         return _protocolWithdrawFee;
     }
 
-    function _calculateProtocolWithdrawFee(uint128 amount) internal view returns (uint128) {
+    function _calculateProtocolWithdrawFeeAmount(uint128 amount) internal view returns (uint128) {
         return amount.mul128(_protocolWithdrawFee);
-    }
-
-    function _setProtocolSwapFee(uint128 newFee) internal {
-        require(newFee <= _MAX_PROTOCOL_SWAP_FEE, "Swap fee too high");
-        _protocolSwapFee = newFee;
     }
 
     function protocolSwapFee() public view returns (uint128) {
         return _protocolSwapFee;
     }
 
-    function _calculateProtocolSwapFee(uint128 swapFeeAmount) internal view returns (uint128) {
-        return swapFeeAmount.mul128(_protocolSwapFee);
-    }
-
-    function _setProtocolFlashLoanFee(uint256 newFee) internal {
-        require(newFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FlashLoan fee too high");
-        _protocolFlashLoanFee = newFee;
-    }
-
     function protocolFlashLoanFee() public view returns (uint256) {
         return _protocolFlashLoanFee;
     }
 
-    function _calculateProtocolFlashLoanFee(uint256 swapFeeAmount) internal view returns (uint256) {
+    function _calculateProtocolFlashLoanFeeAmount(uint256 swapFeeAmount) internal view returns (uint256) {
         return swapFeeAmount.mul(_protocolFlashLoanFee);
+    }
+
+    function setProtocolFeeCollector(address newProtocolFeeCollector) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+
+        _protocolFeeCollector = newProtocolFeeCollector;
+    }
+
+    function setProtocolWithdrawFee(uint128 newFee) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+        require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
+
+        _protocolWithdrawFee = newFee;
+    }
+
+    function setProtocolSwapFee(uint128 newFee) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+        require(newFee <= _MAX_PROTOCOL_SWAP_FEE, "Swap fee too high");
+
+        _protocolSwapFee = newFee;
+    }
+
+    function setProtocolFlashLoanFee(uint128 newFee) external {
+        require(msg.sender == _admin, "Caller is not the admin");
+        require(newFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FlashLoan fee too high");
+
+        _protocolFlashLoanFee = newFee;
+    }
+
+    //Protocol Fees
+    /**
+     * @dev Returns the amount in protocol fees collected for a specific `token`.
+     */
+    function getCollectedFeesByToken(IERC20 token) external view override returns (uint256) {
+        return _collectedProtocolFees[token];
+    }
+
+    function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external override {
+        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
+
+        address recipient = protocolFeeCollector();
+        require(recipient != address(0), "Protocol fee collector recipient is not set");
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            require(_collectedProtocolFees[tokens[i]] >= amounts[i], "Insufficient protocol fees");
+            _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]] - amounts[i];
+            tokens[i].safeTransfer(recipient, amounts[i]);
+        }
     }
 }

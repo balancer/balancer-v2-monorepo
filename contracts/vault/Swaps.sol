@@ -190,7 +190,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                     toReceive -= toWithdraw;
                 }
 
-                _pullTokens(token, funds.sender, toReceive);
+                token.safeTransferFrom(funds.sender, address(this), toReceive);
             } else {
                 // Make delta positive
                 uint128 toSend = uint128(-tokenDeltas[i]);
@@ -202,7 +202,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                     );
                 } else {
                     // Actually transfer the tokens to the recipient
-                    _pushTokens(token, funds.recipient, toSend, false);
+                    token.safeTransfer(funds.recipient, toSend);
                 }
             }
         }

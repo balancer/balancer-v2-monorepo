@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-import "../vault/IVault.sol";
+import "../vault/interfaces/IVault.sol";
 
 abstract contract BasePoolFactory {
     using Address for address;

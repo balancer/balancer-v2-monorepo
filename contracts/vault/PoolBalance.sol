@@ -17,7 +17,7 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "../vendor/EnumerableMap.sol";
 
-import "./IVault.sol";
+import "./interfaces/IVault.sol";
 import "./CashInvestedBalance.sol";
 
 contract PoolBalance {
