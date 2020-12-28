@@ -93,7 +93,7 @@ const config: HardhatUserConfig = {
     },
   },
   abiExporter: {
-    only: ['Vault', 'FixedSetPoolTokenizer', 'BToken'],
+    only: ['Vault', 'FixedSetPoolTokenizer', 'BToken', 'BasePoolFactory'],
     flat: true,
   },
   tenderly: {

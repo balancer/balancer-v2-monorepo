@@ -59,6 +59,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         bytes userData;
     }
 
+    event TokenSwap(bytes32 poolId, int256[] tokenDeltas);
+
     function batchSwapGivenIn(
         ISwapValidator validator,
         bytes calldata validatorData,
@@ -210,6 +212,8 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                 }
             }
         }
+
+        emit TokenSwap(swap.poolId, tokenDeltas);
 
         return tokenDeltas;
     }

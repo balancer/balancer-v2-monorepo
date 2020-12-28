@@ -27,6 +27,8 @@ contract PoolBalance {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using CashInvestedBalance for bytes32;
 
+    event PoolLiquidityChange(bytes32 indexed poolId, uint128[] amounts);
+
     // Tokens in a Pool have non-zero balances, which can be used as a shortcut to check
     // at once if a) a Pool exists and b) a token is in that Pool.
 
