@@ -168,7 +168,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         _sumWeights = sumWeights;
 
         //Reset Invariant
-        _resetAccSwapFees(tokens, weights, amounts);
+        _resetAccumulatedSwapFees(tokens, weights, amounts);
     }
 
     function _weight(IERC20 token) private view returns (uint128) {
@@ -293,7 +293,10 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
     //Protocol Fees
 
-    function _getAccSwapFees(IERC20[] memory tokens, uint128[] memory balances)
+    /**************************************************************************************************/
+    /***********  balanceToken ( 1 - (lastInvariant / currentInvariant)^(1 / weightToken) ) ***********
+    /**************************************************************************************************/
+    function _getAccumulatedSwapFees(IERC20[] memory tokens, uint128[] memory balances)
         internal
         view
         returns (uint128[] memory)
@@ -311,7 +314,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         return swapFeesCollected;
     }
 
-    function _resetAccSwapFees(
+    function _resetAccumulatedSwapFees(
         IERC20[] memory tokens,
         uint128[] memory weights,
         uint128[] memory balances
@@ -337,10 +340,10 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         //Load balances
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-        uint128[] memory swapFeesCollected = _getAccSwapFees(tokens, balances);
+        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
 
         balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-        _resetAccSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
     }
 
     //Join / Exit
@@ -352,12 +355,12 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         address beneficiary
     ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length >= 2, "ERR_EMPTY_POOL");
+        require(tokens.length > 0, "ERR_EMPTY_POOL");
 
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
         //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = _getAccSwapFees(tokens, balances);
+        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
         balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();
@@ -375,7 +378,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
 
         //Reset swap fees counter
-        _resetAccSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
 
         _mintPoolShare(poolAmountOut);
         _pushPoolShare(beneficiary, poolAmountOut);
@@ -391,7 +394,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
         //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = _getAccSwapFees(tokens, balances);
+        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
         balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();
@@ -409,7 +412,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
 
         //Reset swap fees counter
-        _resetAccSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
