@@ -125,6 +125,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     }
 
     function _resetAccSwapFees(uint128[] memory balances) internal {
+        // solhint-disable-previous-line no-empty-blocks
         //TODO: reset swap fees
     }
 

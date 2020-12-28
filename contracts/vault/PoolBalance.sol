@@ -14,10 +14,8 @@
 
 pragma solidity ^0.7.1;
 
-import "../vendor/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "../vendor/EnumerableMap.sol";
-
-import "../math/FixedPoint.sol";
 
 import "./IVault.sol";
 import "./CashInvestedBalance.sol";
