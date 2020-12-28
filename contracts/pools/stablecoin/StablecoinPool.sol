@@ -78,7 +78,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         _amp = amp;
 
         //Reset Invariant
-        _resetAccSwapFees(amp, amounts);
+        _resetAccumulatedSwapFees(amp, amounts);
     }
 
     //Getters
@@ -124,7 +124,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     //Protocol Fees
 
-    function _getAccSwapFees(uint128[] memory balances) internal view returns (uint128[] memory) {
+    function _getAccumulatedSwapFees(uint128[] memory balances) internal view returns (uint128[] memory) {
         uint128[] memory swapFeesCollected = new uint128[](balances.length);
 
         //TODO: picking first token for now, make it random
@@ -135,7 +135,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         return swapFeesCollected;
     }
 
-    function _resetAccSwapFees(uint128 amp, uint128[] memory balances) internal {
+    function _resetAccumulatedSwapFees(uint128 amp, uint128[] memory balances) internal {
         _lastInvariant = _invariant(amp, balances).toUint256();
     }
 
@@ -145,10 +145,10 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         //Load balances
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-        uint128[] memory swapFeesCollected = _getAccSwapFees(balances);
+        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(balances);
 
         balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-        _resetAccSwapFees(_amp, balances);
+        _resetAccumulatedSwapFees(_amp, balances);
     }
 
     //Join / Exit
@@ -165,7 +165,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
         //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = _getAccSwapFees(balances);
+        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(balances);
         balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();
@@ -183,7 +183,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
 
         //Reset swap fees counter
-        _resetAccSwapFees(_amp, balances);
+        _resetAccumulatedSwapFees(_amp, balances);
 
         _mintPoolShare(poolAmountOut);
         _pushPoolShare(beneficiary, poolAmountOut);
@@ -199,7 +199,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
         //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = _getAccSwapFees(balances);
+        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(balances);
         balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
 
         uint256 poolTotal = totalSupply();
@@ -217,7 +217,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
 
         //Reset swap fees counter
-        _resetAccSwapFees(_amp, balances);
+        _resetAccumulatedSwapFees(_amp, balances);
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
