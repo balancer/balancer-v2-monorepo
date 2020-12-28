@@ -108,7 +108,7 @@ describe('Vault - pool registry', () => {
     let pool: Contract;
     let poolId: string;
 
-    const protocolSwapFee = 0.01;
+    const protocolSwapFee = 0.01; // 1%
 
     beforeEach('deploy pool', async () => {
       await vault.connect(admin).setProtocolSwapFee(toFixedPoint(protocolSwapFee));
@@ -126,17 +126,17 @@ describe('Vault - pool registry', () => {
     });
 
     it('in one token', async () => {
-      const previousBalanceDAI = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
+      const previousBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
 
       const receipt = await (await pool.paySwapProtocolFees([tokens.DAI.address], [500])).wait();
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
 
       expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('5');
 
-      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address]);
+      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
       expect(newBalances).to.deep.equal(event.args.balances);
 
-      expect(newBalances[0].sub(previousBalanceDAI)).to.equal((5).toString());
+      expect(newBalances[0].sub(previousBalances[0])).to.equal((-5).toString());
     });
 
     it('in many token', async () => {
@@ -145,7 +145,7 @@ describe('Vault - pool registry', () => {
       const receipt = await (
         await pool.paySwapProtocolFees([tokens.DAI.address, tokens.MKR.address], [(500).toString(), (1000).toString()])
       ).wait();
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
 
       expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('5');
       expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal('10');
@@ -153,8 +153,38 @@ describe('Vault - pool registry', () => {
       const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address]);
       expect(newBalances).to.deep.equal(event.args.balances);
 
-      expect(newBalances[0].sub(previousBalances[0])).to.equal((5).toString());
-      expect(newBalances[0].sub(previousBalances[0])).to.equal((10).toString());
+      expect(newBalances[0].sub(previousBalances[0])).to.equal((-5).toString());
+      expect(newBalances[1].sub(previousBalances[1])).to.equal((-10).toString());
+    });
+
+    it('zero amount', async () => {
+      const previousBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
+
+      const receipt = await (await pool.paySwapProtocolFees([tokens.DAI.address], [0])).wait();
+      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
+
+      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('0');
+
+      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
+      expect(newBalances).to.deep.equal(event.args.balances);
+
+      expect(newBalances[0].sub(previousBalances[0])).to.equal((0).toString());
+    });
+
+    it('zero protocol fee %', async () => {
+      await vault.connect(admin).setProtocolSwapFee(toFixedPoint(0));
+
+      const previousBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
+
+      const receipt = await (await pool.paySwapProtocolFees([tokens.DAI.address], [500])).wait();
+      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
+
+      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('0');
+
+      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
+      expect(newBalances).to.deep.equal(event.args.balances);
+
+      expect(newBalances[0].sub(previousBalances[0])).to.equal((0).toString());
     });
 
     it('fails if caller is not pool', async () => {
@@ -169,7 +199,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('fails if not enough balance', async () => {
-      await expect(pool.paySwapProtocolFees([tokens.DAI.address], [200000])).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+      await expect(pool.paySwapProtocolFees([tokens.DAI.address], [100100])).to.be.revertedWith('ERR_SUB_UNDERFLOW');
     });
   });
 });

@@ -407,6 +407,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                 _decreasePoolCash(poolId, strategyType, tokens[i], feeToCollect);
                 _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
             }
+
             balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
         }
         return balances;
