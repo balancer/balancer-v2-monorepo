@@ -13,7 +13,7 @@ Prototypes for the v2 architecture
 
 ## Installation
 
-Run `yarn` to download all depdendencies.
+Run `yarn` to download all dependencies.
 
 ## Usage
 

@@ -15,18 +15,14 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../math/FixedPoint.sol";
-
-import "../vendor/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "./IVault.sol";
-import "./Settings.sol";
 import "./UserBalance.sol";
 
-abstract contract Admin is IVault, Settings, UserBalance {
+abstract contract Admin is UserBalance {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
@@ -67,16 +63,16 @@ abstract contract Admin is IVault, Settings, UserBalance {
         _setProtocolFlashLoanFee(fee);
     }
 
-    function authorizeTrustedOperatorReporter(address reporter) external override {
+    function addUniversalAgentManager(address reporter) external override {
         require(msg.sender == _admin, "Caller is not the admin");
 
-        _trustedOperatorReporters.add(reporter);
+        _universalAgentManagers.add(reporter);
     }
 
-    function revokeTrustedOperatorReporter(address reporter) external override {
+    function removeUniversalAgentManager(address reporter) external override {
         require(msg.sender == _admin, "Caller is not the admin");
 
-        _trustedOperatorReporters.remove(reporter);
+        _universalAgentManagers.remove(reporter);
     }
 
     function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external override {

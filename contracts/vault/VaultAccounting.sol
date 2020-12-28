@@ -21,10 +21,9 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../math/FixedPoint.sol";
 
-import "./IVault.sol";
 import "./Settings.sol";
 
-abstract contract VaultAccounting is IVault, Settings {
+abstract contract VaultAccounting is Settings {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -40,27 +39,16 @@ abstract contract VaultAccounting is IVault, Settings {
 
     /**
      * @dev Transfers tokens into the Vault from `from`. The caller must verify that this action was authorized by
-     * `from` (typically by the entry-point function being called by an operator for `from`).
-     *
-     * The number of tokens received are measured as a delta, by calling `IERC20.balanceOf` before and after the
-     * transfer. This means tokens with a transfer fee are supported. The number of tokens received is returned.
+     * `from` (typically by the entry-point function being called by an agent for `from`).
      */
     function _pullTokens(
         IERC20 token,
         address from,
         uint128 amount
-    ) internal returns (uint128) {
-        if (amount == 0) {
-            return 0;
+    ) internal {
+        if (amount != 0) {
+            token.safeTransferFrom(from, address(this), amount);
         }
-
-        uint256 currentBalance = token.balanceOf(address(this));
-
-        token.safeTransferFrom(from, address(this), amount);
-
-        uint256 newBalance = token.balanceOf(address(this));
-
-        return newBalance.sub(currentBalance).toUint128();
     }
 
     /**
