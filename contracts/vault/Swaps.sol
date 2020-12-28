@@ -61,8 +61,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes userData;
     }
 
+    event TokenSwap(bytes32 poolId, int256[] tokenDeltas);
+
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
     // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
+
     function batchSwapGivenIn(
         ISwapValidator validator,
         bytes calldata validatorData,
@@ -200,6 +203,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             }
         }
 
+        emit TokenSwap(swap.poolId, tokenDeltas);
+
         return tokenDeltas;
     }
 
@@ -310,6 +315,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             // Accumulate Vault deltas across swaps
             tokenDeltas[swap.tokenInIndex] = SignedSafeMath.add(tokenDeltas[swap.tokenInIndex], amountIn);
             tokenDeltas[swap.tokenOutIndex] = SignedSafeMath.sub(tokenDeltas[swap.tokenOutIndex], amountOut);
+
+            emit TokenSwap(swap.poolId, tokens[swap.tokenInIndex], tokens[swap.tokenOutIndex], amountIn, amountOut);
         }
 
         return tokenDeltas;
