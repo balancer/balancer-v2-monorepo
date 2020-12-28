@@ -355,7 +355,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         address beneficiary
     ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length > 0, "ERR_EMPTY_POOL");
+        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
 
         uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
 
