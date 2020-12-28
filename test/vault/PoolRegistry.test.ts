@@ -108,7 +108,7 @@ describe('Vault - pool registry', () => {
     let mockPool: Contract;
     let mockPoolId: string;
 
-    const protocolSwapFee = 0.01;
+    const protocolSwapFee = 0.01; // 1%
 
     beforeEach('deploy pool', async () => {
       await vault.connect(admin).setProtocolSwapFee(toFixedPoint(protocolSwapFee));
