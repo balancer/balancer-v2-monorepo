@@ -151,7 +151,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('fails if not enough balance', async () => {
-      await expect(mockPool.paySwapProtocolFees([tokens.DAI.address], [200000])).to.be.revertedWith(
+      await expect(mockPool.paySwapProtocolFees([tokens.DAI.address], [1001])).to.be.revertedWith(
         'ERR_SUB_UNDERFLOW'
       );
     });
