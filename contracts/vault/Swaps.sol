@@ -148,31 +148,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // approved the caller to use their funds.
         require(isAgentFor(funds.sender, msg.sender), "Caller is not an agent");
 
-        int256[] memory tokenDeltas = new int256[](tokens.length);
-
-        LastSwapData memory previous;
-        SwapInternal memory swap;
-
-        // Steps 1, 2 & 3:
-        //  - check swaps are valid
-        //  - update pool balances
-        //  - accumulate token diffs
-        for (uint256 i = 0; i < swaps.length; ++i) {
-            swap = swaps[i];
-
-            (uint128 amountIn, uint128 amountOut) = _swapWithPool(
-                tokens,
-                swap,
-                funds.sender,
-                funds.recipient,
-                previous,
-                kind
-            );
-
-            // 3: Accumulate token diffs
-            tokenDeltas[swap.tokenInIndex] += amountIn;
-            tokenDeltas[swap.tokenOutIndex] -= amountOut;
-        }
+        int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
         // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
         // Step 5: Send tokens due to the recipient
@@ -244,6 +220,41 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         } else {
             (amountIn, amountOut) = (amountQuoted, amountGiven);
         }
+    }
+
+    function _swapWithPools(
+        SwapInternal[] memory swaps,
+        IERC20[] memory tokens,
+        FundManagement memory funds,
+        SwapKind kind
+    ) private returns (int256[] memory tokenDeltas) {
+        tokenDeltas = new int256[](tokens.length);
+
+        LastSwapData memory previous;
+        SwapInternal memory swap;
+
+        // Steps 1, 2 & 3:
+        //  - check swaps are valid
+        //  - update pool balances
+        //  - accumulate token diffs
+        for (uint256 i = 0; i < swaps.length; ++i) {
+            swap = swaps[i];
+
+            (uint128 amountIn, uint128 amountOut) = _swapWithPool(
+                tokens,
+                swap,
+                funds.sender,
+                funds.recipient,
+                previous,
+                kind
+            );
+
+            // 3: Accumulate token diffs
+            tokenDeltas[swap.tokenInIndex] += amountIn;
+            tokenDeltas[swap.tokenOutIndex] -= amountOut;
+        }
+
+        return tokenDeltas;
     }
 
     function _swapWithPool(
@@ -489,5 +500,57 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         return balances;
+    }
+
+    function queryBatchSwapGivenIn(
+        SwapIn[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external override returns (int256[] memory) {
+        return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
+    }
+
+    function queryBatchSwapGivenOut(
+        SwapOut[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external override returns (int256[] memory) {
+        return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
+    }
+
+    function _callQueryBatchSwapHelper(
+        SwapInternal[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds,
+        SwapKind kind
+    ) private returns (int256[] memory tokenDeltas) {
+        try this.queryBatchSwapHelper(swaps, tokens, funds, kind)  {
+            assert(false);
+        } catch Error(string memory reason) {
+            tokenDeltas = abi.decode(bytes(reason), (int256[]));
+        }
+    }
+
+    /**
+     * @dev Despite this function being external, it can only be called by the Vault itself, and should not be
+     * considered part of the Vault's external API.
+     *
+     * It executes the Pool interaction part of a batch swap, asking Pools for quotes and computing the Vault deltas,
+     * but without performing any token transfers. It then reverts unconditionally, returning the Vault  deltas array as
+     * the revert data.
+     *
+     * This enables an accurate implementation of queryBatchSwapGivenIn and queryBatchSwapGivenOut, since the array
+     * 'returned' by this function is the result of the exact same computation a swap would perform, including Pool
+     * calls.
+     */
+    function queryBatchSwapHelper(
+        SwapInternal[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds,
+        SwapKind kind
+    ) external {
+        require(msg.sender == address(this), "Caller is not the Vault");
+        int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
+        revert(string(abi.encode(tokenDeltas)));
     }
 }
