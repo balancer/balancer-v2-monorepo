@@ -18,10 +18,15 @@ async function main() {
 
   console.log('== One token in for one token out, multiple hops ==');
 
-  console.log(`\n# Constant Product Pool`);
+  console.log(`\n# Constant Product Pool with 2 tokens`);
 
-  await multihop(() => getConstantProductPool(vault, tokens), false);
-  await multihop(() => getConstantProductPool(vault, tokens), true);
+  await multihop((index: number) => getConstantProductPool(vault, tokens, 2, index), false);
+  await multihop((index: number) => getConstantProductPool(vault, tokens, 2, index), true);
+
+  console.log(`\n# Constant Product Pool with 4 tokens`);
+
+  await multihop((index: number) => getConstantProductPool(vault, tokens, 4, index), false);
+  await multihop((index: number) => getConstantProductPool(vault, tokens, 4, index), true);
 
   console.log(`\n# Stablecoin Pool with 2 tokens`);
 

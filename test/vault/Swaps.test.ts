@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { PairTS, TradingStrategyType, TupleTS } from '../../scripts/helpers/pools';
+import { PairTS, TradingStrategyType, TupleTS, TwoTokenTS } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
 import { deployTokens, TokenList } from '../helpers/tokens';
@@ -68,23 +68,16 @@ describe('Vault - swaps', () => {
   context('with two tokens', () => {
     const symbols = ['DAI', 'MKR'];
 
+    context('with a two-token storage layout', () => {
+      itHandlesSwapsProperly(TwoTokenTS, symbols);
+    });
+
     context('with a pair trading strategy', () => {
-      const type = PairTS;
-
-      context('with a two-token storage layout', () => {
-        // TODO: implement deployment script for a two-token storage pool
-        // itHandlesSwapsProperly(type, symbols);
-      });
-
-      context('with a multi-token storage layout', () => {
-        itHandlesSwapsProperly(type, symbols);
-      });
+      itHandlesSwapsProperly(PairTS, symbols);
     });
 
     context('with a tuple trading strategy', () => {
-      const type = TupleTS;
-
-      itHandlesSwapsProperly(type, symbols);
+      itHandlesSwapsProperly(TupleTS, symbols);
     });
   });
 
@@ -92,15 +85,11 @@ describe('Vault - swaps', () => {
     const symbols = ['DAI', 'MKR', 'SNX'];
 
     context('with a pair trading strategy', () => {
-      const type = PairTS;
-
-      itHandlesSwapsProperly(type, symbols);
+      itHandlesSwapsProperly(PairTS, symbols);
     });
 
     context('with a tuple trading strategy', () => {
-      const type = TupleTS;
-
-      itHandlesSwapsProperly(type, symbols);
+      itHandlesSwapsProperly(TupleTS, symbols);
     });
   });
 
@@ -341,23 +330,16 @@ describe('Vault - swaps', () => {
                 });
               };
 
+              context('with a two-token storage layout', () => {
+                itHandleMultiSwapsWithoutHopsProperly(TwoTokenTS);
+              });
+
               context('with a pair trading strategy', () => {
-                const anotherPoolType = PairTS;
-
-                context('with a two-token storage layout', () => {
-                  // TODO: implement deployment script for a two-token storage pool
-                  itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
-                });
-
-                context('with a multi-token storage layout', () => {
-                  itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
-                });
+                itHandleMultiSwapsWithoutHopsProperly(PairTS);
               });
 
               context('with a tuple trading strategy', () => {
-                const anotherPoolType = TupleTS;
-
-                itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithoutHopsProperly(TupleTS);
               });
             });
 
@@ -391,13 +373,11 @@ describe('Vault - swaps', () => {
 
               context('with a pair trading strategy', () => {
                 const anotherPoolType = PairTS;
-
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
               });
 
               context('with a tuple trading strategy', () => {
                 const anotherPoolType = TupleTS;
-
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
               });
             });
@@ -446,23 +426,16 @@ describe('Vault - swaps', () => {
                 assertSwapGivenIn({ swaps }, { MKR: 3e18 });
               };
 
+              context('with a two-token storage layout', () => {
+                itHandleMultiSwapsWithHopsProperly(TwoTokenTS);
+              });
+
               context('with a pair trading strategy', () => {
-                const anotherPoolType = PairTS;
-
-                context('with a two-token storage layout', () => {
-                  // TODO: implement deployment script for a two-token storage pool
-                  itHandleMultiSwapsWithHopsProperly(anotherPoolType);
-                });
-
-                context('with a multi-token storage layout', () => {
-                  itHandleMultiSwapsWithHopsProperly(anotherPoolType);
-                });
+                itHandleMultiSwapsWithHopsProperly(PairTS);
               });
 
               context('with a tuple trading strategy', () => {
-                const anotherPoolType = TupleTS;
-
-                itHandleMultiSwapsWithHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithHopsProperly(TupleTS);
               });
             });
 
@@ -483,15 +456,11 @@ describe('Vault - swaps', () => {
               };
 
               context('with a pair trading strategy', () => {
-                const anotherPoolType = PairTS;
-
-                itHandleMultiSwapsWithHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithHopsProperly(PairTS);
               });
 
               context('with a tuple trading strategy', () => {
-                const anotherPoolType = TupleTS;
-
-                itHandleMultiSwapsWithHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithHopsProperly(TupleTS);
               });
             });
           });
@@ -692,23 +661,16 @@ describe('Vault - swaps', () => {
                 });
               };
 
+              context('with a two-token storage layout', () => {
+                itHandleMultiSwapsWithoutHopsProperly(TwoTokenTS);
+              });
+
               context('with a pair trading strategy', () => {
-                const anotherPoolType = PairTS;
-
-                context('with a two-token storage layout', () => {
-                  // TODO: implement deployment script for a two-token storage pool
-                  itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
-                });
-
-                context('with a multi-token storage layout', () => {
-                  itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
-                });
+                itHandleMultiSwapsWithoutHopsProperly(PairTS);
               });
 
               context('with a tuple trading strategy', () => {
-                const anotherPoolType = TupleTS;
-
-                itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithoutHopsProperly(TupleTS);
               });
             });
 
@@ -741,15 +703,11 @@ describe('Vault - swaps', () => {
               };
 
               context('with a pair trading strategy', () => {
-                const anotherPoolType = PairTS;
-
-                itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithoutHopsProperly(PairTS);
               });
 
               context('with a tuple trading strategy', () => {
-                const anotherPoolType = TupleTS;
-
-                itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithoutHopsProperly(TupleTS);
               });
             });
           });
@@ -795,23 +753,16 @@ describe('Vault - swaps', () => {
                 assertSwapGivenOut({ swaps }, { MKR: 0.75e18 });
               };
 
+              context('with a two-token storage layout', () => {
+                itHandleMultiSwapsWithHopsProperly(TwoTokenTS);
+              });
+
               context('with a pair trading strategy', () => {
-                const anotherPoolType = PairTS;
-
-                context('with a two-token storage layout', () => {
-                  // TODO: implement deployment script for a two-token storage pool
-                  itHandleMultiSwapsWithHopsProperly(anotherPoolType);
-                });
-
-                context('with a multi-token storage layout', () => {
-                  itHandleMultiSwapsWithHopsProperly(anotherPoolType);
-                });
+                itHandleMultiSwapsWithHopsProperly(PairTS);
               });
 
               context('with a tuple trading strategy', () => {
-                const anotherPoolType = TupleTS;
-
-                itHandleMultiSwapsWithHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithHopsProperly(TupleTS);
               });
             });
 
@@ -832,15 +783,11 @@ describe('Vault - swaps', () => {
               };
 
               context('with a pair trading strategy', () => {
-                const anotherPoolType = PairTS;
-
-                itHandleMultiSwapsWithHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithHopsProperly(PairTS);
               });
 
               context('with a tuple trading strategy', () => {
-                const anotherPoolType = TupleTS;
-
-                itHandleMultiSwapsWithHopsProperly(anotherPoolType);
+                itHandleMultiSwapsWithHopsProperly(TupleTS);
               });
             });
           });

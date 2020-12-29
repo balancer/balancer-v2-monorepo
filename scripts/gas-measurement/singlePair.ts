@@ -18,10 +18,15 @@ async function main() {
 
   console.log('== Single token pair in multiple pools ==');
 
-  console.log(`\n# Constant Product Pools`);
+  console.log(`\n# Constant Product Pools with 2 tokens`);
 
-  await singlePair(() => getConstantProductPool(vault, tokens), false);
-  await singlePair(() => getConstantProductPool(vault, tokens), true);
+  await singlePair(() => getConstantProductPool(vault, tokens, 2), false);
+  await singlePair(() => getConstantProductPool(vault, tokens, 2), true);
+
+  console.log(`\n# Constant Product Pools with 4 tokens`);
+
+  await singlePair(() => getConstantProductPool(vault, tokens, 4), false);
+  await singlePair(() => getConstantProductPool(vault, tokens, 4), true);
 
   console.log(`\n# Stablecoin Pools with 2 tokens`);
 
