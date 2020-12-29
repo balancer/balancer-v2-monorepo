@@ -1,13 +1,13 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { MAX_UINT128 } from '../helpers/constants';
-import { deploy } from '../../scripts/helpers/deploy';
+import { MAX_UINT128 } from '../../helpers/constants';
+import { deploy } from '../../../scripts/helpers/deploy';
 
 describe('Vault - cash/invested balance', () => {
   let library: Contract;
 
   before(async () => {
-    library = await deploy('CashInvestedBalanceMock', { args: [] });
+    library = await deploy('CashInvestedMock', { args: [] });
   });
 
   describe('cash, invested & total', () => {
@@ -376,6 +376,69 @@ describe('Vault - cash/invested balance', () => {
       await testIsInvested(1, 1, true);
       await testIsInvested(MAX_UINT128.sub(1), 1, true);
       await testIsInvested(1, MAX_UINT128.sub(1), true);
+    });
+  });
+
+  describe('shared balances', () => {
+    async function testPackUnpack(
+      cashA: number | BigNumber,
+      investedA: number | BigNumber,
+      cashB: number | BigNumber,
+      investedB: number | BigNumber
+    ) {
+      const balanceA = await library.toBalance(BigNumber.from(cashA), BigNumber.from(investedA));
+      const balanceB = await library.toBalance(BigNumber.from(cashB), BigNumber.from(investedB));
+
+      const sharedCash = await library.toSharedCash(balanceA, balanceB);
+      const sharedInvested = await library.toSharedInvested(balanceA, balanceB);
+
+      const unpackedBalanceA = await library.fromSharedToBalanceA(sharedCash, sharedInvested);
+      const unpackedBalanceB = await library.fromSharedToBalanceB(sharedCash, sharedInvested);
+
+      expect(unpackedBalanceA).to.equal(balanceA);
+      expect(unpackedBalanceB).to.equal(balanceB);
+    }
+
+    it('packs and unpacks zero balances', async () => {
+      await testPackUnpack(0, 0, 0, 0);
+    });
+
+    it('packs and unpacks partial balances', async () => {
+      await testPackUnpack(0, 0, 0, 0);
+      await testPackUnpack(0, 0, 0, 2);
+      await testPackUnpack(0, 0, 2, 0);
+      await testPackUnpack(0, 0, 2, 2);
+      await testPackUnpack(0, 2, 0, 0);
+      await testPackUnpack(0, 2, 0, 2);
+      await testPackUnpack(0, 2, 2, 0);
+      await testPackUnpack(0, 2, 2, 2);
+      await testPackUnpack(2, 0, 0, 0);
+      await testPackUnpack(2, 0, 0, 2);
+      await testPackUnpack(2, 0, 2, 0);
+      await testPackUnpack(2, 0, 2, 2);
+      await testPackUnpack(2, 2, 0, 0);
+      await testPackUnpack(2, 2, 0, 2);
+      await testPackUnpack(2, 2, 2, 0);
+    });
+
+    it('packs and unpacks extreme partial balances', async () => {
+      const amount = MAX_UINT128.div(2);
+
+      await testPackUnpack(0, 0, 0, 0);
+      await testPackUnpack(0, 0, 0, amount);
+      await testPackUnpack(0, 0, amount, 0);
+      await testPackUnpack(0, 0, amount, amount);
+      await testPackUnpack(0, amount, 0, 0);
+      await testPackUnpack(0, amount, 0, amount);
+      await testPackUnpack(0, amount, amount, 0);
+      await testPackUnpack(0, amount, amount, amount);
+      await testPackUnpack(amount, 0, 0, 0);
+      await testPackUnpack(amount, 0, 0, amount);
+      await testPackUnpack(amount, 0, amount, 0);
+      await testPackUnpack(amount, 0, amount, amount);
+      await testPackUnpack(amount, amount, 0, 0);
+      await testPackUnpack(amount, amount, 0, amount);
+      await testPackUnpack(amount, amount, amount, 0);
     });
   });
 });

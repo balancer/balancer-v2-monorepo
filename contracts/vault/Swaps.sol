@@ -25,15 +25,14 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
-import "../math/FixedPoint.sol";
-
 import "./interfaces/ITradingStrategy.sol";
 import "./interfaces/IPairTradingStrategy.sol";
 import "./interfaces/ITupleTradingStrategy.sol";
+import "./balances/CashInvested.sol";
 
+import "../math/FixedPoint.sol";
 import "../validators/ISwapValidator.sol";
 
-import "./CashInvestedBalance.sol";
 import "./PoolRegistry.sol";
 
 abstract contract Swaps is ReentrancyGuard, PoolRegistry {
@@ -41,7 +40,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
-    using CashInvestedBalance for bytes32;
+    using CashInvested for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -293,11 +292,78 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         if (strategyType == StrategyType.PAIR) {
             amountQuoted = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(strategy), kind);
+        } else if (strategyType == StrategyType.TWO_TOKEN) {
+            amountQuoted = _processTwoTokenPoolQuoteRequest(request, IPairTradingStrategy(strategy), kind);
         } else if (strategyType == StrategyType.TUPLE) {
             amountQuoted = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(strategy), kind);
         } else {
             revert("Unknown strategy type");
         }
+    }
+
+    function _processTwoTokenPoolQuoteRequest(
+        QuoteRequestInternal memory request,
+        IPairTradingStrategy strategy,
+        SwapKind kind
+    ) private returns (uint128 amountQuoted) {
+        (
+            bytes32 tokenABalance,
+            bytes32 tokenBBalance,
+            TwoTokenSharedBalances storage poolSharedBalances
+        ) = _getTwoTokenPoolSharedBalances(request.poolId, request.tokenIn, request.tokenOut);
+
+        bytes32 tokenInBalance;
+        bytes32 tokenOutBalance;
+
+        if (request.tokenIn < request.tokenOut) {
+            // in is A, out is B
+            tokenInBalance = tokenABalance;
+            tokenOutBalance = tokenBBalance;
+        } else {
+            // in is B, out is A
+            tokenOutBalance = tokenABalance;
+            tokenInBalance = tokenBBalance;
+        }
+
+        require(tokenInBalance.total() > 0, "Token A not in pool");
+        require(tokenOutBalance.total() > 0, "Token B not in pool");
+
+        if (kind == SwapKind.GIVEN_IN) {
+            uint128 amountOut = strategy.quoteOutGivenIn(
+                _toQuoteGivenIn(request),
+                tokenInBalance.total(),
+                tokenOutBalance.total()
+            );
+
+            tokenInBalance = tokenInBalance.increaseCash(request.amount);
+            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
+
+            amountQuoted = amountOut;
+        } else {
+            uint128 amountIn = strategy.quoteInGivenOut(
+                _toQuoteGivenOut(request),
+                tokenInBalance.total(),
+                tokenOutBalance.total()
+            );
+
+            tokenInBalance = tokenInBalance.increaseCash(amountIn);
+            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
+
+            amountQuoted = amountIn;
+        }
+
+        require(tokenOutBalance.total() > 0, "Fully draining token out");
+
+        bytes32 newSharedCash;
+        if (request.tokenIn < request.tokenOut) {
+            // in is A, out is B
+            newSharedCash = CashInvested.toSharedCash(tokenInBalance, tokenOutBalance);
+        } else {
+            // in is B, out is A
+            newSharedCash = CashInvested.toSharedCash(tokenOutBalance, tokenInBalance);
+        }
+
+        poolSharedBalances.sharedCash = newSharedCash;
     }
 
     function _processPairTradingStrategyQuoteRequest(
@@ -336,8 +402,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         require(tokenOutBalance.total() > 0, "Fully draining token out");
-
-        // 2: Update Pool balances - these have been deducted the swap protocol fees
         _poolPairTokenBalance[request.poolId][request.tokenIn] = tokenInBalance;
         _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
     }
@@ -397,15 +461,33 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         (, StrategyType strategyType) = fromPoolId(poolId);
 
+        if (strategyType == StrategyType.TWO_TOKEN) {
+            require(tokens.length == 2, "Must interact with all tokens in two token pool");
+
+            IERC20 tokenX = tokens[0];
+            IERC20 tokenY = tokens[1];
+            uint128 feeToCollectTokenX = collectedFees[0].mul128(protocolSwapFee());
+            uint128 feeToCollectTokenY = collectedFees[1].mul128(protocolSwapFee());
+
+            _decreaseTwoTokenPoolCash(poolId, tokenX, feeToCollectTokenX, tokenY, feeToCollectTokenY);
+        } else {
+            for (uint256 i = 0; i < tokens.length; ++i) {
+                uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
+                _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
+
+                if (strategyType == StrategyType.PAIR) {
+                    _decreasePairPoolCash(poolId, tokens[i], feeToCollect);
+                } else {
+                    _decreaseTuplePoolCash(poolId, tokens[i], feeToCollect);
+                }
+            }
+        }
+
         balances = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            if (collectedFees[i] > 0) {
-                uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
-                _decreasePoolCash(poolId, strategyType, tokens[i], feeToCollect);
-                _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
-            }
             balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
         }
+
         return balances;
     }
 }
