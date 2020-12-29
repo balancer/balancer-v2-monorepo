@@ -22,9 +22,7 @@ describe('Vault - swap queries', () => {
   before('setup', async () => {
     [, admin, lp] = await ethers.getSigners();
 
-    // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
-    // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
-    // or rely on user balance or operators).
+    // All of the tests in this suite have no side effects, so we deploy and initially contracts only one to save time
 
     vault = await deploy('Vault', { args: [admin.address] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
@@ -39,7 +37,7 @@ describe('Vault - swap queries', () => {
       const pool = await deploy('MockPool', { args: [vault.address, PairTS] });
       await pool.setMultiplier(toFixedPoint(2));
 
-      await vault.connect(lp).authorizeOperator(pool.address);
+      await vault.connect(lp).addUserAgent(pool.address);
 
       await pool.connect(lp).addLiquidity(
         tokenAddresses,
