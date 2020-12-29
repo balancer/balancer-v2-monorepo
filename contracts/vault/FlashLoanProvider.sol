@@ -24,11 +24,11 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IFlashLoanReceiver.sol";
-import "./Settings.sol";
+import "./Fees.sol";
 
 import "../math/FixedPoint.sol";
 
-abstract contract FlashLoanProvider is ReentrancyGuard, Settings {
+abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
@@ -47,7 +47,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Settings {
             preLoanBalances[i] = tokens[i].balanceOf(address(this));
             require(preLoanBalances[i] >= amounts[i], "Insufficient balance to borrow");
 
-            feeAmounts[i] = _calculateProtocolFlashLoanFee(amounts[i]);
+            feeAmounts[i] = _calculateProtocolFlashLoanFeeAmount(amounts[i]);
 
             tokens[i].safeTransfer(address(receiver), amounts[i]);
         }

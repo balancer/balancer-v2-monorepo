@@ -23,7 +23,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../../math/FixedPoint.sol";
 
-import "../../vault/IVault.sol";
+import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPairTradingStrategy.sol";
 
 import "../BToken.sol";

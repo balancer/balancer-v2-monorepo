@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../math/FixedPoint.sol";
 
 import "../vault/interfaces/IFlashLoanReceiver.sol";
-import "../vault/IVault.sol";
+import "../vault/interfaces/IVault.sol";
 
 import "./TestToken.sol";
 

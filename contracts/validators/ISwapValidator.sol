@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../math/FixedPoint.sol";
 
-import "../vault/IVault.sol";
+import "../vault/interfaces/IVault.sol";
 
 interface ISwapValidator {
     function validate(

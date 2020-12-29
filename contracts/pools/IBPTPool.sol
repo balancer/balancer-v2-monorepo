@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "../vault/IVault.sol";
+import "../vault/interfaces/IVault.sol";
 
 interface IBPTPool {
     function getVault() external view returns (IVault);

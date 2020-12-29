@@ -15,7 +15,7 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../../vault/IVault.sol";
+import "../../vault/interfaces/IVault.sol";
 
 import "../BasePoolFactory.sol";
 

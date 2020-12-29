@@ -16,8 +16,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./interfaces/IFlashLoanReceiver.sol";
-import "../validators/ISwapValidator.sol";
+import "./IFlashLoanReceiver.sol";
+import "../../validators/ISwapValidator.sol";
 
 pragma solidity ^0.7.1;
 
