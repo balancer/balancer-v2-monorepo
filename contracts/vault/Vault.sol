@@ -15,18 +15,12 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./IVault.sol";
-import "./Settings.sol";
-import "./VaultAccounting.sol";
-import "./UserBalance.sol";
-import "./PoolRegistry.sol";
-import "./FlashLoanProvider.sol";
-import "./Settings.sol";
-import "./Swaps.sol";
 import "./Admin.sol";
+import "./FlashLoanProvider.sol";
+import "./Swaps.sol";
 
 // solhint-disable no-empty-blocks
 
-contract Vault is IVault, Settings, VaultAccounting, UserBalance, PoolRegistry, FlashLoanProvider, Swaps, Admin {
+contract Vault is Admin, FlashLoanProvider, Swaps {
     constructor(address _admin) Admin(_admin) {}
 }

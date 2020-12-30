@@ -15,7 +15,7 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../vault/IVault.sol";
+import "../vault/interfaces/IVault.sol";
 
 import "../pools/BasePoolFactory.sol";
 
@@ -25,7 +25,7 @@ contract MockFactoryCreatedPool {
     constructor(IVault _vault) {
         vault = _vault;
 
-        require(_vault.isOperatorFor(address(0), address(this)), "Not a Trusted Operator during construction");
+        require(_vault.isAgentFor(address(0), address(this)), "Not a Universal Agent during construction");
     }
 }
 

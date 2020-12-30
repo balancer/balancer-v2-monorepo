@@ -16,8 +16,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./interfaces/IFlashLoanReceiver.sol";
-import "../validators/ISwapValidator.sol";
+import "./IFlashLoanReceiver.sol";
+import "../../validators/ISwapValidator.sol";
 
 pragma solidity ^0.7.1;
 
@@ -50,79 +50,79 @@ interface IVault {
         address recipient
     ) external;
 
-    // Operators
+    // Agents
 
     /**
-     * @dev Authorizes `operator` to act as an operator for the caller.
+     * @dev Authorizes `agent` to act as an agent for the caller.
      */
-    function authorizeOperator(address operator) external;
+    function addUserAgent(address agent) external;
 
     /**
-     * @dev Revokes `operator` so that it no longer is an operator for the caller. An account is always its own operator
-     * and cannot revoke itself. Trusted Operators also cannot be revoked.
+     * @dev Revokes `agent` so that it no longer is an agent for the caller. An account is always its own agent
+     * and cannot revoke itself. Universal Agents also cannot be revoked.
      */
-    function revokeOperator(address operator) external;
+    function removeUserAgent(address agent) external;
 
     /**
-     * @dev Returns true of `operator` is an operator for `user`.
+     * @dev Returns true of `agent` is an agent for `user`.
      */
-    function isOperatorFor(address user, address operator) external view returns (bool);
+    function isAgentFor(address user, address agent) external view returns (bool);
 
     /**
-     * @dev Returns the number of operators for `user`. This does not include `user` itself, nor Trusted Operators.
+     * @dev Returns the number of agents for `user`. This does not include `user` itself, nor Universal Agents.
      */
-    function getUserTotalOperators(address user) external view returns (uint256);
+    function getNumberOfUserAgents(address user) external view returns (uint256);
 
     /**
-     * @dev Returns a partial list of `user`'s operators, starting at index `start`, up to index `end`. This does not
-     * include `user` itself, nor Trusted Operators.
+     * @dev Returns a partial list of `user`'s agents, starting at index `start`, up to index `end`. This does not
+     * include `user` itself, nor Universal Agents.
      *
-     * The ordering of this list may change as operators are authorized and revoked.
+     * The ordering of this list may change as agents are authorized and revoked.
      */
-    function getUserOperators(
+    function getUserAgents(
         address user,
         uint256 start,
         uint256 end
     ) external view returns (address[] memory);
 
-    // Trusted operators
+    // Universal Agents
 
     /**
-     @dev Returns the number of Trusted Operators.
+     @dev Returns the number of Universal Agents.
      */
-    function getTotalTrustedOperators() external view returns (uint256);
+    function getNumberOfUniversalAgents() external view returns (uint256);
 
     /**
-     * @dev Returns a partial list of Trusted Operators, starting at index `start`, up to index `end`.
+     * @dev Returns a partial list of Universal Agents, starting at index `start`, up to index `end`.
      */
-    function getTrustedOperators(uint256 start, uint256 end) external view returns (address[] memory);
+    function getUniversalAgents(uint256 start, uint256 end) external view returns (address[] memory);
 
     /**
-     * @dev Returns the number of Trusted Operator Reporters.
+     * @dev Returns the number of Universal Agent Managers.
      */
-    function getTotalTrustedOperatorReporters() external view returns (uint256);
+    function getNumberOfUniversalAgentManagers() external view returns (uint256);
 
     /**
-     * @dev Returns a partial list of Trusted Operator Reporters, starting at index `start`, up to index `end`.
+     * @dev Returns a partial list of Universal Agent Managers, starting at index `start`, up to index `end`.
      */
-    function getTrustedOperatorReporters(uint256 start, uint256 end) external view returns (address[] memory);
+    function getUniversalAgentManagers(uint256 start, uint256 end) external view returns (address[] memory);
 
     /**
-     * @dev Adds `operator` as a Trusted Operator. Can only be called by a Trusted Operator Reporter.
+     * @dev Adds `agent` as a Universal Agent. Can only be called by a Universal Agent Manager.
      */
-    function reportTrustedOperator(address operator) external;
+    function addUniversalAgent(address agent) external;
 
     /**
-     * @dev Removes `operator` as a Trusted Operator. Can only be called by a Trusted Operator Reporter.
+     * @dev Removes `agent` as a Universal Agent. Can only be called by a Universal Agent Manager.
      */
-    function revokeTrustedOperator(address operator) external;
+    function removeUniversalAgent(address agent) external;
 
     // Pools
 
     // There are two variants of Trading Strategies for Pools: Pair Trading Strategies, and Tuple Trading Strategies.
     // These require different data from the Vault, which is reflected in their differing interfaces
     // (IPairTradingStrategy and ITupleTradingStrategy, respectively).
-    enum StrategyType { PAIR, TUPLE }
+    enum StrategyType { PAIR, TUPLE, TWO_TOKEN }
 
     /**
      * @dev Creates a new Pool with a Trading Strategy and Trading Strategy Type. The caller of this function becomes
@@ -142,7 +142,7 @@ interface IVault {
     /**
      * @dev Returns the number of Pools.
      */
-    function getTotalPools() external view returns (uint256);
+    function getNumberOfPools() external view returns (uint256);
 
     /**
      * @dev Returns a partial list of Pool IDs, starting at index `start`, up to index `end`.
@@ -172,7 +172,7 @@ interface IVault {
      * For each token, the Pool's balance will be increased by `totalAmounts[i]`. This is achieved by first transferring
      * `amountsToTransfer[i]` tokens, and then withdrawing any amount remaining from User Balance. In both cases, the
      * tokens will come from `from`. `from` must have granted allowance to the Vault, and the caller (Pool controller)
-     * must be an operator for `from`.
+     * must be an agent for `from`.
      *
      * If a token that was not previously in the Pool is granted balance by this function, it will become part of the
      * Pool. This is the only way tokens can be added to a Pool.
@@ -267,7 +267,7 @@ interface IVault {
 
     // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are
     // withdrawn from withdrawFrom's User Balance.
-    // In any case, the caller must be an operator for withdrawFrom.
+    // In any case, the caller must be an agent for withdrawFrom.
     // Funds out are deposited to recipient's User Balance, or transferred out if transferToRecipient is true.
     struct FundManagement {
         address sender;
@@ -275,6 +275,46 @@ interface IVault {
         bool withdrawFromUserBalance;
         bool depositToUserBalance;
     }
+
+    // Swap query methods
+
+    /**
+     * @dev Simulates a call to batchSwapGivenIn, returning an array of Vault token deltas. Each element in the array
+     * corresponds to the token at the same index, and indicates the number of tokens the Vault would take from the
+     * sender (if positive) or send to the recipient (if negative). The arguments it receives are the same that
+     * an equivalent batchSwapGivenIn would receive.
+     *
+     * Unlike batchSwapGivenIn, this function performs no checks on its caller nor the sender and recipient fields in
+     * the FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
+     * needing to hold tokens, approve them for the Vault, or even know a user's address.
+     *
+     * Note however that this function is not 'view' (due to implementation details): the client code must explicitly
+     * execute eth_call instead of eth_sendTransaction.
+     */
+    function queryBatchSwapGivenIn(
+        SwapIn[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external returns (int256[] memory);
+
+    /**
+     * @dev Simulates a call to batchSwapGivenOut, returning an array of Vault token deltas. Each element in the array
+     * corresponds to the token at the same index, and indicates the number of tokens the Vault would take from the
+     * sender (if positive) or send to the recipient (if negative). The arguments it receives are the same that
+     * an equivalent batchSwapGivenOut would receive.
+     *
+     * Unlike batchSwapGivenIn, this function performs no checks on its caller nor the sender and recipient fields in
+     * the FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
+     * needing to hold tokens, approve them for the Vault, or even know a user's address.
+     *
+     * Note however that this function is not 'view' (due to implementation details): the client code must explicitly
+     * execute eth_call instead of eth_sendTransaction.
+     */
+    function queryBatchSwapGivenOut(
+        SwapOut[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external returns (int256[] memory);
 
     // Pay Swap Protocol Fee interface
     /**
@@ -359,16 +399,16 @@ interface IVault {
     // Admin Controls
 
     /**
-     * @dev Authorizes `reporter` to call `reportTrustedOperator`. This is typically called on factory contracts. Can
-     * only be called by the admin.
+     * @dev Authorizes `agent` to call `addUniversalAgent` or `removeUniversalAgent`.
+     * This is typically called on factory contracts. Can only be called by the admin.
      */
-    function authorizeTrustedOperatorReporter(address reporter) external;
+    function addUniversalAgentManager(address agent) external;
 
     /**
-     * @dev Remove authorization for `reporter` to call `reportTrustedOperator`. This is typically called on factory
-     * contracts. Can only be called by the admin.
+     * @dev Remove authorization for `agent` to call `addUniversalAgent` or `removeUniversalAgent`.
+     * This is typically called on factory contracts. Can only be called by the admin.
      */
-    function revokeTrustedOperatorReporter(address reporter) external;
+    function removeUniversalAgentManager(address agent) external;
 
     /**
      * @dev Transfers to protocolFeeCollector address the requested amounts of protocol fees. Anyone can call it.

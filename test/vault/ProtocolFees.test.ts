@@ -53,7 +53,7 @@ describe('Vault - protocol fees', () => {
   describe('protocol fee charged', () => {
     beforeEach(async () => {
       const pool = await deploy('MockPool', { args: [vault.address, PairTS] });
-      await vault.connect(lp).authorizeOperator(pool.address);
+      await vault.connect(lp).addUserAgent(pool.address);
 
       await pool
         .connect(lp)

@@ -54,7 +54,7 @@ describe('OneToOneSwapValidator', () => {
         args: [vault.address, poolType],
       });
 
-      await vault.connect(lp).authorizeOperator(pool.address);
+      await vault.connect(lp).addUserAgent(pool.address);
       await pool
         .connect(lp)
         .addLiquidity(

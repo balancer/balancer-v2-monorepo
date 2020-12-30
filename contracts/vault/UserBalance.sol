@@ -17,38 +17,24 @@ pragma experimental ABIEncoderV2;
 
 import "hardhat/console.sol";
 
-import "../vendor/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "./IVault.sol";
-import "./VaultAccounting.sol";
+import "./Fees.sol";
+import "./Agents.sol";
 
 import "../math/FixedPoint.sol";
 
-abstract contract UserBalance is IVault, VaultAccounting {
-    using EnumerableSet for EnumerableSet.AddressSet;
+abstract contract UserBalance is Fees, Agents {
+    using SafeERC20 for IERC20;
     using FixedPoint for uint128;
+    using FixedPoint for uint256;
 
     mapping(address => mapping(IERC20 => uint128)) internal _userTokenBalance; // user -> token -> user balance
 
-    // Operators are allowed to use a user's tokens in a swap
-    mapping(address => EnumerableSet.AddressSet) private _userOperators;
-
-    // Trusted operators are operators for all users, without needing to be authorized. Trusted operators cannot be
-    // revoked.
-    EnumerableSet.AddressSet private _trustedOperators;
-
-    // Trusted operators reporters can report new trusted operators
-    EnumerableSet.AddressSet internal _trustedOperatorReporters;
-
     event Deposited(address indexed depositor, address indexed user, IERC20 indexed token, uint128 amount);
-
     event Withdrawn(address indexed user, address indexed recipient, IERC20 indexed token, uint128 amount);
-
-    event AuthorizedOperator(address indexed user, address indexed operator);
-    event RevokedOperator(address indexed user, address indexed operator);
-
-    event AuthorizedTrustedOperator(address indexed operator);
-    event RevokedTrustedOperator(address indexed operator);
 
     function getUserTokenBalance(address user, IERC20 token) public view override returns (uint128) {
         return _userTokenBalance[user][token];
@@ -59,8 +45,7 @@ abstract contract UserBalance is IVault, VaultAccounting {
         uint128 amount,
         address user
     ) external override {
-        // Pulling from the sender - no need to check for operators
-        _pullTokens(token, msg.sender, amount);
+        token.safeTransferFrom(msg.sender, address(this), amount);
 
         // TODO: check overflow
         _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(amount);
@@ -75,99 +60,12 @@ abstract contract UserBalance is IVault, VaultAccounting {
         require(_userTokenBalance[msg.sender][token] >= amount, "Vault: withdraw amount exceeds balance");
 
         _userTokenBalance[msg.sender][token] -= amount;
-        _pushTokens(token, recipient, amount, true);
+
+        uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
+
+        _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
+        token.safeTransfer(recipient, amount.sub128(feeAmount));
 
         emit Withdrawn(msg.sender, recipient, token, amount);
-    }
-
-    function authorizeOperator(address operator) external override {
-        if (_userOperators[msg.sender].add(operator)) {
-            emit AuthorizedOperator(msg.sender, operator);
-        }
-    }
-
-    function revokeOperator(address operator) external override {
-        if (_userOperators[msg.sender].remove(operator)) {
-            emit RevokedOperator(msg.sender, operator);
-        }
-    }
-
-    function isOperatorFor(address user, address operator) public view override returns (bool) {
-        return (user == operator) || _trustedOperators.contains(operator) || _userOperators[user].contains(operator);
-    }
-
-    function getUserTotalOperators(address user) external view override returns (uint256) {
-        return _userOperators[user].length();
-    }
-
-    function getUserOperators(
-        address user,
-        uint256 start,
-        uint256 end
-    ) external view override returns (address[] memory) {
-        require((end >= start) && (end - start) <= _userOperators[user].length(), "Bad indices");
-
-        // Ideally we'd use a native implemenation: see
-        // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
-        address[] memory operators = new address[](end - start);
-
-        for (uint256 i = 0; i < operators.length; ++i) {
-            operators[i] = _userOperators[user].at(i + start);
-        }
-
-        return operators;
-    }
-
-    function getTotalTrustedOperators() external view override returns (uint256) {
-        return _trustedOperators.length();
-    }
-
-    function getTrustedOperators(uint256 start, uint256 end) external view override returns (address[] memory) {
-        require((end >= start) && (end - start) <= _trustedOperators.length(), "Bad indices");
-
-        // Ideally we'd use a native implemenation: see
-        // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
-        address[] memory operators = new address[](end - start);
-
-        for (uint256 i = 0; i < operators.length; ++i) {
-            operators[i] = _trustedOperators.at(i + start);
-        }
-
-        return operators;
-    }
-
-    function getTotalTrustedOperatorReporters() external view override returns (uint256) {
-        return _trustedOperatorReporters.length();
-    }
-
-    function getTrustedOperatorReporters(uint256 start, uint256 end) external view override returns (address[] memory) {
-        require((end >= start) && (end - start) <= _trustedOperatorReporters.length(), "Bad indices");
-
-        // Ideally we'd use a native implemenation: see
-        // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
-        address[] memory operatorReporters = new address[](end - start);
-
-        for (uint256 i = 0; i < operatorReporters.length; ++i) {
-            operatorReporters[i] = _trustedOperatorReporters.at(i + start);
-        }
-
-        return operatorReporters;
-    }
-
-    modifier onlyTrustedOperatorReporters() {
-        require(_trustedOperatorReporters.contains(msg.sender), "Caller is not trusted operator reporter");
-        _;
-    }
-
-    function reportTrustedOperator(address operator) external override onlyTrustedOperatorReporters {
-        if (_trustedOperators.add(operator)) {
-            emit AuthorizedTrustedOperator(operator);
-        }
-    }
-
-    function revokeTrustedOperator(address operator) external override onlyTrustedOperatorReporters {
-        if (_trustedOperators.remove(operator)) {
-            emit RevokedTrustedOperator(operator);
-        }
     }
 }

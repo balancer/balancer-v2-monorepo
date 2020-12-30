@@ -19,32 +19,28 @@ import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../vendor/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "../vendor/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
-import "../math/FixedPoint.sol";
-
 import "./interfaces/ITradingStrategy.sol";
 import "./interfaces/IPairTradingStrategy.sol";
 import "./interfaces/ITupleTradingStrategy.sol";
+import "./balances/CashInvested.sol";
 
+import "../math/FixedPoint.sol";
 import "../validators/ISwapValidator.sol";
 
-import "./IVault.sol";
-import "./CashInvestedBalance.sol";
-import "./VaultAccounting.sol";
 import "./PoolRegistry.sol";
-import "./UserBalance.sol";
 
-abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance, PoolRegistry {
+abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
-    using CashInvestedBalance for bytes32;
+    using CashInvested for bytes32;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -150,33 +146,9 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         // Any net token amount going into the Vault will be taken from `funds.sender`, so they must have
         // approved the caller to use their funds.
-        require(isOperatorFor(funds.sender, msg.sender), "Caller is not operator");
+        require(isAgentFor(funds.sender, msg.sender), "Caller is not an agent");
 
-        int256[] memory tokenDeltas = new int256[](tokens.length);
-
-        LastSwapData memory previous;
-        SwapInternal memory swap;
-
-        // Steps 1, 2 & 3:
-        //  - check swaps are valid
-        //  - update pool balances
-        //  - accumulate token diffs
-        for (uint256 i = 0; i < swaps.length; ++i) {
-            swap = swaps[i];
-
-            (uint128 amountIn, uint128 amountOut) = _swapWithPool(
-                tokens,
-                swap,
-                funds.sender,
-                funds.recipient,
-                previous,
-                kind
-            );
-
-            // 3: Accumulate token diffs
-            tokenDeltas[swap.tokenInIndex] += amountIn;
-            tokenDeltas[swap.tokenOutIndex] -= amountOut;
-        }
+        int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
         // Step 4: Receive tokens due to the Vault, withdrawing missing amounts from User Balance
         // Step 5: Send tokens due to the recipient
@@ -193,7 +165,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                     toReceive -= toWithdraw;
                 }
 
-                _pullTokens(token, funds.sender, toReceive);
+                token.safeTransferFrom(funds.sender, address(this), toReceive);
             } else {
                 // Make delta positive
                 uint128 toSend = uint128(-tokenDeltas[i]);
@@ -205,7 +177,7 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
                     );
                 } else {
                     // Actually transfer the tokens to the recipient
-                    _pushTokens(token, funds.recipient, toSend, false);
+                    token.safeTransfer(funds.recipient, toSend);
                 }
             }
         }
@@ -248,6 +220,41 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         } else {
             (amountIn, amountOut) = (amountQuoted, amountGiven);
         }
+    }
+
+    function _swapWithPools(
+        SwapInternal[] memory swaps,
+        IERC20[] memory tokens,
+        FundManagement memory funds,
+        SwapKind kind
+    ) private returns (int256[] memory tokenDeltas) {
+        tokenDeltas = new int256[](tokens.length);
+
+        LastSwapData memory previous;
+        SwapInternal memory swap;
+
+        // Steps 1, 2 & 3:
+        //  - check swaps are valid
+        //  - update pool balances
+        //  - accumulate token diffs
+        for (uint256 i = 0; i < swaps.length; ++i) {
+            swap = swaps[i];
+
+            (uint128 amountIn, uint128 amountOut) = _swapWithPool(
+                tokens,
+                swap,
+                funds.sender,
+                funds.recipient,
+                previous,
+                kind
+            );
+
+            // 3: Accumulate token diffs
+            tokenDeltas[swap.tokenInIndex] += amountIn;
+            tokenDeltas[swap.tokenOutIndex] -= amountOut;
+        }
+
+        return tokenDeltas;
     }
 
     function _swapWithPool(
@@ -296,11 +303,78 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         if (strategyType == StrategyType.PAIR) {
             amountQuoted = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(strategy), kind);
+        } else if (strategyType == StrategyType.TWO_TOKEN) {
+            amountQuoted = _processTwoTokenPoolQuoteRequest(request, IPairTradingStrategy(strategy), kind);
         } else if (strategyType == StrategyType.TUPLE) {
             amountQuoted = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(strategy), kind);
         } else {
             revert("Unknown strategy type");
         }
+    }
+
+    function _processTwoTokenPoolQuoteRequest(
+        QuoteRequestInternal memory request,
+        IPairTradingStrategy strategy,
+        SwapKind kind
+    ) private returns (uint128 amountQuoted) {
+        (
+            bytes32 tokenABalance,
+            bytes32 tokenBBalance,
+            TwoTokenSharedBalances storage poolSharedBalances
+        ) = _getTwoTokenPoolSharedBalances(request.poolId, request.tokenIn, request.tokenOut);
+
+        bytes32 tokenInBalance;
+        bytes32 tokenOutBalance;
+
+        if (request.tokenIn < request.tokenOut) {
+            // in is A, out is B
+            tokenInBalance = tokenABalance;
+            tokenOutBalance = tokenBBalance;
+        } else {
+            // in is B, out is A
+            tokenOutBalance = tokenABalance;
+            tokenInBalance = tokenBBalance;
+        }
+
+        require(tokenInBalance.total() > 0, "Token A not in pool");
+        require(tokenOutBalance.total() > 0, "Token B not in pool");
+
+        if (kind == SwapKind.GIVEN_IN) {
+            uint128 amountOut = strategy.quoteOutGivenIn(
+                _toQuoteGivenIn(request),
+                tokenInBalance.total(),
+                tokenOutBalance.total()
+            );
+
+            tokenInBalance = tokenInBalance.increaseCash(request.amount);
+            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
+
+            amountQuoted = amountOut;
+        } else {
+            uint128 amountIn = strategy.quoteInGivenOut(
+                _toQuoteGivenOut(request),
+                tokenInBalance.total(),
+                tokenOutBalance.total()
+            );
+
+            tokenInBalance = tokenInBalance.increaseCash(amountIn);
+            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
+
+            amountQuoted = amountIn;
+        }
+
+        require(tokenOutBalance.total() > 0, "Fully draining token out");
+
+        bytes32 newSharedCash;
+        if (request.tokenIn < request.tokenOut) {
+            // in is A, out is B
+            newSharedCash = CashInvested.toSharedCash(tokenInBalance, tokenOutBalance);
+        } else {
+            // in is B, out is A
+            newSharedCash = CashInvested.toSharedCash(tokenOutBalance, tokenInBalance);
+        }
+
+        poolSharedBalances.sharedCash = newSharedCash;
     }
 
     function _processPairTradingStrategyQuoteRequest(
@@ -339,8 +413,6 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
         }
 
         require(tokenOutBalance.total() > 0, "Fully draining token out");
-
-        // 2: Update Pool balances - these have been deducted the swap protocol fees
         _poolPairTokenBalance[request.poolId][request.tokenIn] = tokenInBalance;
         _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
     }
@@ -400,16 +472,85 @@ abstract contract Swaps is ReentrancyGuard, IVault, VaultAccounting, UserBalance
 
         (, StrategyType strategyType) = fromPoolId(poolId);
 
+        if (strategyType == StrategyType.TWO_TOKEN) {
+            require(tokens.length == 2, "Must interact with all tokens in two token pool");
+
+            IERC20 tokenX = tokens[0];
+            IERC20 tokenY = tokens[1];
+            uint128 feeToCollectTokenX = collectedFees[0].mul128(protocolSwapFee());
+            uint128 feeToCollectTokenY = collectedFees[1].mul128(protocolSwapFee());
+
+            _decreaseTwoTokenPoolCash(poolId, tokenX, feeToCollectTokenX, tokenY, feeToCollectTokenY);
+        } else {
+            for (uint256 i = 0; i < tokens.length; ++i) {
+                uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
+                _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
+
+                if (strategyType == StrategyType.PAIR) {
+                    _decreasePairPoolCash(poolId, tokens[i], feeToCollect);
+                } else {
+                    _decreaseTuplePoolCash(poolId, tokens[i], feeToCollect);
+                }
+            }
+        }
+
         balances = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            if (collectedFees[i] > 0) {
-                uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
-                _decreasePoolCash(poolId, strategyType, tokens[i], feeToCollect);
-                _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
-            }
-
             balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
         }
+
         return balances;
+    }
+
+    function queryBatchSwapGivenIn(
+        SwapIn[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external override returns (int256[] memory) {
+        return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
+    }
+
+    function queryBatchSwapGivenOut(
+        SwapOut[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds
+    ) external override returns (int256[] memory) {
+        return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
+    }
+
+    function _callQueryBatchSwapHelper(
+        SwapInternal[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds,
+        SwapKind kind
+    ) private returns (int256[] memory tokenDeltas) {
+        try this.queryBatchSwapHelper(swaps, tokens, funds, kind)  {
+            assert(false);
+        } catch Error(string memory reason) {
+            tokenDeltas = abi.decode(bytes(reason), (int256[]));
+        }
+    }
+
+    /**
+     * @dev Despite this function being external, it can only be called by the Vault itself, and should not be
+     * considered part of the Vault's external API.
+     *
+     * It executes the Pool interaction part of a batch swap, asking Pools for quotes and computing the Vault deltas,
+     * but without performing any token transfers. It then reverts unconditionally, returning the Vault  deltas array as
+     * the revert data.
+     *
+     * This enables an accurate implementation of queryBatchSwapGivenIn and queryBatchSwapGivenOut, since the array
+     * 'returned' by this function is the result of the exact same computation a swap would perform, including Pool
+     * calls.
+     */
+    function queryBatchSwapHelper(
+        SwapInternal[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds,
+        SwapKind kind
+    ) external {
+        require(msg.sender == address(this), "Caller is not the Vault");
+        int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
+        revert(string(abi.encode(tokenDeltas)));
     }
 }

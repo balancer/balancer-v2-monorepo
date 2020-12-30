@@ -24,7 +24,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../BToken.sol";
 import "../IBPTPool.sol";
 
-import "../../vault/IVault.sol";
+import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/ITupleTradingStrategy.sol";
 import "../../math/FixedPoint.sol";
 
@@ -125,6 +125,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     }
 
     function _resetAccSwapFees(uint128[] memory balances) internal {
+        // solhint-disable-previous-line no-empty-blocks
         //TODO: reset swap fees
     }
 
