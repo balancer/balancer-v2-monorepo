@@ -114,7 +114,15 @@ describe('StablecoinPool', function () {
       await expect(
         deployPoolFromFactory(vault, admin, 'StablecoinPool', {
           from: creator,
-          parameters: [initialBPT, symbol, name, poolTokens, poolInitialBalances.slice(1), poolAmplification, poolSwapFee],
+          parameters: [
+            initialBPT,
+            symbol,
+            name,
+            poolTokens,
+            poolInitialBalances.slice(1),
+            poolAmplification,
+            poolSwapFee,
+          ],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
     });
@@ -157,7 +165,15 @@ describe('StablecoinPool', function () {
       await expect(
         deployPoolFromFactory(vault, admin, 'StablecoinPool', {
           from: creator,
-          parameters: [initialBPT, symbol, name, poolTokens, poolInitialBalances, poolAmplification, toFixedPoint(0.1).add(1)],
+          parameters: [
+            initialBPT,
+            symbol,
+            name,
+            poolTokens,
+            poolInitialBalances,
+            poolAmplification,
+            toFixedPoint(0.1).add(1),
+          ],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
     });

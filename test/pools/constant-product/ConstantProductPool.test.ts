@@ -217,7 +217,15 @@ describe('ConstantProductPool', function () {
       await expect(
         deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
           from: creator,
-          parameters: [initialBPT, symbol, name, poolTokens, poolInitialBalances, poolWeights, toFixedPoint(0.1).add(1)],
+          parameters: [
+            initialBPT,
+            symbol,
+            name,
+            poolTokens,
+            poolInitialBalances,
+            poolWeights,
+            toFixedPoint(0.1).add(1),
+          ],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
     });
