@@ -35,7 +35,7 @@ contract BalancerPoolToken is IERC20 {
 
     // State variables
 
-    uint8 public constant DECIMALS = 18;
+    uint8 private constant _DECIMALS = 18;
 
     mapping(address => uint256) private _balance;
     mapping(address => mapping(address => uint256)) private _allowance;
@@ -129,7 +129,7 @@ contract BalancerPoolToken is IERC20 {
     }
 
     function decimals() public pure returns (uint8) {
-        return DECIMALS;
+        return _DECIMALS;
     }
 
     function totalSupply() public view override returns (uint256) {

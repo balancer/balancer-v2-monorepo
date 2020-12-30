@@ -245,7 +245,7 @@ describe('ConstantProductPool', function () {
     it('sets the decimals', async () => {
       const pool = await callDeployPool();
 
-      expect(await pool.decimals()).to.equal(await pool.DECIMALS());
+      expect(await pool.decimals()).to.equal(18);
     });
   });
 
