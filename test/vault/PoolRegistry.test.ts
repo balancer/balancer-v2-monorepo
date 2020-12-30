@@ -107,14 +107,12 @@ describe('Vault - pool registry', () => {
     });
   });
 
-  describe('collect protocol swap fees', async () => {
+  describe('protocol swap fee collection', async () => {
     let pool: Contract;
     let poolId: string;
 
-    let protocolSwapFee = 0.01; // 1%
-
     beforeEach('deploy pool', async () => {
-      await vault.connect(admin).setProtocolSwapFee(toFixedPoint(protocolSwapFee));
+      await vault.connect(admin).setProtocolSwapFee(toFixedPoint(0.01)); // 1%
 
       pool = await deploy('MockPool', {
         args: [vault.address, PairTS],
@@ -128,114 +126,70 @@ describe('Vault - pool registry', () => {
       await pool.connect(lp).addLiquidity([tokens.DAI.address, tokens.MKR.address], [1000, 1000]);
     });
 
-    it('in one token', async () => {
-      const previousBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
+    // Each entry in the fees array contains a token symbol, the amount of collected fees to report, and the amount of
+    // fees the test expects the vault to charge
+    async function assertFeesArePaid(
+      fees: { symbol: string; reported: number | BigNumber; expectedPaid: number | BigNumber }[]
+    ) {
+      const tokenAddresses = fees.map(({ symbol }) => tokens[symbol].address);
+      const reportedAmounts = fees.map(({ reported }) => reported);
 
-      const receipt = await (await pool.paySwapProtocolFees([tokens.DAI.address], [500])).wait();
-      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
+      const previousBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
 
-      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('5');
+      const receipt = await (await pool.paySwapProtocolFees(tokenAddresses, reportedAmounts)).wait();
 
-      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
+      // The vault returns the updated balance for tokens for which fees were paid
+      const event = expectEvent.inReceipt(receipt, 'UpdatedBalances');
+      const newBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
       expect(newBalances).to.deep.equal(event.args.balances);
 
-      expect(newBalances[0].sub(previousBalances[0])).to.equal((-5).toString());
+      for (let i = 0; i < fees.length; ++i) {
+        expect(await vault.getCollectedFeesByToken(tokens[fees[i].symbol].address)).to.equal(fees[i].expectedPaid);
+        expect(previousBalances[i].sub(newBalances[i])).to.equal(fees[i].expectedPaid);
+      }
+    }
+
+    it('pools can pay fees in a single token', async () => {
+      await assertFeesArePaid([{ symbol: 'DAI', reported: 500, expectedPaid: 5 }]);
     });
 
-    it('in many token', async () => {
-      const previousBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address]);
-
-      const receipt = await (
-        await pool.paySwapProtocolFees([tokens.DAI.address, tokens.MKR.address], [(500).toString(), (1000).toString()])
-      ).wait();
-      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
-
-      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('5');
-      expect((await vault.getCollectedFeesByToken(tokens.MKR.address)).toString()).to.equal('10');
-
-      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address]);
-      expect(newBalances).to.deep.equal(event.args.balances);
-
-      expect(newBalances[0].sub(previousBalances[0])).to.equal((-5).toString());
-      expect(newBalances[1].sub(previousBalances[1])).to.equal((-10).toString());
+    it('pools can pay fees in multiple tokens', async () => {
+      await assertFeesArePaid([
+        { symbol: 'DAI', reported: 500, expectedPaid: 5 },
+        { symbol: 'MKR', reported: 1000, expectedPaid: 10 },
+      ]);
     });
 
-    it('zero amount', async () => {
-      const previousBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
-
-      const receipt = await (await pool.paySwapProtocolFees([tokens.DAI.address], [0])).wait();
-      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
-
-      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('0');
-
-      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
-      expect(newBalances).to.deep.equal(event.args.balances);
-
-      expect(newBalances[0].sub(previousBalances[0])).to.equal((0).toString());
+    it('pools can pay zero fees', async () => {
+      await assertFeesArePaid([{ symbol: 'DAI', reported: 0, expectedPaid: 0 }]);
     });
 
-    it('zero protocol fee %', async () => {
+    it('the vault charges nothing if the protocol fee is 0', async () => {
       await vault.connect(admin).setProtocolSwapFee(toFixedPoint(0));
-
-      const previousBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
-
-      const receipt = await (await pool.paySwapProtocolFees([tokens.DAI.address], [500])).wait();
-      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
-
-      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('0');
-
-      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
-      expect(newBalances).to.deep.equal(event.args.balances);
-
-      expect(newBalances[0].sub(previousBalances[0])).to.equal((0).toString());
+      await assertFeesArePaid([{ symbol: 'DAI', reported: 500, expectedPaid: 0 }]);
     });
 
-    it('rounding up protocol fee', async () => {
-      protocolSwapFee = 0.0099; // rounds up to 1%
-      await vault.connect(admin).setProtocolSwapFee(toFixedPoint(protocolSwapFee));
-
-      const previousBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
-
-      const receipt = await (await pool.paySwapProtocolFees([tokens.DAI.address], [500])).wait();
-      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
-
-      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('5');
-
-      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
-      expect(newBalances).to.deep.equal(event.args.balances);
-
-      expect(newBalances[0].sub(previousBalances[0])).to.equal((-5).toString());
+    it.skip('protocol fees are always rounded up', async () => {
+      // TODO: we're not always rounding up yet
+      await assertFeesArePaid([
+        { symbol: 'DAI', reported: 499, expectedPaid: 5 }, // 1% of 499 is 4.99
+        { symbol: 'MKR', reported: 501, expectedPaid: 6 }, // 1% of 501 is 5.01
+      ]);
     });
 
-    it('rounding down protocol fee', async () => {
-      protocolSwapFee = 0.0101; // rounds down to 1%
-      await vault.connect(admin).setProtocolSwapFee(toFixedPoint(protocolSwapFee));
-
-      const previousBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
-
-      const receipt = await (await pool.paySwapProtocolFees([tokens.DAI.address], [500])).wait();
-      const event = expectEvent.inReceipt(receipt, 'PayedSwapProtocolFees');
-
-      expect((await vault.getCollectedFeesByToken(tokens.DAI.address)).toString()).to.equal('5');
-
-      const newBalances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address]);
-      expect(newBalances).to.deep.equal(event.args.balances);
-
-      expect(newBalances[0].sub(previousBalances[0])).to.equal((-5).toString());
-    });
-
-    it('fails if caller is not pool', async () => {
-      await expect(vault.connect(other).paySwapProtocolFees(poolId, [tokens.DAI.address], [5])).to.be.revertedWith(
+    it('reverts if the caller is not the pool', async () => {
+      await expect(vault.connect(other).paySwapProtocolFees(poolId, [tokens.DAI.address], [0])).to.be.revertedWith(
         'Caller is not the pool'
       );
     });
 
-    it('fails if token not existent', async () => {
+    it('reverts when paying fees in tokens no in the pool', async () => {
       const newTokens = await deployTokens(['BAT'], [18]);
-      await expect(pool.paySwapProtocolFees([newTokens.BAT.address], [5])).to.be.revertedWith('Token not in pool');
+      await expect(pool.paySwapProtocolFees([newTokens.BAT.address], [0])).to.be.revertedWith('Token not in pool');
     });
 
-    it('fails if not enough balance', async () => {
+    it('reverts if the fees are larger than the pool balance', async () => {
+      // The pool has 1000 tokens, and will be charged 1% of the reported amount. 1001 / 1% is 100100
       await expect(pool.paySwapProtocolFees([tokens.DAI.address], [100100])).to.be.revertedWith('ERR_SUB_UNDERFLOW');
     });
   });
