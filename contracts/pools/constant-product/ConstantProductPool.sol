@@ -99,14 +99,14 @@ contract ConstantProductPool is
     constructor(
         IVault vault,
         uint256 initialBPT,
-        string memory symbol,
         string memory name,
+        string memory symbol,
         IERC20[] memory tokens,
         uint128[] memory amounts,
         address from,
         uint128[] memory weights,
         uint128 swapFee
-    ) BalancerPoolToken(symbol, name) {
+    ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= _MIN_TOKENS, "ERR__MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "ERR__MAX_TOKENS");
 
@@ -120,8 +120,7 @@ contract ConstantProductPool is
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
 
-        _mintPoolTokens(initialBPT);
-        _move(address(this), from, initialBPT);
+        _mintPoolTokens(from, initialBPT);
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
@@ -388,8 +387,7 @@ contract ConstantProductPool is
         // Reset swap fees counter
         _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
 
-        _mintPoolTokens(poolAmountOut);
-        _move(address(this), beneficiary, poolAmountOut);
+        _mintPoolTokens(beneficiary, poolAmountOut);
     }
 
     function exitPool(
@@ -424,8 +422,7 @@ contract ConstantProductPool is
         //Reset swap fees counter
         _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
 
-        _move(msg.sender, address(this), poolAmountIn);
-        _burnPoolTokens(poolAmountIn);
+        _burnPoolTokens(msg.sender, poolAmountIn);
     }
 
     // Potential helpers

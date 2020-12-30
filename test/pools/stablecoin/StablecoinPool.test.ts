@@ -54,7 +54,7 @@ describe('StablecoinPool', function () {
     callDeployPool = () =>
       deployPoolFromFactory(vault, admin, 'StablecoinPool', {
         from: creator,
-        parameters: [initialBPT, symbol, name, poolTokens, poolInitialBalances, poolAmplification, poolSwapFee],
+        parameters: [initialBPT, name, symbol, poolTokens, poolInitialBalances, poolAmplification, poolSwapFee],
       });
   });
 
@@ -116,8 +116,8 @@ describe('StablecoinPool', function () {
           from: creator,
           parameters: [
             initialBPT,
-            symbol,
             name,
+            symbol,
             poolTokens,
             poolInitialBalances.slice(1),
             poolAmplification,
@@ -133,8 +133,8 @@ describe('StablecoinPool', function () {
           from: creator,
           parameters: [
             initialBPT,
-            symbol,
             name,
+            symbol,
             poolTokens.slice(0, 1),
             poolInitialBalances.slice(0, 1),
             poolAmplification,
@@ -150,8 +150,8 @@ describe('StablecoinPool', function () {
           from: creator,
           parameters: [
             initialBPT,
-            symbol,
             name,
+            symbol,
             new Array(poolTokens.length).fill(poolTokens[0]),
             poolInitialBalances,
             poolAmplification,
@@ -167,8 +167,8 @@ describe('StablecoinPool', function () {
           from: creator,
           parameters: [
             initialBPT,
-            symbol,
             name,
+            symbol,
             poolTokens,
             poolInitialBalances,
             poolAmplification,
@@ -176,6 +176,24 @@ describe('StablecoinPool', function () {
           ],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
+    });
+
+    it('sets the name', async () => {
+      const pool = await callDeployPool();
+
+      expect(await pool.name()).to.equal(name);
+    });
+
+    it('sets the symbol', async () => {
+      const pool = await callDeployPool();
+
+      expect(await pool.symbol()).to.equal(symbol);
+    });
+
+    it('sets the decimals', async () => {
+      const pool = await callDeployPool();
+
+      expect(await pool.decimals()).to.equal(await pool.DECIMALS());
     });
   });
 
@@ -467,8 +485,8 @@ describe('StablecoinPool', function () {
           from: lp,
           parameters: [
             initialBPT,
-            symbol,
             name,
+            symbol,
             [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address],
             [100, 100, 100], // These are not relevant since we're asking for quotes and not swapping via the vault
             (7.6e18).toString(),

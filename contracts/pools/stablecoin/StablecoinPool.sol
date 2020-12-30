@@ -47,14 +47,14 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
     constructor(
         IVault vault,
         uint256 initialBPT,
-        string memory symbol,
         string memory name,
+        string memory symbol,
         IERC20[] memory tokens,
         uint128[] memory amounts,
         address from,
         uint128 amp,
         uint128 swapFee
-    ) BalancerPoolToken(symbol, name) {
+    ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= 2, "ERR_MIN_TOKENS");
 
         bytes32 poolId = vault.newPool(address(this), IVault.StrategyType.TUPLE);
@@ -63,8 +63,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
 
-        _mintPoolTokens(initialBPT);
-        _move(address(this), from, initialBPT);
+        _mintPoolTokens(from, initialBPT);
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
@@ -175,8 +174,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
         //Reset swap fees counter
         _resetAccSwapFees(balances);
 
-        _mintPoolTokens(poolAmountOut);
-        _move(address(this), beneficiary, poolAmountOut);
+        _mintPoolTokens(beneficiary, poolAmountOut);
     }
 
     function exitPool(
@@ -209,8 +207,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
         //Reset swap fees counter
         _resetAccSwapFees(balances);
 
-        _move(msg.sender, address(this), poolAmountIn);
-        _burnPoolTokens(poolAmountIn);
+        _burnPoolTokens(msg.sender, poolAmountIn);
     }
 
     // potential helpers

@@ -37,18 +37,18 @@ contract BalancerPoolToken is IERC20 {
 
     uint8 public constant DECIMALS = 18;
 
-    mapping(address => uint256) internal _balance;
-    mapping(address => mapping(address => uint256)) internal _allowance;
-    uint256 internal _totalSupply;
+    mapping(address => uint256) private _balance;
+    mapping(address => mapping(address => uint256)) private _allowance;
+    uint256 private _totalSupply;
 
-    string private _symbol;
     string private _name;
+    string private _symbol;
 
     // Function declarations
 
-    constructor(string memory tokenSymbol, string memory tokenName) {
-        _symbol = tokenSymbol;
+    constructor(string memory tokenName, string memory tokenSymbol) {
         _name = tokenName;
+        _symbol = tokenSymbol;
     }
 
     // External functions
@@ -78,12 +78,12 @@ contract BalancerPoolToken is IERC20 {
     }
 
     function decreaseApproval(address spender, uint256 amount) external returns (bool) {
-        uint256 oldValue = _allowance[msg.sender][spender];
+        uint256 currentAllowance = _allowance[msg.sender][spender];
 
-        if (amount >= oldValue) {
+        if (amount >= currentAllowance) {
             _allowance[msg.sender][spender] = 0;
         } else {
-            _allowance[msg.sender][spender] = oldValue.sub(amount);
+            _allowance[msg.sender][spender] = currentAllowance.sub(amount);
         }
 
         emit Approval(msg.sender, spender, _allowance[msg.sender][spender]);
@@ -110,7 +110,7 @@ contract BalancerPoolToken is IERC20 {
         uint256 oldAllowance = _allowance[sender][msg.sender];
 
         if (msg.sender != sender && oldAllowance != uint256(-1)) {
-            _allowance[sender][msg.sender] = oldAllowance.sub(amount);
+            _allowance[sender][msg.sender] = oldAllowance.sub(amount, "ERR_INSUFFICIENT_ALLOWANCE");
 
             emit Approval(msg.sender, recipient, _allowance[sender][msg.sender]);
         }
@@ -138,18 +138,22 @@ contract BalancerPoolToken is IERC20 {
 
     // Internal functions
 
-    function _mintPoolTokens(uint256 amount) internal {
+    function _mintPoolTokens(address recipient, uint256 amount) internal {
         _balance[address(this)] = _balance[address(this)].add(amount);
         _totalSupply = _totalSupply.add(amount);
 
-        emit Transfer(address(0), address(this), amount);
+        _move(address(this), recipient, amount);
+
+        emit Transfer(address(0), recipient, amount);
     }
 
-    function _burnPoolTokens(uint256 amount) internal {
+    function _burnPoolTokens(address sender, uint256 amount) internal {
+        _move(sender, address(this), amount);
+
         _balance[address(this)] = _balance[address(this)].sub(amount, "ERR_INSUFFICIENT_BAL");
         _totalSupply = _totalSupply.sub(amount);
 
-        emit Transfer(address(this), address(0), amount);
+        emit Transfer(sender, address(0), amount);
     }
 
     function _move(
