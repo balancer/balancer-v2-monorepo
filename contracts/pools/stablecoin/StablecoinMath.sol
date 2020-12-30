@@ -16,6 +16,8 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
 import "../../math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
@@ -25,6 +27,9 @@ import "../../math/FixedPoint.sol";
 // solhint-disable var-name-mixedcase
 
 contract StablecoinMath {
+    using SafeCast for uint256;
+    using SafeCast for int256;
+
     int256 internal constant PRECISION = 100000000000000;
 
     struct Data {
@@ -166,5 +171,34 @@ contract StablecoinMath {
             invariant = newInvariant;
         }
         return newInvariant;
+    }
+
+    function _calculateOneTokenSwapFee(
+        uint128 amp,
+        uint128[] memory balances,
+        int256 lastInvariant,
+        uint256 tokenIndex
+    ) internal pure returns (int256) {
+        int256 sum = 0;
+        int256 prod = FixedPoint.ONE;
+        uint256 n = balances.length;
+        int256 nn = 1;
+        for (uint256 i = 0; i < n; i++) {
+            if (i != tokenIndex) {
+                sum = sum + balances[i];
+                prod = (prod * balances[i]) / FixedPoint.ONE;
+            }
+            nn = nn * int256(n);
+        }
+        Data memory data = Data({
+            amp: int256(amp),
+            invariant: lastInvariant,
+            sum: sum,
+            n: int256(n),
+            nn: nn,
+            prod: prod
+        });
+
+        return balances[tokenIndex] - _approximateAmount(data, lastInvariant.toUint256().toUint128());
     }
 }
