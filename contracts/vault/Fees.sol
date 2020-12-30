@@ -20,10 +20,9 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../math/FixedPoint.sol";
 
-import "./interfaces/IVault.sol";
 import "./Admin.sol";
 
-abstract contract Fees is IVault, Admin {
+abstract contract Fees is Admin {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -42,13 +41,16 @@ abstract contract Fees is IVault, Admin {
     // The Vault relies on the trading strategy being honest and reporting the actuall fee it charged.
     uint128 private _protocolSwapFee;
 
+    // solhint-disable-next-line var-name-mixedcase
     uint128 private immutable _MAX_PROTOCOL_WITHDRAW_FEE = FixedPoint.ONE.mul128(2).div128(100); // 0.02 (2%)
 
     // The flash loan fee is charged whenever a flash loan occurs, and is a percentage of the tokens lent
     uint256 private _protocolFlashLoanFee;
 
+    // solhint-disable-next-line var-name-mixedcase
     uint128 private immutable _MAX_PROTOCOL_SWAP_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
+    // solhint-disable-next-line var-name-mixedcase
     uint256 private immutable _MAX_PROTOCOL_FLASH_LOAN_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
     function protocolFeeCollector() public view returns (address) {

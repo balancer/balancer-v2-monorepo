@@ -54,6 +54,8 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   const initialBalances = symbols.map(() => tokenBalance);
 
   const swapFee = toFixedPoint(0.02); // 2%
+  const symbol = 'BPT';
+  const name = 'Balancer Pool Token';
 
   let pool: Contract;
 
@@ -62,14 +64,14 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
       from: creator,
-      parameters: [initialBPT, tokenAddresses, initialBalances, weights, swapFee],
+      parameters: [initialBPT, symbol, name, tokenAddresses, initialBalances, weights, swapFee],
     });
   } else if (poolName == 'StablecoinPool') {
     const amp = (30e18).toString();
 
     pool = await deployPoolFromFactory(vault, admin, 'StablecoinPool', {
       from: creator,
-      parameters: [initialBPT, tokenAddresses, initialBalances, amp, swapFee],
+      parameters: [initialBPT, symbol, name, tokenAddresses, initialBalances, amp, swapFee],
     });
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);

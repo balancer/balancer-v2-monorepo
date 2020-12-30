@@ -28,6 +28,8 @@ contract StablecoinPoolFactory is BasePoolFactory {
 
     function create(
         uint256 initialBPT,
+        string memory symbol,
+        string memory name,
         IERC20[] memory tokens,
         uint128[] memory amounts,
         uint128 amp,
@@ -39,7 +41,7 @@ contract StablecoinPoolFactory is BasePoolFactory {
                 abi.encodePacked(
                     type(StablecoinPool).creationCode,
                     // Make the sender the `from` address
-                    abi.encode(vault, initialBPT, tokens, amounts, msg.sender, amp, swapFee)
+                    abi.encode(vault, initialBPT, symbol, name, tokens, amounts, msg.sender, amp, swapFee)
                 ),
                 salt
             );

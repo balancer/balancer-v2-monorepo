@@ -21,6 +21,9 @@ describe('ConstantProductPool', function () {
   let tokens: TokenList = {};
 
   const initialBPT = (90e18).toString();
+  const symbol = (Math.random() + 1).toString(36).substring(4);
+  const name = (Math.random() + 1).toString(36).substring(16);
+
   let poolTokens: string[];
   let poolInitialBalances: BigNumber[];
   let poolWeights: BigNumber[];
@@ -55,7 +58,7 @@ describe('ConstantProductPool', function () {
     callDeployPool = () =>
       deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
         from: creator,
-        parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, poolSwapFee],
+        parameters: [initialBPT, symbol, name, poolTokens, poolInitialBalances, poolWeights, poolSwapFee],
       });
   });
 
@@ -115,7 +118,7 @@ describe('ConstantProductPool', function () {
       await expect(
         deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
           from: creator,
-          parameters: [initialBPT, poolTokens, poolInitialBalances.slice(1), poolWeights, poolSwapFee],
+          parameters: [initialBPT, symbol, name, poolTokens, poolInitialBalances.slice(1), poolWeights, poolSwapFee],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
     });
@@ -124,7 +127,7 @@ describe('ConstantProductPool', function () {
       await expect(
         deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
           from: creator,
-          parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights.slice(1), poolSwapFee],
+          parameters: [initialBPT, symbol, name, poolTokens, poolInitialBalances, poolWeights.slice(1), poolSwapFee],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
     });
@@ -135,6 +138,8 @@ describe('ConstantProductPool', function () {
           from: creator,
           parameters: [
             initialBPT,
+            symbol,
+            name,
             poolTokens.slice(0, 1),
             poolInitialBalances.slice(0, 1),
             poolWeights.slice(0, 1),
@@ -150,6 +155,8 @@ describe('ConstantProductPool', function () {
           from: creator,
           parameters: [
             initialBPT,
+            symbol,
+            name,
             new Array(poolTokens.length).fill(poolTokens[0]),
             poolInitialBalances,
             poolWeights,
@@ -195,6 +202,8 @@ describe('ConstantProductPool', function () {
           from: creator,
           parameters: [
             initialBPT,
+            symbol,
+            name,
             manyTokenAddresses,
             new Array(17).fill(100),
             new Array(17).fill(toFixedPoint(1)),
@@ -208,7 +217,7 @@ describe('ConstantProductPool', function () {
       await expect(
         deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
           from: creator,
-          parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, toFixedPoint(0.1).add(1)],
+          parameters: [initialBPT, symbol, name, poolTokens, poolInitialBalances, poolWeights, toFixedPoint(0.1).add(1)],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
     });
@@ -502,6 +511,8 @@ describe('ConstantProductPool', function () {
           from: lp,
           parameters: [
             initialBPT,
+            symbol,
+            name,
             [tokens.DAI.address, tokens.MKR.address],
             [100, 100], // These are not relevant since we're asking for quotes and not swapping via the vault
             [toFixedPoint(8), toFixedPoint(2)],
@@ -625,6 +636,8 @@ describe('ConstantProductPool', function () {
           from: lp,
           parameters: [
             initialBPT,
+            symbol,
+            name,
             [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address],
             [100, 100, 100], // These are not relevant since we're asking for quotes and not swapping via the vault
             [toFixedPoint(8), toFixedPoint(2), toFixedPoint(3)],
@@ -763,7 +776,7 @@ describe('ConstantProductPool', function () {
 
       pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
         from: lp,
-        parameters: [initialBPT, tokenAddresses, initialBalances, tokenWeights, swapFee],
+        parameters: [initialBPT, symbol, name, tokenAddresses, initialBalances, tokenWeights, swapFee],
       });
 
       poolId = await pool.getPoolId();

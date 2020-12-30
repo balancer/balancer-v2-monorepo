@@ -26,7 +26,7 @@ import "../../math/FixedPoint.sol";
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPairTradingStrategy.sol";
 
-import "../BToken.sol";
+import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
 import "./ConstantProductMath.sol";
 
@@ -34,7 +34,13 @@ import "./ConstantProductMath.sol";
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, ConstantProductMath, ReentrancyGuard {
+contract ConstantProductPool is
+    IBPTPool,
+    IPairTradingStrategy,
+    BalancerPoolToken,
+    ConstantProductMath,
+    ReentrancyGuard
+{
     using FixedPoint for uint128;
     using FixedPoint for uint256;
     using SafeCast for uint256;
@@ -93,27 +99,29 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
     constructor(
         IVault vault,
         uint256 initialBPT,
+        string memory symbol,
+        string memory name,
         IERC20[] memory tokens,
         uint128[] memory amounts,
         address from,
         uint128[] memory weights,
         uint128 swapFee
-    ) {
+    ) BalancerPoolToken(symbol, name) {
         require(tokens.length >= _MIN_TOKENS, "ERR__MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "ERR__MAX_TOKENS");
 
         require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LENGTH");
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
-        IVault.StrategyType strategyType = IVault.StrategyType.PAIR; // TODO: make it TWO_TOKEN if tokens.lenght == 2
+        IVault.StrategyType strategyType = IVault.StrategyType.PAIR; // TODO: make it TWO_TOKEN if tokens.length == 2
 
         bytes32 poolId = vault.newPool(address(this), strategyType);
         vault.addLiquidity(poolId, from, tokens, amounts, false);
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
 
-        _mintPoolShare(initialBPT);
-        _pushPoolShare(from, initialBPT);
+        _mintPoolTokens(initialBPT);
+        _move(address(this), from, initialBPT);
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
@@ -377,11 +385,11 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
         _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
 
-        //Reset swap fees counter
+        // Reset swap fees counter
         _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
 
-        _mintPoolShare(poolAmountOut);
-        _pushPoolShare(beneficiary, poolAmountOut);
+        _mintPoolTokens(poolAmountOut);
+        _move(address(this), beneficiary, poolAmountOut);
     }
 
     function exitPool(
@@ -416,8 +424,8 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         //Reset swap fees counter
         _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
 
-        _pullPoolShare(msg.sender, poolAmountIn);
-        _burnPoolShare(poolAmountIn);
+        _move(msg.sender, address(this), poolAmountIn);
+        _burnPoolTokens(poolAmountIn);
     }
 
     // Potential helpers
@@ -429,23 +437,5 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
     function _subtractSwapFee(uint128 amount) private view returns (uint128) {
         uint128 fees = amount.mul128(_swapFee);
         return amount.sub128(fees);
-    }
-
-    // To be moved to Balancer Pool Token
-
-    function _pullPoolShare(address from, uint256 amount) private {
-        _pull(from, amount);
-    }
-
-    function _pushPoolShare(address to, uint256 amount) private {
-        _push(to, amount);
-    }
-
-    function _mintPoolShare(uint256 amount) private {
-        _mint(amount);
-    }
-
-    function _burnPoolShare(uint256 amount) private {
-        _burn(amount);
     }
 }

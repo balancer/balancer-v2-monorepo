@@ -28,6 +28,8 @@ contract ConstantProductPoolFactory is BasePoolFactory {
 
     function create(
         uint256 initialBPT,
+        string memory symbol,
+        string memory name,
         IERC20[] memory tokens,
         uint128[] memory amounts,
         uint128[] memory weights,
@@ -39,7 +41,7 @@ contract ConstantProductPoolFactory is BasePoolFactory {
                 abi.encodePacked(
                     type(ConstantProductPool).creationCode,
                     // Make the sender the `from` address
-                    abi.encode(vault, initialBPT, tokens, amounts, msg.sender, weights, swapFee)
+                    abi.encode(vault, initialBPT, symbol, name, tokens, amounts, msg.sender, weights, swapFee)
                 ),
                 salt
             );
