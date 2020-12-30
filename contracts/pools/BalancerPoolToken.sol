@@ -62,33 +62,20 @@ contract BalancerPoolToken is IERC20 {
     }
 
     function approve(address spender, uint256 amount) external override returns (bool) {
-        _allowance[msg.sender][spender] = amount;
-
-        emit Approval(msg.sender, spender, amount);
-
-        return true;
+        return _setAllowance(spender, amount);
     }
 
     function increaseApproval(address spender, uint256 amount) external returns (bool) {
-        _allowance[msg.sender][spender] = _allowance[msg.sender][spender].add(amount);
-
-        emit Approval(msg.sender, spender, _allowance[msg.sender][spender]);
-
-        return true;
+        return _setAllowance(spender, _allowance[msg.sender][spender].add(amount));
     }
 
     function decreaseApproval(address spender, uint256 amount) external returns (bool) {
         uint256 currentAllowance = _allowance[msg.sender][spender];
 
-        if (amount >= currentAllowance) {
-            _allowance[msg.sender][spender] = 0;
-        } else {
-            _allowance[msg.sender][spender] = currentAllowance.sub(amount);
-        }
-
-        emit Approval(msg.sender, spender, _allowance[msg.sender][spender]);
-
-        return true;
+        return
+            amount >= currentAllowance
+                ? _setAllowance(spender, 0)
+                : _setAllowance(spender, currentAllowance.sub(amount));
     }
 
     function transfer(address recipient, uint256 amount) external override returns (bool) {
@@ -165,5 +152,15 @@ contract BalancerPoolToken is IERC20 {
         _balance[recipient] = _balance[recipient].add(amount);
 
         emit Transfer(sender, recipient, amount);
+    }
+
+    // Private functions
+
+    function _setAllowance(address spender, uint256 amount) private returns (bool) {
+        _allowance[msg.sender][spender] = amount;
+
+        emit Approval(msg.sender, spender, amount);
+
+        return true;
     }
 }
