@@ -30,6 +30,8 @@ contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
+    event UpdatedBalances(uint128[] balances);
+
     constructor(IVault vault, IVault.StrategyType strategyType) {
         _poolId = vault.newPool(address(this), strategyType);
         _vault = vault;
@@ -48,7 +50,8 @@ contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
     }
 
     function paySwapProtocolFees(IERC20[] memory tokens, uint128[] memory collectedFees) external {
-        _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
+        uint128[] memory balances = _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
+        emit UpdatedBalances(balances);
     }
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it
