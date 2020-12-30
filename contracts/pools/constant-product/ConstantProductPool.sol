@@ -98,9 +98,9 @@ contract ConstantProductPool is
 
     constructor(
         IVault vault,
-        uint256 initialBPT,
         string memory name,
         string memory symbol,
+        uint256 initialBPT,
         IERC20[] memory tokens,
         uint128[] memory amounts,
         address from,

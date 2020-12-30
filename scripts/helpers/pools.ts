@@ -28,12 +28,17 @@ export async function deployPoolFromFactory(
   const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
   // We could reuse this factory if we saved it accross tokenizer deployments
 
+  const name = 'Balancer Pool Token';
+  const symbol = 'BPT';
+
   // Authorize factory so that created pool are universal agents
   await vault.connect(admin).addUniversalAgentManager(factory.address);
 
   const salt = ethers.utils.id(Math.random().toString());
 
-  const receipt: ContractReceipt = await (await factory.connect(args.from).create(...args.parameters, salt)).wait();
+  const receipt: ContractReceipt = await (
+    await factory.connect(args.from).create(name, symbol, ...args.parameters, salt)
+  ).wait();
 
   const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {
