@@ -62,20 +62,27 @@ contract BalancerPoolToken is IERC20 {
     }
 
     function approve(address spender, uint256 amount) external override returns (bool) {
-        return _setAllowance(spender, amount);
+        _setAllowance(msg.sender, spender, amount);
+
+        return true;
     }
 
     function increaseApproval(address spender, uint256 amount) external returns (bool) {
-        return _setAllowance(spender, _allowance[msg.sender][spender].add(amount));
+        _setAllowance(msg.sender, spender, _allowance[msg.sender][spender].add(amount));
+
+        return true;
     }
 
     function decreaseApproval(address spender, uint256 amount) external returns (bool) {
         uint256 currentAllowance = _allowance[msg.sender][spender];
 
-        return
-            amount >= currentAllowance
-                ? _setAllowance(spender, 0)
-                : _setAllowance(spender, currentAllowance.sub(amount));
+        if (amount >= currentAllowance) {
+            _setAllowance(msg.sender, spender, 0);
+        } else {
+            _setAllowance(msg.sender, spender, currentAllowance.sub(amount));
+        }
+
+        return true;
     }
 
     function transfer(address recipient, uint256 amount) external override returns (bool) {
@@ -97,9 +104,7 @@ contract BalancerPoolToken is IERC20 {
         uint256 oldAllowance = _allowance[sender][msg.sender];
 
         if (msg.sender != sender && oldAllowance != uint256(-1)) {
-            _allowance[sender][msg.sender] = oldAllowance.sub(amount, "ERR_INSUFFICIENT_ALLOWANCE");
-
-            emit Approval(msg.sender, recipient, _allowance[sender][msg.sender]);
+            _setAllowance(sender, msg.sender, oldAllowance.sub(amount, "ERR_INSUFFICIENT_ALLOWANCE"));
         }
 
         return true;
@@ -156,11 +161,13 @@ contract BalancerPoolToken is IERC20 {
 
     // Private functions
 
-    function _setAllowance(address spender, uint256 amount) private returns (bool) {
-        _allowance[msg.sender][spender] = amount;
+    function _setAllowance(
+        address owner,
+        address spender,
+        uint256 amount
+    ) private {
+        _allowance[owner][spender] = amount;
 
-        emit Approval(msg.sender, spender, amount);
-
-        return true;
+        emit Approval(owner, spender, amount);
     }
 }

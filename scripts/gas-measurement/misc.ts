@@ -54,8 +54,6 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   const initialBalances = symbols.map(() => tokenBalance);
 
   const swapFee = toFixedPoint(0.02); // 2%
-  const symbol = 'BPT';
-  const name = 'Balancer Pool Token';
 
   let pool: Contract;
 
