@@ -332,6 +332,46 @@ describe('ConstantProductPool', function () {
       });
     });
 
+    describe('joining & swapping', () => {
+      it.only('exact tokens in for BPT out', async () => {
+        const previousBPT = await pool.balanceOf(lp.address);
+        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
+
+        await pool
+          .connect(lp)
+          .joinPoolExactTokensInForBPTOut((1e18).toString(), [0, (0.1e18).toString()], true, lp.address);
+
+        const newBPT = await pool.balanceOf(lp.address);
+        expect(newBPT).to.be.at.least(previousBPT.add((1.4616e18).toString()));
+        expect(newBPT).to.be.at.most(previousBPT.add((1.46161e18).toString()));
+
+        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
+        expect(newTokenBalance.sub(previousTokenBalance)).to.equal((-0.1e18).toString());
+      });
+
+      it.only('tokens in for exact BPT out', async () => {
+        const previousBPT = await pool.balanceOf(lp.address);
+        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
+
+        await pool
+          .connect(lp)
+          .joinPoolTokenInForExactBPTOut(
+            (1.4616e18).toString(),
+            tokens.MKR.address,
+            (0.15e18).toString(),
+            true,
+            lp.address
+          );
+
+        const newBPT = await pool.balanceOf(lp.address);
+        expect(newBPT.sub(previousBPT)).to.equal((1.4616e18).toString());
+
+        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
+        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.least((-0.1e18).toString());
+        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.most((-0.099e18).toString());
+      });
+    });
+
     describe('exiting', () => {
       beforeEach(async () => {
         // The LP joins and gets 10e18 BPT

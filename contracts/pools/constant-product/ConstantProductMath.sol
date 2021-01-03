@@ -101,4 +101,126 @@ contract ConstantProductMath {
             invariant = invariant.mul(LogExpMath.exp(int256(balances[i]), int256(normalizedWeights[i])).toUint256());
         }
     }
+
+    function _exactTokensInForBPTOut(
+        uint128[] memory balances,
+        uint256[] memory normalizedWeights,
+        uint128[] memory amountsIn,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) internal pure returns (uint256) {
+        // First loop to calculate the weighted balance ratio
+        uint256[] memory tokenBalanceRatiosBeforeFee = new uint256[](amountsIn.length);
+        uint256 weightedBalanceRatio = 0;
+        for (uint256 i = 0; i < balances.length; i++) {
+            tokenBalanceRatiosBeforeFee[i] = balances[i].add(amountsIn[i]).div(balances[i]); //128
+            weightedBalanceRatio = weightedBalanceRatio.add(tokenBalanceRatiosBeforeFee[i].mul(normalizedWeights[i]));
+        }
+
+        //Second loop to calculate new amounts in taking into account the fee on the % excess
+        uint256 invariantRatio = FixedPoint.ONE;
+        for (uint256 i = 0; i < balances.length; i++) {
+            uint256 tokenBalancePercentageExcess;
+            uint256 tokenBalanceRatio;
+            // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
+            // decrease the fee from what goes above it
+            if (weightedBalanceRatio >= tokenBalanceRatiosBeforeFee[i]) {
+                tokenBalancePercentageExcess = 0;
+            } else {
+                tokenBalancePercentageExcess = tokenBalanceRatiosBeforeFee[i].sub(weightedBalanceRatio).div(
+                    tokenBalanceRatiosBeforeFee[i].sub(FixedPoint.ONE)
+                );
+            }
+
+            uint256 amountInAfterFee = amountsIn[i].mul(FixedPoint.ONE.sub(swapFee.mul(tokenBalancePercentageExcess)));
+
+            tokenBalanceRatio = FixedPoint.ONE.add((amountInAfterFee).div(balances[i]));
+
+            invariantRatio = invariantRatio.mul(
+                LogExpMath.exp(int256(tokenBalanceRatio), int256(normalizedWeights[i])).toUint256()
+            );
+        }
+
+        return bptTotalSupply.mul(invariantRatio.sub(FixedPoint.ONE));
+    }
+
+    function _tokenInForExactBPTOut(
+        uint128 tokenBalance,
+        uint256 tokenNormalizedWeight,
+        uint256 bptAmountOut,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) internal pure returns (uint128) {
+        // Calculate the factor by which the invariant will increase after minting BPTAmountOut
+        uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
+
+        // Calculate by how much the token balance has to increase to cause invariantRatio
+        uint256 tokenBalanceRatio = LogExpMath
+            .exp(int256(invariantRatio), int256(FixedPoint.ONE.div(tokenNormalizedWeight)))
+            .toUint256();
+        uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(tokenNormalizedWeight);
+        uint256 amountInAfterFee = tokenBalance.mul(tokenBalanceRatio.sub(FixedPoint.ONE));
+
+        return amountInAfterFee.div(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee))).toUint128();
+    }
+
+    function _exactBPTInForTokenOut(
+        uint128 tokenBalance,
+        uint256 tokenNormalizedWeight,
+        uint256 bptAmountIn,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) internal pure returns (uint128) {
+        // Calculate the factor by which the invariant will increase after minting BPTAmountOut
+        uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
+
+        // Calculate by how much the token balance has to increase to cause invariantRatio
+        uint256 tokenBalanceRatio = LogExpMath
+            .exp(int256(invariantRatio), int256(FixedPoint.ONE.div(tokenNormalizedWeight)))
+            .toUint256();
+        uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(tokenNormalizedWeight);
+        uint256 amountInAfterFee = tokenBalance.mul(FixedPoint.ONE.sub(tokenBalanceRatio));
+        return amountInAfterFee.div(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee))).toUint128();
+    }
+
+    function _bptInForExactTokensOut(
+        uint128[] memory balances,
+        uint256[] memory normalizedWeights,
+        uint128[] memory amountsOut,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) internal pure returns (uint256) {
+        // First loop to calculate the weighted balance ratio
+        uint256[] memory tokenBalanceRatiosBeforeFee;
+        uint256 weightedBalanceRatio = 0;
+        for (uint256 i = 0; i < balances.length; i++) {
+            tokenBalanceRatiosBeforeFee[i] = balances[i].sub(amountsOut[i]).div(balances[i]); //128
+            weightedBalanceRatio = weightedBalanceRatio.add(tokenBalanceRatiosBeforeFee[i].mul(normalizedWeights[i]));
+        }
+
+        //Second loop to calculate new amounts in taking into account the fee on the % excess
+        uint256 invariantRatio = FixedPoint.ONE;
+        for (uint256 i = 0; i < balances.length; i++) {
+            uint256 tokenBalancePercentageExcess;
+            uint256 tokenBalanceRatio;
+            // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
+            // decrease the fee from what goes above it
+            if (weightedBalanceRatio <= tokenBalanceRatiosBeforeFee[i]) {
+                tokenBalancePercentageExcess = 0;
+            } else {
+                tokenBalancePercentageExcess = weightedBalanceRatio.sub(tokenBalanceRatiosBeforeFee[i]).div(
+                    FixedPoint.ONE.sub(tokenBalanceRatiosBeforeFee[i])
+                );
+            }
+            uint256 amountOutBeforeFee = amountsOut[i].mul(
+                FixedPoint.ONE.sub(swapFee.mul(tokenBalancePercentageExcess))
+            );
+            tokenBalanceRatio = balances[i].sub((amountOutBeforeFee).div(balances[i]));
+            invariantRatio = invariantRatio.mul(
+                LogExpMath.exp(int256(tokenBalanceRatio), int256(normalizedWeights[i])).toUint256()
+            );
+        }
+
+        return bptTotalSupply.mul(FixedPoint.ONE.sub(invariantRatio));
+    }
 }

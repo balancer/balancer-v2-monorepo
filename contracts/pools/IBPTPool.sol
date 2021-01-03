@@ -38,4 +38,34 @@ interface IBPTPool {
         bool withdrawTokens,
         address beneficiary
     ) external;
+
+    function joinPoolExactTokensInForBPTOut(
+        uint256 minBPTAmountOut,
+        uint128[] calldata amountsIn,
+        bool transferTokens,
+        address beneficiary
+    ) external returns (uint256 poolAmountOut);
+
+    function joinPoolTokenInForExactBPTOut(
+        uint256 bptAmountOut,
+        IERC20 token,
+        uint256 maxAmountIn,
+        bool transferTokens,
+        address beneficiary
+    ) external returns (uint256 tokenAmountIn);
+
+    function exitPoolExactBPTInForTokenOut(
+        uint256 bptAmountIn,
+        IERC20 token,
+        uint256 minAmountOut,
+        bool transferTokens,
+        address beneficiary
+    ) external returns (uint256);
+
+    function exitPoolBPTInForExactTokensOut(
+        uint256 maxBPTAmountIn,
+        uint128[] calldata amountsOut,
+        bool transferTokens,
+        address beneficiary
+    ) external returns (uint256 bptAmountIn);
 }

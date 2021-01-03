@@ -211,6 +211,44 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         _burnPoolShare(poolAmountIn);
     }
 
+    function joinPoolExactTokensInForBPTOut(
+        uint256,
+        uint128[] calldata,
+        bool,
+        address
+    ) external pure override returns (uint256) {
+        revert("NOT IMPLEMENTED YET");
+    }
+
+    function joinPoolTokenInForExactBPTOut(
+        uint256,
+        IERC20,
+        uint256,
+        bool,
+        address
+    ) external pure override returns (uint256) {
+        revert("NOT IMPLEMENTED YET");
+    }
+
+    function exitPoolExactBPTInForTokenOut(
+        uint256,
+        IERC20,
+        uint256,
+        bool,
+        address
+    ) external pure override returns (uint256) {
+        revert("NOT IMPLEMENTED YET");
+    }
+
+    function exitPoolBPTInForExactTokensOut(
+        uint256,
+        uint128[] calldata,
+        bool,
+        address
+    ) external pure override returns (uint256) {
+        revert("NOT IMPLEMENTED YET");
+    }
+
     // potential helpers
     function _addSwapFee(uint128 amount) internal view returns (uint128) {
         return amount.div128(FixedPoint.ONE.sub128(_swapFee));
