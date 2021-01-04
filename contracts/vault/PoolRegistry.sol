@@ -281,7 +281,7 @@ abstract contract PoolRegistry is
         if (strategyType == IVault.StrategyType.PAIR) {
             return _isPairPoolInvested(poolId, token);
         } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
-            _isTwoTokenPoolInvested(poolId, token);
+            return _isTwoTokenPoolInvested(poolId, token);
         } else {
             return _isTuplePoolInvested(poolId, token);
         }
