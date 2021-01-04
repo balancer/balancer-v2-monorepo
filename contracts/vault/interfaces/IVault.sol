@@ -98,16 +98,6 @@ interface IVault {
     function getUniversalAgents(uint256 start, uint256 end) external view returns (address[] memory);
 
     /**
-     * @dev Returns the number of Universal Agent Managers.
-     */
-    function getNumberOfUniversalAgentManagers() external view returns (uint256);
-
-    /**
-     * @dev Returns a partial list of Universal Agent Managers, starting at index `start`, up to index `end`.
-     */
-    function getUniversalAgentManagers(uint256 start, uint256 end) external view returns (address[] memory);
-
-    /**
      * @dev Adds `agent` as a Universal Agent. Can only be called by a Universal Agent Manager.
      */
     function addUniversalAgent(address agent) external;
@@ -399,21 +389,13 @@ interface IVault {
     // Admin Controls
 
     /**
-     * @dev Authorizes `agent` to call `addUniversalAgent` or `removeUniversalAgent`.
-     * This is typically called on factory contracts. Can only be called by the admin.
-     */
-    function addUniversalAgentManager(address agent) external;
-
-    /**
-     * @dev Remove authorization for `agent` to call `addUniversalAgent` or `removeUniversalAgent`.
-     * This is typically called on factory contracts. Can only be called by the admin.
-     */
-    function removeUniversalAgentManager(address agent) external;
-
-    /**
      * @dev Transfers to protocolFeeCollector address the requested amounts of protocol fees. Anyone can call it.
      */
-    function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external;
+    function withdrawProtocolFees(
+        IERC20[] calldata tokens,
+        uint256[] calldata amounts,
+        address recipient
+    ) external;
 
     // Missing here: setting protocol fees, changing admin
 }

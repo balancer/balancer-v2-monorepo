@@ -14,17 +14,17 @@ import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
 describe('Vault - swap queries', () => {
   let vault: Contract, funds: FundManagement;
   let tokens: TokenList, tokenAddresses: string[];
-  let admin: SignerWithAddress, lp: SignerWithAddress;
+  let lp: SignerWithAddress;
   const poolIds: string[] = [];
 
   const MAX_POOLS = 2;
 
   before('setup', async () => {
-    [, admin, lp] = await ethers.getSigners();
+    [, lp] = await ethers.getSigners();
 
     // All of the tests in this suite have no side effects, so we deploy and initially contracts only one to save time
 
-    vault = await deploy('Vault', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 

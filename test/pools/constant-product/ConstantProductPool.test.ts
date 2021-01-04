@@ -17,6 +17,7 @@ describe('ConstantProductPool', function () {
   let beneficiary: SignerWithAddress;
   let other: SignerWithAddress;
 
+  let authorizer: Contract;
   let vault: Contract;
   let tokens: TokenList = {};
 
@@ -33,7 +34,8 @@ describe('ConstantProductPool', function () {
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    authorizer = await deploy('MockAuthorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
 
     tokens = await deployTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
     for (const symbol in tokens) {
@@ -53,7 +55,7 @@ describe('ConstantProductPool', function () {
     poolSwapFee = toFixedPoint(0.01);
 
     callDeployPool = () =>
-      deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      deployPoolFromFactory(vault, 'ConstantProductPool', {
         from: creator,
         parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, poolSwapFee],
       });
@@ -113,7 +115,7 @@ describe('ConstantProductPool', function () {
 
     it("reverts if the number of tokens and amounts don't match", async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, 'ConstantProductPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances.slice(1), poolWeights, poolSwapFee],
         })
@@ -122,7 +124,7 @@ describe('ConstantProductPool', function () {
 
     it("reverts if the number of tokens and weights don't match", async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, 'ConstantProductPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights.slice(1), poolSwapFee],
         })
@@ -131,7 +133,7 @@ describe('ConstantProductPool', function () {
 
     it('reverts if there is a single token', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, 'ConstantProductPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -146,7 +148,7 @@ describe('ConstantProductPool', function () {
 
     it('reverts if there are repeated tokens', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, 'ConstantProductPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -191,7 +193,7 @@ describe('ConstantProductPool', function () {
       }
 
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, 'ConstantProductPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -206,7 +208,7 @@ describe('ConstantProductPool', function () {
 
     it('reverts if the swap fee is too high', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, 'ConstantProductPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, toFixedPoint(0.1).add(1)],
         })
@@ -411,6 +413,7 @@ describe('ConstantProductPool', function () {
         const protocolWithdrawFee = 0.01;
 
         beforeEach(async () => {
+          await authorizer.setCanSetProtocolWithdrawFee(true);
           await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
         });
 
@@ -498,7 +501,7 @@ describe('ConstantProductPool', function () {
 
     context('with two tokens', () => {
       beforeEach(async () => {
-        pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        pool = await deployPoolFromFactory(vault, 'ConstantProductPool', {
           from: lp,
           parameters: [
             initialBPT,
@@ -621,7 +624,7 @@ describe('ConstantProductPool', function () {
 
     context('with three tokens', () => {
       beforeEach(async () => {
-        pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        pool = await deployPoolFromFactory(vault, 'ConstantProductPool', {
           from: lp,
           parameters: [
             initialBPT,
@@ -753,7 +756,7 @@ describe('ConstantProductPool', function () {
 
     beforeEach(async () => {
       //Set protocol swap fee in Vault
-      await vault.connect(admin).setProtocolFeeCollector(admin.address);
+      await authorizer.setCanSetProtocolSwapFee(true);
       await vault.connect(admin).setProtocolSwapFee((0.1e18).toString()); //10%
 
       initialBalances = [BigNumber.from((10e18).toString()), BigNumber.from((10e18).toString())];
@@ -761,7 +764,7 @@ describe('ConstantProductPool', function () {
       tokenWeights = [(8e18).toString(), (2e18).toString()];
       swapFee = toFixedPoint(0.05);
 
-      pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      pool = await deployPoolFromFactory(vault, 'ConstantProductPool', {
         from: lp,
         parameters: [initialBPT, tokenAddresses, initialBalances, tokenWeights, swapFee],
       });

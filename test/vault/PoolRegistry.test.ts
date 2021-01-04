@@ -9,7 +9,6 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { PairTS, TradingStrategyType, TupleTS, TwoTokenTS } from '../../scripts/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
-let admin: SignerWithAddress;
 let pool: SignerWithAddress;
 let lp: SignerWithAddress;
 let other: SignerWithAddress;
@@ -18,12 +17,12 @@ let vault: Contract;
 let tokens: TokenList = {};
 
 describe('Vault - pool registry', () => {
-  before('setup', async () => {
-    [, admin, pool, lp, other] = await ethers.getSigners();
+  before(async () => {
+    [, pool, lp, other] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
 
     for (const symbol in tokens) {

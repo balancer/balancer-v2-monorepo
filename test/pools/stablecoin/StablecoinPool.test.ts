@@ -16,6 +16,7 @@ describe('StablecoinPool', function () {
   let other: SignerWithAddress;
   let beneficiary: SignerWithAddress;
 
+  let authorizer: Contract;
   let vault: Contract;
   let tokens: TokenList = {};
 
@@ -32,7 +33,8 @@ describe('StablecoinPool', function () {
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    authorizer = await deploy('MockAuthorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
 
     tokens = await deployTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
     for (const symbol in tokens) {
@@ -49,7 +51,7 @@ describe('StablecoinPool', function () {
     poolSwapFee = toFixedPoint(0.01);
 
     callDeployPool = () =>
-      deployPoolFromFactory(vault, admin, 'StablecoinPool', {
+      deployPoolFromFactory(vault, 'StablecoinPool', {
         from: creator,
         parameters: [initialBPT, poolTokens, poolInitialBalances, poolAmplification, poolSwapFee],
       });
@@ -109,7 +111,7 @@ describe('StablecoinPool', function () {
 
     it("reverts if the number of tokens and amounts don't match", async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'StablecoinPool', {
+        deployPoolFromFactory(vault, 'StablecoinPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances.slice(1), poolAmplification, poolSwapFee],
         })
@@ -118,7 +120,7 @@ describe('StablecoinPool', function () {
 
     it('reverts if there is a single token', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'StablecoinPool', {
+        deployPoolFromFactory(vault, 'StablecoinPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -133,7 +135,7 @@ describe('StablecoinPool', function () {
 
     it('reverts if there are repeated tokens', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'StablecoinPool', {
+        deployPoolFromFactory(vault, 'StablecoinPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -148,7 +150,7 @@ describe('StablecoinPool', function () {
 
     it('reverts if the swap fee is too high', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'StablecoinPool', {
+        deployPoolFromFactory(vault, 'StablecoinPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances, poolAmplification, toFixedPoint(0.1).add(1)],
         })
@@ -353,6 +355,7 @@ describe('StablecoinPool', function () {
         const protocolWithdrawFee = 0.01;
 
         beforeEach(async () => {
+          await authorizer.setCanSetProtocolWithdrawFee(true);
           await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
         });
 
@@ -440,7 +443,7 @@ describe('StablecoinPool', function () {
 
     context('with three tokens', () => {
       beforeEach(async () => {
-        pool = await deployPoolFromFactory(vault, admin, 'StablecoinPool', {
+        pool = await deployPoolFromFactory(vault, 'StablecoinPool', {
           from: lp,
           parameters: [
             initialBPT,

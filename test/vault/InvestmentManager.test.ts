@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256 } from '../helpers/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { deploy } from '../../scripts/helpers/deploy';
@@ -14,17 +14,16 @@ describe('InvestmentManager', function () {
   let otherToken: Contract;
   let vault: Contract;
 
-  let admin: SignerWithAddress;
   let pool: SignerWithAddress;
   let investmentManager: SignerWithAddress;
   let other: SignerWithAddress;
 
   before('deploy base contracts', async () => {
-    [, admin, pool, investmentManager, other] = await ethers.getSigners();
+    [, pool, investmentManager, other] = await ethers.getSigners();
   });
 
   beforeEach('set up investment manager', async () => {
-    vault = await deploy('Vault', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'USDT'], [18, 18]);
 
     otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });

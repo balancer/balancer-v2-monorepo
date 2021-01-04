@@ -18,7 +18,8 @@ export async function setupEnvironment(): Promise<{
 }> {
   const { admin, trader, creator } = await getSigners();
 
-  const vault = await deploy('Vault', { args: [admin.address] });
+  const authorizer = await deploy('MockAuthorizer', { args: [admin.address] });
+  const vault = await deploy('Vault', { args: [authorizer.address] });
 
   const validator = await deploy('OneToOneSwapValidator', { args: [] });
 
@@ -40,7 +41,7 @@ export async function setupEnvironment(): Promise<{
 }
 
 export async function deployPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {
-  const { admin, creator } = await getSigners();
+  const { creator } = await getSigners();
 
   const symbols = Object.keys(tokens);
 
@@ -60,14 +61,14 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   if (poolName == 'ConstantProductPool') {
     const weights = symbols.map(() => toFixedPoint(1)); // Equal weights for all tokens
 
-    pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+    pool = await deployPoolFromFactory(vault, 'ConstantProductPool', {
       from: creator,
       parameters: [initialBPT, tokenAddresses, initialBalances, weights, swapFee],
     });
   } else if (poolName == 'StablecoinPool') {
     const amp = (30e18).toString();
 
-    pool = await deployPoolFromFactory(vault, admin, 'StablecoinPool', {
+    pool = await deployPoolFromFactory(vault, 'StablecoinPool', {
       from: creator,
       parameters: [initialBPT, tokenAddresses, initialBalances, amp, swapFee],
     });

@@ -12,6 +12,7 @@ describe('Vault - flash loans', () => {
   let minter: SignerWithAddress;
   let other: SignerWithAddress;
 
+  let authorizer: Contract;
   let vault: Contract;
   let receiver: Contract;
   let tokens: TokenList = {};
@@ -21,7 +22,10 @@ describe('Vault - flash loans', () => {
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [admin.address] });
+    authorizer = await deploy('MockAuthorizer', { args: [admin.address] });
+    await authorizer.setCanSetProtocolFlashLoanFee(true);
+    vault = await deploy('Vault', { args: [authorizer.address] });
+
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
 
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18], minter);

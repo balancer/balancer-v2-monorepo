@@ -14,6 +14,7 @@ describe('Vault - user balance', () => {
   let user: SignerWithAddress;
   let other: SignerWithAddress;
 
+  let authorizer: Contract;
   let vault: Contract;
   let tokens: TokenList = {};
 
@@ -24,7 +25,9 @@ describe('Vault - user balance', () => {
   const amount = BigNumber.from(500);
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    authorizer = await deploy('MockAuthorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
+
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
     await mintTokens(tokens, 'DAI', trader, amount.toString());
@@ -109,6 +112,7 @@ describe('Vault - user balance', () => {
       const protocolWithdrawFee = 0.01;
 
       beforeEach(async () => {
+        await authorizer.setCanSetProtocolWithdrawFee(true);
         await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
       });
 
