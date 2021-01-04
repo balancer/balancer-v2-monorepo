@@ -174,13 +174,15 @@ contract ConstantProductMath {
         // Calculate the factor by which the invariant will increase after minting BPTAmountOut
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
 
+        //TODO: review impact of exp math error that increases result
         // Calculate by how much the token balance has to increase to cause invariantRatio
         uint256 tokenBalanceRatio = LogExpMath
             .exp(int256(invariantRatio), int256(FixedPoint.ONE.div(tokenNormalizedWeight)))
             .toUint256();
         uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(tokenNormalizedWeight);
-        uint256 amountInAfterFee = tokenBalance.mul(FixedPoint.ONE.sub(tokenBalanceRatio));
-        return amountInAfterFee.div(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee))).toUint128();
+        uint256 amountOutBeforeFee = tokenBalance.mul(FixedPoint.ONE.sub(tokenBalanceRatio));
+
+        return amountOutBeforeFee.mul(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee))).toUint128();
     }
 
     function _bptInForExactTokensOut(
@@ -191,7 +193,7 @@ contract ConstantProductMath {
         uint256 swapFee
     ) internal pure returns (uint256) {
         // First loop to calculate the weighted balance ratio
-        uint256[] memory tokenBalanceRatiosBeforeFee;
+        uint256[] memory tokenBalanceRatiosBeforeFee = new uint256[](amountsOut.length);
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             tokenBalanceRatiosBeforeFee[i] = balances[i].sub(amountsOut[i]).div(balances[i]); //128
@@ -212,10 +214,13 @@ contract ConstantProductMath {
                     FixedPoint.ONE.sub(tokenBalanceRatiosBeforeFee[i])
                 );
             }
-            uint256 amountOutBeforeFee = amountsOut[i].mul(
+
+            uint256 amountOutBeforeFee = amountsOut[i].div(
                 FixedPoint.ONE.sub(swapFee.mul(tokenBalancePercentageExcess))
             );
-            tokenBalanceRatio = balances[i].sub((amountOutBeforeFee).div(balances[i]));
+
+            tokenBalanceRatio = FixedPoint.ONE.sub((amountOutBeforeFee).div(balances[i]));
+
             invariantRatio = invariantRatio.mul(
                 LogExpMath.exp(int256(tokenBalanceRatio), int256(normalizedWeights[i])).toUint256()
             );
