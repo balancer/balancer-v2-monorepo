@@ -125,8 +125,9 @@ contract ConstantProductMath {
             // Percentage of the amount supplied that will be swapped for other tokens in the pool
             uint256 tokenBalancePercentageExcess;
             uint256 tokenBalanceRatio;
-            // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
-            // decrease the fee from what goes above it
+            // Some tokens might have amounts supplied in excess of a 'balanced' join: these are identified if
+            // the token's balance ratio sans fee is larger than the weighted balance ratio, and swap fees charged
+            // on the amount to swap
             if (weightedBalanceRatio >= tokenBalanceRatiosBeforeFee[i]) {
                 tokenBalancePercentageExcess = 0;
             } else {
