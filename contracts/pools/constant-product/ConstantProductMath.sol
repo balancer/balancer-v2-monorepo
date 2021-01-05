@@ -120,6 +120,7 @@ contract ConstantProductMath {
         }
 
         //Second loop to calculate new amounts in taking into account the fee on the % excess
+        // The growth of the invariant caused by the join, as a quotient of the new value and the current one
         uint256 invariantRatio = FixedPoint.ONE;
         for (uint256 i = 0; i < balances.length; i++) {
             // Percentage of the amount supplied that will be swapped for other tokens in the pool
