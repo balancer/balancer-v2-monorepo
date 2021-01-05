@@ -30,7 +30,7 @@ contract PairPoolsBalance {
     // Data for Pools with Pair Trading Strategies
     //
     // When swapping with these Pools, the Vault must provide the balance of the two tokens in the swap. The best
-    // solution is to use a mapping from token to balance, which lets us read or write any token's balance in a  single
+    // solution is to use a mapping from token to balance, which lets us read or write any token's balance in a single
     // storage access.
     // We also keep a set with all tokens in the Pool in order to implement getPoolTokens, and update this set when
     // cash is added or removed from the pool. Tokens in the set always have a non-zero balance, so we don't need to
@@ -62,9 +62,37 @@ contract PairPoolsBalance {
      */
     function _getPairPoolTokenBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         bytes32 balance = _poolPairTokenBalance[poolId][token];
-        require(balance.total() > 0, "Token not in pool");
+        // require(balance.total() > 0, "Token not in pool");
 
         return balance;
+    }
+
+    /**
+     * TODO
+     */
+    function _registerPairTokenPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+        EnumerableSet.AddressSet storage poolTokens = _poolPairTokens[poolId];
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            require(token != IERC20(0), "ERR_TOKEN_IS_ZERO");
+            require(!poolTokens.contains(address(token)), "ERR_TOKEN_ALREADY_REGISTERED");
+            poolTokens.add(address(token));
+        }
+    }
+
+    /**
+     * TODO
+     */
+    function _unregisterPairTokenPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+        EnumerableSet.AddressSet storage poolTokens = _poolPairTokens[poolId];
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
+            require(_poolPairTokenBalance[poolId][token].isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+            poolTokens.remove(address(token));
+        }
     }
 
     /**

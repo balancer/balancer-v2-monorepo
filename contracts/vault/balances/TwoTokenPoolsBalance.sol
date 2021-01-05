@@ -70,7 +70,7 @@ contract TwoTokenPoolsBalance {
     // which tokens those balances correspond. This would mean having to also check the tokens struct in a swap, to make
     // sure the tokens being swapped are the ones in the Pool.
     // What we do instead to save those storage reads is keep a nested mapping from token pair hash to the balances
-    // struct. The Pool only has two tokens, so only a single entry of this mapping is set (the one that correspond's to
+    // struct. The Pool only has two tokens, so only a single entry of this mapping is set (the one that corresponds to
     // that pair's hash). This means queries for token pairs where any of the tokens is not in the Pool will generate a
     // hash for a mapping entry that was not set, containing zero balances. Non-zero balances are only possible if both
     // tokens in the pair are the Pool's tokens, which means we don't have to check the TwoTokensTokens struct and save
@@ -160,6 +160,42 @@ contract TwoTokenPoolsBalance {
 
         tokenABalance = CashInvested.fromSharedToBalanceA(sharedCash, sharedInvested);
         tokenBBalance = CashInvested.fromSharedToBalanceB(sharedCash, sharedInvested);
+    }
+
+    /**
+     * TODO
+     */
+    function _registerTwoTokenPoolTokens(
+        bytes32 poolId,
+        IERC20 tokenX,
+        IERC20 tokenY
+    ) internal {
+        require(tokenX != tokenY, "ERR_TOKENS_ARE_THE_SAME");
+        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ERR_TOKEN_IS_ZERO");
+
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "ERR_TOKEN_ALREADY_REGISTERED");
+
+        (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
+        _poolTwoTokenTokens[poolId] = TwoTokenTokens({ tokenA: tokenA, tokenB: tokenB });
+    }
+
+    /**
+     * TODO
+     */
+    function _unregisterTwoTokenPoolTokens(
+        bytes32 poolId,
+        IERC20 tokenX,
+        IERC20 tokenY
+    ) internal {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+        require((tokenX == poolTokens.tokenA) || (tokenX == poolTokens.tokenB), "ERR_TOKEN_NOT_REGISTERED");
+        require((tokenY == poolTokens.tokenA) || (tokenY == poolTokens.tokenB), "ERR_TOKEN_NOT_REGISTERED");
+
+        (bytes32 tokenABalance, bytes32 tokenBBalance, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
+        require(tokenABalance.isZero() && tokenBBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+
+        delete _poolTwoTokenTokens[poolId];
     }
 
     /**

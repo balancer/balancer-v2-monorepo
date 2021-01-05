@@ -68,6 +68,34 @@ contract TuplePoolsBalance {
     }
 
     /**
+     * TODO
+     */
+    function _registerTuplePoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTupleTokenBalance[poolId];
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            require(token != IERC20(0), "ERR_TOKEN_IS_ZERO");
+            require(!poolBalances.contains(token), "ERR_TOKEN_ALREADY_REGISTERED");
+            poolBalances.set(token, 0);
+        }
+    }
+
+    /**
+     * TODO
+     */
+    function _unregisterTuplePoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTupleTokenBalance[poolId];
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            require(poolBalances.contains(token), "ERR_TOKEN_NOT_REGISTERED");
+            require(poolBalances.get(token).isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+            poolBalances.remove(token);
+        }
+    }
+
+    /**
      * @dev Adds cash to a Tuple Pool for a given token. If the token was not previously in the Pool (if it didn't have
      * any funds for it), the token is then added to the Pool. After this function is called, 'token' will be in the
      * Pool.

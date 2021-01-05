@@ -70,6 +70,20 @@ library CashInvested {
     }
 
     /**
+     * @dev Tell whether the total amount is not zero
+     */
+    function isNotZero(bytes32 balance) internal pure returns (bool) {
+        return !isZero(balance);
+    }
+
+    /**
+     * @dev Tell whether the total amount is zero
+     */
+    function isZero(bytes32 balance) internal pure returns (bool) {
+        return balance == bytes32(0);
+    }
+
+    /**
      * @dev Packs together cash and invested amounts to create a balance value.
      */
     function toBalance(uint128 cashBalance, uint128 investedBalance) internal pure returns (bytes32) {

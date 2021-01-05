@@ -119,6 +119,7 @@ interface IVault {
 
     // Pools
 
+    // TODO: we are probably mixing two concepts here, the trading strategy itself and the way balances are stored
     // There are two variants of Trading Strategies for Pools: Pair Trading Strategies, and Tuple Trading Strategies.
     // These require different data from the Vault, which is reflected in their differing interfaces
     // (IPairTradingStrategy and ITupleTradingStrategy, respectively).
@@ -165,6 +166,20 @@ interface IVault {
     function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint128[] memory);
 
     // Pool Management
+
+    /**
+     * @dev TODO
+     */
+    function registerTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+
+    event TokensRegistered(bytes32 poolId, IERC20[] tokens);
+
+    /**
+     * @dev TODO
+     */
+    function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+
+    event TokensUnregistered(bytes32 poolId, IERC20[] tokens);
 
     /**
      * @dev Adds liquidity into a Pool. Can only be called by its controller.

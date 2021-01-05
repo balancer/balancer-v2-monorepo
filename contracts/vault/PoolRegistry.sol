@@ -168,6 +168,44 @@ abstract contract PoolRegistry is
         return fromPoolId(poolId);
     }
 
+    function registerTokens(bytes32 poolId, IERC20[] calldata tokens)
+        external
+        override
+        withExistingPool(poolId)
+        onlyPool(poolId)
+    {
+        (, StrategyType strategyType) = fromPoolId(poolId);
+        if (strategyType == StrategyType.TWO_TOKEN) {
+            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
+            _registerTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
+        } else if (strategyType == StrategyType.PAIR) {
+            _registerPairTokenPoolTokens(poolId, tokens);
+        } else {
+            _registerTuplePoolTokens(poolId, tokens);
+        }
+
+        emit TokensRegistered(poolId, tokens);
+    }
+
+    function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
+        external
+        override
+        withExistingPool(poolId)
+        onlyPool(poolId)
+    {
+        (, StrategyType strategyType) = fromPoolId(poolId);
+        if (strategyType == StrategyType.TWO_TOKEN) {
+            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
+            _unregisterTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
+        } else if (strategyType == StrategyType.PAIR) {
+            _unregisterPairTokenPoolTokens(poolId, tokens);
+        } else {
+            _unregisterTuplePoolTokens(poolId, tokens);
+        }
+
+        emit TokensUnregistered(poolId, tokens);
+    }
+
     function addLiquidity(
         bytes32 poolId,
         address from,
@@ -175,6 +213,7 @@ abstract contract PoolRegistry is
         uint128[] calldata amounts,
         bool withdrawFromUserBalance
     ) external override withExistingPool(poolId) onlyPool(poolId) {
+        // TODO: check token is registered, amount can be zero
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         require(isAgentFor(from, msg.sender), "Caller is not an agent");
@@ -224,6 +263,7 @@ abstract contract PoolRegistry is
         uint128[] calldata amounts,
         bool depositToUserBalance
     ) external override withExistingPool(poolId) onlyPool(poolId) {
+        // TODO: check token is registered, amount can be zero
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         // Deduct tokens from pools - how this is done depends on the pool type
