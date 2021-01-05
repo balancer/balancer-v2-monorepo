@@ -122,6 +122,7 @@ contract ConstantProductMath {
         //Second loop to calculate new amounts in taking into account the fee on the % excess
         uint256 invariantRatio = FixedPoint.ONE;
         for (uint256 i = 0; i < balances.length; i++) {
+            // Percentage of the amount supplied that will be swapped for other tokens in the pool
             uint256 tokenBalancePercentageExcess;
             uint256 tokenBalanceRatio;
             // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
