@@ -28,7 +28,7 @@ interface ITradingStrategy {
     struct QuoteRequestGivenIn {
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint128 amountIn;
+        uint256 amountIn;
         // Misc data
         bytes32 poolId;
         address from;
@@ -39,7 +39,7 @@ interface ITradingStrategy {
     struct QuoteRequestGivenOut {
         IERC20 tokenIn;
         IERC20 tokenOut;
-        uint128 amountOut;
+        uint256 amountOut;
         // Misc data
         bytes32 poolId;
         address from;

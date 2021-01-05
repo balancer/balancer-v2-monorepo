@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./UserBalance.sol";
@@ -39,6 +40,8 @@ abstract contract PoolRegistry is
     using CashInvested for bytes32;
     using FixedPoint for uint128;
     using FixedPoint for uint256;
+    using SafeCast for uint256;
+    using SafeCast for uint128;
 
     struct PoolStrategy {
         address strategy;
@@ -152,13 +155,13 @@ abstract contract PoolRegistry is
         view
         override
         withExistingPool(poolId)
-        returns (uint128[] memory)
+        returns (uint256[] memory)
     {
         (, StrategyType strategyType) = fromPoolId(poolId);
 
-        uint128[] memory balances = new uint128[](tokens.length);
+        uint256[] memory balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
+            balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total().toUint256();
         }
 
         return balances;
@@ -172,7 +175,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         address from,
         IERC20[] calldata tokens,
-        uint128[] calldata amounts,
+        uint256[] calldata amounts,
         bool withdrawFromUserBalance
     ) external override withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
@@ -186,7 +189,7 @@ abstract contract PoolRegistry is
             require(tokens[i] != IERC20(0), "Token is the zero address");
 
             if (amounts[i] > 0) {
-                uint128 toReceive = amounts[i];
+                uint256 toReceive = amounts[i];
                 if (withdrawFromUserBalance) {
                     uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][tokens[i]], toReceive));
 
@@ -204,14 +207,14 @@ abstract contract PoolRegistry is
         if (strategyType == StrategyType.TWO_TOKEN) {
             // These set both tokens at once
             require(tokens.length == 2, "Must interact with all tokens in two token pool");
-            _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0], tokens[1], amounts[1]);
+            _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
         } else {
             for (uint256 i = 0; i < tokens.length; ++i) {
                 // Other pool types have their tokens added one by one
                 if (strategyType == StrategyType.PAIR) {
-                    _increasePairPoolCash(poolId, tokens[i], amounts[i]);
+                    _increasePairPoolCash(poolId, tokens[i], amounts[i].toUint128());
                 } else {
-                    _increaseTuplePoolCash(poolId, tokens[i], amounts[i]);
+                    _increaseTuplePoolCash(poolId, tokens[i], amounts[i].toUint128());
                 }
             }
         }
@@ -221,7 +224,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         address to,
         IERC20[] calldata tokens,
-        uint128[] calldata amounts,
+        uint256[] calldata amounts,
         bool depositToUserBalance
     ) external override withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
@@ -232,14 +235,14 @@ abstract contract PoolRegistry is
         if (strategyType == StrategyType.TWO_TOKEN) {
             // These set both tokens at once
             require(tokens.length == 2, "Must interact with all tokens in two token pool");
-            _decreaseTwoTokenPoolCash(poolId, tokens[0], amounts[0], tokens[1], amounts[1]);
+            _decreaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
         } else {
             // Other pool types have their tokens added one by one
             for (uint256 i = 0; i < tokens.length; ++i) {
                 if (strategyType == StrategyType.PAIR) {
-                    _decreasePairPoolCash(poolId, tokens[i], amounts[i]);
+                    _decreasePairPoolCash(poolId, tokens[i], amounts[i].toUint128());
                 } else {
-                    _decreaseTuplePoolCash(poolId, tokens[i], amounts[i]);
+                    _decreaseTuplePoolCash(poolId, tokens[i], amounts[i].toUint128());
                 }
             }
         }
@@ -254,13 +257,13 @@ abstract contract PoolRegistry is
             if (amounts[i] > 0) {
                 if (depositToUserBalance) {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                    _userTokenBalance[to][token] = _userTokenBalance[to][token].add128(amounts[i]);
+                    _userTokenBalance[to][token] = _userTokenBalance[to][token].add128(amounts[i].toUint128());
                 } else {
                     // Transfer the tokens to the recipient, charging the protocol exit fee
-                    uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amounts[i]);
+                    uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amounts[i].toUint128());
 
                     _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
-                    token.safeTransfer(to, amounts[i].sub128(feeAmount));
+                    token.safeTransfer(to, amounts[i].sub(feeAmount));
                 }
             }
         }
@@ -321,15 +324,15 @@ abstract contract PoolRegistry is
     function investPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
         (, StrategyType strategyType) = fromPoolId(poolId);
         if (strategyType == IVault.StrategyType.PAIR) {
-            _investPairPoolCash(poolId, token, amount);
+            _investPairPoolCash(poolId, token, amount.toUint128());
         } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
-            _investTwoTokenPoolCash(poolId, token, amount);
+            _investTwoTokenPoolCash(poolId, token, amount.toUint128());
         } else {
-            _investTuplePoolCash(poolId, token, amount);
+            _investTuplePoolCash(poolId, token, amount.toUint128());
         }
 
         token.safeTransfer(msg.sender, amount);
@@ -338,32 +341,32 @@ abstract contract PoolRegistry is
     function divestPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         (, StrategyType strategyType) = fromPoolId(poolId);
         if (strategyType == IVault.StrategyType.PAIR) {
-            _divestPairPoolCash(poolId, token, amount);
+            _divestPairPoolCash(poolId, token, amount.toUint128());
         } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
-            _divestTwoTokenPoolCash(poolId, token, amount);
+            _divestTwoTokenPoolCash(poolId, token, amount.toUint128());
         } else {
-            _divestTuplePoolCash(poolId, token, amount);
+            _divestTuplePoolCash(poolId, token, amount.toUint128());
         }
     }
 
     function updateInvested(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
         (, StrategyType strategyType) = fromPoolId(poolId);
         if (strategyType == IVault.StrategyType.PAIR) {
-            _setPairPoolInvestment(poolId, token, amount);
+            _setPairPoolInvestment(poolId, token, amount.toUint128());
         } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
-            _setTwoTokenPoolInvestment(poolId, token, amount);
+            _setTwoTokenPoolInvestment(poolId, token, amount.toUint128());
         } else {
-            _setTuplePoolInvestment(poolId, token, amount);
+            _setTuplePoolInvestment(poolId, token, amount.toUint128());
         }
     }
 

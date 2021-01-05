@@ -20,13 +20,13 @@ import "./ITradingStrategy.sol";
 interface IPairTradingStrategy is ITradingStrategy {
     function quoteOutGivenIn(
         QuoteRequestGivenIn calldata request,
-        uint128 currentBalanceTokenIn,
-        uint128 currentBalanceTokenOut
-    ) external returns (uint128 amountOut);
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) external returns (uint256 amountOut);
 
     function quoteInGivenOut(
         QuoteRequestGivenOut calldata request,
-        uint128 currentBalanceTokenIn,
-        uint128 currentBalanceTokenOut
-    ) external returns (uint128 amountIn);
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) external returns (uint256 amountIn);
 }

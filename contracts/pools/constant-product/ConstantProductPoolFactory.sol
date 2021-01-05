@@ -31,9 +31,9 @@ contract ConstantProductPoolFactory is BasePoolFactory {
         string memory symbol,
         uint256 initialBPT,
         IERC20[] memory tokens,
-        uint128[] memory amounts,
-        uint128[] memory weights,
-        uint128 swapFee,
+        uint256[] memory amounts,
+        uint256[] memory weights,
+        uint256 swapFee,
         bytes32 salt
     ) external returns (address) {
         return

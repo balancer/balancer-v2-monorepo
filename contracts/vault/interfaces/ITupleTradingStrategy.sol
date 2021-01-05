@@ -20,15 +20,15 @@ import "./ITradingStrategy.sol";
 interface ITupleTradingStrategy is ITradingStrategy {
     function quoteOutGivenIn(
         QuoteRequestGivenIn calldata request,
-        uint128[] calldata balances,
+        uint256[] calldata balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external returns (uint128 amountOut);
+    ) external returns (uint256 amountOut);
 
     function quoteInGivenOut(
         QuoteRequestGivenOut calldata request,
-        uint128[] calldata balances,
+        uint256[] calldata balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external returns (uint128 amountIn);
+    ) external returns (uint256 amountIn);
 }
