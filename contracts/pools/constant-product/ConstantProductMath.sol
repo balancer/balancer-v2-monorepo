@@ -110,7 +110,9 @@ contract ConstantProductMath {
         uint256 swapFee
     ) internal pure returns (uint256) {
         // First loop to calculate the weighted balance ratio
+        // The increment `amountIn` represents for each token, as a quotient of new and current balances, not accounting swap fees
         uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsIn.length);
+        // The weighted sum of token balance rations sans fee
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             tokenBalanceRatiosWithoutFee[i] = balances[i].add(amountsIn[i]).div(balances[i]);
@@ -118,11 +120,14 @@ contract ConstantProductMath {
         }
 
         //Second loop to calculate new amounts in taking into account the fee on the % excess
+        // The growth of the invariant caused by the join, as a quotient of the new value and the current one
         uint256 invariantRatio = FixedPoint.ONE;
         for (uint256 i = 0; i < balances.length; i++) {
+            // Percentage of the amount supplied that will be swapped for other tokens in the pool
             uint256 tokenBalancePercentageExcess;
-            // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
-            // decrease the fee from what goes above it
+            // Some tokens might have amounts supplied in excess of a 'balanced' join: these are identified if
+            // the token's balance ratio sans fee is larger than the weighted balance ratio, and swap fees charged
+            // on the amount to swap
             if (weightedBalanceRatio >= tokenBalanceRatiosWithoutFee[i]) {
                 tokenBalancePercentageExcess = 0;
             } else {
