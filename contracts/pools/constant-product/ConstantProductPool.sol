@@ -436,7 +436,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint128[] calldata amountsIn,
         bool transferTokens,
         address beneficiary
-    ) external override nonReentrant returns (uint256 bptAmountOut) {
+    ) external nonReentrant returns (uint256 bptAmountOut) {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
 
@@ -489,7 +489,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint256 maxAmountIn,
         bool transferTokens,
         address beneficiary
-    ) external override nonReentrant returns (uint256) {
+    ) external nonReentrant returns (uint256) {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
 
@@ -556,7 +556,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint256 minAmountOut,
         bool transferTokens,
         address beneficiary
-    ) public override nonReentrant returns (uint256) {
+    ) public nonReentrant returns (uint256) {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
 
@@ -622,7 +622,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         uint128[] calldata amountsOut,
         bool transferTokens,
         address beneficiary
-    ) public override nonReentrant returns (uint256 bptAmountIn) {
+    ) public nonReentrant returns (uint256 bptAmountIn) {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
 
