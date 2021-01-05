@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../BToken.sol";
+import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
 
 import "../../vault/interfaces/IVault.sol";
@@ -30,7 +30,7 @@ import "../../math/FixedPoint.sol";
 
 import "./StablecoinMath.sol";
 
-contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BToken, ReentrancyGuard {
+contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint128;
     using FixedPoint for uint256;
     using SafeCast for uint256;
@@ -49,13 +49,15 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     constructor(
         IVault vault,
+        string memory name,
+        string memory symbol,
         uint256 initialBPT,
         IERC20[] memory tokens,
         uint128[] memory amounts,
         address from,
         uint128 amp,
         uint128 swapFee
-    ) {
+    ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= 2, "ERR_MIN_TOKENS");
 
         bytes32 poolId = vault.newPool(address(this), IVault.StrategyType.TUPLE);
@@ -64,8 +66,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
 
-        _mintPoolShare(initialBPT);
-        _pushPoolShare(from, initialBPT);
+        _mintPoolTokens(from, initialBPT);
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
@@ -185,8 +186,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         //Reset swap fees counter
         _resetAccumulatedSwapFees(_amp, balances);
 
-        _mintPoolShare(poolAmountOut);
-        _pushPoolShare(beneficiary, poolAmountOut);
+        _mintPoolTokens(beneficiary, poolAmountOut);
     }
 
     function exitPool(
@@ -219,8 +219,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         //Reset swap fees counter
         _resetAccumulatedSwapFees(_amp, balances);
 
-        _pullPoolShare(msg.sender, poolAmountIn);
-        _burnPoolShare(poolAmountIn);
+        _burnPoolTokens(msg.sender, poolAmountIn);
     }
 
     // potential helpers
@@ -231,23 +230,5 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     function _subtractSwapFee(uint128 amount) internal view returns (uint128) {
         uint128 fees = amount.mul128(_swapFee);
         return amount.sub128(fees);
-    }
-
-    // Move to BalancerPoolToken (BToken)
-
-    function _pullPoolShare(address from, uint256 amount) internal {
-        _pull(from, amount);
-    }
-
-    function _pushPoolShare(address to, uint256 amount) internal {
-        _push(to, amount);
-    }
-
-    function _mintPoolShare(uint256 amount) internal {
-        _mint(amount);
-    }
-
-    function _burnPoolShare(uint256 amount) internal {
-        _burn(amount);
     }
 }

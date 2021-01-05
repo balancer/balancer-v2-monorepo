@@ -21,6 +21,7 @@ describe('StablecoinPool', function () {
   let tokens: TokenList = {};
 
   const initialBPT = (90e18).toString();
+
   let poolTokens: string[];
   let poolInitialBalances: BigNumber[];
   let poolAmplification: BigNumber;
@@ -157,6 +158,24 @@ describe('StablecoinPool', function () {
           parameters: [initialBPT, poolTokens, poolInitialBalances, poolAmplification, toFixedPoint(0.1).add(1)],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
+    });
+
+    it('sets the name', async () => {
+      const pool = await callDeployPool();
+
+      expect(await pool.name()).to.equal('Balancer Pool Token');
+    });
+
+    it('sets the symbol', async () => {
+      const pool = await callDeployPool();
+
+      expect(await pool.symbol()).to.equal('BPT');
+    });
+
+    it('sets the decimals', async () => {
+      const pool = await callDeployPool();
+
+      expect(await pool.decimals()).to.equal(18);
     });
   });
 
