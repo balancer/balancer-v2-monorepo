@@ -1,4 +1,5 @@
-import { MAX_UINT256 } from '../../test/helpers/constants';
+import { MAX_UINT256, MAX_UINT128 } from '../../test/helpers/constants';
+import { Trade, encodeValidatorData, SwapIn, FundManagement } from '../helpers/trading';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { Dictionary } from 'lodash';
@@ -10,6 +11,8 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
+let trader: SignerWithAddress;
+let validator: Contract;
 
 interface Pool {
   id: string;
@@ -40,7 +43,7 @@ let ethers: any;
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
 async function action(hre: HardhatRuntimeEnvironment) {
   ethers = hre.ethers;
-  [deployer, controller] = await ethers.getSigners();
+  [deployer, controller, trader] = await ethers.getSigners();
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
@@ -63,15 +66,69 @@ async function action(hre: HardhatRuntimeEnvironment) {
     console.log(`${symbols[i]}: ${tokenContracts[symbols[i]].address}`);
     await tokenContracts[symbols[i]].connect(controller).approve(vault.address, MAX_UINT256);
     await tokenContracts[symbols[i]].connect(deployer).mint(controller.address, balances[i]);
+    //const tradingBalance = balances[i].div(BigNumber.from('10'))
+    const tradingBalance = balances[i]//.div(BigNumber.from('10'))
+    await tokenContracts[symbols[i]].connect(deployer).mint(trader.address, tradingBalance);
+    await tokenContracts[symbols[i]].connect(trader).approve(vault.address, MAX_UINT256);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
-  await deployPools(filteredPools, tokenContracts);
+  let pools: Contract[] = (await deployPools(filteredPools, tokenContracts)).filter((x): x is Contract => x !== undefined);
 
+  console.log(`\nSwapping a few tokens...`);
+  validator = await ethers.getContract('OneToOneSwapValidator');
+  await Promise.all(pools.map(p => swapInPool(p)));
   return;
 }
 
-async function deployPools(filteredPools: Pool[], tokens: ContractList) {
+async function swapInPool(pool: Contract) {
+  const poolId = await pool.getPoolId();
+
+  const vault = await ethers.getContract('Vault');
+  const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
+
+  const [overallTokenIn, overallTokenOut] = tokenAddresses;
+
+  const Token = await ethers.getContractFactory('TestToken');
+  const token = await Token.attach(overallTokenIn)
+
+  const swap: SwapIn = {
+      poolId,
+      tokenInIndex: 0,
+      tokenOutIndex: 1,
+      amountIn: 100,
+      userData: '0x',
+    }
+  const swaps: SwapIn[] = [swap]
+
+  const funds: FundManagement = {
+    sender: trader.address,
+    recipient: trader.address,
+    withdrawFromUserBalance: false,
+    depositToUserBalance: false,
+  };
+
+  const receipt = await (
+    await vault.connect(trader).batchSwapGivenIn(
+      validator.address,
+      encodeValidatorData({
+        overallTokenIn,
+        overallTokenOut,
+        minimumAmountOut: 0,
+        maximumAmountIn: MAX_UINT128,
+        deadline: MAX_UINT256,
+      }),
+      swaps,
+      tokenAddresses,
+      funds
+    )
+  ).wait();
+
+
+}
+
+async function deployPools(filteredPools: Pool[], tokens: ContractList): Promise<(Contract | undefined)[]> {
+  let promises = []
   for (let i = 0; i < filteredPools.length; i++) {
     const tokensList: Array<string> = [];
     const weights: Array<BigNumber> = [];
@@ -85,8 +142,9 @@ async function deployPools(filteredPools: Pool[], tokens: ContractList) {
     }
 
     // Deploy pool and provide liquidity
-    await deployStrategyPool(tokensList, weights, balances, swapFee);
+    promises.push(deployStrategyPool(tokensList, weights, balances, swapFee));
   }
+  return await Promise.all(promises)
 }
 
 // Deploy strategy then newPool with that strategy
@@ -96,11 +154,12 @@ async function deployStrategyPool(
   weights: Array<BigNumber>,
   balances: Array<BigNumber>,
   swapFee: BigNumber
-) {
+): Promise<Contract | undefined> {
   const vault = await ethers.getContract('Vault');
-  const cppFactory = await ethers.getContract('ConstantProductPoolFactory');
+  const cppFactoryContract = await ethers.getContract('ConstantProductPoolFactory');
+  const cppFactory = await ethers.getContractFactory('ConstantProductPool');
 
-  if (!cppFactory || !vault) {
+  if (!cppFactoryContract || !vault) {
     console.log('ConstantProductPoolFactory and/or Vault Contracts Not Deployed.');
     return;
   }
@@ -114,7 +173,7 @@ async function deployStrategyPool(
 
   const parameters = [initialBPT, tokens, balances, weights, swapFee, salt];
 
-  const tx = await cppFactory.connect(controller).create(...parameters);
+  const tx = await cppFactoryContract.connect(controller).create(...parameters);
   const receipt = await tx.wait();
   const event = receipt.events?.find((e: any) => e.event == 'PoolCreated');
   if (event == undefined) {
@@ -123,6 +182,7 @@ async function deployStrategyPool(
   const poolAddress = event.args.pool;
 
   console.log(`New Pool Address: ${poolAddress}`);
+  return await cppFactory.attach(poolAddress)
 }
 
 // Convert all pools to BigNumber/scaled format
