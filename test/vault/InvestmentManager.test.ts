@@ -7,7 +7,7 @@ import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { deploy } from '../../scripts/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
-import { PairTS, TradingStrategyType, TupleTS, TwoTokenTS } from '../../scripts/helpers/pools';
+import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 
 describe('InvestmentManager', function () {
   let tokens: TokenList;
@@ -30,19 +30,19 @@ describe('InvestmentManager', function () {
     otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
   });
 
+  context('with standard pool', () => {
+    itManagesInvestmentsCorrectly(StandardPool);
+  });
+
+  context('with simplified pool', () => {
+    itManagesInvestmentsCorrectly(SimplifiedQuotePool);
+  });
+
   context('with two token pool', () => {
-    itManagesInvestmentsCorrectly(TwoTokenTS);
+    itManagesInvestmentsCorrectly(TwoTokenPool);
   });
 
-  context('with pair trading strategy pool', () => {
-    itManagesInvestmentsCorrectly(PairTS);
-  });
-
-  context('with tuple trading strategy pool', () => {
-    itManagesInvestmentsCorrectly(TupleTS);
-  });
-
-  function itManagesInvestmentsCorrectly(poolType: TradingStrategyType) {
+  function itManagesInvestmentsCorrectly(poolType: PoolOptimizationSetting) {
     let poolId: string;
     const tokenInitialBalance = BigNumber.from((200e18).toString());
 

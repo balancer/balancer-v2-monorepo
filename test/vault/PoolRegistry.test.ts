@@ -6,7 +6,7 @@ import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
-import { PairTS, TradingStrategyType, TupleTS, TwoTokenTS } from '../../scripts/helpers/pools';
+import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
@@ -40,7 +40,7 @@ describe('Vault - pool registry', () => {
 
   describe('pool creation', () => {
     it('anyone can create pools', async () => {
-      const receipt = await (await vault.connect(pool).registerPool(TupleTS)).wait();
+      const receipt = await (await vault.connect(pool).registerPool(StandardPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       const poolId = event.args.poolId;
@@ -58,7 +58,7 @@ describe('Vault - pool registry', () => {
     let poolId: string;
 
     beforeEach(async () => {
-      const receipt = await (await vault.connect(pool).registerPool(TupleTS)).wait();
+      const receipt = await (await vault.connect(pool).registerPool(StandardPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       poolId = event.args.poolId;
@@ -70,7 +70,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('pool and type are set', async () => {
-      expect(await vault.getPool(poolId)).to.deep.equal([pool.address, TupleTS]);
+      expect(await vault.getPool(poolId)).to.deep.equal([pool.address, StandardPool]);
     });
 
     it('pool starts with no tokens', async () => {
@@ -78,7 +78,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('new pool gets a different id', async () => {
-      const receipt = await (await vault.registerPool(TupleTS)).wait();
+      const receipt = await (await vault.registerPool(StandardPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       const otherPoolId = event.args.poolId;
@@ -91,15 +91,15 @@ describe('Vault - pool registry', () => {
 
   describe('token management', () => {
     describe('with pair trading strategies', () => {
-      itManagesTokensCorrectly(PairTS);
+      itManagesTokensCorrectly(SimplifiedQuotePool);
     });
 
     describe('with tuple trading strategies', () => {
-      itManagesTokensCorrectly(TupleTS);
+      itManagesTokensCorrectly(StandardPool);
     });
 
     describe('with two token trading strategies', () => {
-      itManagesTokensCorrectly(TwoTokenTS);
+      itManagesTokensCorrectly(TwoTokenPool);
     });
   });
 
@@ -111,7 +111,7 @@ describe('Vault - pool registry', () => {
       await vault.connect(admin).setProtocolSwapFee(toFixedPoint(0.01)); // 1%
 
       pool = await deploy('MockPool', {
-        args: [vault.address, PairTS],
+        args: [vault.address, SimplifiedQuotePool],
       });
 
       poolId = await pool.getPoolId();
@@ -191,17 +191,17 @@ describe('Vault - pool registry', () => {
   });
 });
 
-function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
+function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
   let poolId: string;
 
   beforeEach(async () => {
-    const receipt = await (await vault.connect(pool).registerPool(strategyType)).wait();
+    const receipt = await (await vault.connect(pool).registerPool(optimization)).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     poolId = event.args.poolId;
   });
 
-  if (strategyType != TwoTokenTS) {
+  if (optimization != TwoTokenPool) {
     it('pool can add liquidity to single token', async () => {
       await vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false);
       expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address]);
@@ -321,7 +321,7 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
     ).to.be.revertedWith('Caller is not the pool');
   });
 
-  if (strategyType == TwoTokenTS) {
+  if (optimization == TwoTokenPool) {
     it('the pool cannot add liquidity to single token', async () => {
       await expect(
         vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false)
@@ -356,7 +356,7 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
         .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
     });
 
-    if (strategyType != TwoTokenTS) {
+    if (optimization != TwoTokenPool) {
       it('the pool can remove zero liquidity from single token', async () => {
         await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [0], false);
 
@@ -385,7 +385,7 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
       });
     }
 
-    if (strategyType == TwoTokenTS) {
+    if (optimization == TwoTokenPool) {
       it('the pool cannot remove zero liquidity from single token', async () => {
         await expect(
           vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [0], false)
