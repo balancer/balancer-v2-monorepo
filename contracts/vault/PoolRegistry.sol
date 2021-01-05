@@ -24,14 +24,14 @@ import "./UserBalance.sol";
 
 import "./balances/CashInvested.sol";
 import "./balances/StandardPoolsBalance.sol";
-import "./balances/PairPoolsBalance.sol";
+import "./balances/SimplifiedQuotePoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
 
 abstract contract PoolRegistry is
     ReentrancyGuard,
     UserBalance,
     StandardPoolsBalance,
-    PairPoolsBalance,
+    SimplifiedQuotePoolsBalance,
     TwoTokenPoolsBalance
 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -112,7 +112,7 @@ abstract contract PoolRegistry is
         (, PoolOptimization optimization) = fromPoolId(poolId);
 
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _getPairPoolTokens(poolId);
+            return _getSimplifiedQuotePoolTokens(poolId);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             return _getTwoTokenPoolTokens(poolId);
         } else {
@@ -133,7 +133,7 @@ abstract contract PoolRegistry is
         IERC20 token
     ) internal view returns (bytes32) {
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _getPairPoolTokenBalance(poolId, token);
+            return _getSimplifiedQuotePoolTokenBalance(poolId, token);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             return _getTwoTokenPoolBalance(poolId, token);
         } else {
@@ -209,7 +209,7 @@ abstract contract PoolRegistry is
             for (uint256 i = 0; i < tokens.length; ++i) {
                 // Other pool types have their tokens added one by one
                 if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-                    _increasePairPoolCash(poolId, tokens[i], amounts[i]);
+                    _increaseSimplifiedQuotePoolCash(poolId, tokens[i], amounts[i]);
                 } else {
                     _increaseStandardPoolCash(poolId, tokens[i], amounts[i]);
                 }
@@ -237,7 +237,7 @@ abstract contract PoolRegistry is
             // Other pool types have their tokens added one by one
             for (uint256 i = 0; i < tokens.length; ++i) {
                 if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-                    _decreasePairPoolCash(poolId, tokens[i], amounts[i]);
+                    _decreaseSimplifiedQuotePoolCash(poolId, tokens[i], amounts[i]);
                 } else {
                     _decreaseStandardPoolCash(poolId, tokens[i], amounts[i]);
                 }
@@ -279,7 +279,7 @@ abstract contract PoolRegistry is
         IERC20 token
     ) internal view returns (bool) {
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _isPairPoolInvested(poolId, token);
+            return _isSimplifiedQuotePoolInvested(poolId, token);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _isTwoTokenPoolInvested(poolId, token);
         } else {
@@ -325,7 +325,7 @@ abstract contract PoolRegistry is
     ) external override onlyPoolInvestmentManager(poolId, token) {
         (, PoolOptimization optimization) = fromPoolId(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _investPairPoolCash(poolId, token, amount);
+            _investSimplifiedQuotePoolCash(poolId, token, amount);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _investTwoTokenPoolCash(poolId, token, amount);
         } else {
@@ -344,7 +344,7 @@ abstract contract PoolRegistry is
 
         (, PoolOptimization optimization) = fromPoolId(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _divestPairPoolCash(poolId, token, amount);
+            _divestSimplifiedQuotePoolCash(poolId, token, amount);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _divestTwoTokenPoolCash(poolId, token, amount);
         } else {
@@ -359,7 +359,7 @@ abstract contract PoolRegistry is
     ) external override onlyPoolInvestmentManager(poolId, token) {
         (, PoolOptimization optimization) = fromPoolId(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _setPairPoolInvestment(poolId, token, amount);
+            _setSimplifiedQuotePoolInvestment(poolId, token, amount);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _setTwoTokenPoolInvestment(poolId, token, amount);
         } else {

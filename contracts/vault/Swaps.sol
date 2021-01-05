@@ -302,7 +302,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         (address pool, PoolOptimization optimization) = fromPoolId(request.poolId);
 
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            amountQuoted = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(pool), kind);
+            amountQuoted = _processSimplifiedQuotePoolQuoteRequest(request, IPairTradingStrategy(pool), kind);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             amountQuoted = _processTwoTokenPoolQuoteRequest(request, IPairTradingStrategy(pool), kind);
         } else {
@@ -375,19 +375,19 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         poolSharedBalances.sharedCash = newSharedCash;
     }
 
-    function _processPairTradingStrategyQuoteRequest(
+    function _processSimplifiedQuotePoolQuoteRequest(
         QuoteRequestInternal memory request,
-        IPairTradingStrategy strategy,
+        IPairTradingStrategy pool,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
-        bytes32 tokenInBalance = _poolPairTokenBalance[request.poolId][request.tokenIn];
+        bytes32 tokenInBalance = _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn];
         require(tokenInBalance.total() > 0, "Token A not in pool");
 
-        bytes32 tokenOutBalance = _poolPairTokenBalance[request.poolId][request.tokenOut];
+        bytes32 tokenOutBalance = _simplifiedQuotePoolsBalances[request.poolId][request.tokenOut];
         require(tokenOutBalance.total() > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
-            uint128 amountOut = strategy.quoteOutGivenIn(
+            uint128 amountOut = pool.quoteOutGivenIn(
                 _toQuoteGivenIn(request),
                 tokenInBalance.total(),
                 tokenOutBalance.total()
@@ -398,7 +398,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
             amountQuoted = amountOut;
         } else {
-            uint128 amountIn = strategy.quoteInGivenOut(
+            uint128 amountIn = pool.quoteInGivenOut(
                 _toQuoteGivenOut(request),
                 tokenInBalance.total(),
                 tokenOutBalance.total()
@@ -411,8 +411,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         require(tokenOutBalance.total() > 0, "Fully draining token out");
-        _poolPairTokenBalance[request.poolId][request.tokenIn] = tokenInBalance;
-        _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
+        _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn] = tokenInBalance;
+        _simplifiedQuotePoolsBalances[request.poolId][request.tokenOut] = tokenOutBalance;
     }
 
     function _processStandardPoolQuoteRequest(
@@ -485,7 +485,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
 
                 if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-                    _decreasePairPoolCash(poolId, tokens[i], feeToCollect);
+                    _decreaseSimplifiedQuotePoolCash(poolId, tokens[i], feeToCollect);
                 } else {
                     _decreaseStandardPoolCash(poolId, tokens[i], feeToCollect);
                 }
