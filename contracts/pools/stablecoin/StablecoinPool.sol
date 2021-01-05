@@ -25,12 +25,12 @@ import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
 
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/ITupleTradingStrategy.sol";
+import "../../vault/interfaces/IStandardPoolQuotes.sol";
 import "../../math/FixedPoint.sol";
 
 import "./StablecoinMath.sol";
 
-contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
+contract StablecoinPool is IStandardPoolQuotes, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint128;
     using FixedPoint for uint256;
     using SafeCast for uint256;
@@ -103,7 +103,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
     //Quote Swaps
 
     function quoteOutGivenIn(
-        QuoteRequestGivenIn calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
@@ -114,7 +114,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
     }
 
     function quoteInGivenOut(
-        QuoteRequestGivenOut calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut

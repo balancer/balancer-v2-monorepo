@@ -24,7 +24,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../math/FixedPoint.sol";
 
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPairTradingStrategy.sol";
+import "../../vault/interfaces/ISimplifiedQuotePoolQuotes.sol";
 
 import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
@@ -36,7 +36,7 @@ import "./ConstantProductMath.sol";
 
 contract ConstantProductPool is
     IBPTPool,
-    IPairTradingStrategy,
+    ISimplifiedQuotePoolQuotes,
     BalancerPoolToken,
     ConstantProductMath,
     ReentrancyGuard
@@ -263,7 +263,7 @@ contract ConstantProductPool is
     //Quote Swaps
 
     function quoteOutGivenIn(
-        QuoteRequestGivenIn calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
     ) external view override returns (uint128) {
@@ -282,7 +282,7 @@ contract ConstantProductPool is
     }
 
     function quoteInGivenOut(
-        QuoteRequestGivenOut calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint128 currentBalanceTokenIn,
         uint128 currentBalanceTokenOut
     ) external view override returns (uint128) {
