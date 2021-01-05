@@ -110,6 +110,7 @@ contract ConstantProductMath {
         uint256 swapFee
     ) internal pure returns (uint256) {
         // First loop to calculate the weighted balance ratio
+        // The increment `amountIn` represents for each token, as a quotient of new and current balances, not accounting swap fees
         uint256[] memory tokenBalanceRatiosBeforeFee = new uint256[](amountsIn.length);
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
