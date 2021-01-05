@@ -47,7 +47,7 @@ describe('InvestmentManager', function () {
     const tokenInitialBalance = BigNumber.from((200e18).toString());
 
     beforeEach(async () => {
-      const receipt = await (await vault.newPool(pool.address, poolType)).wait();
+      const receipt = await (await vault.connect(pool).registerPool(poolType)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       poolId = event.args.poolId;

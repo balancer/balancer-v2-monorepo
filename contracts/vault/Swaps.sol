@@ -299,16 +299,14 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         private
         returns (uint128 amountQuoted)
     {
-        (address strategy, StrategyType strategyType) = fromPoolId(request.poolId);
+        (address pool, PoolOptimization optimization) = fromPoolId(request.poolId);
 
-        if (strategyType == StrategyType.PAIR) {
-            amountQuoted = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(strategy), kind);
-        } else if (strategyType == StrategyType.TWO_TOKEN) {
-            amountQuoted = _processTwoTokenPoolQuoteRequest(request, IPairTradingStrategy(strategy), kind);
-        } else if (strategyType == StrategyType.TUPLE) {
-            amountQuoted = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(strategy), kind);
+        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            amountQuoted = _processPairTradingStrategyQuoteRequest(request, IPairTradingStrategy(pool), kind);
+        } else if (optimization == PoolOptimization.TWO_TOKEN) {
+            amountQuoted = _processTwoTokenPoolQuoteRequest(request, IPairTradingStrategy(pool), kind);
         } else {
-            revert("Unknown strategy type");
+            amountQuoted = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(pool), kind);
         }
     }
 
@@ -470,9 +468,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     ) external override withExistingPool(poolId) onlyPool(poolId) returns (uint128[] memory balances) {
         require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
 
-        (, StrategyType strategyType) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = fromPoolId(poolId);
 
-        if (strategyType == StrategyType.TWO_TOKEN) {
+        if (optimization == PoolOptimization.TWO_TOKEN) {
             require(tokens.length == 2, "Must interact with all tokens in two token pool");
 
             IERC20 tokenX = tokens[0];
@@ -486,7 +484,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
                 _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
 
-                if (strategyType == StrategyType.PAIR) {
+                if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
                     _decreasePairPoolCash(poolId, tokens[i], feeToCollect);
                 } else {
                     _decreaseTuplePoolCash(poolId, tokens[i], feeToCollect);
@@ -496,7 +494,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         balances = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
+            balances[i] = _getPoolTokenBalance(poolId, optimization, tokens[i]).total();
         }
 
         return balances;

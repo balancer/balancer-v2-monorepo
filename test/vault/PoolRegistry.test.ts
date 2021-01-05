@@ -40,7 +40,7 @@ describe('Vault - pool registry', () => {
 
   describe('pool creation', () => {
     it('anyone can create pools', async () => {
-      const receipt = await (await vault.connect(pool).newPool(pool.address, TupleTS)).wait();
+      const receipt = await (await vault.connect(pool).registerPool(TupleTS)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       const poolId = event.args.poolId;
@@ -48,13 +48,9 @@ describe('Vault - pool registry', () => {
       expect(poolId).to.not.be.undefined;
     });
 
-    it('the pool address must be non-zero', async () => {
-      await expect(vault.newPool(ZERO_ADDRESS, TupleTS)).to.be.revertedWith('Strategy must be set');
-    });
-
     it('pools require a valid pool type', async () => {
       // The existing pool types are pair, tuple, and two tokens (0, 1 and 2)
-      await expect(vault.newPool(pool.address, 3)).to.be.reverted;
+      await expect(vault.registerPool(3)).to.be.reverted;
     });
   });
 
@@ -62,7 +58,7 @@ describe('Vault - pool registry', () => {
     let poolId: string;
 
     beforeEach(async () => {
-      const receipt = await (await vault.newPool(pool.address, TupleTS)).wait();
+      const receipt = await (await vault.connect(pool).registerPool(TupleTS)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       poolId = event.args.poolId;
@@ -82,7 +78,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('new pool gets a different id', async () => {
-      const receipt = await (await vault.newPool(pool.address, TupleTS)).wait();
+      const receipt = await (await vault.registerPool(TupleTS)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       const otherPoolId = event.args.poolId;
@@ -199,7 +195,7 @@ function itManagesTokensCorrectly(strategyType: TradingStrategyType) {
   let poolId: string;
 
   beforeEach(async () => {
-    const receipt = await (await vault.newPool(pool.address, strategyType)).wait();
+    const receipt = await (await vault.connect(pool).registerPool(strategyType)).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     poolId = event.args.poolId;

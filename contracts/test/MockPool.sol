@@ -32,8 +32,8 @@ contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
 
     event UpdatedBalances(uint128[] balances);
 
-    constructor(IVault vault, IVault.StrategyType strategyType) {
-        _poolId = vault.newPool(address(this), strategyType);
+    constructor(IVault vault, IVault.PoolOptimization optimization) {
+        _poolId = vault.registerPool(optimization);
         _vault = vault;
     }
 

@@ -60,7 +60,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
     ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= 2, "ERR_MIN_TOKENS");
 
-        bytes32 poolId = vault.newPool(address(this), IVault.StrategyType.TUPLE);
+        bytes32 poolId = vault.registerPool(IVault.PoolOptimization.STANDARD);
 
         vault.addLiquidity(poolId, from, tokens, amounts, false);
 
