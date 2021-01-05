@@ -23,14 +23,14 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./UserBalance.sol";
 
 import "./balances/CashInvested.sol";
-import "./balances/TuplePoolsBalance.sol";
+import "./balances/StandardPoolsBalance.sol";
 import "./balances/PairPoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
 
 abstract contract PoolRegistry is
     ReentrancyGuard,
     UserBalance,
-    TuplePoolsBalance,
+    StandardPoolsBalance,
     PairPoolsBalance,
     TwoTokenPoolsBalance
 {
@@ -116,7 +116,7 @@ abstract contract PoolRegistry is
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             return _getTwoTokenPoolTokens(poolId);
         } else {
-            return _getTuplePoolTokens(poolId);
+            return _getStandardPoolTokens(poolId);
         }
     }
 
@@ -137,7 +137,7 @@ abstract contract PoolRegistry is
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             return _getTwoTokenPoolBalance(poolId, token);
         } else {
-            return _getTuplePoolBalance(poolId, token);
+            return _getStandardPoolBalance(poolId, token);
         }
     }
 
@@ -211,7 +211,7 @@ abstract contract PoolRegistry is
                 if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
                     _increasePairPoolCash(poolId, tokens[i], amounts[i]);
                 } else {
-                    _increaseTuplePoolCash(poolId, tokens[i], amounts[i]);
+                    _increaseStandardPoolCash(poolId, tokens[i], amounts[i]);
                 }
             }
         }
@@ -239,7 +239,7 @@ abstract contract PoolRegistry is
                 if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
                     _decreasePairPoolCash(poolId, tokens[i], amounts[i]);
                 } else {
-                    _decreaseTuplePoolCash(poolId, tokens[i], amounts[i]);
+                    _decreaseStandardPoolCash(poolId, tokens[i], amounts[i]);
                 }
             }
         }
@@ -283,7 +283,7 @@ abstract contract PoolRegistry is
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _isTwoTokenPoolInvested(poolId, token);
         } else {
-            return _isTuplePoolInvested(poolId, token);
+            return _isStandardPoolInvested(poolId, token);
         }
     }
 
@@ -329,7 +329,7 @@ abstract contract PoolRegistry is
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _investTwoTokenPoolCash(poolId, token, amount);
         } else {
-            _investTuplePoolCash(poolId, token, amount);
+            _investStandardPoolCash(poolId, token, amount);
         }
 
         token.safeTransfer(msg.sender, amount);
@@ -348,7 +348,7 @@ abstract contract PoolRegistry is
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _divestTwoTokenPoolCash(poolId, token, amount);
         } else {
-            _divestTuplePoolCash(poolId, token, amount);
+            _divestStandardPoolCash(poolId, token, amount);
         }
     }
 
@@ -363,7 +363,7 @@ abstract contract PoolRegistry is
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _setTwoTokenPoolInvestment(poolId, token, amount);
         } else {
-            _setTuplePoolInvestment(poolId, token, amount);
+            _setStandardPoolInvestment(poolId, token, amount);
         }
     }
 

@@ -23,15 +23,15 @@ import "../../math/FixedPoint.sol";
 
 import "./CashInvested.sol";
 
-contract TuplePoolsBalance {
+contract StandardPoolsBalance {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using CashInvested for bytes32;
 
-    // Data for Pools with Tuple Trading Strategies
+    // Data for Pools with Standard Pool Optimization setting
     //
-    // These Pools query the balance for *all* of their tokens in every swap. If we kept a mapping of token to balance
-    // plus a set (array) of tokens, it'd lead to very inefficient data accesses as we'd need to read the token
-    // addresses just to then do a lookup on the mapping.
+    // These Pools use the ITupleTradingStrategy interface, which means the Vault must query the balance for *all* of
+    // their tokens in every swap. If we kept a mapping of token to balance plus a set (array) of tokens, it'd be very
+    // gas intensive to read all token addresses just to then do a lookup on the balance mapping.
     // Instead, we use our customized EnumerableMap, which lets us read the N balances in N+1 storage accesses (one for
     // the number of tokens in the Pool), as well as access the index of any token in a single read (required for the
     // ITupleTradingStrategy call) and update an entry's value given its index.
@@ -39,17 +39,17 @@ contract TuplePoolsBalance {
     // always have a non-zero balance, so we don't need to check the map for token existence during a swap: the non-zero
     // balance check achieves this for less gas.
 
-    mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _poolTupleTokenBalance;
+    mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _standardPoolsBalances;
 
     /**
-     * @dev Returns an array with all the tokens in a Tuple Pool. This order may change when tokens are added to or
+     * @dev Returns an array with all the tokens in a Standard Pool. This order may change when tokens are added to or
      * removed from the Pool.
      */
-    function _getTuplePoolTokens(bytes32 poolId) internal view returns (IERC20[] memory) {
-        IERC20[] memory tokens = new IERC20[](_poolTupleTokenBalance[poolId].length());
+    function _getStandardPoolTokens(bytes32 poolId) internal view returns (IERC20[] memory) {
+        IERC20[] memory tokens = new IERC20[](_standardPoolsBalances[poolId].length());
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            (IERC20 token, ) = _poolTupleTokenBalance[poolId].at(i);
+            (IERC20 token, ) = _standardPoolsBalances[poolId].at(i);
             tokens[i] = token;
         }
 
@@ -57,18 +57,18 @@ contract TuplePoolsBalance {
     }
 
     /**
-     * @dev Returns the balance for a token in a Tuple Pool.
+     * @dev Returns the balance for a token in a Standard Pool.
      *
      * Requirements:
      *
      * - `token` must be in the Pool.
      */
-    function _getTuplePoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
-        return _poolTupleTokenBalance[poolId].get(token);
+    function _getStandardPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
+        return _standardPoolsBalances[poolId].get(token);
     }
 
     /**
-     * @dev Adds cash to a Tuple Pool for a given token. If the token was not previously in the Pool (if it didn't have
+     * @dev Adds cash to a Standard Pool for a given token. If the token was not previously in the Pool (if it didn't have
      * any funds for it), the token is then added to the Pool. After this function is called, 'token' will be in the
      * Pool.
      *
@@ -76,7 +76,7 @@ contract TuplePoolsBalance {
      *
      * - if `token` is not in the Pool, `amount` must be non-zero.
      */
-    function _increaseTuplePoolCash(
+    function _increaseStandardPoolCash(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
@@ -84,8 +84,8 @@ contract TuplePoolsBalance {
         bytes32 currentBalance;
 
         // Alternatively we could check for non-zero balance
-        if (_poolTupleTokenBalance[poolId].contains(token)) {
-            currentBalance = _poolTupleTokenBalance[poolId].get(token);
+        if (_standardPoolsBalances[poolId].contains(token)) {
+            currentBalance = _standardPoolsBalances[poolId].get(token);
         } else {
             // New token - it will be added to the map once 'set' is called
 
@@ -94,11 +94,11 @@ contract TuplePoolsBalance {
         }
 
         // amount is always non-zero, so we're never adding a zero-balance token to the map
-        _poolTupleTokenBalance[poolId].set(token, currentBalance.increaseCash(amount));
+        _standardPoolsBalances[poolId].set(token, currentBalance.increaseCash(amount));
     }
 
     /**
-     * @dev Removes cash from a Tuple Pool for a given token. If this fully drains the Pool's balance for that token
+     * @dev Removes cash from a Standard Pool for a given token. If this fully drains the Pool's balance for that token
      * (including invested balance), then the token is removed from the Pool.
      *
      * Requirements:
@@ -106,58 +106,58 @@ contract TuplePoolsBalance {
      * - `token` must be in the Pool.
      * - `amount` must be less or equal than the Pool's cash for that token.
      */
-    function _decreaseTuplePoolCash(
+    function _decreaseStandardPoolCash(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
         // Alternatively we could check for non-zero balance
-        require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+        require(_standardPoolsBalances[poolId].contains(token), "Token not in pool");
 
-        bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
+        bytes32 currentBalance = _standardPoolsBalances[poolId].get(token);
         bytes32 newBalance = currentBalance.decreaseCash(amount);
 
         if (newBalance.total() == 0) {
-            _poolTupleTokenBalance[poolId].remove(token);
+            _standardPoolsBalances[poolId].remove(token);
         } else {
-            _poolTupleTokenBalance[poolId].set(token, newBalance);
+            _standardPoolsBalances[poolId].set(token, newBalance);
         }
     }
 
-    function _investTuplePoolCash(
+    function _investStandardPoolCash(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+        require(_standardPoolsBalances[poolId].contains(token), "Token not in pool");
 
-        bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
-        _poolTupleTokenBalance[poolId].set(token, currentBalance.cashToInvested(amount));
+        bytes32 currentBalance = _standardPoolsBalances[poolId].get(token);
+        _standardPoolsBalances[poolId].set(token, currentBalance.cashToInvested(amount));
     }
 
-    function _divestTuplePoolCash(
+    function _divestStandardPoolCash(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+        require(_standardPoolsBalances[poolId].contains(token), "Token not in pool");
 
-        bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
-        _poolTupleTokenBalance[poolId].set(token, currentBalance.investedToCash(amount));
+        bytes32 currentBalance = _standardPoolsBalances[poolId].get(token);
+        _standardPoolsBalances[poolId].set(token, currentBalance.investedToCash(amount));
     }
 
-    function _setTuplePoolInvestment(
+    function _setStandardPoolInvestment(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        require(_poolTupleTokenBalance[poolId].contains(token), "Token not in pool");
+        require(_standardPoolsBalances[poolId].contains(token), "Token not in pool");
 
-        bytes32 currentBalance = _poolTupleTokenBalance[poolId].get(token);
-        _poolTupleTokenBalance[poolId].set(token, currentBalance.setInvested(amount));
+        bytes32 currentBalance = _standardPoolsBalances[poolId].get(token);
+        _standardPoolsBalances[poolId].set(token, currentBalance.setInvested(amount));
     }
 
-    function _isTuplePoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        return _poolTupleTokenBalance[poolId].get(token).isInvested();
+    function _isStandardPoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        return _standardPoolsBalances[poolId].get(token).isInvested();
     }
 }

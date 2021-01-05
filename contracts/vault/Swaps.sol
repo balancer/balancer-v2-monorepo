@@ -306,7 +306,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             amountQuoted = _processTwoTokenPoolQuoteRequest(request, IPairTradingStrategy(pool), kind);
         } else {
-            amountQuoted = _processTupleTradingStrategyQuoteRequest(request, ITupleTradingStrategy(pool), kind);
+            amountQuoted = _processStandardPoolQuoteRequest(request, ITupleTradingStrategy(pool), kind);
         }
     }
 
@@ -415,21 +415,21 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         _poolPairTokenBalance[request.poolId][request.tokenOut] = tokenOutBalance;
     }
 
-    function _processTupleTradingStrategyQuoteRequest(
+    function _processStandardPoolQuoteRequest(
         QuoteRequestInternal memory request,
-        ITupleTradingStrategy strategy,
+        ITupleTradingStrategy pool,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
-        uint256 indexIn = _poolTupleTokenBalance[request.poolId].indexOf(request.tokenIn);
-        uint256 indexOut = _poolTupleTokenBalance[request.poolId].indexOf(request.tokenOut);
+        uint256 indexIn = _standardPoolsBalances[request.poolId].indexOf(request.tokenIn);
+        uint256 indexOut = _standardPoolsBalances[request.poolId].indexOf(request.tokenOut);
 
-        uint128[] memory currentBalances = new uint128[](_poolTupleTokenBalance[request.poolId].length());
+        uint128[] memory currentBalances = new uint128[](_standardPoolsBalances[request.poolId].length());
 
         for (uint256 i = 0; i < currentBalances.length; i++) {
-            bytes32 balance = _poolTupleTokenBalance[request.poolId].unchecked_valueAt(i);
+            bytes32 balance = _standardPoolsBalances[request.poolId].unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
 
@@ -441,13 +441,13 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         if (kind == SwapKind.GIVEN_IN) {
-            uint128 amountOut = strategy.quoteOutGivenIn(_toQuoteGivenIn(request), currentBalances, indexIn, indexOut);
+            uint128 amountOut = pool.quoteOutGivenIn(_toQuoteGivenIn(request), currentBalances, indexIn, indexOut);
 
             amountQuoted = amountOut;
             tokenInBalance = tokenInBalance.increaseCash(request.amount);
             tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
         } else {
-            uint128 amountIn = strategy.quoteInGivenOut(_toQuoteGivenOut(request), currentBalances, indexIn, indexOut);
+            uint128 amountIn = pool.quoteInGivenOut(_toQuoteGivenOut(request), currentBalances, indexIn, indexOut);
 
             amountQuoted = amountIn;
             tokenInBalance = tokenInBalance.increaseCash(amountIn);
@@ -456,8 +456,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         require(tokenOutBalance.total() > 0, "Fully draining token out");
 
-        _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexIn, tokenInBalance);
-        _poolTupleTokenBalance[request.poolId].unchecked_setAt(indexOut, tokenOutBalance);
+        _standardPoolsBalances[request.poolId].unchecked_setAt(indexIn, tokenInBalance);
+        _standardPoolsBalances[request.poolId].unchecked_setAt(indexOut, tokenOutBalance);
     }
 
     //Pay swap protocol fees
@@ -487,7 +487,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
                     _decreasePairPoolCash(poolId, tokens[i], feeToCollect);
                 } else {
-                    _decreaseTuplePoolCash(poolId, tokens[i], feeToCollect);
+                    _decreaseStandardPoolCash(poolId, tokens[i], feeToCollect);
                 }
             }
         }
