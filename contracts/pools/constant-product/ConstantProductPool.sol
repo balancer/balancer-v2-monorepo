@@ -431,7 +431,7 @@ contract ConstantProductPool is
 
     function _getPoolTokenBalances() internal view returns (IERC20[] memory tokens, uint128[] memory balances) {
         tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
+        require(tokens.length == _totalTokens, "Unexpected number of tokens");
 
         balances = _vault.getPoolTokenBalances(_poolId, tokens);
         bool someLiquidity = true;
