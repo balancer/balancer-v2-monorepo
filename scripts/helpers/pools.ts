@@ -3,11 +3,11 @@ import { Contract, ContractReceipt } from 'ethers';
 import { ethers } from 'hardhat';
 import { deploy } from './deploy';
 
-export const PairTS = 0;
-export const TupleTS = 1;
-export const TwoTokenTS = 2;
+export const StandardPool = 0;
+export const SimplifiedQuotePool = 1;
+export const TwoTokenPool = 2;
 
-export type TradingStrategyType = typeof PairTS | typeof TupleTS | typeof TwoTokenTS;
+export type PoolOptimizationSetting = typeof SimplifiedQuotePool | typeof StandardPool | typeof TwoTokenPool;
 export type PoolName = 'ConstantProductPool' | 'StablecoinPool';
 
 /**
@@ -28,12 +28,17 @@ export async function deployPoolFromFactory(
   const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
   // We could reuse this factory if we saved it accross tokenizer deployments
 
+  const name = 'Balancer Pool Token';
+  const symbol = 'BPT';
+
   // Authorize factory so that created pool are universal agents
   await vault.connect(admin).addUniversalAgentManager(factory.address);
 
   const salt = ethers.utils.id(Math.random().toString());
 
-  const receipt: ContractReceipt = await (await factory.connect(args.from).create(...args.parameters, salt)).wait();
+  const receipt: ContractReceipt = await (
+    await factory.connect(args.from).create(name, symbol, ...args.parameters, salt)
+  ).wait();
 
   const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {

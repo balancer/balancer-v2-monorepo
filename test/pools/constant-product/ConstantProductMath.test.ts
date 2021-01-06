@@ -23,7 +23,7 @@ async function compareOutGivenIn(
     tokenAmountIn
   );
   //TODO: work math for this to always happen?
-  //Amount out calcuated by strategy  must be never greater than exact math
+  //Amount out calcuated by pool must be never greater than exact math
   // expect(
   //   outAmountMath.greaterThanOrEqualTo(outAmountPool.toString()),
   //   'Calculated amount out must be less or equal than exact'
@@ -42,7 +42,7 @@ async function compareInGivenOut(
   tokenAmountOut: string | number
 ) {
   const inAmountMath = calcInGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut);
-  const inAmountStrategy = await mock.inGivenOut(
+  const inAmountPool = await mock.inGivenOut(
     tokenBalanceIn,
     tokenWeightIn,
     tokenBalanceOut,
@@ -51,14 +51,14 @@ async function compareInGivenOut(
   );
 
   //TODO: work math for this to always happen?
-  //Amount in calcuated by strategy must be never lower than exact math
+  //Amount in calcuated by pool must be never lower than exact math
   // expect(
-  //   inAmountMath.lessThanOrEqualTo(inAmountStrategy.toString()),
+  //   inAmountMath.lessThanOrEqualTo(inAmountPool.toString()),
   //  'Calculated amount in must be greater or equal than exact'
   // ).to.be.true;
 
   //Relative error must be less that the max accepted
-  expectRelativeError(inAmountMath, new Decimal(inAmountStrategy.toString()), new Decimal(MAX_RELATIVE_ERROR));
+  expectRelativeError(inAmountMath, new Decimal(inAmountPool.toString()), new Decimal(MAX_RELATIVE_ERROR));
 }
 
 describe('ConstantProductMath', function () {
