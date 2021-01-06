@@ -191,7 +191,7 @@ describe('Vault - pool registry', () => {
               });
 
               it('reverts', async () => {
-                const error = 'ERR_TOKEN_ALREADY_REGISTERED';
+                const error = optimization == TwoTokenPool ? 'ERR_TOKENS_ALREADY_SET' : 'ERR_TOKEN_ALREADY_REGISTERED';
                 await expect(vault.registerTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
               });
             });

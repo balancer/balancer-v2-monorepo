@@ -443,7 +443,10 @@ describe('StablecoinPool', function () {
         await pool.connect(creator).exitPool(initialBPT, [0, 0], true, creator.address);
 
         expect(await pool.totalSupply()).to.equal(0);
+
+        // The tokens are not unregistered from the Pool
         expect(await vault.getPoolTokens(poolId)).not.to.be.empty;
+        expect(await vault.getPoolTokens(poolId)).to.have.members(poolTokens);
       });
 
       it('drained pools cannot be rejoined', async () => {

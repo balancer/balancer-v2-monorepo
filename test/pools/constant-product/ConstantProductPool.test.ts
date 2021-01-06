@@ -497,7 +497,10 @@ describe('ConstantProductPool', function () {
         await pool.connect(creator).exitPool(initialBPT, [0, 0], true, creator.address);
 
         expect(await pool.totalSupply()).to.equal(0);
+
+        // The tokens are not unregistered from the Pool
         expect(await vault.getPoolTokens(poolId)).to.not.be.empty;
+        expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address, tokens.MKR.address]);
       });
 
       it('drained pools cannot be rejoined', async () => {

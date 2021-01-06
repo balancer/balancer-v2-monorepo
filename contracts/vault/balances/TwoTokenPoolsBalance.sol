@@ -180,7 +180,7 @@ contract TwoTokenPoolsBalance {
         require(tokenX != IERC20(0) && tokenY != IERC20(0), "ERR_TOKEN_IS_ZERO");
 
         TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "ERR_TOKEN_ALREADY_REGISTERED");
+        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "ERR_TOKENS_ALREADY_SET");
 
         (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
         _poolTwoTokenTokens[poolId] = TwoTokenTokens({ tokenA: tokenA, tokenB: tokenB });
@@ -204,6 +204,7 @@ contract TwoTokenPoolsBalance {
         require(tokenABalance.isZero() && tokenBBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
 
         delete _poolTwoTokenTokens[poolId];
+        // No need to delete the balance entries, since they already are zero
     }
 
     /**

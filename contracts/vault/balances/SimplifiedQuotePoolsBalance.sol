@@ -82,8 +82,8 @@ contract SimplifiedQuotePoolsBalance {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             require(token != IERC20(0), "ERR_TOKEN_IS_ZERO");
-            require(!poolTokens.contains(address(token)), "ERR_TOKEN_ALREADY_REGISTERED");
-            poolTokens.add(address(token));
+            bool added = poolTokens.add(address(token));
+            require(added, "ERR_TOKEN_ALREADY_REGISTERED");
         }
     }
 
@@ -100,9 +100,10 @@ contract SimplifiedQuotePoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            _ensureSimplifiedQuotePoolRegisteredToken(poolTokens, token);
             require(_simplifiedQuotePoolsBalances[poolId][token].isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
-            poolTokens.remove(address(token));
+            bool removed = poolTokens.remove(address(token));
+            require(removed, "ERR_TOKEN_NOT_REGISTERED");
+            // No need to delete the balance entries, since they already are zero
         }
     }
 
@@ -191,15 +192,8 @@ contract SimplifiedQuotePoolsBalance {
         function(bytes32, uint128) pure returns (bytes32) mutation,
         uint128 amount
     ) internal {
-        _ensureSimplifiedQuotePoolRegisteredToken(poolTokens, token);
+        require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
         bytes32 currentBalance = _simplifiedQuotePoolsBalances[poolId][token];
         _simplifiedQuotePoolsBalances[poolId][token] = mutation(currentBalance, amount);
-    }
-
-    function _ensureSimplifiedQuotePoolRegisteredToken(EnumerableSet.AddressSet storage poolTokens, IERC20 token)
-        internal
-        view
-    {
-        require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
     }
 }
