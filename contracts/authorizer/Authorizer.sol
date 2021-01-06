@@ -38,8 +38,8 @@ contract Authorizer is IAuthorizer, AccessControl {
     bytes32 public immutable ADD_UNIVERSAL_AGENT_ROLE = keccak256("ADD_UNIVERSAL_AGENT_ROLE");
     bytes32 public immutable REMOVE_UNIVERSAL_AGENT_ROLE = keccak256("REMOVE_UNIVERSAL_AGENT_ROLE");
 
-    constructor() {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    constructor(address admin) {
+        _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
     function canChangeAuthorizer(address account) external view override returns (bool) {
