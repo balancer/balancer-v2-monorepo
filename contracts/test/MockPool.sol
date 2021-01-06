@@ -18,12 +18,12 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IPairTradingStrategy.sol";
-import "../vault/interfaces/ITupleTradingStrategy.sol";
+import "../vault/interfaces/IPoolQuote.sol";
+import "../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../math/FixedPoint.sol";
 
-contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
+contract MockPool is IPoolQuote, IPoolQuoteSimplified {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -32,8 +32,8 @@ contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
 
     event UpdatedBalances(uint128[] balances);
 
-    constructor(IVault vault, IVault.StrategyType strategyType) {
-        _poolId = vault.newPool(address(this), strategyType);
+    constructor(IVault vault, IVault.PoolOptimization optimization) {
+        _poolId = vault.registerPool(optimization);
         _vault = vault;
     }
 
@@ -69,39 +69,39 @@ contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
         _multiplier = newMultiplier;
     }
 
-    // IPairTradingStrategy
+    // IPoolQuote
     function quoteOutGivenIn(
-        ITradingStrategy.QuoteRequestGivenIn calldata request,
-        uint128,
-        uint128
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+        uint128[] calldata,
+        uint256,
+        uint256
     ) external view override returns (uint128) {
         return request.amountIn.mul128(_multiplier);
     }
 
     function quoteInGivenOut(
-        ITradingStrategy.QuoteRequestGivenOut calldata request,
-        uint128,
-        uint128
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+        uint128[] calldata,
+        uint256,
+        uint256
     ) external view override returns (uint128) {
         uint128 amountIn = request.amountOut.div128(_multiplier);
         return amountIn;
     }
 
-    // ITupleTradingStrategy
+    // IPoolQuoteSimplified
     function quoteOutGivenIn(
-        ITradingStrategy.QuoteRequestGivenIn calldata request,
-        uint128[] calldata,
-        uint256,
-        uint256
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+        uint128,
+        uint128
     ) external view override returns (uint128) {
         return request.amountIn.mul128(_multiplier);
     }
 
     function quoteInGivenOut(
-        ITradingStrategy.QuoteRequestGivenOut calldata request,
-        uint128[] calldata,
-        uint256,
-        uint256
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+        uint128,
+        uint128
     ) external view override returns (uint128) {
         uint128 amountIn = request.amountOut.div128(_multiplier);
         return amountIn;

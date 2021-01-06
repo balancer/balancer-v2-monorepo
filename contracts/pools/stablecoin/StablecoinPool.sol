@@ -21,16 +21,16 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../BToken.sol";
+import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
 
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/ITupleTradingStrategy.sol";
+import "../../vault/interfaces/IPoolQuote.sol";
 import "../../math/FixedPoint.sol";
 
 import "./StablecoinMath.sol";
 
-contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BToken, ReentrancyGuard {
+contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint128;
     using FixedPoint for uint256;
     using SafeCast for uint256;
@@ -49,24 +49,25 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     constructor(
         IVault vault,
+        string memory name,
+        string memory symbol,
         uint256 initialBPT,
         IERC20[] memory tokens,
         uint128[] memory amounts,
         address from,
         uint128 amp,
         uint128 swapFee
-    ) {
+    ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= 2, "ERR_MIN_TOKENS");
 
-        bytes32 poolId = vault.newPool(address(this), IVault.StrategyType.TUPLE);
+        bytes32 poolId = vault.registerPool(IVault.PoolOptimization.STANDARD);
 
         vault.registerTokens(poolId, tokens);
         vault.addLiquidity(poolId, from, tokens, amounts, false);
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
 
-        _mintPoolShare(initialBPT);
-        _pushPoolShare(from, initialBPT);
+        _mintPoolTokens(from, initialBPT);
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
@@ -103,7 +104,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     //Quote Swaps
 
     function quoteOutGivenIn(
-        QuoteRequestGivenIn calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
@@ -114,7 +115,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     }
 
     function quoteInGivenOut(
-        QuoteRequestGivenOut calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint128[] memory balances,
         uint256 indexIn,
         uint256 indexOut
@@ -181,8 +182,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         //Reset swap fees counter
         _resetAccumulatedSwapFees(_amp, balances);
 
-        _mintPoolShare(poolAmountOut);
-        _pushPoolShare(beneficiary, poolAmountOut);
+        _mintPoolTokens(beneficiary, poolAmountOut);
     }
 
     function exitPool(
@@ -210,8 +210,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         //Reset swap fees counter
         _resetAccumulatedSwapFees(_amp, balances);
 
-        _pullPoolShare(msg.sender, poolAmountIn);
-        _burnPoolShare(poolAmountIn);
+        _burnPoolTokens(msg.sender, poolAmountIn);
     }
 
     function _getSupplyRatio(uint256 amount) internal view returns (uint128) {
@@ -230,24 +229,6 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     function _subtractSwapFee(uint128 amount) internal view returns (uint128) {
         uint128 fees = amount.mul128(_swapFee);
         return amount.sub128(fees);
-    }
-
-    // Move to BalancerPoolToken (BToken)
-
-    function _pullPoolShare(address from, uint256 amount) internal {
-        _pull(from, amount);
-    }
-
-    function _pushPoolShare(address to, uint256 amount) internal {
-        _push(to, amount);
-    }
-
-    function _mintPoolShare(uint256 amount) internal {
-        _mint(amount);
-    }
-
-    function _burnPoolShare(uint256 amount) internal {
-        _burn(amount);
     }
 
     function _getPoolTokenBalances(IERC20[] memory tokens) internal view returns (uint128[] memory balances) {

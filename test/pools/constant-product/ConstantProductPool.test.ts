@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../../../scripts/helpers/deploy';
-import { deployPoolFromFactory, PairTS } from '../../../scripts/helpers/pools';
+import { deployPoolFromFactory, SimplifiedQuotePool } from '../../../scripts/helpers/pools';
 import { deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { expectBalanceChange } from '../../helpers/tokenBalance';
@@ -21,6 +21,7 @@ describe('ConstantProductPool', function () {
   let tokens: TokenList = {};
 
   const initialBPT = (90e18).toString();
+
   let poolTokens: string[];
   let poolInitialBalances: BigNumber[];
   let poolWeights: BigNumber[];
@@ -66,7 +67,7 @@ describe('ConstantProductPool', function () {
       expect(await pool.getVault()).to.equal(vault.address);
 
       const poolId = await pool.getPoolId();
-      expect(await vault.getPool(poolId)).to.have.members([pool.address, PairTS]);
+      expect(await vault.getPool(poolId)).to.have.members([pool.address, SimplifiedQuotePool]);
     });
 
     it('grants initial BPT to the pool creator', async () => {
@@ -211,6 +212,24 @@ describe('ConstantProductPool', function () {
           parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, toFixedPoint(0.1).add(1)],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
+    });
+
+    it('sets the name', async () => {
+      const pool = await callDeployPool();
+
+      expect(await pool.name()).to.equal('Balancer Pool Token');
+    });
+
+    it('sets the symbol', async () => {
+      const pool = await callDeployPool();
+
+      expect(await pool.symbol()).to.equal('BPT');
+    });
+
+    it('sets the decimals', async () => {
+      const pool = await callDeployPool();
+
+      expect(await pool.decimals()).to.equal(18);
     });
   });
 
@@ -483,7 +502,6 @@ describe('ConstantProductPool', function () {
 
       it('drained pools cannot be rejoined', async () => {
         await pool.connect(creator).exitPool(initialBPT, [0, 0], true, creator.address);
-        //await strategy.setAccSwapFees([]); //Need to reset swap fees accumulated because there are no more tokens
 
         await expect(
           pool.connect(lp).joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], true, lp.address)
