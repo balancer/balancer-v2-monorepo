@@ -10,7 +10,9 @@ import { pick } from 'lodash';
 
 export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH'];
 
-export async function setupEnvironment(): Promise<{
+export async function setupEnvironment(
+  userBalanceDepositAmount = 1
+): Promise<{
   vault: Contract;
   validator: Contract;
   tokens: TokenList;
@@ -32,8 +34,12 @@ export async function setupEnvironment(): Promise<{
     await mintTokens(tokens, symbol, trader, 200e18);
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
-    // deposit user balance for trader to make it non-zero
-    await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), trader.address);
+    // deposit user balance for trader
+    if (userBalanceDepositAmount > 0) {
+      const amount = (userBalanceDepositAmount * 1e18).toString();
+
+      await vault.connect(trader).deposit(tokens[symbol].address, amount, trader.address);
+    }
   }
 
   return { vault, validator, tokens, trader };
