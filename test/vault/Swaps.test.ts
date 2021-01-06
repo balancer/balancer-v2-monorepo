@@ -223,7 +223,7 @@ describe('Vault - swaps', () => {
                 context('when draining the pool', () => {
                   const swaps = [{ in: 1, out: 0, amount: 50e18 }];
 
-                  assertSwapGivenInReverts({ swaps }, 'Fully draining token out');
+                  assertSwapGivenIn({ swaps }, { DAI: 100e18, MKR: -50e18 });
                 });
 
                 context('when requesting more than the available balance', () => {
@@ -553,7 +553,7 @@ describe('Vault - swaps', () => {
                 context('when draining the pool', () => {
                   const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                  assertSwapGivenOutReverts({ swaps }, 'Fully draining token out');
+                  assertSwapGivenOut({ swaps }, { DAI: 100e18, MKR: -50e18 });
                 });
 
                 context('when requesting more than the available balance', () => {

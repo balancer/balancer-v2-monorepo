@@ -357,8 +357,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountIn;
         }
 
-        require(tokenOutBalance.total() > 0, "Fully draining token out");
-
         bytes32 newSharedCash;
         if (request.tokenIn < request.tokenOut) {
             // in is A, out is B
@@ -402,7 +400,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountIn;
         }
 
-        require(tokenOutBalance.total() > 0, "Fully draining token out");
         _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn] = tokenInBalance;
         _simplifiedQuotePoolsBalances[request.poolId][request.tokenOut] = tokenOutBalance;
     }
@@ -449,8 +446,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenInBalance = tokenInBalance.increaseCash(amountIn);
             tokenOutBalance = tokenOutBalance.decreaseCash(request.amount.toUint128());
         }
-
-        require(tokenOutBalance.total() > 0, "Fully draining token out");
 
         _standardPoolsBalances[request.poolId].unchecked_setAt(indexIn, tokenInBalance);
         _standardPoolsBalances[request.poolId].unchecked_setAt(indexOut, tokenOutBalance);
