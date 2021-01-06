@@ -41,6 +41,14 @@ contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
         return _poolId;
     }
 
+    function registerTokens(IERC20[] memory tokens) external {
+        _vault.registerTokens(_poolId, tokens);
+    }
+
+    function unregisterTokens(IERC20[] memory tokens) external {
+        _vault.unregisterTokens(_poolId, tokens);
+    }
+
     function addLiquidity(IERC20[] memory tokens, uint128[] memory amounts) external {
         _vault.addLiquidity(_poolId, msg.sender, tokens, amounts, false);
     }

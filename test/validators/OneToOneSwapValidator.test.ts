@@ -55,6 +55,9 @@ describe('OneToOneSwapValidator', () => {
       });
 
       await vault.connect(lp).addUserAgent(pool.address);
+
+      await pool.connect(lp).registerTokens([tokens.DAI.address, tokens.MKR.address, tokens.SNX.address]);
+
       await pool
         .connect(lp)
         .addLiquidity(

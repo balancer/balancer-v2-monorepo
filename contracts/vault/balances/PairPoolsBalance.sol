@@ -60,15 +60,21 @@ contract PairPoolsBalance {
      *
      * - `token` must be in the Pool.
      */
-    function _getPairPoolTokenBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
+    function _getPairPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         bytes32 balance = _poolPairTokenBalance[poolId][token];
+        // TODO: is it necessary?
         // require(balance.total() > 0, "Token not in pool");
 
         return balance;
     }
 
     /**
-     * TODO
+     * @dev Registers a list of tokens in a Pair Pool.
+     *
+     * Requirements:
+     *
+     * - Each token must not be the zero address.
+     * - Each token must not be registered in the Pool.
      */
     function _registerPairTokenPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableSet.AddressSet storage poolTokens = _poolPairTokens[poolId];
@@ -82,73 +88,61 @@ contract PairPoolsBalance {
     }
 
     /**
-     * TODO
+     * @dev Unregisters a list of tokens in a Pair Pool.
+     *
+     * Requirements:
+     *
+     * - Each token must be registered in the Pool.
+     * - Each token must have non balance in the Vault.
      */
     function _unregisterPairTokenPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableSet.AddressSet storage poolTokens = _poolPairTokens[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
+            _ensurePairPoolRegisteredToken(poolTokens, token);
             require(_poolPairTokenBalance[poolId][token].isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
             poolTokens.remove(address(token));
         }
     }
 
     /**
-     * @dev Adds cash to a Pair Pool for a given token. If the token was not previously in the Pool (if it didn't have
-     * any funds for it), the token is then added to the Pool. After this function is called, 'token' will be in the
-     * Pool.
+     * @dev Adds cash to a Pair Pool for a list of tokens.
      *
      * Requirements:
      *
-     * - if `token` is not in the Pool, `amount` must be non-zero.
+     * - Each token must be registered in the pool
+     * - Amounts can be zero
      */
     function _increasePairPoolCash(
         bytes32 poolId,
-        IERC20 token,
-        uint128 amount
+        IERC20[] memory tokens,
+        uint128[] memory amounts
     ) internal {
-        bytes32 currentBalance;
+        EnumerableSet.AddressSet storage poolTokens = _poolPairTokens[poolId];
 
-        // Alternatively we could check for non-zero balance
-        if (_poolPairTokens[poolId].contains(address(token))) {
-            currentBalance = _poolPairTokenBalance[poolId][token];
-        } else {
-            // New token - we add it to the set
-            _poolPairTokens[poolId].add(address(token));
-
-            require(amount > 0, "New token amount is zero");
-            currentBalance = CashInvested.toBalance(0, 0);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            _updatePairPoolTokenBalance(poolTokens, poolId, tokens[i], CashInvested.increaseCash, amounts[i]);
         }
-
-        _poolPairTokenBalance[poolId][token] = currentBalance.increaseCash(amount);
     }
 
     /**
-     * @dev Removes cash from a Pair Pool for a given token. If this fully drains the Pool's balance for that token
-     * (including invested balance), then the token is removed from the Pool.
+     * @dev Removes cash from a Pair Pool for a list of tokens.
      *
      * Requirements:
      *
-     * - `token` must be in the Pool.
-     * - `amount` must be less or equal than the Pool's cash for that token.
+     * - Each token must be registered in the Pool.
+     * - Each amount must be less or equal than the Pool's cash for that token.
      */
     function _decreasePairPoolCash(
         bytes32 poolId,
-        IERC20 token,
-        uint128 amount
+        IERC20[] memory tokens,
+        uint128[] memory amounts
     ) internal {
-        // Alternatively we could check for non-zero balance
-        require(_poolPairTokens[poolId].contains(address(token)), "Token not in pool");
+        EnumerableSet.AddressSet storage poolTokens = _poolPairTokens[poolId];
 
-        bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
-        bytes32 newBalance = currentBalance.decreaseCash(amount);
-
-        _poolPairTokenBalance[poolId][token] = newBalance;
-
-        if (newBalance.total() == 0) {
-            _poolPairTokens[poolId].remove(address(token));
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            _updatePairPoolTokenBalance(poolTokens, poolId, tokens[i], CashInvested.decreaseCash, amounts[i]);
         }
     }
 
@@ -157,9 +151,7 @@ contract PairPoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
-        bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
-        require(currentBalance.total() > 0, "Token not in pool");
-        _poolPairTokenBalance[poolId][token] = currentBalance.cashToInvested(amount);
+        _updatePairPoolTokenBalance(poolId, token, CashInvested.cashToInvested, amount);
     }
 
     function _divestPairPoolCash(
@@ -167,9 +159,7 @@ contract PairPoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
-        bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
-        require(currentBalance.total() > 0, "Token not in pool");
-        _poolPairTokenBalance[poolId][token] = currentBalance.investedToCash(amount);
+        _updatePairPoolTokenBalance(poolId, token, CashInvested.investedToCash, amount);
     }
 
     function _setPairPoolInvestment(
@@ -177,12 +167,36 @@ contract PairPoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
-        bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
-        require(currentBalance.total() > 0, "Token not in pool");
-        _poolPairTokenBalance[poolId][token] = currentBalance.setInvested(amount);
+        _updatePairPoolTokenBalance(poolId, token, CashInvested.setInvested, amount);
     }
 
     function _isPairPoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
         return _poolPairTokenBalance[poolId][token].isInvested();
+    }
+
+    function _updatePairPoolTokenBalance(
+        bytes32 poolId,
+        IERC20 token,
+        function(bytes32, uint128) pure returns (bytes32) mutation,
+        uint128 amount
+    ) internal {
+        EnumerableSet.AddressSet storage poolTokens = _poolPairTokens[poolId];
+        _updatePairPoolTokenBalance(poolTokens, poolId, token, mutation, amount);
+    }
+
+    function _updatePairPoolTokenBalance(
+        EnumerableSet.AddressSet storage poolTokens,
+        bytes32 poolId,
+        IERC20 token,
+        function(bytes32, uint128) pure returns (bytes32) mutation,
+        uint128 amount
+    ) internal {
+        _ensurePairPoolRegisteredToken(poolTokens, token);
+        bytes32 currentBalance = _poolPairTokenBalance[poolId][token];
+        _poolPairTokenBalance[poolId][token] = mutation(currentBalance, amount);
+    }
+
+    function _ensurePairPoolRegisteredToken(EnumerableSet.AddressSet storage poolTokens, IERC20 token) internal view {
+        require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
     }
 }

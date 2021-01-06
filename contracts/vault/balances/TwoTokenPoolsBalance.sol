@@ -124,7 +124,7 @@ contract TwoTokenPoolsBalance {
         } else if (token == poolTokens.tokenB) {
             return tokenBBalance;
         } else {
-            revert("Token not in pool");
+            revert("ERR_TOKEN_NOT_REGISTERED");
         }
     }
 
@@ -163,7 +163,13 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * TODO
+     * @dev Registers the tokens of a Two Token Pool.
+     *
+     * Requirements:
+     *
+     * - `tokenX` and `tokenY` cannot be the same.
+     * - Both tokens must not be the zero address.
+     * - Both tokens must not be registered in the Pool.
      */
     function _registerTwoTokenPoolTokens(
         bytes32 poolId,
@@ -181,17 +187,19 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * TODO
+     * @dev Unregisters the tokens of a Two Token Pool.
+     *
+     * Requirements:
+     *
+     * - `tokenX` and `tokenY` must be the Pool's tokens.
+     * - Both tokens must have non balance in the Vault.
      */
     function _unregisterTwoTokenPoolTokens(
         bytes32 poolId,
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-        require((tokenX == poolTokens.tokenA) || (tokenX == poolTokens.tokenB), "ERR_TOKEN_NOT_REGISTERED");
-        require((tokenY == poolTokens.tokenA) || (tokenY == poolTokens.tokenB), "ERR_TOKEN_NOT_REGISTERED");
-
+        _ensureTwoTokenPoolRegisteredTokens(poolId, tokenX, tokenY);
         (bytes32 tokenABalance, bytes32 tokenBBalance, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
         require(tokenABalance.isZero() && tokenBBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
 
@@ -199,14 +207,11 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * @dev Adds cash to a Two Token Pool for two tokens. If the Pool didn't originally have tokens, they are added to
-     * it.
+     * @dev Adds cash to a Two Token Pool.
      *
      * Requirements:
      *
-     * - `tokenX` and `tokenY` must not be the same.
-     * - if the Pool has no tokens, `amountX` and `amountY` must be non-zero.
-     * - if the Pool already has two tokens, `tokenX` and `tokenY` must be those tokens.
+     * - `tokenX` and `tokenY` must be the Pool's tokens.
      */
     function _increaseTwoTokenPoolCash(
         bytes32 poolId,
@@ -215,21 +220,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        require(tokenX != tokenY, "Tokens are the same");
-
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-
-        if (poolTokens.tokenA != IERC20(0) || poolTokens.tokenB != IERC20(0)) {
-            // Pool is already initialized - check the tokens are the same
-            require((tokenX == poolTokens.tokenA) || (tokenX == poolTokens.tokenB), "Adding to token not in pool");
-            require((tokenY == poolTokens.tokenA) || (tokenY == poolTokens.tokenB), "Adding to token not in pool");
-        } else {
-            // Initialize pool
-            require(amountX != 0 && amountY != 0, "New token amount is zero");
-
-            (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
-            _poolTwoTokenTokens[poolId] = TwoTokenTokens({ tokenA: tokenA, tokenB: tokenB });
-        }
+        _ensureTwoTokenPoolRegisteredTokens(poolId, tokenX, tokenY);
 
         (
             bytes32 tokenABalance,
@@ -248,13 +239,11 @@ contract TwoTokenPoolsBalance {
         }
 
         poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-        // We don't need to write to the sharedInvested entry, since it is already initialized with zeroes
+        // We don't need to write to the sharedInvested entry
     }
 
     /**
-     * @dev Removes cash from a Two Token Pool for its two tokens. If this fully drains the Pool's balance for both
-     * tokens (including invested balance), then they are removed from the Pool. A single token cannot be removed from
-     * the pool.
+     * @dev Removes cash from a Two Token Pool.
      *
      * Requirements:
      *
@@ -268,11 +257,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-
-        (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
-        require(poolTokens.tokenA == tokenA, "Token not in pool");
-        require(poolTokens.tokenB == tokenB, "Token not in pool");
+        _ensureTwoTokenPoolRegisteredTokens(poolId, tokenX, tokenY);
 
         (
             bytes32 tokenABalance,
@@ -291,13 +276,7 @@ contract TwoTokenPoolsBalance {
         }
 
         poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-
-        if (tokenABalance.total() == 0 && tokenBBalance.total() == 0) {
-            delete _poolTwoTokenTokens[poolId];
-        } else {
-            // Neither can be zero
-            require(tokenABalance.total() != 0 && tokenBBalance.total() != 0, "Cannot fully remove single token");
-        }
+        // We don't need to write to the sharedInvested entry
     }
 
     function _mutateTwoTokenPoolTokenBalance(
@@ -319,7 +298,7 @@ contract TwoTokenPoolsBalance {
         } else if (token == poolTokens.tokenB) {
             tokenBBalance = mutation(tokenBBalance, mutationArgument);
         } else {
-            revert("Token not in pool");
+            revert("ERR_TOKEN_NOT_REGISTERED");
         }
 
         poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
@@ -364,7 +343,17 @@ contract TwoTokenPoolsBalance {
         } else if (token == poolTokens.tokenB) {
             return tokenBBalance.isInvested();
         } else {
-            revert("Token not in pool");
+            revert("ERR_TOKEN_NOT_REGISTERED");
         }
+    }
+
+    function _ensureTwoTokenPoolRegisteredTokens(
+        bytes32 poolId,
+        IERC20 tokenX,
+        IERC20 tokenY
+    ) internal view {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+        (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
+        require(tokenA == poolTokens.tokenA && tokenB == poolTokens.tokenB, "ERR_TOKEN_NOT_REGISTERED");
     }
 }

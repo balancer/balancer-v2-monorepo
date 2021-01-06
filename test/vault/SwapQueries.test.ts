@@ -39,6 +39,8 @@ describe('Vault - swap queries', () => {
 
       await vault.connect(lp).addUserAgent(pool.address);
 
+      await pool.connect(lp).registerTokens(tokenAddresses);
+
       await pool.connect(lp).addLiquidity(
         tokenAddresses,
         tokenAddresses.map(() => (100e18).toString())

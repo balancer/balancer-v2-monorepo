@@ -470,27 +470,24 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     ) external override withExistingPool(poolId) onlyPool(poolId) returns (uint128[] memory balances) {
         require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
 
+        uint128 swapFee = protocolSwapFee();
         (, StrategyType strategyType) = fromPoolId(poolId);
 
         if (strategyType == StrategyType.TWO_TOKEN) {
-            require(tokens.length == 2, "Must interact with all tokens in two token pool");
+            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
 
             IERC20 tokenX = tokens[0];
             IERC20 tokenY = tokens[1];
-            uint128 feeToCollectTokenX = collectedFees[0].mul128(protocolSwapFee());
-            uint128 feeToCollectTokenY = collectedFees[1].mul128(protocolSwapFee());
+            uint128 feeToCollectTokenX = collectedFees[0].mul128(swapFee);
+            uint128 feeToCollectTokenY = collectedFees[1].mul128(swapFee);
 
             _decreaseTwoTokenPoolCash(poolId, tokenX, feeToCollectTokenX, tokenY, feeToCollectTokenY);
         } else {
-            for (uint256 i = 0; i < tokens.length; ++i) {
-                uint128 feeToCollect = collectedFees[i].mul128(protocolSwapFee());
-                _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
-
-                if (strategyType == StrategyType.PAIR) {
-                    _decreasePairPoolCash(poolId, tokens[i], feeToCollect);
-                } else {
-                    _decreaseTuplePoolCash(poolId, tokens[i], feeToCollect);
-                }
+            uint128[] memory feesToCollect = _collectFees(tokens, collectedFees, swapFee);
+            if (strategyType == StrategyType.PAIR) {
+                _decreasePairPoolCash(poolId, tokens, feesToCollect);
+            } else {
+                _decreaseTuplePoolCash(poolId, tokens, feesToCollect);
             }
         }
 
@@ -500,6 +497,20 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         return balances;
+    }
+
+    function _collectFees(
+        IERC20[] memory tokens,
+        uint128[] memory collectedFees,
+        uint128 swapFee
+    ) private returns (uint128[] memory feesToCollect) {
+        feesToCollect = new uint128[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            uint128 feeToCollect = collectedFees[i].mul128(swapFee);
+            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToCollect);
+            feesToCollect[i] = feeToCollect;
+        }
     }
 
     function queryBatchSwapGivenIn(

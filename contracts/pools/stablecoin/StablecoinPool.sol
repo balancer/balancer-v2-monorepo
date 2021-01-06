@@ -60,6 +60,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
         bytes32 poolId = vault.newPool(address(this), IVault.StrategyType.TUPLE);
 
+        vault.registerTokens(poolId, tokens);
         vault.addLiquidity(poolId, from, tokens, amounts, false);
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
@@ -124,6 +125,11 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     //Protocol Fees
 
+    function _payProtocolFees(IERC20[] memory tokens, uint128[] memory balances) internal returns (uint128[] memory) {
+        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(balances);
+        return _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
+    }
+
     function _getAccumulatedSwapFees(uint128[] memory balances) internal view returns (uint128[] memory) {
         uint128[] memory swapFeesCollected = new uint128[](balances.length);
 
@@ -141,13 +147,9 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     // Pays protocol swap fees
     function payProtocolFees() external {
-        //Load tokens
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        //Load balances
-        uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(balances);
-
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
+        uint128[] memory balances = _getPoolTokenBalances(tokens);
+        balances = _payProtocolFees(tokens, balances);
         _resetAccumulatedSwapFees(_amp, balances);
     }
 
@@ -161,19 +163,13 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
     ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
         require(tokens.length >= 2, "ERR_EMPTY_POOL");
-
-        uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-
-        //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(balances);
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-
-        uint256 poolTotal = totalSupply();
-        uint128 ratio = poolAmountOut.div(poolTotal).toUint128();
-        require(ratio != 0, "ERR_MATH_APPROX");
-
         require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
 
+        //Pay protocol fees to have balances up to date
+        uint128[] memory balances = _getPoolTokenBalances(tokens);
+        balances = _payProtocolFees(tokens, balances);
+
+        uint128 ratio = _getSupplyRatio(poolAmountOut);
         uint128[] memory amountsIn = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             amountsIn[i] = balances[i].mul128(ratio);
@@ -196,18 +192,13 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         address beneficiary
     ) external override nonReentrant {
         IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-
-        //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(balances);
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-
-        uint256 poolTotal = totalSupply();
-        uint128 ratio = poolAmountIn.div(poolTotal).toUint128();
-        require(ratio != 0, "ERR_MATH_APPROX");
-
         require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
 
+        //Pay protocol fees to have balances up to date
+        uint128[] memory balances = _getPoolTokenBalances(tokens);
+        balances = _payProtocolFees(tokens, balances);
+
+        uint128 ratio = _getSupplyRatio(poolAmountIn);
         uint128[] memory amountsOut = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             amountsOut[i] = balances[i].mul128(ratio);
@@ -223,7 +214,15 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
         _burnPoolShare(poolAmountIn);
     }
 
+    function _getSupplyRatio(uint256 amount) internal view returns (uint128) {
+        uint256 poolTotal = totalSupply();
+        uint128 ratio = amount.div(poolTotal).toUint128();
+        require(ratio != 0, "ERR_MATH_APPROX");
+        return ratio;
+    }
+
     // potential helpers
+
     function _addSwapFee(uint128 amount) internal view returns (uint128) {
         return amount.div128(FixedPoint.ONE.sub128(_swapFee));
     }
@@ -249,5 +248,15 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BTok
 
     function _burnPoolShare(uint256 amount) internal {
         _burn(amount);
+    }
+
+    function _getPoolTokenBalances(IERC20[] memory tokens) internal view returns (uint128[] memory balances) {
+        balances = _vault.getPoolTokenBalances(_poolId, tokens);
+        bool someLiquidity = true;
+        for (uint256 i = 0; i < tokens.length && someLiquidity; i++) {
+            someLiquidity = balances[i] != 0;
+        }
+
+        require(someLiquidity, "ERR_ZERO_LIQUIDITY");
     }
 }

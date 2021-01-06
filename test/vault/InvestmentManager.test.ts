@@ -69,6 +69,7 @@ describe('InvestmentManager', function () {
           .authorizePoolInvestmentManager(poolId, tokens[symbol].address, investmentManager.address);
       }
 
+      await vault.connect(pool).registerTokens(poolId, tokenAddresses);
       await vault.connect(pool).addLiquidity(poolId, pool.address, tokenAddresses, tokenAmounts, false);
     });
 
@@ -107,7 +108,7 @@ describe('InvestmentManager', function () {
 
           await expect(
             vault.connect(investmentManager).investPoolBalance(poolId, otherToken.address, 0)
-          ).to.be.revertedWith('Token not in pool');
+          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
 
         it('reverts when investing more than the pool balance', async () => {
@@ -178,7 +179,7 @@ describe('InvestmentManager', function () {
 
           await expect(
             vault.connect(investmentManager).divestPoolBalance(poolId, otherToken.address, 0)
-          ).to.be.revertedWith('Token not in pool');
+          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
       });
 
@@ -248,7 +249,7 @@ describe('InvestmentManager', function () {
         await vault.connect(pool).authorizePoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
 
         await expect(vault.connect(investmentManager).updateInvested(poolId, otherToken.address, 0)).to.be.revertedWith(
-          'Token not in pool'
+          'ERR_TOKEN_NOT_REGISTERED'
         );
       });
 

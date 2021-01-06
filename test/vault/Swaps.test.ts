@@ -113,6 +113,7 @@ describe('Vault - swaps', () => {
     const tokenAddresses = tokenSymbols.map((symbol) => tokens[symbol].address);
     const tokenAmounts = tokenSymbols.map(() => (100e18).toString());
 
+    await pool.connect(lp).registerTokens(tokenAddresses);
     await pool.connect(lp).addLiquidity(tokenAddresses, tokenAmounts);
 
     return pool.getPoolId();

@@ -108,6 +108,7 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         IVault.StrategyType strategyType = IVault.StrategyType.PAIR; // TODO: make it TWO_TOKEN if tokens.lenght == 2
 
         bytes32 poolId = vault.newPool(address(this), strategyType);
+        vault.registerTokens(poolId, tokens);
         vault.addLiquidity(poolId, from, tokens, amounts, false);
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
@@ -293,6 +294,11 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
     //Protocol Fees
 
+    function _payProtocolFees(IERC20[] memory tokens, uint128[] memory balances) internal returns (uint128[] memory) {
+        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
+        return _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
+    }
+
     /**************************************************************************************************/
     /***********  balanceToken ( 1 - (lastInvariant / currentInvariant)^(1 / weightToken) ) ***********
     /**************************************************************************************************/
@@ -336,13 +342,8 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
     // Pays protocol swap fees
     function payProtocolFees() external {
-        //Load tokens
-        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        //Load balances
-        uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
-
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
+        (IERC20[] memory tokens, uint128[] memory balances) = _getPoolTokenBalances();
+        balances = _payProtocolFees(tokens, balances);
         _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
     }
 
@@ -354,21 +355,13 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         bool transferTokens,
         address beneficiary
     ) external override nonReentrant {
-        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
-
-        uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-
-        //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-
-        uint256 poolTotal = totalSupply();
-        uint128 ratio = poolAmountOut.div(poolTotal).toUint128();
-        require(ratio != 0, "ERR_MATH_APPROX");
-
+        (IERC20[] memory tokens, uint128[] memory balances) = _getPoolTokenBalances();
         require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
 
+        //Pay protocol fees to have balances up to date
+        balances = _payProtocolFees(tokens, balances);
+
+        uint128 ratio = _getSupplyRatio(poolAmountOut);
         uint128[] memory amountsIn = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             amountsIn[i] = balances[i].mul128(ratio);
@@ -390,21 +383,13 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
         bool withdrawTokens,
         address beneficiary
     ) external override nonReentrant {
-        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
-
-        uint128[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-
-        //Pay protocol fees to have balances up to date
-        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-
-        uint256 poolTotal = totalSupply();
-        uint128 ratio = poolAmountIn.div(poolTotal).toUint128();
-        require(ratio != 0, "ERR_MATH_APPROX");
-
+        (IERC20[] memory tokens, uint128[] memory balances) = _getPoolTokenBalances();
         require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
 
+        //Pay protocol fees to have balances up to date
+        balances = _payProtocolFees(tokens, balances);
+
+        uint128 ratio = _getSupplyRatio(poolAmountIn);
         uint128[] memory amountsOut = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             amountsOut[i] = balances[i].mul128(ratio);
@@ -418,6 +403,13 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
         _pullPoolShare(msg.sender, poolAmountIn);
         _burnPoolShare(poolAmountIn);
+    }
+
+    function _getSupplyRatio(uint256 amount) internal view returns (uint128) {
+        uint256 poolTotal = totalSupply();
+        uint128 ratio = amount.div(poolTotal).toUint128();
+        require(ratio != 0, "ERR_MATH_APPROX");
+        return ratio;
     }
 
     // Potential helpers
@@ -447,5 +439,18 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
     function _burnPoolShare(uint256 amount) private {
         _burn(amount);
+    }
+
+    function _getPoolTokenBalances() internal view returns (IERC20[] memory tokens, uint128[] memory balances) {
+        tokens = _vault.getPoolTokens(_poolId);
+        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
+
+        balances = _vault.getPoolTokenBalances(_poolId, tokens);
+        bool someLiquidity = true;
+        for (uint256 i = 0; i < tokens.length && someLiquidity; i++) {
+            someLiquidity = balances[i] != 0;
+        }
+
+        require(someLiquidity, "ERR_ZERO_LIQUIDITY");
     }
 }

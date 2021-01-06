@@ -119,7 +119,6 @@ interface IVault {
 
     // Pools
 
-    // TODO: we are probably mixing two concepts here, the trading strategy itself and the way balances are stored
     // There are two variants of Trading Strategies for Pools: Pair Trading Strategies, and Tuple Trading Strategies.
     // These require different data from the Vault, which is reflected in their differing interfaces
     // (IPairTradingStrategy and ITupleTradingStrategy, respectively).
