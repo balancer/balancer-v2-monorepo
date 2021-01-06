@@ -62,9 +62,8 @@ contract SimplifiedQuotePoolsBalance {
      */
     function _getSimplifiedQuotePoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         bytes32 balance = _simplifiedQuotePoolsBalances[poolId][token];
-        // TODO: is it necessary?
-        // require(balance.total() > 0, "Token not in pool");
-
+        bool existsToken = balance.total() > 0 || _simplifiedQuotePoolsTokens[poolId].contains(address(token));
+        require(existsToken, "ERR_TOKEN_NOT_REGISTERED");
         return balance;
     }
 

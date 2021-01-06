@@ -64,7 +64,7 @@ contract StandardPoolsBalance {
      * - `token` must be in the Pool.
      */
     function _getStandardPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
-        return _standardPoolsBalances[poolId].get(token);
+        return _standardPoolsBalances[poolId].get(token, "ERR_TOKEN_NOT_REGISTERED");
     }
 
     /**

@@ -469,7 +469,7 @@ library EnumerableMap {
     }
 
     /**
-     * @dev Returns the value associated with `key`.  O(1).
+     * @dev Returns the value associated with `key`. O(1).
      *
      * Requirements:
      *
@@ -477,5 +477,20 @@ library EnumerableMap {
      */
     function get(IERC20ToBytes32Map storage map, IERC20 key) internal view returns (bytes32) {
         return _get(map._inner, bytes32(uint256(address(key))));
+    }
+
+    /**
+     * @dev Returns the value associated with `key`. O(1).
+     *
+     * Requirements:
+     *
+     * - `key` must be in the map.
+     */
+    function get(
+        IERC20ToBytes32Map storage map,
+        IERC20 key,
+        string memory errorMessage
+    ) internal view returns (bytes32) {
+        return _get(map._inner, bytes32(uint256(address(key))), errorMessage);
     }
 }
