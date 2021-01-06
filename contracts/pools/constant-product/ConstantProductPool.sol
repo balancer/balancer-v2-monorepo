@@ -24,7 +24,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../math/FixedPoint.sol";
 
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/ISimplifiedQuotePoolQuotes.sol";
+import "../../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
@@ -36,7 +36,7 @@ import "./ConstantProductMath.sol";
 
 contract ConstantProductPool is
     IBPTPool,
-    ISimplifiedQuotePoolQuotes,
+    IPoolQuoteSimplified,
     BalancerPoolToken,
     ConstantProductMath,
     ReentrancyGuard

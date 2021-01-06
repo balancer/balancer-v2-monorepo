@@ -29,9 +29,9 @@ contract SimplifiedQuotePoolsBalance {
 
     // Data for Pools with Simplified Quote Pool Optimization setting
     //
-    // These Pools use the ISimplifiedQuotePoolsQuote interface, and so the Vault must read the balance of the two
-    // tokens in the swap. The best solution is to use a mapping from token to balance, which lets us read or write any
-    // token's balance in a  single storage access.
+    // These Pools use the IPoolQuoteSimplified interface, and so the Vault must read the balance of the two tokens in
+    // the swap. The best solution is to use a mapping from token to balance, which lets us read or write any token's
+    // balance in a  single storage access.
     // We also keep a set with all tokens in the Pool in order to implement getPoolTokens, and update this set when
     // cash is added or removed from the pool. Tokens in the set always have a non-zero balance, so we don't need to
     // check the set for token existence during a swap: the non-zero balance check achieves this for less gas.

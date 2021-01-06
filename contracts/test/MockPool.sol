@@ -18,12 +18,12 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IStandardPoolQuotes.sol";
-import "../vault/interfaces/ISimplifiedQuotePoolQuotes.sol";
+import "../vault/interfaces/IPoolQuote.sol";
+import "../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../math/FixedPoint.sol";
 
-contract MockPool is IStandardPoolQuotes, ISimplifiedQuotePoolQuotes {
+contract MockPool is IPoolQuote, IPoolQuoteSimplified {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -61,7 +61,7 @@ contract MockPool is IStandardPoolQuotes, ISimplifiedQuotePoolQuotes {
         _multiplier = newMultiplier;
     }
 
-    // IStandardPoolQuotes
+    // IPoolQuote
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint128[] calldata,
@@ -81,7 +81,7 @@ contract MockPool is IStandardPoolQuotes, ISimplifiedQuotePoolQuotes {
         return amountIn;
     }
 
-    // ISimplifiedQuotePoolQuotes
+    // IPoolQuoteSimplified
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint128,

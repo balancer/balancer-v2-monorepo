@@ -25,12 +25,12 @@ import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
 
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IStandardPoolQuotes.sol";
+import "../../vault/interfaces/IPoolQuote.sol";
 import "../../math/FixedPoint.sol";
 
 import "./StablecoinMath.sol";
 
-contract StablecoinPool is IStandardPoolQuotes, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
+contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint128;
     using FixedPoint for uint256;
     using SafeCast for uint256;

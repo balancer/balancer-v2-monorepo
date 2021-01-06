@@ -29,12 +29,12 @@ contract StandardPoolsBalance {
 
     // Data for Pools with Standard Pool Optimization setting
     //
-    // These Pools use the IStandardPoolQuotes interface, which means the Vault must query the balance for *all* of
-    // their tokens in every swap. If we kept a mapping of token to balance plus a set (array) of tokens, it'd be very
-    // gas intensive to read all token addresses just to then do a lookup on the balance mapping.
+    // These Pools use the IPoolQuote interface, which means the Vault must query the balance for *all* of their tokens
+    // in every swap. If we kept a mapping of token to balance plus a set (array) of tokens, it'd be very gas intensive
+    // to read all token addresses just to then do a lookup on the balance mapping.
     // Instead, we use our customized EnumerableMap, which lets us read the N balances in N+1 storage accesses (one for
     // the number of tokens in the Pool), as well as access the index of any token in a single read (required for the
-    // IStandardPoolQuotes call) and update an entry's value given its index.
+    // IPoolQuote call) and update an entry's value given its index.
     // This map is also what we use to list all tokens in the Pool (for getPoolTokens). However, tokens in the map
     // always have a non-zero balance, so we don't need to check the map for token existence during a swap: the non-zero
     // balance check achieves this for less gas.

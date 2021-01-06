@@ -122,16 +122,16 @@ interface IVault {
     // There are three optimization levels for Pools, which allow for lower swap gas costs at the cost of reduced
     // functionality:
     //
-    //  - standard: no special optimization, IStandardPoolQuotes is used to ask for quotes, passing the balance of all
-    // tokens in the Pool. Swaps cost more gas the more tokens the Pool has (because of the extra storage reads).
+    //  - standard: no special optimization, IPoolQuote is used to ask for quotes, passing the balance of all tokens in
+    // the Pool. Swaps cost more gas the more tokens the Pool has (because of the extra storage reads).
     //
-    //  - simplified quote: ISimplifiedQuotePoolQuotes is used instead, which saves gas by only passes the balance of the two
+    //  - simplified quote: IPoolQuoteSimplified is used instead, which saves gas by only passes the balance of the two
     // tokens involved in the swap. This is suitable for some pricing algorithms, like the weighted constant product one
     // popularized by Balancer v1. Swap gas cost is independent of the number of tokens in the Pool.
     //
     //  - two tokens: this level achieves the lowest possible swap gas costs by restricting Pools to only having two
     // tokens, which allows for a specialized balance packing format. Like simplified quote Pools, these are called via
-    // ISimplifiedQuotePoolQuotes.
+    // IPoolQuoteSimplified.
     enum PoolOptimization { STANDARD, SIMPLIFIED_QUOTE, TWO_TOKEN }
 
     /**

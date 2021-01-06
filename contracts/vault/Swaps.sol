@@ -26,8 +26,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
 import "./interfaces/IPoolQuoteStructs.sol";
-import "./interfaces/ISimplifiedQuotePoolQuotes.sol";
-import "./interfaces/IStandardPoolQuotes.sol";
+import "./interfaces/IPoolQuote.sol";
+import "./interfaces/IPoolQuoteSimplified.sol";
 import "./balances/CashInvested.sol";
 
 import "../math/FixedPoint.sol";
@@ -302,17 +302,17 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         (address pool, PoolOptimization optimization) = fromPoolId(request.poolId);
 
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            amountQuoted = _processSimplifiedQuotePoolQuoteRequest(request, ISimplifiedQuotePoolQuotes(pool), kind);
+            amountQuoted = _processSimplifiedQuotePoolQuoteRequest(request, IPoolQuoteSimplified(pool), kind);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            amountQuoted = _processTwoTokenPoolQuoteRequest(request, ISimplifiedQuotePoolQuotes(pool), kind);
+            amountQuoted = _processTwoTokenPoolQuoteRequest(request, IPoolQuoteSimplified(pool), kind);
         } else {
-            amountQuoted = _processStandardPoolQuoteRequest(request, IStandardPoolQuotes(pool), kind);
+            amountQuoted = _processStandardPoolQuoteRequest(request, IPoolQuote(pool), kind);
         }
     }
 
     function _processTwoTokenPoolQuoteRequest(
         QuoteRequestInternal memory request,
-        ISimplifiedQuotePoolQuotes pool,
+        IPoolQuoteSimplified pool,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
         (
@@ -377,7 +377,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     function _processSimplifiedQuotePoolQuoteRequest(
         QuoteRequestInternal memory request,
-        ISimplifiedQuotePoolQuotes pool,
+        IPoolQuoteSimplified pool,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
         bytes32 tokenInBalance = _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn];
@@ -417,7 +417,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     function _processStandardPoolQuoteRequest(
         QuoteRequestInternal memory request,
-        IStandardPoolQuotes pool,
+        IPoolQuote pool,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
         bytes32 tokenInBalance;
