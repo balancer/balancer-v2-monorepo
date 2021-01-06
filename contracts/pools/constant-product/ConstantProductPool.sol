@@ -113,7 +113,8 @@ contract ConstantProductPool is
         require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LENGTH");
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
-        IVault.PoolOptimization optimization = IVault.PoolOptimization.SIMPLIFIED_QUOTE; // TODO: make it TWO_TOKEN if tokens.length == 2
+        // TODO: make it TWO_TOKEN if tokens.length == 2
+        IVault.PoolOptimization optimization = IVault.PoolOptimization.SIMPLIFIED_QUOTE;
 
         bytes32 poolId = vault.registerPool(optimization);
         vault.addLiquidity(poolId, from, tokens, amounts, false);

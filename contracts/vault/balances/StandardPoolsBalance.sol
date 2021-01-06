@@ -68,9 +68,9 @@ contract StandardPoolsBalance {
     }
 
     /**
-     * @dev Adds cash to a Standard Pool for a given token. If the token was not previously in the Pool (if it didn't have
-     * any funds for it), the token is then added to the Pool. After this function is called, 'token' will be in the
-     * Pool.
+     * @dev Adds cash to a Standard Pool for a given token. If the token was not previously in the Pool (if it didn't
+     * have any funds for it), the token is then added to the Pool. After this function is called, 'token' will be in
+     * the Pool.
      *
      * Requirements:
      *

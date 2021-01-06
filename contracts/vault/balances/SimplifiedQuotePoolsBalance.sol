@@ -40,8 +40,8 @@ contract SimplifiedQuotePoolsBalance {
     mapping(bytes32 => mapping(IERC20 => bytes32)) internal _simplifiedQuotePoolsBalances;
 
     /**
-     * @dev Returns an array with all the tokens in a Simplified Quote Pool. This order may change when tokens are added to or
-     * removed from the Pool.
+     * @dev Returns an array with all the tokens in a Simplified Quote Pool. This order may change when tokens are added
+     * to or removed from the Pool.
      */
     function _getSimplifiedQuotePoolTokens(bytes32 poolId) internal view returns (IERC20[] memory) {
         IERC20[] memory tokens = new IERC20[](_simplifiedQuotePoolsTokens[poolId].length());
@@ -68,9 +68,9 @@ contract SimplifiedQuotePoolsBalance {
     }
 
     /**
-     * @dev Adds cash to a Simplified Quote Pool for a given token. If the token was not previously in the Pool (if it didn't have
-     * any funds for it), the token is then added to the Pool. After this function is called, 'token' will be in the
-     * Pool.
+     * @dev Adds cash to a Simplified Quote Pool for a given token. If the token was not previously in the Pool (if it
+     * didn't have any funds for it), the token is then added to the Pool. After this function is called, 'token' will
+     * be in the Pool.
      *
      * Requirements:
      *
@@ -98,8 +98,8 @@ contract SimplifiedQuotePoolsBalance {
     }
 
     /**
-     * @dev Removes cash from a Simplified Quote Pool for a given token. If this fully drains the Pool's balance for that token
-     * (including invested balance), then the token is removed from the Pool.
+     * @dev Removes cash from a Simplified Quote Pool for a given token. If this fully drains the Pool's balance for
+     * that token (including invested balance), then the token is removed from the Pool.
      *
      * Requirements:
      *
