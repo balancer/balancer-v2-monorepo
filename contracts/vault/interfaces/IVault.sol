@@ -358,18 +358,18 @@ interface IVault {
     // Investment interface
 
     /**
-     * @dev Authorize an investment manager for a pool token
+     * @dev Set the investment manager for a pool token
      */
-    function authorizePoolInvestmentManager(
+    function setPoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
         address manager
     ) external;
 
     /**
-     * @dev Revoke the current investment manager of a pool token
+     * @dev Returns the investment manager for a token in a pool
      */
-    function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external;
+    function getPoolInvestmentManager(bytes32 poolId, IERC20 token) external view returns (address);
 
     /**
      * @dev Increase the invested amount of a given pool token

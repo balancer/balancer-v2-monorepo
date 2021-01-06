@@ -52,8 +52,7 @@ abstract contract PoolRegistry is
     // investment managers are allowed to use a pools tokens for an investment
     mapping(bytes32 => mapping(IERC20 => address)) private _poolInvestmentManagers;
 
-    event PoolInvestmentManagerAdded(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
-    event PoolInvestmentManagerRemoved(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
+    event PoolInvestmentManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
 
     modifier onlyPool(bytes32 poolId) {
         (address pool, ) = fromPoolId(poolId);
@@ -281,33 +280,26 @@ abstract contract PoolRegistry is
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
             return _isSimplifiedQuotePoolInvested(poolId, token);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            _isTwoTokenPoolInvested(poolId, token);
+            return _isTwoTokenPoolInvested(poolId, token);
         } else {
             return _isStandardPoolInvested(poolId, token);
         }
     }
 
-    function authorizePoolInvestmentManager(
+    function setPoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
         address manager
     ) external override onlyPool(poolId) {
-        bool missing = _poolInvestmentManagers[poolId][token] == address(0);
-        (, PoolOptimization optimization) = fromPoolId(poolId);
-        require(missing || _isPoolInvested(poolId, optimization, token), "CANNOT_SET_INVESTMENT_MANAGER");
+        require(_poolInvestmentManagers[poolId][token] == address(0), "CANNOT_RESET_INVESTMENT_MANAGER");
+        require(manager != address(0), "Investment manager is the zero address");
 
         _poolInvestmentManagers[poolId][token] = manager;
-        emit PoolInvestmentManagerAdded(poolId, token, manager);
+        emit PoolInvestmentManagerSet(poolId, token, manager);
     }
 
-    function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external override onlyPool(poolId) {
-        address currentManager = _poolInvestmentManagers[poolId][token];
-        bool exists = currentManager != address(0);
-        (, PoolOptimization optimization) = fromPoolId(poolId);
-        require(exists && _isPoolInvested(poolId, optimization, token), "CANNOT_REVOKE_INVESTMENT_MANAGER");
-
-        delete _poolInvestmentManagers[poolId][token];
-        emit PoolInvestmentManagerRemoved(poolId, token, currentManager);
+    function getPoolInvestmentManager(bytes32 poolId, IERC20 token) external view override returns (address) {
+        return _poolInvestmentManagers[poolId][token];
     }
 
     function isPoolInvestmentManager(
