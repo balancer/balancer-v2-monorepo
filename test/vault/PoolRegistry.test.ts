@@ -48,8 +48,8 @@ describe('Vault - pool registry', () => {
       expect(poolId).to.not.be.undefined;
     });
 
-    it('pools require a valid pool type', async () => {
-      // The existing pool types are pair, tuple, and two tokens (0, 1 and 2)
+    it('pools require a valid pool optimization setting', async () => {
+      // The existing pool optimization settings are standard, simplified quote and two tokens (0, 1 and 2)
       await expect(vault.registerPool(3)).to.be.reverted;
     });
   });
@@ -90,15 +90,15 @@ describe('Vault - pool registry', () => {
   });
 
   describe('token management', () => {
-    describe('with pair trading strategies', () => {
-      itManagesTokensCorrectly(SimplifiedQuotePool);
-    });
-
-    describe('with tuple trading strategies', () => {
+    describe('with standard pool', () => {
       itManagesTokensCorrectly(StandardPool);
     });
 
-    describe('with two token trading strategies', () => {
+    describe('with simplified quote pool', () => {
+      itManagesTokensCorrectly(SimplifiedQuotePool);
+    });
+
+    describe('with two token pool', () => {
       itManagesTokensCorrectly(TwoTokenPool);
     });
   });
