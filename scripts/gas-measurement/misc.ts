@@ -100,7 +100,7 @@ function pickTokens(tokens: TokenList, size: number, offset?: number): TokenList
   return pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)));
 }
 
-async function getSigners(): Promise<{
+export async function getSigners(): Promise<{
   admin: SignerWithAddress;
   trader: SignerWithAddress;
   creator: SignerWithAddress;
