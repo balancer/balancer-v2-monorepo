@@ -3,11 +3,11 @@ import { Contract, ContractReceipt } from 'ethers';
 import { ethers } from 'hardhat';
 import { deploy } from './deploy';
 
-export const PairTS = 0;
-export const TupleTS = 1;
-export const TwoTokenTS = 2;
+export const StandardPool = 0;
+export const SimplifiedQuotePool = 1;
+export const TwoTokenPool = 2;
 
-export type TradingStrategyType = typeof PairTS | typeof TupleTS | typeof TwoTokenTS;
+export type PoolOptimizationSetting = typeof SimplifiedQuotePool | typeof StandardPool | typeof TwoTokenPool;
 export type PoolName = 'ConstantProductPool' | 'StablecoinPool';
 
 /**

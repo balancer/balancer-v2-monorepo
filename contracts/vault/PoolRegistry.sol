@@ -23,15 +23,15 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./UserBalance.sol";
 
 import "./balances/CashInvested.sol";
-import "./balances/TuplePoolsBalance.sol";
-import "./balances/PairPoolsBalance.sol";
+import "./balances/StandardPoolsBalance.sol";
+import "./balances/SimplifiedQuotePoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
 
 abstract contract PoolRegistry is
     ReentrancyGuard,
     UserBalance,
-    TuplePoolsBalance,
-    PairPoolsBalance,
+    StandardPoolsBalance,
+    SimplifiedQuotePoolsBalance,
     TwoTokenPoolsBalance
 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -39,11 +39,6 @@ abstract contract PoolRegistry is
     using CashInvested for bytes32;
     using FixedPoint for uint128;
     using FixedPoint for uint256;
-
-    struct PoolStrategy {
-        address strategy;
-        StrategyType strategyType;
-    }
 
     // Set with all pools in the system
     // TODO do we need this? can pools be deleted? if not, an array should be good enough
@@ -67,32 +62,31 @@ abstract contract PoolRegistry is
     }
 
     function toPoolId(
-        address strategy,
-        uint16 strategyType,
+        address pool,
+        uint16 optimization,
         uint32 poolIndex
     ) public pure returns (bytes32) {
         uint256 serialized;
         serialized |= uint256(poolIndex) << (22 * 8);
-        serialized |= uint256(strategyType) << (20 * 8);
-        serialized |= uint256(strategy);
+        serialized |= uint256(optimization) << (20 * 8);
+        serialized |= uint256(pool);
         return bytes32(serialized);
     }
 
-    function fromPoolId(bytes32 serialized) public pure returns (address strategy, StrategyType strategyType) {
-        //|| 6 bytes empty | 4 bytes count of pools | 2 bytes strategyType | 20 bytes address ||
-        strategy = address(uint256(serialized) & (2**(20 * 8) - 1));
-        strategyType = StrategyType(uint256(serialized >> (20 * 8)) & (2**(2 * 8) - 1));
+    function fromPoolId(bytes32 serialized) public pure returns (address, PoolOptimization) {
+        //|| 6 bytes empty | 4 bytes count of pools | 2 bytes optimization | 20 bytes pool ||
+        address pool = address(uint256(serialized) & (2**(20 * 8) - 1));
+        PoolOptimization optimization = PoolOptimization(uint256(serialized >> (20 * 8)) & (2**(2 * 8) - 1));
+
+        return (pool, optimization);
     }
 
-    // TODO: consider making the pool address msg.sender, and potentially disallowing the same address to be used
-    // multiple times
-    function newPool(address strategy, StrategyType strategyType) external override returns (bytes32) {
-        bytes32 poolId = toPoolId(strategy, uint16(strategyType), uint32(_pools.length()));
+    // TODO: consider disallowing the same address to be used multiple times
+    function registerPool(PoolOptimization optimization) external override returns (bytes32) {
+        bytes32 poolId = toPoolId(msg.sender, uint16(optimization), uint32(_pools.length()));
 
-        require(!_pools.contains(poolId), "Pool ID already exists");
-        require(strategy != address(0), "Strategy must be set");
-
-        _pools.add(poolId);
+        bool added = _pools.add(poolId);
+        require(added, "Pool ID already exists");
 
         emit PoolCreated(poolId);
 
@@ -115,14 +109,14 @@ abstract contract PoolRegistry is
     }
 
     function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
-        (, StrategyType strategyType) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = fromPoolId(poolId);
 
-        if (strategyType == IVault.StrategyType.PAIR) {
-            return _getPairPoolTokens(poolId);
-        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            return _getSimplifiedQuotePoolTokens(poolId);
+        } else if (optimization == PoolOptimization.TWO_TOKEN) {
             return _getTwoTokenPoolTokens(poolId);
         } else {
-            return _getTuplePoolTokens(poolId);
+            return _getStandardPoolTokens(poolId);
         }
     }
 
@@ -135,15 +129,15 @@ abstract contract PoolRegistry is
      */
     function _getPoolTokenBalance(
         bytes32 poolId,
-        IVault.StrategyType strategyType,
+        PoolOptimization optimization,
         IERC20 token
     ) internal view returns (bytes32) {
-        if (strategyType == IVault.StrategyType.PAIR) {
-            return _getPairPoolTokenBalance(poolId, token);
-        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            return _getSimplifiedQuotePoolTokenBalance(poolId, token);
+        } else if (optimization == PoolOptimization.TWO_TOKEN) {
             return _getTwoTokenPoolBalance(poolId, token);
         } else {
-            return _getTuplePoolBalance(poolId, token);
+            return _getStandardPoolBalance(poolId, token);
         }
     }
 
@@ -154,17 +148,23 @@ abstract contract PoolRegistry is
         withExistingPool(poolId)
         returns (uint128[] memory)
     {
-        (, StrategyType strategyType) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = fromPoolId(poolId);
 
         uint128[] memory balances = new uint128[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _getPoolTokenBalance(poolId, strategyType, tokens[i]).total();
+            balances[i] = _getPoolTokenBalance(poolId, optimization, tokens[i]).total();
         }
 
         return balances;
     }
 
-    function getPool(bytes32 poolId) external view override withExistingPool(poolId) returns (address, StrategyType) {
+    function getPool(bytes32 poolId)
+        external
+        view
+        override
+        withExistingPool(poolId)
+        returns (address, PoolOptimization)
+    {
         return fromPoolId(poolId);
     }
 
@@ -198,20 +198,20 @@ abstract contract PoolRegistry is
             }
         }
 
-        // Grant tokens to pools - how this is done depends on the pool type
+        // Grant tokens to pools - how this is done depends on the Pool optimization setting
 
-        (, StrategyType strategyType) = fromPoolId(poolId);
-        if (strategyType == StrategyType.TWO_TOKEN) {
-            // These set both tokens at once
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            // These add both tokens at once
             require(tokens.length == 2, "Must interact with all tokens in two token pool");
             _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0], tokens[1], amounts[1]);
         } else {
+            // Pools with other optimization settings have their tokens added one by one
             for (uint256 i = 0; i < tokens.length; ++i) {
-                // Other pool types have their tokens added one by one
-                if (strategyType == StrategyType.PAIR) {
-                    _increasePairPoolCash(poolId, tokens[i], amounts[i]);
+                if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+                    _increaseSimplifiedQuotePoolCash(poolId, tokens[i], amounts[i]);
                 } else {
-                    _increaseTuplePoolCash(poolId, tokens[i], amounts[i]);
+                    _increaseStandardPoolCash(poolId, tokens[i], amounts[i]);
                 }
             }
         }
@@ -226,20 +226,20 @@ abstract contract PoolRegistry is
     ) external override withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
-        // Deduct tokens from pools - how this is done depends on the pool type
+        // Grant tokens to pools - how this is done depends on the Pool optimization setting
 
-        (, StrategyType strategyType) = fromPoolId(poolId);
-        if (strategyType == StrategyType.TWO_TOKEN) {
-            // These set both tokens at once
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            // These remove both tokens at once
             require(tokens.length == 2, "Must interact with all tokens in two token pool");
             _decreaseTwoTokenPoolCash(poolId, tokens[0], amounts[0], tokens[1], amounts[1]);
         } else {
-            // Other pool types have their tokens added one by one
+            // Pools with other optimization settings have their tokens removed one by one
             for (uint256 i = 0; i < tokens.length; ++i) {
-                if (strategyType == StrategyType.PAIR) {
-                    _decreasePairPoolCash(poolId, tokens[i], amounts[i]);
+                if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+                    _decreaseSimplifiedQuotePoolCash(poolId, tokens[i], amounts[i]);
                 } else {
-                    _decreaseTuplePoolCash(poolId, tokens[i], amounts[i]);
+                    _decreaseStandardPoolCash(poolId, tokens[i], amounts[i]);
                 }
             }
         }
@@ -275,15 +275,15 @@ abstract contract PoolRegistry is
 
     function _isPoolInvested(
         bytes32 poolId,
-        IVault.StrategyType strategyType,
+        PoolOptimization optimization,
         IERC20 token
     ) internal view returns (bool) {
-        if (strategyType == IVault.StrategyType.PAIR) {
-            return _isPairPoolInvested(poolId, token);
-        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            return _isSimplifiedQuotePoolInvested(poolId, token);
+        } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _isTwoTokenPoolInvested(poolId, token);
         } else {
-            return _isTuplePoolInvested(poolId, token);
+            return _isStandardPoolInvested(poolId, token);
         }
     }
 
@@ -293,8 +293,8 @@ abstract contract PoolRegistry is
         address manager
     ) external override onlyPool(poolId) {
         bool missing = _poolInvestmentManagers[poolId][token] == address(0);
-        (, StrategyType strategyType) = fromPoolId(poolId);
-        require(missing || _isPoolInvested(poolId, strategyType, token), "CANNOT_SET_INVESTMENT_MANAGER");
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        require(missing || _isPoolInvested(poolId, optimization, token), "CANNOT_SET_INVESTMENT_MANAGER");
 
         _poolInvestmentManagers[poolId][token] = manager;
         emit PoolInvestmentManagerAdded(poolId, token, manager);
@@ -303,8 +303,8 @@ abstract contract PoolRegistry is
     function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external override onlyPool(poolId) {
         address currentManager = _poolInvestmentManagers[poolId][token];
         bool exists = currentManager != address(0);
-        (, StrategyType strategyType) = fromPoolId(poolId);
-        require(exists && _isPoolInvested(poolId, strategyType, token), "CANNOT_REVOKE_INVESTMENT_MANAGER");
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        require(exists && _isPoolInvested(poolId, optimization, token), "CANNOT_REVOKE_INVESTMENT_MANAGER");
 
         delete _poolInvestmentManagers[poolId][token];
         emit PoolInvestmentManagerRemoved(poolId, token, currentManager);
@@ -323,13 +323,13 @@ abstract contract PoolRegistry is
         IERC20 token,
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
-        (, StrategyType strategyType) = fromPoolId(poolId);
-        if (strategyType == IVault.StrategyType.PAIR) {
-            _investPairPoolCash(poolId, token, amount);
-        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            _investSimplifiedQuotePoolCash(poolId, token, amount);
+        } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _investTwoTokenPoolCash(poolId, token, amount);
         } else {
-            _investTuplePoolCash(poolId, token, amount);
+            _investStandardPoolCash(poolId, token, amount);
         }
 
         token.safeTransfer(msg.sender, amount);
@@ -342,13 +342,13 @@ abstract contract PoolRegistry is
     ) external override onlyPoolInvestmentManager(poolId, token) {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        (, StrategyType strategyType) = fromPoolId(poolId);
-        if (strategyType == IVault.StrategyType.PAIR) {
-            _divestPairPoolCash(poolId, token, amount);
-        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            _divestSimplifiedQuotePoolCash(poolId, token, amount);
+        } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _divestTwoTokenPoolCash(poolId, token, amount);
         } else {
-            _divestTuplePoolCash(poolId, token, amount);
+            _divestStandardPoolCash(poolId, token, amount);
         }
     }
 
@@ -357,13 +357,13 @@ abstract contract PoolRegistry is
         IERC20 token,
         uint128 amount
     ) external override onlyPoolInvestmentManager(poolId, token) {
-        (, StrategyType strategyType) = fromPoolId(poolId);
-        if (strategyType == IVault.StrategyType.PAIR) {
-            _setPairPoolInvestment(poolId, token, amount);
-        } else if (strategyType == IVault.StrategyType.TWO_TOKEN) {
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            _setSimplifiedQuotePoolInvestment(poolId, token, amount);
+        } else if (optimization == PoolOptimization.TWO_TOKEN) {
             _setTwoTokenPoolInvestment(poolId, token, amount);
         } else {
-            _setTuplePoolInvestment(poolId, token, amount);
+            _setStandardPoolInvestment(poolId, token, amount);
         }
     }
 
