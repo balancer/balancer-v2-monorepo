@@ -104,12 +104,12 @@ abstract contract Fees is IVault, Authorization {
     ) external override {
         require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
+        IAuthorizer authorizer = getAuthorizer();
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
+            require(authorizer.canCollectProtocolFees(msg.sender, token), "Caller cannot withdraw protocol fees");
+
             uint256 amount = amounts[i];
-
-            require(getAuthorizer().canCollectProtocolFees(msg.sender, token), "Caller cannot withdraw protocol fees");
-
             require(_collectedProtocolFees[token] >= amount, "Insufficient protocol fees");
             _collectedProtocolFees[token] -= amount;
             token.safeTransfer(recipient, amount);

@@ -17,11 +17,12 @@ pragma experimental ABIEncoderV2;
 
 import "./interfaces/IAuthorizer.sol";
 
+import "./Authorization.sol";
 import "./FlashLoanProvider.sol";
 import "./Swaps.sol";
 
 // solhint-disable no-empty-blocks
 
-contract Vault is FlashLoanProvider, Swaps {
+contract Vault is Authorization, FlashLoanProvider, Swaps {
     constructor(IAuthorizer authorizer) Authorization(authorizer) {}
 }
