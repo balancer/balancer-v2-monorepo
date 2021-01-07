@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General internal License as published by
+// it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
@@ -227,8 +227,8 @@ library LogExpMath {
      * @return xˆy
      */
     function pow(uint256 x, uint256 y) internal pure returns (uint256) {
-        require(0 < x && x < 2**255, "x must be positive and less than 2**255"); // uint256 can be casted to a positive int256
-        require(0 <= y && y < MILD_EXPONENT_BOUND, "input y has to be positive and less than 2**254 / 10**20");
+        require(x < 2**255, "x must be less than 2**255"); // uint256 can be casted to a positive int256
+        require(y < MILD_EXPONENT_BOUND, "input y has to be less than 2**254 / 10**20");
         int256 x_int256 = int256(x);
         int256 y_int256 = int256(y);
         int256 logx_times_y;
