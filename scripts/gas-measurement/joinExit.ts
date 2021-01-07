@@ -7,7 +7,7 @@ import { assert } from 'console';
 import { ethers } from 'hardhat';
 
 // setupEnvironmnt
-const tokenAmount = 10e18;
+const tokenAmount = BigNumber.from((10e18).toString());
 
 let vault: Contract;
 let tokens: TokenList;
@@ -23,33 +23,76 @@ async function main() {
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
   ({ vault, validator, tokens, trader } = await setupEnvironment(userBalance));
 
-  const poolTypes = ['ConstantProductPool', 'StablecoinPool'];
-  let transferTokens: boolean;
+  console.log('== Full join/exit (no initial BPT) ==');
 
-  // stageIdx = # of entries and exits (defaults to 1)
-  for (let stageIdx = 1; stageIdx < 3; stageIdx++) {
-    // typeIdx iterates over pool types
-    for (let typeIdx = 0; typeIdx < 2; typeIdx++) {
-      // numTokens is the size of the pool: 2,4,6,8
-      for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-        // Transfer tokens flag
-        for (let txFlag = 0; txFlag <= 1; txFlag++) {
-          transferTokens = 0 == txFlag ? true : false;
+  console.log(`\n# Constant Product Pools, full join/exit, transferring tokens`);
 
-          await joinAndExitPool(
-            () =>
-              0 == typeIdx
-                ? getConstantProductPool(vault, tokens, numTokens)
-                : getStablecoinPool(vault, tokens, numTokens),
-            poolTypes[typeIdx] as PoolName,
-            numTokens,
-            transferTokens,
-            stageIdx,
-            false
-          );
-        }
-      }
-    }
+  // numTokens is the size of the pool: 2,4,6,8
+  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+    await joinAndExitPool(
+      () => getConstantProductPool(vault, tokens, numTokens),
+            'ConstantProductPool', numTokens, true);
+  }
+
+  console.log(`\n# Constant Product Pools, full join/exit, with user balance`);
+
+  // numTokens is the size of the pool: 2,4,6,8
+  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+    await joinAndExitPool(
+      () => getConstantProductPool(vault, tokens, numTokens),
+            'ConstantProductPool', numTokens, false);
+  }
+
+  console.log(`\n# Stablecoin Pools, full join/exit, transferring tokens`);
+
+  // numTokens is the size of the pool: 2,4,6,8
+  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+    await joinAndExitPool(
+      () => getStablecoinPool(vault, tokens, numTokens),
+            'StablecoinPool', numTokens, true);
+  }
+
+  console.log(`\n# Stablecoin Pools, full join/exit, with user balance`);
+
+  // numTokens is the size of the pool: 2,4,6,8
+  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+    await joinAndExitPool(
+      () => getStablecoinPool(vault, tokens, numTokens),
+            'ConstantProductPool', numTokens, false);
+  }
+
+  console.log('== Partial Join/Exit (2-stage entry/exit)==');
+
+  console.log(`\n# Constant Product Pools, partial join/exit, transferring tokens`);
+
+  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+    await joinAndExitPool(
+      () => getConstantProductPool(vault, tokens, numTokens),
+            'ConstantProductPool', numTokens, true, 2);
+  }
+
+  console.log(`\n# Constant Product Pools, partial join/exit, with user balance`);
+
+  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+    await joinAndExitPool(
+      () => getConstantProductPool(vault, tokens, numTokens),
+            'ConstantProductPool', numTokens, false, 2);
+  }
+
+  console.log(`\n# Stablecoin Pools, partial join/exit, transferring tokens`);
+
+  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+    await joinAndExitPool(
+      () => getStablecoinPool(vault, tokens, numTokens),
+            'StablecoinPool', numTokens, true, 2);
+  }
+
+  console.log(`\n# Stablecoin Pools, partial join/exit, with user balance`);
+
+  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+    await joinAndExitPool(
+      () => getStablecoinPool(vault, tokens, numTokens),
+            'StablecoinPool', numTokens, false, 2);
   }
 }
 
@@ -76,7 +119,7 @@ async function joinAndExitPool(
     receipt = await (
       await (pool as Contract)
         .connect(trader)
-        .joinPool(tokenAmount.toString(), Array(numTokens).fill(tokenAmount.toString()), transferTokens, trader.address)
+        .joinPool(tokenAmount, Array(numTokens).fill(tokenAmount), transferTokens, trader.address)
     ).wait();
     console.log(
       `${printGas(receipt.gasUsed)} gas for join ${idx} to a ${poolType} with ${numTokens} tokens (${transfer})`
@@ -84,8 +127,8 @@ async function joinAndExitPool(
 
     bpt = await pool.balanceOf(trader.address);
     // check token balances
-    assert(bpt == idx * tokenAmount, 'Did not actually join pool');
-
+    assert(bpt.toString() == tokenAmount.mul(idx).toString(), 'Did not actually join pool');
+    
     if (showBalances && transferTokens) {
       await showTokenBalances(`After join ${idx}`, trader.address, poolId, numTokens);
     }
@@ -101,7 +144,7 @@ async function joinAndExitPool(
     receipt = await (
       await pool
         .connect(trader)
-        .exitPool(tokenAmount.toString(), Array(numTokens).fill(0), transferTokens, trader.address)
+        .exitPool(tokenAmount, Array(numTokens).fill(0), transferTokens, trader.address)
     ).wait();
     console.log(
       `${printGas(receipt.gasUsed)} gas for exit ${idx} of a ${poolType} with ${numTokens} tokens (${transfer})`
@@ -112,7 +155,7 @@ async function joinAndExitPool(
     }
 
     bpt = await pool.balanceOf(trader.address);
-    assert(bpt == (stageIdx - idx) * tokenAmount, 'Did not actually exit pool');
+    assert(bpt.toString() == tokenAmount.mul(stageIdx - idx).toString(), 'Did not actually exit pool');
   }
 
   bpt = await pool.balanceOf(trader.address);
