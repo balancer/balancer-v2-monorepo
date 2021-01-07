@@ -62,7 +62,7 @@ contract SimplifiedQuotePoolsBalance {
      */
     function _getSimplifiedQuotePoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         bytes32 balance = _simplifiedQuotePoolsBalances[poolId][token];
-        bool existsToken = balance.total() > 0 || _simplifiedQuotePoolsTokens[poolId].contains(address(token));
+        bool existsToken = balance.isNotZero() || _simplifiedQuotePoolsTokens[poolId].contains(address(token));
         require(existsToken, "ERR_TOKEN_NOT_REGISTERED");
         return balance;
     }
@@ -107,7 +107,8 @@ contract SimplifiedQuotePoolsBalance {
     }
 
     /**
-     * @dev Adds cash to a Simplified Quote Pool for a list of tokens.
+     * @dev Adds cash to a Simplified Quote Pool for a list of tokens. This function doesn't check that the lengths of
+     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
      *
      * Requirements:
      *
@@ -127,7 +128,8 @@ contract SimplifiedQuotePoolsBalance {
     }
 
     /**
-     * @dev Removes cash from a Simplified Quote Pool for a list of tokens.
+     * @dev Removes cash from a Simplified Quote Pool for a list of tokens. This function doesn't check that the lengths
+     *  of `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
      *
      * Requirements:
      *
@@ -171,7 +173,9 @@ contract SimplifiedQuotePoolsBalance {
     }
 
     function _isSimplifiedQuotePoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        return _simplifiedQuotePoolsBalances[poolId][token].isInvested();
+        EnumerableSet.AddressSet storage poolTokens = _simplifiedQuotePoolsTokens[poolId];
+        bytes32 currentBalance = _getSimplifiedQuotePoolTokenBalance(poolTokens, poolId, token);
+        return currentBalance.isInvested();
     }
 
     function _updateSimplifiedQuotePoolBalance(
@@ -191,8 +195,16 @@ contract SimplifiedQuotePoolsBalance {
         function(bytes32, uint128) pure returns (bytes32) mutation,
         uint128 amount
     ) internal {
-        require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
-        bytes32 currentBalance = _simplifiedQuotePoolsBalances[poolId][token];
+        bytes32 currentBalance = _getSimplifiedQuotePoolTokenBalance(poolTokens, poolId, token);
         _simplifiedQuotePoolsBalances[poolId][token] = mutation(currentBalance, amount);
+    }
+
+    function _getSimplifiedQuotePoolTokenBalance(
+        EnumerableSet.AddressSet storage poolTokens,
+        bytes32 poolId,
+        IERC20 token
+    ) internal view returns (bytes32) {
+        require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
+        return _simplifiedQuotePoolsBalances[poolId][token];
     }
 }

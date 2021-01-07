@@ -64,7 +64,8 @@ contract StandardPoolsBalance {
      * - `token` must be in the Pool.
      */
     function _getStandardPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
-        return _standardPoolsBalances[poolId].get(token, "ERR_TOKEN_NOT_REGISTERED");
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
+        return _getStandardPoolTokenBalance(poolBalances, token);
     }
 
     /**
@@ -100,14 +101,15 @@ contract StandardPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            _ensureStandardPoolRegisteredToken(poolBalances, token);
-            require(poolBalances.get(token).isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+            bytes32 currentBalance = _getStandardPoolTokenBalance(poolBalances, token);
+            require(currentBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
             poolBalances.remove(token);
         }
     }
 
     /**
-     * @dev Adds cash to a Standard Pool for a list of tokens.
+     * @dev Adds cash to a Standard Pool for a list of tokens. This function doesn't check that the lengths of
+     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
      *
      * Requirements:
      *
@@ -127,7 +129,8 @@ contract StandardPoolsBalance {
     }
 
     /**
-     * @dev Removes cash from a Standard Pool for a list of tokens.
+     * @dev Removes cash from a Standard Pool for a list of tokens. This function doesn't check that the lengths of
+     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
      *
      * Requirements:
      *
@@ -171,7 +174,9 @@ contract StandardPoolsBalance {
     }
 
     function _isStandardPoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        return _standardPoolsBalances[poolId].get(token).isInvested();
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
+        bytes32 currentBalance = _getStandardPoolTokenBalance(poolBalances, token);
+        return currentBalance.isInvested();
     }
 
     function _updateStandardPoolBalance(
@@ -190,15 +195,15 @@ contract StandardPoolsBalance {
         function(bytes32, uint128) pure returns (bytes32) mutation,
         uint128 amount
     ) internal {
-        _ensureStandardPoolRegisteredToken(poolBalances, token);
-        bytes32 currentBalance = poolBalances.get(token);
+        bytes32 currentBalance = _getStandardPoolTokenBalance(poolBalances, token);
         poolBalances.set(token, mutation(currentBalance, amount));
     }
 
-    function _ensureStandardPoolRegisteredToken(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)
+    function _getStandardPoolTokenBalance(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)
         internal
         view
+        returns (bytes32)
     {
-        require(poolBalances.contains(token), "ERR_TOKEN_NOT_REGISTERED");
+        return poolBalances.get(token, "ERR_TOKEN_NOT_REGISTERED");
     }
 }

@@ -137,11 +137,13 @@ describe('Vault - pool registry', () => {
                 });
 
                 it('reverts', async () => {
-                  await expect(vault.registerTokens(poolId, tokenAddresses)).to.be.revertedWith('ERR_TOKEN_IS_ZERO');
+                  const error = 'ERR_TOKEN_IS_ZERO';
+                  await expect(vault.registerTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
+                  await expect(vault.registerTokens(poolId, tokenAddresses.reverse())).to.be.revertedWith(error);
                 });
               });
 
-              context('when non of the tokens is the zero address', () => {
+              context('when none of the tokens is the zero address', () => {
                 const itRegistersTheTokens = () => {
                   it('registers the requested tokens', async () => {
                     await vault.registerTokens(poolId, tokenAddresses);
@@ -157,6 +159,25 @@ describe('Vault - pool registry', () => {
                     const receipt = await (await vault.registerTokens(poolId, tokenAddresses)).wait();
                     expectEvent.inReceipt(receipt, 'TokensRegistered', { poolId, tokens: tokenAddresses });
                   });
+
+                  if (optimization == TwoTokenPool) {
+                    it('cannot be registered individually', async () => {
+                      const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                      await expect(vault.registerTokens(poolId, [tokenAddresses[0]])).to.be.revertedWith(error);
+                    });
+                  } else {
+                    it('can be registered individually', async () => {
+                      for (const tokenAddress of tokenAddresses) {
+                        await vault.registerTokens(poolId, [tokenAddress]);
+                      }
+
+                      const poolTokens = await vault.getPoolTokens(poolId);
+                      expect(poolTokens).to.have.members(tokenAddresses);
+
+                      const poolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+                      expect(poolBalances).to.deep.equal(tokenAddresses.map(() => BigNumber.from(0)));
+                    });
+                  }
                 };
 
                 const itRevertsDueToTwoTokens = () => {
@@ -254,9 +275,28 @@ describe('Vault - pool registry', () => {
                     await vault.addLiquidity(poolId, pool.address, tokenAddresses, balances, false);
                   });
 
-                  it('reverts', async () => {
-                    const error = 'ERR_TOKEN_BALANCE_IS_NOT_ZERO';
-                    await expect(vault.unregisterTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
+                  context('when trying to unregister individually', () => {
+                    if (optimization == TwoTokenPool) {
+                      it('reverts', async () => {
+                        const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                        await expect(vault.unregisterTokens(poolId, [tokenAddresses[0]])).to.be.revertedWith(error);
+                      });
+                    } else {
+                      it('can unregister the tokens without balance', async () => {
+                        await vault.removeLiquidity(poolId, pool.address, [tokenAddresses[0]], [5], false);
+                        await vault.unregisterTokens(poolId, [tokenAddresses[0]]);
+
+                        const poolTokens = await vault.getPoolTokens(poolId);
+                        expect(poolTokens).not.to.have.members([tokenAddresses[0]]);
+                      });
+                    }
+                  });
+
+                  context('when trying to unregister all tokens at once', () => {
+                    it('reverts', async () => {
+                      const error = 'ERR_TOKEN_BALANCE_IS_NOT_ZERO';
+                      await expect(vault.unregisterTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
+                    });
                   });
                 });
 
@@ -266,6 +306,13 @@ describe('Vault - pool registry', () => {
 
                     const poolTokens = await vault.getPoolTokens(poolId);
                     expect(poolTokens).to.be.empty;
+                  });
+
+                  it('cannot query balances any more', async () => {
+                    await vault.unregisterTokens(poolId, tokenAddresses);
+
+                    const error = 'ERR_TOKEN_NOT_REGISTERED';
+                    await expect(vault.getPoolTokenBalances(poolId, tokenAddresses)).to.be.revertedWith(error);
                   });
 
                   it('emits an event', async () => {
@@ -445,7 +492,6 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
   if (optimization != TwoTokenPool) {
     it('pool can add liquidity to single token', async () => {
       await vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false);
-      expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address]);
 
       expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
     });
@@ -455,7 +501,6 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
     await vault
       .connect(pool)
       .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
-    expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
 
     expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
       BigNumber.from(5),
@@ -502,7 +547,6 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
       .connect(pool)
       .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
 
-    expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
     expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
       BigNumber.from(8),
       BigNumber.from(17),

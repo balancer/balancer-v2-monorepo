@@ -213,7 +213,7 @@ library EnumerableMap {
     }
 
     /**
-     * @dev Returns the value associated with `key`.  O(1).
+     * @dev Returns the value associated with `key`. O(1).
      *
      * Requirements:
      *
