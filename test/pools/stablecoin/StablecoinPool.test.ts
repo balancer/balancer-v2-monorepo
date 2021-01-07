@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../../../scripts/helpers/deploy';
-import { deployPoolFromFactory, TupleTS } from '../../../scripts/helpers/pools';
+import { deployPoolFromFactory, StandardPool } from '../../../scripts/helpers/pools';
 import { deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { expectBalanceChange } from '../../helpers/tokenBalance';
@@ -67,7 +67,7 @@ describe('StablecoinPool', function () {
       expect(await pool.getVault()).to.equal(vault.address);
 
       const poolId = await pool.getPoolId();
-      expect(await vault.getPool(poolId)).to.have.members([pool.address, TupleTS]);
+      expect(await vault.getPool(poolId)).to.have.members([pool.address, StandardPool]);
     });
 
     it('grants initial BPT to the pool creator', async () => {

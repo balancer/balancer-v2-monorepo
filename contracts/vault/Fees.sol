@@ -37,8 +37,8 @@ abstract contract Fees is Admin {
     // percentage of the tokens exiting
     uint128 private _protocolWithdrawFee;
 
-    // The swap fee is charged whenever a swap occurs, and is a percentage of the fee charged by the trading strategy.
-    // The Vault relies on the trading strategy being honest and reporting the actuall fee it charged.
+    // The swap fee is charged whenever a swap occurs, and is a percentage of the fee charged by the Pool.
+    // The Vault relies on the Pool being honest and reporting the actual fee it charged.
     uint128 private _protocolSwapFee;
 
     // solhint-disable-next-line var-name-mixedcase

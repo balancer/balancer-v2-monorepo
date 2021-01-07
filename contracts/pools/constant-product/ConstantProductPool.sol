@@ -23,7 +23,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../math/FixedPoint.sol";
 
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPairTradingStrategy.sol";
+import "../../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
@@ -35,7 +35,7 @@ import "./ConstantProductMath.sol";
 
 contract ConstantProductPool is
     IBPTPool,
-    IPairTradingStrategy,
+    IPoolQuoteSimplified,
     BalancerPoolToken,
     ConstantProductMath,
     ReentrancyGuard
@@ -109,9 +109,10 @@ contract ConstantProductPool is
         require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LENGTH");
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
-        IVault.StrategyType strategyType = IVault.StrategyType.PAIR; // TODO: make it TWO_TOKEN if tokens.length == 2
+        // TODO: make it TWO_TOKEN if tokens.length == 2
+        IVault.PoolOptimization optimization = IVault.PoolOptimization.SIMPLIFIED_QUOTE;
 
-        bytes32 poolId = vault.newPool(address(this), strategyType);
+        bytes32 poolId = vault.registerPool(optimization);
         vault.addLiquidity(poolId, from, tokens, amounts, false);
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
@@ -259,7 +260,7 @@ contract ConstantProductPool is
     //Quote Swaps
 
     function quoteOutGivenIn(
-        QuoteRequestGivenIn calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) external view override returns (uint256) {
@@ -278,7 +279,7 @@ contract ConstantProductPool is
     }
 
     function quoteInGivenOut(
-        QuoteRequestGivenOut calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) external view override returns (uint256) {

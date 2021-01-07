@@ -25,12 +25,12 @@ import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
 
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/ITupleTradingStrategy.sol";
+import "../../vault/interfaces/IPoolQuote.sol";
 import "../../math/FixedPoint.sol";
 
 import "./StablecoinMath.sol";
 
-contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
+contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint256;
     using SafeCast for uint256;
     using SafeCast for int256;
@@ -59,7 +59,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
     ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= 2, "ERR_MIN_TOKENS");
 
-        bytes32 poolId = vault.newPool(address(this), IVault.StrategyType.TUPLE);
+        bytes32 poolId = vault.registerPool(IVault.PoolOptimization.STANDARD);
 
         vault.addLiquidity(poolId, from, tokens, amounts, false);
 
@@ -102,7 +102,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
     //Quote Swaps
 
     function quoteOutGivenIn(
-        QuoteRequestGivenIn calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
@@ -113,7 +113,7 @@ contract StablecoinPool is ITupleTradingStrategy, IBPTPool, StablecoinMath, Bala
     }
 
     function quoteInGivenOut(
-        QuoteRequestGivenOut calldata request,
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
