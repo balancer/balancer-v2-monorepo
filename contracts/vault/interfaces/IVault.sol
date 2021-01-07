@@ -386,7 +386,7 @@ interface IVault {
      */
     function getCollectedFeesByToken(IERC20 token) external view returns (uint256);
 
-    // Admin Controls
+    // Authorizer controls
 
     /**
      * @dev Transfers to protocolFeeCollector address the requested amounts of protocol fees. Anyone can call it.
