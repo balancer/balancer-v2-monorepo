@@ -180,8 +180,11 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
 
         uint256[] memory amountsIn = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            amountsIn[i] = balances[i].mul(ratio);
-            require(amountsIn[i] <= maxAmountsIn[i], "ERR_LIMIT_IN");
+            uint256 amount = balances[i].mul(ratio);
+            require(amount <= maxAmountsIn[i], "ERR_LIMIT_IN");
+
+            amountsIn[i] = amount;
+            balances[i] = balances[i].add(amount);
         }
 
         _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
@@ -213,8 +216,11 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
 
         uint256[] memory amountsOut = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            amountsOut[i] = balances[i].mul(ratio);
-            require(amountsOut[i] >= minAmountsOut[i], "NOT EXITING ENOUGH");
+            uint256 amount = balances[i].mul(ratio);
+            require(amount >= minAmountsOut[i], "NOT EXITING ENOUGH");
+
+            amountsOut[i] = amount;
+            balances[i] = balances[i].sub(amount);
         }
 
         _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
