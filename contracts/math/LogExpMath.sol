@@ -227,6 +227,14 @@ library LogExpMath {
      * @return xˆy
      */
     function pow(uint256 x, uint256 y) internal pure returns (uint256) {
+        if (y == 0) {
+            return uint256(DECIMALS);
+        }
+
+        if (x == 0) {
+            return 0;
+        }
+
         require(x < 2**255, "x must be less than 2**255"); // uint256 can be casted to a positive int256
         require(y < MILD_EXPONENT_BOUND, "input y has to be less than 2**254 / 10**20");
         int256 x_int256 = int256(x);
