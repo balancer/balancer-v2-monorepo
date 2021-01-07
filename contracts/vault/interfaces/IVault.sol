@@ -397,5 +397,5 @@ interface IVault {
         address recipient
     ) external;
 
-    // Missing here: setting protocol fees, changing admin
+    // TODO: Add setting protocol fees, changing authorizer
 }
