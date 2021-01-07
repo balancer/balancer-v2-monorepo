@@ -15,20 +15,18 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./ITradingStrategy.sol";
+import "./IPoolQuoteStructs.sol";
 
-interface ITupleTradingStrategy is ITradingStrategy {
+interface IPoolQuoteSimplified {
     function quoteOutGivenIn(
-        QuoteRequestGivenIn calldata request,
-        uint128[] calldata balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) external returns (uint128 amountOut);
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) external returns (uint256 amountOut);
 
     function quoteInGivenOut(
-        QuoteRequestGivenOut calldata request,
-        uint128[] calldata balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) external returns (uint128 amountIn);
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) external returns (uint256 amountIn);
 }

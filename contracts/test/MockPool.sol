@@ -18,22 +18,21 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IPairTradingStrategy.sol";
-import "../vault/interfaces/ITupleTradingStrategy.sol";
+import "../vault/interfaces/IPoolQuote.sol";
+import "../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../math/FixedPoint.sol";
 
-contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
+contract MockPool is IPoolQuote, IPoolQuoteSimplified {
     using FixedPoint for uint256;
-    using FixedPoint for uint128;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
-    event UpdatedBalances(uint128[] balances);
+    event UpdatedBalances(uint256[] balances);
 
-    constructor(IVault vault, IVault.StrategyType strategyType) {
-        _poolId = vault.newPool(address(this), strategyType);
+    constructor(IVault vault, IVault.PoolOptimization optimization) {
+        _poolId = vault.registerPool(optimization);
         _vault = vault;
     }
 
@@ -41,61 +40,61 @@ contract MockPool is IPairTradingStrategy, ITupleTradingStrategy {
         return _poolId;
     }
 
-    function addLiquidity(IERC20[] memory tokens, uint128[] memory amounts) external {
+    function addLiquidity(IERC20[] memory tokens, uint256[] memory amounts) external {
         _vault.addLiquidity(_poolId, msg.sender, tokens, amounts, false);
     }
 
-    function removeLiquidity(IERC20[] memory tokens, uint128[] memory amounts) external {
+    function removeLiquidity(IERC20[] memory tokens, uint256[] memory amounts) external {
         _vault.removeLiquidity(_poolId, msg.sender, tokens, amounts, false);
     }
 
-    function paySwapProtocolFees(IERC20[] memory tokens, uint128[] memory collectedFees) external {
-        uint128[] memory balances = _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
+    function paySwapProtocolFees(IERC20[] memory tokens, uint256[] memory collectedFees) external {
+        uint256[] memory balances = _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
         emit UpdatedBalances(balances);
     }
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it
-    uint128 private _multiplier = FixedPoint.ONE;
+    uint256 private _multiplier = FixedPoint.ONE;
 
-    function setMultiplier(uint128 newMultiplier) external {
+    function setMultiplier(uint256 newMultiplier) external {
         _multiplier = newMultiplier;
     }
 
-    // IPairTradingStrategy
+    // IPoolQuote
     function quoteOutGivenIn(
-        ITradingStrategy.QuoteRequestGivenIn calldata request,
-        uint128,
-        uint128
-    ) external view override returns (uint128) {
-        return request.amountIn.mul128(_multiplier);
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+        uint256[] calldata,
+        uint256,
+        uint256
+    ) external view override returns (uint256) {
+        return request.amountIn.mul(_multiplier);
     }
 
     function quoteInGivenOut(
-        ITradingStrategy.QuoteRequestGivenOut calldata request,
-        uint128,
-        uint128
-    ) external view override returns (uint128) {
-        uint128 amountIn = request.amountOut.div128(_multiplier);
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+        uint256[] calldata,
+        uint256,
+        uint256
+    ) external view override returns (uint256) {
+        uint256 amountIn = request.amountOut.div(_multiplier);
         return amountIn;
     }
 
-    // ITupleTradingStrategy
+    // IPoolQuoteSimplified
     function quoteOutGivenIn(
-        ITradingStrategy.QuoteRequestGivenIn calldata request,
-        uint128[] calldata,
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256,
         uint256
-    ) external view override returns (uint128) {
-        return request.amountIn.mul128(_multiplier);
+    ) external view override returns (uint256) {
+        return request.amountIn.mul(_multiplier);
     }
 
     function quoteInGivenOut(
-        ITradingStrategy.QuoteRequestGivenOut calldata request,
-        uint128[] calldata,
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256,
         uint256
-    ) external view override returns (uint128) {
-        uint128 amountIn = request.amountOut.div128(_multiplier);
+    ) external view override returns (uint256) {
+        uint256 amountIn = request.amountOut.div(_multiplier);
         return amountIn;
     }
 }

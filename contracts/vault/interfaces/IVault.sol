@@ -29,14 +29,14 @@ interface IVault {
     /**
      * @dev Returns `user`'s User Balance for a specific token.
      */
-    function getUserTokenBalance(address user, IERC20 token) external view returns (uint128);
+    function getUserTokenBalance(address user, IERC20 token) external view returns (uint256);
 
     /**
      * @dev Deposits tokens from the caller into `user`'s User Balance.
      */
     function deposit(
         IERC20 token,
-        uint128 amount,
+        uint256 amount,
         address user
     ) external;
 
@@ -46,7 +46,7 @@ interface IVault {
      */
     function withdraw(
         IERC20 token,
-        uint128 amount,
+        uint256 amount,
         address recipient
     ) external;
 
@@ -119,21 +119,30 @@ interface IVault {
 
     // Pools
 
-    // There are two variants of Trading Strategies for Pools: Pair Trading Strategies, and Tuple Trading Strategies.
-    // These require different data from the Vault, which is reflected in their differing interfaces
-    // (IPairTradingStrategy and ITupleTradingStrategy, respectively).
-    enum StrategyType { PAIR, TUPLE, TWO_TOKEN }
+    // There are three optimization levels for Pools, which allow for lower swap gas costs at the cost of reduced
+    // functionality:
+    //
+    //  - standard: no special optimization, IPoolQuote is used to ask for quotes, passing the balance of all tokens in
+    // the Pool. Swaps cost more gas the more tokens the Pool has (because of the extra storage reads).
+    //
+    //  - simplified quote: IPoolQuoteSimplified is used instead, which saves gas by only passes the balance of the two
+    // tokens involved in the swap. This is suitable for some pricing algorithms, like the weighted constant product one
+    // popularized by Balancer v1. Swap gas cost is independent of the number of tokens in the Pool.
+    //
+    //  - two tokens: this level achieves the lowest possible swap gas costs by restricting Pools to only having two
+    // tokens, which allows for a specialized balance packing format. Like simplified quote Pools, these are called via
+    // IPoolQuoteSimplified.
+    enum PoolOptimization { STANDARD, SIMPLIFIED_QUOTE, TWO_TOKEN }
 
     /**
-     * @dev Creates a new Pool with a Trading Strategy and Trading Strategy Type. The caller of this function becomes
-     * the Pool's controller.
+     * @dev Registers a the caller as a Pool, with selected optimization level.
      *
-     * Returns the created Pool's ID. Also emits a PoolCreated event.
+     * Returns the Pool's ID. Also emits a PoolCreated event.
      */
-    function newPool(address strategy, StrategyType strategyType) external returns (bytes32);
+    function registerPool(PoolOptimization optimization) external returns (bytes32);
 
     /**
-     * @dev Emitted when a Pool is created by calling `newPool`. Contains the Pool ID of the created pool.
+     * @dev Emitted when a Pool is created by calling `registerPool`. Contains the Pool ID of the created pool.
      */
     event PoolCreated(bytes32 poolId);
 
@@ -150,9 +159,9 @@ interface IVault {
     function getPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory);
 
     /**
-     * @dev Returns a Pool's address.
+     * @dev Returns a Pool's address and optimization level.
      */
-    function getPool(bytes32 poolId) external view returns (address, StrategyType);
+    function getPool(bytes32 poolId) external view returns (address, PoolOptimization);
 
     /**
      * @dev Returns all tokens in the Pool (tokens for which the Pool has balance).
@@ -162,7 +171,7 @@ interface IVault {
     /**
      * @dev Returns the Pool's balance of `tokens`. This might be zero if the tokens are not in the Pool.
      */
-    function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint128[] memory);
+    function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint256[] memory);
 
     // Pool Management
 
@@ -181,7 +190,7 @@ interface IVault {
         bytes32 poolId,
         address from,
         IERC20[] calldata tokens,
-        uint128[] calldata amounts,
+        uint256[] calldata amounts,
         bool withdrawFromUserBalance
     ) external;
 
@@ -199,7 +208,7 @@ interface IVault {
         bytes32 poolId,
         address to,
         IERC20[] calldata tokens,
-        uint128[] calldata amounts,
+        uint256[] calldata amounts,
         bool depositToUserBalance
     ) external;
 
@@ -251,17 +260,17 @@ interface IVault {
     // Indexes instead of token addresses to not perform lookup in the tokens array.
     struct SwapIn {
         bytes32 poolId;
-        uint128 tokenInIndex;
-        uint128 tokenOutIndex;
-        uint128 amountIn;
+        uint256 tokenInIndex;
+        uint256 tokenOutIndex;
+        uint256 amountIn;
         bytes userData;
     }
 
     struct SwapOut {
         bytes32 poolId;
-        uint128 tokenInIndex;
-        uint128 tokenOutIndex;
-        uint128 amountOut;
+        uint256 tokenInIndex;
+        uint256 tokenOutIndex;
+        uint256 amountOut;
         bytes userData;
     }
 
@@ -325,8 +334,8 @@ interface IVault {
     function paySwapProtocolFees(
         bytes32 poolId,
         IERC20[] calldata tokens,
-        uint128[] calldata collectedFees
-    ) external returns (uint128[] memory balances);
+        uint256[] calldata collectedFees
+    ) external returns (uint256[] memory balances);
 
     // Flash Loan interface
 
@@ -349,18 +358,18 @@ interface IVault {
     // Investment interface
 
     /**
-     * @dev Authorize an investment manager for a pool token
+     * @dev Set the investment manager for a pool token
      */
-    function authorizePoolInvestmentManager(
+    function setPoolInvestmentManager(
         bytes32 poolId,
         IERC20 token,
         address manager
     ) external;
 
     /**
-     * @dev Revoke the current investment manager of a pool token
+     * @dev Returns the investment manager for a token in a pool
      */
-    function revokePoolInvestmentManager(bytes32 poolId, IERC20 token) external;
+    function getPoolInvestmentManager(bytes32 poolId, IERC20 token) external view returns (address);
 
     /**
      * @dev Increase the invested amount of a given pool token
@@ -368,7 +377,7 @@ interface IVault {
     function investPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) external;
 
     /**
@@ -377,7 +386,7 @@ interface IVault {
     function divestPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) external;
 
     /**
@@ -386,7 +395,7 @@ interface IVault {
     function updateInvested(
         bytes32 poolId,
         IERC20 token,
-        uint128 amountInvested
+        uint256 amountInvested
     ) external;
 
     //Protocol Fees
