@@ -31,9 +31,9 @@ contract StablecoinPoolFactory is BasePoolFactory {
         string memory symbol,
         uint256 initialBPT,
         IERC20[] memory tokens,
-        uint128[] memory amounts,
-        uint128 amp,
-        uint128 swapFee,
+        uint256[] memory amounts,
+        uint256 amp,
+        uint256 swapFee,
         bytes32 salt
     ) external returns (address) {
         return

@@ -16,16 +16,17 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
+import "./CashInvested.sol";
 import "../../math/FixedPoint.sol";
 
-import "./CashInvested.sol";
-
 contract SimplifiedQuotePoolsBalance {
-    using EnumerableSet for EnumerableSet.AddressSet;
+    using SafeCast for uint256;
     using CashInvested for bytes32;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     // Data for Pools with Simplified Quote Pool Optimization setting
     //
@@ -118,12 +119,13 @@ contract SimplifiedQuotePoolsBalance {
     function _increaseSimplifiedQuotePoolCash(
         bytes32 poolId,
         IERC20[] memory tokens,
-        uint128[] memory amounts
+        uint256[] memory amounts
     ) internal {
         EnumerableSet.AddressSet storage poolTokens = _simplifiedQuotePoolsTokens[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _updateSimplifiedQuotePoolBalance(poolTokens, poolId, tokens[i], CashInvested.increaseCash, amounts[i]);
+            uint128 amount = amounts[i].toUint128();
+            _updateSimplifiedQuotePoolBalance(poolTokens, poolId, tokens[i], CashInvested.increaseCash, amount);
         }
     }
 
@@ -139,12 +141,13 @@ contract SimplifiedQuotePoolsBalance {
     function _decreaseSimplifiedQuotePoolCash(
         bytes32 poolId,
         IERC20[] memory tokens,
-        uint128[] memory amounts
+        uint256[] memory amounts
     ) internal {
         EnumerableSet.AddressSet storage poolTokens = _simplifiedQuotePoolsTokens[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _updateSimplifiedQuotePoolBalance(poolTokens, poolId, tokens[i], CashInvested.decreaseCash, amounts[i]);
+            uint128 amount = amounts[i].toUint128();
+            _updateSimplifiedQuotePoolBalance(poolTokens, poolId, tokens[i], CashInvested.decreaseCash, amount);
         }
     }
 

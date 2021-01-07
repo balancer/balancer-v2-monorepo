@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../../math/FixedPoint.sol";
@@ -41,10 +40,8 @@ contract ConstantProductPool is
     ConstantProductMath,
     ReentrancyGuard
 {
-    using FixedPoint for uint128;
     using FixedPoint for uint256;
-    using SafeCast for uint256;
-    using SafeCast for int256;
+    using FixedPoint for uint128;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -72,29 +69,29 @@ contract ConstantProductPool is
     uint256 private immutable _totalTokens;
     uint256 private _sumWeights;
 
-    uint128 private immutable _weight0;
-    uint128 private immutable _weight1;
-    uint128 private immutable _weight2;
-    uint128 private immutable _weight3;
-    uint128 private immutable _weight4;
-    uint128 private immutable _weight5;
-    uint128 private immutable _weight6;
-    uint128 private immutable _weight7;
-    uint128 private immutable _weight8;
-    uint128 private immutable _weight9;
-    uint128 private immutable _weight10;
-    uint128 private immutable _weight11;
-    uint128 private immutable _weight12;
-    uint128 private immutable _weight13;
-    uint128 private immutable _weight14;
-    uint128 private immutable _weight15;
+    uint256 private immutable _weight0;
+    uint256 private immutable _weight1;
+    uint256 private immutable _weight2;
+    uint256 private immutable _weight3;
+    uint256 private immutable _weight4;
+    uint256 private immutable _weight5;
+    uint256 private immutable _weight6;
+    uint256 private immutable _weight7;
+    uint256 private immutable _weight8;
+    uint256 private immutable _weight9;
+    uint256 private immutable _weight10;
+    uint256 private immutable _weight11;
+    uint256 private immutable _weight12;
+    uint256 private immutable _weight13;
+    uint256 private immutable _weight14;
+    uint256 private immutable _weight15;
 
-    uint128 private immutable _swapFee;
+    uint256 private immutable _swapFee;
 
     uint256 private _lastInvariant;
 
-    uint128 private constant _MIN_SWAP_FEE = 0;
-    uint128 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
+    uint256 private constant _MIN_SWAP_FEE = 0;
+    uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
 
     constructor(
         IVault vault,
@@ -102,10 +99,10 @@ contract ConstantProductPool is
         string memory symbol,
         uint256 initialBPT,
         IERC20[] memory tokens,
-        uint128[] memory amounts,
+        uint256[] memory amounts,
         address from,
-        uint128[] memory weights,
-        uint128 swapFee
+        uint256[] memory weights,
+        uint256 swapFee
     ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= _MIN_TOKENS, "ERR__MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "ERR__MAX_TOKENS");
@@ -180,7 +177,7 @@ contract ConstantProductPool is
         _resetAccumulatedSwapFees(tokens, weights, amounts);
     }
 
-    function _weight(IERC20 token) private view returns (uint128) {
+    function _weight(IERC20 token) private view returns (uint256) {
         if (token == _token0) {
             return _weight0;
         } else if (token == _token1) {
@@ -218,8 +215,8 @@ contract ConstantProductPool is
         }
     }
 
-    function _weights(IERC20[] memory tokens) internal view returns (uint128[] memory) {
-        uint128[] memory weights = new uint128[](tokens.length);
+    function _weights(IERC20[] memory tokens) internal view returns (uint256[] memory) {
+        uint256[] memory weights = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < weights.length; ++i) {
             weights[i] = _weight(tokens[i]);
@@ -246,7 +243,7 @@ contract ConstantProductPool is
         return _poolId;
     }
 
-    function getWeights(IERC20[] memory tokens) external view returns (uint128[] memory) {
+    function getWeights(IERC20[] memory tokens) external view returns (uint256[] memory) {
         return _weights(tokens);
     }
 
@@ -258,7 +255,7 @@ contract ConstantProductPool is
         return _normalizedWeight(token);
     }
 
-    function getSwapFee() external view returns (uint128) {
+    function getSwapFee() external view returns (uint256) {
         return _swapFee;
     }
 
@@ -266,13 +263,13 @@ contract ConstantProductPool is
 
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
-        uint128 currentBalanceTokenIn,
-        uint128 currentBalanceTokenOut
-    ) external view override returns (uint128) {
-        uint128 adjustedIn = _subtractSwapFee(request.amountIn);
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) external view override returns (uint256) {
+        uint256 adjustedIn = _subtractSwapFee(request.amountIn);
 
         // Calculate the maximum amount that can be taken out of the pool
-        uint128 maximumAmountOut = _outGivenIn(
+        uint256 maximumAmountOut = _outGivenIn(
             currentBalanceTokenIn,
             _weight(request.tokenIn),
             currentBalanceTokenOut,
@@ -285,11 +282,11 @@ contract ConstantProductPool is
 
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
-        uint128 currentBalanceTokenIn,
-        uint128 currentBalanceTokenOut
-    ) external view override returns (uint128) {
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) external view override returns (uint256) {
         // Calculate the minimum amount that must be put into the pool
-        uint128 minimumAmountIn = _inGivenOut(
+        uint256 minimumAmountIn = _inGivenOut(
             currentBalanceTokenIn,
             _weight(request.tokenIn),
             currentBalanceTokenOut,
@@ -302,44 +299,42 @@ contract ConstantProductPool is
 
     //Protocol Fees
 
-    function _payProtocolFees(IERC20[] memory tokens, uint128[] memory balances) internal returns (uint128[] memory) {
-        uint128[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
+    function _payProtocolFees(IERC20[] memory tokens, uint256[] memory balances) internal returns (uint256[] memory) {
+        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
         return _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
     }
 
     /**************************************************************************************************/
     /***********  balanceToken ( 1 - (lastInvariant / currentInvariant)^(1 / weightToken) ) ***********
     /**************************************************************************************************/
-    function _getAccumulatedSwapFees(IERC20[] memory tokens, uint128[] memory balances)
+    function _getAccumulatedSwapFees(IERC20[] memory tokens, uint256[] memory balances)
         internal
         view
-        returns (uint128[] memory)
+        returns (uint256[] memory)
     {
-        uint128[] memory swapFeesCollected = new uint128[](tokens.length);
+        uint256[] memory swapFeesCollected = new uint256[](tokens.length);
 
         uint256 currentInvariant = _getInvariant(tokens, _weights(tokens), balances);
         uint256 ratio = _lastInvariant.div(currentInvariant);
-        uint256 exponent = FixedPoint.ONE.div128(_normalizedWeight(tokens[0]).toUint128());
+        uint256 exponent = FixedPoint.ONE.div(_normalizedWeight(tokens[0]));
         //TODO: picking first token for now, make it random
-        swapFeesCollected[0] = balances[0].mul128(
-            FixedPoint.ONE.sub128(LogExpMath.exp(ratio.toInt256(), exponent.toInt256()).toUint256().toUint128())
-        );
+        swapFeesCollected[0] = balances[0].mul(uint256(FixedPoint.ONE).sub(LogExpMath.pow(ratio, exponent)));
 
         return swapFeesCollected;
     }
 
     function _resetAccumulatedSwapFees(
         IERC20[] memory tokens,
-        uint128[] memory weights,
-        uint128[] memory balances
+        uint256[] memory weights,
+        uint256[] memory balances
     ) internal {
         _lastInvariant = _getInvariant(tokens, weights, balances);
     }
 
     function _getInvariant(
         IERC20[] memory tokens,
-        uint128[] memory weights,
-        uint128[] memory balances
+        uint256[] memory weights,
+        uint256[] memory balances
     ) private view returns (uint256) {
         uint256[] memory normalizedWeights = new uint256[](tokens.length);
         for (uint8 i = 0; i < tokens.length; i++) {
@@ -350,7 +345,7 @@ contract ConstantProductPool is
 
     // Pays protocol swap fees
     function payProtocolFees() external {
-        (IERC20[] memory tokens, uint128[] memory balances) = _getPoolTokenBalances();
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
         balances = _payProtocolFees(tokens, balances);
         _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
     }
@@ -359,21 +354,24 @@ contract ConstantProductPool is
 
     function joinPool(
         uint256 poolAmountOut,
-        uint128[] calldata maxAmountsIn,
+        uint256[] calldata maxAmountsIn,
         bool transferTokens,
         address beneficiary
     ) external override nonReentrant {
-        (IERC20[] memory tokens, uint128[] memory balances) = _getPoolTokenBalances();
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
         require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
 
         //Pay protocol fees to have balances up to date
         balances = _payProtocolFees(tokens, balances);
 
-        uint128 ratio = _getSupplyRatio(poolAmountOut);
-        uint128[] memory amountsIn = new uint128[](tokens.length);
+        uint256 ratio = _getSupplyRatio(poolAmountOut);
+        uint256[] memory amountsIn = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            amountsIn[i] = balances[i].mul128(ratio);
-            require(amountsIn[i] <= maxAmountsIn[i], "ERR_LIMIT_IN");
+            uint256 amount = balances[i].mul(ratio);
+            require(amount <= maxAmountsIn[i], "ERR_LIMIT_IN");
+
+            amountsIn[i] = amount;
+            balances[i] = balances[i].add(amount);
         }
 
         _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
@@ -390,17 +388,20 @@ contract ConstantProductPool is
         bool withdrawTokens,
         address beneficiary
     ) external override nonReentrant {
-        (IERC20[] memory tokens, uint128[] memory balances) = _getPoolTokenBalances();
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
         require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
 
         //Pay protocol fees to have balances up to date
         balances = _payProtocolFees(tokens, balances);
 
-        uint128 ratio = _getSupplyRatio(poolAmountIn);
-        uint128[] memory amountsOut = new uint128[](tokens.length);
+        uint256 ratio = _getSupplyRatio(poolAmountIn);
+        uint256[] memory amountsOut = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            amountsOut[i] = balances[i].mul128(ratio);
-            require(amountsOut[i] >= minAmountsOut[i], "NOT EXITING ENOUGH");
+            uint256 amount = balances[i].mul(ratio);
+            require(amount >= minAmountsOut[i], "NOT EXITING ENOUGH");
+
+            amountsOut[i] = amount;
+            balances[i] = balances[i].sub(amount);
         }
 
         _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
@@ -411,27 +412,27 @@ contract ConstantProductPool is
         _burnPoolTokens(msg.sender, poolAmountIn);
     }
 
-    function _getSupplyRatio(uint256 amount) internal view returns (uint128) {
+    function _getSupplyRatio(uint256 amount) internal view returns (uint256) {
         uint256 poolTotal = totalSupply();
-        uint128 ratio = amount.div(poolTotal).toUint128();
+        uint256 ratio = amount.div(poolTotal);
         require(ratio != 0, "ERR_MATH_APPROX");
         return ratio;
     }
 
     // Potential helpers
 
-    function _addSwapFee(uint128 amount) private view returns (uint128) {
-        return amount.div128(FixedPoint.ONE.sub128(_swapFee));
+    function _addSwapFee(uint256 amount) private view returns (uint256) {
+        return amount.div(uint256(FixedPoint.ONE).sub(_swapFee));
     }
 
-    function _subtractSwapFee(uint128 amount) private view returns (uint128) {
-        uint128 fees = amount.mul128(_swapFee);
-        return amount.sub128(fees);
+    function _subtractSwapFee(uint256 amount) private view returns (uint256) {
+        uint256 fees = amount.mul(_swapFee);
+        return amount.sub(fees);
     }
 
-    function _getPoolTokenBalances() internal view returns (IERC20[] memory tokens, uint128[] memory balances) {
+    function _getPoolTokenBalances() internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
         tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length == _totalTokens, "Unexpected number of tokens");
+        // We trust the number of tokens returned from the Vault since these are registered in the constructor
 
         balances = _vault.getPoolTokenBalances(_poolId, tokens);
         bool someLiquidity = true;

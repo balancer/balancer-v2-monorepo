@@ -16,16 +16,17 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../vendor/EnumerableMap.sol";
-
-import "../../math/FixedPoint.sol";
 
 import "./CashInvested.sol";
+import "../../math/FixedPoint.sol";
+import "../../vendor/EnumerableMap.sol";
 
 contract StandardPoolsBalance {
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using SafeCast for uint256;
     using CashInvested for bytes32;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     // Data for Pools with Standard Pool Optimization setting
     //
@@ -119,12 +120,13 @@ contract StandardPoolsBalance {
     function _increaseStandardPoolCash(
         bytes32 poolId,
         IERC20[] memory tokens,
-        uint128[] memory amounts
+        uint256[] memory amounts
     ) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _updateStandardPoolBalance(poolBalances, tokens[i], CashInvested.increaseCash, amounts[i]);
+            uint128 amount = amounts[i].toUint128();
+            _updateStandardPoolBalance(poolBalances, tokens[i], CashInvested.increaseCash, amount);
         }
     }
 
@@ -140,12 +142,13 @@ contract StandardPoolsBalance {
     function _decreaseStandardPoolCash(
         bytes32 poolId,
         IERC20[] memory tokens,
-        uint128[] memory amounts
+        uint256[] memory amounts
     ) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _updateStandardPoolBalance(poolBalances, tokens[i], CashInvested.decreaseCash, amounts[i]);
+            uint128 amount = amounts[i].toUint128();
+            _updateStandardPoolBalance(poolBalances, tokens[i], CashInvested.decreaseCash, amount);
         }
     }
 

@@ -14,8 +14,6 @@
 
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-
 import "hardhat/console.sol";
 
 import "../../math/FixedPoint.sol";
@@ -27,20 +25,18 @@ import "../../math/LogExpMath.sol";
 /* solhint-disable private-vars-leading-underscore */
 
 contract ConstantProductMath {
-    using SafeCast for uint256;
-    using SafeCast for int256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances and weights.
     function _outGivenIn(
-        uint128 tokenBalanceIn,
+        uint256 tokenBalanceIn,
         uint256 tokenWeightIn,
-        uint128 tokenBalanceOut,
+        uint256 tokenBalanceOut,
         uint256 tokenWeightOut,
-        uint128 tokenAmountIn
-    ) internal pure returns (uint128) {
+        uint256 tokenAmountIn
+    ) internal pure returns (uint256) {
         /**********************************************************************************************
         // outGivenIn                                                                                //
         // aO = tokenAmountOut                                                                       //
@@ -53,22 +49,20 @@ contract ConstantProductMath {
 
         uint256 quotient = tokenBalanceIn.div(tokenBalanceIn.add(tokenAmountIn));
         uint256 weightRatio = tokenWeightIn.div(tokenWeightOut);
-        uint256 ratio = FixedPoint.ONE.sub(
-            LogExpMath.exp(int256(quotient), int256(weightRatio)).toUint256().toUint128()
-        );
+        uint256 ratio = FixedPoint.ONE.sub(LogExpMath.pow(quotient, weightRatio));
 
-        return tokenBalanceOut.mul(ratio).toUint128();
+        return tokenBalanceOut.mul(ratio);
     }
 
     // Computes how many tokens must be sent to a pool in order to take `tokenAmountOut`, given the
     // current balances and weights.
     function _inGivenOut(
-        uint128 tokenBalanceIn,
+        uint256 tokenBalanceIn,
         uint256 tokenWeightIn,
-        uint128 tokenBalanceOut,
+        uint256 tokenBalanceOut,
         uint256 tokenWeightOut,
-        uint128 tokenAmountOut
-    ) internal pure returns (uint128) {
+        uint256 tokenAmountOut
+    ) internal pure returns (uint256) {
         /**********************************************************************************************
         // inGivenOut                                                                                //
         // aO = tokenAmountOut                                                                       //
@@ -81,15 +75,13 @@ contract ConstantProductMath {
 
         uint256 quotient = tokenBalanceOut.div(tokenBalanceOut.sub(tokenAmountOut));
         uint256 weightRatio = tokenWeightOut.div(tokenWeightIn);
-        uint256 ratio = LogExpMath.exp(int256(quotient), int256(weightRatio)).toUint256().toUint128().sub(
-            FixedPoint.ONE
-        );
+        uint256 ratio = LogExpMath.pow(quotient, weightRatio).sub(FixedPoint.ONE);
 
-        return tokenBalanceIn.mul(ratio).toUint128();
+        return tokenBalanceIn.mul(ratio);
     }
 
     // Computes the invariant given the current balances and normalized weights.
-    function _invariant(uint256[] memory normalizedWeights, uint128[] memory balances)
+    function _invariant(uint256[] memory normalizedWeights, uint256[] memory balances)
         internal
         pure
         returns (uint256 invariant)
@@ -98,7 +90,7 @@ contract ConstantProductMath {
 
         invariant = FixedPoint.ONE;
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
-            invariant = invariant.mul(LogExpMath.exp(int256(balances[i]), int256(normalizedWeights[i])).toUint256());
+            invariant = invariant.mul(LogExpMath.pow(balances[i], normalizedWeights[i]));
         }
     }
 }

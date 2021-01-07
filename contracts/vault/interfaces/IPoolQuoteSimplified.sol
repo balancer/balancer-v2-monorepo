@@ -20,13 +20,13 @@ import "./IPoolQuoteStructs.sol";
 interface IPoolQuoteSimplified {
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
-        uint128 currentBalanceTokenIn,
-        uint128 currentBalanceTokenOut
-    ) external returns (uint128 amountOut);
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) external returns (uint256 amountOut);
 
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
-        uint128 currentBalanceTokenIn,
-        uint128 currentBalanceTokenOut
-    ) external returns (uint128 amountIn);
+        uint256 currentBalanceTokenIn,
+        uint256 currentBalanceTokenOut
+    ) external returns (uint256 amountIn);
 }
