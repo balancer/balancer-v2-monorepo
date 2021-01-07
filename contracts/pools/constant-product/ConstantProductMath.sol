@@ -26,6 +26,7 @@ import "../../math/LogExpMath.sol";
 
 contract ConstantProductMath {
     using FixedPoint for uint256;
+    using FixedPoint for uint128;
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances and weights.
@@ -48,7 +49,7 @@ contract ConstantProductMath {
 
         uint256 quotient = tokenBalanceIn.div(tokenBalanceIn.add(tokenAmountIn));
         uint256 weightRatio = tokenWeightIn.div(tokenWeightOut);
-        uint256 ratio = uint256(FixedPoint.ONE).sub(LogExpMath.pow(quotient, weightRatio));
+        uint256 ratio = FixedPoint.ONE.sub(LogExpMath.pow(quotient, weightRatio));
 
         return tokenBalanceOut.mul(ratio);
     }

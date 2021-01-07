@@ -41,6 +41,7 @@ contract ConstantProductPool is
     ReentrancyGuard
 {
     using FixedPoint for uint256;
+    using FixedPoint for uint128;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -309,7 +310,7 @@ contract ConstantProductPool is
 
         uint256 currentInvariant = _getInvariant(tokens, _weights(tokens), balances);
         uint256 ratio = _lastInvariant.div(currentInvariant);
-        uint256 exponent = uint256(FixedPoint.ONE).div(_normalizedWeight(tokens[0]));
+        uint256 exponent = FixedPoint.ONE.div(_normalizedWeight(tokens[0]));
         //TODO: picking first token for now, make it random
         swapFeesCollected[0] = balances[0].mul(uint256(FixedPoint.ONE).sub(LogExpMath.pow(ratio, exponent)));
 
