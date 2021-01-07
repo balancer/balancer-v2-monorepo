@@ -20,6 +20,7 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "./Fees.sol";
 import "./Agents.sol";
@@ -30,41 +31,42 @@ abstract contract UserBalance is Fees, Agents {
     using SafeERC20 for IERC20;
     using FixedPoint for uint128;
     using FixedPoint for uint256;
+    using SafeCast for uint256;
 
     mapping(address => mapping(IERC20 => uint128)) internal _userTokenBalance; // user -> token -> user balance
 
-    event Deposited(address indexed depositor, address indexed user, IERC20 indexed token, uint128 amount);
-    event Withdrawn(address indexed user, address indexed recipient, IERC20 indexed token, uint128 amount);
+    event Deposited(address indexed depositor, address indexed user, IERC20 indexed token, uint256 amount);
+    event Withdrawn(address indexed user, address indexed recipient, IERC20 indexed token, uint256 amount);
 
-    function getUserTokenBalance(address user, IERC20 token) public view override returns (uint128) {
+    function getUserTokenBalance(address user, IERC20 token) public view override returns (uint256) {
         return _userTokenBalance[user][token];
     }
 
     function deposit(
         IERC20 token,
-        uint128 amount,
+        uint256 amount,
         address user
     ) external override {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         // TODO: check overflow
-        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(amount);
+        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(amount.toUint128());
         emit Deposited(msg.sender, user, token, amount);
     }
 
     function withdraw(
         IERC20 token,
-        uint128 amount,
+        uint256 amount,
         address recipient
     ) external override {
         require(_userTokenBalance[msg.sender][token] >= amount, "Vault: withdraw amount exceeds balance");
 
-        _userTokenBalance[msg.sender][token] -= amount;
+        _userTokenBalance[msg.sender][token] -= amount.toUint128();
 
-        uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
+        uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount.toUint128());
 
         _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
-        token.safeTransfer(recipient, amount.sub128(feeAmount));
+        token.safeTransfer(recipient, amount.sub(feeAmount));
 
         emit Withdrawn(msg.sender, recipient, token, amount);
     }

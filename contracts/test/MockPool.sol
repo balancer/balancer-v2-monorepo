@@ -25,12 +25,11 @@ import "../math/FixedPoint.sol";
 
 contract MockPool is IPoolQuote, IPoolQuoteSimplified {
     using FixedPoint for uint256;
-    using FixedPoint for uint128;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
-    event UpdatedBalances(uint128[] balances);
+    event UpdatedBalances(uint256[] balances);
 
     constructor(IVault vault, IVault.PoolOptimization optimization) {
         _poolId = vault.registerPool(optimization);
@@ -41,61 +40,61 @@ contract MockPool is IPoolQuote, IPoolQuoteSimplified {
         return _poolId;
     }
 
-    function addLiquidity(IERC20[] memory tokens, uint128[] memory amounts) external {
+    function addLiquidity(IERC20[] memory tokens, uint256[] memory amounts) external {
         _vault.addLiquidity(_poolId, msg.sender, tokens, amounts, false);
     }
 
-    function removeLiquidity(IERC20[] memory tokens, uint128[] memory amounts) external {
+    function removeLiquidity(IERC20[] memory tokens, uint256[] memory amounts) external {
         _vault.removeLiquidity(_poolId, msg.sender, tokens, amounts, false);
     }
 
-    function paySwapProtocolFees(IERC20[] memory tokens, uint128[] memory collectedFees) external {
-        uint128[] memory balances = _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
+    function paySwapProtocolFees(IERC20[] memory tokens, uint256[] memory collectedFees) external {
+        uint256[] memory balances = _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
         emit UpdatedBalances(balances);
     }
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it
-    uint128 private _multiplier = FixedPoint.ONE;
+    uint256 private _multiplier = FixedPoint.ONE;
 
-    function setMultiplier(uint128 newMultiplier) external {
+    function setMultiplier(uint256 newMultiplier) external {
         _multiplier = newMultiplier;
     }
 
     // IPoolQuote
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
-        uint128[] calldata,
+        uint256[] calldata,
         uint256,
         uint256
-    ) external view override returns (uint128) {
-        return request.amountIn.mul128(_multiplier);
+    ) external view override returns (uint256) {
+        return request.amountIn.mul(_multiplier);
     }
 
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
-        uint128[] calldata,
+        uint256[] calldata,
         uint256,
         uint256
-    ) external view override returns (uint128) {
-        uint128 amountIn = request.amountOut.div128(_multiplier);
+    ) external view override returns (uint256) {
+        uint256 amountIn = request.amountOut.div(_multiplier);
         return amountIn;
     }
 
     // IPoolQuoteSimplified
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
-        uint128,
-        uint128
-    ) external view override returns (uint128) {
-        return request.amountIn.mul128(_multiplier);
+        uint256,
+        uint256
+    ) external view override returns (uint256) {
+        return request.amountIn.mul(_multiplier);
     }
 
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
-        uint128,
-        uint128
-    ) external view override returns (uint128) {
-        uint128 amountIn = request.amountOut.div128(_multiplier);
+        uint256,
+        uint256
+    ) external view override returns (uint256) {
+        uint256 amountIn = request.amountOut.div(_multiplier);
         return amountIn;
     }
 }

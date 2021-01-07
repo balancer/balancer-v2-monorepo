@@ -9,7 +9,7 @@ import { deploy } from '../../scripts/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
 import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 
-describe.only('InvestmentManager', function () {
+describe('InvestmentManager', function () {
   let tokens: TokenList;
   let otherToken: Contract;
   let vault: Contract;

@@ -29,14 +29,14 @@ interface IVault {
     /**
      * @dev Returns `user`'s User Balance for a specific token.
      */
-    function getUserTokenBalance(address user, IERC20 token) external view returns (uint128);
+    function getUserTokenBalance(address user, IERC20 token) external view returns (uint256);
 
     /**
      * @dev Deposits tokens from the caller into `user`'s User Balance.
      */
     function deposit(
         IERC20 token,
-        uint128 amount,
+        uint256 amount,
         address user
     ) external;
 
@@ -46,7 +46,7 @@ interface IVault {
      */
     function withdraw(
         IERC20 token,
-        uint128 amount,
+        uint256 amount,
         address recipient
     ) external;
 
@@ -171,7 +171,7 @@ interface IVault {
     /**
      * @dev Returns the Pool's balance of `tokens`. This might be zero if the tokens are not in the Pool.
      */
-    function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint128[] memory);
+    function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint256[] memory);
 
     // Pool Management
 
@@ -190,7 +190,7 @@ interface IVault {
         bytes32 poolId,
         address from,
         IERC20[] calldata tokens,
-        uint128[] calldata amounts,
+        uint256[] calldata amounts,
         bool withdrawFromUserBalance
     ) external;
 
@@ -208,7 +208,7 @@ interface IVault {
         bytes32 poolId,
         address to,
         IERC20[] calldata tokens,
-        uint128[] calldata amounts,
+        uint256[] calldata amounts,
         bool depositToUserBalance
     ) external;
 
@@ -260,17 +260,17 @@ interface IVault {
     // Indexes instead of token addresses to not perform lookup in the tokens array.
     struct SwapIn {
         bytes32 poolId;
-        uint128 tokenInIndex;
-        uint128 tokenOutIndex;
-        uint128 amountIn;
+        uint256 tokenInIndex;
+        uint256 tokenOutIndex;
+        uint256 amountIn;
         bytes userData;
     }
 
     struct SwapOut {
         bytes32 poolId;
-        uint128 tokenInIndex;
-        uint128 tokenOutIndex;
-        uint128 amountOut;
+        uint256 tokenInIndex;
+        uint256 tokenOutIndex;
+        uint256 amountOut;
         bytes userData;
     }
 
@@ -334,8 +334,8 @@ interface IVault {
     function paySwapProtocolFees(
         bytes32 poolId,
         IERC20[] calldata tokens,
-        uint128[] calldata collectedFees
-    ) external returns (uint128[] memory balances);
+        uint256[] calldata collectedFees
+    ) external returns (uint256[] memory balances);
 
     // Flash Loan interface
 
@@ -377,7 +377,7 @@ interface IVault {
     function investPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) external;
 
     /**
@@ -386,7 +386,7 @@ interface IVault {
     function divestPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) external;
 
     /**
@@ -395,7 +395,7 @@ interface IVault {
     function updateInvested(
         bytes32 poolId,
         IERC20 token,
-        uint128 amountInvested
+        uint256 amountInvested
     ) external;
 
     //Protocol Fees
