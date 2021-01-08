@@ -17,12 +17,17 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./IFlashLoanReceiver.sol";
+import "./IAuthorizer.sol";
 import "../../validators/ISwapValidator.sol";
 
 pragma solidity ^0.7.1;
 
 // Full external interface for the Vault core contract - no external or public methods exist in the contract that don't
 // override one of these declarations.
+//
+// All non-view functions in the Vault are non-reentrant: calling them while another one is mid-execution (e.g. while
+// execution control is transferred to a token contract during a transfer) will result in a revert. View functions can
+// be called, but they might return inconsistent results if called in a reentrant manner.
 interface IVault {
     // User Balance
 
@@ -349,8 +354,6 @@ interface IVault {
      *
      * Before returning from the IFlashLoanReceiver.receiveFlashLoan call, the receiver must transfer back the loaned
      * tokens, plus a proportional protocol fee.
-     *
-     * This is a non-reentrant call: swaps, adding liquidity, etc., are all disabled until the flash loan finishes.
      */
     function flashLoan(
         IFlashLoanReceiver receiver,
@@ -402,23 +405,34 @@ interface IVault {
         uint256 amountInvested
     ) external;
 
-    //Protocol Fees
+    // Authorizer
+
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    function changeAuthorizer(IAuthorizer newAuthorizer) external;
+
+    // Protocol Fees
+
+    function getProtocolWithdrawFee() external view returns (uint128);
+
+    function getProtocolSwapFee() external view returns (uint128);
+
+    function getProtocolFlashLoanFee() external view returns (uint256);
+
+    function setProtocolWithdrawFee(uint128 newFee) external;
+
+    function setProtocolSwapFee(uint128 newFee) external;
+
+    function setProtocolFlashLoanFee(uint128 newFee) external;
 
     /**
      * @dev Returns the amount in protocol fees collected for a specific `token`.
      */
     function getCollectedFeesByToken(IERC20 token) external view returns (uint256);
 
-    // Authorizer controls
-
-    /**
-     * @dev Transfers to protocolFeeCollector address the requested amounts of protocol fees. Anyone can call it.
-     */
     function withdrawProtocolFees(
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
     ) external;
-
-    // TODO: Add setting protocol fees, changing authorizer
 }

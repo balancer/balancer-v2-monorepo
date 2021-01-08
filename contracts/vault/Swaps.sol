@@ -22,7 +22,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "../vendor/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../vendor/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
 import "./interfaces/IPoolQuoteStructs.sol";
@@ -55,6 +55,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes userData;
     }
 
+    // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
+    // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
     function batchSwapGivenIn(
         ISwapValidator validator,
         bytes calldata validatorData,
@@ -68,6 +70,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
     }
 
+    // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
+    // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
     function batchSwapGivenOut(
         ISwapValidator validator,
         bytes calldata validatorData,
@@ -142,8 +146,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement memory funds,
         SwapKind kind
     ) private nonReentrant returns (int256[] memory) {
-        //TODO: avoid reentrancy
-
         // Any net token amount going into the Vault will be taken from `funds.sender`, so they must have
         // approved the caller to use their funds.
         require(isAgentFor(funds.sender, msg.sender), "Caller is not an agent");
@@ -468,10 +470,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 poolId,
         IERC20[] calldata tokens,
         uint256[] calldata collectedFees
-    ) external override withExistingPool(poolId) onlyPool(poolId) returns (uint256[] memory balances) {
+    ) external override nonReentrant withExistingPool(poolId) onlyPool(poolId) returns (uint256[] memory balances) {
         require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
 
-        uint128 swapFee = protocolSwapFee();
+        uint128 swapFee = getProtocolSwapFee();
         (, PoolOptimization optimization) = fromPoolId(poolId);
 
         if (optimization == PoolOptimization.TWO_TOKEN) {

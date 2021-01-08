@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../../vendor/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../BalancerPoolToken.sol";
@@ -150,7 +150,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
     }
 
     // Pays protocol swap fees
-    function payProtocolFees() external {
+    function payProtocolFees() external nonReentrant {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
         balances = _payProtocolFees(tokens, balances);
         _resetAccumulatedSwapFees(_amp, balances);
