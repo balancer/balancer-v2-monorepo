@@ -13,19 +13,22 @@ import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 let admin: SignerWithAddress;
 let pool: SignerWithAddress;
 let lp: SignerWithAddress;
+let feeSetter: SignerWithAddress;
 let other: SignerWithAddress;
 
+let authorizer: Contract;
 let vault: Contract;
 let symbols: string[];
 let tokens: TokenList = {};
 
 describe('Vault - pool registry', () => {
-  before('setup', async () => {
-    [, admin, pool, lp, other] = await ethers.getSigners();
+  before(async () => {
+    [, admin, pool, lp, feeSetter, other] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [admin.address] });
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
     symbols = ['DAI', 'MKR', 'SNX'];
     tokens = await deployTokens(symbols, [18, 18, 18]);
 
@@ -692,7 +695,8 @@ describe('Vault - pool registry', () => {
     let poolId: string;
 
     beforeEach('deploy pool', async () => {
-      await vault.connect(admin).setProtocolSwapFee(toFixedPoint(0.01)); // 1%
+      await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), feeSetter.address);
+      await vault.connect(feeSetter).setProtocolSwapFee(toFixedPoint(0.01)); // 1%
 
       pool = await deploy('MockPool', {
         args: [vault.address, SimplifiedQuotePool],
@@ -746,7 +750,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('the vault charges nothing if the protocol fee is 0', async () => {
-      await vault.connect(admin).setProtocolSwapFee(toFixedPoint(0));
+      await vault.connect(feeSetter).setProtocolSwapFee(toFixedPoint(0));
       await assertFeesArePaid([{ symbol: 'DAI', reported: 500, expectedPaid: 0 }]);
     });
 
