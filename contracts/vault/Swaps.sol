@@ -342,8 +342,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         if (kind == SwapKind.GIVEN_IN) {
             uint128 amountOut = pool
-            .quoteOutGivenIn(_toQuoteGivenIn(request), tokenInTotalBalance, tokenOutTotalBalance)
-            .toUint128();
+                .quoteOutGivenIn(_toQuoteGivenIn(request), tokenInTotalBalance, tokenOutTotalBalance)
+                .toUint128();
 
             tokenInBalance = tokenInBalance.increaseCash(request.amount.toUint128());
             tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
