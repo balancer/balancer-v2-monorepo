@@ -4,7 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PairTS } from '../../scripts/helpers/pools';
+import { SimplifiedQuotePool } from '../../scripts/helpers/pools';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
@@ -44,6 +44,7 @@ describe('Vault - protocol fees', () => {
     await vault.connect(admin).setProtocolFeeCollector(ZERO_ADDRESS);
     expect(await vault.protocolFeeCollector()).to.equal(ZERO_ADDRESS);
   });
+
   it('non-admin cannot set protocol fee collector', async () => {
     await expect(vault.connect(other).setProtocolFeeCollector(collector.address)).to.be.revertedWith(
       'Caller is not the admin'
@@ -52,8 +53,10 @@ describe('Vault - protocol fees', () => {
 
   describe('protocol fee charged', () => {
     beforeEach(async () => {
-      const pool = await deploy('MockPool', { args: [vault.address, PairTS] });
+      const pool = await deploy('MockPool', { args: [vault.address, SimplifiedQuotePool] });
       await vault.connect(lp).addUserAgent(pool.address);
+
+      await pool.connect(lp).registerTokens([tokens.DAI.address, tokens.MKR.address]);
 
       await pool
         .connect(lp)
