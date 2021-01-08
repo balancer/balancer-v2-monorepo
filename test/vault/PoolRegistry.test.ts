@@ -92,6 +92,306 @@ describe('Vault - pool registry', () => {
   });
 
   describe('token management', () => {
+    function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
+      let poolId: string;
+
+      beforeEach(async () => {
+        const receipt = await (await vault.connect(pool).registerPool(optimization)).wait();
+
+        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        poolId = event.args.poolId;
+
+        await vault.connect(pool).registerTokens(poolId, [tokens.DAI.address, tokens.MKR.address]);
+      });
+
+      if (optimization != TwoTokenPool) {
+        it('pool can add liquidity to single token', async () => {
+          await vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false);
+
+          expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
+        });
+      }
+
+      it('pool can add liquidity to multiple tokens', async () => {
+        await vault
+          .connect(pool)
+          .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
+
+        expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
+          BigNumber.from(5),
+          BigNumber.from(10),
+        ]);
+      });
+
+      it('pool cannot add liquidity for the zero address token', async () => {
+        await expect(
+          vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address, ZERO_ADDRESS], [5, 10], false)
+        ).to.be.revertedWith('Token is the zero address');
+
+        await expect(
+          vault.connect(pool).addLiquidity(poolId, pool.address, [ZERO_ADDRESS, tokens.MKR.address], [5, 10], false)
+        ).to.be.revertedWith('Token is the zero address');
+      });
+
+      it('the pool can add zero liquidity to registered tokens', async () => {
+        await vault
+          .connect(pool)
+          .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 0], false);
+
+        await vault
+          .connect(pool)
+          .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [0, 10], false);
+
+        const balances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address]);
+        expect(balances).to.deep.equal([BigNumber.from(5), BigNumber.from(10)]);
+      });
+
+      it('the pool cannot add liquidity with mismatching tokens and lengths', async () => {
+        await expect(
+          vault
+            .connect(pool)
+            .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10, 15], false)
+        ).to.be.revertedWith('Tokens and total amounts length mismatch');
+      });
+
+      it('the pool can add liquidity multiple times', async () => {
+        await vault
+          .connect(pool)
+          .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [3, 7], false);
+        await vault
+          .connect(pool)
+          .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
+
+        expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
+          BigNumber.from(8),
+          BigNumber.from(17),
+        ]);
+      });
+
+      it('tokens are pulled from the lp when adding liquidity', async () => {
+        await vault.connect(lp).addUserAgent(pool.address);
+
+        await expectBalanceChange(
+          () =>
+            vault
+              .connect(pool)
+              .addLiquidity(poolId, lp.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false),
+          tokens,
+          [
+            { account: lp, changes: { DAI: -5, MKR: -10 } },
+            { account: vault.address, changes: { DAI: 5, MKR: 10 } },
+          ]
+        );
+      });
+
+      it('the pool must be an agent for the lp to adding liquidity', async () => {
+        await expect(
+          vault.connect(pool).addLiquidity(poolId, lp.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false)
+        ).to.be.revertedWith('Caller is not an agent');
+      });
+
+      it('the pool can add liquidity by withdrawing tokens from user balance', async () => {
+        await vault.connect(pool).deposit(tokens.DAI.address, 50, pool.address);
+        await vault.connect(pool).deposit(tokens.MKR.address, 100, pool.address);
+
+        await expectBalanceChange(
+          () =>
+            vault
+              .connect(pool)
+              .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], true),
+          tokens,
+          [{ account: pool }]
+        );
+
+        expect(await vault.getUserTokenBalance(pool.address, tokens.DAI.address)).to.equal(45); // 5 out of 50 taken
+        expect(await vault.getUserTokenBalance(pool.address, tokens.MKR.address)).to.equal(90); // 10 out of 100 taken
+      });
+
+      it('the pool can add liquidity by both transferring and withdrawing tokens from user balance', async () => {
+        await vault.connect(pool).deposit(tokens.DAI.address, 3, pool.address);
+        await vault.connect(pool).deposit(tokens.MKR.address, 6, pool.address);
+
+        await expectBalanceChange(
+          () =>
+            vault
+              .connect(pool)
+              .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], true),
+          tokens,
+          [{ account: pool, changes: { DAI: -2, MKR: -4 } }]
+        );
+
+        expect(await vault.getUserTokenBalance(pool.address, tokens.DAI.address)).to.equal(0);
+        expect(await vault.getUserTokenBalance(pool.address, tokens.MKR.address)).to.equal(0);
+      });
+
+      it('non-pool cannot add liquidity', async () => {
+        await expect(
+          vault
+            .connect(other)
+            .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false)
+        ).to.be.revertedWith('Caller is not the pool');
+      });
+
+      if (optimization == TwoTokenPool) {
+        it('the pool cannot add liquidity to single token', async () => {
+          await expect(
+            vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false)
+          ).to.be.revertedWith('ERR_TOKENS_LENGTH_MUST_BE_2');
+        });
+
+        it('the pool cannot add liquidity to more than two tokens', async () => {
+          await expect(
+            vault
+              .connect(pool)
+              .addLiquidity(
+                poolId,
+                pool.address,
+                [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address],
+                [5, 10, 15],
+                false
+              )
+          ).to.be.revertedWith('ERR_TOKENS_LENGTH_MUST_BE_2');
+        });
+
+        it('the pool cannot add liquidity to repeated tokens', async () => {
+          await expect(
+            vault
+              .connect(pool)
+              .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.DAI.address], [5, 10], false)
+          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
+        });
+      }
+
+      context('with added liquidity', () => {
+        beforeEach(async () => {
+          await vault
+            .connect(pool)
+            .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
+        });
+
+        if (optimization != TwoTokenPool) {
+          it('the pool can remove zero liquidity from single token', async () => {
+            await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [0], false);
+
+            expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
+            expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
+              BigNumber.from(5),
+              BigNumber.from(10),
+            ]);
+          });
+
+          it('the pool can remove partial liquidity from single token', async () => {
+            await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [8], false);
+
+            expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
+            expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
+              BigNumber.from(5),
+              BigNumber.from(2),
+            ]);
+          });
+
+          it('the pool can remove all liquidity from single token', async () => {
+            await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [10], false);
+
+            expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address]);
+            expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
+          });
+        }
+
+        if (optimization == TwoTokenPool) {
+          it('the pool cannot remove zero liquidity from single token', async () => {
+            await expect(
+              vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [0], false)
+            ).to.be.revertedWith('ERR_TOKENS_LENGTH_MUST_BE_2');
+          });
+        }
+
+        it('the pool can remove zero liquidity from multiple tokens', async () => {
+          await vault
+            .connect(pool)
+            .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [0, 3], false);
+
+          expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
+          expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
+            BigNumber.from(5),
+            BigNumber.from(7),
+          ]);
+        });
+
+        it('the pool can remove partial liquidity from multiple tokens', async () => {
+          await vault
+            .connect(pool)
+            .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [2, 3], false);
+
+          expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
+          expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
+            BigNumber.from(3),
+            BigNumber.from(7),
+          ]);
+        });
+
+        it('the pool can remove all liquidity from multiple tokens', async () => {
+          await vault
+            .connect(pool)
+            .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
+
+          expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
+        });
+
+        it('the pool can remove liquidity by depositing tokens into user balance', async () => {
+          await expectBalanceChange(
+            () =>
+              vault
+                .connect(pool)
+                .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [4, 8], true),
+            tokens,
+            [{ account: pool }]
+          );
+
+          expect(await vault.getUserTokenBalance(pool.address, tokens.DAI.address)).to.equal(4);
+          expect(await vault.getUserTokenBalance(pool.address, tokens.MKR.address)).to.equal(8);
+        });
+
+        it('tokens are pushed to lp when removing liquidity', async () => {
+          await expectBalanceChange(
+            () =>
+              vault
+                .connect(pool)
+                .removeLiquidity(poolId, lp.address, [tokens.DAI.address, tokens.MKR.address], [2, 7], false),
+            tokens,
+            [
+              { account: vault.address, changes: { DAI: -2, MKR: -7 } },
+              { account: lp, changes: { DAI: 2, MKR: 7 } },
+            ]
+          );
+        });
+
+        it('the controller cannot remove zero liquidity not in pool', async () => {
+          await expect(
+            vault
+              .connect(pool)
+              .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.SNX.address], [5, 0], false)
+          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
+        });
+
+        it('the controller cannot remove non-zero liquidity not in pool', async () => {
+          await expect(
+            vault
+              .connect(pool)
+              .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.SNX.address], [5, 2], false)
+          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
+        });
+
+        it('non-pool cannot remove liquidity', async () => {
+          await expect(
+            vault
+              .connect(other)
+              .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [0, 0], false)
+          ).to.be.revertedWith('Caller is not the pool');
+        });
+      });
+    }
+
     describe('with standard pool', () => {
       itManagesTokensCorrectly(StandardPool);
     });
@@ -476,293 +776,3 @@ describe('Vault - pool registry', () => {
     });
   });
 });
-
-function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
-  let poolId: string;
-
-  beforeEach(async () => {
-    const receipt = await (await vault.connect(pool).registerPool(optimization)).wait();
-
-    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    poolId = event.args.poolId;
-
-    await vault.connect(pool).registerTokens(poolId, [tokens.DAI.address, tokens.MKR.address]);
-  });
-
-  if (optimization != TwoTokenPool) {
-    it('pool can add liquidity to single token', async () => {
-      await vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false);
-
-      expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
-    });
-  }
-
-  it('pool can add liquidity to multiple tokens', async () => {
-    await vault
-      .connect(pool)
-      .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
-
-    expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
-      BigNumber.from(5),
-      BigNumber.from(10),
-    ]);
-  });
-
-  it('pool cannot add liquidity for the zero address token', async () => {
-    await expect(
-      vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address, ZERO_ADDRESS], [5, 10], false)
-    ).to.be.revertedWith('Token is the zero address');
-
-    await expect(
-      vault.connect(pool).addLiquidity(poolId, pool.address, [ZERO_ADDRESS, tokens.MKR.address], [5, 10], false)
-    ).to.be.revertedWith('Token is the zero address');
-  });
-
-  it('the pool can add zero liquidity to registered tokens', async () => {
-    await vault
-      .connect(pool)
-      .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 0], false);
-
-    await vault
-      .connect(pool)
-      .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [0, 10], false);
-
-    const balances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address]);
-    expect(balances).to.deep.equal([BigNumber.from(5), BigNumber.from(10)]);
-  });
-
-  it('the pool cannot add liquidity with mismatching tokens and lengths', async () => {
-    await expect(
-      vault
-        .connect(pool)
-        .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10, 15], false)
-    ).to.be.revertedWith('Tokens and total amounts length mismatch');
-  });
-
-  it('the pool can add liquidity multiple times', async () => {
-    await vault
-      .connect(pool)
-      .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [3, 7], false);
-    await vault
-      .connect(pool)
-      .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
-
-    expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
-      BigNumber.from(8),
-      BigNumber.from(17),
-    ]);
-  });
-
-  it('tokens are pulled from the lp when adding liquidity', async () => {
-    await vault.connect(lp).addUserAgent(pool.address);
-
-    await expectBalanceChange(
-      () =>
-        vault.connect(pool).addLiquidity(poolId, lp.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false),
-      tokens,
-      [
-        { account: lp, changes: { DAI: -5, MKR: -10 } },
-        { account: vault.address, changes: { DAI: 5, MKR: 10 } },
-      ]
-    );
-  });
-
-  it('the pool must be an agent for the lp to adding liquidity', async () => {
-    await expect(
-      vault.connect(pool).addLiquidity(poolId, lp.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false)
-    ).to.be.revertedWith('Caller is not an agent');
-  });
-
-  it('the pool can add liquidity by withdrawing tokens from user balance', async () => {
-    await vault.connect(pool).deposit(tokens.DAI.address, 50, pool.address);
-    await vault.connect(pool).deposit(tokens.MKR.address, 100, pool.address);
-
-    await expectBalanceChange(
-      () =>
-        vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], true),
-      tokens,
-      [{ account: pool }]
-    );
-
-    expect(await vault.getUserTokenBalance(pool.address, tokens.DAI.address)).to.equal(45); // 5 out of 50 taken
-    expect(await vault.getUserTokenBalance(pool.address, tokens.MKR.address)).to.equal(90); // 10 out of 100 taken
-  });
-
-  it('the pool can add liquidity by both transferring and withdrawing tokens from user balance', async () => {
-    await vault.connect(pool).deposit(tokens.DAI.address, 3, pool.address);
-    await vault.connect(pool).deposit(tokens.MKR.address, 6, pool.address);
-
-    await expectBalanceChange(
-      () =>
-        vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], true),
-      tokens,
-      [{ account: pool, changes: { DAI: -2, MKR: -4 } }]
-    );
-
-    expect(await vault.getUserTokenBalance(pool.address, tokens.DAI.address)).to.equal(0);
-    expect(await vault.getUserTokenBalance(pool.address, tokens.MKR.address)).to.equal(0);
-  });
-
-  it('non-pool cannot add liquidity', async () => {
-    await expect(
-      vault.connect(other).addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false)
-    ).to.be.revertedWith('Caller is not the pool');
-  });
-
-  if (optimization == TwoTokenPool) {
-    it('the pool cannot add liquidity to single token', async () => {
-      await expect(
-        vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false)
-      ).to.be.revertedWith('ERR_TOKENS_LENGTH_MUST_BE_2');
-    });
-
-    it('the pool cannot add liquidity to more than two tokens', async () => {
-      await expect(
-        vault
-          .connect(pool)
-          .addLiquidity(
-            poolId,
-            pool.address,
-            [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address],
-            [5, 10, 15],
-            false
-          )
-      ).to.be.revertedWith('ERR_TOKENS_LENGTH_MUST_BE_2');
-    });
-
-    it('the pool cannot add liquidity to repeated tokens', async () => {
-      await expect(
-        vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.DAI.address], [5, 10], false)
-      ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
-    });
-  }
-
-  context('with added liquidity', () => {
-    beforeEach(async () => {
-      await vault
-        .connect(pool)
-        .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
-    });
-
-    if (optimization != TwoTokenPool) {
-      it('the pool can remove zero liquidity from single token', async () => {
-        await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [0], false);
-
-        expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
-        expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
-          BigNumber.from(5),
-          BigNumber.from(10),
-        ]);
-      });
-
-      it('the pool can remove partial liquidity from single token', async () => {
-        await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [8], false);
-
-        expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
-        expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
-          BigNumber.from(5),
-          BigNumber.from(2),
-        ]);
-      });
-
-      it('the pool can remove all liquidity from single token', async () => {
-        await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [10], false);
-
-        expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address]);
-        expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
-      });
-    }
-
-    if (optimization == TwoTokenPool) {
-      it('the pool cannot remove zero liquidity from single token', async () => {
-        await expect(
-          vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [0], false)
-        ).to.be.revertedWith('ERR_TOKENS_LENGTH_MUST_BE_2');
-      });
-    }
-
-    it('the pool can remove zero liquidity from multiple tokens', async () => {
-      await vault
-        .connect(pool)
-        .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [0, 3], false);
-
-      expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
-      expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
-        BigNumber.from(5),
-        BigNumber.from(7),
-      ]);
-    });
-
-    it('the pool can remove partial liquidity from multiple tokens', async () => {
-      await vault
-        .connect(pool)
-        .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [2, 3], false);
-
-      expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
-      expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
-        BigNumber.from(3),
-        BigNumber.from(7),
-      ]);
-    });
-
-    it('the pool can remove all liquidity from multiple tokens', async () => {
-      await vault
-        .connect(pool)
-        .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
-
-      expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
-    });
-
-    it('the pool can remove liquidity by depositing tokens into user balance', async () => {
-      await expectBalanceChange(
-        () =>
-          vault
-            .connect(pool)
-            .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [4, 8], true),
-        tokens,
-        [{ account: pool }]
-      );
-
-      expect(await vault.getUserTokenBalance(pool.address, tokens.DAI.address)).to.equal(4);
-      expect(await vault.getUserTokenBalance(pool.address, tokens.MKR.address)).to.equal(8);
-    });
-
-    it('tokens are pushed to lp when removing liquidity', async () => {
-      await expectBalanceChange(
-        () =>
-          vault
-            .connect(pool)
-            .removeLiquidity(poolId, lp.address, [tokens.DAI.address, tokens.MKR.address], [2, 7], false),
-        tokens,
-        [
-          { account: vault.address, changes: { DAI: -2, MKR: -7 } },
-          { account: lp, changes: { DAI: 2, MKR: 7 } },
-        ]
-      );
-    });
-
-    it('the controller cannot remove zero liquidity not in pool', async () => {
-      await expect(
-        vault
-          .connect(pool)
-          .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.SNX.address], [5, 0], false)
-      ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
-    });
-
-    it('the controller cannot remove non-zero liquidity not in pool', async () => {
-      await expect(
-        vault
-          .connect(pool)
-          .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.SNX.address], [5, 2], false)
-      ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
-    });
-
-    it('non-pool cannot remove liquidity', async () => {
-      await expect(
-        vault
-          .connect(other)
-          .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [0, 0], false)
-      ).to.be.revertedWith('Caller is not the pool');
-    });
-  });
-}
