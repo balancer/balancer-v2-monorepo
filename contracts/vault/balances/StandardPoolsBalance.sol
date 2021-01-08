@@ -16,16 +16,17 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../vendor/EnumerableMap.sol";
-
-import "../../math/FixedPoint.sol";
 
 import "./CashInvested.sol";
+import "../../math/FixedPoint.sol";
+import "../../vendor/EnumerableMap.sol";
 
 contract StandardPoolsBalance {
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using SafeCast for uint256;
     using CashInvested for bytes32;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     // Data for Pools with Standard Pool Optimization setting
     //
@@ -64,63 +65,90 @@ contract StandardPoolsBalance {
      * - `token` must be in the Pool.
      */
     function _getStandardPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
-        return _standardPoolsBalances[poolId].get(token);
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
+        return _getStandardPoolTokenBalance(poolBalances, token);
     }
 
     /**
-     * @dev Adds cash to a Standard Pool for a given token. If the token was not previously in the Pool (if it didn't
-     * have any funds for it), the token is then added to the Pool. After this function is called, 'token' will be in
-     * the Pool.
+     * @dev Registers a list of tokens in a Standard Pool.
      *
      * Requirements:
      *
-     * - if `token` is not in the Pool, `amount` must be non-zero.
+     * - Each token must not be the zero address.
+     * - Each token must not be registered in the Pool.
+     */
+    function _registerStandardPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            require(token != IERC20(0), "ERR_TOKEN_IS_ZERO");
+            bool added = poolBalances.set(token, 0);
+            require(added, "ERR_TOKEN_ALREADY_REGISTERED");
+            // No need to delete the balance entries, since they already are zero
+        }
+    }
+
+    /**
+     * @dev Unregisters a list of tokens in a Standard Pool.
+     *
+     * Requirements:
+     *
+     * - Each token must be registered in the Pool.
+     * - Each token must have non balance in the Vault.
+     */
+    function _unregisterStandardPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            bytes32 currentBalance = _getStandardPoolTokenBalance(poolBalances, token);
+            require(currentBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+            poolBalances.remove(token);
+        }
+    }
+
+    /**
+     * @dev Adds cash to a Standard Pool for a list of tokens. This function doesn't check that the lengths of
+     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
+     *
+     * Requirements:
+     *
+     * - Each token must be registered in the pool
+     * - Amounts can be zero
      */
     function _increaseStandardPoolCash(
         bytes32 poolId,
-        IERC20 token,
-        uint128 amount
+        IERC20[] memory tokens,
+        uint256[] memory amounts
     ) internal {
-        bytes32 currentBalance;
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
 
-        // Alternatively we could check for non-zero balance
-        if (_standardPoolsBalances[poolId].contains(token)) {
-            currentBalance = _standardPoolsBalances[poolId].get(token);
-        } else {
-            // New token - it will be added to the map once 'set' is called
-
-            require(amount > 0, "New token amount is zero");
-            currentBalance = CashInvested.toBalance(0, 0);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint128 amount = amounts[i].toUint128();
+            _updateStandardPoolBalance(poolBalances, tokens[i], CashInvested.increaseCash, amount);
         }
-
-        // amount is always non-zero, so we're never adding a zero-balance token to the map
-        _standardPoolsBalances[poolId].set(token, currentBalance.increaseCash(amount));
     }
 
     /**
-     * @dev Removes cash from a Standard Pool for a given token. If this fully drains the Pool's balance for that token
-     * (including invested balance), then the token is removed from the Pool.
+     * @dev Removes cash from a Standard Pool for a list of tokens. This function doesn't check that the lengths of
+     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
      *
      * Requirements:
      *
-     * - `token` must be in the Pool.
-     * - `amount` must be less or equal than the Pool's cash for that token.
+     * - Each token must be registered in the Pool.
+     * - Each amount must be less or equal than the Pool's cash for that token.
      */
     function _decreaseStandardPoolCash(
         bytes32 poolId,
-        IERC20 token,
-        uint128 amount
+        IERC20[] memory tokens,
+        uint256[] memory amounts
     ) internal {
-        // Alternatively we could check for non-zero balance
-        require(_standardPoolsBalances[poolId].contains(token), "Token not in pool");
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
 
-        bytes32 currentBalance = _standardPoolsBalances[poolId].get(token);
-        bytes32 newBalance = currentBalance.decreaseCash(amount);
-
-        if (newBalance.total() == 0) {
-            _standardPoolsBalances[poolId].remove(token);
-        } else {
-            _standardPoolsBalances[poolId].set(token, newBalance);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            uint128 amount = amounts[i].toUint128();
+            _updateStandardPoolBalance(poolBalances, tokens[i], CashInvested.decreaseCash, amount);
         }
     }
 
@@ -129,10 +157,7 @@ contract StandardPoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
-        require(_standardPoolsBalances[poolId].contains(token), "Token not in pool");
-
-        bytes32 currentBalance = _standardPoolsBalances[poolId].get(token);
-        _standardPoolsBalances[poolId].set(token, currentBalance.cashToInvested(amount));
+        _updateStandardPoolBalance(poolId, token, CashInvested.cashToInvested, amount);
     }
 
     function _divestStandardPoolCash(
@@ -140,10 +165,7 @@ contract StandardPoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
-        require(_standardPoolsBalances[poolId].contains(token), "Token not in pool");
-
-        bytes32 currentBalance = _standardPoolsBalances[poolId].get(token);
-        _standardPoolsBalances[poolId].set(token, currentBalance.investedToCash(amount));
+        _updateStandardPoolBalance(poolId, token, CashInvested.investedToCash, amount);
     }
 
     function _setStandardPoolInvestment(
@@ -151,13 +173,40 @@ contract StandardPoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
-        require(_standardPoolsBalances[poolId].contains(token), "Token not in pool");
-
-        bytes32 currentBalance = _standardPoolsBalances[poolId].get(token);
-        _standardPoolsBalances[poolId].set(token, currentBalance.setInvested(amount));
+        _updateStandardPoolBalance(poolId, token, CashInvested.setInvested, amount);
     }
 
     function _isStandardPoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        return _standardPoolsBalances[poolId].get(token).isInvested();
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
+        bytes32 currentBalance = _getStandardPoolTokenBalance(poolBalances, token);
+        return currentBalance.isInvested();
+    }
+
+    function _updateStandardPoolBalance(
+        bytes32 poolId,
+        IERC20 token,
+        function(bytes32, uint128) pure returns (bytes32) mutation,
+        uint128 amount
+    ) internal {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
+        _updateStandardPoolBalance(poolBalances, token, mutation, amount);
+    }
+
+    function _updateStandardPoolBalance(
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances,
+        IERC20 token,
+        function(bytes32, uint128) pure returns (bytes32) mutation,
+        uint128 amount
+    ) internal {
+        bytes32 currentBalance = _getStandardPoolTokenBalance(poolBalances, token);
+        poolBalances.set(token, mutation(currentBalance, amount));
+    }
+
+    function _getStandardPoolTokenBalance(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)
+        internal
+        view
+        returns (bytes32)
+    {
+        return poolBalances.get(token, "ERR_TOKEN_NOT_REGISTERED");
     }
 }

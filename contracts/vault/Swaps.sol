@@ -334,12 +334,15 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenInBalance = tokenBBalance;
         }
 
-        require(tokenInBalance.total() > 0, "Token A not in pool");
-        require(tokenOutBalance.total() > 0, "Token B not in pool");
+        uint128 tokenInTotalBalance = tokenInBalance.total();
+        require(tokenInTotalBalance > 0, "Token A not in pool");
+
+        uint128 tokenOutTotalBalance = tokenOutBalance.total();
+        require(tokenOutTotalBalance > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             uint128 amountOut = pool
-                .quoteOutGivenIn(_toQuoteGivenIn(request), tokenInBalance.total(), tokenOutBalance.total())
+                .quoteOutGivenIn(_toQuoteGivenIn(request), tokenInTotalBalance, tokenOutTotalBalance)
                 .toUint128();
 
             tokenInBalance = tokenInBalance.increaseCash(request.amount.toUint128());
@@ -348,7 +351,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountOut;
         } else {
             uint128 amountIn = pool
-                .quoteInGivenOut(_toQuoteGivenOut(request), tokenInBalance.total(), tokenOutBalance.total())
+                .quoteInGivenOut(_toQuoteGivenOut(request), tokenInTotalBalance, tokenOutTotalBalance)
                 .toUint128();
 
             tokenInBalance = tokenInBalance.increaseCash(amountIn);
@@ -357,7 +360,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountIn;
         }
 
-        require(tokenOutBalance.total() > 0, "Fully draining token out");
+        require(tokenOutBalance.isNotZero(), "Fully draining token out");
 
         bytes32 newSharedCash;
         if (request.tokenIn < request.tokenOut) {
@@ -377,14 +380,16 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
         bytes32 tokenInBalance = _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn];
-        require(tokenInBalance.total() > 0, "Token A not in pool");
+        uint128 tokenInTotalBalance = tokenInBalance.total();
+        require(tokenInTotalBalance > 0, "Token A not in pool");
 
         bytes32 tokenOutBalance = _simplifiedQuotePoolsBalances[request.poolId][request.tokenOut];
-        require(tokenOutBalance.total() > 0, "Token B not in pool");
+        uint128 tokenOutTotalBalance = tokenOutBalance.total();
+        require(tokenOutTotalBalance > 0, "Token B not in pool");
 
         if (kind == SwapKind.GIVEN_IN) {
             uint128 amountOut = pool
-                .quoteOutGivenIn(_toQuoteGivenIn(request), tokenInBalance.total(), tokenOutBalance.total())
+                .quoteOutGivenIn(_toQuoteGivenIn(request), tokenInTotalBalance, tokenOutTotalBalance)
                 .toUint128();
 
             tokenInBalance = tokenInBalance.increaseCash(request.amount.toUint128());
@@ -393,7 +398,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountOut;
         } else {
             uint128 amountIn = pool
-                .quoteInGivenOut(_toQuoteGivenOut(request), tokenInBalance.total(), tokenOutBalance.total())
+                .quoteInGivenOut(_toQuoteGivenOut(request), tokenInTotalBalance, tokenOutTotalBalance)
                 .toUint128();
 
             tokenInBalance = tokenInBalance.increaseCash(amountIn);
@@ -402,7 +407,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountIn;
         }
 
-        require(tokenOutBalance.total() > 0, "Fully draining token out");
+        require(tokenOutBalance.isNotZero(), "Fully draining token out");
+
         _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn] = tokenInBalance;
         _simplifiedQuotePoolsBalances[request.poolId][request.tokenOut] = tokenOutBalance;
     }
@@ -415,13 +421,14 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
-        uint256 indexIn = _standardPoolsBalances[request.poolId].indexOf(request.tokenIn);
-        uint256 indexOut = _standardPoolsBalances[request.poolId].indexOf(request.tokenOut);
+        EnumerableMap.IERC20ToBytes32Map storage poolTokens = _standardPoolsBalances[request.poolId];
+        uint256 indexIn = poolTokens.indexOf(request.tokenIn);
+        uint256 indexOut = poolTokens.indexOf(request.tokenOut);
 
-        uint256[] memory currentBalances = new uint256[](_standardPoolsBalances[request.poolId].length());
+        uint256[] memory currentBalances = new uint256[](poolTokens.length());
 
         for (uint256 i = 0; i < currentBalances.length; i++) {
-            bytes32 balance = _standardPoolsBalances[request.poolId].unchecked_valueAt(i);
+            bytes32 balance = poolTokens.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
 
@@ -450,10 +457,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenOutBalance = tokenOutBalance.decreaseCash(request.amount.toUint128());
         }
 
-        require(tokenOutBalance.total() > 0, "Fully draining token out");
+        require(tokenOutBalance.isNotZero(), "Fully draining token out");
 
-        _standardPoolsBalances[request.poolId].unchecked_setAt(indexIn, tokenInBalance);
-        _standardPoolsBalances[request.poolId].unchecked_setAt(indexOut, tokenOutBalance);
+        poolTokens.unchecked_setAt(indexIn, tokenInBalance);
+        poolTokens.unchecked_setAt(indexOut, tokenOutBalance);
     }
 
     //Pay swap protocol fees
@@ -464,27 +471,24 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     ) external override withExistingPool(poolId) onlyPool(poolId) returns (uint256[] memory balances) {
         require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
 
+        uint128 swapFee = protocolSwapFee();
         (, PoolOptimization optimization) = fromPoolId(poolId);
 
         if (optimization == PoolOptimization.TWO_TOKEN) {
-            require(tokens.length == 2, "Must interact with all tokens in two token pool");
+            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
 
             IERC20 tokenX = tokens[0];
             IERC20 tokenY = tokens[1];
-            uint128 feeToCollectTokenX = collectedFees[0].toUint128().mul128(protocolSwapFee());
-            uint128 feeToCollectTokenY = collectedFees[1].toUint128().mul128(protocolSwapFee());
+            uint128 feeToCollectTokenX = collectedFees[0].toUint128().mul128(swapFee);
+            uint128 feeToCollectTokenY = collectedFees[1].toUint128().mul128(swapFee);
 
             _decreaseTwoTokenPoolCash(poolId, tokenX, feeToCollectTokenX, tokenY, feeToCollectTokenY);
         } else {
-            for (uint256 i = 0; i < tokens.length; ++i) {
-                uint128 feeToCollect = collectedFees[i].toUint128().mul128(protocolSwapFee());
-                _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(feeToCollect);
-
-                if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-                    _decreaseSimplifiedQuotePoolCash(poolId, tokens[i], feeToCollect);
-                } else {
-                    _decreaseStandardPoolCash(poolId, tokens[i], feeToCollect);
-                }
+            uint256[] memory feesToCollect = _collectFees(tokens, collectedFees, swapFee);
+            if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+                _decreaseSimplifiedQuotePoolCash(poolId, tokens, feesToCollect);
+            } else {
+                _decreaseStandardPoolCash(poolId, tokens, feesToCollect);
             }
         }
 
@@ -494,6 +498,20 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         return balances;
+    }
+
+    function _collectFees(
+        IERC20[] memory tokens,
+        uint256[] memory collectedFees,
+        uint256 swapFee
+    ) private returns (uint256[] memory feesToCollect) {
+        feesToCollect = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            uint256 feeToCollect = collectedFees[i].mul(swapFee);
+            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToCollect.toUint128());
+            feesToCollect[i] = feeToCollect;
+        }
     }
 
     function queryBatchSwapGivenIn(

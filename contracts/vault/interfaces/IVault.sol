@@ -98,16 +98,6 @@ interface IVault {
     function getUniversalAgents(uint256 start, uint256 end) external view returns (address[] memory);
 
     /**
-     * @dev Returns the number of Universal Agent Managers.
-     */
-    function getNumberOfUniversalAgentManagers() external view returns (uint256);
-
-    /**
-     * @dev Returns a partial list of Universal Agent Managers, starting at index `start`, up to index `end`.
-     */
-    function getUniversalAgentManagers(uint256 start, uint256 end) external view returns (address[] memory);
-
-    /**
      * @dev Adds `agent` as a Universal Agent. Can only be called by a Universal Agent Manager.
      */
     function addUniversalAgent(address agent) external;
@@ -176,6 +166,20 @@ interface IVault {
     // Pool Management
 
     /**
+     * @dev TODO
+     */
+    function registerTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+
+    event TokensRegistered(bytes32 poolId, IERC20[] tokens);
+
+    /**
+     * @dev TODO
+     */
+    function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+
+    event TokensUnregistered(bytes32 poolId, IERC20[] tokens);
+
+    /**
      * @dev Adds liquidity into a Pool. Can only be called by its controller.
      *
      * For each token, the Pool's balance will be increased by `totalAmounts[i]`. This is achieved by first transferring
@@ -231,7 +235,7 @@ interface IVault {
      *
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
-     * A swap cannot cause `tokenOut` to be fully drained. The Pools' Trading Strategies will validate each swap,
+     * A swap can cause `tokenOut` to be fully drained. The Pools' optimization settings will validate each swap,
      * possibly charging a swap fee on the amount going in. If so, the protocol will then charge the protocol swap fee
      * to the Pool's own swap fee.
      *
@@ -405,24 +409,16 @@ interface IVault {
      */
     function getCollectedFeesByToken(IERC20 token) external view returns (uint256);
 
-    // Admin Controls
-
-    /**
-     * @dev Authorizes `agent` to call `addUniversalAgent` or `removeUniversalAgent`.
-     * This is typically called on factory contracts. Can only be called by the admin.
-     */
-    function addUniversalAgentManager(address agent) external;
-
-    /**
-     * @dev Remove authorization for `agent` to call `addUniversalAgent` or `removeUniversalAgent`.
-     * This is typically called on factory contracts. Can only be called by the admin.
-     */
-    function removeUniversalAgentManager(address agent) external;
+    // Authorizer controls
 
     /**
      * @dev Transfers to protocolFeeCollector address the requested amounts of protocol fees. Anyone can call it.
      */
-    function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external;
+    function withdrawProtocolFees(
+        IERC20[] calldata tokens,
+        uint256[] calldata amounts,
+        address recipient
+    ) external;
 
-    // Missing here: setting protocol fees, changing admin
+    // TODO: Add setting protocol fees, changing authorizer
 }

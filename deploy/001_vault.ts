@@ -6,10 +6,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
+  const authorizer = await deployments.get('Authorizer');
 
   await deploy('Vault', {
     from: deployer,
-    args: [deployer],
+    args: [authorizer.address],
     log: true,
     deterministicDeployment: true,
   });

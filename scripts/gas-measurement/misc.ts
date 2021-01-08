@@ -20,7 +20,8 @@ export async function setupEnvironment(
 }> {
   const { admin, trader, creator } = await getSigners();
 
-  const vault = await deploy('Vault', { args: [admin.address] });
+  const authorizer = await deploy('Authorizer', { args: [admin.address] });
+  const vault = await deploy('Vault', { args: [authorizer.address] });
 
   const validator = await deploy('OneToOneSwapValidator', { args: [] });
 

@@ -13,24 +13,21 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
-pragma experimental ABIEncoderV2;
 
-import "./interfaces/IVault.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-abstract contract Admin is IVault {
-    address internal _admin;
+interface IAuthorizer {
+    function canChangeAuthorizer(address account) external view returns (bool);
 
-    constructor(address admin_) {
-        _admin = admin_;
-    }
+    function canSetProtocolWithdrawFee(address account) external view returns (bool);
 
-    function admin() public view returns (address) {
-        return _admin;
-    }
+    function canSetProtocolSwapFee(address account) external view returns (bool);
 
-    function transferAdmin(address newAdmin) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    function canSetProtocolFlashLoanFee(address account) external view returns (bool);
 
-        _admin = newAdmin;
-    }
+    function canCollectProtocolFees(address account, IERC20 token) external view returns (bool);
+
+    function canAddUniversalAgent(address account) external view returns (bool);
+
+    function canRemoveUniversalAgent(address account) external view returns (bool);
 }

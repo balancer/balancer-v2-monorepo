@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
-import { MAX_UINT256 } from '../helpers/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
@@ -11,7 +11,6 @@ import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
 
 describe('OneToOneSwapValidator', () => {
-  let admin: SignerWithAddress;
   let lp: SignerWithAddress;
   let trader: SignerWithAddress;
 
@@ -27,11 +26,11 @@ describe('OneToOneSwapValidator', () => {
   let funds: FundManagement;
 
   before('setup', async () => {
-    [, admin, lp, trader] = await ethers.getSigners();
+    [, lp, trader] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
 
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
@@ -55,6 +54,9 @@ describe('OneToOneSwapValidator', () => {
       });
 
       await vault.connect(lp).addUserAgent(pool.address);
+
+      await pool.connect(lp).registerTokens([tokens.DAI.address, tokens.MKR.address, tokens.SNX.address]);
+
       await pool
         .connect(lp)
         .addLiquidity(

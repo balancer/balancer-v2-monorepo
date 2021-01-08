@@ -14,9 +14,11 @@ describe('StablecoinPool', function () {
   let creator: SignerWithAddress;
   let lp: SignerWithAddress;
   let trader: SignerWithAddress;
-  let other: SignerWithAddress;
   let beneficiary: SignerWithAddress;
+  let feeSetter: SignerWithAddress;
+  let other: SignerWithAddress;
 
+  let authorizer: Contract;
   let vault: Contract;
   let tokens: TokenList = {};
 
@@ -30,11 +32,12 @@ describe('StablecoinPool', function () {
   let callDeployPool: () => Promise<Contract>;
 
   before(async function () {
-    [, admin, creator, lp, trader, other, beneficiary] = await ethers.getSigners();
+    [, admin, creator, lp, trader, beneficiary, feeSetter, other] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
 
     tokens = await deployTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
     for (const symbol in tokens) {
@@ -376,7 +379,10 @@ describe('StablecoinPool', function () {
         const protocolWithdrawFee = 0.01;
 
         beforeEach(async () => {
-          await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
+          await authorizer
+            .connect(admin)
+            .grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), feeSetter.address);
+          await vault.connect(feeSetter).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
         });
 
         it('tokens minus fee are pushed', async () => {
@@ -443,7 +449,10 @@ describe('StablecoinPool', function () {
         await pool.connect(creator).exitPool(initialBPT, [0, 0], true, creator.address);
 
         expect(await pool.totalSupply()).to.equal(0);
-        expect(await vault.getPoolTokens(poolId)).to.have.members([]);
+
+        // The tokens are not unregistered from the Pool
+        expect(await vault.getPoolTokens(poolId)).not.to.be.empty;
+        expect(await vault.getPoolTokens(poolId)).to.have.members(poolTokens);
       });
 
       it('drained pools cannot be rejoined', async () => {
@@ -451,7 +460,7 @@ describe('StablecoinPool', function () {
 
         await expect(
           pool.connect(lp).joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], true, lp.address)
-        ).to.be.revertedWith('ERR_EMPTY_POOL');
+        ).to.be.revertedWith('ERR_ZERO_LIQUIDITY');
       });
     });
   });
@@ -530,8 +539,8 @@ describe('StablecoinPool', function () {
 
     beforeEach(async () => {
       //Set protocol swap fee in Vault
-      await vault.connect(admin).setProtocolFeeCollector(admin.address);
-      await vault.connect(admin).setProtocolSwapFee(protocolSwapFee);
+      await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), feeSetter.address);
+      await vault.connect(feeSetter).setProtocolSwapFee(protocolSwapFee);
 
       initialBalances = [BigNumber.from((10e18).toString()), BigNumber.from((10e18).toString())];
       tokenAddresses = [tokens.DAI.address, tokens.MKR.address];

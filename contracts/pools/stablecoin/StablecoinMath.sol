@@ -166,6 +166,11 @@ contract StablecoinMath {
             prod = (prod * balances[i]) / FixedPoint.ONE;
             nn = nn * int256(n);
         }
+
+        if (prod == 0) {
+            return prod;
+        }
+
         int256 invariant = sum;
         int256 newInvariant;
         int256 c2 = _amp - FixedPoint.ONE / nn;

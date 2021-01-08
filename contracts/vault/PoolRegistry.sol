@@ -135,7 +135,7 @@ abstract contract PoolRegistry is
         IERC20 token
     ) internal view returns (bytes32) {
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _getSimplifiedQuotePoolTokenBalance(poolId, token);
+            return _getSimplifiedQuotePoolBalance(poolId, token);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
             return _getTwoTokenPoolBalance(poolId, token);
         } else {
@@ -170,6 +170,44 @@ abstract contract PoolRegistry is
         return fromPoolId(poolId);
     }
 
+    function registerTokens(bytes32 poolId, IERC20[] calldata tokens)
+        external
+        override
+        withExistingPool(poolId)
+        onlyPool(poolId)
+    {
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
+            _registerTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
+        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            _registerSimplifiedQuotePoolTokens(poolId, tokens);
+        } else {
+            _registerStandardPoolTokens(poolId, tokens);
+        }
+
+        emit TokensRegistered(poolId, tokens);
+    }
+
+    function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
+        external
+        override
+        withExistingPool(poolId)
+        onlyPool(poolId)
+    {
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
+            _unregisterTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
+        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            _unregisterSimplifiedQuotePoolTokens(poolId, tokens);
+        } else {
+            _unregisterStandardPoolTokens(poolId, tokens);
+        }
+
+        emit TokensUnregistered(poolId, tokens);
+    }
+
     function addLiquidity(
         bytes32 poolId,
         address from,
@@ -177,44 +215,44 @@ abstract contract PoolRegistry is
         uint256[] calldata amounts,
         bool withdrawFromUserBalance
     ) external override withExistingPool(poolId) onlyPool(poolId) {
+        require(isAgentFor(from, msg.sender), "Caller is not an agent");
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
-        require(isAgentFor(from, msg.sender), "Caller is not an agent");
-
         // Receive all tokens
+        _receiveLiquidity(from, tokens, amounts, withdrawFromUserBalance);
 
+        // Grant tokens to pools - how this is done depends on the Pool optimization setting
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
+            _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
+        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            _increaseSimplifiedQuotePoolCash(poolId, tokens, amounts);
+        } else {
+            _increaseStandardPoolCash(poolId, tokens, amounts);
+        }
+    }
+
+    function _receiveLiquidity(
+        address from,
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        bool withdrawFromUserBalance
+    ) private {
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Not technically necessary since the transfer call would fail
-            require(tokens[i] != IERC20(0), "Token is the zero address");
+            IERC20 token = tokens[i];
+            require(token != IERC20(0), "Token is the zero address");
 
-            if (amounts[i] > 0) {
-                uint256 toReceive = amounts[i];
+            uint256 toReceive = amounts[i];
+            if (toReceive > 0) {
                 if (withdrawFromUserBalance) {
-                    uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][tokens[i]], toReceive));
-
-                    _userTokenBalance[from][tokens[i]] -= toWithdraw;
+                    uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][token], toReceive));
+                    _userTokenBalance[from][token] -= toWithdraw;
                     toReceive -= toWithdraw;
                 }
 
-                tokens[i].safeTransferFrom(from, address(this), toReceive);
-            }
-        }
-
-        // Grant tokens to pools - how this is done depends on the Pool optimization setting
-
-        (, PoolOptimization optimization) = fromPoolId(poolId);
-        if (optimization == PoolOptimization.TWO_TOKEN) {
-            // These add both tokens at once
-            require(tokens.length == 2, "Must interact with all tokens in two token pool");
-            _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
-        } else {
-            // Pools with other optimization settings have their tokens added one by one
-            for (uint256 i = 0; i < tokens.length; ++i) {
-                if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-                    _increaseSimplifiedQuotePoolCash(poolId, tokens[i], amounts[i].toUint128());
-                } else {
-                    _increaseStandardPoolCash(poolId, tokens[i], amounts[i].toUint128());
-                }
+                token.safeTransferFrom(from, address(this), toReceive);
             }
         }
     }
@@ -228,41 +266,43 @@ abstract contract PoolRegistry is
     ) external override withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
-        // Grant tokens to pools - how this is done depends on the Pool optimization setting
-
+        // Deduct tokens from pools - how this is done depends on the Pool optimization setting
         (, PoolOptimization optimization) = fromPoolId(poolId);
         if (optimization == PoolOptimization.TWO_TOKEN) {
-            // These remove both tokens at once
-            require(tokens.length == 2, "Must interact with all tokens in two token pool");
+            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
             _decreaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
+        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            _decreaseSimplifiedQuotePoolCash(poolId, tokens, amounts);
         } else {
-            // Pools with other optimization settings have their tokens removed one by one
-            for (uint256 i = 0; i < tokens.length; ++i) {
-                if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-                    _decreaseSimplifiedQuotePoolCash(poolId, tokens[i], amounts[i].toUint128());
-                } else {
-                    _decreaseStandardPoolCash(poolId, tokens[i], amounts[i].toUint128());
-                }
-            }
+            _decreaseStandardPoolCash(poolId, tokens, amounts);
         }
 
         // Send all tokens
+        _withdrawLiquidity(to, tokens, amounts, depositToUserBalance);
+    }
 
+    function _withdrawLiquidity(
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        bool depositToUserBalance
+    ) private {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
             // Not technically necessary since the transfer call would fail
+            IERC20 token = tokens[i];
             require(token != IERC20(0), "Token is the zero address");
 
-            if (amounts[i] > 0) {
+            uint256 amount256 = amounts[i];
+            uint128 amount128 = amount256.toUint128();
+            if (amount256 > 0) {
                 if (depositToUserBalance) {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                    _userTokenBalance[to][token] = _userTokenBalance[to][token].add128(amounts[i].toUint128());
+                    _userTokenBalance[to][token] = _userTokenBalance[to][token].add128(amount128);
                 } else {
                     // Transfer the tokens to the recipient, charging the protocol exit fee
-                    uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amounts[i].toUint128());
-
+                    uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount128);
                     _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
-                    token.safeTransfer(to, amounts[i].sub(feeAmount));
+                    token.safeTransfer(to, amount256.sub(feeAmount));
                 }
             }
         }
