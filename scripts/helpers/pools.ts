@@ -3,11 +3,11 @@ import { Contract, ContractReceipt, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import { deploy } from './deploy';
 
-export const PairTS = 0;
-export const TupleTS = 1;
-export const TwoTokenTS = 2;
+export const StandardPool = 0;
+export const SimplifiedQuotePool = 1;
+export const TwoTokenPool = 2;
 
-export type TradingStrategyType = typeof PairTS | typeof TupleTS | typeof TwoTokenTS;
+export type PoolOptimizationSetting = typeof SimplifiedQuotePool | typeof StandardPool | typeof TwoTokenPool;
 export type PoolName = 'ConstantProductPool' | 'StablecoinPool';
 
 /**
@@ -32,7 +32,11 @@ export async function deployPoolFromFactory(
   await authorizer.connect(admin).grantRole(await authorizer.ADD_UNIVERSAL_AGENT_ROLE(), factory.address);
 
   const salt = ethers.utils.id(Math.random().toString());
-  const receipt: ContractReceipt = await (await factory.connect(args.from).create(...args.parameters, salt)).wait();
+  const name = 'Balancer Pool Token';
+  const symbol = 'BPT';
+  const receipt: ContractReceipt = await (
+    await factory.connect(args.from).create(name, symbol, ...args.parameters, salt)
+  ).wait();
 
   const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {

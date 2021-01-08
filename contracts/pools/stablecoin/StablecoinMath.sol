@@ -16,6 +16,8 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
 import "../../math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
@@ -25,6 +27,9 @@ import "../../math/FixedPoint.sol";
 // solhint-disable var-name-mixedcase
 
 contract StablecoinMath {
+    using SafeCast for uint256;
+    using SafeCast for int256;
+
     int256 internal constant PRECISION = 100000000000000;
 
     struct Data {
@@ -63,7 +68,7 @@ contract StablecoinMath {
         uint256 tokenIndexOut,
         uint128 tokenAmountIn
     ) private pure returns (Data memory) {
-        int256 invariant = _invariant(amp, balances);
+        int256 invariant = _invariantInternal(amp, balances);
         int256 sum = 0;
         int256 prod = FixedPoint.ONE;
         uint256 n = balances.length;
@@ -90,7 +95,7 @@ contract StablecoinMath {
         uint256 tokenIndexOut,
         uint128 tokenAmountOut
     ) private pure returns (Data memory) {
-        int256 invariant = _invariant(amp, balances);
+        int256 invariant = _invariantInternal(amp, balances);
         int256 sum = 0;
         int256 prod = FixedPoint.ONE;
         uint256 n = balances.length;
@@ -112,29 +117,45 @@ contract StablecoinMath {
 
     function _outGivenIn(
         uint128 amp,
-        uint128[] memory balances,
+        uint256[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint128 tokenAmountIn
     ) internal pure returns (uint128) {
-        Data memory data = _getDataOutGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
-        uint128 approxTokenAmountOut = balances[tokenIndexOut] - tokenAmountIn;
-        return balances[tokenIndexOut] - _approximateAmount(data, approxTokenAmountOut);
+        uint128[] memory _balances = new uint128[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            _balances[i] = balances[i].toUint128();
+        }
+        Data memory data = _getDataOutGivenIn(amp, _balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
+        uint128 approxTokenAmountOut = _balances[tokenIndexOut] - tokenAmountIn;
+        return _balances[tokenIndexOut] - _approximateAmount(data, approxTokenAmountOut);
     }
 
     function _inGivenOut(
         uint128 amp,
-        uint128[] memory balances,
+        uint256[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint128 tokenAmountOut
     ) internal pure returns (uint128) {
-        Data memory data = _getDataInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
-        uint128 approxTokenAmountIn = balances[tokenIndexIn] + tokenAmountOut;
-        return _approximateAmount(data, approxTokenAmountIn) - balances[tokenIndexIn];
+        uint128[] memory _balances = new uint128[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            _balances[i] = balances[i].toUint128();
+        }
+        Data memory data = _getDataInGivenOut(amp, _balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
+        uint128 approxTokenAmountIn = _balances[tokenIndexIn] + tokenAmountOut;
+        return _approximateAmount(data, approxTokenAmountIn) - _balances[tokenIndexIn];
     }
 
-    function _invariant(uint128 amp, uint128[] memory balances) internal pure returns (int256) {
+    function _invariant(uint128 amp, uint256[] memory balances) internal pure returns (int256) {
+        uint128[] memory _balances = new uint128[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            _balances[i] = balances[i].toUint128();
+        }
+        return _invariantInternal(amp, _balances);
+    }
+
+    function _invariantInternal(uint128 amp, uint128[] memory balances) internal pure returns (int256) {
         int256 _amp = int256(amp);
         int256 sum = 0;
         int256 prod = FixedPoint.ONE;
@@ -145,6 +166,11 @@ contract StablecoinMath {
             prod = (prod * balances[i]) / FixedPoint.ONE;
             nn = nn * int256(n);
         }
+
+        if (prod == 0) {
+            return prod;
+        }
+
         int256 invariant = sum;
         int256 newInvariant;
         int256 c2 = _amp - FixedPoint.ONE / nn;
@@ -166,5 +192,38 @@ contract StablecoinMath {
             invariant = newInvariant;
         }
         return newInvariant;
+    }
+
+    function _calculateOneTokenSwapFee(
+        uint128 amp,
+        uint256[] memory balances,
+        int256 lastInvariant,
+        uint256 tokenIndex
+    ) internal pure returns (int256) {
+        uint128[] memory _balances = new uint128[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            _balances[i] = balances[i].toUint128();
+        }
+        int256 sum = 0;
+        int256 prod = FixedPoint.ONE;
+        uint256 n = balances.length;
+        int256 nn = 1;
+        for (uint256 i = 0; i < n; i++) {
+            if (i != tokenIndex) {
+                sum = sum + _balances[i];
+                prod = (prod * _balances[i]) / FixedPoint.ONE;
+            }
+            nn = nn * int256(n);
+        }
+        Data memory data = Data({
+            amp: int256(amp),
+            invariant: lastInvariant,
+            sum: sum,
+            n: int256(n),
+            nn: nn,
+            prod: prod
+        });
+
+        return _balances[tokenIndex] - _approximateAmount(data, lastInvariant.toUint256().toUint128());
     }
 }

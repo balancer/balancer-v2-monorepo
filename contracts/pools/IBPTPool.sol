@@ -27,7 +27,7 @@ interface IBPTPool {
     // The set of tokens is not specified because it is read from the Vault - and remains immutable that way.
     function joinPool(
         uint256 poolAmountOut,
-        uint128[] calldata maxAmountsIn,
+        uint256[] calldata maxAmountsIn,
         bool transferTokens,
         address beneficiary
     ) external;

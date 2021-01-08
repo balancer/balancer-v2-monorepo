@@ -18,22 +18,22 @@ import "../pools/constant-product/ConstantProductMath.sol";
 
 contract MockConstantProductMath is ConstantProductMath {
     function outGivenIn(
-        uint128 tokenBalanceIn,
+        uint256 tokenBalanceIn,
         uint256 tokenWeightIn,
-        uint128 tokenBalanceOut,
+        uint256 tokenBalanceOut,
         uint256 tokenWeightOut,
-        uint128 tokenAmountIn
-    ) external pure returns (uint128) {
+        uint256 tokenAmountIn
+    ) external pure returns (uint256) {
         return _outGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
     }
 
     function inGivenOut(
-        uint128 tokenBalanceIn,
+        uint256 tokenBalanceIn,
         uint256 tokenWeightIn,
-        uint128 tokenBalanceOut,
+        uint256 tokenBalanceOut,
         uint256 tokenWeightOut,
-        uint128 tokenAmountOut
-    ) external pure returns (uint128) {
+        uint256 tokenAmountOut
+    ) external pure returns (uint256) {
         return _inGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut);
     }
 }

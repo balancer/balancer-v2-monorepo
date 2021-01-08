@@ -27,9 +27,9 @@ contract TwoTokenPoolsBalance {
 
     // Data for Pools with Two Tokens
     //
-    // These are similar to Pair Pools case (because the Pool only has two tokens, and therefore there are only two
-    // balances to read), but there's a key difference in how data is stored. Keeping a set makes little sense, as it
-    // will only ever hold two tokens, so we can just store those two directly.
+    // These are similar to the Simplified Quote Pool case (because the Pool only has two tokens, and therefore there
+    // are only two balances to read), but there's a key difference in how data is stored. Keeping a set makes little
+    // sense, as it will only ever hold two tokens, so we can just store those two directly.
     // The gas savings associated with using these Pools come from how token balances are stored: cash for token A and
     // token B is packed together, as are invested amounts. Because only cash changes in a swap, there's no need to
     // write to this second storage slot.
@@ -70,12 +70,12 @@ contract TwoTokenPoolsBalance {
     // which tokens those balances correspond. This would mean having to also check the tokens struct in a swap, to make
     // sure the tokens being swapped are the ones in the Pool.
     // What we do instead to save those storage reads is keep a nested mapping from token pair hash to the balances
-    // struct. The Pool only has two tokens, so only a single entry of this mapping is set (the one that correspond's to
+    // struct. The Pool only has two tokens, so only a single entry of this mapping is set (the one that corresponds to
     // that pair's hash). This means queries for token pairs where any of the tokens is not in the Pool will generate a
     // hash for a mapping entry that was not set, containing zero balances. Non-zero balances are only possible if both
     // tokens in the pair are the Pool's tokens, which means we don't have to check the TwoTokensTokens struct and save
     // storage reads.
-    mapping(bytes32 => mapping(bytes32 => TwoTokenSharedBalances)) internal _poolTwoTokenSharedBalancess;
+    mapping(bytes32 => mapping(bytes32 => TwoTokenSharedBalances)) internal _poolTwoTokenSharedBalances;
 
     /**
      * @dev Returns an array with all the tokens in a Two Token Pool. This array will have either two or zero entries
@@ -124,7 +124,7 @@ contract TwoTokenPoolsBalance {
         } else if (token == poolTokens.tokenB) {
             return tokenBBalance;
         } else {
-            revert("Token not in pool");
+            revert("ERR_TOKEN_NOT_REGISTERED");
         }
     }
 
@@ -153,7 +153,7 @@ contract TwoTokenPoolsBalance {
         )
     {
         bytes32 pairHash = _getTwoTokenPairHash(tokenX, tokenY);
-        poolSharedBalance = _poolTwoTokenSharedBalancess[poolId][pairHash];
+        poolSharedBalance = _poolTwoTokenSharedBalances[poolId][pairHash];
 
         bytes32 sharedCash = poolSharedBalance.sharedCash;
         bytes32 sharedInvested = poolSharedBalance.sharedInvested;
@@ -163,14 +163,56 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * @dev Adds cash to a Two Token Pool for two tokens. If the Pool didn't originally have tokens, they are added to
-     * it.
+     * @dev Registers the tokens of a Two Token Pool.
      *
      * Requirements:
      *
-     * - `tokenX` and `tokenY` must not be the same.
-     * - if the Pool has no tokens, `amountX` and `amountY` must be non-zero.
-     * - if the Pool already has two tokens, `tokenX` and `tokenY` must be those tokens.
+     * - `tokenX` and `tokenY` cannot be the same.
+     * - Both tokens must not be the zero address.
+     * - Both tokens must not be registered in the Pool.
+     */
+    function _registerTwoTokenPoolTokens(
+        bytes32 poolId,
+        IERC20 tokenX,
+        IERC20 tokenY
+    ) internal {
+        require(tokenX != tokenY, "ERR_TOKENS_ARE_THE_SAME");
+        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ERR_TOKEN_IS_ZERO");
+
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "ERR_TOKENS_ALREADY_SET");
+
+        (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
+        _poolTwoTokenTokens[poolId] = TwoTokenTokens({ tokenA: tokenA, tokenB: tokenB });
+    }
+
+    /**
+     * @dev Unregisters the tokens of a Two Token Pool.
+     *
+     * Requirements:
+     *
+     * - `tokenX` and `tokenY` must be the Pool's tokens.
+     * - Both tokens must have non balance in the Vault.
+     */
+    function _unregisterTwoTokenPoolTokens(
+        bytes32 poolId,
+        IERC20 tokenX,
+        IERC20 tokenY
+    ) internal {
+        _ensureTwoTokenPoolRegisteredTokens(poolId, tokenX, tokenY);
+        (bytes32 tokenABalance, bytes32 tokenBBalance, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
+        require(tokenABalance.isZero() && tokenBBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+
+        delete _poolTwoTokenTokens[poolId];
+        // No need to delete the balance entries, since they already are zero
+    }
+
+    /**
+     * @dev Adds cash to a Two Token Pool.
+     *
+     * Requirements:
+     *
+     * - `tokenX` and `tokenY` must be the Pool's tokens.
      */
     function _increaseTwoTokenPoolCash(
         bytes32 poolId,
@@ -179,21 +221,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        require(tokenX != tokenY, "Tokens are the same");
-
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-
-        if (poolTokens.tokenA != IERC20(0) || poolTokens.tokenB != IERC20(0)) {
-            // Pool is already initialized - check the tokens are the same
-            require((tokenX == poolTokens.tokenA) || (tokenX == poolTokens.tokenB), "Adding to token not in pool");
-            require((tokenY == poolTokens.tokenA) || (tokenY == poolTokens.tokenB), "Adding to token not in pool");
-        } else {
-            // Initialize pool
-            require(amountX != 0 && amountY != 0, "New token amount is zero");
-
-            (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
-            _poolTwoTokenTokens[poolId] = TwoTokenTokens({ tokenA: tokenA, tokenB: tokenB });
-        }
+        _ensureTwoTokenPoolRegisteredTokens(poolId, tokenX, tokenY);
 
         (
             bytes32 tokenABalance,
@@ -212,13 +240,11 @@ contract TwoTokenPoolsBalance {
         }
 
         poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-        // We don't need to write to the sharedInvested entry, since it is already initialized with zeroes
+        // We don't need to write to the sharedInvested entry
     }
 
     /**
-     * @dev Removes cash from a Two Token Pool for its two tokens. If this fully drains the Pool's balance for both
-     * tokens (including invested balance), then they are removed from the Pool. A single token cannot be removed from
-     * the pool.
+     * @dev Removes cash from a Two Token Pool.
      *
      * Requirements:
      *
@@ -232,11 +258,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-
-        (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
-        require(poolTokens.tokenA == tokenA, "Token not in pool");
-        require(poolTokens.tokenB == tokenB, "Token not in pool");
+        _ensureTwoTokenPoolRegisteredTokens(poolId, tokenX, tokenY);
 
         (
             bytes32 tokenABalance,
@@ -255,13 +277,7 @@ contract TwoTokenPoolsBalance {
         }
 
         poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-
-        if (tokenABalance.total() == 0 && tokenBBalance.total() == 0) {
-            delete _poolTwoTokenTokens[poolId];
-        } else {
-            // Neither can be zero
-            require(tokenABalance.total() != 0 && tokenBBalance.total() != 0, "Cannot fully remove single token");
-        }
+        // We don't need to write to the sharedInvested entry
     }
 
     function _mutateTwoTokenPoolTokenBalance(
@@ -283,7 +299,7 @@ contract TwoTokenPoolsBalance {
         } else if (token == poolTokens.tokenB) {
             tokenBBalance = mutation(tokenBBalance, mutationArgument);
         } else {
-            revert("Token not in pool");
+            revert("ERR_TOKEN_NOT_REGISTERED");
         }
 
         poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
@@ -328,7 +344,17 @@ contract TwoTokenPoolsBalance {
         } else if (token == poolTokens.tokenB) {
             return tokenBBalance.isInvested();
         } else {
-            revert("Token not in pool");
+            revert("ERR_TOKEN_NOT_REGISTERED");
         }
+    }
+
+    function _ensureTwoTokenPoolRegisteredTokens(
+        bytes32 poolId,
+        IERC20 tokenX,
+        IERC20 tokenY
+    ) internal view {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+        (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
+        require(tokenA == poolTokens.tokenA && tokenB == poolTokens.tokenB, "ERR_TOKEN_NOT_REGISTERED");
     }
 }

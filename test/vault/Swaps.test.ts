@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { PairTS, TradingStrategyType, TupleTS, TwoTokenTS } from '../../scripts/helpers/pools';
+import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
 import { deployTokens, TokenList } from '../helpers/tokens';
@@ -68,28 +68,28 @@ describe('Vault - swaps', () => {
   context('with two tokens', () => {
     const symbols = ['DAI', 'MKR'];
 
-    context('with a two-token storage layout', () => {
-      itHandlesSwapsProperly(TwoTokenTS, symbols);
+    context('with a standard pool', () => {
+      itHandlesSwapsProperly(StandardPool, symbols);
     });
 
-    context('with a pair trading strategy', () => {
-      itHandlesSwapsProperly(PairTS, symbols);
+    context('with a simplified quote pool', () => {
+      itHandlesSwapsProperly(SimplifiedQuotePool, symbols);
     });
 
-    context('with a tuple trading strategy', () => {
-      itHandlesSwapsProperly(TupleTS, symbols);
+    context('with a two token pool', () => {
+      itHandlesSwapsProperly(TwoTokenPool, symbols);
     });
   });
 
   context('with three tokens', () => {
     const symbols = ['DAI', 'MKR', 'SNX'];
 
-    context('with a pair trading strategy', () => {
-      itHandlesSwapsProperly(PairTS, symbols);
+    context('with a standard pool', () => {
+      itHandlesSwapsProperly(StandardPool, symbols);
     });
 
-    context('with a tuple trading strategy', () => {
-      itHandlesSwapsProperly(TupleTS, symbols);
+    context('with a simplified quote pool', () => {
+      itHandlesSwapsProperly(SimplifiedQuotePool, symbols);
     });
   });
 
@@ -103,7 +103,7 @@ describe('Vault - swaps', () => {
     }));
   }
 
-  async function deployPool(type: TradingStrategyType, tokenSymbols: string[]): Promise<string> {
+  async function deployPool(type: PoolOptimizationSetting, tokenSymbols: string[]): Promise<string> {
     const pool = await deploy('MockPool', { args: [vault.address, type] });
     await pool.setMultiplier(toFixedPoint(2));
 
@@ -113,26 +113,27 @@ describe('Vault - swaps', () => {
     const tokenAddresses = tokenSymbols.map((symbol) => tokens[symbol].address);
     const tokenAmounts = tokenSymbols.map(() => (100e18).toString());
 
+    await pool.connect(lp).registerTokens(tokenAddresses);
     await pool.connect(lp).addLiquidity(tokenAddresses, tokenAmounts);
 
     return pool.getPoolId();
   }
 
-  function deployMainPool(type: TradingStrategyType, tokenSymbols: string[]) {
+  function deployMainPool(type: PoolOptimizationSetting, tokenSymbols: string[]) {
     beforeEach('deploy main pool', async () => {
       poolId = await deployPool(type, tokenSymbols);
       poolIds = [poolId];
     });
   }
 
-  function deployAnotherPool(type: TradingStrategyType, tokenSymbols: string[]) {
+  function deployAnotherPool(type: PoolOptimizationSetting, tokenSymbols: string[]) {
     beforeEach('deploy secondary pool', async () => {
       anotherPoolId = await deployPool(type, tokenSymbols);
       poolIds.push(anotherPoolId);
     });
   }
 
-  function itHandlesSwapsProperly(type: TradingStrategyType, tokenSymbols: string[]) {
+  function itHandlesSwapsProperly(type: PoolOptimizationSetting, tokenSymbols: string[]) {
     deployMainPool(type, tokenSymbols);
 
     describe('swap given in', () => {
@@ -277,7 +278,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: TradingStrategyType) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -329,24 +330,23 @@ describe('Vault - swaps', () => {
                   });
                 });
               };
-
-              context('with a two-token storage layout', () => {
-                itHandleMultiSwapsWithoutHopsProperly(TwoTokenTS);
+              context('with a standard pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(StandardPool);
               });
 
-              context('with a pair trading strategy', () => {
-                itHandleMultiSwapsWithoutHopsProperly(PairTS);
+              context('with a simplified quote pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(SimplifiedQuotePool);
               });
 
-              context('with a tuple trading strategy', () => {
-                itHandleMultiSwapsWithoutHopsProperly(TupleTS);
+              context('with a two token pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(TwoTokenPool);
               });
             });
 
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: TradingStrategyType) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -371,13 +371,13 @@ describe('Vault - swaps', () => {
                 });
               };
 
-              context('with a pair trading strategy', () => {
-                const anotherPoolType = PairTS;
+              context('with a standard pool', () => {
+                const anotherPoolType = StandardPool;
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
               });
 
-              context('with a tuple trading strategy', () => {
-                const anotherPoolType = TupleTS;
+              context('with a simplified quote pool', () => {
+                const anotherPoolType = SimplifiedQuotePool;
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
               });
             });
@@ -413,7 +413,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: TradingStrategyType) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -426,23 +426,23 @@ describe('Vault - swaps', () => {
                 assertSwapGivenIn({ swaps }, { MKR: 3e18 });
               };
 
-              context('with a two-token storage layout', () => {
-                itHandleMultiSwapsWithHopsProperly(TwoTokenTS);
+              context('with a standard pool', () => {
+                itHandleMultiSwapsWithHopsProperly(StandardPool);
               });
 
-              context('with a pair trading strategy', () => {
-                itHandleMultiSwapsWithHopsProperly(PairTS);
+              context('with a simplified quote pool', () => {
+                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
               });
 
-              context('with a tuple trading strategy', () => {
-                itHandleMultiSwapsWithHopsProperly(TupleTS);
+              context('with a two token pool', () => {
+                itHandleMultiSwapsWithHopsProperly(TwoTokenPool);
               });
             });
 
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: TradingStrategyType) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -455,12 +455,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenIn({ swaps }, { SNX: 4e18, MKR: -1e18 });
               };
 
-              context('with a pair trading strategy', () => {
-                itHandleMultiSwapsWithHopsProperly(PairTS);
+              context('with a standard pool', () => {
+                itHandleMultiSwapsWithHopsProperly(StandardPool);
               });
 
-              context('with a tuple trading strategy', () => {
-                itHandleMultiSwapsWithHopsProperly(TupleTS);
+              context('with a simplified quote pool', () => {
+                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
               });
             });
           });
@@ -608,7 +608,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: TradingStrategyType) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -661,23 +661,22 @@ describe('Vault - swaps', () => {
                 });
               };
 
-              context('with a two-token storage layout', () => {
-                itHandleMultiSwapsWithoutHopsProperly(TwoTokenTS);
+              context('with a standard pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(StandardPool);
               });
 
-              context('with a pair trading strategy', () => {
-                itHandleMultiSwapsWithoutHopsProperly(PairTS);
+              context('with a simplified quote pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(SimplifiedQuotePool);
               });
-
-              context('with a tuple trading strategy', () => {
-                itHandleMultiSwapsWithoutHopsProperly(TupleTS);
+              context('with a two token pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(TwoTokenPool);
               });
             });
 
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: TradingStrategyType) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -702,12 +701,12 @@ describe('Vault - swaps', () => {
                 });
               };
 
-              context('with a pair trading strategy', () => {
-                itHandleMultiSwapsWithoutHopsProperly(PairTS);
+              context('with a standard pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(StandardPool);
               });
 
-              context('with a tuple trading strategy', () => {
-                itHandleMultiSwapsWithoutHopsProperly(TupleTS);
+              context('with a simplified quote pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(SimplifiedQuotePool);
               });
             });
           });
@@ -740,7 +739,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: TradingStrategyType) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -753,23 +752,23 @@ describe('Vault - swaps', () => {
                 assertSwapGivenOut({ swaps }, { MKR: 0.75e18 });
               };
 
-              context('with a two-token storage layout', () => {
-                itHandleMultiSwapsWithHopsProperly(TwoTokenTS);
+              context('with a standard pool', () => {
+                itHandleMultiSwapsWithHopsProperly(StandardPool);
               });
 
-              context('with a pair trading strategy', () => {
-                itHandleMultiSwapsWithHopsProperly(PairTS);
+              context('with a simplified quote pool', () => {
+                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
               });
 
-              context('with a tuple trading strategy', () => {
-                itHandleMultiSwapsWithHopsProperly(TupleTS);
+              context('with a two token pool', () => {
+                itHandleMultiSwapsWithHopsProperly(TwoTokenPool);
               });
             });
 
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: TradingStrategyType) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -782,12 +781,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenOut({ swaps }, { MKR: 1e18, SNX: -0.25e18 });
               };
 
-              context('with a pair trading strategy', () => {
-                itHandleMultiSwapsWithHopsProperly(PairTS);
+              context('with a standard pool', () => {
+                itHandleMultiSwapsWithHopsProperly(StandardPool);
               });
 
-              context('with a tuple trading strategy', () => {
-                itHandleMultiSwapsWithHopsProperly(TupleTS);
+              context('with a simplified quote pool', () => {
+                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
               });
             });
           });

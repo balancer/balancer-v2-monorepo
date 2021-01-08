@@ -7,7 +7,7 @@ import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { deploy } from '../../scripts/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
-import { PairTS, TradingStrategyType, TupleTS, TwoTokenTS } from '../../scripts/helpers/pools';
+import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 
 describe('InvestmentManager', function () {
   let tokens: TokenList;
@@ -29,24 +29,65 @@ describe('InvestmentManager', function () {
     otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
   });
 
+  describe('investment manager setting', () => {
+    let poolId: string;
+
+    beforeEach(async () => {
+      const receipt = await (await vault.connect(pool).registerPool(StandardPool)).wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      poolId = event.args.poolId;
+    });
+
+    it('pool has no managers at creation', async () => {
+      expect(await vault.getPoolInvestmentManager(poolId, tokens.DAI.address)).to.equal(ZERO_ADDRESS);
+    });
+
+    it('different managers can be set for different tokens', async () => {
+      await vault.connect(pool).setPoolInvestmentManager(poolId, tokens.DAI.address, investmentManager.address);
+      await vault.connect(pool).setPoolInvestmentManager(poolId, tokens.USDT.address, other.address);
+
+      expect(await vault.getPoolInvestmentManager(poolId, tokens.DAI.address)).to.equal(investmentManager.address);
+      expect(await vault.getPoolInvestmentManager(poolId, tokens.USDT.address)).to.equal(other.address);
+    });
+
+    it('the manager cannot be changed', async () => {
+      await vault.connect(pool).setPoolInvestmentManager(poolId, tokens.DAI.address, investmentManager.address);
+      await expect(
+        vault.connect(pool).setPoolInvestmentManager(poolId, tokens.DAI.address, other.address)
+      ).to.be.revertedWith('CANNOT_RESET_INVESTMENT_MANAGER');
+    });
+
+    it('the manager can only be set by the pool be the zero address', async () => {
+      await expect(
+        vault.connect(other).setPoolInvestmentManager(poolId, tokens.DAI.address, investmentManager.address)
+      ).to.be.revertedWith('Caller is not the pool');
+    });
+
+    it('the manager cannot be the zero address', async () => {
+      await expect(
+        vault.connect(pool).setPoolInvestmentManager(poolId, tokens.DAI.address, ZERO_ADDRESS)
+      ).to.be.revertedWith('Investment manager is the zero address');
+    });
+  });
+
+  context('with standard pool', () => {
+    itManagesInvestmentsCorrectly(StandardPool);
+  });
+
+  context('with simplified pool', () => {
+    itManagesInvestmentsCorrectly(SimplifiedQuotePool);
+  });
+
   context('with two token pool', () => {
-    itManagesInvestmentsCorrectly(TwoTokenTS);
+    itManagesInvestmentsCorrectly(TwoTokenPool);
   });
 
-  context('with pair trading strategy pool', () => {
-    itManagesInvestmentsCorrectly(PairTS);
-  });
-
-  context('with tuple trading strategy pool', () => {
-    itManagesInvestmentsCorrectly(TupleTS);
-  });
-
-  function itManagesInvestmentsCorrectly(poolType: TradingStrategyType) {
+  function itManagesInvestmentsCorrectly(poolType: PoolOptimizationSetting) {
     let poolId: string;
     const tokenInitialBalance = BigNumber.from((200e18).toString());
 
     beforeEach(async () => {
-      const receipt = await (await vault.newPool(pool.address, poolType)).wait();
+      const receipt = await (await vault.connect(pool).registerPool(poolType)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       poolId = event.args.poolId;
@@ -63,11 +104,10 @@ describe('InvestmentManager', function () {
         await tokens[symbol].connect(pool).approve(vault.address, MAX_UINT256);
 
         await tokens[symbol].connect(investmentManager).approve(vault.address, MAX_UINT256);
-        await vault
-          .connect(pool)
-          .authorizePoolInvestmentManager(poolId, tokens[symbol].address, investmentManager.address);
+        await vault.connect(pool).setPoolInvestmentManager(poolId, tokens[symbol].address, investmentManager.address);
       }
 
+      await vault.connect(pool).registerTokens(poolId, tokenAddresses);
       await vault.connect(pool).addLiquidity(poolId, pool.address, tokenAddresses, tokenAmounts, false);
     });
 
@@ -100,13 +140,11 @@ describe('InvestmentManager', function () {
         });
 
         it('reverts when investing a token not in the pool', async () => {
-          await vault
-            .connect(pool)
-            .authorizePoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
+          await vault.connect(pool).setPoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
 
           await expect(
             vault.connect(investmentManager).investPoolBalance(poolId, otherToken.address, 0)
-          ).to.be.revertedWith('Token not in pool');
+          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
 
         it('reverts when investing more than the pool balance', async () => {
@@ -171,13 +209,11 @@ describe('InvestmentManager', function () {
         });
 
         it('reverts when divesting a token not in the pool', async () => {
-          await vault
-            .connect(pool)
-            .authorizePoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
+          await vault.connect(pool).setPoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
 
           await expect(
             vault.connect(investmentManager).divestPoolBalance(poolId, otherToken.address, 0)
-          ).to.be.revertedWith('Token not in pool');
+          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
       });
 
@@ -244,10 +280,10 @@ describe('InvestmentManager', function () {
       });
 
       it('revert if setting a token not in the pool', async () => {
-        await vault.connect(pool).authorizePoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
+        await vault.connect(pool).setPoolInvestmentManager(poolId, otherToken.address, investmentManager.address);
 
         await expect(vault.connect(investmentManager).updateInvested(poolId, otherToken.address, 0)).to.be.revertedWith(
-          'Token not in pool'
+          'ERR_TOKEN_NOT_REGISTERED'
         );
       });
 
