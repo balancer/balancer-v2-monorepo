@@ -176,6 +176,20 @@ interface IVault {
     // Pool Management
 
     /**
+     * @dev TODO
+     */
+    function registerTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+
+    event TokensRegistered(bytes32 poolId, IERC20[] tokens);
+
+    /**
+     * @dev TODO
+     */
+    function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+
+    event TokensUnregistered(bytes32 poolId, IERC20[] tokens);
+
+    /**
      * @dev Adds liquidity into a Pool. Can only be called by its controller.
      *
      * For each token, the Pool's balance will be increased by `totalAmounts[i]`. This is achieved by first transferring

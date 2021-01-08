@@ -44,6 +44,7 @@ describe('Vault - protocol fees', () => {
     await vault.connect(admin).setProtocolFeeCollector(ZERO_ADDRESS);
     expect(await vault.protocolFeeCollector()).to.equal(ZERO_ADDRESS);
   });
+
   it('non-admin cannot set protocol fee collector', async () => {
     await expect(vault.connect(other).setProtocolFeeCollector(collector.address)).to.be.revertedWith(
       'Caller is not the admin'
@@ -54,6 +55,8 @@ describe('Vault - protocol fees', () => {
     beforeEach(async () => {
       const pool = await deploy('MockPool', { args: [vault.address, SimplifiedQuotePool] });
       await vault.connect(lp).addUserAgent(pool.address);
+
+      await pool.connect(lp).registerTokens([tokens.DAI.address, tokens.MKR.address]);
 
       await pool
         .connect(lp)

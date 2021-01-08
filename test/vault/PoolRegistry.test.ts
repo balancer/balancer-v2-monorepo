@@ -2,11 +2,11 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
-import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
+import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
-import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
+import { PoolOptimizationSetting, SimplifiedQuotePool, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
@@ -16,6 +16,7 @@ let lp: SignerWithAddress;
 let other: SignerWithAddress;
 
 let vault: Contract;
+let symbols: string[];
 let tokens: TokenList = {};
 
 describe('Vault - pool registry', () => {
@@ -25,7 +26,8 @@ describe('Vault - pool registry', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [admin.address] });
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    symbols = ['DAI', 'MKR', 'SNX'];
+    tokens = await deployTokens(symbols, [18, 18, 18]);
 
     for (const symbol in tokens) {
       // Mint tokens for the lp to deposit in the Vault
@@ -103,6 +105,288 @@ describe('Vault - pool registry', () => {
     });
   });
 
+  describe('token registration', () => {
+    let poolId: string;
+    let tokenAddresses: string[] = [];
+
+    const setTokensAddresses = (length: number) => {
+      beforeEach('define token addresses', () => {
+        tokenAddresses = symbols.slice(0, length).map((symbol: string) => tokens[symbol].address);
+      });
+    };
+
+    describe('register', () => {
+      const itHandlesTokensRegistrationProperly = (optimization: PoolOptimizationSetting) => {
+        context('when the pool was created', () => {
+          beforeEach('create pool', async () => {
+            const receipt = await (await vault.connect(pool).registerPool(optimization)).wait();
+            const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+            poolId = event.args.poolId;
+          });
+
+          context('when the sender is the pool', () => {
+            beforeEach('set pool as sender', () => {
+              vault = vault.connect(pool);
+            });
+
+            context('when the given addresses where not registered yet', () => {
+              context('when one of the given tokens is the zero address', () => {
+                beforeEach('update token list to use zero address', () => {
+                  tokenAddresses[0] = ZERO_ADDRESS;
+                  tokenAddresses[1] = tokens['DAI'].address;
+                });
+
+                it('reverts', async () => {
+                  const error = 'ERR_TOKEN_IS_ZERO';
+                  await expect(vault.registerTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
+                  await expect(vault.registerTokens(poolId, tokenAddresses.reverse())).to.be.revertedWith(error);
+                });
+              });
+
+              context('when none of the tokens is the zero address', () => {
+                const itRegistersTheTokens = () => {
+                  it('registers the requested tokens', async () => {
+                    await vault.registerTokens(poolId, tokenAddresses);
+
+                    const poolTokens = await vault.getPoolTokens(poolId);
+                    expect(poolTokens).to.have.members(tokenAddresses);
+
+                    const poolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+                    expect(poolBalances).to.deep.equal(tokenAddresses.map(() => BigNumber.from(0)));
+                  });
+
+                  it('emits an event', async () => {
+                    const receipt = await (await vault.registerTokens(poolId, tokenAddresses)).wait();
+                    expectEvent.inReceipt(receipt, 'TokensRegistered', { poolId, tokens: tokenAddresses });
+                  });
+
+                  if (optimization == TwoTokenPool) {
+                    it('cannot be registered individually', async () => {
+                      const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                      await expect(vault.registerTokens(poolId, [tokenAddresses[0]])).to.be.revertedWith(error);
+                    });
+                  } else {
+                    it('can be registered individually', async () => {
+                      for (const tokenAddress of tokenAddresses) {
+                        await vault.registerTokens(poolId, [tokenAddress]);
+                      }
+
+                      const poolTokens = await vault.getPoolTokens(poolId);
+                      expect(poolTokens).to.have.members(tokenAddresses);
+
+                      const poolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+                      expect(poolBalances).to.deep.equal(tokenAddresses.map(() => BigNumber.from(0)));
+                    });
+                  }
+                };
+
+                const itRevertsDueToTwoTokens = () => {
+                  it('reverts', async () => {
+                    const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                    await expect(vault.registerTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
+                  });
+                };
+
+                context('with one token', () => {
+                  setTokensAddresses(1);
+                  optimization === TwoTokenPool ? itRevertsDueToTwoTokens() : itRegistersTheTokens();
+                });
+
+                context('with two tokens', () => {
+                  setTokensAddresses(2);
+                  itRegistersTheTokens();
+                });
+
+                context('with three tokens', () => {
+                  setTokensAddresses(3);
+                  optimization === TwoTokenPool ? itRevertsDueToTwoTokens() : itRegistersTheTokens();
+                });
+              });
+            });
+
+            context('when one of the given tokens was already registered', () => {
+              setTokensAddresses(2);
+
+              beforeEach('register tokens', async () => {
+                await vault.registerTokens(poolId, tokenAddresses);
+              });
+
+              it('reverts', async () => {
+                const error = optimization == TwoTokenPool ? 'ERR_TOKENS_ALREADY_SET' : 'ERR_TOKEN_ALREADY_REGISTERED';
+                await expect(vault.registerTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
+              });
+            });
+          });
+
+          context('when the sender is not the pool', () => {
+            beforeEach('set other sender', () => {
+              vault = vault.connect(other);
+            });
+
+            it('reverts', async () => {
+              await expect(vault.registerTokens(poolId, tokenAddresses)).to.be.revertedWith('Caller is not the pool');
+            });
+          });
+        });
+
+        context('when the pool was not created', () => {
+          it('reverts', async () => {
+            await expect(vault.registerTokens(ZERO_BYTES32, tokenAddresses)).to.be.revertedWith('Nonexistent pool');
+          });
+        });
+      };
+
+      context('for a simplified quote pool', () => {
+        itHandlesTokensRegistrationProperly(SimplifiedQuotePool);
+      });
+
+      context('for a standard pool', () => {
+        itHandlesTokensRegistrationProperly(StandardPool);
+      });
+
+      context('for a two token pool', () => {
+        itHandlesTokensRegistrationProperly(TwoTokenPool);
+      });
+    });
+
+    describe('unregister', () => {
+      const itHandlesTokensDeregistrationProperly = (optimization: PoolOptimizationSetting) => {
+        context('when the pool was created', () => {
+          beforeEach('create pool', async () => {
+            const receipt = await (await vault.connect(pool).registerPool(optimization)).wait();
+            const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+            poolId = event.args.poolId;
+          });
+
+          context('when the sender is the pool', () => {
+            beforeEach('set pool as sender', () => {
+              vault = vault.connect(pool);
+            });
+
+            context('when the given addresses where registered', () => {
+              const itUnregistersTheTokens = () => {
+                beforeEach('register tokens', async () => {
+                  await vault.registerTokens(poolId, tokenAddresses);
+                });
+
+                context('when some tokens still have some balance', () => {
+                  beforeEach('add some balance', async () => {
+                    const balances = tokenAddresses.map(() => 5);
+                    await vault.addLiquidity(poolId, pool.address, tokenAddresses, balances, false);
+                  });
+
+                  context('when trying to unregister individually', () => {
+                    if (optimization == TwoTokenPool) {
+                      it('reverts', async () => {
+                        const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                        await expect(vault.unregisterTokens(poolId, [tokenAddresses[0]])).to.be.revertedWith(error);
+                      });
+                    } else {
+                      it('can unregister the tokens without balance', async () => {
+                        await vault.removeLiquidity(poolId, pool.address, [tokenAddresses[0]], [5], false);
+                        await vault.unregisterTokens(poolId, [tokenAddresses[0]]);
+
+                        const poolTokens = await vault.getPoolTokens(poolId);
+                        expect(poolTokens).not.to.have.members([tokenAddresses[0]]);
+                      });
+                    }
+                  });
+
+                  context('when trying to unregister all tokens at once', () => {
+                    it('reverts', async () => {
+                      const error = 'ERR_TOKEN_BALANCE_IS_NOT_ZERO';
+                      await expect(vault.unregisterTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
+                    });
+                  });
+                });
+
+                context('when all the tokens have no balance', () => {
+                  it('unregisters the requested tokens', async () => {
+                    await vault.unregisterTokens(poolId, tokenAddresses);
+
+                    const poolTokens = await vault.getPoolTokens(poolId);
+                    expect(poolTokens).to.be.empty;
+                  });
+
+                  it('cannot query balances any more', async () => {
+                    await vault.unregisterTokens(poolId, tokenAddresses);
+
+                    const error = 'ERR_TOKEN_NOT_REGISTERED';
+                    await expect(vault.getPoolTokenBalances(poolId, tokenAddresses)).to.be.revertedWith(error);
+                  });
+
+                  it('emits an event', async () => {
+                    const receipt = await (await vault.unregisterTokens(poolId, tokenAddresses)).wait();
+                    expectEvent.inReceipt(receipt, 'TokensUnregistered', { poolId, tokens: tokenAddresses });
+                  });
+                });
+              };
+
+              const itRevertsDueToTwoTokens = () => {
+                it('reverts', async () => {
+                  const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                  await expect(vault.unregisterTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
+                });
+              };
+
+              context('with one token', () => {
+                setTokensAddresses(1);
+                optimization === TwoTokenPool ? itRevertsDueToTwoTokens() : itUnregistersTheTokens();
+              });
+
+              context('with two tokens', () => {
+                setTokensAddresses(2);
+                itUnregistersTheTokens();
+              });
+
+              context('with three tokens', () => {
+                setTokensAddresses(3);
+                optimization === TwoTokenPool ? itRevertsDueToTwoTokens() : itUnregistersTheTokens();
+              });
+            });
+
+            context('when one of the given addresses was not registered', () => {
+              setTokensAddresses(2);
+
+              it('reverts', async () => {
+                const error = 'ERR_TOKEN_NOT_REGISTERED';
+                await expect(vault.unregisterTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
+              });
+            });
+          });
+
+          context('when the sender is not the pool', () => {
+            beforeEach('set other sender', () => {
+              vault = vault.connect(other);
+            });
+
+            it('reverts', async () => {
+              await expect(vault.unregisterTokens(poolId, tokenAddresses)).to.be.revertedWith('Caller is not the pool');
+            });
+          });
+        });
+
+        context('when the pool was not created', () => {
+          it('reverts', async () => {
+            await expect(vault.unregisterTokens(ZERO_BYTES32, tokenAddresses)).to.be.revertedWith('Nonexistent pool');
+          });
+        });
+      };
+
+      context('for a simplified quote pool', () => {
+        itHandlesTokensDeregistrationProperly(SimplifiedQuotePool);
+      });
+
+      context('for a standard pool', () => {
+        itHandlesTokensDeregistrationProperly(StandardPool);
+      });
+
+      context('for a two token pool', () => {
+        itHandlesTokensDeregistrationProperly(TwoTokenPool);
+      });
+    });
+  });
+
   describe('protocol swap fee collection', async () => {
     let pool: Contract;
     let poolId: string;
@@ -119,6 +403,7 @@ describe('Vault - pool registry', () => {
       // Let pool use lp's tokens
       await vault.connect(lp).addUserAgent(pool.address);
 
+      await pool.connect(lp).registerTokens([tokens.DAI.address, tokens.MKR.address]);
       await pool.connect(lp).addLiquidity([tokens.DAI.address, tokens.MKR.address], [1000, 1000]);
     });
 
@@ -181,7 +466,8 @@ describe('Vault - pool registry', () => {
 
     it('reverts when paying fees in tokens no in the pool', async () => {
       const newTokens = await deployTokens(['BAT'], [18]);
-      await expect(pool.paySwapProtocolFees([newTokens.BAT.address], [0])).to.be.revertedWith('Token not in pool');
+      const error = 'ERR_TOKEN_NOT_REGISTERED';
+      await expect(pool.paySwapProtocolFees([newTokens.BAT.address], [0])).to.be.revertedWith(error);
     });
 
     it('reverts if the fees are larger than the pool balance', async () => {
@@ -199,12 +485,13 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     poolId = event.args.poolId;
+
+    await vault.connect(pool).registerTokens(poolId, [tokens.DAI.address, tokens.MKR.address]);
   });
 
   if (optimization != TwoTokenPool) {
     it('pool can add liquidity to single token', async () => {
       await vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false);
-      expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address]);
 
       expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
     });
@@ -214,7 +501,6 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
     await vault
       .connect(pool)
       .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
-    expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address, tokens.MKR.address]);
 
     expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
       BigNumber.from(5),
@@ -232,14 +518,17 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
     ).to.be.revertedWith('Token is the zero address');
   });
 
-  it('the pool cannot add zero liquidity to new tokens', async () => {
-    await expect(
-      vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 0], false)
-    ).to.be.revertedWith('New token amount is zero');
+  it('the pool can add zero liquidity to registered tokens', async () => {
+    await vault
+      .connect(pool)
+      .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 0], false);
 
-    await expect(
-      vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [0, 10], false)
-    ).to.be.revertedWith('New token amount is zero');
+    await vault
+      .connect(pool)
+      .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [0, 10], false);
+
+    const balances = await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address]);
+    expect(balances).to.deep.equal([BigNumber.from(5), BigNumber.from(10)]);
   });
 
   it('the pool cannot add liquidity with mismatching tokens and lengths', async () => {
@@ -258,7 +547,6 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
       .connect(pool)
       .addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
 
-    expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address, tokens.MKR.address]);
     expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
       BigNumber.from(8),
       BigNumber.from(17),
@@ -325,7 +613,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
     it('the pool cannot add liquidity to single token', async () => {
       await expect(
         vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address], [5], false)
-      ).to.be.revertedWith('Must interact with all tokens in two token pool');
+      ).to.be.revertedWith('ERR_TOKENS_LENGTH_MUST_BE_2');
     });
 
     it('the pool cannot add liquidity to more than two tokens', async () => {
@@ -339,13 +627,13 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
             [5, 10, 15],
             false
           )
-      ).to.be.revertedWith('Must interact with all tokens in two token pool');
+      ).to.be.revertedWith('ERR_TOKENS_LENGTH_MUST_BE_2');
     });
 
     it('the pool cannot add liquidity to repeated tokens', async () => {
       await expect(
         vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.DAI.address], [5, 10], false)
-      ).to.be.revertedWith('Tokens are the same');
+      ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
     });
   }
 
@@ -360,7 +648,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
       it('the pool can remove zero liquidity from single token', async () => {
         await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [0], false);
 
-        expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address, tokens.MKR.address]);
+        expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
         expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
           BigNumber.from(5),
           BigNumber.from(10),
@@ -370,7 +658,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
       it('the pool can remove partial liquidity from single token', async () => {
         await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [8], false);
 
-        expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address, tokens.MKR.address]);
+        expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
         expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
           BigNumber.from(5),
           BigNumber.from(2),
@@ -380,7 +668,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
       it('the pool can remove all liquidity from single token', async () => {
         await vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [10], false);
 
-        expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address]);
+        expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address]);
         expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
       });
     }
@@ -389,7 +677,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
       it('the pool cannot remove zero liquidity from single token', async () => {
         await expect(
           vault.connect(pool).removeLiquidity(poolId, pool.address, [tokens.MKR.address], [0], false)
-        ).to.be.revertedWith('Must interact with all tokens in two token pool');
+        ).to.be.revertedWith('ERR_TOKENS_LENGTH_MUST_BE_2');
       });
     }
 
@@ -398,7 +686,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
         .connect(pool)
         .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [0, 3], false);
 
-      expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address, tokens.MKR.address]);
+      expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
       expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
         BigNumber.from(5),
         BigNumber.from(7),
@@ -410,7 +698,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
         .connect(pool)
         .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [2, 3], false);
 
-      expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address, tokens.MKR.address]);
+      expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
       expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address, tokens.MKR.address])).to.deep.equal([
         BigNumber.from(3),
         BigNumber.from(7),
@@ -422,7 +710,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
         .connect(pool)
         .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.MKR.address], [5, 10], false);
 
-      expect(await vault.getPoolTokens(poolId)).to.have.members([]);
+      expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
     });
 
     it('the pool can remove liquidity by depositing tokens into user balance', async () => {
@@ -458,7 +746,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
         vault
           .connect(pool)
           .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.SNX.address], [5, 0], false)
-      ).to.be.revertedWith('Token not in pool');
+      ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
     });
 
     it('the controller cannot remove non-zero liquidity not in pool', async () => {
@@ -466,7 +754,7 @@ function itManagesTokensCorrectly(optimization: PoolOptimizationSetting) {
         vault
           .connect(pool)
           .removeLiquidity(poolId, pool.address, [tokens.DAI.address, tokens.SNX.address], [5, 2], false)
-      ).to.be.revertedWith('Token not in pool');
+      ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
     });
 
     it('non-pool cannot remove liquidity', async () => {

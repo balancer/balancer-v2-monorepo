@@ -443,7 +443,10 @@ describe('StablecoinPool', function () {
         await pool.connect(creator).exitPool(initialBPT, [0, 0], true, creator.address);
 
         expect(await pool.totalSupply()).to.equal(0);
-        expect(await vault.getPoolTokens(poolId)).to.have.members([]);
+
+        // The tokens are not unregistered from the Pool
+        expect(await vault.getPoolTokens(poolId)).not.to.be.empty;
+        expect(await vault.getPoolTokens(poolId)).to.have.members(poolTokens);
       });
 
       it('drained pools cannot be rejoined', async () => {
@@ -451,7 +454,7 @@ describe('StablecoinPool', function () {
 
         await expect(
           pool.connect(lp).joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], true, lp.address)
-        ).to.be.revertedWith('ERR_EMPTY_POOL');
+        ).to.be.revertedWith('ERR_ZERO_LIQUIDITY');
       });
     });
   });
