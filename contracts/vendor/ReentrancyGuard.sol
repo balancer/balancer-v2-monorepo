@@ -2,6 +2,10 @@
 
 pragma solidity ^0.7.0;
 
+// Based on the ReentrancyGuard library from OpenZeppelin contracts, altered to reduce bytecode size.
+// Modifier code is inlined by the compiler, which causes its code to appear multiple times in the codebase. By using
+// private functions, we achieve the same end result with sligthly higher runtime gas costs but reduced bytecode size.
+
 /**
  * @dev Contract module that helps prevent reentrant calls to a function.
  *
@@ -47,11 +51,17 @@ abstract contract ReentrancyGuard {
      * `private` function that does the actual work.
      */
     modifier nonReentrant() {
-        _enterNonReentrant();
+        // On the first call to nonReentrant, _notEntered will be true
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+        // Any calls to nonReentrant after this point will fail
+        _status = _ENTERED;
 
         _;
 
-        _exitNonReentrant();
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _status = _NOT_ENTERED;
     }
 
     function _enterNonReentrant() private {
