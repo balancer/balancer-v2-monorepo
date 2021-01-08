@@ -32,8 +32,6 @@ import "./StablecoinMath.sol";
 
 contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint256;
-    using SafeCast for uint256;
-    using SafeCast for int256;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -41,7 +39,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
     uint256 private immutable _amp;
     uint256 private immutable _swapFee;
 
-    int256 private _lastInvariant;
+    uint256 private _lastInvariant;
 
     uint256 private constant _MIN_SWAP_FEE = 0;
     uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
@@ -109,7 +107,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
         uint256 indexOut
     ) external view override returns (uint256) {
         uint256 adjustedIn = _subtractSwapFee(request.amountIn);
-        uint256 maximumAmountOut = _outGivenIn(_amp.toUint128(), balances, indexIn, indexOut, adjustedIn.toUint128());
+        uint256 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
         return maximumAmountOut;
     }
 
@@ -119,13 +117,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint256) {
-        uint256 minimumAmountIn = _inGivenOut(
-            _amp.toUint128(),
-            balances,
-            indexIn,
-            indexOut,
-            request.amountOut.toUint128()
-        );
+        uint256 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
         return _addSwapFee(minimumAmountIn);
     }
 
@@ -140,13 +132,13 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
         uint256[] memory swapFeesCollected = new uint256[](balances.length);
 
         //TODO: picking first token for now, make it random
-        swapFeesCollected[0] = _calculateOneTokenSwapFee(_amp.toUint128(), balances, _lastInvariant, 0).toUint256();
+        swapFeesCollected[0] = _calculateOneTokenSwapFee(_amp, balances, _lastInvariant, 0);
 
         return swapFeesCollected;
     }
 
     function _resetAccumulatedSwapFees(uint256 amp, uint256[] memory balances) internal {
-        _lastInvariant = _invariant(amp.toUint128(), balances);
+        _lastInvariant = _invariant(amp, balances);
     }
 
     // Pays protocol swap fees
@@ -220,7 +212,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
 
     function _getSupplyRatio(uint256 amount) internal view returns (uint256) {
         uint256 poolTotal = totalSupply();
-        uint256 ratio = amount.div(poolTotal).toUint128();
+        uint256 ratio = amount.div(poolTotal);
         require(ratio != 0, "ERR_MATH_APPROX");
         return ratio;
     }
