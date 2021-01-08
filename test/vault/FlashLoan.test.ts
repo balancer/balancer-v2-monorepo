@@ -10,6 +10,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress;
   let minter: SignerWithAddress;
+  let feeSetter: SignerWithAddress;
   let other: SignerWithAddress;
 
   let authorizer: Contract;
@@ -18,12 +19,12 @@ describe('Vault - flash loans', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, minter, other] = await ethers.getSigners();
+    [, admin, minter, feeSetter, other] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
-    authorizer = await deploy('MockAuthorizer', { args: [admin.address] });
-    await authorizer.setCanSetProtocolFlashLoanFee(true);
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FLASH_LOAN_FEE_ROLE(), feeSetter.address);
     vault = await deploy('Vault', { args: [authorizer.address] });
 
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
@@ -41,7 +42,7 @@ describe('Vault - flash loans', () => {
 
   context('with no protocol fees', () => {
     beforeEach(async () => {
-      await vault.connect(admin).setProtocolFlashLoanFee(0);
+      await vault.connect(feeSetter).setProtocolFlashLoanFee(0);
     });
 
     it('causes no net balance change on the Vault', async () => {
@@ -77,7 +78,7 @@ describe('Vault - flash loans', () => {
     const feePercentage = toFixedPoint(0.005); // 0.5%
 
     beforeEach(async () => {
-      await vault.connect(admin).setProtocolFlashLoanFee(feePercentage);
+      await vault.connect(feeSetter).setProtocolFlashLoanFee(feePercentage);
     });
 
     it('the Vault receives protocol fees', async () => {

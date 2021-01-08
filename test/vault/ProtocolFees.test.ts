@@ -5,12 +5,14 @@ import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PairTS } from '../../scripts/helpers/pools';
-import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
+import { MAX_UINT256 } from '../helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
   let lp: SignerWithAddress;
+  let feeSetter: SignerWithAddress;
+  let feeCollector: SignerWithAddress;
   let other: SignerWithAddress;
 
   let authorizer: Contract;
@@ -18,11 +20,11 @@ describe('Vault - protocol fees', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, lp, other] = await ethers.getSigners();
+    [, admin, lp, feeSetter, feeCollector, other] = await ethers.getSigners();
   });
 
   beforeEach(async () => {
-    authorizer = await deploy('MockAuthorizer', { args: [admin.address] });
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
@@ -46,8 +48,8 @@ describe('Vault - protocol fees', () => {
         .addLiquidity([tokens.DAI.address, tokens.MKR.address], [(5e18).toString(), (10e18).toString()]);
 
       // Set a non-zero withdraw fee
-      await authorizer.setCanSetProtocolWithdrawFee(true);
-      await vault.connect(admin).setProtocolWithdrawFee((0.01e18).toString());
+      await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), feeSetter.address);
+      await vault.connect(feeSetter).setProtocolWithdrawFee((0.01e18).toString());
 
       // Remove liquidity - withdraw fees will be charged
       await pool.connect(lp).removeLiquidity([tokens.DAI.address], [(5e18).toString()]);
@@ -60,12 +62,14 @@ describe('Vault - protocol fees', () => {
     });
 
     it('authorized accounts can withdraw protocol fees to any recipient', async () => {
-      await authorizer.connect(admin).setCanCollectProtocolFees(true);
+      await authorizer
+        .connect(admin)
+        .grantRole(await authorizer.COLLECT_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
 
       await expectBalanceChange(
         () =>
           vault
-            .connect(admin)
+            .connect(feeCollector)
             .withdrawProtocolFees(
               [tokens.DAI.address, tokens.MKR.address],
               [(0.02e18).toString(), (0.04e18).toString()],
@@ -80,11 +84,13 @@ describe('Vault - protocol fees', () => {
     });
 
     it('protocol fees cannot be over-withdrawn', async () => {
-      await authorizer.connect(admin).setCanCollectProtocolFees(true);
+      await authorizer
+        .connect(admin)
+        .grantRole(await authorizer.COLLECT_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
 
       await expect(
         vault
-          .connect(admin)
+          .connect(feeCollector)
           .withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((0.05e18).toString()).add(1)], other.address)
       ).to.be.revertedWith('Insufficient protocol fees');
     });

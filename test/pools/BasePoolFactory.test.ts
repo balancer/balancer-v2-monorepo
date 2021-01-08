@@ -3,21 +3,25 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { deploy } from '../../scripts/helpers/deploy';
-import { ZERO_ADDRESS } from '../helpers/constants';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 describe('BasePoolFactory', function () {
+  let admin: SignerWithAddress;
+
   let authorizer: Contract;
   let vault: Contract;
   let factory: Contract;
 
   const salt = ethers.utils.id('salt');
 
-  beforeEach(async function () {
-    authorizer = await deploy('MockAuthorizer', { args: [ZERO_ADDRESS] });
+  before(async () => {
+    [, admin] = await ethers.getSigners();
+  });
+
+  beforeEach(async () => {
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     factory = await deploy('MockPoolFactory', { args: [vault.address] });
-
-    await authorizer.setAuthorized(factory.address);
   });
 
   it('reverts if the factory is not authorized', async () => {
@@ -26,7 +30,7 @@ describe('BasePoolFactory', function () {
 
   context('once authorized', () => {
     beforeEach(async () => {
-      await authorizer.setCanAddUniversalAgent(true);
+      await authorizer.connect(admin).grantRole(await authorizer.ADD_UNIVERSAL_AGENT_ROLE(), factory.address);
     });
 
     it('creates a pool', async () => {

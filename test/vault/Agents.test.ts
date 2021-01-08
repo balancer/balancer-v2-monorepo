@@ -10,17 +10,18 @@ describe('Vault - agents', () => {
   let user: SignerWithAddress;
   let agent: SignerWithAddress;
   let universalAgent: SignerWithAddress;
+  let universalAgentManager: SignerWithAddress;
   let other: SignerWithAddress;
 
   let authorizer: Contract;
   let vault: Contract;
 
   before(async () => {
-    [, admin, user, agent, universalAgent, other] = await ethers.getSigners();
+    [, admin, user, agent, universalAgent, universalAgentManager, other] = await ethers.getSigners();
   });
 
   beforeEach('vault & tokens', async () => {
-    authorizer = await deploy('MockAuthorizer', { args: [admin.address] });
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
   });
 
@@ -91,11 +92,13 @@ describe('Vault - agents', () => {
 
     context('with authorized account', () => {
       beforeEach(async () => {
-        await authorizer.setCanAddUniversalAgent(true);
+        await authorizer
+          .connect(admin)
+          .grantRole(await authorizer.ADD_UNIVERSAL_AGENT_ROLE(), universalAgentManager.address);
       });
 
       it('universal agents can be added', async () => {
-        await vault.connect(admin).addUniversalAgent(universalAgent.address);
+        await vault.connect(universalAgentManager).addUniversalAgent(universalAgent.address);
 
         expect(await vault.getNumberOfUniversalAgents()).to.equal(1);
         expect(await vault.getUniversalAgents(0, 1)).to.have.members([universalAgent.address]);
@@ -103,7 +106,7 @@ describe('Vault - agents', () => {
 
       context('with universal agent', () => {
         beforeEach(async () => {
-          await vault.connect(admin).addUniversalAgent(universalAgent.address);
+          await vault.connect(universalAgentManager).addUniversalAgent(universalAgent.address);
         });
 
         it('universal agents are agents for all accounts', async () => {
@@ -122,8 +125,11 @@ describe('Vault - agents', () => {
         });
 
         it('authorized accounts can remove  universal agents', async () => {
-          await authorizer.setCanRemoveUniversalAgent(true);
-          await vault.connect(admin).removeUniversalAgent(universalAgent.address);
+          await authorizer
+            .connect(admin)
+            .grantRole(await authorizer.REMOVE_UNIVERSAL_AGENT_ROLE(), universalAgentManager.address);
+
+          await vault.connect(universalAgentManager).removeUniversalAgent(universalAgent.address);
 
           expect(await vault.isAgentFor(other.address, universalAgent.address)).to.equal(false);
           expect(await vault.getNumberOfUniversalAgents()).to.equal(0);

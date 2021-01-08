@@ -12,6 +12,7 @@ describe('Vault - user balance', () => {
   let admin: SignerWithAddress;
   let trader: SignerWithAddress;
   let user: SignerWithAddress;
+  let feeSetter: SignerWithAddress;
   let other: SignerWithAddress;
 
   let authorizer: Contract;
@@ -19,13 +20,13 @@ describe('Vault - user balance', () => {
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, trader, user, other] = await ethers.getSigners();
+    [, admin, trader, user, feeSetter, other] = await ethers.getSigners();
   });
 
   const amount = BigNumber.from(500);
 
   beforeEach('deploy vault & tokens', async () => {
-    authorizer = await deploy('MockAuthorizer', { args: [admin.address] });
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
@@ -112,8 +113,8 @@ describe('Vault - user balance', () => {
       const protocolWithdrawFee = 0.01;
 
       beforeEach(async () => {
-        await authorizer.setCanSetProtocolWithdrawFee(true);
-        await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
+        await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), feeSetter.address);
+        await vault.connect(feeSetter).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
       });
 
       it('tokens minus fee are pushed', async () => {
