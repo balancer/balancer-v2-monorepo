@@ -70,7 +70,7 @@ async function compareInGivenOut(
   );
 }
 
-describe.only('StablecoinMath', function () {
+describe('StablecoinMath', function () {
   let mock: Contract;
 
   beforeEach(async function () {
