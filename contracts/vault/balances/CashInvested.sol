@@ -139,7 +139,7 @@ library CashInvested {
 
     /**
      * @dev Sets 'invested' to an arbitrary value, changing 'total'. Called when the Investment Manager reports profits
-     * or losses. It's the Manager's responsability to provide a meaningful value.
+     * or losses. It's the Manager's responsibility to provide a meaningful value.
      */
     function setInvested(bytes32 balance, uint128 newInvested) internal pure returns (bytes32) {
         uint128 newCash = cash(balance);

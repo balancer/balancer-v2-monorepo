@@ -245,7 +245,7 @@ interface IVault {
      *
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
-     * A swap cannot cause `tokenOut` to be fully drained. The Pools' Trading Strategies will validate each swap,
+     * A swap can cause `tokenOut` to be fully drained. The Pools' optimization settings will validate each swap,
      * possibly charging a swap fee on the amount going in. If so, the protocol will then charge the protocol swap fee
      * to the Pool's own swap fee.
      *
