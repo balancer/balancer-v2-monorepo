@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractFunction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../../../scripts/helpers/deploy';
 import { deployPoolFromFactory, SimplifiedQuotePool } from '../../../scripts/helpers/pools';
@@ -15,8 +15,10 @@ describe('ConstantProductPool', function () {
   let lp: SignerWithAddress;
   let trader: SignerWithAddress;
   let beneficiary: SignerWithAddress;
+  let feeSetter: SignerWithAddress;
   let other: SignerWithAddress;
 
+  let authorizer: Contract;
   let vault: Contract;
   let tokens: TokenList = {};
 
@@ -30,11 +32,12 @@ describe('ConstantProductPool', function () {
   let callDeployPool: () => Promise<Contract>;
 
   before(async function () {
-    [, admin, creator, lp, trader, beneficiary, other] = await ethers.getSigners();
+    [, admin, creator, lp, trader, beneficiary, feeSetter, other] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
 
     tokens = await deployTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
     for (const symbol in tokens) {
@@ -351,6 +354,46 @@ describe('ConstantProductPool', function () {
       });
     });
 
+    describe('joining & swapping', () => {
+      it('grants BPT for exact tokens', async () => {
+        const previousBPT = await pool.balanceOf(lp.address);
+        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
+
+        await pool
+          .connect(lp)
+          .joinPoolExactTokensInForBPTOut((1e18).toString(), [0, (0.1e18).toString()], true, lp.address);
+
+        const newBPT = await pool.balanceOf(lp.address);
+        expect(newBPT.sub(previousBPT)).to.be.at.least((1.4616e18).toString());
+        expect(newBPT.sub(previousBPT)).to.be.at.most((1.46161e18).toString());
+
+        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
+        expect(newTokenBalance.sub(previousTokenBalance)).to.equal((-0.1e18).toString());
+      });
+
+      it('grants exact BPT for tokens', async () => {
+        const previousBPT = await pool.balanceOf(lp.address);
+        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
+
+        await pool
+          .connect(lp)
+          .joinPoolTokenInForExactBPTOut(
+            (1.4616e18).toString(),
+            tokens.MKR.address,
+            (0.15e18).toString(),
+            true,
+            lp.address
+          );
+
+        const newBPT = await pool.balanceOf(lp.address);
+        expect(newBPT.sub(previousBPT)).to.equal((1.4616e18).toString());
+
+        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
+        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.least((-0.1e18).toString());
+        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.most((-0.099e18).toString());
+      });
+    });
+
     describe('exiting', () => {
       beforeEach(async () => {
         // The LP joins and gets 10e18 BPT
@@ -430,7 +473,10 @@ describe('ConstantProductPool', function () {
         const protocolWithdrawFee = 0.01;
 
         beforeEach(async () => {
-          await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
+          await authorizer
+            .connect(admin)
+            .grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), feeSetter.address);
+          await vault.connect(feeSetter).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
         });
 
         it('tokens minus fee are pushed', async () => {
@@ -489,6 +535,79 @@ describe('ConstantProductPool', function () {
 
         expect(await vault.getUserTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal((0.1e18).toString());
         expect(await vault.getUserTokenBalance(beneficiary.address, tokens.MKR.address)).to.equal((0.2e18).toString());
+      });
+    });
+
+    describe('exiting & swapping', () => {
+      beforeEach(async () => {
+        // The LP joins and gets 10e18 BPT
+        await pool
+          .connect(lp)
+          .joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], true, lp.address);
+
+        expect(await pool.totalSupply()).to.equal((100e18).toString());
+        expect(await vault.getPoolTokenBalances(poolId, poolTokens)).to.deep.equal([
+          BigNumber.from((1e18).toString()),
+          BigNumber.from((2e18).toString()),
+        ]);
+      });
+
+      it('takes exact BPT for tokens', async () => {
+        const previousBPT = await pool.balanceOf(lp.address);
+        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
+
+        await pool
+          .connect(lp)
+          .exitPoolExactBPTInForTokenOut(
+            (1.54e18).toString(),
+            tokens.MKR.address,
+            (0.099e18).toString(),
+            true,
+            lp.address
+          );
+
+        const newBPT = await pool.balanceOf(lp.address);
+        expect(newBPT.sub(previousBPT)).to.equal((-1.54e18).toString());
+
+        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
+        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.least((0.099e18).toString());
+        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.most((0.105e18).toString());
+      });
+
+      it('takes BPT for exact tokens', async () => {
+        const previousBPT = await pool.balanceOf(lp.address);
+        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
+
+        await pool
+          .connect(lp)
+          .exitPoolBPTInForExactTokensOut((2e18).toString(), [0, (0.1e18).toString()], true, lp.address);
+
+        const newBPT = await pool.balanceOf(lp.address);
+        expect(newBPT.sub(previousBPT)).to.be.at.least((-1.55e18).toString());
+        expect(newBPT.sub(previousBPT)).to.be.at.most((-1.53e18).toString());
+
+        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
+        expect(newTokenBalance.sub(previousTokenBalance)).to.equal((0.1e18).toString());
+      });
+    });
+
+    describe('joining & swapping & exiting', () => {
+      it('cannot exit with more tokens than joined', async () => {
+        const previousBPT = await pool.balanceOf(lp.address);
+        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
+
+        await pool
+          .connect(lp)
+          .joinPoolExactTokensInForBPTOut((1e18).toString(), [0, (0.1e18).toString()], true, lp.address);
+
+        const newBPT = await pool.balanceOf(lp.address);
+        const obtainedBPT = newBPT.sub(previousBPT);
+
+        await pool.connect(lp).exitPoolExactBPTInForTokenOut(obtainedBPT, tokens.MKR.address, 0, true, lp.address);
+
+        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
+
+        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.most(0);
       });
     });
 
@@ -776,8 +895,8 @@ describe('ConstantProductPool', function () {
 
     beforeEach(async () => {
       //Set protocol swap fee in Vault
-      await vault.connect(admin).setProtocolFeeCollector(admin.address);
-      await vault.connect(admin).setProtocolSwapFee(protocolSwapFee);
+      await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), feeSetter.address);
+      await vault.connect(feeSetter).setProtocolSwapFee(protocolSwapFee);
 
       initialBalances = [BigNumber.from((10e18).toString()), BigNumber.from((10e18).toString())];
       tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
@@ -810,10 +929,9 @@ describe('ConstantProductPool', function () {
     });
 
     context('with swap', () => {
-      let protocolSwapFeeAmount: BigNumber;
+      const inAmount = (10e18).toString();
 
       beforeEach(async () => {
-        const inAmount = (10e18).toString();
         const swap = {
           poolId,
           amountIn: inAmount,
@@ -830,36 +948,92 @@ describe('ConstantProductPool', function () {
         };
 
         await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', [swap], tokenAddresses, funds);
-
-        // The pool has accrued fees for inAmount
-        const poolSwapFeeAmount = BigNumber.from(inAmount).mul(swapFee).div(FIXED_POINT_SCALING);
-        protocolSwapFeeAmount = poolSwapFeeAmount.mul(protocolSwapFee).div(FIXED_POINT_SCALING);
       });
 
-      async function asssertProtocolSwapFeeIsCharged() {
-        const fees = await vault.getCollectedFeesByToken(tokens.DAI.address);
+      async function assertProtocolSwapFeeIsCharged(payFeesAction: ContractFunction) {
+        const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
+        const paidTokenIndex = BigNumber.from(previousBlockHash).mod(tokenAddresses.length).toNumber();
+        const notPaidTokenIndex = paidTokenIndex == 0 ? 1 : 0;
 
-        const error = protocolSwapFeeAmount.div(1000);
-        expect(fees).be.at.least(protocolSwapFeeAmount.sub(error));
-        expect(fees).be.at.most(protocolSwapFeeAmount.add(error));
+        await payFeesAction();
 
-        expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal(0);
+        const poolSwapFeeAmount = BigNumber.from(inAmount).mul(swapFee).div(FIXED_POINT_SCALING);
+        const protocolSwapFeeAmount = poolSwapFeeAmount.mul(protocolSwapFee).div(FIXED_POINT_SCALING);
+
+        let expectedPaidFees, error;
+        if (paidTokenIndex == 0) {
+          expectedPaidFees = protocolSwapFeeAmount;
+          error = protocolSwapFeeAmount.div(1000);
+        } else {
+          // We approximate the fee amount paid in token out based on the price after the swap
+          const finalBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+          expectedPaidFees = await pool.quoteOutGivenIn(
+            {
+              poolId,
+              from: other.address,
+              to: other.address,
+              tokenIn: tokens.DAI.address,
+              tokenOut: tokens.MKR.address,
+              amountIn: protocolSwapFeeAmount,
+              userData: '0x',
+            },
+            finalBalances[0],
+            finalBalances[1]
+          );
+          // Since the expected fees is an approximation, we expect a greater error
+          error = expectedPaidFees.div(10);
+        }
+
+        const paidTokenFees = await vault.getCollectedFeesByToken(tokenAddresses[paidTokenIndex]);
+        expect(paidTokenFees).be.at.least(expectedPaidFees.sub(error));
+        expect(paidTokenFees).be.at.most(expectedPaidFees.add(error));
+
+        const notPaidTokenFees = await vault.getCollectedFeesByToken(tokenAddresses[notPaidTokenIndex]);
+        expect(notPaidTokenFees).to.equal(0);
       }
 
       it('pays swap protocol fees if requested', async () => {
-        await pool.payProtocolFees();
+        await assertProtocolSwapFeeIsCharged(() => pool.payProtocolFees());
+      });
+
+      it('pays swap protocol fees on join', async () => {
+        await assertProtocolSwapFeeIsCharged(() =>
+          pool.connect(lp).joinPool((1e18).toString(), [MAX_UINT128, MAX_UINT128], true, lp.address)
+        );
+      });
+
+      it('pays swap protocol fees on joinswap exact tokens in', async () => {
+        await pool
+          .connect(lp)
+          .joinPoolExactTokensInForBPTOut(0, [(1e18).toString(), (1e18).toString()], true, lp.address);
 
         await asssertProtocolSwapFeeIsCharged();
       });
 
-      it('pays swap protocol fees on join', async () => {
-        await pool.connect(lp).joinPool((1e18).toString(), [MAX_UINT128, MAX_UINT128], true, lp.address);
+      it('pays swap protocol fees on join exact bpt out', async () => {
+        await pool
+          .connect(lp)
+          .joinPoolTokenInForExactBPTOut((1e18).toString(), tokens.DAI.address, MAX_UINT128, true, lp.address);
 
         await asssertProtocolSwapFeeIsCharged();
       });
 
       it('pays swap protocol fees on exit', async () => {
-        await pool.connect(lp).exitPool((1e18).toString(), [0, 0], true, lp.address);
+        await assertProtocolSwapFeeIsCharged(() =>
+          pool.connect(lp).exitPool((1e18).toString(), [0, 0], true, lp.address)
+        );
+      });
+
+      it('pays swap protocol fees on exit exact bpt in', async () => {
+        await pool
+          .connect(lp)
+          .exitPoolExactBPTInForTokenOut((1e18).toString(), tokens.DAI.address, 0, true, lp.address);
+
+        await asssertProtocolSwapFeeIsCharged();
+      });
+
+      it('pays swap protocol fees on exit', async () => {
+        await pool.connect(lp).exitPoolBPTInForExactTokensOut(MAX_UINT128, [0, 0], true, lp.address);
 
         await asssertProtocolSwapFeeIsCharged();
       });

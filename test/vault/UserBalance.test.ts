@@ -12,19 +12,23 @@ describe('Vault - user balance', () => {
   let admin: SignerWithAddress;
   let trader: SignerWithAddress;
   let user: SignerWithAddress;
+  let feeSetter: SignerWithAddress;
   let other: SignerWithAddress;
 
+  let authorizer: Contract;
   let vault: Contract;
   let tokens: TokenList = {};
 
   before('setup', async () => {
-    [, admin, trader, user, other] = await ethers.getSigners();
+    [, admin, trader, user, feeSetter, other] = await ethers.getSigners();
   });
 
   const amount = BigNumber.from(500);
 
   beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
+
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
     await mintTokens(tokens, 'DAI', trader, amount.toString());
@@ -109,7 +113,8 @@ describe('Vault - user balance', () => {
       const protocolWithdrawFee = 0.01;
 
       beforeEach(async () => {
-        await vault.connect(admin).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
+        await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), feeSetter.address);
+        await vault.connect(feeSetter).setProtocolWithdrawFee(toFixedPoint(protocolWithdrawFee));
       });
 
       it('tokens minus fee are pushed', async () => {

@@ -14,17 +14,16 @@ describe('InvestmentManager', function () {
   let otherToken: Contract;
   let vault: Contract;
 
-  let admin: SignerWithAddress;
   let pool: SignerWithAddress;
   let investmentManager: SignerWithAddress;
   let other: SignerWithAddress;
 
   before('deploy base contracts', async () => {
-    [, admin, pool, investmentManager, other] = await ethers.getSigners();
+    [, pool, investmentManager, other] = await ethers.getSigners();
   });
 
   beforeEach('set up investment manager', async () => {
-    vault = await deploy('Vault', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'USDT'], [18, 18]);
 
     otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });

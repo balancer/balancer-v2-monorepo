@@ -6,7 +6,9 @@ import { Contract } from 'ethers';
 async function main() {
   const [, admin] = await ethers.getSigners();
 
-  const vault = await measureDeployment('Vault', [admin.address]);
+  const authorizer = await deploy('Authorizer', { args: [admin.address] });
+
+  const vault = await measureDeployment('Vault', [authorizer.address]);
 
   await measureDeployment('ConstantProductPoolFactory', [vault.address]);
 

@@ -27,6 +27,7 @@ import "../IBPTPool.sol";
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPoolQuote.sol";
 import "../../math/FixedPoint.sol";
+import "../../helpers/UnsafeRandom.sol";
 
 import "./StablecoinMath.sol";
 
@@ -131,8 +132,8 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
     function _getAccumulatedSwapFees(uint256[] memory balances) internal view returns (uint256[] memory) {
         uint256[] memory swapFeesCollected = new uint256[](balances.length);
 
-        //TODO: picking first token for now, make it random
-        swapFeesCollected[0] = _calculateOneTokenSwapFee(_amp, balances, _lastInvariant, 0);
+        uint256 index = UnsafeRandom.rand(balances.length);
+        swapFeesCollected[index] = _calculateOneTokenSwapFee(_amp, balances, _lastInvariant, index);
 
         return swapFeesCollected;
     }

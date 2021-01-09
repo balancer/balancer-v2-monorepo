@@ -3,7 +3,7 @@ import { DeployFunction } from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
-  const { deploy, execute } = deployments;
+  const { deploy, execute, read } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
@@ -23,23 +23,29 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     deterministicDeployment: true,
   });
 
+  // The factories need to be granted permission to add universal agents, so that they can create pools
+
+  const addUniversalAgentRole = await read('Authorizer', {}, 'ADD_UNIVERSAL_AGENT_ROLE');
+
   await execute(
-    'Vault',
+    'Authorizer',
     {
       from: deployer,
       log: true,
     },
-    'addUniversalAgentManager',
+    'grantRole',
+    addUniversalAgentRole,
     constantProductPoolFactory.address
   );
 
   await execute(
-    'Vault',
+    'Authorizer',
     {
       from: deployer,
       log: true,
     },
-    'addUniversalAgentManager',
+    'grantRole',
+    addUniversalAgentRole,
     stablecoinPoolFactory.address
   );
 };

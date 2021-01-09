@@ -9,18 +9,20 @@ describe('Vault - agents', () => {
   let admin: SignerWithAddress;
   let user: SignerWithAddress;
   let agent: SignerWithAddress;
-  let universalAgentManager: SignerWithAddress;
   let universalAgent: SignerWithAddress;
+  let universalAgentManager: SignerWithAddress;
   let other: SignerWithAddress;
 
+  let authorizer: Contract;
   let vault: Contract;
 
-  before('setup', async () => {
-    [, admin, user, agent, universalAgentManager, universalAgent, other] = await ethers.getSigners();
+  before(async () => {
+    [, admin, user, agent, universalAgent, universalAgentManager, other] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+  beforeEach('vault & tokens', async () => {
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
   });
 
   describe('agents', () => {
@@ -82,31 +84,24 @@ describe('Vault - agents', () => {
       expect(await vault.getNumberOfUniversalAgents()).to.equal(0);
     });
 
-    it('the vault starts with no universal agent managers', async () => {
-      expect(await vault.getNumberOfUniversalAgentManagers()).to.equal(0);
+    it('unauthorized accounts cannot add new universal agents', async () => {
+      await expect(vault.connect(other).addUniversalAgent(universalAgent.address)).to.be.revertedWith(
+        'Caller cannot add Universal Agents'
+      );
     });
 
-    context('with universal agent manager', () => {
+    context('with authorized account', () => {
       beforeEach(async () => {
-        await vault.connect(admin).addUniversalAgentManager(universalAgentManager.address);
+        await authorizer
+          .connect(admin)
+          .grantRole(await authorizer.ADD_UNIVERSAL_AGENT_ROLE(), universalAgentManager.address);
       });
 
-      it('universal agent managers can be queried', async () => {
-        expect(await vault.getNumberOfUniversalAgentManagers()).to.equal(1);
-        expect(await vault.getUniversalAgentManagers(0, 1)).to.have.members([universalAgentManager.address]);
-      });
-
-      it('universal agent managers can add new universal agents', async () => {
+      it('universal agents can be added', async () => {
         await vault.connect(universalAgentManager).addUniversalAgent(universalAgent.address);
 
         expect(await vault.getNumberOfUniversalAgents()).to.equal(1);
         expect(await vault.getUniversalAgents(0, 1)).to.have.members([universalAgent.address]);
-      });
-
-      it('non-universal agent manager cannot add new universal agents', async () => {
-        await expect(vault.connect(other).addUniversalAgent(universalAgent.address)).to.be.revertedWith(
-          'Caller is not a universal agent manager'
-        );
       });
 
       context('with universal agent', () => {
@@ -123,16 +118,21 @@ describe('Vault - agents', () => {
           expect(await vault.isAgentFor(other.address, universalAgent.address)).to.equal(true);
         });
 
-        it('universal agent managers can remove universal agents', async () => {
-          await vault.connect(universalAgentManager).removeUniversalAgent(universalAgent.address);
-
-          expect(await vault.getNumberOfUniversalAgents()).to.equal(0);
+        it('unauthorized accounts cannot remove  universal agents', async () => {
+          await expect(vault.connect(other).removeUniversalAgent(universalAgent.address)).to.be.revertedWith(
+            'Caller cannot remove Universal Agents'
+          );
         });
 
-        it('non-universal agent managers cannot revoke universal agents', async () => {
-          await expect(vault.connect(other).removeUniversalAgent(universalAgent.address)).to.be.revertedWith(
-            'Caller is not a universal agent manager'
-          );
+        it('authorized accounts can remove  universal agents', async () => {
+          await authorizer
+            .connect(admin)
+            .grantRole(await authorizer.REMOVE_UNIVERSAL_AGENT_ROLE(), universalAgentManager.address);
+
+          await vault.connect(universalAgentManager).removeUniversalAgent(universalAgent.address);
+
+          expect(await vault.isAgentFor(other.address, universalAgent.address)).to.equal(false);
+          expect(await vault.getNumberOfUniversalAgents()).to.equal(0);
         });
       });
     });
