@@ -28,10 +28,10 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "./interfaces/IPoolQuoteStructs.sol";
 import "./interfaces/IPoolQuote.sol";
 import "./interfaces/IPoolQuoteSimplified.sol";
+import "./interfaces/ISwapValidator.sol";
 import "./balances/CashInvested.sol";
 
 import "../math/FixedPoint.sol";
-import "../validators/ISwapValidator.sol";
 
 import "./PoolRegistry.sol";
 
@@ -55,6 +55,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes userData;
     }
 
+    // Despite the external API having two separate functions for given in and given out, internally their are handled
+    // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
+
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
     // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
     function batchSwapGivenIn(
@@ -63,11 +67,14 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapIn[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external override {
+    ) external override returns (int256[] memory) {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
+
         if (address(validator) != address(0)) {
-            validator.validate(SwapKind.GIVEN_IN, tokens, tokenDeltas, validatorData);
+            validator.validate(tokens, tokenDeltas, validatorData);
         }
+
+        return tokenDeltas;
     }
 
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
@@ -78,11 +85,14 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapOut[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external override {
+    ) external override returns (int256[] memory) {
         int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
+
         if (address(validator) != address(0)) {
-            validator.validate(SwapKind.GIVEN_OUT, tokens, tokenDeltas, validatorData);
+            validator.validate(tokens, tokenDeltas, validatorData);
         }
+
+        return tokenDeltas;
     }
 
     // We use inline assembly to cast from the external struct types to the internal one. This doesn't trigger any

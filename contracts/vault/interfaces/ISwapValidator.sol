@@ -19,13 +19,8 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "../math/FixedPoint.sol";
-
-import "../vault/interfaces/IVault.sol";
-
 interface ISwapValidator {
     function validate(
-        IVault.SwapKind kind,
         IERC20[] calldata tokens,
         int256[] calldata vaultDeltas,
         //address caller, //TODO: is it useful to validate?
