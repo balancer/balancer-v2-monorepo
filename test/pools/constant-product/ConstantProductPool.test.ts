@@ -1003,19 +1003,17 @@ describe('ConstantProductPool', function () {
       });
 
       it('pays swap protocol fees on joinswap exact tokens in', async () => {
-        await pool
-          .connect(lp)
-          .joinPoolExactTokensInForBPTOut(0, [(1e18).toString(), (1e18).toString()], true, lp.address);
-
-        await asssertProtocolSwapFeeIsCharged();
+        await assertProtocolSwapFeeIsCharged(() =>
+          pool.connect(lp).joinPoolExactTokensInForBPTOut(0, [(1e18).toString(), (1e18).toString()], true, lp.address)
+        );
       });
 
       it('pays swap protocol fees on join exact bpt out', async () => {
-        await pool
-          .connect(lp)
-          .joinPoolTokenInForExactBPTOut((1e18).toString(), tokens.DAI.address, MAX_UINT128, true, lp.address);
-
-        await asssertProtocolSwapFeeIsCharged();
+        await assertProtocolSwapFeeIsCharged(() =>
+          pool
+            .connect(lp)
+            .joinPoolTokenInForExactBPTOut((1e18).toString(), tokens.DAI.address, MAX_UINT128, true, lp.address)
+        );
       });
 
       it('pays swap protocol fees on exit', async () => {
@@ -1025,17 +1023,15 @@ describe('ConstantProductPool', function () {
       });
 
       it('pays swap protocol fees on exit exact bpt in', async () => {
-        await pool
-          .connect(lp)
-          .exitPoolExactBPTInForTokenOut((1e18).toString(), tokens.DAI.address, 0, true, lp.address);
-
-        await asssertProtocolSwapFeeIsCharged();
+        await assertProtocolSwapFeeIsCharged(() =>
+          pool.connect(lp).exitPoolExactBPTInForTokenOut((1e18).toString(), tokens.DAI.address, 0, true, lp.address)
+        );
       });
 
       it('pays swap protocol fees on exit', async () => {
-        await pool.connect(lp).exitPoolBPTInForExactTokensOut(MAX_UINT128, [0, 0], true, lp.address);
-
-        await asssertProtocolSwapFeeIsCharged();
+        await assertProtocolSwapFeeIsCharged(() =>
+          pool.connect(lp).exitPoolBPTInForExactTokensOut(MAX_UINT128, [0, 0], true, lp.address)
+        );
       });
     });
   });
