@@ -16,13 +16,7 @@ let tokens: TokenList;
 let trader: SignerWithAddress;
 
 async function main() {
-  // Do not deposit anything to user balance
-  // So calculate gas for transferring all tokens
-  const userBalance = 100;
-  let validator: Contract;
-
-  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-  ({ vault, validator, tokens, trader } = await setupEnvironment(userBalance));
+  ({ vault, tokens, trader } = await setupEnvironment());
 
   console.log('== Full join/exit (no initial BPT) ==');
 
