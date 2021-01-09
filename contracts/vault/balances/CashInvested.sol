@@ -85,6 +85,9 @@ library CashInvested {
 
     /**
      * @dev Packs together cash and invested amounts to create a balance value.
+     *
+     * Critically, this also checks the sum of cash and invested doesn't overflow, that is, that `total()` can be
+     * computed.
      */
     function toBalance(uint128 cashBalance, uint128 investedBalance) internal pure returns (bytes32) {
         uint128 totalBalance = cashBalance + investedBalance;
