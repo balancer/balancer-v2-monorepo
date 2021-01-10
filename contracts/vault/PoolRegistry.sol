@@ -240,7 +240,7 @@ abstract contract PoolRegistry is
         IERC20[] memory tokens,
         uint256[] memory amounts,
         bool withdrawFromUserBalance
-    ) private {
+    ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Not technically necessary since the transfer call would fail
             IERC20 token = tokens[i];
@@ -288,7 +288,7 @@ abstract contract PoolRegistry is
         IERC20[] memory tokens,
         uint256[] memory amounts,
         bool depositToUserBalance
-    ) private {
+    ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Not technically necessary since the transfer call would fail
             IERC20 token = tokens[i];
@@ -410,5 +410,55 @@ abstract contract PoolRegistry is
         address account
     ) internal view returns (bool) {
         return _poolInvestmentManagers[poolId][token] == account;
+    }
+
+    function paySwapProtocolFees(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        uint256[] calldata collectedFees
+    ) external override nonReentrant withExistingPool(poolId) onlyPool(poolId) returns (uint256[] memory balances) {
+        require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
+
+        uint128 swapFee = getProtocolSwapFee().toUint128();
+        (, PoolOptimization optimization) = fromPoolId(poolId);
+
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
+
+            IERC20 tokenX = tokens[0];
+            IERC20 tokenY = tokens[1];
+            uint128 feeToCollectTokenX = collectedFees[0].toUint128().mul128(swapFee);
+            uint128 feeToCollectTokenY = collectedFees[1].toUint128().mul128(swapFee);
+
+            _decreaseTwoTokenPoolCash(poolId, tokenX, feeToCollectTokenX, tokenY, feeToCollectTokenY);
+        } else {
+            uint256[] memory feesToCollect = _collectProtocolSwapFees(tokens, collectedFees, swapFee);
+            if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+                _decreaseSimplifiedQuotePoolCash(poolId, tokens, feesToCollect);
+            } else {
+                _decreaseStandardPoolCash(poolId, tokens, feesToCollect);
+            }
+        }
+
+        balances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            balances[i] = _getPoolTokenBalance(poolId, optimization, tokens[i]).total();
+        }
+
+        return balances;
+    }
+
+    function _collectProtocolSwapFees(
+        IERC20[] memory tokens,
+        uint256[] memory collectedFees,
+        uint256 swapFee
+    ) private returns (uint256[] memory feesToCollect) {
+        feesToCollect = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            uint256 feeToCollect = collectedFees[i].mul(swapFee);
+            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToCollect.toUint128());
+            feesToCollect[i] = feeToCollect;
+        }
     }
 }
