@@ -400,7 +400,7 @@ interface IVault {
      * sender (if positive) or send to the recipient (if negative). The arguments it receives are the same that
      * an equivalent batchSwapGivenOut would receive.
      *
-     * Unlike batchSwapGivenIn, this function performs no checks on its caller nor the sender and recipient fields in
+     * Unlike batchSwapGivenOut, this function performs no checks on its caller nor the sender and recipient fields in
      * the FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
      * needing to hold tokens, approve them for the Vault, or even know a user's address.
      *
@@ -413,11 +413,14 @@ interface IVault {
         FundManagement calldata funds
     ) external returns (int256[] memory);
 
-    // Pay Swap Protocol Fee interface
+    // Protocol Fees
+
     /**
-     * @dev Receives an array of tokens and their corresponding amounts to which swap protocol fees will be applied.
-     * If amounts are greater than zero, it uses them to calculate the corresponding swap protocol fee for the token
-     * which is collected by substracting it from the token pool balance.
+     * @dev Called by a Pool with an array of some of its registered tokens, and the amount of swap fees it has
+     * collected for each of them. The Vault will then apply the protocol swap fee to these amounts, substracting from
+     * the Pool's balance.
+     *
+     * Returns the updated Pool balance for each of `tokens`.
      */
     function paySwapProtocolFees(
         bytes32 poolId,
@@ -444,7 +447,7 @@ interface IVault {
     // Investment interface
 
     /**
-     * @dev Set the investment manager for a pool token
+     * @dev Called by a Pool to set its Investment Manager for one of its registered tokens.
      */
     function setPoolInvestmentManager(
         bytes32 poolId,
@@ -453,12 +456,14 @@ interface IVault {
     ) external;
 
     /**
-     * @dev Returns the investment manager for a token in a pool
+     * @dev Returns a Pool's Investment Manager for `token`. Investment Managers can manage a Pool's assets by taking
+     * them out of the Vault via `investPoolBalance`, `divestPoolBalance` and `updateInvested`.
      */
     function getPoolInvestmentManager(bytes32 poolId, IERC20 token) external view returns (address);
 
     /**
-     * @dev Increase the invested amount of a given pool token
+     * @dev Called by a Pool's Investment Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
+     * the Pool's cash but increases its invested balance, leaving the total balance unchanged.
      */
     function investPoolBalance(
         bytes32 poolId,
@@ -467,7 +472,9 @@ interface IVault {
     ) external;
 
     /**
-     * @dev Decrease the invested amount of a given pool token
+     * @dev Called by a Pool's Investment Manager for `token` to deposit `amount` tokens into the Vault. This increases
+     * the Pool's cash but decreases its invested balance, leaving the total balance unchanged. The Investment Manager
+     * must have approved the Vault to use `token`.
      */
     function divestPoolBalance(
         bytes32 poolId,
@@ -476,7 +483,9 @@ interface IVault {
     ) external;
 
     /**
-     * @dev Update invested amount of a given pool token
+     * @dev Called by a Pool's Investment Manager for `token` to update the invested amount. This causes no change on
+     * the Pool's cash, but because the invested balance changes, so does the total balance. The invested amount can be
+     * both increased and decreased by this call.
      */
     function updateInvested(
         bytes32 poolId,
@@ -486,29 +495,83 @@ interface IVault {
 
     // Authorizer
 
+    /**
+     * @dev Returns the Vault's Authorizer.
+     */
     function getAuthorizer() external view returns (IAuthorizer);
 
+    /**
+     * @dev Sets a new Authorizer for the Vault.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canChangeAuthorizer`).
+     */
     function changeAuthorizer(IAuthorizer newAuthorizer) external;
 
     // Protocol Fees
 
-    function getProtocolWithdrawFee() external view returns (uint128);
-
-    function getProtocolSwapFee() external view returns (uint128);
-
-    function getProtocolFlashLoanFee() external view returns (uint256);
-
-    function setProtocolWithdrawFee(uint128 newFee) external;
-
-    function setProtocolSwapFee(uint128 newFee) external;
-
-    function setProtocolFlashLoanFee(uint128 newFee) external;
+    /**
+     * @dev Returns the Protocol Withdraw Fee. Withdraw fees are applied on `withdraw` and `removeLiquidity` (unless
+     * depositing into User Balance). Swaps and `investPoolBalance` are not charged withdraw fees.
+     *
+     * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
+     */
+    function getProtocolWithdrawFee() external view returns (uint256);
 
     /**
-     * @dev Returns the amount in protocol fees collected for a specific `token`.
+     * @dev Returns the Protocol Swap Fee. These are paid by Pools via `paySwapProtocolFees`.
+     *
+     * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
+     */
+    function getProtocolSwapFee() external view returns (uint256);
+
+    /**
+     * @dev Returns the Protocol Flash Loan Fee. These are collected on all Flash Loans.
+     *
+     * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
+     */
+    function getProtocolFlashLoanFee() external view returns (uint256);
+
+    /**
+     * @dev Sets a new Protocol Withdraw Fee.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canSetProtocolWithdrawFee`).
+     */
+    function setProtocolWithdrawFee(uint256 newFee) external;
+
+    /**
+     * @dev Sets a new Protocol Swap Fee.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canSetProtocolSwapFee`).
+     */
+    function setProtocolSwapFee(uint256 newFee) external;
+
+    /**
+     * @dev Sets a new Protocol Flash Loan Fee.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canSetProtocolFlashLoanFee`).
+     */
+    function setProtocolFlashLoanFee(uint256 newFee) external;
+
+    /**
+     * @dev Returns the amount of protocol fees collected by the Vault for `token`.
      */
     function getCollectedFeesByToken(IERC20 token) external view returns (uint256);
 
+    /**
+     * @dev Withdraws collected protocol fees.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canCollectProtocolFees`) for each token.
+     */
     function withdrawProtocolFees(
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
