@@ -570,7 +570,7 @@ interface IVault {
      *
      * Requirements:
      *
-     * - the caller must be approved by the authorizer (`IAuthorizer.canCollectProtocolFees`) for each token.
+     * - the caller must be approved by the authorizer (`IAuthorizer.canWithdrawProtocolFees`) for each token.
      */
     function withdrawProtocolFees(
         IERC20[] calldata tokens,

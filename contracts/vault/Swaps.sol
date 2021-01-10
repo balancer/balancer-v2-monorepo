@@ -483,7 +483,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     ) external override nonReentrant withExistingPool(poolId) onlyPool(poolId) returns (uint256[] memory balances) {
         require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
 
-        uint128 swapFee = getProtocolSwapFee();
+        uint128 swapFee = getProtocolSwapFee().toUint128();
         (, PoolOptimization optimization) = fromPoolId(poolId);
 
         if (optimization == PoolOptimization.TWO_TOKEN) {
