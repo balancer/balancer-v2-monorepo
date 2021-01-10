@@ -44,7 +44,6 @@ abstract contract PoolRegistry is
     using SafeCast for uint128;
 
     // Set with all pools in the system
-    // TODO do we need this? can pools be deleted? if not, an array should be good enough
     EnumerableSet.Bytes32Set internal _pools;
 
     modifier withExistingPool(bytes32 poolId) {
@@ -52,31 +51,44 @@ abstract contract PoolRegistry is
         _;
     }
 
-    // investment managers are allowed to use a pools tokens for an investment
     mapping(bytes32 => mapping(IERC20 => address)) private _poolInvestmentManagers;
 
     event PoolInvestmentManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
 
     modifier onlyPool(bytes32 poolId) {
-        (address pool, ) = fromPoolId(poolId);
+        (address pool, ) = _getPoolData(poolId);
         require(pool == msg.sender, "Caller is not the pool");
         _;
     }
 
-    function toPoolId(
+    /**
+     * @dev Returns a Pool ID. These are deterministically created, by packing into the ID the Pool address and its
+     * optimization setting. In order to make them unique, a nonce is also added.
+     *
+     * This packing allows for retrieval of a Pool's address and optimization setting without any storage reads, via
+     * `_getPoolData`.
+     */
+    function _toPoolId(
         address pool,
-        uint16 optimization,
-        uint32 poolIndex
-    ) public pure returns (bytes32) {
+        PoolOptimization optimization,
+        uint80 nonce
+    ) internal pure returns (bytes32) {
         uint256 serialized;
-        serialized |= uint256(poolIndex) << (22 * 8);
+
+        // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
+        serialized |= uint256(nonce) << (22 * 8);
         serialized |= uint256(optimization) << (20 * 8);
         serialized |= uint256(pool);
+
         return bytes32(serialized);
     }
 
-    function fromPoolId(bytes32 serialized) public pure returns (address, PoolOptimization) {
-        //|| 6 bytes empty | 4 bytes count of pools | 2 bytes optimization | 20 bytes pool ||
+    /**
+     * @dev Returns a Pool's ID and optimization setting. Because of how Pool IDs are created by `_toPoolId`, this is
+     * done with no storage accesses.
+     */
+    function _getPoolData(bytes32 poolId) internal pure returns (address, PoolOptimization) {
+        // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
         address pool = address(uint256(serialized) & (2**(20 * 8) - 1));
         PoolOptimization optimization = PoolOptimization(uint256(serialized >> (20 * 8)) & (2**(2 * 8) - 1));
 
@@ -85,7 +97,8 @@ abstract contract PoolRegistry is
 
     // TODO: consider disallowing the same address to be used multiple times
     function registerPool(PoolOptimization optimization) external override nonReentrant returns (bytes32) {
-        bytes32 poolId = toPoolId(msg.sender, uint16(optimization), uint32(_pools.length()));
+        // We use the Pool length as the Pool ID creation nonce. Since Pools cannot be deleted, nonces are unique.
+        bytes32 poolId = _toPoolId(msg.sender, optimization, _pools.length());
 
         bool added = _pools.add(poolId);
         require(added, "Pool ID already exists");
@@ -111,7 +124,7 @@ abstract contract PoolRegistry is
     }
 
     function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
 
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
             return _getSimplifiedQuotePoolTokens(poolId);
@@ -150,7 +163,7 @@ abstract contract PoolRegistry is
         withExistingPool(poolId)
         returns (uint256[] memory)
     {
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
 
         uint256[] memory balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -167,7 +180,7 @@ abstract contract PoolRegistry is
         withExistingPool(poolId)
         returns (address, PoolOptimization)
     {
-        return fromPoolId(poolId);
+        return _getPoolData(poolId);
     }
 
     function registerTokens(bytes32 poolId, IERC20[] calldata tokens)
@@ -177,7 +190,7 @@ abstract contract PoolRegistry is
         withExistingPool(poolId)
         onlyPool(poolId)
     {
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
             _registerTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
@@ -197,7 +210,7 @@ abstract contract PoolRegistry is
         withExistingPool(poolId)
         onlyPool(poolId)
     {
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
             _unregisterTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
@@ -224,7 +237,7 @@ abstract contract PoolRegistry is
         _receiveLiquidity(from, tokens, amounts, withdrawFromUserBalance);
 
         // Grant tokens to pools - how this is done depends on the Pool optimization setting
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
             _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
@@ -269,7 +282,7 @@ abstract contract PoolRegistry is
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         // Deduct tokens from pools - how this is done depends on the Pool optimization setting
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
             _decreaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
@@ -360,7 +373,7 @@ abstract contract PoolRegistry is
         IERC20 token,
         uint256 amount
     ) external override nonReentrant onlyPoolInvestmentManager(poolId, token) {
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
             _investSimplifiedQuotePoolCash(poolId, token, amount.toUint128());
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
@@ -379,7 +392,7 @@ abstract contract PoolRegistry is
     ) external override nonReentrant onlyPoolInvestmentManager(poolId, token) {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
             _divestSimplifiedQuotePoolCash(poolId, token, amount.toUint128());
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
@@ -394,7 +407,7 @@ abstract contract PoolRegistry is
         IERC20 token,
         uint256 amount
     ) external override nonReentrant onlyPoolInvestmentManager(poolId, token) {
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
             _setSimplifiedQuotePoolInvestment(poolId, token, amount.toUint128());
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
@@ -420,7 +433,7 @@ abstract contract PoolRegistry is
         require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
 
         uint128 swapFee = getProtocolSwapFee().toUint128();
-        (, PoolOptimization optimization) = fromPoolId(poolId);
+        (, PoolOptimization optimization) = _getPoolData(poolId);
 
         if (optimization == PoolOptimization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
