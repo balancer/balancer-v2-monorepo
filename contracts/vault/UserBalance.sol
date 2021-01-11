@@ -50,7 +50,6 @@ abstract contract UserBalance is ReentrancyGuard, Fees, Agents {
     ) external override nonReentrant {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        // TODO: check overflow
         _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(amount.toUint128());
         emit Deposited(msg.sender, user, token, amount);
     }
