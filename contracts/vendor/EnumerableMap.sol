@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.7.1;
 
 // Based on the EnumerableSet library from OpenZeppelin contracts, altered to include
 // the following:
