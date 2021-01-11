@@ -172,14 +172,14 @@ library CashInvested {
      * @dev Unpacks the shared token A and token B cash and invested balances into the balance for token A.
      */
     function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedInvested) internal pure returns (bytes32) {
-        return toBalance(uint128(uint256(sharedCash >> 128) & _MASK), uint128(uint256(sharedInvested >> 128) & _MASK));
+        return toBalance(decodeBalanceA(sharedCash), decodeBalanceA(sharedInvested));
     }
 
     /**
      * @dev Unpacks the shared token A and token B cash and invested balances into the balance for token B.
      */
     function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedInvested) internal pure returns (bytes32) {
-        return toBalance(uint128(uint256(sharedCash) & _MASK), uint128(uint256(sharedInvested) & _MASK));
+        return toBalance(decodeBalanceB(sharedCash), decodeBalanceB(sharedInvested));
     }
 
     /**
@@ -190,9 +190,38 @@ library CashInvested {
     }
 
     /**
+     * @dev Returns the sharedCash shared field, given the current cash balances for tokenA and tokenB.
+     */
+    function toSharedCash(uint128 cashBalanceA, uint128 cashBalanceB) internal pure returns (bytes32) {
+        return bytes32((uint256(cashBalanceA) << 128) + cashBalanceB);
+    }
+
+    /**
      * @dev Returns the sharedInvested shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedInvested(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
         return bytes32((uint256(invested(tokenABalance)) << 128) + invested(tokenBBalance));
+    }
+
+    /**
+     * @dev Unpacks a shared balance into the corresponding balances for tokens A and B.
+     */
+    function decodeSharedBalance(bytes32 sharedBalance) internal pure returns (uint128 balanceA, uint128 balanceB) {
+        balanceA = decodeBalanceA(sharedBalance);
+        balanceB = decodeBalanceB(sharedBalance);
+    }
+
+    /**
+     * @dev Unpacks the balance corresponding to token A for a shared balance
+     */
+    function decodeBalanceA(bytes32 sharedBalance) internal pure returns (uint128) {
+        return uint128(uint256(sharedBalance >> 128) & _MASK);
+    }
+
+    /**
+     * @dev Unpacks the balance corresponding to token B for a shared balance
+     */
+    function decodeBalanceB(bytes32 sharedBalance) internal pure returns (uint128) {
+        return uint128(uint256(sharedBalance) & _MASK);
     }
 }

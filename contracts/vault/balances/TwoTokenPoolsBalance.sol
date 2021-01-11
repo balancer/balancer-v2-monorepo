@@ -23,6 +23,7 @@ import "../../math/FixedPoint.sol";
 import "./CashInvested.sol";
 
 contract TwoTokenPoolsBalance {
+    using FixedPoint for uint128;
     using CashInvested for bytes32;
 
     // Data for Pools with Two Tokens
@@ -210,7 +211,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, CashInvested.increaseCash);
+        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, FixedPoint.add128);
     }
 
     /**
@@ -228,7 +229,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, CashInvested.decreaseCash);
+        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, FixedPoint.sub128);
     }
 
     function _investTwoTokenPoolCash(
@@ -261,26 +262,26 @@ contract TwoTokenPoolsBalance {
         uint128 amountX,
         IERC20 tokenY,
         uint128 amountY,
-        function(bytes32, uint128) pure returns (bytes32) mutation
+        function (uint128, uint128) pure returns (uint128) mutation
     ) private {
         (
-            bytes32 tokenABalance,
-            bytes32 tokenBBalance,
+            uint128 tokenACashBalance,
+            uint128 tokenBCashBalance,
             TwoTokenSharedBalances storage poolSharedBalances
-        ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
+        ) = _getTwoTokenPoolCashBalances(poolId, tokenX, tokenY);
 
         if (tokenX < tokenY) {
             // X is A, Y is B
-            tokenABalance = mutation(tokenABalance, amountX);
-            tokenBBalance = mutation(tokenBBalance, amountY);
+            tokenACashBalance = mutation(tokenACashBalance, amountX);
+            tokenBCashBalance = mutation(tokenBCashBalance, amountY);
         } else {
             // X is B, Y is A
-            tokenABalance = mutation(tokenABalance, amountY);
-            tokenBBalance = mutation(tokenBBalance, amountX);
+            tokenACashBalance = mutation(tokenACashBalance, amountY);
+            tokenBCashBalance = mutation(tokenBCashBalance, amountX);
         }
 
-        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-        // We don't need to write to the sharedInvested entry
+        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenACashBalance, tokenBCashBalance);
+        // We don't need to write to the shared invested balances
     }
 
     function _updateTwoTokenPoolSharedTokenBalance(
@@ -314,6 +315,26 @@ contract TwoTokenPoolsBalance {
         return currentBalance.isInvested();
     }
 
+    function _getTwoTokenPoolCashBalances(
+        bytes32 poolId,
+        IERC20 tokenX,
+        IERC20 tokenY
+    )
+        internal
+        view
+        returns (
+            uint128 tokenACashBalance,
+            uint128 tokenBCashBalance,
+            TwoTokenSharedBalances storage poolSharedBalance
+        )
+    {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+        poolSharedBalance = _getTwoTokenPoolSharedBalance(poolTokens, poolId, tokenX, tokenY);
+        bytes32 sharedCash = poolSharedBalance.sharedCash;
+
+        (tokenACashBalance, tokenBCashBalance) = sharedCash.decodeSharedBalance();
+    }
+
     function _getTwoTokenPoolSharedBalances(
         TwoTokenTokens memory poolTokens,
         bytes32 poolId,
@@ -328,16 +349,28 @@ contract TwoTokenPoolsBalance {
             TwoTokenSharedBalances storage poolSharedBalance
         )
     {
-        (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
-        require(tokenA == poolTokens.tokenA && tokenB == poolTokens.tokenB, "ERR_TOKEN_NOT_REGISTERED");
-
-        bytes32 pairHash = _getTwoTokenPairHash(poolTokens);
-        poolSharedBalance = _poolTwoTokenSharedBalances[poolId][pairHash];
-
+        poolSharedBalance = _getTwoTokenPoolSharedBalance(poolTokens, poolId, tokenX, tokenY);
         bytes32 sharedCash = poolSharedBalance.sharedCash;
         bytes32 sharedInvested = poolSharedBalance.sharedInvested;
 
         tokenABalance = CashInvested.fromSharedToBalanceA(sharedCash, sharedInvested);
         tokenBBalance = CashInvested.fromSharedToBalanceB(sharedCash, sharedInvested);
+    }
+
+    function _getTwoTokenPoolSharedBalance(
+        TwoTokenTokens memory poolTokens,
+        bytes32 poolId,
+        IERC20 tokenX,
+        IERC20 tokenY
+    )
+        internal
+        view
+        returns (TwoTokenSharedBalances storage)
+    {
+        (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
+        require(tokenA == poolTokens.tokenA && tokenB == poolTokens.tokenB, "ERR_TOKEN_NOT_REGISTERED");
+
+        bytes32 pairHash = _getTwoTokenPairHash(poolTokens);
+        return _poolTwoTokenSharedBalances[poolId][pairHash];
     }
 }
