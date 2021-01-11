@@ -15,11 +15,12 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "../vendor/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "./Authorization.sol";
 
-abstract contract Agents is Authorization {
+abstract contract Agents is ReentrancyGuard, Authorization {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Agents are allowed to use a user's tokens in a swap
@@ -38,13 +39,13 @@ abstract contract Agents is Authorization {
     event UniversalAgentAdded(address indexed agent);
     event UniversalAgentRemoved(address indexed agent);
 
-    function addUserAgent(address agent) external override {
+    function addUserAgent(address agent) external override nonReentrant {
         if (_userAgents[msg.sender].add(agent)) {
             emit UserAgentAdded(msg.sender, agent);
         }
     }
 
-    function removeUserAgent(address agent) external override {
+    function removeUserAgent(address agent) external override nonReentrant {
         if (_userAgents[msg.sender].remove(agent)) {
             emit UserAgentRemoved(msg.sender, agent);
         }
@@ -94,7 +95,7 @@ abstract contract Agents is Authorization {
         return agents;
     }
 
-    function addUniversalAgent(address agent) external override {
+    function addUniversalAgent(address agent) external override nonReentrant {
         require(getAuthorizer().canAddUniversalAgent(msg.sender), "Caller cannot add Universal Agents");
 
         if (_universalAgents.add(agent)) {
@@ -102,7 +103,7 @@ abstract contract Agents is Authorization {
         }
     }
 
-    function removeUniversalAgent(address agent) external override {
+    function removeUniversalAgent(address agent) external override nonReentrant {
         require(getAuthorizer().canRemoveUniversalAgent(msg.sender), "Caller cannot remove Universal Agents");
 
         if (_universalAgents.remove(agent)) {
