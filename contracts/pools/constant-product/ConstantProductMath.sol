@@ -90,7 +90,7 @@ contract ConstantProductMath {
         // invariant               _____                                                             //
         // wi = weight index i      | |      wi                                                      //
         // bi = balance index i     | |  bi ^   = i                                                  //
-        // i = invariant                                                                              //
+        // i = invariant                                                                             //
         **********************************************************************************************/
         require(normalizedWeights.length == balances.length, "ERR_BALANCES_LENGTH");
 
