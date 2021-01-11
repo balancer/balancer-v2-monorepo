@@ -95,10 +95,6 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         _protocolFlashLoanFee = newFee.toUint128();
     }
 
-    //Protocol Fees
-    /**
-     * @dev Returns the amount in protocol fees collected for a specific `token`.
-     */
     function getCollectedFeesByToken(IERC20 token) external view override returns (uint256) {
         return _collectedProtocolFees[token];
     }
