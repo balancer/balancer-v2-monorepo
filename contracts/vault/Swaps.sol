@@ -423,11 +423,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[request.poolId];
         uint256 indexIn = poolBalances.indexOf(request.tokenIn, "ERR_TOKEN_NOT_REGISTERED");
         uint256 indexOut = poolBalances.indexOf(request.tokenOut, "ERR_TOKEN_NOT_REGISTERED");
-        
-        uint256[] memory currentBalances = new uint256[](poolTokens.length());
+
+        uint256[] memory currentBalances = new uint256[](poolBalances.length());
 
         for (uint256 i = 0; i < currentBalances.length; i++) {
-            bytes32 balance = poolTokens.unchecked_valueAt(i);
+            bytes32 balance = poolBalances.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
 
