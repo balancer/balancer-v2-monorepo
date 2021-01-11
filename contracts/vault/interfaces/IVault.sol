@@ -264,8 +264,8 @@ interface IVault {
      *
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
-     * The `tokenOut` amount is determined by the Pool's pricing algorithm by calling the `quoteOutGivenIn` function (from
-     * IPoolQuote or IPoolQuoteSimplified).
+     * The `tokenOut` amount is determined by the Pool's pricing algorithm by calling the `quoteOutGivenIn` function
+     * (from IPoolQuote or IPoolQuoteSimplified).
      *
      * Multihop swaps, where one token is exchanged for another one by passing through one or more intermediate tokens,
      * can be executed by passing an `amountIn` value of zero for a swap. This will cause the amount out of the previous
