@@ -35,17 +35,7 @@ library FixedPoint {
         if (a > 0) {
             return uint256(a);
         } else {
-            // TODO: check valid
             return uint256(-a);
-        }
-    }
-
-    function abs128(int128 a) internal pure returns (uint128) {
-        if (a > 0) {
-            return uint128(a);
-        } else {
-            // TODO: check valid
-            return uint128(-a);
         }
     }
 
