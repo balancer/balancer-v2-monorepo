@@ -21,7 +21,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../vendor/ReentrancyGuard.sol";
 
 import "./interfaces/IFlashLoanReceiver.sol";
 import "./Fees.sol";

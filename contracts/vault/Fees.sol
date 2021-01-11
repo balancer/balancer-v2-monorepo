@@ -17,14 +17,17 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "../vendor/ReentrancyGuard.sol";
 
 import "../math/FixedPoint.sol";
 
 import "./interfaces/IVault.sol";
 import "./Authorization.sol";
 
-abstract contract Fees is IVault, Authorization {
+abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     using SafeERC20 for IERC20;
+    using SafeCast for uint256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -39,11 +42,11 @@ abstract contract Fees is IVault, Authorization {
     // The Vault relies on the Pool being honest and reporting the actual fee it charged.
     uint128 private _protocolSwapFee;
 
-    // solhint-disable-next-line var-name-mixedcase
-    uint128 private immutable _MAX_PROTOCOL_WITHDRAW_FEE = FixedPoint.ONE.mul128(2).div128(100); // 0.02 (2%)
-
     // The flash loan fee is charged whenever a flash loan occurs, and is a percentage of the tokens lent
     uint256 private _protocolFlashLoanFee;
+
+    // solhint-disable-next-line var-name-mixedcase
+    uint128 private immutable _MAX_PROTOCOL_WITHDRAW_FEE = FixedPoint.ONE.mul128(2).div128(100); // 0.02 (2%)
 
     // solhint-disable-next-line var-name-mixedcase
     uint128 private immutable _MAX_PROTOCOL_SWAP_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
@@ -51,7 +54,7 @@ abstract contract Fees is IVault, Authorization {
     // solhint-disable-next-line var-name-mixedcase
     uint256 private immutable _MAX_PROTOCOL_FLASH_LOAN_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
-    function protocolWithdrawFee() public view returns (uint128) {
+    function getProtocolWithdrawFee() public view override returns (uint256) {
         return _protocolWithdrawFee;
     }
 
@@ -59,11 +62,11 @@ abstract contract Fees is IVault, Authorization {
         return amount.mul128(_protocolWithdrawFee);
     }
 
-    function protocolSwapFee() public view returns (uint128) {
+    function getProtocolSwapFee() public view override returns (uint256) {
         return _protocolSwapFee;
     }
 
-    function protocolFlashLoanFee() public view returns (uint256) {
+    function getProtocolFlashLoanFee() public view override returns (uint256) {
         return _protocolFlashLoanFee;
     }
 
@@ -71,31 +74,27 @@ abstract contract Fees is IVault, Authorization {
         return swapFeeAmount.mul(_protocolFlashLoanFee);
     }
 
-    function setProtocolWithdrawFee(uint128 newFee) external {
+    function setProtocolWithdrawFee(uint256 newFee) external override nonReentrant {
         require(getAuthorizer().canSetProtocolWithdrawFee(msg.sender), "Caller cannot set protocol withdraw fee");
         require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
 
-        _protocolWithdrawFee = newFee;
+        _protocolWithdrawFee = newFee.toUint128();
     }
 
-    function setProtocolSwapFee(uint128 newFee) external {
+    function setProtocolSwapFee(uint256 newFee) external override nonReentrant {
         require(getAuthorizer().canSetProtocolSwapFee(msg.sender), "Caller cannot set protocol swap fee");
         require(newFee <= _MAX_PROTOCOL_SWAP_FEE, "Swap fee too high");
 
-        _protocolSwapFee = newFee;
+        _protocolSwapFee = newFee.toUint128();
     }
 
-    function setProtocolFlashLoanFee(uint128 newFee) external {
+    function setProtocolFlashLoanFee(uint256 newFee) external override nonReentrant {
         require(getAuthorizer().canSetProtocolFlashLoanFee(msg.sender), "Caller cannot set protocol flash loan fee");
         require(newFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FlashLoan fee too high");
 
-        _protocolFlashLoanFee = newFee;
+        _protocolFlashLoanFee = newFee.toUint128();
     }
 
-    //Protocol Fees
-    /**
-     * @dev Returns the amount in protocol fees collected for a specific `token`.
-     */
     function getCollectedFeesByToken(IERC20 token) external view override returns (uint256) {
         return _collectedProtocolFees[token];
     }
@@ -104,13 +103,13 @@ abstract contract Fees is IVault, Authorization {
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
-    ) external override {
+    ) external override nonReentrant {
         require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
         IAuthorizer authorizer = getAuthorizer();
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(authorizer.canCollectProtocolFees(msg.sender, token), "Caller cannot withdraw protocol fees");
+            require(authorizer.canWithdrawProtocolFees(msg.sender, token), "Caller cannot withdraw protocol fees");
 
             uint256 amount = amounts[i];
             require(_collectedProtocolFees[token] >= amount, "Insufficient protocol fees");
