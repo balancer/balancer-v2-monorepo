@@ -26,6 +26,13 @@ contract StablecoinPoolFactory is BasePoolFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /**
+     * @dev Deploys a new `StablecoinPool`. This must be done via a factory contract because the Pool must be an
+     * Universal Agent during construction.
+     *
+     * For the deployment to succeed, this contract must be allowed to add Universal Agents
+     * (`IAuthorizer.canAddUniversalAgent`).
+     */
     function create(
         string memory name,
         string memory symbol,
