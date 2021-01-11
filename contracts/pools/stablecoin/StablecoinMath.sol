@@ -27,6 +27,17 @@ import "../../math/FixedPoint.sol";
 // solhint-disable var-name-mixedcase
 
 contract StablecoinMath {
+    /**********************************************************************************************
+    // inGivenOut token x for y - polynomial equation to solve                                   //
+    // ax = amount in to calculate                                                               //
+    // bx = balance token in                                                                     //
+    // x = bx + ax                                                                               //
+    // D = invariant                               D                     D^(n+1)                 //
+    // A = amplifier               x^2 + ( S - ----------  - 1) * x -  ------------- = 0         //
+    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
+    // S = sum of final balances but x                                                           //
+    // P = product of final balances but x                                                       //
+    **********************************************************************************************/
     function _inGivenOut(
         uint256 amp,
         uint256[] memory balances,
@@ -57,6 +68,17 @@ contract StablecoinMath {
         return (y - balances[tokenIndexIn] + 1);
     }
 
+    /**********************************************************************************************
+    // outGivenIn token x for y - polynomial equation to solve                                   //
+    // ay = amount out to calculate                                                              //
+    // by = balance token out                                                                    //
+    // y = by - ay                                                                               //
+    // D = invariant                               D                     D^(n+1)                 //
+    // A = amplifier               y^2 + ( S - ----------  - 1) * y -  ------------- = 0         //
+    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
+    // S = sum of final balances but y                                                           //
+    // P = product of final balances but y                                                       //
+    **********************************************************************************************/
     function _outGivenIn(
         uint256 amp,
         uint256[] memory balances,
@@ -87,6 +109,14 @@ contract StablecoinMath {
         return (balances[tokenIndexOut] - y - 1);
     }
 
+    /**********************************************************************************************
+    // invariant                                                                                 //
+    // D = invariant to compute                                                                  //
+    // A = amplifier                n * D^2 + A * n^n * S * (n^n * P / D^(n−1))                  //
+    // S = sum of balances         ____________________________________________                  //
+    // P = product of balances    (n+1) * D + ( A * n^n − 1)* (n^n * P / D^(n−1))                //
+    // n = number of tokens                                                                      //
+    **********************************************************************************************/
     function _invariant(uint256 amp, uint256[] memory balances) internal pure returns (uint256) {
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
@@ -99,7 +129,6 @@ contract StablecoinMath {
         uint256 prevInv = 0;
         uint256 inv = sum;
         uint256 ampTimesTotal = amp * totalCoins;
-        //TODO: make calculations to test and document this approximation. Compare it with math approx.
 
         for (uint256 i = 0; i < 255; i++) {
             uint256 P_D = totalCoins * balances[0];
@@ -123,6 +152,17 @@ contract StablecoinMath {
         return inv;
     }
 
+    /**********************************************************************************************
+    // oneTokenSwapFee - polynomial equation to solve                                            //
+    // af = fee amount to calculate in one token                                                 //
+    // bf = balance of token                                                                     //
+    // f = bf - af                                                                               //
+    // D = old invariant                            D                     D^(n+1)                //
+    // A = amplifier               f^2 + ( S - ----------  - 1) * f -  ------------- = 0         //
+    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
+    // S = sum of final balances but f                                                           //
+    // P = product of final balances but f                                                       //
+    **********************************************************************************************/
     function _calculateOneTokenSwapFee(
         uint256 amp,
         uint256[] memory balances,

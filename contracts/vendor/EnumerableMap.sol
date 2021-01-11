@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.7.1;
 
 // Based on the EnumerableSet library from OpenZeppelin contracts, altered to include
 // the following:
@@ -100,8 +100,19 @@ library EnumerableMap {
      * - `key` must be in the map.
      */
     function _indexOf(Map storage map, bytes32 key) private view returns (uint256) {
+        return _indexOf(map, key, "EnumerableMap: nonexistent key");
+    }
+
+    /**
+     * @dev Same as {_indexOf}, with a custom error message when `key` is not in the map.
+     */
+    function _indexOf(
+        Map storage map,
+        bytes32 key,
+        string memory notFoundErrorMessage
+    ) private view returns (uint256) {
         uint256 index = map._indexes[key];
-        require(index > 0, "EnumerableMap: nonexistent key");
+        require(index > 0, notFoundErrorMessage);
         return index - 1;
     }
 
@@ -229,11 +240,10 @@ library EnumerableMap {
     function _get(
         Map storage map,
         bytes32 key,
-        string memory errorMessage
+        string memory notFoundErrorMessage
     ) private view returns (bytes32) {
-        uint256 keyIndex = map._indexes[key];
-        require(keyIndex != 0, errorMessage); // Equivalent to contains(map, key)
-        return map._entries[keyIndex - 1]._value; // All indexes are 1-based
+        uint256 index = _indexOf(map, key, notFoundErrorMessage);
+        return _unchecked_valueAt(map, index);
     }
 
     // UintToAddressMap
@@ -394,6 +404,17 @@ library EnumerableMap {
      */
     function indexOf(IERC20ToBytes32Map storage map, IERC20 key) internal view returns (uint256) {
         return _indexOf(map._inner, bytes32(uint256(address(key))));
+    }
+
+    /**
+     * @dev Same as {indexOf}, with a custom error message when `key` is not in the map.
+     */
+    function indexOf(
+        IERC20ToBytes32Map storage map,
+        IERC20 key,
+        string memory notFoundErrorMessage
+    ) internal view returns (uint256) {
+        return _indexOf(map._inner, bytes32(uint256(address(key))), notFoundErrorMessage);
     }
 
     /**

@@ -42,6 +42,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     using CashInvested for bytes32;
+    using FixedPoint for int256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -185,7 +186,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
                 token.safeTransferFrom(funds.sender, address(this), toReceive);
             } else {
-                uint128 toSend = uint128(-tokenDeltas[i]);
+                uint128 toSend = tokenDeltas[i].abs().toUint128();
 
                 if (funds.depositToUserBalance) {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
@@ -425,8 +426,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountIn;
         }
 
-        require(tokenOutBalance.isNotZero(), "Fully draining token out");
-
         // We check the token ordering again to create the new shared cash packed struct
         bytes32 newSharedCash;
         if (request.tokenIn < request.tokenOut) {
@@ -445,11 +444,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IPoolQuoteSimplified pool,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
-        bytes32 tokenInBalance = _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn];
+        bytes32 tokenInBalance = _getSimplifiedQuotePoolBalance(request.poolId, request.tokenIn);
         uint128 tokenInTotalBalance = tokenInBalance.total();
         require(tokenInTotalBalance > 0, "Token A not in pool");
 
-        bytes32 tokenOutBalance = _simplifiedQuotePoolsBalances[request.poolId][request.tokenOut];
+        bytes32 tokenOutBalance = _getSimplifiedQuotePoolBalance(request.poolId, request.tokenOut);
         uint128 tokenOutTotalBalance = tokenOutBalance.total();
         require(tokenOutTotalBalance > 0, "Token B not in pool");
 
@@ -474,8 +473,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountIn;
         }
 
-        require(tokenOutBalance.isNotZero(), "Fully draining token out");
-
         _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn] = tokenInBalance;
         _simplifiedQuotePoolsBalances[request.poolId][request.tokenOut] = tokenOutBalance;
     }
@@ -488,17 +485,17 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
-        EnumerableMap.IERC20ToBytes32Map storage poolTokens = _standardPoolsBalances[request.poolId];
-        uint256 indexIn = poolTokens.indexOf(request.tokenIn);
-        uint256 indexOut = poolTokens.indexOf(request.tokenOut);
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[request.poolId];
+        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "ERR_TOKEN_NOT_REGISTERED");
+        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "ERR_TOKEN_NOT_REGISTERED");
 
-        uint256[] memory currentBalances = new uint256[](poolTokens.length());
+        uint256[] memory currentBalances = new uint256[](poolBalances.length());
 
         uint256 tokenAmount = currentBalances.length;
         for (uint256 i = 0; i < tokenAmount; i++) {
             // Because iteration is bounded by tokenAmount no tokens are registered or unregisted here, we can use
             // `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
-            bytes32 balance = poolTokens.unchecked_valueAt(i);
+            bytes32 balance = poolBalances.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
 
@@ -528,12 +525,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenOutBalance = tokenOutBalance.decreaseCash(request.amount.toUint128());
         }
 
-        require(tokenOutBalance.isNotZero(), "Fully draining token out");
-
         // Because no token registrations or unregistrations happened between now and when we retrieved the indexes for
         // token in and token out, we can use `unchecked_setAt`, saving storage reads.
-        poolTokens.unchecked_setAt(indexIn, tokenInBalance);
-        poolTokens.unchecked_setAt(indexOut, tokenOutBalance);
+        poolBalances.unchecked_setAt(indexIn, tokenInBalance);
+        poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
     }
 
     function queryBatchSwapGivenIn(

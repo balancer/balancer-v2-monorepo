@@ -89,16 +89,16 @@ abstract contract PoolRegistry is
      */
     function _getPoolData(bytes32 poolId) internal pure returns (address, PoolOptimization) {
         // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
-        address pool = address(uint256(serialized) & (2**(20 * 8) - 1));
-        PoolOptimization optimization = PoolOptimization(uint256(serialized >> (20 * 8)) & (2**(2 * 8) - 1));
+        address pool = address(uint256(poolId) & (2**(20 * 8) - 1));
+        PoolOptimization optimization = PoolOptimization(uint256(poolId >> (20 * 8)) & (2**(2 * 8) - 1));
 
         return (pool, optimization);
     }
 
-    // TODO: consider disallowing the same address to be used multiple times
     function registerPool(PoolOptimization optimization) external override nonReentrant returns (bytes32) {
-        // We use the Pool length as the Pool ID creation nonce. Since Pools cannot be deleted, nonces are unique.
-        bytes32 poolId = _toPoolId(msg.sender, optimization, _pools.length());
+        // We use the Pool length as the Pool ID creation nonce. Since Pools cannot be deleted, nonces are unique. This
+        // however assumes there will never be more than than 2**80 Pools.
+        bytes32 poolId = _toPoolId(msg.sender, optimization, uint80(_pools.length()));
 
         bool added = _pools.add(poolId);
         require(added, "Pool ID already exists");

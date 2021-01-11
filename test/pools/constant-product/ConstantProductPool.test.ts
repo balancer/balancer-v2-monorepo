@@ -44,7 +44,7 @@ describe('ConstantProductPool', function () {
       await tokens[symbol].mint(creator.address, (100e18).toString());
       await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
 
-      await tokens[symbol].mint(lp.address, (100e18).toString());
+      await tokens[symbol].mint(lp.address, (200e18).toString());
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
 
       await tokens[symbol].mint(trader.address, (100e18).toString());
@@ -898,7 +898,7 @@ describe('ConstantProductPool', function () {
       await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), feeSetter.address);
       await vault.connect(feeSetter).setProtocolSwapFee(protocolSwapFee);
 
-      initialBalances = [BigNumber.from((10e18).toString()), BigNumber.from((10e18).toString())];
+      initialBalances = [BigNumber.from((80e18).toString()), BigNumber.from((20e18).toString())];
       tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
       tokenWeights = [(8e18).toString(), (2e18).toString()];
 
@@ -1004,7 +1004,9 @@ describe('ConstantProductPool', function () {
 
       it('pays swap protocol fees on joinswap exact tokens in', async () => {
         await assertProtocolSwapFeeIsCharged(() =>
-          pool.connect(lp).joinPoolExactTokensInForBPTOut(0, [(1e18).toString(), (1e18).toString()], true, lp.address)
+          pool
+            .connect(lp)
+            .joinPoolExactTokensInForBPTOut(0, [(0.8e18).toString(), (0.2e18).toString()], true, lp.address)
         );
       });
 

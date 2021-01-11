@@ -86,6 +86,12 @@ contract ConstantProductMath {
         pure
         returns (uint256 invariant)
     {
+        /**********************************************************************************************
+        // invariant               _____                                                             //
+        // wi = weight index i      | |      wi                                                      //
+        // bi = balance index i     | |  bi ^   = i                                                  //
+        // i = invariant                                                                             //
+        **********************************************************************************************/
         require(normalizedWeights.length == balances.length, "ERR_BALANCES_LENGTH");
 
         invariant = FixedPoint.ONE;
