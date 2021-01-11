@@ -41,6 +41,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     using CashInvested for bytes32;
+    using FixedPoint for int256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
     using SafeCast for uint256;
@@ -170,7 +171,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 token.safeTransferFrom(funds.sender, address(this), toReceive);
             } else {
                 // Make delta positive
-                uint128 toSend = uint128(-tokenDeltas[i]);
+                uint128 toSend = tokenDeltas[i].abs().toUint128();
 
                 if (funds.depositToUserBalance) {
                     // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
