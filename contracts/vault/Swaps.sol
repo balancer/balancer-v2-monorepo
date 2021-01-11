@@ -363,8 +363,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountIn;
         }
 
-        require(tokenOutBalance.isNotZero(), "Fully draining token out");
-
         bytes32 newSharedCash;
         if (request.tokenIn < request.tokenOut) {
             // in is A, out is B
@@ -382,11 +380,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IPoolQuoteSimplified pool,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
-        bytes32 tokenInBalance = _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn];
+        bytes32 tokenInBalance = _getSimplifiedQuotePoolBalance(request.poolId, request.tokenIn);
         uint128 tokenInTotalBalance = tokenInBalance.total();
         require(tokenInTotalBalance > 0, "Token A not in pool");
 
-        bytes32 tokenOutBalance = _simplifiedQuotePoolsBalances[request.poolId][request.tokenOut];
+        bytes32 tokenOutBalance = _getSimplifiedQuotePoolBalance(request.poolId, request.tokenOut);
         uint128 tokenOutTotalBalance = tokenOutBalance.total();
         require(tokenOutTotalBalance > 0, "Token B not in pool");
 
@@ -410,8 +408,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             amountQuoted = amountIn;
         }
 
-        require(tokenOutBalance.isNotZero(), "Fully draining token out");
-
         _simplifiedQuotePoolsBalances[request.poolId][request.tokenIn] = tokenInBalance;
         _simplifiedQuotePoolsBalances[request.poolId][request.tokenOut] = tokenOutBalance;
     }
@@ -424,14 +420,14 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
-        EnumerableMap.IERC20ToBytes32Map storage poolTokens = _standardPoolsBalances[request.poolId];
-        uint256 indexIn = poolTokens.indexOf(request.tokenIn);
-        uint256 indexOut = poolTokens.indexOf(request.tokenOut);
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[request.poolId];
+        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "ERR_TOKEN_NOT_REGISTERED");
+        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "ERR_TOKEN_NOT_REGISTERED");
 
-        uint256[] memory currentBalances = new uint256[](poolTokens.length());
+        uint256[] memory currentBalances = new uint256[](poolBalances.length());
 
         for (uint256 i = 0; i < currentBalances.length; i++) {
-            bytes32 balance = poolTokens.unchecked_valueAt(i);
+            bytes32 balance = poolBalances.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
 
@@ -460,10 +456,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenOutBalance = tokenOutBalance.decreaseCash(request.amount.toUint128());
         }
 
-        require(tokenOutBalance.isNotZero(), "Fully draining token out");
-
-        poolTokens.unchecked_setAt(indexIn, tokenInBalance);
-        poolTokens.unchecked_setAt(indexOut, tokenOutBalance);
+        poolBalances.unchecked_setAt(indexIn, tokenInBalance);
+        poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
     }
 
     //Pay swap protocol fees
