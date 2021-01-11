@@ -375,8 +375,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IPoolQuoteSimplified pool,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
-        // Due to gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are stored
-        // internally, instead of using getters and setters for all operations.
+        // Due to gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are
+        // stored internally, instead of using getters and setters for all operations.
 
         (
             bytes32 tokenABalance,
@@ -493,8 +493,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         uint256 tokenAmount = currentBalances.length;
         for (uint256 i = 0; i < tokenAmount; i++) {
-            // Because the iteration is bounded by `tokenAmount` and no tokens are registered or unregistered here, we can use
-            // `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
+            // Because the iteration is bounded by `tokenAmount` and no tokens are registered or unregistered here, we
+            // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
