@@ -18,9 +18,10 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../../vendor/ReentrancyGuard.sol";
 
 import "../../math/FixedPoint.sol";
+import "../../helpers/UnsafeRandom.sol";
 
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPoolQuoteSimplified.sol";
@@ -316,10 +317,10 @@ contract ConstantProductPool is
 
         uint256 currentInvariant = _getInvariant(tokens, _weights(tokens), balances);
         uint256 ratio = _lastInvariant.div(currentInvariant);
-        uint256 exponent = FixedPoint.ONE.div(_normalizedWeight(tokens[0]));
-        //TODO: picking first token for now, make it random
-        swapFeesCollected[0] = balances[0].mul(uint256(FixedPoint.ONE).sub(LogExpMath.pow(ratio, exponent)));
 
+        (IERC20 token, uint256 index) = UnsafeRandom.rand(tokens);
+        uint256 exponent = FixedPoint.ONE.div(_normalizedWeight(token));
+        swapFeesCollected[index] = balances[index].mul(uint256(FixedPoint.ONE).sub(LogExpMath.pow(ratio, exponent)));
         return swapFeesCollected;
     }
 
@@ -344,7 +345,7 @@ contract ConstantProductPool is
     }
 
     // Pays protocol swap fees
-    function payProtocolFees() external {
+    function payProtocolFees() external nonReentrant {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
         balances = _payProtocolFees(tokens, balances);
         _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
@@ -412,14 +413,272 @@ contract ConstantProductPool is
         _burnPoolTokens(msg.sender, poolAmountIn);
     }
 
+    /**
+     * @dev Called by liquidity providers to join the associated Pool, adding `tokens` and getting BPT in return. The
+     * caller specifies how much of each token they want to add `amountsIn`, and the minimum amount
+     * of BPT they want to get `minBPTAmountOut`
+     *
+     * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
+     * allowance. Otherwise, they are pulled from User Balance.
+     *
+     * `bptAmountOut` will be minted and transferred to `beneficiary`.
+     */
+
+    function joinPoolExactTokensInForBPTOut(
+        uint256 minBPTAmountOut,
+        uint256[] calldata amountsIn,
+        bool transferTokens,
+        address beneficiary
+    ) external nonReentrant returns (uint256 bptAmountOut) {
+        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
+        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
+
+        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+
+        require(amountsIn.length == tokens.length, "AmountsIn and tokens length mismatch");
+
+        //Pay protocol fees to have balances up to date
+        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
+        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
+
+        uint256[] memory normalizedWeights = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            normalizedWeights[i] = _normalizedWeight(tokens[i]);
+        }
+
+        bptAmountOut = _exactTokensInForBPTOut(balances, normalizedWeights, amountsIn, totalSupply(), _swapFee);
+        require(bptAmountOut >= minBPTAmountOut, "ERR_BPT_OUT_MIN_AMOUNT");
+
+        /* 
+        // TODO for Oracle/MLP integration
+        // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
+        if(_optInOracleCandidate || _mandatoryOracleCandidate)
+                updateBalancesBeforeLastLiquidityChange(balances);
+        */
+
+        _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
+
+        //Update balances
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            balances[i] = balances[i].add(amountsIn[i]);
+        }
+
+        //Reset swap fees counter
+        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+
+        _mintPoolTokens(beneficiary, bptAmountOut);
+    }
+
+    /**
+     * @dev Called by liquidity providers to join the associated Pool, adding `token` and getting BPT in return. The
+     * caller specifies how much BPTOut they want `BPTAmountOut`, and the maximum amount
+     * of token they want to pay `maxAmountIn`
+     *
+     * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
+     * allowance. Otherwise, they are pulled from User Balance.
+     *
+     * `BPTAmountOut` will be minted and transferred to `beneficiary`.
+     */
+
+    function joinPoolTokenInForExactBPTOut(
+        uint256 bptAmountOut,
+        IERC20 token,
+        uint256 maxAmountIn,
+        bool transferTokens,
+        address beneficiary
+    ) external nonReentrant returns (uint256) {
+        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
+        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
+
+        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+
+        //Pay protocol fees to have balances up to date
+        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
+        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
+
+        IERC20[] memory tokensToAdd = new IERC20[](1);
+        uint256[] memory amountsToAdd = new uint256[](1);
+        uint256 tokenBalance;
+        uint256 tokenNormalizedWeight;
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == token) {
+                tokensToAdd[0] = token;
+                tokenBalance = balances[i];
+                tokenNormalizedWeight = _normalizedWeight(tokens[i]);
+                break;
+            }
+        }
+        require(tokenBalance != 0, "TOKEN_NOT_IN_POOL");
+
+        amountsToAdd[0] = _tokenInForExactBPTOut(
+            tokenBalance,
+            tokenNormalizedWeight,
+            bptAmountOut,
+            totalSupply(),
+            _swapFee
+        );
+        require(amountsToAdd[0] <= maxAmountIn, "ERR_TOKEN_IN_MAX_AMOUNT");
+
+        /*
+        // TODO for Oracle/MLP integration
+        // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
+        if(_optInOracleCandidate || _mandatoryOracleCandidate)
+                updateBalancesBeforeLastLiquidityChange(balances);
+        */
+
+        _vault.addLiquidity(_poolId, msg.sender, tokensToAdd, amountsToAdd, !transferTokens);
+
+        _mintPoolTokens(beneficiary, bptAmountOut);
+
+        //Update balance
+        balances[0] = balances[0].add(amountsToAdd[0]);
+
+        //Reset swap fees counter
+        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+
+        return amountsToAdd[0];
+    }
+
+    /**
+     * @dev Called by liquidity providers to exit the associated Pool, receiving `tokens` in exchange for
+     *  BPT in return. The caller specifies for each token how much in BTP they want to redeem: `BPTAmountsIn`
+     *  and the minimum amount for each token they want to get `minAmountsOut`
+     *
+     * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
+     * allowance. Otherwise, they are pulled from User Balance.
+     *
+     * `tokens` -> list of tokens that user wants to receive
+     * `BPTAmountsIn` -> list with the amounts of BPT that are going to be redeemed for each token in `tokens`
+     * `minAmountsOut` -> the minimum amount of each token the user requires to receive
+     */
+
+    function exitPoolExactBPTInForTokenOut(
+        uint256 bptAmountIn,
+        IERC20 token,
+        uint256 minAmountOut,
+        bool transferTokens,
+        address beneficiary
+    ) public nonReentrant returns (uint256) {
+        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
+        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
+
+        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+
+        //Pay protocol fees to have balances up to date
+        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
+        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
+
+        IERC20[] memory tokensToRemove = new IERC20[](1);
+        uint256[] memory amountsToRemove = new uint256[](1);
+        uint256 tokenBalance;
+        uint256 tokenNormalizedWeight;
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == token) {
+                tokensToRemove[0] = token;
+                tokenBalance = balances[i];
+                tokenNormalizedWeight = _normalizedWeight(tokens[i]);
+                break;
+            }
+        }
+        require(tokenBalance != 0, "TOKEN_NOT_IN_POOL");
+
+        amountsToRemove[0] = _exactBPTInForTokenOut(
+            tokenBalance,
+            tokenNormalizedWeight,
+            bptAmountIn,
+            totalSupply(),
+            _swapFee
+        );
+        require(amountsToRemove[0] >= minAmountOut, "ERR_TOKEN_OUT_MIN_AMOUNT");
+
+        /*
+        // TODO for Oracle/MLP integration
+        // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
+        if(_optInOracleCandidate || _mandatoryOracleCandidate)
+                updateBalancesBeforeLastLiquidityChange(balances);
+        */
+
+        _vault.removeLiquidity(_poolId, beneficiary, tokensToRemove, amountsToRemove, !transferTokens);
+
+        //Update balance
+        balances[0] = balances[0].sub(amountsToRemove[0]);
+
+        //Reset swap fees counter
+        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+
+        _burnPoolTokens(msg.sender, bptAmountIn);
+
+        return amountsToRemove[0];
+    }
+
+    /**
+     * @dev Called by liquidity providers to exit the associated Pool, receiving `tokens` in exchange for
+     *  BPT in return. The caller specifies how much of each token they want to receive: `amountsOut`
+     *  and the maximum amount of BPT they want to redeem `maxBPTAmountIn`
+     *
+     * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
+     * allowance. Otherwise, they are pulled from User Balance.
+     *
+     * `tokens` -> list of tokens that user wants to receive
+     * `amountsOut` -> list with the amounts of each token the user wants to receive
+     * `maxBPTAmountIn` -> the maximum amount of BPT the user wants to redeem
+     */
+
+    function exitPoolBPTInForExactTokensOut(
+        uint256 maxBPTAmountIn,
+        uint256[] calldata amountsOut,
+        bool transferTokens,
+        address beneficiary
+    ) public nonReentrant returns (uint256 bptAmountIn) {
+        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
+        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
+
+        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+
+        require(amountsOut.length == tokens.length, "AmountsOut and tokens length mismatch");
+
+        //Pay protocol fees to have balances up to date
+        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
+        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
+
+        uint256[] memory normalizedWeights = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            normalizedWeights[i] = _normalizedWeight(tokens[i]);
+        }
+
+        bptAmountIn = _bptInForExactTokensOut(balances, normalizedWeights, amountsOut, totalSupply(), _swapFee);
+        require(bptAmountIn <= maxBPTAmountIn, "ERR_BPT_IN_MAX_AMOUNT");
+
+        /*
+        // TODO for Oracle/MLP integration
+        // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
+        if(_optInOracleCandidate || _mandatoryOracleCandidate)
+                updateBalancesBeforeLastLiquidityChange(balances);
+        */
+
+        _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !transferTokens);
+
+        //Update balances
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            balances[i] = balances[i].sub(amountsOut[i]);
+        }
+
+        //Reset swap fees counter
+        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+
+        _burnPoolTokens(msg.sender, bptAmountIn);
+
+        return bptAmountIn;
+    }
+
+    // Potential helpers
+
     function _getSupplyRatio(uint256 amount) internal view returns (uint256) {
         uint256 poolTotal = totalSupply();
         uint256 ratio = amount.div(poolTotal);
         require(ratio != 0, "ERR_MATH_APPROX");
         return ratio;
     }
-
-    // Potential helpers
 
     function _addSwapFee(uint256 amount) private view returns (uint256) {
         return amount.div(uint256(FixedPoint.ONE).sub(_swapFee));

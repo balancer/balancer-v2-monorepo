@@ -13,16 +13,18 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
-pragma experimental ABIEncoderV2;
 
-import "./interfaces/IAuthorizer.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./Authorization.sol";
-import "./FlashLoanProvider.sol";
-import "./Swaps.sol";
+library UnsafeRandom {
+    function rand(uint256 mod) internal view returns (uint256) {
+        uint256 previousBlockNumber = block.number - 1;
+        bytes32 seed = blockhash(previousBlockNumber);
+        return uint256(seed) % mod;
+    }
 
-// solhint-disable no-empty-blocks
-
-contract Vault is Authorization, FlashLoanProvider, Swaps {
-    constructor(IAuthorizer authorizer) Authorization(authorizer) {}
+    function rand(IERC20[] memory list) internal view returns (IERC20, uint256) {
+        uint256 randomIndex = rand(list.length);
+        return (list[randomIndex], randomIndex);
+    }
 }

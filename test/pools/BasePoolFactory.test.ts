@@ -2,33 +2,35 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../../scripts/helpers/deploy';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 describe('BasePoolFactory', function () {
   let admin: SignerWithAddress;
 
+  let authorizer: Contract;
   let vault: Contract;
   let factory: Contract;
 
   const salt = ethers.utils.id('salt');
 
-  before(async function () {
+  before(async () => {
     [, admin] = await ethers.getSigners();
   });
 
-  beforeEach(async function () {
-    vault = await deploy('Vault', { from: admin, args: [admin.address] });
+  beforeEach(async () => {
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
     factory = await deploy('MockPoolFactory', { args: [vault.address] });
   });
 
-  it('fails if not trusted by the vault', async () => {
-    await expect(factory.create(salt)).to.be.revertedWith('Caller is not a universal agent manager');
+  it('reverts if the factory is not authorized', async () => {
+    await expect(factory.create(salt)).to.be.revertedWith('Caller cannot add Universal Agents');
   });
 
-  context('once trusted by the vault', () => {
+  context('once authorized', () => {
     beforeEach(async () => {
-      await vault.connect(admin).addUniversalAgentManager(factory.address);
+      await authorizer.connect(admin).grantRole(await authorizer.ADD_UNIVERSAL_AGENT_ROLE(), factory.address);
     });
 
     it('creates a pool', async () => {

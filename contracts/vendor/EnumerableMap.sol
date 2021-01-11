@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.7.1;
 
 // Based on the EnumerableSet library from OpenZeppelin contracts, altered to include
 // the following:
@@ -9,7 +9,7 @@ pragma solidity ^0.7.0;
 //  * _unchecked_at and _unchecked_valueAt, which allow for more gas efficient data reads in some scenarios
 //  * _indexOf and _unchecked_setAt, which allow for more gas efficient data writes in some scenarios
 
-// We're using non-standard casing for the unchecked functions to differentiatet them, so we need to turn off that rule
+// We're using non-standard casing for the unchecked functions to differentiate them, so we need to turn off that rule
 // solhint-disable func-name-mixedcase
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";

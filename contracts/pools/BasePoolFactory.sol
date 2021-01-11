@@ -53,10 +53,6 @@ abstract contract BasePoolFactory {
      * Returns the address of the created contract.
      */
     function _create(bytes memory creationCode, bytes32 salt) internal returns (address) {
-        // TODO: consider internally choosing a salt value (e.g. an incrementing counter hash with the blockhash) to
-        // disallow vanity pool addresses (which might cause phishing issues). This might not make sense because other
-        // arguments could still be changed slightly to act as a nonce.
-
         address expectedPool = Create2.computeAddress(salt, keccak256(creationCode));
         require(!expectedPool.isContract(), "Salt cannot be reused");
 

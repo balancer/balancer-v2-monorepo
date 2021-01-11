@@ -15,11 +15,12 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "../vendor/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import "./Admin.sol";
+import "./Authorization.sol";
 
-abstract contract Agents is Admin {
+abstract contract Agents is ReentrancyGuard, Authorization {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Agents are allowed to use a user's tokens in a swap
@@ -38,13 +39,13 @@ abstract contract Agents is Admin {
     event UniversalAgentAdded(address indexed agent);
     event UniversalAgentRemoved(address indexed agent);
 
-    function addUserAgent(address agent) external override {
+    function addUserAgent(address agent) external override nonReentrant {
         if (_userAgents[msg.sender].add(agent)) {
             emit UserAgentAdded(msg.sender, agent);
         }
     }
 
-    function removeUserAgent(address agent) external override {
+    function removeUserAgent(address agent) external override nonReentrant {
         if (_userAgents[msg.sender].remove(agent)) {
             emit UserAgentRemoved(msg.sender, agent);
         }
@@ -94,50 +95,19 @@ abstract contract Agents is Admin {
         return agents;
     }
 
-    function getNumberOfUniversalAgentManagers() external view override returns (uint256) {
-        return _universalAgentManagers.length();
-    }
+    function addUniversalAgent(address agent) external override nonReentrant {
+        require(getAuthorizer().canAddUniversalAgent(msg.sender), "Caller cannot add Universal Agents");
 
-    function getUniversalAgentManagers(uint256 start, uint256 end) external view override returns (address[] memory) {
-        require((end >= start) && (end - start) <= _universalAgentManagers.length(), "Bad indices");
-
-        // Ideally we'd use a native implemenation: see
-        // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2390
-        address[] memory agentManagers = new address[](end - start);
-
-        for (uint256 i = 0; i < agentManagers.length; ++i) {
-            agentManagers[i] = _universalAgentManagers.at(i + start);
-        }
-
-        return agentManagers;
-    }
-
-    modifier onlyUniversalAgentManagers() {
-        require(_universalAgentManagers.contains(msg.sender), "Caller is not a universal agent manager");
-        _;
-    }
-
-    function addUniversalAgent(address agent) external override onlyUniversalAgentManagers {
         if (_universalAgents.add(agent)) {
             emit UniversalAgentAdded(agent);
         }
     }
 
-    function removeUniversalAgent(address agent) external override onlyUniversalAgentManagers {
+    function removeUniversalAgent(address agent) external override nonReentrant {
+        require(getAuthorizer().canRemoveUniversalAgent(msg.sender), "Caller cannot remove Universal Agents");
+
         if (_universalAgents.remove(agent)) {
             emit UniversalAgentRemoved(agent);
         }
-    }
-
-    function addUniversalAgentManager(address reporter) external override {
-        require(msg.sender == _admin, "Caller is not the admin");
-
-        _universalAgentManagers.add(reporter);
-    }
-
-    function removeUniversalAgentManager(address reporter) external override {
-        require(msg.sender == _admin, "Caller is not the admin");
-
-        _universalAgentManagers.remove(reporter);
     }
 }

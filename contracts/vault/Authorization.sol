@@ -15,14 +15,25 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "../vendor/ReentrancyGuard.sol";
+
+import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
 
-import "./Authorization.sol";
-import "./FlashLoanProvider.sol";
-import "./Swaps.sol";
+abstract contract Authorization is IVault, ReentrancyGuard {
+    IAuthorizer private _authorizer;
 
-// solhint-disable no-empty-blocks
+    constructor(IAuthorizer authorizer) {
+        _authorizer = authorizer;
+    }
 
-contract Vault is Authorization, FlashLoanProvider, Swaps {
-    constructor(IAuthorizer authorizer) Authorization(authorizer) {}
+    function getAuthorizer() public view override returns (IAuthorizer) {
+        return _authorizer;
+    }
+
+    function changeAuthorizer(IAuthorizer newAuthorizer) external override nonReentrant {
+        require(_authorizer.canChangeAuthorizer(msg.sender), "Caller cannot transfer authority");
+
+        _authorizer = newAuthorizer;
+    }
 }

@@ -35,17 +35,7 @@ library FixedPoint {
         if (a > 0) {
             return uint256(a);
         } else {
-            // TODO: check valid
             return uint256(-a);
-        }
-    }
-
-    function abs128(int128 a) internal pure returns (uint128) {
-        if (a > 0) {
-            return uint128(a);
-        } else {
-            // TODO: check valid
-            return uint128(-a);
         }
     }
 
@@ -141,58 +131,49 @@ library FixedPoint {
         return z;
     }
 
-    // Compute b^(e.w) by splitting it into (b^e)*(b^0.w).
-    // Use `powi` for `b^e` and `powK` for k iterations
-    // of approximation of b^0.w
-    function pow(uint256 base, uint256 exp) internal pure returns (uint256) {
-        require(base >= MIN_POW_BASE, "ERR_POW_BASE_TOO_LOW");
-        require(base <= MAX_POW_BASE, "ERR_POW_BASE_TOO_HIGH");
-
-        uint256 whole = floor(exp);
-        uint256 remain = sub(exp, whole);
-
-        uint256 wholePow = powi(base, btoi(whole));
-
-        if (remain == 0) {
-            return wholePow;
+    // credit for this implementation goes to
+    // https://github.com/abdk-consulting/abdk-libraries-solidity/blob/master/ABDKMath64x64.sol#L687
+    function sqrt(uint256 x) internal pure returns (uint256) {
+        if (x == 0) return 0;
+        // this block is equivalent to r = uint256(1) << (BitMath.mostSignificantBit(x) / 2);
+        // however that code costs significantly more gas
+        uint256 xx = x;
+        uint256 r = 1;
+        if (xx >= 0x100000000000000000000000000000000) {
+            xx >>= 128;
+            r <<= 64;
         }
-
-        uint256 partialResult = powApprox(base, remain, POW_PRECISION);
-        return mul(wholePow, partialResult);
-    }
-
-    function powApprox(
-        uint256 base,
-        uint256 exp,
-        uint256 precision
-    ) internal pure returns (uint256) {
-        // term 0:
-        uint256 a = exp;
-        (uint256 x, bool xneg) = subSign(base, ONE);
-        uint256 term = ONE;
-        uint256 sum = term;
-        bool negative = false;
-
-        // term(k) = numer / denom
-        //         = (product(a - i - 1, i=1-->k) * x^k) / (k!)
-        // each iteration, multiply previous term by (a-(k-1)) * x / k
-        // continue until term is less than precision
-        for (uint256 i = 1; term >= precision; i++) {
-            uint256 bigK = i * ONE;
-            (uint256 c, bool cneg) = subSign(a, sub(bigK, ONE));
-            term = mul(term, mul(c, x));
-            term = div(term, bigK);
-            if (term == 0) break;
-
-            if (xneg) negative = !negative;
-            if (cneg) negative = !negative;
-            if (negative) {
-                sum = sub(sum, term);
-            } else {
-                sum = add(sum, term);
-            }
+        if (xx >= 0x10000000000000000) {
+            xx >>= 64;
+            r <<= 32;
         }
-
-        return sum;
+        if (xx >= 0x100000000) {
+            xx >>= 32;
+            r <<= 16;
+        }
+        if (xx >= 0x10000) {
+            xx >>= 16;
+            r <<= 8;
+        }
+        if (xx >= 0x100) {
+            xx >>= 8;
+            r <<= 4;
+        }
+        if (xx >= 0x10) {
+            xx >>= 4;
+            r <<= 2;
+        }
+        if (xx >= 0x8) {
+            r <<= 1;
+        }
+        r = (r + x / r) >> 1;
+        r = (r + x / r) >> 1;
+        r = (r + x / r) >> 1;
+        r = (r + x / r) >> 1;
+        r = (r + x / r) >> 1;
+        r = (r + x / r) >> 1;
+        r = (r + x / r) >> 1; // Seven iterations should be enough
+        uint256 r1 = x / r;
+        return (r < r1 ? r : r1);
     }
 }

@@ -27,203 +27,166 @@ import "../../math/FixedPoint.sol";
 // solhint-disable var-name-mixedcase
 
 contract StablecoinMath {
-    using SafeCast for uint256;
-    using SafeCast for int256;
-
-    int256 internal constant PRECISION = 100000000000000;
-
-    struct Data {
-        int256 amp;
-        int256 invariant;
-        int256 n;
-        int256 nn;
-        int256 sum;
-        int256 prod;
+    /**********************************************************************************************
+    // inGivenOut token x for y - polynomial equation to solve                                   //
+    // ax = amount in to calculate                                                               //
+    // bx = balance token in                                                                     //
+    // x = bx + ax                                                                               //
+    // D = invariant                               D                     D^(n+1)                 //
+    // A = amplifier               x^2 + ( S - ----------  - 1) * x -  ------------- = 0         //
+    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
+    // S = sum of final balances but x                                                           //
+    // P = product of final balances but x                                                       //
+    **********************************************************************************************/
+    function _inGivenOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountOut
+    ) internal pure returns (uint256) {
+        uint256 inv = _invariant(amp, balances);
+        uint256 p = inv;
+        uint256 sum = 0;
+        uint256 totalCoins = balances.length;
+        uint256 ampTimesTotal = amp * totalCoins;
+        uint256 x = 0;
+        for (uint256 i = 0; i < totalCoins; i++) {
+            if (i == tokenIndexOut) {
+                x = balances[i] - tokenAmountOut;
+            } else if (i != tokenIndexIn) {
+                x = balances[i];
+            } else {
+                continue;
+            }
+            sum += x;
+            p = (p * inv) / (x * totalCoins);
+        }
+        p = (p * inv) / (ampTimesTotal * totalCoins);
+        uint256 b = sum + inv / ampTimesTotal;
+        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
+        return (y - balances[tokenIndexIn] + 1);
     }
 
-    function _approximateAmount(Data memory data, uint128 approxAmount) private pure returns (uint128) {
-        uint128 newApproxAmount;
-        int256 c1 = data.amp * data.sum + ((FixedPoint.ONE / data.nn) - data.amp) * data.invariant;
-        int256 c2 = (data.invariant * data.invariant * data.invariant) / (data.nn * data.nn * data.prod);
-        for (int256 i = 0; i < 255; i++) {
-            int256 f1 = data.amp * approxAmount * approxAmount + c1 * approxAmount - c2 * FixedPoint.ONE;
-            int256 f2 = c1 + 2 * data.amp * approxAmount;
-            newApproxAmount = uint128(approxAmount - (f1 / f2));
-            if (newApproxAmount > approxAmount) {
-                if ((newApproxAmount - approxAmount) <= PRECISION) {
+    /**********************************************************************************************
+    // outGivenIn token x for y - polynomial equation to solve                                   //
+    // ay = amount out to calculate                                                              //
+    // by = balance token out                                                                    //
+    // y = by - ay                                                                               //
+    // D = invariant                               D                     D^(n+1)                 //
+    // A = amplifier               y^2 + ( S - ----------  - 1) * y -  ------------- = 0         //
+    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
+    // S = sum of final balances but y                                                           //
+    // P = product of final balances but y                                                       //
+    **********************************************************************************************/
+    function _outGivenIn(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountIn
+    ) internal pure returns (uint256) {
+        uint256 inv = _invariant(amp, balances);
+        uint256 p = inv;
+        uint256 sum = 0;
+        uint256 totalCoins = balances.length;
+        uint256 ampTimesTotal = amp * totalCoins;
+        uint256 x = 0;
+        for (uint256 i = 0; i < totalCoins; i++) {
+            if (i == tokenIndexIn) {
+                x = balances[i] + tokenAmountIn;
+            } else if (i != tokenIndexOut) {
+                x = balances[i];
+            } else {
+                continue;
+            }
+            sum += x;
+            p = (p * inv) / (x * totalCoins);
+        }
+        p = (p * inv) / (ampTimesTotal * totalCoins);
+        uint256 b = sum + inv / ampTimesTotal;
+        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
+        return (balances[tokenIndexOut] - y - 1);
+    }
+
+    /**********************************************************************************************
+    // invariant                                                                                 //
+    // D = invariant to compute                                                                  //
+    // A = amplifier                n * D^2 + A * n^n * S * (n^n * P / D^(n−1))                  //
+    // S = sum of balances         ____________________________________________                  //
+    // P = product of balances    (n+1) * D + ( A * n^n − 1)* (n^n * P / D^(n−1))                //
+    // n = number of tokens                                                                      //
+    **********************************************************************************************/
+    function _invariant(uint256 amp, uint256[] memory balances) internal pure returns (uint256) {
+        uint256 sum = 0;
+        uint256 totalCoins = balances.length;
+        for (uint256 i = 0; i < totalCoins; i++) {
+            sum = sum + balances[i];
+        }
+        if (sum == 0) {
+            return 0;
+        }
+        uint256 prevInv = 0;
+        uint256 inv = sum;
+        uint256 ampTimesTotal = amp * totalCoins;
+
+        for (uint256 i = 0; i < 255; i++) {
+            uint256 P_D = totalCoins * balances[0];
+            for (uint256 j = 1; j < totalCoins; j++) {
+                P_D = (P_D * balances[j] * totalCoins) / inv;
+            }
+            prevInv = inv;
+            inv =
+                (totalCoins * inv * inv + ampTimesTotal * sum * P_D) /
+                ((totalCoins + 1) * inv + (ampTimesTotal - 1) * P_D);
+            // Equality with the precision of 1
+
+            if (inv > prevInv) {
+                if ((inv - prevInv) <= 1) {
                     break;
                 }
-            } else if ((newApproxAmount - approxAmount) <= PRECISION) {
+            } else if ((prevInv - inv) <= 1) {
                 break;
             }
-            approxAmount = newApproxAmount;
         }
-        return newApproxAmount;
+        return inv;
     }
 
-    function _getDataOutGivenIn(
-        uint128 amp,
-        uint128[] memory balances,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint128 tokenAmountIn
-    ) private pure returns (Data memory) {
-        int256 invariant = _invariantInternal(amp, balances);
-        int256 sum = 0;
-        int256 prod = FixedPoint.ONE;
-        uint256 n = balances.length;
-        int256 nn = 1;
-        for (uint256 i = 0; i < n; i++) {
-            if (i != tokenIndexOut) {
-                if (i == tokenIndexIn) {
-                    sum = sum + balances[i] + tokenAmountIn;
-                    prod = (prod * (balances[i] + tokenAmountIn)) / FixedPoint.ONE;
-                } else {
-                    sum = sum + balances[i];
-                    prod = (prod * balances[i]) / FixedPoint.ONE;
-                }
-            }
-            nn = nn * int256(n);
-        }
-        return Data({ amp: int256(amp), invariant: invariant, sum: sum, n: int256(n), nn: nn, prod: prod });
-    }
-
-    function _getDataInGivenOut(
-        uint128 amp,
-        uint128[] memory balances,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint128 tokenAmountOut
-    ) private pure returns (Data memory) {
-        int256 invariant = _invariantInternal(amp, balances);
-        int256 sum = 0;
-        int256 prod = FixedPoint.ONE;
-        uint256 n = balances.length;
-        int256 nn = 1;
-        for (uint256 i = 0; i < n; i++) {
-            if (i != tokenIndexIn) {
-                if (i == tokenIndexOut) {
-                    sum = sum + balances[i] - tokenAmountOut;
-                    prod = (prod * (balances[i] - tokenAmountOut)) / FixedPoint.ONE;
-                } else {
-                    sum = sum + balances[i];
-                    prod = (prod * balances[i]) / FixedPoint.ONE;
-                }
-            }
-            nn = nn * int256(n);
-        }
-        return Data({ amp: int256(amp), invariant: invariant, sum: sum, n: int256(n), nn: nn, prod: prod });
-    }
-
-    function _outGivenIn(
-        uint128 amp,
-        uint256[] memory balances,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint128 tokenAmountIn
-    ) internal pure returns (uint128) {
-        uint128[] memory _balances = new uint128[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            _balances[i] = balances[i].toUint128();
-        }
-        Data memory data = _getDataOutGivenIn(amp, _balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
-        uint128 approxTokenAmountOut = _balances[tokenIndexOut] - tokenAmountIn;
-        return _balances[tokenIndexOut] - _approximateAmount(data, approxTokenAmountOut);
-    }
-
-    function _inGivenOut(
-        uint128 amp,
-        uint256[] memory balances,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint128 tokenAmountOut
-    ) internal pure returns (uint128) {
-        uint128[] memory _balances = new uint128[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            _balances[i] = balances[i].toUint128();
-        }
-        Data memory data = _getDataInGivenOut(amp, _balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
-        uint128 approxTokenAmountIn = _balances[tokenIndexIn] + tokenAmountOut;
-        return _approximateAmount(data, approxTokenAmountIn) - _balances[tokenIndexIn];
-    }
-
-    function _invariant(uint128 amp, uint256[] memory balances) internal pure returns (int256) {
-        uint128[] memory _balances = new uint128[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            _balances[i] = balances[i].toUint128();
-        }
-        return _invariantInternal(amp, _balances);
-    }
-
-    function _invariantInternal(uint128 amp, uint128[] memory balances) internal pure returns (int256) {
-        int256 _amp = int256(amp);
-        int256 sum = 0;
-        int256 prod = FixedPoint.ONE;
-        uint256 n = balances.length;
-        int256 nn = 1;
-        for (uint256 i = 0; i < n; i++) {
-            sum = sum + balances[i];
-            prod = (prod * balances[i]) / FixedPoint.ONE;
-            nn = nn * int256(n);
-        }
-
-        if (prod == 0) {
-            return prod;
-        }
-
-        int256 invariant = sum;
-        int256 newInvariant;
-        int256 c2 = _amp - FixedPoint.ONE / nn;
-        int256 c1 = (nn * nn * prod);
-        for (int256 i = 0; i < 255; i++) {
-            int256 f1 = (c2 * invariant + (((invariant * invariant) / c1) * invariant) - _amp * sum) / FixedPoint.ONE;
-            int256 f2 = (c2 * FixedPoint.ONE + 3 * ((invariant * FixedPoint.ONE) / c1) * invariant) / FixedPoint.ONE;
-            newInvariant =
-                invariant -
-                (2 * f1 * f2 * FixedPoint.ONE) /
-                (2 * f2 * f2 + f1 * 6 * ((invariant * FixedPoint.ONE) / c1));
-            if (newInvariant > invariant) {
-                if ((newInvariant - invariant) <= PRECISION) {
-                    return newInvariant;
-                }
-            } else if ((invariant - newInvariant) <= PRECISION) {
-                return newInvariant;
-            }
-            invariant = newInvariant;
-        }
-        return newInvariant;
-    }
-
+    /**********************************************************************************************
+    // oneTokenSwapFee - polynomial equation to solve                                            //
+    // af = fee amount to calculate in one token                                                 //
+    // bf = balance of token                                                                     //
+    // f = bf - af                                                                               //
+    // D = old invariant                            D                     D^(n+1)                //
+    // A = amplifier               f^2 + ( S - ----------  - 1) * f -  ------------- = 0         //
+    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
+    // S = sum of final balances but f                                                           //
+    // P = product of final balances but f                                                       //
+    **********************************************************************************************/
     function _calculateOneTokenSwapFee(
-        uint128 amp,
+        uint256 amp,
         uint256[] memory balances,
-        int256 lastInvariant,
+        uint256 lastInvariant,
         uint256 tokenIndex
-    ) internal pure returns (int256) {
-        uint128[] memory _balances = new uint128[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            _balances[i] = balances[i].toUint128();
-        }
-        int256 sum = 0;
-        int256 prod = FixedPoint.ONE;
-        uint256 n = balances.length;
-        int256 nn = 1;
-        for (uint256 i = 0; i < n; i++) {
+    ) internal pure returns (uint256) {
+        uint256 inv = lastInvariant;
+        uint256 p = inv;
+        uint256 sum = 0;
+        uint256 totalCoins = balances.length;
+        uint256 ampTimesTotal = amp * totalCoins;
+        uint256 x = 0;
+        for (uint256 i = 0; i < totalCoins; i++) {
             if (i != tokenIndex) {
-                sum = sum + _balances[i];
-                prod = (prod * _balances[i]) / FixedPoint.ONE;
+                x = balances[i];
+            } else {
+                continue;
             }
-            nn = nn * int256(n);
+            sum += x;
+            p = (p * inv) / (x * totalCoins);
         }
-        Data memory data = Data({
-            amp: int256(amp),
-            invariant: lastInvariant,
-            sum: sum,
-            n: int256(n),
-            nn: nn,
-            prod: prod
-        });
-
-        return _balances[tokenIndex] - _approximateAmount(data, lastInvariant.toUint256().toUint128());
+        p = (p * inv) / (ampTimesTotal * totalCoins);
+        uint256 b = sum + inv / ampTimesTotal;
+        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
+        return (balances[tokenIndex] - y - 1);
     }
 }

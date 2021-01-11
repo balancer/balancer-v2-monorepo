@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../vendor/ReentrancyGuard.sol";
 
 import "./UserBalance.sol";
 
@@ -44,7 +44,6 @@ abstract contract PoolRegistry is
     using SafeCast for uint128;
 
     // Set with all pools in the system
-    // TODO do we need this? can pools be deleted? if not, an array should be good enough
     EnumerableSet.Bytes32Set internal _pools;
 
     modifier withExistingPool(bytes32 poolId) {
@@ -83,8 +82,7 @@ abstract contract PoolRegistry is
         return (pool, optimization);
     }
 
-    // TODO: consider disallowing the same address to be used multiple times
-    function registerPool(PoolOptimization optimization) external override returns (bytes32) {
+    function registerPool(PoolOptimization optimization) external override nonReentrant returns (bytes32) {
         bytes32 poolId = toPoolId(msg.sender, uint16(optimization), uint32(_pools.length()));
 
         bool added = _pools.add(poolId);
@@ -173,6 +171,7 @@ abstract contract PoolRegistry is
     function registerTokens(bytes32 poolId, IERC20[] calldata tokens)
         external
         override
+        nonReentrant
         withExistingPool(poolId)
         onlyPool(poolId)
     {
@@ -192,6 +191,7 @@ abstract contract PoolRegistry is
     function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
         external
         override
+        nonReentrant
         withExistingPool(poolId)
         onlyPool(poolId)
     {
@@ -214,7 +214,7 @@ abstract contract PoolRegistry is
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         bool withdrawFromUserBalance
-    ) external override withExistingPool(poolId) onlyPool(poolId) {
+    ) external override nonReentrant withExistingPool(poolId) onlyPool(poolId) {
         require(isAgentFor(from, msg.sender), "Caller is not an agent");
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
@@ -263,7 +263,7 @@ abstract contract PoolRegistry is
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         bool depositToUserBalance
-    ) external override withExistingPool(poolId) onlyPool(poolId) {
+    ) external override nonReentrant withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         // Deduct tokens from pools - how this is done depends on the Pool optimization setting
@@ -333,7 +333,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20 token,
         address manager
-    ) external override onlyPool(poolId) {
+    ) external override nonReentrant onlyPool(poolId) {
         require(_poolInvestmentManagers[poolId][token] == address(0), "CANNOT_RESET_INVESTMENT_MANAGER");
         require(manager != address(0), "Investment manager is the zero address");
 
@@ -357,7 +357,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) external override onlyPoolInvestmentManager(poolId, token) {
+    ) external override nonReentrant onlyPoolInvestmentManager(poolId, token) {
         (, PoolOptimization optimization) = fromPoolId(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
             _investSimplifiedQuotePoolCash(poolId, token, amount.toUint128());
@@ -374,7 +374,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) external override onlyPoolInvestmentManager(poolId, token) {
+    ) external override nonReentrant onlyPoolInvestmentManager(poolId, token) {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         (, PoolOptimization optimization) = fromPoolId(poolId);
@@ -391,7 +391,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) external override onlyPoolInvestmentManager(poolId, token) {
+    ) external override nonReentrant onlyPoolInvestmentManager(poolId, token) {
         (, PoolOptimization optimization) = fromPoolId(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
             _setSimplifiedQuotePoolInvestment(poolId, token, amount.toUint128());

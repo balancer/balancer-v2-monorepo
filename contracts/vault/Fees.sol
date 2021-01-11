@@ -17,21 +17,20 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "../vendor/ReentrancyGuard.sol";
 
 import "../math/FixedPoint.sol";
 
-import "./Admin.sol";
+import "./interfaces/IVault.sol";
+import "./Authorization.sol";
 
-abstract contract Fees is Admin {
+abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
     // Stores the fee collected per each token that is only withdrawable by the admin.
     mapping(IERC20 => uint256) internal _collectedProtocolFees;
-
-    //Fee collector entity to which protocol fees are sent when withdrawn.
-    address private _protocolFeeCollector;
 
     // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
     // percentage of the tokens exiting
@@ -53,11 +52,7 @@ abstract contract Fees is Admin {
     // solhint-disable-next-line var-name-mixedcase
     uint256 private immutable _MAX_PROTOCOL_FLASH_LOAN_FEE = FixedPoint.ONE.mul128(50).div128(100); // 0.5 (50%)
 
-    function protocolFeeCollector() public view returns (address) {
-        return _protocolFeeCollector;
-    }
-
-    function protocolWithdrawFee() public view returns (uint128) {
+    function getProtocolWithdrawFee() public view override returns (uint128) {
         return _protocolWithdrawFee;
     }
 
@@ -65,11 +60,11 @@ abstract contract Fees is Admin {
         return amount.mul128(_protocolWithdrawFee);
     }
 
-    function protocolSwapFee() public view returns (uint128) {
+    function getProtocolSwapFee() public view override returns (uint128) {
         return _protocolSwapFee;
     }
 
-    function protocolFlashLoanFee() public view returns (uint256) {
+    function getProtocolFlashLoanFee() public view override returns (uint256) {
         return _protocolFlashLoanFee;
     }
 
@@ -77,28 +72,22 @@ abstract contract Fees is Admin {
         return swapFeeAmount.mul(_protocolFlashLoanFee);
     }
 
-    function setProtocolFeeCollector(address newProtocolFeeCollector) external {
-        require(msg.sender == _admin, "Caller is not the admin");
-
-        _protocolFeeCollector = newProtocolFeeCollector;
-    }
-
-    function setProtocolWithdrawFee(uint128 newFee) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    function setProtocolWithdrawFee(uint128 newFee) external override nonReentrant {
+        require(getAuthorizer().canSetProtocolWithdrawFee(msg.sender), "Caller cannot set protocol withdraw fee");
         require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
 
         _protocolWithdrawFee = newFee;
     }
 
-    function setProtocolSwapFee(uint128 newFee) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    function setProtocolSwapFee(uint128 newFee) external override nonReentrant {
+        require(getAuthorizer().canSetProtocolSwapFee(msg.sender), "Caller cannot set protocol swap fee");
         require(newFee <= _MAX_PROTOCOL_SWAP_FEE, "Swap fee too high");
 
         _protocolSwapFee = newFee;
     }
 
-    function setProtocolFlashLoanFee(uint128 newFee) external {
-        require(msg.sender == _admin, "Caller is not the admin");
+    function setProtocolFlashLoanFee(uint128 newFee) external override nonReentrant {
+        require(getAuthorizer().canSetProtocolFlashLoanFee(msg.sender), "Caller cannot set protocol flash loan fee");
         require(newFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FlashLoan fee too high");
 
         _protocolFlashLoanFee = newFee;
@@ -112,16 +101,22 @@ abstract contract Fees is Admin {
         return _collectedProtocolFees[token];
     }
 
-    function withdrawProtocolFees(IERC20[] calldata tokens, uint256[] calldata amounts) external override {
+    function withdrawProtocolFees(
+        IERC20[] calldata tokens,
+        uint256[] calldata amounts,
+        address recipient
+    ) external override nonReentrant {
         require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
 
-        address recipient = protocolFeeCollector();
-        require(recipient != address(0), "Protocol fee collector recipient is not set");
-
+        IAuthorizer authorizer = getAuthorizer();
         for (uint256 i = 0; i < tokens.length; ++i) {
-            require(_collectedProtocolFees[tokens[i]] >= amounts[i], "Insufficient protocol fees");
-            _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]] - amounts[i];
-            tokens[i].safeTransfer(recipient, amounts[i]);
+            IERC20 token = tokens[i];
+            require(authorizer.canCollectProtocolFees(msg.sender, token), "Caller cannot withdraw protocol fees");
+
+            uint256 amount = amounts[i];
+            require(_collectedProtocolFees[token] >= amount, "Insufficient protocol fees");
+            _collectedProtocolFees[token] -= amount;
+            token.safeTransfer(recipient, amount);
         }
     }
 }

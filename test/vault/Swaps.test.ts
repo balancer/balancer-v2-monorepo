@@ -33,16 +33,16 @@ describe('Vault - swaps', () => {
   let vault: Contract, funds: FundManagement;
   let tokens: TokenList, tokenAddresses: string[];
   let poolIds: string[], poolId: string, anotherPoolId: string;
-  let admin: SignerWithAddress, lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
+  let lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
 
   before('setup', async () => {
-    [, admin, lp, trader, other] = await ethers.getSigners();
+    [, lp, trader, other] = await ethers.getSigners();
 
     // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
     // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
     // or rely on user balance or agents).
 
-    vault = await deploy('Vault', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
