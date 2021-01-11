@@ -44,7 +44,6 @@ abstract contract PoolRegistry is
     using SafeCast for uint128;
 
     // Set with all pools in the system
-    // TODO do we need this? can pools be deleted? if not, an array should be good enough
     EnumerableSet.Bytes32Set internal _pools;
 
     modifier withExistingPool(bytes32 poolId) {
@@ -83,7 +82,6 @@ abstract contract PoolRegistry is
         return (pool, optimization);
     }
 
-    // TODO: consider disallowing the same address to be used multiple times
     function registerPool(PoolOptimization optimization) external override nonReentrant returns (bytes32) {
         bytes32 poolId = toPoolId(msg.sender, uint16(optimization), uint32(_pools.length()));
 
