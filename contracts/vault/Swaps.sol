@@ -375,7 +375,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IPoolQuoteSimplified pool,
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
-        // For gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are stored
+        // Due to gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are stored
         // internally, instead of using getters and setters for all operations.
 
         (
@@ -493,7 +493,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         uint256 tokenAmount = currentBalances.length;
         for (uint256 i = 0; i < tokenAmount; i++) {
-            // Because iteration is bounded by tokenAmount no tokens are registered or unregisted here, we can use
+            // Because the iteration is bounded by `tokenAmount` and no tokens are registered or unregistered here, we can use
             // `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
@@ -536,7 +536,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IERC20[] calldata tokens,
         FundManagement calldata funds
     ) external override returns (int256[] memory) {
-        // This function is not marked as nonReentrant because the underlying query mechanism relies on reentrancy
+        // This function is not marked as `nonReentrant` because the underlying query mechanism relies on reentrancy
         return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
     }
 
@@ -545,7 +545,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IERC20[] calldata tokens,
         FundManagement calldata funds
     ) external override returns (int256[] memory) {
-        // This function is not marked as nonReentrant because the underlying query mechanism relies on reentrancy
+        // This function is not marked as `nonReentrant` because the underlying query mechanism relies on reentrancy
         return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
     }
 
@@ -556,7 +556,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapKind kind
     ) private returns (int256[] memory tokenDeltas) {
         try this.queryBatchSwapHelper(swaps, tokens, funds, kind)  {
-            // This call should never not revert, but it is still useful to use the try-catch syntax as it provides
+            // This call should never revert, but it is still useful to use the try-catch syntax as it provides
             // automatic decoding of the returndata.
             assert(false);
         } catch Error(string memory reason) {
