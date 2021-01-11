@@ -94,6 +94,10 @@ contract ConstantProductPool is
     uint256 private constant _MIN_SWAP_FEE = 0;
     uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
 
+    /**
+     * @dev This contract cannot be deployed directly because it must be an Universal Agent during construction. Use
+     * `ConstantProductPoolFactory` to create new instances of it instead.
+     */
     constructor(
         IVault vault,
         string memory name,
@@ -449,7 +453,7 @@ contract ConstantProductPool is
         bptAmountOut = _exactTokensInForBPTOut(balances, normalizedWeights, amountsIn, totalSupply(), _swapFee);
         require(bptAmountOut >= minBPTAmountOut, "ERR_BPT_OUT_MIN_AMOUNT");
 
-        /* 
+        /*
         // TODO for Oracle/MLP integration
         // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
         if(_optInOracleCandidate || _mandatoryOracleCandidate)
