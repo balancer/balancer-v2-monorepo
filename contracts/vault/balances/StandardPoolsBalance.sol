@@ -193,7 +193,7 @@ contract StandardPoolsBalance {
     }
 
     function _updateStandardPoolBalance(
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances,  
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances,
         IERC20 token,
         function(bytes32, uint128) pure returns (bytes32) mutation,
         uint128 amount
