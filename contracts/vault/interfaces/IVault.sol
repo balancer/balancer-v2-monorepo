@@ -181,7 +181,7 @@ interface IVault {
 
     /**
      * @dev Returns the Pool's balance of `tokens`. This is the total balance, including assets held by the Pool's
-     * Investment Manager and not currently held by the Vault.
+     * Asset Manager and not currently held by the Vault.
      *
      * Each token in `tokens` must have been registered by the Pool.
      */
@@ -444,53 +444,53 @@ interface IVault {
         bytes calldata receiverData
     ) external;
 
-    // Investment interface
+    // Asset management interface
 
     /**
-     * @dev Called by a Pool to set its Investment Manager for one of its registered tokens.
+     * @dev Called by a Pool to set its Asset Manager for one of its registered tokens.
      */
-    function setPoolInvestmentManager(
+    function setPoolAssetManager(
         bytes32 poolId,
         IERC20 token,
         address manager
     ) external;
 
     /**
-     * @dev Returns a Pool's Investment Manager for `token`. Investment Managers can manage a Pool's assets by taking
-     * them out of the Vault via `investPoolBalance`, `divestPoolBalance` and `updateInvested`.
+     * @dev Returns a Pool's Asset Manager for `token`. Asset Managers can manage a Pool's assets by taking
+     * them out of the Vault via `poolBalanceCashToExternal`, `poolBalanceExternalToCash` and `updateExternalBalance`.
      */
-    function getPoolInvestmentManager(bytes32 poolId, IERC20 token) external view returns (address);
+    function getPoolAssetManager(bytes32 poolId, IERC20 token) external view returns (address);
 
     /**
-     * @dev Called by a Pool's Investment Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
-     * the Pool's cash but increases its invested balance, leaving the total balance unchanged.
+     * @dev Called by a Pool's Asset Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
+     * the Pool's cash but increases its external balance, leaving the total balance unchanged.
      */
-    function investPoolBalance(
+    function poolBalanceCashToExternal(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
     ) external;
 
     /**
-     * @dev Called by a Pool's Investment Manager for `token` to deposit `amount` tokens into the Vault. This increases
-     * the Pool's cash but decreases its invested balance, leaving the total balance unchanged. The Investment Manager
+     * @dev Called by a Pool's Asset Manager for `token` to deposit `amount` tokens into the Vault. This increases
+     * the Pool's cash but decreases its external balance, leaving the total balance unchanged. The Asset Manager
      * must have approved the Vault to use `token`.
      */
-    function divestPoolBalance(
+    function poolBalanceExternalToCash(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
     ) external;
 
     /**
-     * @dev Called by a Pool's Investment Manager for `token` to update the invested amount. This causes no change on
-     * the Pool's cash, but because the invested balance changes, so does the total balance. The invested amount can be
+     * @dev Called by a Pool's Asset Manager for `token` to update the external amount. This causes no change on
+     * the Pool's cash, but because the external balance changes, so does the total balance. The external amount can be
      * both increased and decreased by this call.
      */
-    function updateInvested(
+    function updateExternalBalance(
         bytes32 poolId,
         IERC20 token,
-        uint256 amountInvested
+        uint256 amount
     ) external;
 
     // Authorizer
@@ -513,7 +513,7 @@ interface IVault {
 
     /**
      * @dev Returns the Protocol Withdraw Fee. Withdraw fees are applied on `withdraw` and `removeLiquidity` (unless
-     * depositing into User Balance). Swaps and `investPoolBalance` are not charged withdraw fees.
+     * depositing into User Balance). Swaps and `poolBalanceCashToExternal` are not charged withdraw fees.
      *
      * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
      */
