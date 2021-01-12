@@ -8,7 +8,7 @@ import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
-describe('Vault - user balance', () => {
+describe('Vault - user internal balance', () => {
   let admin: SignerWithAddress;
   let trader: SignerWithAddress;
   let user: SignerWithAddress;

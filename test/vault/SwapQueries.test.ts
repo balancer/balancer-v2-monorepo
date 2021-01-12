@@ -52,8 +52,8 @@ describe('Vault - swap queries', () => {
     funds = {
       sender: ZERO_ADDRESS,
       recipient: ZERO_ADDRESS,
-      withdrawFromUserBalance: false,
-      depositToUserBalance: false,
+      withdrawFromUserInternalBalance: false,
+      depositToUserInternalBalance: false,
     };
   });
 

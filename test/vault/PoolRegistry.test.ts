@@ -193,7 +193,7 @@ describe('Vault - pool registry', () => {
         ).to.be.revertedWith('Caller is not an agent');
       });
 
-      it('the pool can add liquidity by withdrawing tokens from user balance', async () => {
+      it('the pool can add liquidity by withdrawing tokens from the user internal balance', async () => {
         await vault.connect(pool).deposit(tokens.DAI.address, 50, pool.address);
         await vault.connect(pool).deposit(tokens.MKR.address, 100, pool.address);
 
@@ -210,7 +210,7 @@ describe('Vault - pool registry', () => {
         expect(await vault.getUserTokenBalance(pool.address, tokens.MKR.address)).to.equal(90); // 10 out of 100 taken
       });
 
-      it('the pool can add liquidity by both transferring and withdrawing tokens from user balance', async () => {
+      it('the pool can add liquidity by both transferring and withdrawing tokens from the user internal balance', async () => {
         await vault.connect(pool).deposit(tokens.DAI.address, 3, pool.address);
         await vault.connect(pool).deposit(tokens.MKR.address, 6, pool.address);
 
@@ -341,7 +341,7 @@ describe('Vault - pool registry', () => {
           expect(await vault.getPoolTokens(poolId)).to.include.members([tokens.DAI.address, tokens.MKR.address]);
         });
 
-        it('the pool can remove liquidity by depositing tokens into user balance', async () => {
+        it('the pool can remove liquidity by depositing tokens into user internal balance', async () => {
           await expectBalanceChange(
             () =>
               vault

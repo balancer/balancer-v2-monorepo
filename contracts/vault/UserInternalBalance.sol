@@ -28,19 +28,20 @@ import "./Agents.sol";
 
 import "../math/FixedPoint.sol";
 
-abstract contract UserBalance is ReentrancyGuard, Fees, Agents {
+abstract contract UserInternalBalance is ReentrancyGuard, Fees, Agents {
     using SafeERC20 for IERC20;
     using FixedPoint for uint128;
     using FixedPoint for uint256;
     using SafeCast for uint256;
 
-    mapping(address => mapping(IERC20 => uint128)) internal _userTokenBalance; // user -> token -> user balance
+    // user -> token -> internal balance
+    mapping(address => mapping(IERC20 => uint128)) internal _userInternalTokenBalance;
 
     event Deposited(address indexed depositor, address indexed user, IERC20 indexed token, uint256 amount);
     event Withdrawn(address indexed user, address indexed recipient, IERC20 indexed token, uint256 amount);
 
     function getUserTokenBalance(address user, IERC20 token) public view override returns (uint256) {
-        return _userTokenBalance[user][token];
+        return _userInternalTokenBalance[user][token];
     }
 
     function deposit(
@@ -50,7 +51,7 @@ abstract contract UserBalance is ReentrancyGuard, Fees, Agents {
     ) external override nonReentrant {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(amount.toUint128());
+        _userInternalTokenBalance[user][token] = _userInternalTokenBalance[user][token].add128(amount.toUint128());
         emit Deposited(msg.sender, user, token, amount);
     }
 
@@ -59,9 +60,9 @@ abstract contract UserBalance is ReentrancyGuard, Fees, Agents {
         uint256 amount,
         address recipient
     ) external override nonReentrant {
-        require(_userTokenBalance[msg.sender][token] >= amount, "Vault: withdraw amount exceeds balance");
+        require(_userInternalTokenBalance[msg.sender][token] >= amount, "Vault: withdraw amount exceeds balance");
 
-        _userTokenBalance[msg.sender][token] -= amount.toUint128();
+        _userInternalTokenBalance[msg.sender][token] -= amount.toUint128();
 
         uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount.toUint128());
 
