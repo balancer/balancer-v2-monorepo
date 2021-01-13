@@ -66,7 +66,7 @@ describe('Vault - protocol fees', () => {
     it('authorized accounts can withdraw protocol fees to any recipient', async () => {
       await authorizer
         .connect(admin)
-        .grantRole(await authorizer.COLLECT_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
+        .grantRole(await authorizer.WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
 
       await expectBalanceChange(
         () =>
@@ -88,7 +88,7 @@ describe('Vault - protocol fees', () => {
     it('protocol fees cannot be over-withdrawn', async () => {
       await authorizer
         .connect(admin)
-        .grantRole(await authorizer.COLLECT_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
+        .grantRole(await authorizer.WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
 
       await expect(
         vault

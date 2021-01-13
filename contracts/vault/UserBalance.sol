@@ -18,16 +18,17 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+import "../vendor/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "./Fees.sol";
 import "./Agents.sol";
 
 import "../math/FixedPoint.sol";
 
-abstract contract UserBalance is Fees, Agents {
+abstract contract UserBalance is ReentrancyGuard, Fees, Agents {
     using SafeERC20 for IERC20;
     using FixedPoint for uint128;
     using FixedPoint for uint256;
@@ -46,10 +47,9 @@ abstract contract UserBalance is Fees, Agents {
         IERC20 token,
         uint256 amount,
         address user
-    ) external override {
+    ) external override nonReentrant {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        // TODO: check overflow
         _userTokenBalance[user][token] = _userTokenBalance[user][token].add128(amount.toUint128());
         emit Deposited(msg.sender, user, token, amount);
     }
@@ -58,7 +58,7 @@ abstract contract UserBalance is Fees, Agents {
         IERC20 token,
         uint256 amount,
         address recipient
-    ) external override {
+    ) external override nonReentrant {
         require(_userTokenBalance[msg.sender][token] >= amount, "Vault: withdraw amount exceeds balance");
 
         _userTokenBalance[msg.sender][token] -= amount.toUint128();

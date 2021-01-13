@@ -25,7 +25,7 @@ interface IAuthorizer {
 
     function canSetProtocolFlashLoanFee(address account) external view returns (bool);
 
-    function canCollectProtocolFees(address account, IERC20 token) external view returns (bool);
+    function canWithdrawProtocolFees(address account, IERC20 token) external view returns (bool);
 
     function canAddUniversalAgent(address account) external view returns (bool);
 
