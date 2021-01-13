@@ -187,6 +187,6 @@ contract StablecoinMath {
         p = (p * inv) / (ampTimesTotal * totalCoins);
         uint256 b = sum + inv / ampTimesTotal;
         uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
-        return (balances[tokenIndex] - y - 1);
+        return (balances[tokenIndex] - y);
     }
 }
