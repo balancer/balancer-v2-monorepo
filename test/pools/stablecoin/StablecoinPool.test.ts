@@ -527,7 +527,7 @@ describe('StablecoinPool', function () {
     });
   });
 
-  describe.only('protocol swap fees', () => {
+  describe('protocol swap fees', () => {
     let pool: Contract;
     let poolId: string;
 
