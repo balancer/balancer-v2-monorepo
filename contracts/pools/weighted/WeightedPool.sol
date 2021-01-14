@@ -38,8 +38,8 @@ contract WeightedPool is IBPTPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken,
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
-    IVault private immutable _vault;
-    bytes32 private immutable _poolId;
+    IVault public immutable _vault;
+    bytes32 public immutable _poolId;
 
     uint8 private constant _MIN_TOKENS = 2;
     uint8 private constant _MAX_TOKENS = 16;
@@ -1050,5 +1050,9 @@ contract WeightedPool is IBPTPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken,
         }
 
         require(someLiquidity, "ERR_ZERO_LIQUIDITY");
+    }
+
+    function authorizeAssetManager(IERC20 token, address assetManager) external {
+        _vault.setPoolAssetManager(_poolId, token, assetManager);
     }
 }

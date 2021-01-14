@@ -5,26 +5,26 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getChainId, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
-  const { admin } = await getNamedAccounts();
+  const { deployer } = await getNamedAccounts();
 
   const chainId = await getChainId();
 
   if (chainId != '1') {
     await deploy('TokenFactory', {
-      from: admin,
+      from: deployer,
       log: true,
       deterministicDeployment: true,
     });
 
     await deploy('WETH9', {
-      from: admin,
-      args: [admin],
+      from: deployer,
+      args: [deployer],
       log: true,
       deterministicDeployment: true,
     });
 
     await deploy('Multicall', {
-      from: admin,
+      from: deployer,
       log: true,
       deterministicDeployment: true,
     });

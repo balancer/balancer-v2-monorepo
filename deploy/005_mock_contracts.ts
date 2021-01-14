@@ -5,7 +5,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getChainId, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
-  const { admin } = await getNamedAccounts();
+  const { deployer } = await getNamedAccounts();
 
   const chainId = await getChainId();
 
@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   if (chainId == '31337') {
     await deploy('MockFlashLoanReceiver', {
-      from: admin,
+      from: deployer,
       args: [vault.address],
       log: true,
       deterministicDeployment: true,

@@ -75,11 +75,18 @@ const config: HardhatUserConfig = {
     ropsten: createTestnetConfig('ropsten'),
   },
   namedAccounts: {
-    admin: {
-      default: 0, // here this will by default take the first account as deployer
-      // We use explicit chain IDs so that export-all works correctly: https://github.com/wighawag/hardhat-deploy#options-2
+    deployer: {
+      default: 0,
       1: 0, // mainnet
       4: 0, // rinkeby
+      17: 0, // dockerParity
+    },
+    admin: {
+      default: 1, // here this will by default take the first account as deployer
+      // We use explicit chain IDs so that export-all works correctly: https://github.com/wighawag/hardhat-deploy#options-2
+      1: 1, // mainnet
+      4: 1, // rinkeby
+      17: 1, // dockerParity
     },
   },
   solidity: {
@@ -92,7 +99,7 @@ const config: HardhatUserConfig = {
     },
   },
   abiExporter: {
-    only: ['Vault', 'WeightedPool', 'StablePool', 'FixedSetPoolTokenizer', 'BalancerPoolToken', 'BasePoolFactory'],
+    only: ['Vault', 'WeightedPool', 'StablePool', 'FixedSetPoolTokenizer', 'BalancerPoolToken', 'BasePoolFactory', 'ERC20'],
     flat: true,
   },
   tenderly: {

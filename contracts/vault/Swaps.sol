@@ -61,7 +61,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes userData;
     }
 
-    event TokenSwap(bytes32 poolId, int256[] tokenDeltas);
+    event TokenSwap(bytes32 indexed poolId, IERC20 indexed tokenIn, IERC20 indexed tokenOut, int256 tokensIn, int256 tokensOut);
 
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
     // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
@@ -202,8 +202,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 }
             }
         }
-
-        emit TokenSwap(swap.poolId, tokenDeltas);
 
         return tokenDeltas;
     }
