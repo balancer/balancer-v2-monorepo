@@ -13,6 +13,7 @@ let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
 let validator: Contract;
+let investmentManager: SignerWithAddress; // This would normally be a contract
 
 interface Pool {
   id: string;
@@ -43,7 +44,7 @@ let ethers: any;
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
 async function action(hre: HardhatRuntimeEnvironment) {
   ethers = hre.ethers;
-  [deployer, controller, trader] = await ethers.getSigners();
+  [deployer, controller, trader, investmentManager] = await ethers.getSigners();
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
@@ -70,6 +71,11 @@ async function action(hre: HardhatRuntimeEnvironment) {
     const tradingBalance = balances[i]//.div(BigNumber.from('10'))
     await tokenContracts[symbols[i]].connect(deployer).mint(trader.address, tradingBalance);
     await tokenContracts[symbols[i]].connect(trader).approve(vault.address, MAX_UINT256);
+    await tokenContracts[symbols[i]].connect(investmentManager).approve(vault.address, MAX_UINT256);
+
+    // deposit half into user balance
+    const depositBalance = tradingBalance.div(BigNumber.from('2'))
+    await vault.connect(trader).deposit(tokenContracts[symbols[i]].address, depositBalance, trader.address);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
@@ -78,7 +84,24 @@ async function action(hre: HardhatRuntimeEnvironment) {
   console.log(`\nSwapping a few tokens...`);
   validator = await ethers.getContract('OneToOneSwapValidator');
   await Promise.all(pools.map(p => swapInPool(p)));
+
+
+  console.log('Making a few investments...');
+  //investmentManager = await ethers.getContract('MockInvestmentManager');
+  await Promise.all(pools.map(p => investPool(p)));
   return;
+}
+
+async function investPool(pool: Contract) {
+  const poolId = await pool.getPoolId();
+
+  const vault = await ethers.getContract('Vault');
+  const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
+
+  const token = tokenAddresses[0]
+
+  await pool.authorizeInvestmentManager(token, investmentManager.address);
+  return vault.connect(investmentManager).investPoolBalance(poolId, token, 123);
 }
 
 async function swapInPool(pool: Contract) {

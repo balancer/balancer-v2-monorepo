@@ -39,8 +39,8 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
     using FixedPoint for uint256;
     using SafeCast for uint256;
 
-    IVault private immutable _vault;
-    bytes32 private immutable _poolId;
+    IVault public immutable _vault;
+    bytes32 public immutable _poolId;
 
     uint8 private constant _MIN_TOKENS = 2;
     uint8 private constant _MAX_TOKENS = 16;
@@ -378,5 +378,9 @@ contract ConstantProductPool is IBPTPool, IPairTradingStrategy, BToken, Constant
 
     function _burnPoolShare(uint256 amount) private {
         _burn(amount);
+    }
+
+    function authorizeInvestmentManager(IERC20 token, address investmentManager) external {
+        _vault.authorizePoolInvestmentManager(_poolId, token, investmentManager);
     }
 }

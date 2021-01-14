@@ -52,7 +52,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
 
     event AuthorizedPoolInvestmentManager(bytes32 indexed poolId, IERC20 indexed token, address indexed operator);
     event RevokedPoolInvestmentManager(bytes32 indexed poolId, IERC20 indexed token, address indexed operator);
-    event PoolInvested(bytes32 indexed poolId, IERC20 indexed token, uint256 amount);
+    event PoolInvested(bytes32 indexed poolId, address indexed investmentManager, IERC20 indexed token, uint256 amount);
 
     modifier onlyPool(bytes32 poolId) {
         (address pool, ) = fromPoolId(poolId);
@@ -241,7 +241,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
         _investPoolCash(poolId, strategyType, token, amount);
 
         _pushTokens(token, msg.sender, amount, false);
-        emit PoolInvested(poolId, token, amount);
+        emit PoolInvested(poolId, msg.sender, token, amount);
     }
 
     function divestPoolBalance(
@@ -254,7 +254,7 @@ abstract contract PoolRegistry is ReentrancyGuard, IVault, VaultAccounting, User
 
         (, StrategyType strategyType) = fromPoolId(poolId);
         _divestPoolCash(poolId, strategyType, token, divestedAmount);
-        emit PoolInvested(poolId, token, -amount);
+        emit PoolInvested(poolId, msg.sender, token, -amount);
     }
 
     function updateInvested(
