@@ -19,15 +19,15 @@ import "../../vault/interfaces/IVault.sol";
 
 import "../BasePoolFactory.sol";
 
-import "./ConstantProductPool.sol";
+import "./StablePool.sol";
 
-contract ConstantProductPoolFactory is BasePoolFactory {
+contract StablePoolFactory is BasePoolFactory {
     constructor(IVault _vault) BasePoolFactory(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
-     * @dev Deploys a new `ConstantProductPool`. This must be done via a factory contract because the Pool must be an
+     * @dev Deploys a new `StablePool`. This must be done via a factory contract because the Pool must be an
      * Universal Agent during construction.
      *
      * For the deployment to succeed, this contract must be allowed to add Universal Agents
@@ -39,16 +39,16 @@ contract ConstantProductPoolFactory is BasePoolFactory {
         uint256 initialBPT,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        uint256[] memory weights,
+        uint256 amp,
         uint256 swapFee,
         bytes32 salt
     ) external returns (address) {
         return
             _create(
                 abi.encodePacked(
-                    type(ConstantProductPool).creationCode,
+                    type(StablePool).creationCode,
                     // Make the sender the `from` address
-                    abi.encode(vault, name, symbol, initialBPT, tokens, amounts, msg.sender, weights, swapFee)
+                    abi.encode(vault, name, symbol, initialBPT, tokens, amounts, msg.sender, amp, swapFee)
                 ),
                 salt
             );

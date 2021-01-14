@@ -1,5 +1,5 @@
 import { deploy } from '../../../scripts/helpers/deploy';
-import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/weightedProduct';
+import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/weighted';
 import { expectRelativeError } from '../../helpers/relativeError';
 import { Contract } from 'ethers';
 import { Decimal } from 'decimal.js';
@@ -61,11 +61,11 @@ async function compareInGivenOut(
   expectRelativeError(inAmountMath, new Decimal(inAmountPool.toString()), new Decimal(MAX_RELATIVE_ERROR));
 }
 
-describe('ConstantProductMath', function () {
+describe('WeightedMath', function () {
   let mock: Contract;
 
   beforeEach(async function () {
-    mock = await deploy('MockConstantProductMath', { args: [] });
+    mock = await deploy('MockWeightedMath', { args: [] });
   });
 
   describe('Simple swap', () => {

@@ -2,7 +2,7 @@ import { encodeValidatorData, FundManagement, getTokensSwaps, toSwapIn } from '.
 import { TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { getConstantProductPool, getStablecoinPool, printGas, setupEnvironment, tokenSymbols } from './misc';
+import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
 import { MAX_UINT128, MAX_UINT256 } from '../../test/helpers/constants';
 
 let vault: Contract;
@@ -18,25 +18,25 @@ async function main() {
 
   console.log('== One token in for one token out, multiple hops ==');
 
-  console.log(`\n# Constant Product Pool with 2 tokens`);
+  console.log(`\n# Weighted Pool with 2 tokens`);
 
-  await multihop((index: number) => getConstantProductPool(vault, tokens, 2, index), false);
-  await multihop((index: number) => getConstantProductPool(vault, tokens, 2, index), true);
+  await multihop((index: number) => getWeightedPool(vault, tokens, 2, index), false);
+  await multihop((index: number) => getWeightedPool(vault, tokens, 2, index), true);
 
-  console.log(`\n# Constant Product Pool with 4 tokens`);
+  console.log(`\n# Weighted Pool with 4 tokens`);
 
-  await multihop((index: number) => getConstantProductPool(vault, tokens, 4, index), false);
-  await multihop((index: number) => getConstantProductPool(vault, tokens, 4, index), true);
+  await multihop((index: number) => getWeightedPool(vault, tokens, 4, index), false);
+  await multihop((index: number) => getWeightedPool(vault, tokens, 4, index), true);
 
-  console.log(`\n# Stablecoin Pool with 2 tokens`);
+  console.log(`\n# Stable Pool with 2 tokens`);
 
-  await multihop((index: number) => getStablecoinPool(vault, tokens, 2, index), false);
-  await multihop((index: number) => getStablecoinPool(vault, tokens, 2, index), true);
+  await multihop((index: number) => getStablePool(vault, tokens, 2, index), false);
+  await multihop((index: number) => getStablePool(vault, tokens, 2, index), true);
 
-  console.log(`\n# Stablecoin Pool with 4 tokens`);
+  console.log(`\n# Stable Pool with 4 tokens`);
 
-  await multihop((index: number) => getStablecoinPool(vault, tokens, 4, index), false);
-  await multihop((index: number) => getStablecoinPool(vault, tokens, 4, index), true);
+  await multihop((index: number) => getStablePool(vault, tokens, 4, index), false);
+  await multihop((index: number) => getStablePool(vault, tokens, 4, index), true);
 }
 
 async function multihop(getPool: (index: number) => Promise<string>, useUserBalance: boolean) {
