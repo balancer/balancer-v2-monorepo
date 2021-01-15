@@ -21,6 +21,18 @@ export async function deployTokens(
   );
 }
 
+export async function deploySortedTokens(
+  symbols: Array<string>,
+  decimals: Array<number>,
+  from?: SignerWithAddress
+): Promise<TokenList> {
+  return fromPairs(
+    (await Promise.all(symbols.map((_, i) => deploy('TestToken', { from, args: [`T${i}`, `T${i}`, decimals[i]] }))))
+      .sort((tokenA, tokenB) => (tokenA.address > tokenB.address ? 1 : -1))
+      .map((token, index) => [symbols[index], token])
+  );
+}
+
 export async function mintTokens(
   tokens: TokenList,
   symbol: string,
