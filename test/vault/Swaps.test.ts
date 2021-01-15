@@ -40,7 +40,7 @@ describe('Vault - swaps', () => {
 
     // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
     // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
-    // or rely on user internal balance or agents).
+    // or rely on internal balance or agents).
 
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
@@ -60,8 +60,8 @@ describe('Vault - swaps', () => {
     funds = {
       sender: trader.address,
       recipient: trader.address,
-      withdrawFromUserInternalBalance: false,
-      depositToUserInternalBalance: false,
+      withdrawFromInternalBalance: false,
+      depositToInternalBalance: false,
     };
   });
 
@@ -181,8 +181,8 @@ describe('Vault - swaps', () => {
                       });
 
                       context('when using more than available as internal balance', () => {
-                        beforeEach('deposit to user internal balance', async () => {
-                          funds.withdrawFromUserInternalBalance = true;
+                        beforeEach('deposit to internal balance', async () => {
+                          funds.withdrawFromInternalBalance = true;
                           await vault.connect(trader).deposit(tokens.MKR.address, (0.3e18).toString(), trader.address);
                         });
 
@@ -190,9 +190,9 @@ describe('Vault - swaps', () => {
                       });
                     });
 
-                    context('when depositing from user internal balance', () => {
+                    context('when depositing from internal balance', () => {
                       beforeEach('deposit to internal balance', async () => {
-                        funds.depositToUserInternalBalance = true;
+                        funds.depositToInternalBalance = true;
                       });
 
                       assertSwapGivenIn({ swaps }, { MKR: -1e18 });
@@ -514,7 +514,7 @@ describe('Vault - swaps', () => {
 
                       context('when using more than available as internal balance', () => {
                         beforeEach('deposit to internal balance', async () => {
-                          funds.withdrawFromUserInternalBalance = true;
+                          funds.withdrawFromInternalBalance = true;
                           await vault.connect(trader).deposit(tokens.MKR.address, (0.3e18).toString(), trader.address);
                         });
 
@@ -522,9 +522,9 @@ describe('Vault - swaps', () => {
                       });
                     });
 
-                    context('when depositing from user internal balance', () => {
+                    context('when depositing from internal balance', () => {
                       beforeEach('deposit to internal balance', async () => {
-                        funds.depositToUserInternalBalance = true;
+                        funds.depositToInternalBalance = true;
                       });
 
                       assertSwapGivenOut({ swaps }, { MKR: -0.5e18 });

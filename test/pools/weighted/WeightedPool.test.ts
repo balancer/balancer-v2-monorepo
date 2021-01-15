@@ -335,8 +335,8 @@ describe('WeightedPool', function () {
           { account: lp }
         );
 
-        expect(await vault.getUserTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.9e18).toString());
-        expect(await vault.getUserTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.9e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
       });
 
       it('transfers missing tokens if internal balance is not enough', async () => {
@@ -522,8 +522,8 @@ describe('WeightedPool', function () {
           { account: lp }
         );
 
-        expect(await vault.getUserTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
-        expect(await vault.getUserTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.2e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.2e18).toString());
       });
 
       it("can deposit into a beneficiary's internal balance", async () => {
@@ -533,8 +533,12 @@ describe('WeightedPool', function () {
           { account: beneficiary }
         );
 
-        expect(await vault.getUserTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal((0.1e18).toString());
-        expect(await vault.getUserTokenBalance(beneficiary.address, tokens.MKR.address)).to.equal((0.2e18).toString());
+        expect(await vault.getInternalTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal(
+          (0.1e18).toString()
+        );
+        expect(await vault.getInternalTokenBalance(beneficiary.address, tokens.MKR.address)).to.equal(
+          (0.2e18).toString()
+        );
       });
     });
 
@@ -943,8 +947,8 @@ describe('WeightedPool', function () {
         const funds = {
           sender: trader.address,
           recipient: trader.address,
-          withdrawFromUserInternalBalance: false,
-          depositToUserInternalBalance: false,
+          withdrawFromInternalBalance: false,
+          depositToInternalBalance: false,
         };
 
         await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', [swap], tokenAddresses, funds);

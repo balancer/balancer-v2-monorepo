@@ -29,12 +29,12 @@ pragma solidity ^0.7.1;
 // execution control is transferred to a token contract during a transfer) will result in a revert. View functions can
 // be called, but they might return inconsistent results if called in a reentrant manner.
 interface IVault {
-    // User Internal Balance
+    // Internal Balance
 
     /**
      * @dev Returns `user`'s Internal Balance for a specific token.
      */
-    function getUserTokenBalance(address user, IERC20 token) external view returns (uint256);
+    function getInternalTokenBalance(address user, IERC20 token) external view returns (uint256);
 
     /**
      * @dev Deposits tokens from the caller into `user`'s Internal Balance. The caller must have allowed the Vault
@@ -216,7 +216,7 @@ interface IVault {
      * @dev Called by the Pool to add tokens to its balance. Only registered tokens can have liquidity added.
      *
      * The tokens will be withdrawn from the `from` account, which the Pool must be an agent for. If
-     * `withdrawFromUserInternalBalance` is true, `from`'s Internal Balance will be preferred, performing an ERC20
+     * `withdrawFromInternalBalance` is true, `from`'s Internal Balance will be preferred, performing an ERC20
      * transfer for the difference between the requested amount and Internal Balance (if any). `from` must have
      * allowed the Vault to use their tokens via `IERC20.approve()`.
      */
@@ -225,13 +225,13 @@ interface IVault {
         address from,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool withdrawFromUserInternalBalance
+        bool withdrawFromInternalBalance
     ) external;
 
     /**
      * @dev Called by the Pool to remove tokens from its balance. Only registered tokens can have liquidity removed.
      *
-     * The tokens will be sent to the `to` account. If `depositToUserInternalBalance` is true, they will be added as
+     * The tokens will be sent to the `to` account. If `depositToInternalBalance` is true, they will be added as
      * Internal Balance instead of transferred.
      */
     function removeLiquidity(
@@ -239,7 +239,7 @@ interface IVault {
         address to,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool depositToUserInternalBalance
+        bool depositToInternalBalance
     ) external;
 
     // Swap interface
@@ -359,19 +359,19 @@ interface IVault {
      * @dev All tokens in a swap are sent to the Vault from the `sender`'s account, and sent to the `recipient`. The
      * caller of the swap function must be an agent for `sender`.
      *
-     * If `withdrawFromUserInternalBalance` is true, `sender`'s Internal Balance will be preferred, performing an ERC20
+     * If `withdrawFromInternalBalance` is true, `sender`'s Internal Balance will be preferred, performing an ERC20
      * transfer for the difference between the requested amount and the User's Internal Balance (if any). `sender`
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
      * `addLiquidity`.
      *
-     * If `depositToUserInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
+     * If `depositToInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
      * transferred. This matches the behavior of `removeLiquidity`.
      */
     struct FundManagement {
         address sender;
         address recipient;
-        bool withdrawFromUserInternalBalance;
-        bool depositToUserInternalBalance;
+        bool withdrawFromInternalBalance;
+        bool depositToInternalBalance;
     }
 
     // Swap query methods

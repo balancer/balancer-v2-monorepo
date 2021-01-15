@@ -8,7 +8,7 @@ import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
-describe('Vault - user internal balance', () => {
+describe('Vault - internal balance', () => {
   let admin: SignerWithAddress;
   let trader: SignerWithAddress;
   let user: SignerWithAddress;
@@ -59,11 +59,11 @@ describe('Vault - user internal balance', () => {
     });
 
     it('credit can be queried', async () => {
-      expect(await vault.getUserTokenBalance(user.address, tokens.DAI.address)).to.equal(amount);
+      expect(await vault.getInternalTokenBalance(user.address, tokens.DAI.address)).to.equal(amount);
     });
 
     it('tokens are not credited to the account that deposits', async () => {
-      expect(await vault.getUserTokenBalance(trader.address, tokens.DAI.address)).to.equal(0);
+      expect(await vault.getInternalTokenBalance(trader.address, tokens.DAI.address)).to.equal(0);
     });
 
     it('user can withdraw tokens to any address', async () => {
@@ -94,7 +94,7 @@ describe('Vault - user internal balance', () => {
 
     it('withdrawal updates balance', async () => {
       await vault.connect(user).withdraw(tokens.DAI.address, amount.sub(1), other.address);
-      expect(await vault.getUserTokenBalance(user.address, tokens.DAI.address)).to.equal(1);
+      expect(await vault.getInternalTokenBalance(user.address, tokens.DAI.address)).to.equal(1);
     });
 
     it('user cannot overwithdraw', async () => {

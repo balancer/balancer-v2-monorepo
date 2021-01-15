@@ -39,14 +39,14 @@ async function main() {
   await singlePair(() => getStablePool(vault, tokens, 4), true);
 }
 
-async function singlePair(getPoolId: () => Promise<string>, useUserInternalBalance: boolean) {
-  console.log(`\n## ${useUserInternalBalance ? 'Using Internal Balance' : 'Sending and receiving tokens'}`);
+async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: boolean) {
+  console.log(`\n## ${useInternalBalance ? 'Using Internal Balance' : 'Sending and receiving tokens'}`);
 
   const funds: FundManagement = {
     sender: trader.address,
     recipient: trader.address,
-    withdrawFromUserInternalBalance: useUserInternalBalance,
-    depositToUserInternalBalance: useUserInternalBalance,
+    withdrawFromInternalBalance: useInternalBalance,
+    depositToInternalBalance: useInternalBalance,
   };
 
   const poolIds: Array<string> = [];
