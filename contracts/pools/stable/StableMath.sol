@@ -26,7 +26,7 @@ import "../../math/FixedPoint.sol";
 // solhint-disable private-vars-leading-underscore
 // solhint-disable var-name-mixedcase
 
-contract StablecoinMath {
+contract StableMath {
     /**********************************************************************************************
     // inGivenOut token x for y - polynomial equation to solve                                   //
     // ax = amount in to calculate                                                               //

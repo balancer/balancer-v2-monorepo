@@ -8,7 +8,7 @@ export const SimplifiedQuotePool = 1;
 export const TwoTokenPool = 2;
 
 export type PoolOptimizationSetting = typeof SimplifiedQuotePool | typeof StandardPool | typeof TwoTokenPool;
-export type PoolName = 'ConstantProductPool' | 'StablecoinPool';
+export type PoolName = 'WeightedPool' | 'StablePool';
 
 /**
  * Deploys a Pool via a Factory contract.

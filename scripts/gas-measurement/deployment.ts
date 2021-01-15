@@ -10,9 +10,9 @@ async function main() {
 
   const vault = await measureDeployment('Vault', [authorizer.address]);
 
-  await measureDeployment('ConstantProductPoolFactory', [vault.address]);
+  await measureDeployment('WeightedPoolFactory', [vault.address]);
 
-  await measureDeployment('StablecoinPoolFactory', [vault.address]);
+  await measureDeployment('StablePoolFactory', [vault.address]);
 }
 
 async function measureDeployment(name: string, args: Array<unknown>): Promise<Contract> {
