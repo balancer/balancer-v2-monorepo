@@ -23,16 +23,16 @@ contract BalanceAllocationMock {
         return balance.cashBalance();
     }
 
-    function externalBalance(bytes32 balance) public pure returns (uint128) {
-        return balance.externalBalance();
+    function managedBalance(bytes32 balance) public pure returns (uint128) {
+        return balance.managedBalance();
     }
 
     function totalBalance(bytes32 balance) public pure returns (uint128) {
         return balance.totalBalance();
     }
 
-    function toBalance(uint128 _cashBalance, uint128 _externalBalance) public pure returns (bytes32) {
-        return BalanceAllocation.toBalance(_cashBalance, _externalBalance);
+    function toBalance(uint128 _cashBalance, uint128 _managedBalance) public pure returns (bytes32) {
+        return BalanceAllocation.toBalance(_cashBalance, _managedBalance);
     }
 
     function increaseCash(bytes32 balance, uint128 amount) public pure returns (bytes32) {
@@ -43,20 +43,20 @@ contract BalanceAllocationMock {
         return balance.decreaseCash(amount);
     }
 
-    function cashToExternal(bytes32 balance, uint128 amount) public pure returns (bytes32) {
-        return balance.cashToExternal(amount);
+    function cashToManaged(bytes32 balance, uint128 amount) public pure returns (bytes32) {
+        return balance.cashToManaged(amount);
     }
 
-    function externalToCash(bytes32 balance, uint128 amount) public pure returns (bytes32) {
-        return balance.externalToCash(amount);
+    function managedToCash(bytes32 balance, uint128 amount) public pure returns (bytes32) {
+        return balance.managedToCash(amount);
     }
 
-    function setExternalBalance(bytes32 balance, uint128 newExternalBalance) public pure returns (bytes32) {
-        return balance.setExternalBalance(newExternalBalance);
+    function setManagedBalance(bytes32 balance, uint128 newManagedBalance) public pure returns (bytes32) {
+        return balance.setManagedBalance(newManagedBalance);
     }
 
-    function hasExternalBalance(bytes32 balance) public pure returns (bool) {
-        return balance.hasExternalBalance();
+    function isManaged(bytes32 balance) public pure returns (bool) {
+        return balance.isManaged();
     }
 
     function fromSharedToBalanceA(bytes32 cashACashB, bytes32 externalAexternalB) public pure returns (bytes32) {
@@ -71,7 +71,7 @@ contract BalanceAllocationMock {
         return BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
     }
 
-    function toSharedExternal(bytes32 tokenABalance, bytes32 tokenBBalance) public pure returns (bytes32) {
-        return BalanceAllocation.toSharedExternal(tokenABalance, tokenBBalance);
+    function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance) public pure returns (bytes32) {
+        return BalanceAllocation.toSharedManaged(tokenABalance, tokenBBalance);
     }
 }

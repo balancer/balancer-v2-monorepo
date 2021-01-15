@@ -151,34 +151,34 @@ contract SimplifiedQuotePoolsBalance {
         }
     }
 
-    function _simplifiedQuotePoolCashToExternal(
+    function _simplifiedQuotePoolCashToManaged(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateSimplifiedQuotePoolBalance(poolId, token, BalanceAllocation.cashToExternal, amount);
+        _updateSimplifiedQuotePoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
-    function _simplifiedQuotePoolExternalToCash(
+    function _simplifiedQuotePoolManagedToCash(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateSimplifiedQuotePoolBalance(poolId, token, BalanceAllocation.externalToCash, amount);
+        _updateSimplifiedQuotePoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
-    function _setSimplifiedQuotePoolExternalBalance(
+    function _setSimplifiedQuotePoolManagedBalance(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateSimplifiedQuotePoolBalance(poolId, token, BalanceAllocation.setExternalBalance, amount);
+        _updateSimplifiedQuotePoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
 
-    function _simplifiedQuotePoolHasExternalBalance(bytes32 poolId, IERC20 token) internal view returns (bool) {
+    function _simplifiedQuotePoolIsManaged(bytes32 poolId, IERC20 token) internal view returns (bool) {
         EnumerableSet.AddressSet storage poolTokens = _simplifiedQuotePoolsTokens[poolId];
         bytes32 currentBalance = _getSimplifiedQuotePoolTokenBalance(poolTokens, poolId, token);
-        return currentBalance.hasExternalBalance();
+        return currentBalance.isManaged();
     }
 
     function _updateSimplifiedQuotePoolBalance(

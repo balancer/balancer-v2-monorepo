@@ -330,17 +330,17 @@ abstract contract PoolRegistry is
         _;
     }
 
-    function _poolHasExternalBalance(
+    function _poolIsManaged(
         bytes32 poolId,
         PoolOptimization optimization,
         IERC20 token
     ) internal view returns (bool) {
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _simplifiedQuotePoolHasExternalBalance(poolId, token);
+            return _simplifiedQuotePoolIsManaged(poolId, token);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            return _twoTokenPoolHasExternalBalance(poolId, token);
+            return _twoTokenPoolIsManaged(poolId, token);
         } else {
-            return _standardPoolHasExternalBalance(poolId, token);
+            return _standardPoolIsManaged(poolId, token);
         }
     }
 
@@ -368,24 +368,24 @@ abstract contract PoolRegistry is
         return _isPoolAssetManager(poolId, token, account);
     }
 
-    function poolBalanceCashToExternal(
+    function poolBalanceCashToManaged(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
     ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
         (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _simplifiedQuotePoolCashToExternal(poolId, token, amount.toUint128());
+            _simplifiedQuotePoolCashToManaged(poolId, token, amount.toUint128());
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            _twoTokenPoolCashToExternal(poolId, token, amount.toUint128());
+            _twoTokenPoolCashToManaged(poolId, token, amount.toUint128());
         } else {
-            _standardPoolCashToExternal(poolId, token, amount.toUint128());
+            _standardPoolCashToManaged(poolId, token, amount.toUint128());
         }
 
         token.safeTransfer(msg.sender, amount);
     }
 
-    function poolBalanceExternalToCash(
+    function poolBalanceManagedToCash(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
@@ -394,26 +394,26 @@ abstract contract PoolRegistry is
 
         (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _simplifiedQuotePoolExternalToCash(poolId, token, amount.toUint128());
+            _simplifiedQuotePoolManagedToCash(poolId, token, amount.toUint128());
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            _twoTokenPoolExternalToCash(poolId, token, amount.toUint128());
+            _twoTokenPoolManagedToCash(poolId, token, amount.toUint128());
         } else {
-            _standardPoolExternalToCash(poolId, token, amount.toUint128());
+            _standardPoolManagedToCash(poolId, token, amount.toUint128());
         }
     }
 
-    function updateExternalBalance(
+    function updateManagedBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
     ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
         (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _setSimplifiedQuotePoolExternalBalance(poolId, token, amount.toUint128());
+            _setSimplifiedQuotePoolManagedBalance(poolId, token, amount.toUint128());
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            _setTwoTokenPoolExternalBalance(poolId, token, amount.toUint128());
+            _setTwoTokenPoolManagedBalance(poolId, token, amount.toUint128());
         } else {
-            _setStandardPoolExternalBalance(poolId, token, amount.toUint128());
+            _setStandardPoolManagedBalance(poolId, token, amount.toUint128());
         }
     }
 

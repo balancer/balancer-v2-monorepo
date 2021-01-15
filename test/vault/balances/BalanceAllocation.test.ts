@@ -3,23 +3,23 @@ import { BigNumber, Contract } from 'ethers';
 import { MAX_UINT128 } from '../../helpers/constants';
 import { deploy } from '../../../scripts/helpers/deploy';
 
-describe('Vault - cash/external balance', () => {
+describe('Vault - cash/managed balance', () => {
   let library: Contract;
 
   before(async () => {
     library = await deploy('BalanceAllocationMock', { args: [] });
   });
 
-  describe('cash, external & total', () => {
-    async function testBalanceAllocation(cashBalance: number | BigNumber, externalBalance: number | BigNumber) {
+  describe('cash, managed & total', () => {
+    async function testBalanceAllocation(cashBalance: number | BigNumber, managedBalance: number | BigNumber) {
       cashBalance = BigNumber.from(cashBalance);
-      externalBalance = BigNumber.from(externalBalance);
+      managedBalance = BigNumber.from(managedBalance);
 
-      const balance = await library.toBalance(cashBalance, externalBalance);
+      const balance = await library.toBalance(cashBalance, managedBalance);
 
       expect(await library.cashBalance(balance)).to.equal(cashBalance);
-      expect(await library.externalBalance(balance)).to.equal(externalBalance);
-      expect(await library.totalBalance(balance)).to.equal(cashBalance.add(externalBalance));
+      expect(await library.managedBalance(balance)).to.equal(managedBalance);
+      expect(await library.totalBalance(balance)).to.equal(cashBalance.add(managedBalance));
     }
 
     it('stores zero balance', async () => {
@@ -43,7 +43,7 @@ describe('Vault - cash/external balance', () => {
       await testBalanceAllocation(MAX_UINT128.sub(23), 23);
     });
 
-    it('stores extreme external', async () => {
+    it('stores extreme managed', async () => {
       await testBalanceAllocation(42, MAX_UINT128.sub(42));
     });
 
@@ -60,59 +60,59 @@ describe('Vault - cash/external balance', () => {
     });
   });
 
-  describe('set external balance', () => {
-    async function testSetExternalBalance(
+  describe('set managed balance', () => {
+    async function testSetManagedBalance(
       _cashBalance: number | BigNumber,
-      _externalBalance: number | BigNumber,
-      newExternalBalance: number | BigNumber
+      _managedBalance: number | BigNumber,
+      newManagedBalance: number | BigNumber
     ) {
       _cashBalance = BigNumber.from(_cashBalance);
-      _externalBalance = BigNumber.from(_externalBalance);
+      _managedBalance = BigNumber.from(_managedBalance);
 
-      const balance = await library.setExternalBalance(
-        await library.toBalance(_cashBalance, _externalBalance),
-        newExternalBalance
+      const balance = await library.setManagedBalance(
+        await library.toBalance(_cashBalance, _managedBalance),
+        newManagedBalance
       );
 
       expect(await library.cashBalance(balance)).to.equal(_cashBalance);
-      expect(await library.externalBalance(balance)).to.equal(newExternalBalance);
-      expect(await library.totalBalance(balance)).to.equal(_cashBalance.add(newExternalBalance));
+      expect(await library.managedBalance(balance)).to.equal(newManagedBalance);
+      expect(await library.totalBalance(balance)).to.equal(_cashBalance.add(newManagedBalance));
     }
 
     it('sets external to zero', async () => {
-      await testSetExternalBalance(0, 0, 0);
+      await testSetManagedBalance(0, 0, 0);
 
-      await testSetExternalBalance(42, 0, 0);
-      await testSetExternalBalance(0, 23, 0);
-      await testSetExternalBalance(42, 23, 0);
+      await testSetManagedBalance(42, 0, 0);
+      await testSetManagedBalance(0, 23, 0);
+      await testSetManagedBalance(42, 23, 0);
 
-      await testSetExternalBalance(MAX_UINT128, 0, 0);
-      await testSetExternalBalance(0, MAX_UINT128, 0);
-      await testSetExternalBalance(MAX_UINT128.div(2), MAX_UINT128.div(2), 0);
+      await testSetManagedBalance(MAX_UINT128, 0, 0);
+      await testSetManagedBalance(0, MAX_UINT128, 0);
+      await testSetManagedBalance(MAX_UINT128.div(2), MAX_UINT128.div(2), 0);
     });
 
     it('sets external to non-zero', async () => {
-      await testSetExternalBalance(0, 0, 58);
+      await testSetManagedBalance(0, 0, 58);
 
-      await testSetExternalBalance(42, 0, 58);
-      await testSetExternalBalance(0, 23, 58);
-      await testSetExternalBalance(42, 23, 58);
+      await testSetManagedBalance(42, 0, 58);
+      await testSetManagedBalance(0, 23, 58);
+      await testSetManagedBalance(42, 23, 58);
 
-      await testSetExternalBalance(MAX_UINT128.div(2), 0, 58);
-      await testSetExternalBalance(0, MAX_UINT128.div(2), 58);
-      await testSetExternalBalance(MAX_UINT128.div(2), MAX_UINT128.div(2), 58);
+      await testSetManagedBalance(MAX_UINT128.div(2), 0, 58);
+      await testSetManagedBalance(0, MAX_UINT128.div(2), 58);
+      await testSetManagedBalance(MAX_UINT128.div(2), MAX_UINT128.div(2), 58);
     });
 
     it('sets external to extreme value', async () => {
-      await testSetExternalBalance(42, 0, MAX_UINT128.sub(42));
-      await testSetExternalBalance(0, 23, MAX_UINT128);
-      await testSetExternalBalance(42, 23, MAX_UINT128.sub(42));
+      await testSetManagedBalance(42, 0, MAX_UINT128.sub(42));
+      await testSetManagedBalance(0, 23, MAX_UINT128);
+      await testSetManagedBalance(42, 23, MAX_UINT128.sub(42));
     });
 
     it('reverts on total overflow', async () => {
-      await expect(testSetExternalBalance(MAX_UINT128, 0, 1)).to.be.revertedWith('BALANCE_TOTAL_OVERFLOW');
-      await expect(testSetExternalBalance(1, 0, MAX_UINT128)).to.be.revertedWith('BALANCE_TOTAL_OVERFLOW');
-      await expect(testSetExternalBalance(MAX_UINT128.div(2).add(1), 0, MAX_UINT128.div(2).add(1))).to.be.revertedWith(
+      await expect(testSetManagedBalance(MAX_UINT128, 0, 1)).to.be.revertedWith('BALANCE_TOTAL_OVERFLOW');
+      await expect(testSetManagedBalance(1, 0, MAX_UINT128)).to.be.revertedWith('BALANCE_TOTAL_OVERFLOW');
+      await expect(testSetManagedBalance(MAX_UINT128.div(2).add(1), 0, MAX_UINT128.div(2).add(1))).to.be.revertedWith(
         'BALANCE_TOTAL_OVERFLOW'
       );
     });
@@ -122,19 +122,19 @@ describe('Vault - cash/external balance', () => {
     describe('increase', () => {
       async function testIncreaseCash(
         cash: number | BigNumber,
-        externalBalance: number | BigNumber,
+        managedBalance: number | BigNumber,
         increase: number | BigNumber
       ) {
         cash = BigNumber.from(cash);
-        externalBalance = BigNumber.from(externalBalance);
+        managedBalance = BigNumber.from(managedBalance);
         increase = BigNumber.from(increase);
 
-        const balance = await library.toBalance(cash, externalBalance);
+        const balance = await library.toBalance(cash, managedBalance);
         const increased = await library.increaseCash(balance, increase);
 
         expect(await library.cashBalance(increased)).to.equal(cash.add(increase)); // cash increases
-        expect(await library.externalBalance(increased)).to.equal(externalBalance); // external remains
-        expect(await library.totalBalance(increased)).to.equal(cash.add(increase).add(externalBalance)); // total increases
+        expect(await library.managedBalance(increased)).to.equal(managedBalance); // managed remains
+        expect(await library.totalBalance(increased)).to.equal(cash.add(increase).add(managedBalance)); // total increases
       }
 
       it('increases cash by zero', async () => {
@@ -194,19 +194,19 @@ describe('Vault - cash/external balance', () => {
     describe('decrease', () => {
       async function testDecreaseCash(
         cash: number | BigNumber,
-        externalBalance: number | BigNumber,
+        managedBalance: number | BigNumber,
         decrease: number | BigNumber
       ) {
         cash = BigNumber.from(cash);
-        externalBalance = BigNumber.from(externalBalance);
+        managedBalance = BigNumber.from(managedBalance);
         decrease = BigNumber.from(decrease);
 
-        const balance = await library.toBalance(cash, externalBalance);
+        const balance = await library.toBalance(cash, managedBalance);
         const decreased = await library.decreaseCash(balance, decrease);
 
         expect(await library.cashBalance(decreased)).to.equal(cash.sub(decrease)); // cash decreases
-        expect(await library.externalBalance(decreased)).to.equal(externalBalance); // external remains
-        expect(await library.totalBalance(decreased)).to.equal(cash.sub(decrease).add(externalBalance)); // total decreases
+        expect(await library.managedBalance(decreased)).to.equal(managedBalance); // external remains
+        expect(await library.totalBalance(decreased)).to.equal(cash.sub(decrease).add(managedBalance)); // total decreases
       }
 
       it('decreases cash by zero', async () => {
@@ -257,132 +257,128 @@ describe('Vault - cash/external balance', () => {
     });
   });
 
-  describe('external', () => {
-    describe('cash to external', () => {
-      async function testCashToExternal(
+  describe('managed', () => {
+    describe('cash to managed', () => {
+      async function testCashToManaged(
         cash: number | BigNumber,
-        externalBalance: number | BigNumber,
-        newExternalBalance: number | BigNumber
+        managedBalance: number | BigNumber,
+        newManagedBalance: number | BigNumber
       ) {
         cash = BigNumber.from(cash);
-        externalBalance = BigNumber.from(externalBalance);
-        newExternalBalance = BigNumber.from(newExternalBalance);
+        managedBalance = BigNumber.from(managedBalance);
+        newManagedBalance = BigNumber.from(newManagedBalance);
 
-        const balance = await library.toBalance(cash, externalBalance);
-        const after = await library.cashToExternal(balance, newExternalBalance);
+        const balance = await library.toBalance(cash, managedBalance);
+        const after = await library.cashToManaged(balance, newManagedBalance);
 
-        expect(await library.cashBalance(after)).to.equal(cash.sub(newExternalBalance)); // cash decreases
-        expect(await library.externalBalance(after)).to.equal(externalBalance.add(newExternalBalance)); // exeternal increases
-        expect(await library.totalBalance(after)).to.equal(cash.add(externalBalance)); // total remains
+        expect(await library.cashBalance(after)).to.equal(cash.sub(newManagedBalance)); // cash decreases
+        expect(await library.managedBalance(after)).to.equal(managedBalance.add(newManagedBalance)); // managed increases
+        expect(await library.totalBalance(after)).to.equal(cash.add(managedBalance)); // total remains
       }
 
       it('manages zero', async () => {
-        await testCashToExternal(0, 0, 0);
+        await testCashToManaged(0, 0, 0);
 
-        await testCashToExternal(42, 0, 0);
-        await testCashToExternal(0, 23, 0);
-        await testCashToExternal(42, 23, 0);
+        await testCashToManaged(42, 0, 0);
+        await testCashToManaged(0, 23, 0);
+        await testCashToManaged(42, 23, 0);
 
-        await testCashToExternal(MAX_UINT128.div(2), MAX_UINT128.div(2).add(1), 0);
+        await testCashToManaged(MAX_UINT128.div(2), MAX_UINT128.div(2).add(1), 0);
       });
 
       it('manages non-zero', async () => {
-        await testCashToExternal(42, 0, 5);
-        await testCashToExternal(42, 23, 5);
+        await testCashToManaged(42, 0, 5);
+        await testCashToManaged(42, 23, 5);
 
-        await testCashToExternal(MAX_UINT128.div(2), 0, MAX_UINT128.div(4));
-        await testCashToExternal(MAX_UINT128.div(2), MAX_UINT128.div(5), MAX_UINT128.div(4));
+        await testCashToManaged(MAX_UINT128.div(2), 0, MAX_UINT128.div(4));
+        await testCashToManaged(MAX_UINT128.div(2), MAX_UINT128.div(5), MAX_UINT128.div(4));
       });
 
       it('manages extreme amounts', async () => {
-        await testCashToExternal(MAX_UINT128.sub(23), 23, MAX_UINT128.sub(23));
+        await testCashToManaged(MAX_UINT128.sub(23), 23, MAX_UINT128.sub(23));
       });
 
       it('reverts when transferring more cash than available', async () => {
-        await expect(testCashToExternal(0, 0, 1)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
-        await expect(testCashToExternal(5, 0, 6)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+        await expect(testCashToManaged(0, 0, 1)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+        await expect(testCashToManaged(5, 0, 6)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
 
-        await expect(testCashToExternal(MAX_UINT128.div(5), 23, MAX_UINT128.div(5).add(1))).to.be.revertedWith(
+        await expect(testCashToManaged(MAX_UINT128.div(5), 23, MAX_UINT128.div(5).add(1))).to.be.revertedWith(
           'ERR_SUB_UNDERFLOW'
         );
       });
     });
 
     describe('external to cash', () => {
-      async function testExternalToCash(
+      async function testManagedToCash(
         cash: number | BigNumber,
-        externalBalance: number | BigNumber,
+        managedBalance: number | BigNumber,
         newCash: number | BigNumber
       ) {
         cash = BigNumber.from(cash);
-        externalBalance = BigNumber.from(externalBalance);
+        managedBalance = BigNumber.from(managedBalance);
         newCash = BigNumber.from(newCash);
 
-        const balance = await library.toBalance(cash, externalBalance);
-        const after = await library.externalToCash(balance, newCash);
+        const balance = await library.toBalance(cash, managedBalance);
+        const after = await library.managedToCash(balance, newCash);
 
         expect(await library.cashBalance(after)).to.equal(cash.add(newCash)); // cash increases
-        expect(await library.externalBalance(after)).to.equal(externalBalance.sub(newCash)); // external decreases
-        expect(await library.totalBalance(after)).to.equal(cash.add(externalBalance)); // total remains
+        expect(await library.managedBalance(after)).to.equal(managedBalance.sub(newCash)); // external decreases
+        expect(await library.totalBalance(after)).to.equal(cash.add(managedBalance)); // total remains
       }
 
       it('cashes out zero', async () => {
-        await testExternalToCash(0, 0, 0);
+        await testManagedToCash(0, 0, 0);
 
-        await testExternalToCash(42, 0, 0);
-        await testExternalToCash(0, 23, 0);
-        await testExternalToCash(42, 23, 0);
+        await testManagedToCash(42, 0, 0);
+        await testManagedToCash(0, 23, 0);
+        await testManagedToCash(42, 23, 0);
 
-        await testExternalToCash(MAX_UINT128.div(2), MAX_UINT128.div(2).add(1), 0);
+        await testManagedToCash(MAX_UINT128.div(2), MAX_UINT128.div(2).add(1), 0);
       });
 
       it('cashes out non-zero', async () => {
-        await testExternalToCash(42, 5, 5);
-        await testExternalToCash(42, 23, 5);
+        await testManagedToCash(42, 5, 5);
+        await testManagedToCash(42, 23, 5);
 
-        await testExternalToCash(0, MAX_UINT128.div(3), MAX_UINT128.div(4));
-        await testExternalToCash(MAX_UINT128.div(2), MAX_UINT128.div(3), MAX_UINT128.div(4));
+        await testManagedToCash(0, MAX_UINT128.div(3), MAX_UINT128.div(4));
+        await testManagedToCash(MAX_UINT128.div(2), MAX_UINT128.div(3), MAX_UINT128.div(4));
       });
 
       it('cashes out extreme amounts', async () => {
-        await testExternalToCash(42, MAX_UINT128.sub(42), MAX_UINT128.sub(42));
+        await testManagedToCash(42, MAX_UINT128.sub(42), MAX_UINT128.sub(42));
       });
 
-      it('reverts when cashing out more external balance than available', async () => {
-        await expect(testExternalToCash(0, 0, 1)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
-        await expect(testExternalToCash(0, 5, 6)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+      it('reverts when cashing out more managed balance than available', async () => {
+        await expect(testManagedToCash(0, 0, 1)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+        await expect(testManagedToCash(0, 5, 6)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
 
-        await expect(testExternalToCash(42, MAX_UINT128.div(5), MAX_UINT128.div(5).add(1))).to.be.revertedWith(
+        await expect(testManagedToCash(42, MAX_UINT128.div(5), MAX_UINT128.div(5).add(1))).to.be.revertedWith(
           'ERR_SUB_UNDERFLOW'
         );
       });
     });
   });
 
-  describe('has external balance', () => {
-    async function testHasExternalBalance(
-      cash: number | BigNumber,
-      externalBalance: number | BigNumber,
-      expected: boolean
-    ) {
+  describe('has managed balance', () => {
+    async function testIsManaged(cash: number | BigNumber, managedBalance: number | BigNumber, expected: boolean) {
       cash = BigNumber.from(cash);
-      externalBalance = BigNumber.from(externalBalance);
+      managedBalance = BigNumber.from(managedBalance);
 
-      const balance = await library.toBalance(cash, externalBalance);
-      expect(await library.hasExternalBalance(balance)).to.equal(expected);
+      const balance = await library.toBalance(cash, managedBalance);
+      expect(await library.isManaged(balance)).to.equal(expected);
     }
 
-    it('returns false if there is no external balance', async () => {
-      await testHasExternalBalance(0, 0, false);
-      await testHasExternalBalance(1, 0, false);
-      await testHasExternalBalance(MAX_UINT128, 0, false);
+    it('returns false if there is no managed balance', async () => {
+      await testIsManaged(0, 0, false);
+      await testIsManaged(1, 0, false);
+      await testIsManaged(MAX_UINT128, 0, false);
     });
 
-    it('returns true if there is an external balance', async () => {
-      await testHasExternalBalance(0, 1, true);
-      await testHasExternalBalance(1, 1, true);
-      await testHasExternalBalance(MAX_UINT128.sub(1), 1, true);
-      await testHasExternalBalance(1, MAX_UINT128.sub(1), true);
+    it('returns true if there is an managed balance', async () => {
+      await testIsManaged(0, 1, true);
+      await testIsManaged(1, 1, true);
+      await testIsManaged(MAX_UINT128.sub(1), 1, true);
+      await testIsManaged(1, MAX_UINT128.sub(1), true);
     });
   });
 
@@ -397,10 +393,10 @@ describe('Vault - cash/external balance', () => {
       const balanceB = await library.toBalance(BigNumber.from(cashB), BigNumber.from(externalB));
 
       const sharedCash = await library.toSharedCash(balanceA, balanceB);
-      const sharedExternal = await library.toSharedExternal(balanceA, balanceB);
+      const sharedManaged = await library.toSharedManaged(balanceA, balanceB);
 
-      const unpackedBalanceA = await library.fromSharedToBalanceA(sharedCash, sharedExternal);
-      const unpackedBalanceB = await library.fromSharedToBalanceB(sharedCash, sharedExternal);
+      const unpackedBalanceA = await library.fromSharedToBalanceA(sharedCash, sharedManaged);
+      const unpackedBalanceB = await library.fromSharedToBalanceB(sharedCash, sharedManaged);
 
       expect(unpackedBalanceA).to.equal(balanceA);
       expect(unpackedBalanceB).to.equal(balanceB);

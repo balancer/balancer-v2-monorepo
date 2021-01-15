@@ -457,15 +457,15 @@ interface IVault {
 
     /**
      * @dev Returns a Pool's Asset Manager for `token`. Asset Managers can manage a Pool's assets by taking
-     * them out of the Vault via `poolBalanceCashToExternal`, `poolBalanceExternalToCash` and `updateExternalBalance`.
+     * them out of the Vault via `poolBalanceCashToManaged`, `poolBalanceManagedToCash` and `updateManagedBalance`.
      */
     function getPoolAssetManager(bytes32 poolId, IERC20 token) external view returns (address);
 
     /**
      * @dev Called by a Pool's Asset Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
-     * the Pool's cash but increases its external balance, leaving the total balance unchanged.
+     * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
      */
-    function poolBalanceCashToExternal(
+    function poolBalanceCashToManaged(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
@@ -473,10 +473,10 @@ interface IVault {
 
     /**
      * @dev Called by a Pool's Asset Manager for `token` to deposit `amount` tokens into the Vault. This increases
-     * the Pool's cash but decreases its external balance, leaving the total balance unchanged. The Asset Manager
+     * the Pool's cash but decreases its managed balance, leaving the total balance unchanged. The Asset Manager
      * must have approved the Vault to use `token`.
      */
-    function poolBalanceExternalToCash(
+    function poolBalanceManagedToCash(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
@@ -484,10 +484,10 @@ interface IVault {
 
     /**
      * @dev Called by a Pool's Asset Manager for `token` to update the external amount. This causes no change on
-     * the Pool's cash, but because the external balance changes, so does the total balance. The external amount can be
+     * the Pool's cash, but because the managed balance changes, so does the total balance. The external amount can be
      * both increased and decreased by this call.
      */
-    function updateExternalBalance(
+    function updateManagedBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
@@ -513,7 +513,7 @@ interface IVault {
 
     /**
      * @dev Returns the Protocol Withdraw Fee. Withdraw fees are applied on `withdraw` and `removeLiquidity` (unless
-     * depositing into User Balance). Swaps and `poolBalanceCashToExternal` are not charged withdraw fees.
+     * depositing into User Balance). Swaps and `poolBalanceCashToManaged` are not charged withdraw fees.
      *
      * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
      */

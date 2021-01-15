@@ -152,34 +152,34 @@ contract StandardPoolsBalance {
         }
     }
 
-    function _standardPoolCashToExternal(
+    function _standardPoolCashToManaged(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateStandardPoolBalance(poolId, token, BalanceAllocation.cashToExternal, amount);
+        _updateStandardPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
-    function _standardPoolExternalToCash(
+    function _standardPoolManagedToCash(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateStandardPoolBalance(poolId, token, BalanceAllocation.externalToCash, amount);
+        _updateStandardPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
-    function _setStandardPoolExternalBalance(
+    function _setStandardPoolManagedBalance(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateStandardPoolBalance(poolId, token, BalanceAllocation.setExternalBalance, amount);
+        _updateStandardPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
 
-    function _standardPoolHasExternalBalance(bytes32 poolId, IERC20 token) internal view returns (bool) {
+    function _standardPoolIsManaged(bytes32 poolId, IERC20 token) internal view returns (bool) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
         bytes32 currentBalance = _getStandardPoolTokenBalance(poolBalances, token);
-        return currentBalance.hasExternalBalance();
+        return currentBalance.isManaged();
     }
 
     function _updateStandardPoolBalance(
