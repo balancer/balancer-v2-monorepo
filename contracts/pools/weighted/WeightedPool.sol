@@ -417,7 +417,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
      * of BPT they want to get `minBPTAmountOut`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `bptAmountOut` will be minted and transferred to `beneficiary`.
      */
@@ -473,7 +473,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
      * of token they want to pay `maxAmountIn`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `BPTAmountOut` will be minted and transferred to `beneficiary`.
      */
@@ -543,7 +543,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
      *  and the minimum amount for each token they want to get `minAmountsOut`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `tokens` -> list of tokens that user wants to receive
      * `BPTAmountsIn` -> list with the amounts of BPT that are going to be redeemed for each token in `tokens`
@@ -615,7 +615,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
      *  and the maximum amount of BPT they want to redeem `maxBPTAmountIn`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `tokens` -> list of tokens that user wants to receive
      * `amountsOut` -> list with the amounts of each token the user wants to receive
