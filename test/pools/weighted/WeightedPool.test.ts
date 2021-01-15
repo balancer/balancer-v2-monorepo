@@ -9,7 +9,7 @@ import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants'
 import { expectBalanceChange } from '../../helpers/tokenBalance';
 import { FIXED_POINT_SCALING, toFixedPoint } from '../../../scripts/helpers/fixedPoint';
 
-describe('ConstantProductPool', function () {
+describe('WeightedPool', function () {
   let admin: SignerWithAddress;
   let creator: SignerWithAddress;
   let lp: SignerWithAddress;
@@ -57,7 +57,7 @@ describe('ConstantProductPool', function () {
     poolSwapFee = toFixedPoint(0.01);
 
     callDeployPool = () =>
-      deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      deployPoolFromFactory(vault, admin, 'WeightedPool', {
         from: creator,
         parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, poolSwapFee],
       });
@@ -117,7 +117,7 @@ describe('ConstantProductPool', function () {
 
     it("reverts if the number of tokens and amounts don't match", async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances.slice(1), poolWeights, poolSwapFee],
         })
@@ -126,7 +126,7 @@ describe('ConstantProductPool', function () {
 
     it("reverts if the number of tokens and weights don't match", async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights.slice(1), poolSwapFee],
         })
@@ -135,7 +135,7 @@ describe('ConstantProductPool', function () {
 
     it('reverts if there is a single token', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -150,7 +150,7 @@ describe('ConstantProductPool', function () {
 
     it('reverts if there are repeated tokens', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -195,7 +195,7 @@ describe('ConstantProductPool', function () {
       }
 
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -210,7 +210,7 @@ describe('ConstantProductPool', function () {
 
     it('reverts if the swap fee is too high', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, toFixedPoint(0.1).add(1)],
         })
@@ -638,7 +638,7 @@ describe('ConstantProductPool', function () {
 
     context('with two tokens', () => {
       beforeEach(async () => {
-        pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: lp,
           parameters: [
             initialBPT,
@@ -761,7 +761,7 @@ describe('ConstantProductPool', function () {
 
     context('with three tokens', () => {
       beforeEach(async () => {
-        pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: lp,
           parameters: [
             initialBPT,
@@ -902,7 +902,7 @@ describe('ConstantProductPool', function () {
       tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
       tokenWeights = [(8e18).toString(), (2e18).toString()];
 
-      pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
         from: lp,
         parameters: [initialBPT, tokenAddresses, initialBalances, tokenWeights, swapFee],
       });
