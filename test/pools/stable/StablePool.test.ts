@@ -3,13 +3,13 @@ import { expect } from 'chai';
 import { BigNumber, Contract, ContractFunction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../../../scripts/helpers/deploy';
-import { deployPoolFromFactory, SimplifiedQuotePool } from '../../../scripts/helpers/pools';
+import { deployPoolFromFactory, StandardPool } from '../../../scripts/helpers/pools';
 import { deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { expectBalanceChange } from '../../helpers/tokenBalance';
 import { FIXED_POINT_SCALING, toFixedPoint } from '../../../scripts/helpers/fixedPoint';
 
-describe('ConstantProductPool', function () {
+describe('StablePool', function () {
   let admin: SignerWithAddress;
   let creator: SignerWithAddress;
   let lp: SignerWithAddress;
@@ -26,7 +26,7 @@ describe('ConstantProductPool', function () {
 
   let poolTokens: string[];
   let poolInitialBalances: BigNumber[];
-  let poolWeights: BigNumber[];
+  let poolAmplification: BigNumber;
   let poolSwapFee: BigNumber;
 
   let callDeployPool: () => Promise<Contract>;
@@ -44,7 +44,7 @@ describe('ConstantProductPool', function () {
       await tokens[symbol].mint(creator.address, (100e18).toString());
       await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
 
-      await tokens[symbol].mint(lp.address, (200e18).toString());
+      await tokens[symbol].mint(lp.address, (100e18).toString());
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
 
       await tokens[symbol].mint(trader.address, (100e18).toString());
@@ -53,13 +53,13 @@ describe('ConstantProductPool', function () {
 
     poolTokens = [tokens.DAI.address, tokens.MKR.address];
     poolInitialBalances = [0.9e18, 1.8e18].map((value) => BigNumber.from(value.toString()));
-    poolWeights = [70, 30].map((value) => BigNumber.from(value.toString()));
+    poolAmplification = BigNumber.from('30');
     poolSwapFee = toFixedPoint(0.01);
 
     callDeployPool = () =>
-      deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      deployPoolFromFactory(vault, admin, 'StablePool', {
         from: creator,
-        parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, poolSwapFee],
+        parameters: [initialBPT, poolTokens, poolInitialBalances, poolAmplification, poolSwapFee],
       });
   });
 
@@ -70,7 +70,7 @@ describe('ConstantProductPool', function () {
       expect(await pool.getVault()).to.equal(vault.address);
 
       const poolId = await pool.getPoolId();
-      expect(await vault.getPool(poolId)).to.have.members([pool.address, SimplifiedQuotePool]);
+      expect(await vault.getPool(poolId)).to.have.members([pool.address, StandardPool]);
     });
 
     it('grants initial BPT to the pool creator', async () => {
@@ -105,9 +105,9 @@ describe('ConstantProductPool', function () {
       expect(await vault.getPoolTokenBalances(poolId, poolTokens)).to.deep.equal(poolInitialBalances);
     });
 
-    it('sets token weights', async () => {
+    it('sets amplification factor', async () => {
       const pool = await callDeployPool();
-      expect(await pool.getWeights(poolTokens)).to.deep.equal(poolWeights);
+      expect(await pool.getAmplification()).to.deep.equal(poolAmplification);
     });
 
     it('sets swap fee', async () => {
@@ -117,31 +117,22 @@ describe('ConstantProductPool', function () {
 
     it("reverts if the number of tokens and amounts don't match", async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'StablePool', {
           from: creator,
-          parameters: [initialBPT, poolTokens, poolInitialBalances.slice(1), poolWeights, poolSwapFee],
-        })
-      ).to.be.revertedWith('Create2: Failed on deploy');
-    });
-
-    it("reverts if the number of tokens and weights don't match", async () => {
-      await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
-          from: creator,
-          parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights.slice(1), poolSwapFee],
+          parameters: [initialBPT, poolTokens, poolInitialBalances.slice(1), poolAmplification, poolSwapFee],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
     });
 
     it('reverts if there is a single token', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'StablePool', {
           from: creator,
           parameters: [
             initialBPT,
             poolTokens.slice(0, 1),
             poolInitialBalances.slice(0, 1),
-            poolWeights.slice(0, 1),
+            poolAmplification,
             poolSwapFee,
           ],
         })
@@ -150,58 +141,13 @@ describe('ConstantProductPool', function () {
 
     it('reverts if there are repeated tokens', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'StablePool', {
           from: creator,
           parameters: [
             initialBPT,
             new Array(poolTokens.length).fill(poolTokens[0]),
             poolInitialBalances,
-            poolWeights,
-            poolSwapFee,
-          ],
-        })
-      ).to.be.revertedWith('Create2: Failed on deploy');
-    });
-
-    it('reverts if there are too many tokens', async () => {
-      // The maximum number of tokens is 16
-
-      const manyTokens = await deployTokens(
-        [
-          'TK1',
-          'TK2',
-          'TK3',
-          'TK4',
-          'TK5',
-          'TK6',
-          'TK7',
-          'TK8',
-          'TK9',
-          'TK10',
-          'TK11',
-          'TK12',
-          'TK13',
-          'TK14',
-          'TK15',
-          'TK16',
-          'TK17',
-        ],
-        [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18]
-      );
-
-      const manyTokenAddresses = [];
-      for (const symbol in manyTokens) {
-        manyTokenAddresses.push(manyTokens[symbol].address);
-      }
-
-      await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
-          from: creator,
-          parameters: [
-            initialBPT,
-            manyTokenAddresses,
-            new Array(17).fill(100),
-            new Array(17).fill(toFixedPoint(1)),
+            poolAmplification,
             poolSwapFee,
           ],
         })
@@ -210,9 +156,9 @@ describe('ConstantProductPool', function () {
 
     it('reverts if the swap fee is too high', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'StablePool', {
           from: creator,
-          parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, toFixedPoint(0.1).add(1)],
+          parameters: [initialBPT, poolTokens, poolInitialBalances, poolAmplification, toFixedPoint(0.1).add(1)],
         })
       ).to.be.revertedWith('Create2: Failed on deploy');
     });
@@ -351,46 +297,6 @@ describe('ConstantProductPool', function () {
           tokens,
           { account: lp, changes: { DAI: -1 } }
         );
-      });
-    });
-
-    describe('joining & swapping', () => {
-      it('grants BPT for exact tokens', async () => {
-        const previousBPT = await pool.balanceOf(lp.address);
-        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
-
-        await pool
-          .connect(lp)
-          .joinPoolExactTokensInForBPTOut((1e18).toString(), [0, (0.1e18).toString()], true, lp.address);
-
-        const newBPT = await pool.balanceOf(lp.address);
-        expect(newBPT.sub(previousBPT)).to.be.at.least((1.4616e18).toString());
-        expect(newBPT.sub(previousBPT)).to.be.at.most((1.46161e18).toString());
-
-        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
-        expect(newTokenBalance.sub(previousTokenBalance)).to.equal((-0.1e18).toString());
-      });
-
-      it('grants exact BPT for tokens', async () => {
-        const previousBPT = await pool.balanceOf(lp.address);
-        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
-
-        await pool
-          .connect(lp)
-          .joinPoolTokenInForExactBPTOut(
-            (1.4616e18).toString(),
-            tokens.MKR.address,
-            (0.15e18).toString(),
-            true,
-            lp.address
-          );
-
-        const newBPT = await pool.balanceOf(lp.address);
-        expect(newBPT.sub(previousBPT)).to.equal((1.4616e18).toString());
-
-        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
-        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.least((-0.1e18).toString());
-        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.most((-0.099e18).toString());
       });
     });
 
@@ -538,79 +444,6 @@ describe('ConstantProductPool', function () {
       });
     });
 
-    describe('exiting & swapping', () => {
-      beforeEach(async () => {
-        // The LP joins and gets 10e18 BPT
-        await pool
-          .connect(lp)
-          .joinPool((10e18).toString(), [(0.1e18).toString(), (0.2e18).toString()], true, lp.address);
-
-        expect(await pool.totalSupply()).to.equal((100e18).toString());
-        expect(await vault.getPoolTokenBalances(poolId, poolTokens)).to.deep.equal([
-          BigNumber.from((1e18).toString()),
-          BigNumber.from((2e18).toString()),
-        ]);
-      });
-
-      it('takes exact BPT for tokens', async () => {
-        const previousBPT = await pool.balanceOf(lp.address);
-        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
-
-        await pool
-          .connect(lp)
-          .exitPoolExactBPTInForTokenOut(
-            (1.54e18).toString(),
-            tokens.MKR.address,
-            (0.099e18).toString(),
-            true,
-            lp.address
-          );
-
-        const newBPT = await pool.balanceOf(lp.address);
-        expect(newBPT.sub(previousBPT)).to.equal((-1.54e18).toString());
-
-        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
-        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.least((0.099e18).toString());
-        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.most((0.105e18).toString());
-      });
-
-      it('takes BPT for exact tokens', async () => {
-        const previousBPT = await pool.balanceOf(lp.address);
-        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
-
-        await pool
-          .connect(lp)
-          .exitPoolBPTInForExactTokensOut((2e18).toString(), [0, (0.1e18).toString()], true, lp.address);
-
-        const newBPT = await pool.balanceOf(lp.address);
-        expect(newBPT.sub(previousBPT)).to.be.at.least((-1.55e18).toString());
-        expect(newBPT.sub(previousBPT)).to.be.at.most((-1.53e18).toString());
-
-        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
-        expect(newTokenBalance.sub(previousTokenBalance)).to.equal((0.1e18).toString());
-      });
-    });
-
-    describe('joining & swapping & exiting', () => {
-      it('cannot exit with more tokens than joined', async () => {
-        const previousBPT = await pool.balanceOf(lp.address);
-        const previousTokenBalance = await tokens.MKR.balanceOf(lp.address);
-
-        await pool
-          .connect(lp)
-          .joinPoolExactTokensInForBPTOut((1e18).toString(), [0, (0.1e18).toString()], true, lp.address);
-
-        const newBPT = await pool.balanceOf(lp.address);
-        const obtainedBPT = newBPT.sub(previousBPT);
-
-        await pool.connect(lp).exitPoolExactBPTInForTokenOut(obtainedBPT, tokens.MKR.address, 0, true, lp.address);
-
-        const newTokenBalance = await tokens.MKR.balanceOf(lp.address);
-
-        expect(newTokenBalance.sub(previousTokenBalance)).to.be.at.most(0);
-      });
-    });
-
     describe('draining', () => {
       it('pools can be fully exited', async () => {
         await pool.connect(creator).exitPool(initialBPT, [0, 0], true, creator.address);
@@ -618,8 +451,8 @@ describe('ConstantProductPool', function () {
         expect(await pool.totalSupply()).to.equal(0);
 
         // The tokens are not unregistered from the Pool
-        expect(await vault.getPoolTokens(poolId)).to.not.be.empty;
-        expect(await vault.getPoolTokens(poolId)).to.have.members([tokens.DAI.address, tokens.MKR.address]);
+        expect(await vault.getPoolTokens(poolId)).not.to.be.empty;
+        expect(await vault.getPoolTokens(poolId)).to.have.members(poolTokens);
       });
 
       it('drained pools cannot be rejoined', async () => {
@@ -636,139 +469,16 @@ describe('ConstantProductPool', function () {
     let pool: Contract;
     let poolId: string;
 
-    context('with two tokens', () => {
-      beforeEach(async () => {
-        pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
-          from: lp,
-          parameters: [
-            initialBPT,
-            [tokens.DAI.address, tokens.MKR.address],
-            [100, 100], // These are not relevant since we're asking for quotes and not swapping via the vault
-            [toFixedPoint(8), toFixedPoint(2)],
-            toFixedPoint(0.1),
-          ],
-        });
-
-        poolId = await pool.getPoolId();
-      });
-
-      it('quotes amount out', async () => {
-        const result = await pool.quoteOutGivenIn(
-          {
-            poolId,
-            from: other.address,
-            to: other.address,
-            tokenIn: tokens.DAI.address,
-            tokenOut: tokens.MKR.address,
-            amountIn: (16.6e18).toString(), // ~15e18 + 10% fee
-            userData: '0x',
-          },
-          (100e18).toString(), // tokenInBalance
-          (200e18).toString() // tokenOutBalance
-        );
-
-        expect(result).to.be.at.least((85.4e18).toString());
-        expect(result).to.be.at.most((85.5e18).toString());
-      });
-
-      it('quotes amount in', async () => {
-        const result = await pool.quoteInGivenOut(
-          {
-            poolId,
-            from: other.address,
-            to: other.address,
-            tokenIn: tokens.DAI.address,
-            tokenOut: tokens.MKR.address,
-            amountOut: (85.4e18).toString(),
-            userData: '0x',
-          },
-          (100e18).toString(), // tokenInBalance
-          (200e18).toString() // tokenOutBalance
-        );
-
-        expect(result).to.be.at.least((16.5e18).toString());
-        expect(result).to.be.at.most((16.6e18).toString());
-      });
-
-      it('reverts if token in is not in the pool', async () => {
-        await expect(
-          pool.quoteOutGivenIn(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokens.BAT.address,
-              tokenOut: tokens.MKR.address,
-              amountIn: 100,
-              userData: '0x',
-            },
-            100,
-            200
-          )
-        ).to.be.revertedWith('ERR_INVALID_TOKEN');
-
-        await expect(
-          pool.quoteInGivenOut(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokens.BAT.address,
-              tokenOut: tokens.MKR.address,
-              amountOut: 100,
-              userData: '0x',
-            },
-            100,
-            200
-          )
-        ).to.be.revertedWith('ERR_INVALID_TOKEN');
-      });
-
-      it('reverts if token out is not in the pool', async () => {
-        await expect(
-          pool.quoteOutGivenIn(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokens.DAI.address,
-              tokenOut: tokens.BAT.address,
-              amountIn: 100,
-              userData: '0x',
-            },
-            100,
-            200
-          )
-        ).to.be.revertedWith('ERR_INVALID_TOKEN');
-
-        await expect(
-          pool.quoteInGivenOut(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokens.DAI.address,
-              tokenOut: tokens.BAT.address,
-              amountOut: 100,
-              userData: '0x',
-            },
-            100,
-            200
-          )
-        ).to.be.revertedWith('ERR_INVALID_TOKEN');
-      });
-    });
-
     context('with three tokens', () => {
       beforeEach(async () => {
-        pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
           from: lp,
           parameters: [
             initialBPT,
             [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address],
-            [100, 100, 100], // These are not relevant since we're asking for quotes and not swapping via the vault
-            [toFixedPoint(8), toFixedPoint(2), toFixedPoint(3)],
-            toFixedPoint(0.1),
+            [(100e18).toString(), (100e18).toString(), (100e18).toString()], // These are not relevant since we're asking for quotes and not swapping via the vault
+            (7.6e18).toString(),
+            toFixedPoint(0.05),
           ],
         });
 
@@ -786,12 +496,13 @@ describe('ConstantProductPool', function () {
             amountIn: (16.6e18).toString(), // ~15e18 + 10% fee
             userData: '0x',
           },
-          (100e18).toString(), // tokenInBalance
-          (200e18).toString() // tokenOutBalance
+          [(100e18).toString(), (200e18).toString(), (300e18).toString()],
+          0,
+          1
         );
 
-        expect(result).to.be.at.least((85.4e18).toString());
-        expect(result).to.be.at.most((85.5e18).toString());
+        expect(result).to.be.at.least((15.7e18).toString());
+        expect(result).to.be.at.most((15.8e18).toString());
       });
 
       it('quotes amount in', async () => {
@@ -805,80 +516,13 @@ describe('ConstantProductPool', function () {
             amountOut: (85.4e18).toString(),
             userData: '0x',
           },
-          (100e18).toString(), // tokenInBalance
-          (200e18).toString() // tokenOutBalance
+          [(100e18).toString(), (200e18).toString(), (300e18).toString()],
+          0,
+          1
         );
 
-        expect(result).to.be.at.least((16.5e18).toString());
-        expect(result).to.be.at.most((16.6e18).toString());
-      });
-
-      it('reverts if token in is not in the pool', async () => {
-        await expect(
-          pool.quoteOutGivenIn(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokens.BAT.address,
-              tokenOut: tokens.MKR.address,
-              amountIn: 100,
-              userData: '0x',
-            },
-            100,
-            200
-          )
-        ).to.be.revertedWith('ERR_INVALID_TOKEN');
-
-        await expect(
-          pool.quoteInGivenOut(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokens.BAT.address,
-              tokenOut: tokens.MKR.address,
-              amountOut: 100,
-              userData: '0x',
-            },
-            100,
-            200
-          )
-        ).to.be.revertedWith('ERR_INVALID_TOKEN');
-      });
-
-      it('reverts if token out is not in the pool', async () => {
-        await expect(
-          pool.quoteOutGivenIn(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokens.DAI.address,
-              tokenOut: tokens.BAT.address,
-              amountIn: 100,
-              userData: '0x',
-            },
-            100,
-            200
-          )
-        ).to.be.revertedWith('ERR_INVALID_TOKEN');
-
-        await expect(
-          pool.quoteInGivenOut(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokens.DAI.address,
-              tokenOut: tokens.BAT.address,
-              amountOut: 100,
-              userData: '0x',
-            },
-            100,
-            200
-          )
-        ).to.be.revertedWith('ERR_INVALID_TOKEN');
+        expect(result).to.be.at.least((89.8e18).toString());
+        expect(result).to.be.at.most((89.9e18).toString());
       });
     });
   });
@@ -898,11 +542,11 @@ describe('ConstantProductPool', function () {
       await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), feeSetter.address);
       await vault.connect(feeSetter).setProtocolSwapFee(protocolSwapFee);
 
-      initialBalances = [BigNumber.from((80e18).toString()), BigNumber.from((20e18).toString())];
+      initialBalances = [BigNumber.from((10e18).toString()), BigNumber.from((10e18).toString())];
       tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
       tokenWeights = [(8e18).toString(), (2e18).toString()];
 
-      pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
         from: lp,
         parameters: [initialBPT, tokenAddresses, initialBalances, tokenWeights, swapFee],
       });
@@ -1002,37 +646,9 @@ describe('ConstantProductPool', function () {
         );
       });
 
-      it('pays swap protocol fees on joinswap exact tokens in', async () => {
-        await assertProtocolSwapFeeIsCharged(() =>
-          pool
-            .connect(lp)
-            .joinPoolExactTokensInForBPTOut(0, [(0.8e18).toString(), (0.2e18).toString()], true, lp.address)
-        );
-      });
-
-      it('pays swap protocol fees on join exact bpt out', async () => {
-        await assertProtocolSwapFeeIsCharged(() =>
-          pool
-            .connect(lp)
-            .joinPoolTokenInForExactBPTOut((1e18).toString(), tokens.DAI.address, MAX_UINT128, true, lp.address)
-        );
-      });
-
       it('pays swap protocol fees on exit', async () => {
         await assertProtocolSwapFeeIsCharged(() =>
           pool.connect(lp).exitPool((1e18).toString(), [0, 0], true, lp.address)
-        );
-      });
-
-      it('pays swap protocol fees on exit exact bpt in', async () => {
-        await assertProtocolSwapFeeIsCharged(() =>
-          pool.connect(lp).exitPoolExactBPTInForTokenOut((1e18).toString(), tokens.DAI.address, 0, true, lp.address)
-        );
-      });
-
-      it('pays swap protocol fees on exit', async () => {
-        await assertProtocolSwapFeeIsCharged(() =>
-          pool.connect(lp).exitPoolBPTInForExactTokensOut(MAX_UINT128, [0, 0], true, lp.address)
         );
       });
     });

@@ -2,7 +2,7 @@ import { encodeValidatorData, FundManagement, getTokensSwaps, toSwapIn } from '.
 import { TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { getConstantProductPool, getStablecoinPool, printGas, setupEnvironment, tokenSymbols } from './misc';
+import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
 import { MAX_UINT128, MAX_UINT256 } from '../../test/helpers/constants';
 
 let vault: Contract;
@@ -18,25 +18,25 @@ async function main() {
 
   console.log('== Single token pair in multiple pools ==');
 
-  console.log(`\n# Constant Product Pools with 2 tokens`);
+  console.log(`\n# Weighted Pools with 2 tokens`);
 
-  await singlePair(() => getConstantProductPool(vault, tokens, 2), false);
-  await singlePair(() => getConstantProductPool(vault, tokens, 2), true);
+  await singlePair(() => getWeightedPool(vault, tokens, 2), false);
+  await singlePair(() => getWeightedPool(vault, tokens, 2), true);
 
-  console.log(`\n# Constant Product Pools with 4 tokens`);
+  console.log(`\n# Weighted Pools with 4 tokens`);
 
-  await singlePair(() => getConstantProductPool(vault, tokens, 4), false);
-  await singlePair(() => getConstantProductPool(vault, tokens, 4), true);
+  await singlePair(() => getWeightedPool(vault, tokens, 4), false);
+  await singlePair(() => getWeightedPool(vault, tokens, 4), true);
 
-  console.log(`\n# Stablecoin Pools with 2 tokens`);
+  console.log(`\n# Stable Pools with 2 tokens`);
 
-  await singlePair(() => getStablecoinPool(vault, tokens, 2), false);
-  await singlePair(() => getStablecoinPool(vault, tokens, 2), true);
+  await singlePair(() => getStablePool(vault, tokens, 2), false);
+  await singlePair(() => getStablePool(vault, tokens, 2), true);
 
-  console.log(`\n# Stablecoin Pools with 4 tokens`);
+  console.log(`\n# Stable Pools with 4 tokens`);
 
-  await singlePair(() => getStablecoinPool(vault, tokens, 4), false);
-  await singlePair(() => getStablecoinPool(vault, tokens, 4), true);
+  await singlePair(() => getStablePool(vault, tokens, 4), false);
+  await singlePair(() => getStablePool(vault, tokens, 4), true);
 }
 
 async function singlePair(getPoolId: () => Promise<string>, useUserInternalBalance: boolean) {

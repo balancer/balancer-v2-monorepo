@@ -24,7 +24,7 @@ import "../../math/LogExpMath.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 
-contract ConstantProductMath {
+contract WeightedMath {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 

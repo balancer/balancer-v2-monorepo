@@ -28,19 +28,13 @@ import "../../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
-import "./ConstantProductMath.sol";
+import "./WeightedMath.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract ConstantProductPool is
-    IBPTPool,
-    IPoolQuoteSimplified,
-    BalancerPoolToken,
-    ConstantProductMath,
-    ReentrancyGuard
-{
+contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -96,7 +90,7 @@ contract ConstantProductPool is
 
     /**
      * @dev This contract cannot be deployed directly because it must be an Universal Agent during construction. Use
-     * `ConstantProductPoolFactory` to create new instances of it instead.
+     * `WeightedPoolFactory` to create new instances of it instead.
      */
     constructor(
         IVault vault,
