@@ -322,7 +322,7 @@ describe('WeightedPool', function () {
         ).to.be.revertedWith('Tokens and amounts length mismatch');
       });
 
-      it('can withdraw from user balance', async () => {
+      it('can withdraw from internal balance', async () => {
         await vault.connect(lp).deposit(tokens.DAI.address, (1e18).toString(), lp.address);
         await vault.connect(lp).deposit(tokens.MKR.address, (1e18).toString(), lp.address);
 
@@ -335,11 +335,11 @@ describe('WeightedPool', function () {
           { account: lp }
         );
 
-        expect(await vault.getUserTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.9e18).toString());
-        expect(await vault.getUserTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.9e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
       });
 
-      it('transfers missing tokens if user balance is not enough', async () => {
+      it('transfers missing tokens if internal balance is not enough', async () => {
         await vault.connect(lp).deposit(tokens.DAI.address, BigNumber.from((0.1e18).toString()).sub(1), lp.address);
         await vault.connect(lp).deposit(tokens.MKR.address, (0.2e18).toString(), lp.address);
 
@@ -494,7 +494,7 @@ describe('WeightedPool', function () {
         });
       });
 
-      it('can deposit into user balance', async () => {
+      it('can deposit into internal balance', async () => {
         await expectBalanceChange(
           () => pool.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
           tokens,
@@ -515,26 +515,30 @@ describe('WeightedPool', function () {
         ).to.be.revertedWith('Tokens and amounts length mismatch');
       });
 
-      it('can deposit into user balance', async () => {
+      it('can deposit into internal balance', async () => {
         await expectBalanceChange(
           () => pool.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
           tokens,
           { account: lp }
         );
 
-        expect(await vault.getUserTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
-        expect(await vault.getUserTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.2e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.2e18).toString());
       });
 
-      it("can deposit into a beneficiary's user balance", async () => {
+      it("can deposit into a beneficiary's internal balance", async () => {
         await expectBalanceChange(
           () => pool.connect(lp).exitPool((10e18).toString(), [0, 0], false, beneficiary.address),
           tokens,
           { account: beneficiary }
         );
 
-        expect(await vault.getUserTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal((0.1e18).toString());
-        expect(await vault.getUserTokenBalance(beneficiary.address, tokens.MKR.address)).to.equal((0.2e18).toString());
+        expect(await vault.getInternalTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal(
+          (0.1e18).toString()
+        );
+        expect(await vault.getInternalTokenBalance(beneficiary.address, tokens.MKR.address)).to.equal(
+          (0.2e18).toString()
+        );
       });
     });
 
@@ -943,8 +947,8 @@ describe('WeightedPool', function () {
         const funds = {
           sender: trader.address,
           recipient: trader.address,
-          withdrawFromUserBalance: false,
-          depositToUserBalance: false,
+          withdrawFromInternalBalance: false,
+          depositToInternalBalance: false,
         };
 
         await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', [swap], tokenAddresses, funds);

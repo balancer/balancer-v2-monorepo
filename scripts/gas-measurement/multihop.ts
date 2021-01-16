@@ -39,14 +39,14 @@ async function main() {
   await multihop((index: number) => getStablePool(vault, tokens, 4, index), true);
 }
 
-async function multihop(getPool: (index: number) => Promise<string>, useUserBalance: boolean) {
-  console.log(`\n## ${useUserBalance ? 'Using User Balance' : 'Sending and receiving tokens'}`);
+async function multihop(getPool: (index: number) => Promise<string>, useInternalBalance: boolean) {
+  console.log(`\n## ${useInternalBalance ? 'Using Internal Balance' : 'Sending and receiving tokens'}`);
 
   const funds: FundManagement = {
     sender: trader.address,
     recipient: trader.address,
-    withdrawFromUserBalance: useUserBalance,
-    depositToUserBalance: useUserBalance,
+    withdrawFromInternalBalance: useInternalBalance,
+    depositToInternalBalance: useInternalBalance,
   };
 
   const pools: Array<string> = [];

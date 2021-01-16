@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../vendor/ReentrancyGuard.sol";
 
-import "./UserBalance.sol";
+import "./InternalBalance.sol";
 
 import "./balances/CashInvested.sol";
 import "./balances/StandardPoolsBalance.sol";
@@ -30,7 +30,7 @@ import "./balances/TwoTokenPoolsBalance.sol";
 
 abstract contract PoolRegistry is
     ReentrancyGuard,
-    UserBalance,
+    InternalBalance,
     StandardPoolsBalance,
     SimplifiedQuotePoolsBalance,
     TwoTokenPoolsBalance
@@ -228,13 +228,13 @@ abstract contract PoolRegistry is
         address from,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool withdrawFromUserBalance
+        bool withdrawFromInternalBalance
     ) external override nonReentrant withExistingPool(poolId) onlyPool(poolId) {
         require(isAgentFor(from, msg.sender), "Caller is not an agent");
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         // Receive all tokens
-        _receiveLiquidity(from, tokens, amounts, withdrawFromUserBalance);
+        _receiveLiquidity(from, tokens, amounts, withdrawFromInternalBalance);
 
         // Grant tokens to pools - how this is done depends on the Pool optimization setting
         (, PoolOptimization optimization) = _getPoolData(poolId);
@@ -252,7 +252,7 @@ abstract contract PoolRegistry is
         address from,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        bool withdrawFromUserBalance
+        bool withdrawFromInternalBalance
     ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Not technically necessary since the transfer call would fail
@@ -261,9 +261,9 @@ abstract contract PoolRegistry is
 
             uint256 toReceive = amounts[i];
             if (toReceive > 0) {
-                if (withdrawFromUserBalance) {
-                    uint128 toWithdraw = uint128(Math.min(_userTokenBalance[from][token], toReceive));
-                    _userTokenBalance[from][token] -= toWithdraw;
+                if (withdrawFromInternalBalance) {
+                    uint128 toWithdraw = uint128(Math.min(_internalTokenBalance[from][token], toReceive));
+                    _internalTokenBalance[from][token] -= toWithdraw;
                     toReceive -= toWithdraw;
                 }
 
@@ -277,7 +277,7 @@ abstract contract PoolRegistry is
         address to,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool depositToUserBalance
+        bool depositToInternalBalance
     ) external override nonReentrant withExistingPool(poolId) onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
@@ -293,14 +293,14 @@ abstract contract PoolRegistry is
         }
 
         // Send all tokens
-        _withdrawLiquidity(to, tokens, amounts, depositToUserBalance);
+        _withdrawLiquidity(to, tokens, amounts, depositToInternalBalance);
     }
 
     function _withdrawLiquidity(
         address to,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        bool depositToUserBalance
+        bool depositToInternalBalance
     ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Not technically necessary since the transfer call would fail
@@ -310,9 +310,9 @@ abstract contract PoolRegistry is
             uint256 amount256 = amounts[i];
             uint128 amount128 = amount256.toUint128();
             if (amount256 > 0) {
-                if (depositToUserBalance) {
-                    // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                    _userTokenBalance[to][token] = _userTokenBalance[to][token].add128(amount128);
+                if (depositToInternalBalance) {
+                    // Deposit tokens to the recipient User's Internal Balance - the Vault's balance doesn't change
+                    _internalTokenBalance[to][token] = _internalTokenBalance[to][token].add128(amount128);
                 } else {
                     // Transfer the tokens to the recipient, charging the protocol exit fee
                     uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount128);
