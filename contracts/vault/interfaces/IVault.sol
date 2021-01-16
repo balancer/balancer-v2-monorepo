@@ -458,7 +458,7 @@ interface IVault {
 
     /**
      * @dev Returns a Pool's Asset Manager for `token`. Asset Managers can manage a Pool's assets by taking
-     * them out of the Vault via `poolBalanceCashToManaged`, `poolBalanceManagedToCash` and `updateManagedBalance`.
+     * them out of the Vault via `withdrawPoolBalance`, `depositPoolBalance` and `updateManagedBalance`.
      */
     function getPoolAssetManager(bytes32 poolId, IERC20 token) external view returns (address);
 
@@ -466,7 +466,7 @@ interface IVault {
      * @dev Called by a Pool's Asset Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
      * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
      */
-    function poolBalanceCashToManaged(
+    function withdrawPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
@@ -477,7 +477,7 @@ interface IVault {
      * the Pool's cash but decreases its managed balance, leaving the total balance unchanged. The Asset Manager
      * must have approved the Vault to use `token`.
      */
-    function poolBalanceManagedToCash(
+    function depositPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
@@ -514,7 +514,7 @@ interface IVault {
 
     /**
      * @dev Returns the Protocol Withdraw Fee. Withdraw fees are applied on `withdraw` and `removeLiquidity` (unless
-     * depositing into User's Internal Balance). Swaps and `poolBalanceCashToManaged` are not charged withdraw fees.
+     * depositing into User's Internal Balance). Swaps and `withdrawPoolBalance` are not charged withdraw fees.
      *
      * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
      */
