@@ -17,6 +17,22 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+// Interfaces
+
+interface IERC2612Permit {
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+}
+
+// Contracts
+
 /**
  * @title Highly opinionated token implementation
  * @author Balancer Labs
@@ -30,12 +46,20 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  *   without first setting allowance
  * - Emits 'Approval' events whenever allowance is changed by `transferFrom`
  */
-contract BalancerPoolToken is IERC20 {
+contract BalancerPoolToken is IERC20, IERC2612Permit {
     using SafeMath for uint256;
 
     // State variables
 
+    bytes32 public immutable domainSeparator;
+
     uint8 private constant _DECIMALS = 18;
+    string private constant _VERSION = "1";
+    bytes32 private constant _PERMIT_TYPEHASH = keccak256(
+        "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+    );
+
+    mapping(address => uint256) private _nonces;
 
     mapping(address => uint256) private _balance;
     mapping(address => mapping(address => uint256)) private _allowance;
@@ -49,6 +73,22 @@ contract BalancerPoolToken is IERC20 {
     constructor(string memory tokenName, string memory tokenSymbol) {
         _name = tokenName;
         _symbol = tokenSymbol;
+
+        uint256 chainId;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            chainId := chainid()
+        }
+
+        domainSeparator = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(tokenName)),
+                keccak256(bytes(_VERSION)),
+                chainId,
+                address(this)
+            )
+        );
     }
 
     // External functions
@@ -108,6 +148,33 @@ contract BalancerPoolToken is IERC20 {
         }
 
         return true;
+    }
+
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external override {
+        // solhint-disable-next-line not-rely-on-time
+        require(block.timestamp <= deadline, "BalancerV2: EXPIRED");
+        
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator,
+                keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner], deadline))
+            )
+        );
+
+        address signer = ecrecover(digest, v, r, s);
+        require(signer != address(0) && signer == owner, "BalancerV2: INVALID_SIGNATURE");
+
+        _nonces[owner] += 1;
+        _setAllowance(owner, spender, value);
     }
 
     // Public functions
