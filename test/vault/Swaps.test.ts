@@ -171,7 +171,7 @@ describe('Vault - swaps', () => {
                   const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
                   context('when the sender is using his own tokens', () => {
-                    context('when using external balance', () => {
+                    context('when using managed balance', () => {
                       assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -1e18 });
                     });
 
@@ -503,7 +503,7 @@ describe('Vault - swaps', () => {
                   const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
                   context('when the sender is using his own tokens', () => {
-                    context('when using external balance', () => {
+                    context('when using managed balance', () => {
                       assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.5e18 });
                     });
 

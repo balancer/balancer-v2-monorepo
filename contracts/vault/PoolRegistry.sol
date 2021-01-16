@@ -23,7 +23,7 @@ import "../vendor/ReentrancyGuard.sol";
 
 import "./InternalBalance.sol";
 
-import "./balances/CashInvested.sol";
+import "./balances/BalanceAllocation.sol";
 import "./balances/StandardPoolsBalance.sol";
 import "./balances/SimplifiedQuotePoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
@@ -37,7 +37,7 @@ abstract contract PoolRegistry is
 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using SafeERC20 for IERC20;
-    using CashInvested for bytes32;
+    using BalanceAllocation for bytes32;
     using FixedPoint for uint128;
     using FixedPoint for uint256;
     using SafeCast for uint256;
@@ -51,9 +51,9 @@ abstract contract PoolRegistry is
         _;
     }
 
-    mapping(bytes32 => mapping(IERC20 => address)) private _poolInvestmentManagers;
+    mapping(bytes32 => mapping(IERC20 => address)) private _poolAssetManagers;
 
-    event PoolInvestmentManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
+    event PoolAssetManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
 
     modifier onlyPool(bytes32 poolId) {
         (address pool, ) = _getPoolData(poolId);
@@ -167,7 +167,7 @@ abstract contract PoolRegistry is
 
         uint256[] memory balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _getPoolTokenBalance(poolId, optimization, tokens[i]).total();
+            balances[i] = _getPoolTokenBalance(poolId, optimization, tokens[i]).totalBalance();
         }
 
         return balances;
@@ -323,106 +323,106 @@ abstract contract PoolRegistry is
         }
     }
 
-    // Investments
+    // Assets under management
 
-    modifier onlyPoolInvestmentManager(bytes32 poolId, IERC20 token) {
-        require(_isPoolInvestmentManager(poolId, token, msg.sender), "SENDER_NOT_INVESTMENT_MANAGER");
+    modifier onlyPoolAssetManager(bytes32 poolId, IERC20 token) {
+        require(_isPoolAssetManager(poolId, token, msg.sender), "SENDER_NOT_ASSET_MANAGER");
         _;
     }
 
-    function _isPoolInvested(
+    function _poolIsManaged(
         bytes32 poolId,
         PoolOptimization optimization,
         IERC20 token
     ) internal view returns (bool) {
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _isSimplifiedQuotePoolInvested(poolId, token);
+            return _simplifiedQuotePoolIsManaged(poolId, token);
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            return _isTwoTokenPoolInvested(poolId, token);
+            return _twoTokenPoolIsManaged(poolId, token);
         } else {
-            return _isStandardPoolInvested(poolId, token);
+            return _standardPoolIsManaged(poolId, token);
         }
     }
 
-    function setPoolInvestmentManager(
+    function setPoolAssetManager(
         bytes32 poolId,
         IERC20 token,
         address manager
     ) external override nonReentrant onlyPool(poolId) {
-        require(_poolInvestmentManagers[poolId][token] == address(0), "CANNOT_RESET_INVESTMENT_MANAGER");
-        require(manager != address(0), "Investment manager is the zero address");
+        require(_poolAssetManagers[poolId][token] == address(0), "CANNOT_RESET_ASSET_MANAGER");
+        require(manager != address(0), "Asset manager is the zero address");
 
-        _poolInvestmentManagers[poolId][token] = manager;
-        emit PoolInvestmentManagerSet(poolId, token, manager);
+        _poolAssetManagers[poolId][token] = manager;
+        emit PoolAssetManagerSet(poolId, token, manager);
     }
 
-    function getPoolInvestmentManager(bytes32 poolId, IERC20 token) external view override returns (address) {
-        return _poolInvestmentManagers[poolId][token];
+    function getPoolAssetManager(bytes32 poolId, IERC20 token) external view override returns (address) {
+        return _poolAssetManagers[poolId][token];
     }
 
-    function isPoolInvestmentManager(
+    function isPoolAssetManager(
         bytes32 poolId,
         IERC20 token,
         address account
     ) external view returns (bool) {
-        return _isPoolInvestmentManager(poolId, token, account);
+        return _isPoolAssetManager(poolId, token, account);
     }
 
-    function investPoolBalance(
+    function withdrawPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) external override nonReentrant onlyPoolInvestmentManager(poolId, token) {
+    ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
         (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _investSimplifiedQuotePoolCash(poolId, token, amount.toUint128());
+            _simplifiedQuotePoolCashToManaged(poolId, token, amount.toUint128());
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            _investTwoTokenPoolCash(poolId, token, amount.toUint128());
+            _twoTokenPoolCashToManaged(poolId, token, amount.toUint128());
         } else {
-            _investStandardPoolCash(poolId, token, amount.toUint128());
+            _standardPoolCashToManaged(poolId, token, amount.toUint128());
         }
 
         token.safeTransfer(msg.sender, amount);
     }
 
-    function divestPoolBalance(
+    function depositPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) external override nonReentrant onlyPoolInvestmentManager(poolId, token) {
+    ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _divestSimplifiedQuotePoolCash(poolId, token, amount.toUint128());
+            _simplifiedQuotePoolManagedToCash(poolId, token, amount.toUint128());
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            _divestTwoTokenPoolCash(poolId, token, amount.toUint128());
+            _twoTokenPoolManagedToCash(poolId, token, amount.toUint128());
         } else {
-            _divestStandardPoolCash(poolId, token, amount.toUint128());
+            _standardPoolManagedToCash(poolId, token, amount.toUint128());
         }
     }
 
-    function updateInvested(
+    function updateManagedBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) external override nonReentrant onlyPoolInvestmentManager(poolId, token) {
+    ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
         (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _setSimplifiedQuotePoolInvestment(poolId, token, amount.toUint128());
+            _setSimplifiedQuotePoolManagedBalance(poolId, token, amount.toUint128());
         } else if (optimization == PoolOptimization.TWO_TOKEN) {
-            _setTwoTokenPoolInvestment(poolId, token, amount.toUint128());
+            _setTwoTokenPoolManagedBalance(poolId, token, amount.toUint128());
         } else {
-            _setStandardPoolInvestment(poolId, token, amount.toUint128());
+            _setStandardPoolManagedBalance(poolId, token, amount.toUint128());
         }
     }
 
-    function _isPoolInvestmentManager(
+    function _isPoolAssetManager(
         bytes32 poolId,
         IERC20 token,
         address account
     ) internal view returns (bool) {
-        return _poolInvestmentManagers[poolId][token] == account;
+        return _poolAssetManagers[poolId][token] == account;
     }
 
     function paySwapProtocolFees(
@@ -455,7 +455,7 @@ abstract contract PoolRegistry is
 
         balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _getPoolTokenBalance(poolId, optimization, tokens[i]).total();
+            balances[i] = _getPoolTokenBalance(poolId, optimization, tokens[i]).totalBalance();
         }
 
         return balances;
