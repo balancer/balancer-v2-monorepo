@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../vendor/EIP712.sol";
 
 // Interfaces
 
@@ -46,12 +47,10 @@ interface IERC2612Permit {
  *   without first setting allowance
  * - Emits 'Approval' events whenever allowance is changed by `transferFrom`
  */
-contract BalancerPoolToken is IERC20, IERC2612Permit {
+contract BalancerPoolToken is IERC20, IERC2612Permit, EIP712 {
     using SafeMath for uint256;
 
     // State variables
-
-    bytes32 public immutable domainSeparator;
 
     uint8 private constant _DECIMALS = 18;
     string private constant _VERSION = "1";
@@ -70,25 +69,9 @@ contract BalancerPoolToken is IERC20, IERC2612Permit {
 
     // Function declarations
 
-    constructor(string memory tokenName, string memory tokenSymbol) {
+    constructor(string memory tokenName, string memory tokenSymbol) EIP712(tokenName, _VERSION) {
         _name = tokenName;
         _symbol = tokenSymbol;
-
-        uint256 chainId;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            chainId := chainid()
-        }
-
-        domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256(bytes(tokenName)),
-                keccak256(bytes(_VERSION)),
-                chainId,
-                address(this)
-            )
-        );
     }
 
     // External functions
@@ -161,11 +144,11 @@ contract BalancerPoolToken is IERC20, IERC2612Permit {
     ) external override {
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp <= deadline, "BalancerV2: EXPIRED");
-        
+
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
-                domainSeparator,
+                _domainSeparatorV4(),
                 keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner], deadline))
             )
         );
