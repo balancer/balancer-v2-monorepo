@@ -43,30 +43,10 @@ describe('assetManager', function () {
     });
 
     it('different managers can be set for different tokens', async () => {
-      await vault.connect(pool).setPoolAssetManager(poolId, tokens.DAI.address, assetManager.address);
-      await vault.connect(pool).setPoolAssetManager(poolId, tokens.USDT.address, other.address);
+      await vault.connect(pool).registerTokens(poolId, [tokens.DAI.address, tokens.USDT.address], [assetManager.address, other.address]);
 
       expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(assetManager.address);
       expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(other.address);
-    });
-
-    it('the manager cannot be changed', async () => {
-      await vault.connect(pool).setPoolAssetManager(poolId, tokens.DAI.address, assetManager.address);
-      await expect(
-        vault.connect(pool).setPoolAssetManager(poolId, tokens.DAI.address, other.address)
-      ).to.be.revertedWith('CANNOT_RESET_ASSET_MANAGER');
-    });
-
-    it('the manager can only be set by the pool be the zero address', async () => {
-      await expect(
-        vault.connect(other).setPoolAssetManager(poolId, tokens.DAI.address, assetManager.address)
-      ).to.be.revertedWith('Caller is not the pool');
-    });
-
-    it('the manager cannot be the zero address', async () => {
-      await expect(
-        vault.connect(pool).setPoolAssetManager(poolId, tokens.DAI.address, ZERO_ADDRESS)
-      ).to.be.revertedWith('Asset manager is the zero address');
     });
   });
 
@@ -94,20 +74,20 @@ describe('assetManager', function () {
 
       const tokenAddresses = [];
       const tokenAmounts = [];
+      const assetManagers = [];
       for (const symbol in tokens) {
         // Mint tokens for the pool to add liquidity with
         await mintTokens(tokens, symbol, pool, tokenInitialBalance);
 
         tokenAddresses.push(tokens[symbol].address);
         tokenAmounts.push(tokenInitialBalance);
+        assetManagers.push(assetManager.address);
 
         await tokens[symbol].connect(pool).approve(vault.address, MAX_UINT256);
-
         await tokens[symbol].connect(assetManager).approve(vault.address, MAX_UINT256);
-        await vault.connect(pool).setPoolAssetManager(poolId, tokens[symbol].address, assetManager.address);
       }
 
-      await vault.connect(pool).registerTokens(poolId, tokenAddresses);
+      await vault.connect(pool).registerTokens(poolId, tokenAddresses, assetManagers);
       await vault.connect(pool).addLiquidity(poolId, pool.address, tokenAddresses, tokenAmounts, false);
     });
 
@@ -137,14 +117,6 @@ describe('assetManager', function () {
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
           });
-        });
-
-        it('reverts when setting a manager for a token not in the pool', async () => {
-          await vault.connect(pool).setPoolAssetManager(poolId, otherToken.address, assetManager.address);
-
-          await expect(
-            vault.connect(assetManager).withdrawPoolBalance(poolId, otherToken.address, 0)
-          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
 
         it('reverts when sending more than the pool balance', async () => {
@@ -206,14 +178,6 @@ describe('assetManager', function () {
           await expect(
             vault.connect(assetManager).depositPoolBalance(poolId, tokens.DAI.address, 1)
           ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
-        });
-
-        it('reverts when cashing out a token not in the pool', async () => {
-          await vault.connect(pool).setPoolAssetManager(poolId, otherToken.address, assetManager.address);
-
-          await expect(
-            vault.connect(assetManager).depositPoolBalance(poolId, otherToken.address, 0)
-          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
       });
 
@@ -277,14 +241,6 @@ describe('assetManager', function () {
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
           });
         });
-      });
-
-      it('revert if setting a token not in the pool', async () => {
-        await vault.connect(pool).setPoolAssetManager(poolId, otherToken.address, assetManager.address);
-
-        await expect(
-          vault.connect(assetManager).updateManagedBalance(poolId, otherToken.address, 0)
-        ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
       });
 
       it('revert if the sender is not the manager', async () => {

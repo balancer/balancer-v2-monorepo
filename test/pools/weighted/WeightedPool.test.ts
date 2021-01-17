@@ -234,6 +234,15 @@ describe('WeightedPool', function () {
 
       expect(await pool.decimals()).to.equal(18);
     });
+
+    it('initializes the asset managers', async () => {
+      const pool = await callDeployPool();
+      const poolId = await pool.getPoolId();
+
+      for (const symbol in tokens) {
+        expect(await vault.getPoolAssetManager(poolId, tokens[symbol].address)).to.equal(ZERO_ADDRESS);
+      }
+    })
   });
 
   context('with pool', () => {

@@ -24,6 +24,7 @@ describe('OneToOneSwapValidator', () => {
   let poolIds: string[];
   let swaps: SwapIn[];
   let funds: FundManagement;
+  let assetManagers: string[];
 
   before('setup', async () => {
     [, lp, trader] = await ethers.getSigners();
@@ -34,6 +35,7 @@ describe('OneToOneSwapValidator', () => {
 
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
+    assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
 
     for (const symbol in tokens) {
       // Grant tokens to lp and trader, and approve the Vault to use them
@@ -55,7 +57,7 @@ describe('OneToOneSwapValidator', () => {
 
       await vault.connect(lp).addUserAgent(pool.address);
 
-      await pool.connect(lp).registerTokens([tokens.DAI.address, tokens.MKR.address, tokens.SNX.address]);
+      await pool.connect(lp).registerTokens([tokens.DAI.address, tokens.MKR.address, tokens.SNX.address], assetManagers);
 
       await pool
         .connect(lp)
