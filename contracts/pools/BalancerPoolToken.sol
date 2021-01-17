@@ -16,21 +16,9 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../vendor/IERC20Permit.sol";
+import "../vendor/Counters.sol";
 import "../vendor/EIP712.sol";
-
-// Interfaces
-
-interface IERC2612Permit {
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
-}
 
 // Contracts
 
@@ -47,7 +35,8 @@ interface IERC2612Permit {
  *   without first setting allowance
  * - Emits 'Approval' events whenever allowance is changed by `transferFrom`
  */
-contract BalancerPoolToken is IERC20, IERC2612Permit, EIP712 {
+contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
+    using Counters for Counters.Counter;
     using SafeMath for uint256;
 
     // State variables
@@ -58,7 +47,7 @@ contract BalancerPoolToken is IERC20, IERC2612Permit, EIP712 {
         "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
     );
 
-    mapping(address => uint256) private _nonces;
+    mapping (address => Counters.Counter) private _nonces;
 
     mapping(address => uint256) private _balance;
     mapping(address => mapping(address => uint256)) private _allowance;
@@ -149,15 +138,25 @@ contract BalancerPoolToken is IERC20, IERC2612Permit, EIP712 {
             abi.encodePacked(
                 "\x19\x01",
                 _domainSeparatorV4(),
-                keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner], deadline))
+                keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner].current(), deadline))
             )
         );
 
         address signer = ecrecover(digest, v, r, s);
         require(signer != address(0) && signer == owner, "BalancerV2: INVALID_SIGNATURE");
 
-        _nonces[owner] += 1;
+        _nonces[owner].increment();
+        
         _setAllowance(owner, spender, value);
+    }
+
+    function nonces(address owner) external view override returns (uint256) {
+        return _nonces[owner].current();
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function DOMAIN_SEPARATOR() external view override returns (bytes32) {
+        return _domainSeparatorV4();
     }
 
     // Public functions
