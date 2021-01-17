@@ -34,7 +34,7 @@ export async function setupEnvironment(): Promise<{
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
     // deposit internal balance for trader to make it non-zero
-    await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), trader.address);
+    await vault.connect(trader).depositToInternalBalance(tokens[symbol].address, (1e18).toString(), trader.address);
   }
 
   return { vault, validator, tokens, trader };
