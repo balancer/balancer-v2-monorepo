@@ -40,11 +40,11 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
     event Deposited(address indexed depositor, address indexed user, IERC20 indexed token, uint256 amount);
     event Withdrawn(address indexed user, address indexed recipient, IERC20 indexed token, uint256 amount);
 
-    function getInternalTokenBalance(address user, IERC20 token) public view override returns (uint256) {
+    function getInternalBalance(address user, IERC20 token) public view override returns (uint256) {
         return _internalTokenBalance[user][token];
     }
 
-    function deposit(
+    function depositToInternalBalance(
         IERC20 token,
         uint256 amount,
         address user
@@ -55,7 +55,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
         emit Deposited(msg.sender, user, token, amount);
     }
 
-    function withdraw(
+    function withdrawFromInternalBalance(
         IERC20 token,
         uint256 amount,
         address recipient

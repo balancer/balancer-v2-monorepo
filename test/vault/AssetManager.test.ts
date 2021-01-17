@@ -118,7 +118,7 @@ describe('assetManager', function () {
 
           it('transfers only the requested token from the vault to the manager', async () => {
             await expectBalanceChange(
-              () => vault.connect(assetManager).withdrawPoolBalance(poolId, tokens.DAI.address, amount),
+              () => vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount),
               tokens,
               [
                 { account: assetManager, changes: { DAI: amount } },
@@ -131,7 +131,7 @@ describe('assetManager', function () {
             const tokenAddresses = [tokens.DAI.address, tokens.USDT.address];
             const [previousBalanceDAI, previousBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
 
-            await vault.connect(assetManager).withdrawPoolBalance(poolId, tokens.DAI.address, amount);
+            await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount);
 
             const [currentBalanceDAI, currentBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
@@ -143,19 +143,19 @@ describe('assetManager', function () {
           await vault.connect(pool).setPoolAssetManager(poolId, otherToken.address, assetManager.address);
 
           await expect(
-            vault.connect(assetManager).withdrawPoolBalance(poolId, otherToken.address, 0)
+            vault.connect(assetManager).withdrawFromPoolBalance(poolId, otherToken.address, 0)
           ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
 
         it('reverts when sending more than the pool balance', async () => {
           await expect(
-            vault.connect(assetManager).withdrawPoolBalance(poolId, tokens.DAI.address, tokenInitialBalance.add(1))
+            vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, tokenInitialBalance.add(1))
           ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
         });
       });
 
       it('reverts if the sender is not the manager', async () => {
-        await expect(vault.connect(other).withdrawPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
+        await expect(vault.connect(other).withdrawFromPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
           'SENDER_NOT_ASSET_MANAGER'
         );
       });
@@ -168,12 +168,12 @@ describe('assetManager', function () {
           const amount = externalAmount.div(2);
 
           beforeEach('put under management', async () => {
-            await vault.connect(assetManager).withdrawPoolBalance(poolId, tokens.DAI.address, externalAmount);
+            await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, externalAmount);
           });
 
           it('transfers only the requested token from the manager to the vault', async () => {
             await expectBalanceChange(
-              () => vault.connect(assetManager).depositPoolBalance(poolId, tokens.DAI.address, amount),
+              () => vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount),
               tokens,
               [
                 { account: assetManager, changes: { DAI: -amount } },
@@ -186,7 +186,7 @@ describe('assetManager', function () {
             const tokenAddresses = [tokens.DAI.address, tokens.USDT.address];
             const [previousBalanceDAI, previousBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
 
-            await vault.connect(assetManager).depositPoolBalance(poolId, tokens.DAI.address, amount);
+            await vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount);
 
             const [currentBalanceDAI, currentBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
@@ -196,7 +196,7 @@ describe('assetManager', function () {
 
         it('does nothing when divesting zero tokens', async () => {
           await expectBalanceChange(
-            () => vault.connect(assetManager).depositPoolBalance(poolId, tokens.DAI.address, 0),
+            () => vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, 0),
             tokens,
             { account: vault.address }
           );
@@ -204,7 +204,7 @@ describe('assetManager', function () {
 
         it('reverts when cashing out more than the managed balance', async () => {
           await expect(
-            vault.connect(assetManager).depositPoolBalance(poolId, tokens.DAI.address, 1)
+            vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, 1)
           ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
         });
 
@@ -212,13 +212,13 @@ describe('assetManager', function () {
           await vault.connect(pool).setPoolAssetManager(poolId, otherToken.address, assetManager.address);
 
           await expect(
-            vault.connect(assetManager).depositPoolBalance(poolId, otherToken.address, 0)
+            vault.connect(assetManager).depositToPoolBalance(poolId, otherToken.address, 0)
           ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
       });
 
       it('reverts if the sender is not the manager', async () => {
-        await expect(vault.connect(other).depositPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
+        await expect(vault.connect(other).depositToPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
           'SENDER_NOT_ASSET_MANAGER'
         );
       });
@@ -229,7 +229,7 @@ describe('assetManager', function () {
         const externalAmount = BigNumber.from((10e18).toString());
 
         beforeEach('transfer to manager', async () => {
-          await vault.connect(assetManager).withdrawPoolBalance(poolId, tokens.DAI.address, externalAmount);
+          await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, externalAmount);
         });
 
         context('with gains', () => {
