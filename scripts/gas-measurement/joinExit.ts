@@ -1,4 +1,4 @@
-import { printGas, setupEnvironment, getConstantProductPool, getStablecoinPool } from './misc';
+import { printGas, setupEnvironment, getWeightedPool, getStablePool } from './misc';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256 } from '../../test/helpers/constants';
 import { TokenList } from '../../test/helpers/tokens';
@@ -25,7 +25,7 @@ async function main() {
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
     await joinAndExitPool(
-      () => getConstantProductPool(vault, tokens, numTokens),
+      () => getWeightedPool(vault, tokens, numTokens),
       'ConstantProductPool',
       numTokens,
       true
@@ -37,7 +37,7 @@ async function main() {
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
     await joinAndExitPool(
-      () => getConstantProductPool(vault, tokens, numTokens),
+      () => getWeightedPool(vault, tokens, numTokens),
       'ConstantProductPool',
       numTokens,
       false
@@ -48,14 +48,14 @@ async function main() {
 
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(() => getStablecoinPool(vault, tokens, numTokens), 'StablecoinPool', numTokens, true);
+    await joinAndExitPool(() => getStablePool(vault, tokens, numTokens), 'StablecoinPool', numTokens, true);
   }
 
   console.log(`# Stablecoin Pools, full join/exit, with user balance\n`);
 
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(() => getStablecoinPool(vault, tokens, numTokens), 'ConstantProductPool', numTokens, false);
+    await joinAndExitPool(() => getStablePool(vault, tokens, numTokens), 'ConstantProductPool', numTokens, false);
   }
 
   console.log('== Partial Join/Exit (2-stage entry/exit)==');
@@ -64,7 +64,7 @@ async function main() {
 
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
     await joinAndExitPool(
-      () => getConstantProductPool(vault, tokens, numTokens),
+      () => getWeightedPool(vault, tokens, numTokens),
       'ConstantProductPool',
       numTokens,
       true,
@@ -76,7 +76,7 @@ async function main() {
 
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
     await joinAndExitPool(
-      () => getConstantProductPool(vault, tokens, numTokens),
+      () => getWeightedPool(vault, tokens, numTokens),
       'ConstantProductPool',
       numTokens,
       false,
@@ -88,7 +88,7 @@ async function main() {
 
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
     await joinAndExitPool(
-      () => getStablecoinPool(vault, tokens, numTokens),
+      () => getStablePool(vault, tokens, numTokens),
       'StablecoinPool',
       numTokens,
       true,
@@ -100,7 +100,7 @@ async function main() {
 
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
     await joinAndExitPool(
-      () => getStablecoinPool(vault, tokens, numTokens),
+      () => getStablePool(vault, tokens, numTokens),
       'StablecoinPool',
       numTokens,
       false,
@@ -117,8 +117,8 @@ async function joinAndExitPool(
   stageIdx = 1
 ) {
   const poolId: string = await getPoolId();
-  const [poolAddress] = await vault.fromPoolId(poolId);
-  const pool: Contract = await ethers.getContractAt('ConstantProductPool', poolAddress);
+  const [poolAddress,] = await vault.getPool(poolId);
+  const pool: Contract = await ethers.getContractAt('WeightedPool', poolAddress);
   const transfer = transferTokens ? 'Transferring tokens' : 'With User Balance';
   let receipt;
   let bpt;
