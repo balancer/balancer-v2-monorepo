@@ -24,24 +24,14 @@ async function main() {
 
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(
-      () => getWeightedPool(vault, tokens, numTokens),
-      'ConstantProductPool',
-      numTokens,
-      true
-    );
+    await joinAndExitPool(() => getWeightedPool(vault, tokens, numTokens), 'ConstantProductPool', numTokens, true);
   }
 
   console.log(`# Constant Product Pools, full join/exit, with user balance\n`);
 
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(
-      () => getWeightedPool(vault, tokens, numTokens),
-      'ConstantProductPool',
-      numTokens,
-      false
-    );
+    await joinAndExitPool(() => getWeightedPool(vault, tokens, numTokens), 'ConstantProductPool', numTokens, false);
   }
 
   console.log(`# Stablecoin Pools, full join/exit, transferring tokens\n`);
@@ -117,7 +107,7 @@ async function joinAndExitPool(
   stageIdx = 1
 ) {
   const poolId: string = await getPoolId();
-  const [poolAddress,] = await vault.getPool(poolId);
+  const [poolAddress] = await vault.getPool(poolId);
   const pool: Contract = await ethers.getContractAt('WeightedPool', poolAddress);
   const transfer = transferTokens ? 'Transferring tokens' : 'With User Balance';
   let receipt;
