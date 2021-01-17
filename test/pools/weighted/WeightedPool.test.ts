@@ -9,7 +9,7 @@ import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants'
 import { expectBalanceChange } from '../../helpers/tokenBalance';
 import { FIXED_POINT_SCALING, toFixedPoint } from '../../../scripts/helpers/fixedPoint';
 
-describe('ConstantProductPool', function () {
+describe('WeightedPool', function () {
   let admin: SignerWithAddress;
   let creator: SignerWithAddress;
   let lp: SignerWithAddress;
@@ -57,7 +57,7 @@ describe('ConstantProductPool', function () {
     poolSwapFee = toFixedPoint(0.01);
 
     callDeployPool = () =>
-      deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      deployPoolFromFactory(vault, admin, 'WeightedPool', {
         from: creator,
         parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, poolSwapFee],
       });
@@ -117,7 +117,7 @@ describe('ConstantProductPool', function () {
 
     it("reverts if the number of tokens and amounts don't match", async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances.slice(1), poolWeights, poolSwapFee],
         })
@@ -126,7 +126,7 @@ describe('ConstantProductPool', function () {
 
     it("reverts if the number of tokens and weights don't match", async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights.slice(1), poolSwapFee],
         })
@@ -135,7 +135,7 @@ describe('ConstantProductPool', function () {
 
     it('reverts if there is a single token', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -150,7 +150,7 @@ describe('ConstantProductPool', function () {
 
     it('reverts if there are repeated tokens', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -195,7 +195,7 @@ describe('ConstantProductPool', function () {
       }
 
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [
             initialBPT,
@@ -210,7 +210,7 @@ describe('ConstantProductPool', function () {
 
     it('reverts if the swap fee is too high', async () => {
       await expect(
-        deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: creator,
           parameters: [initialBPT, poolTokens, poolInitialBalances, poolWeights, toFixedPoint(0.1).add(1)],
         })
@@ -322,7 +322,7 @@ describe('ConstantProductPool', function () {
         ).to.be.revertedWith('Tokens and amounts length mismatch');
       });
 
-      it('can withdraw from user balance', async () => {
+      it('can withdraw from internal balance', async () => {
         await vault.connect(lp).deposit(tokens.DAI.address, (1e18).toString(), lp.address);
         await vault.connect(lp).deposit(tokens.MKR.address, (1e18).toString(), lp.address);
 
@@ -335,11 +335,11 @@ describe('ConstantProductPool', function () {
           { account: lp }
         );
 
-        expect(await vault.getUserTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.9e18).toString());
-        expect(await vault.getUserTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.9e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
       });
 
-      it('transfers missing tokens if user balance is not enough', async () => {
+      it('transfers missing tokens if internal balance is not enough', async () => {
         await vault.connect(lp).deposit(tokens.DAI.address, BigNumber.from((0.1e18).toString()).sub(1), lp.address);
         await vault.connect(lp).deposit(tokens.MKR.address, (0.2e18).toString(), lp.address);
 
@@ -494,7 +494,7 @@ describe('ConstantProductPool', function () {
         });
       });
 
-      it('can deposit into user balance', async () => {
+      it('can deposit into internal balance', async () => {
         await expectBalanceChange(
           () => pool.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
           tokens,
@@ -515,26 +515,30 @@ describe('ConstantProductPool', function () {
         ).to.be.revertedWith('Tokens and amounts length mismatch');
       });
 
-      it('can deposit into user balance', async () => {
+      it('can deposit into internal balance', async () => {
         await expectBalanceChange(
           () => pool.connect(lp).exitPool((10e18).toString(), [0, 0], false, lp.address),
           tokens,
           { account: lp }
         );
 
-        expect(await vault.getUserTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
-        expect(await vault.getUserTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.2e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
+        expect(await vault.getInternalTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.2e18).toString());
       });
 
-      it("can deposit into a beneficiary's user balance", async () => {
+      it("can deposit into a beneficiary's internal balance", async () => {
         await expectBalanceChange(
           () => pool.connect(lp).exitPool((10e18).toString(), [0, 0], false, beneficiary.address),
           tokens,
           { account: beneficiary }
         );
 
-        expect(await vault.getUserTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal((0.1e18).toString());
-        expect(await vault.getUserTokenBalance(beneficiary.address, tokens.MKR.address)).to.equal((0.2e18).toString());
+        expect(await vault.getInternalTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal(
+          (0.1e18).toString()
+        );
+        expect(await vault.getInternalTokenBalance(beneficiary.address, tokens.MKR.address)).to.equal(
+          (0.2e18).toString()
+        );
       });
     });
 
@@ -638,7 +642,7 @@ describe('ConstantProductPool', function () {
 
     context('with two tokens', () => {
       beforeEach(async () => {
-        pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: lp,
           parameters: [
             initialBPT,
@@ -761,7 +765,7 @@ describe('ConstantProductPool', function () {
 
     context('with three tokens', () => {
       beforeEach(async () => {
-        pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+        pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
           from: lp,
           parameters: [
             initialBPT,
@@ -902,7 +906,7 @@ describe('ConstantProductPool', function () {
       tokenAddresses = [tokens.DAI.address, tokens.MKR.address];
       tokenWeights = [(8e18).toString(), (2e18).toString()];
 
-      pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
         from: lp,
         parameters: [initialBPT, tokenAddresses, initialBalances, tokenWeights, swapFee],
       });
@@ -943,8 +947,8 @@ describe('ConstantProductPool', function () {
         const funds = {
           sender: trader.address,
           recipient: trader.address,
-          withdrawFromUserBalance: false,
-          depositToUserBalance: false,
+          withdrawFromInternalBalance: false,
+          depositToInternalBalance: false,
         };
 
         await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', [swap], tokenAddresses, funds);

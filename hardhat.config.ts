@@ -35,7 +35,7 @@ const config: HardhatUserConfig = {
     },
   },
   abiExporter: {
-    only: ['Vault', 'ConstantProductPool', 'StablecoinPool', 'BalancerPoolToken'],
+    only: ['Vault', 'WeightedPool', 'StablePool', 'BalancerPoolToken'],
     flat: true,
   },
 };

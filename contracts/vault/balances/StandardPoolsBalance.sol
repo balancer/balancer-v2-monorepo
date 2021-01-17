@@ -19,13 +19,13 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./CashInvested.sol";
+import "./BalanceAllocation.sol";
 import "../../math/FixedPoint.sol";
 import "../../vendor/EnumerableMap.sol";
 
 contract StandardPoolsBalance {
     using SafeCast for uint256;
-    using CashInvested for bytes32;
+    using BalanceAllocation for bytes32;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     // Data for Pools with Standard Pool Optimization setting
@@ -126,7 +126,7 @@ contract StandardPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint128 amount = amounts[i].toUint128();
-            _updateStandardPoolBalance(poolBalances, tokens[i], CashInvested.increaseCash, amount);
+            _updateStandardPoolBalance(poolBalances, tokens[i], BalanceAllocation.increaseCash, amount);
         }
     }
 
@@ -148,38 +148,38 @@ contract StandardPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint128 amount = amounts[i].toUint128();
-            _updateStandardPoolBalance(poolBalances, tokens[i], CashInvested.decreaseCash, amount);
+            _updateStandardPoolBalance(poolBalances, tokens[i], BalanceAllocation.decreaseCash, amount);
         }
     }
 
-    function _investStandardPoolCash(
+    function _standardPoolCashToManaged(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateStandardPoolBalance(poolId, token, CashInvested.cashToInvested, amount);
+        _updateStandardPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
-    function _divestStandardPoolCash(
+    function _standardPoolManagedToCash(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateStandardPoolBalance(poolId, token, CashInvested.investedToCash, amount);
+        _updateStandardPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
-    function _setStandardPoolInvestment(
+    function _setStandardPoolManagedBalance(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateStandardPoolBalance(poolId, token, CashInvested.setInvested, amount);
+        _updateStandardPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
 
-    function _isStandardPoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
+    function _standardPoolIsManaged(bytes32 poolId, IERC20 token) internal view returns (bool) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
         bytes32 currentBalance = _getStandardPoolTokenBalance(poolBalances, token);
-        return currentBalance.isInvested();
+        return currentBalance.isManaged();
     }
 
     function _updateStandardPoolBalance(
