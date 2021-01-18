@@ -8,6 +8,7 @@ import { deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { expectBalanceChange } from '../../helpers/tokenBalance';
 import { FIXED_POINT_SCALING, toFixedPoint } from '../../../scripts/helpers/fixedPoint';
+import { calculateInvariant } from '../../helpers/math/weightedProduct';
 
 describe('ConstantProductPool', function () {
   let admin: SignerWithAddress;
@@ -879,6 +880,371 @@ describe('ConstantProductPool', function () {
             200
           )
         ).to.be.revertedWith('ERR_INVALID_TOKEN');
+      });
+    });
+  });
+
+  /////////Temporary pool creation with mock vault
+  const callDeployPoolWithMockVault = async (vault: Contract) => {
+    const name = 'Balancer Pool Token';
+    const symbol = 'BPT';
+    return deploy('ConstantProductPool', {
+      args: [
+        vault.address,
+        name,
+        symbol,
+        0, //Initial BPT is always cero
+        poolTokens,
+        ['0', '0'], //Initial Balances are empty
+        admin.address,
+        poolWeights,
+        poolSwapFee,
+      ],
+    });
+  };
+  //////////Temporary
+
+  const INIT = 0;
+  const EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
+
+  const encodeJoinInitialUserData = (): string => {
+    return ethers.utils.defaultAbiCoder.encode(['uint256'], [INIT]);
+  };
+  const encodeJoinExactTokensInForBPTOutUserData = (minimumBPT: string): string => {
+    return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_TOKENS_IN_FOR_BPT_OUT, minimumBPT]);
+  };
+
+  describe('join hook', () => {
+    const protocolSwapFee = toFixedPoint(0);
+    const emptyBalances = (poolInitialBalances = [0, 0].map((value) => BigNumber.from(value.toString())));
+
+    let vault: Contract;
+    let pool: Contract;
+    let poolId: string;
+
+    beforeEach(async function () {
+      vault = await deploy('MockVault', { args: [] });
+      pool = await callDeployPoolWithMockVault(vault);
+      poolId = await pool.getPoolId();
+    });
+
+    it('fails if caller is not the vault', async () => {
+      await expect(
+        pool
+          .connect(lp)
+          .onJoinPool(poolId, emptyBalances, lp.address, other.address, emptyBalances, protocolSwapFee, '0x')
+      ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
+    });
+
+    it('fails if wrong pool id', async () => {
+      await expect(
+        vault
+          .connect(lp)
+          .joinPool(
+            pool.address,
+            '0x0000000000000000000000000000000000000000000000000000000000000000',
+            other.address,
+            poolTokens,
+            emptyBalances,
+            false,
+            '0x'
+          )
+      ).to.be.revertedWith('INVALID_POOL_ID');
+    });
+
+    it('fails if no user data', async () => {
+      await expect(
+        vault.connect(lp).joinPool(pool.address, poolId, other.address, poolTokens, emptyBalances, false, '0x')
+      ).to.be.be.revertedWith('Transaction reverted without a reason');
+    });
+
+    it('fails if wrong user data', async () => {
+      const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
+
+      await expect(
+        vault.connect(lp).joinPool(pool.address, poolId, other.address, poolTokens, emptyBalances, false, wrongUserData)
+      ).to.be.be.revertedWith('Transaction reverted without a reason');
+    });
+
+    context('intialization', () => {
+      let initialBalances: BigNumber[];
+      let initialUserData: string;
+
+      beforeEach(async () => {
+        initialBalances = [0.9e18, 1.8e18].map((value) => BigNumber.from(value.toString()));
+        initialUserData = encodeJoinInitialUserData();
+      });
+      it('grants the invariant amount of BPT', async () => {
+        const previousBPT = await pool.balanceOf(other.address);
+
+        const invariant = calculateInvariant(
+          initialBalances.map((value) => value.toString()),
+          poolWeights.map((value) => value.toString())
+        );
+
+        await vault
+          .connect(creator)
+          .joinPool(pool.address, poolId, other.address, poolTokens, initialBalances, false, initialUserData);
+
+        //Balances should be the same as initial ones
+        expect(await vault.getPoolCurrentBalances()).to.deep.equal(
+          initialBalances.map((value) => BigNumber.from(value.toString()))
+        );
+
+        //Initial balances should equal invariant
+        const newBPT = await pool.balanceOf(other.address);
+        expect(newBPT.sub(previousBPT)).to.be.at.least(invariant.sub(1).toFixed(0));
+        expect(newBPT.sub(previousBPT)).to.be.at.most(invariant.add(1).toFixed(0));
+      });
+
+      it('fails if already intialized', async () => {
+        await vault
+          .connect(creator)
+          .joinPool(pool.address, poolId, other.address, poolTokens, initialBalances, false, initialUserData);
+
+        await expect(
+          vault
+            .connect(creator)
+            .joinPool(pool.address, poolId, other.address, poolTokens, initialBalances, false, initialUserData)
+        ).to.be.be.revertedWith('ERR_ALREADY_INITIALIZED');
+      });
+    });
+
+    context('join exact tokens in for BPT out', () => {
+      it('fails if not intialized', async () => {
+        const joinUserData = encodeJoinExactTokensInForBPTOutUserData('0');
+        await expect(
+          vault
+            .connect(creator)
+            .joinPool(pool.address, poolId, other.address, poolTokens, emptyBalances, false, joinUserData)
+        ).to.be.be.revertedWith('ERR_UNINITIALIZED');
+      });
+
+      context('initialized', () => {
+        beforeEach(async () => {
+          const initialBalances = [0.9e18, 1.8e18].map((value) => BigNumber.from(value.toString()));
+          const initialUserData = encodeJoinInitialUserData();
+          await vault
+            .connect(creator)
+            .joinPool(pool.address, poolId, other.address, poolTokens, initialBalances, false, initialUserData);
+        });
+
+        it('grants BPT for exact tokens', async () => {
+          const previousBPT = await pool.balanceOf(lp.address);
+
+          const minimumBPT = (0.01e18).toString();
+          const joinUserData = encodeJoinExactTokensInForBPTOutUserData(minimumBPT);
+          const inBalances = [0, 0.1e18].map((value) => BigNumber.from(value.toString()));
+
+          await vault
+            .connect(lp)
+            .joinPool(pool.address, poolId, lp.address, poolTokens, inBalances, false, joinUserData);
+
+          const newBPT = await pool.balanceOf(lp.address);
+          expect(newBPT.sub(previousBPT)).to.be.at.least((0.017e18).toString());
+          expect(newBPT.sub(previousBPT)).to.be.at.most((0.018e18).toString());
+        });
+
+        it('fails if not enough BPT', async () => {
+          const minimumBPT = (1e18).toString();
+          const joinUserData = encodeJoinExactTokensInForBPTOutUserData(minimumBPT);
+          const inBalances = [0, 0.1e18].map((value) => BigNumber.from(value.toString()));
+
+          await expect(
+            vault.connect(lp).joinPool(pool.address, poolId, lp.address, poolTokens, inBalances, false, joinUserData)
+          ).to.be.be.revertedWith('ERR_BPT_OUT_MIN_AMOUNT');
+        });
+      });
+    });
+  });
+
+  describe('exit hook', () => {
+    let vault: Contract;
+    let pool: Contract;
+    let poolId: string;
+    const EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
+    const EXACT_BPT_IN_FOR_ALL_TOKENS_OUT = 1;
+    const BPT_IN_FOR_EXACT_TOKENS_OUT = 2;
+
+    const protocolSwapFee = toFixedPoint(0);
+    const emptyBalances = (poolInitialBalances = [0, 0].map((value) => BigNumber.from(value.toString())));
+
+    const encodeExitExactBPTInForOneTokenOutUserData = (bptAmountIn: string, tokenIndex: number): string => {
+      return ethers.utils.defaultAbiCoder.encode(
+        ['uint256', 'uint256', 'uint256'],
+        [EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex]
+      );
+    };
+
+    const encodeExitExactBPTInForAllTokensOutUserData = (bptAmountIn: string): string => {
+      return ethers.utils.defaultAbiCoder.encode(
+        ['uint256', 'uint256'],
+        [EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, bptAmountIn]
+      );
+    };
+
+    const encodeExitBPTInForExactTokensOutUserData = (maxBPTAmountIn: string): string => {
+      return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [BPT_IN_FOR_EXACT_TOKENS_OUT, maxBPTAmountIn]);
+    };
+
+    // const encodeJoinUserData = (kind: ExitKind, minimumBPT: string): string => {
+    //   return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [kind, minimumBPT]);
+    // };
+
+    beforeEach(async function () {
+      vault = await deploy('MockVault', { args: [] });
+      pool = await callDeployPoolWithMockVault(vault);
+      poolId = await pool.getPoolId();
+
+      //Initialize
+      const initialBalances = [0.9e18, 1.8e18].map((value) => BigNumber.from(value.toString()));
+      const initialUserData = encodeJoinInitialUserData();
+      await vault
+        .connect(creator)
+        .joinPool(pool.address, poolId, other.address, poolTokens, initialBalances, false, initialUserData);
+
+      //Join
+      const minimumBPT = (0.01e18).toString();
+      const joinUserData = encodeJoinExactTokensInForBPTOutUserData(minimumBPT);
+      const inBalances = [0, 0.1e18].map((value) => BigNumber.from(value.toString()));
+      await vault.connect(lp).joinPool(pool.address, poolId, lp.address, poolTokens, inBalances, false, joinUserData);
+    });
+
+    it('fails if caller is not the vault', async () => {
+      await expect(
+        pool
+          .connect(lp)
+          .onExitPool(poolId, emptyBalances, lp.address, other.address, emptyBalances, protocolSwapFee, '0x')
+      ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
+    });
+
+    it('fails if wrong pool id', async () => {
+      await expect(
+        vault
+          .connect(lp)
+          .exitPool(
+            pool.address,
+            '0x0000000000000000000000000000000000000000000000000000000000000000',
+            other.address,
+            poolTokens,
+            emptyBalances,
+            false,
+            '0x'
+          )
+      ).to.be.revertedWith('INVALID_POOL_ID');
+    });
+
+    it('fails if no user data', async () => {
+      await expect(
+        vault.connect(lp).exitPool(pool.address, poolId, other.address, poolTokens, emptyBalances, false, '0x')
+      ).to.be.be.revertedWith('Transaction reverted without a reason');
+    });
+
+    it('fails if wrong user data', async () => {
+      const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
+
+      await expect(
+        vault.connect(lp).exitPool(pool.address, poolId, other.address, poolTokens, emptyBalances, false, wrongUserData)
+      ).to.be.be.revertedWith('Transaction reverted without a reason');
+    });
+
+    context('exit exact BPT in for one token out', () => {
+      it('grants one token for exact bpt', async () => {
+        const prevBPT = await pool.balanceOf(lp.address);
+        const prevBalances = await vault.getPoolCurrentBalances();
+
+        const tokenIndex = 0;
+        const exitUserData = encodeExitExactBPTInForOneTokenOutUserData(prevBPT, tokenIndex);
+        const minAmountsOut = [0.01e18, 0].map((value) => BigNumber.from(value.toString()));
+
+        await vault
+          .connect(lp)
+          .exitPool(pool.address, poolId, lp.address, poolTokens, minAmountsOut, false, exitUserData);
+
+        const newBalances = await vault.getPoolCurrentBalances();
+        expect(prevBalances[tokenIndex].sub(newBalances[tokenIndex])).to.be.at.least((0.0204e18).toString());
+        expect(prevBalances[tokenIndex].sub(newBalances[tokenIndex])).to.be.at.most((0.0205e18).toString());
+
+        const newBPT = await pool.balanceOf(lp.address);
+        expect(newBPT).to.be.equal((0).toString());
+      });
+
+      it('fails if not enough token out', async () => {
+        const prevBPT = await pool.balanceOf(lp.address);
+
+        const tokenIndex = 0;
+        const exitUserData = encodeExitExactBPTInForOneTokenOutUserData(prevBPT, tokenIndex);
+        const minAmountsOut = [1e18, 0].map((value) => BigNumber.from(value.toString()));
+
+        await expect(
+          vault.connect(lp).exitPool(pool.address, poolId, lp.address, poolTokens, minAmountsOut, false, exitUserData)
+        ).to.be.be.revertedWith('ERR_TOKEN_OUT_MIN_AMOUNT');
+      });
+    });
+
+    context('exit exact BPT in for all tokens out', () => {
+      it('grants all tokens for exact bpt', async () => {
+        const prevBPT = await pool.balanceOf(lp.address);
+        const prevBalances = await vault.getPoolCurrentBalances();
+
+        const exitUserData = encodeExitExactBPTInForAllTokensOutUserData(prevBPT);
+        const minAmountsOut = [0.01e18, 0.01e18].map((value) => BigNumber.from(value.toString()));
+
+        await vault
+          .connect(lp)
+          .exitPool(pool.address, poolId, lp.address, poolTokens, minAmountsOut, false, exitUserData);
+
+        const newBalances = await vault.getPoolCurrentBalances();
+        expect(prevBalances[0].sub(newBalances[0])).to.be.at.least((0.014e18).toString());
+        expect(prevBalances[0].sub(newBalances[0])).to.be.at.most((0.015e18).toString());
+
+        expect(prevBalances[1].sub(newBalances[1])).to.be.at.least((0.03e18).toString());
+        expect(prevBalances[1].sub(newBalances[1])).to.be.at.most((0.031e18).toString());
+
+        const newBPT = await pool.balanceOf(lp.address);
+        expect(newBPT).to.be.equal((0).toString());
+      });
+
+      it('fails if not enough tokens out', async () => {
+        const prevBPT = await pool.balanceOf(lp.address);
+
+        const exitUserData = encodeExitExactBPTInForAllTokensOutUserData(prevBPT);
+        const minAmountsOut = [0.02e18, 0.04e18].map((value) => BigNumber.from(value.toString()));
+
+        await expect(
+          vault.connect(lp).exitPool(pool.address, poolId, lp.address, poolTokens, minAmountsOut, false, exitUserData)
+        ).to.be.be.revertedWith('ERR_TOKENS_OUT_MIN_AMOUNT');
+      });
+    });
+
+    context('exit BPT in exact tokens out', () => {
+      it('grants exact tokens for bpt', async () => {
+        const maxBPTAmountIn = await pool.balanceOf(lp.address);
+        const prevBalances = await vault.getPoolCurrentBalances();
+
+        const exitUserData = encodeExitBPTInForExactTokensOutUserData(maxBPTAmountIn);
+
+        const amountsOut = [0.014e18, 0.03e18].map((value) => BigNumber.from(value.toString()));
+
+        await vault.connect(lp).exitPool(pool.address, poolId, lp.address, poolTokens, amountsOut, false, exitUserData);
+
+        const newBalances = await vault.getPoolCurrentBalances();
+        expect(prevBalances[0].sub(newBalances[0])).to.be.equal((0.014e18).toString());
+        expect(prevBalances[1].sub(newBalances[1])).to.be.equal((0.03e18).toString());
+
+        const newBPT = await pool.balanceOf(lp.address);
+        expect(newBPT).to.be.at.most((0.001e18).toString());
+      });
+
+      it('fails if not enough tokens out', async () => {
+        const maxBPTAmountIn = await pool.balanceOf(lp.address);
+
+        const exitUserData = encodeExitBPTInForExactTokensOutUserData(maxBPTAmountIn);
+        const amountsOut = [0.02e18, 0.04e18].map((value) => BigNumber.from(value.toString()));
+
+        await expect(
+          vault.connect(lp).exitPool(pool.address, poolId, lp.address, poolTokens, amountsOut, false, exitUserData)
+        ).to.be.be.revertedWith('ERR_BPT_IN_MAX_AMOUNT');
       });
     });
   });

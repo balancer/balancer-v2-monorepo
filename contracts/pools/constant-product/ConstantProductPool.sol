@@ -351,7 +351,7 @@ contract ConstantProductPool is
         return _swapFee;
     }
 
-    // Join Hook
+    // Join / Exit Hooks
 
     function _getAndApplyDueProtocolFeeAmounts(
         uint256[] memory currentBalances,
@@ -362,39 +362,40 @@ contract ConstantProductPool is
 
         // balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))
 
-        uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
+        uint256 chosenTokenIndex = 1; // UnsafeRandom.rand(_totalTokens);
 
         uint256 exponent = FixedPoint.ONE.div(normalizedWeights[chosenTokenIndex]);
 
         uint256 currentInvariant = _invariant(normalizedWeights, currentBalances);
         uint256 invariantRatio = _lastInvariant.div(currentInvariant);
 
-        uint256 chosenTokenAccruedFees = currentBalances[chosenTokenIndex].mul(FixedPoint.ONE).sub(
-            LogExpMath.pow(invariantRatio, exponent)
+        uint256 chosenTokenAccruedFees = currentBalances[chosenTokenIndex].mul(
+            FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent))
         );
         uint256 chosenTokenDueProtocolFeeAmount = chosenTokenAccruedFees.mul(protocolFeePercentage);
 
         uint256[] memory dueProtocolFeeAmounts = new uint256[](currentBalances.length);
-        dueProtocolFeeAmounts[chosenTokenIndex] = chosenTokenDueProtocolFeeAmount; // All other values are initialized to zero
+        // All other values are initialized to zero
+        dueProtocolFeeAmounts[chosenTokenIndex] = chosenTokenDueProtocolFeeAmount;
 
         currentBalances[chosenTokenIndex] = currentBalances[chosenTokenIndex].sub(chosenTokenDueProtocolFeeAmount);
 
         return dueProtocolFeeAmounts;
     }
 
-    enum JoinKind { INIT, EXACT_TOKENS_IN }
+    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT }
 
-    function joinPoolHook(
+    function onJoinPool(
         bytes32 poolId,
         uint256[] memory currentBalances,
-        address sender, // potential whitelisting
+        address, // sender - potential whitelisting
         address recipient,
         uint256[] memory maxAmountsIn,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault));
-        require(poolId == _poolId);
+        require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
+        require(poolId == _poolId, "INVALID_POOL_ID");
 
         uint256[] memory normalizedWeights = _getAllWeights();
         for (uint8 i = 0; i < _totalTokens; i++) {
@@ -406,67 +407,95 @@ contract ConstantProductPool is
         JoinKind kind = abi.decode(userData, (JoinKind));
 
         if (kind == JoinKind.INIT) {
-            require(totalSupply() == 0, "ERR_ALREADY_INITIALIZED");
-
-            // Pool initialization - currentBalances should be all zeroes
-
-            // _lastInvariant should also be zero
-            uint256 invariantAfterJoin = _invariant(normalizedWeights, maxAmountsIn);
-
-            _mintPoolTokens(recipient, invariantAfterJoin);
-            _lastInvariant = invariantAfterJoin;
-
-            uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens); // All zeroes
-            return (maxAmountsIn, dueProtocolFeeAmounts);
+            return _joinInitial(normalizedWeights, recipient, maxAmountsIn);
         } else {
-            // JoinKind.EXACT_TOKENS_IN
-            require(totalSupply() > 0, "ERR_UNINITIALIZED");
-
-            // This updates currentBalances by deducting protocol fees to pay, which the Vault will charge the Pool once
-            // this function returns.
-            uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
-                currentBalances,
-                normalizedWeights,
-                protocolFeePercentage
-            );
-
-            // The maxAmountsIn will be supplied in full
-            uint256 bptAmountOut = _exactTokensInForBPTOut(
-                currentBalances,
-                normalizedWeights,
-                maxAmountsIn,
-                totalSupply(),
-                _swapFee
-            );
-            (, uint256 minimumBPT) = abi.decode(userData, (JoinKind, uint256));
-            require(bptAmountOut >= minimumBPT, "ERR_BPT_OUT_MIN_AMOUNT");
-
-            _mintPoolTokens(recipient, bptAmountOut);
-
-            for (uint8 i = 0; i < _totalTokens; i++) {
-                currentBalances[i] = currentBalances[i].add(maxAmountsIn[i]);
-            }
-
-            // Reset swap fee accumulation
-            _lastInvariant = _invariant(normalizedWeights, currentBalances);
-
-            return (maxAmountsIn, dueProtocolFeeAmounts);
+            // JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT
+            return
+                _joinExactTokensInForBPTOut(
+                    normalizedWeights,
+                    currentBalances,
+                    recipient,
+                    maxAmountsIn,
+                    protocolFeePercentage,
+                    userData
+                );
         }
     }
 
-    enum ExitKind { EXACT_BPT_IN, EXACT_TOKENS_OUT }
+    function _joinInitial(
+        uint256[] memory normalizedWeights,
+        address recipient,
+        uint256[] memory maxAmountsIn
+    ) private returns (uint256[] memory, uint256[] memory) {
+        require(totalSupply() == 0, "ERR_ALREADY_INITIALIZED");
 
-    function exitPoolHook(
+        // Pool initialization - currentBalances should be all zeroes
+
+        // _lastInvariant should also be zero
+        uint256 invariantAfterJoin = _invariant(normalizedWeights, maxAmountsIn);
+
+        _mintPoolTokens(recipient, invariantAfterJoin);
+        _lastInvariant = invariantAfterJoin;
+
+        uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens); // All zeroes
+        return (maxAmountsIn, dueProtocolFeeAmounts);
+    }
+
+    function _joinExactTokensInForBPTOut(
+        uint256[] memory normalizedWeights,
+        uint256[] memory currentBalances,
+        address recipient,
+        uint256[] memory maxAmountsIn,
+        uint256 protocolFeePercentage,
+        bytes memory userData
+    ) private returns (uint256[] memory, uint256[] memory) {
+        require(totalSupply() > 0, "ERR_UNINITIALIZED");
+
+        // This updates currentBalances by deducting protocol fees to pay, which the Vault will charge the Pool once
+        // this function returns.
+        uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
+            currentBalances,
+            normalizedWeights,
+            protocolFeePercentage
+        );
+
+        // The maxAmountsIn will be supplied in full
+        uint256 bptAmountOut = _exactTokensInForBPTOut(
+            currentBalances,
+            normalizedWeights,
+            maxAmountsIn,
+            totalSupply(),
+            _swapFee
+        );
+        (, uint256 minimumBPT) = abi.decode(userData, (JoinKind, uint256));
+
+        require(bptAmountOut >= minimumBPT, "ERR_BPT_OUT_MIN_AMOUNT");
+
+        _mintPoolTokens(recipient, bptAmountOut);
+
+        for (uint8 i = 0; i < _totalTokens; i++) {
+            currentBalances[i] = currentBalances[i].add(maxAmountsIn[i]);
+        }
+
+        // Reset swap fee accumulation
+        _lastInvariant = _invariant(normalizedWeights, currentBalances);
+
+        return (maxAmountsIn, dueProtocolFeeAmounts);
+    }
+
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
+
+    function onExitPool(
         bytes32 poolId,
         uint256[] memory currentBalances,
         address sender,
-        address recipient, // potential whitelisting
+        address, //recipient -  potential whitelisting
         uint256[] memory minAmountsOut,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault));
-        require(poolId == _poolId);
+        require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
+        require(poolId == _poolId, "INVALID_POOL_ID");
 
         uint256[] memory normalizedWeights = _getAllWeights();
         for (uint8 i = 0; i < _totalTokens; i++) {
@@ -485,32 +514,23 @@ contract ConstantProductPool is
         uint256[] memory amountsOut;
 
         ExitKind kind = abi.decode(userData, (ExitKind));
-        if (kind == ExitKind.EXACT_BPT_IN) {
-            (, bptAmountIn) = abi.decode(userData, (ExitKind, uint256));
-            uint256 bptRatio = _getSupplyRatio(bptAmountIn);
-
-            amountsOut = new uint256[](_totalTokens);
-            for (uint256 i = 0; i < _totalTokens; i++) {
-                uint256 amountOut = currentBalances[i].mul(bptRatio);
-                require(amountOut >= minAmountsOut[i], "ERR_EXIT_BELOW_REQUESTED_MINIMUM");
-
-                amountsOut[i] = amountOut;
-            }
-        } else {
-            // ExitKind.EXACT_TOKENS_OUT
-            (, uint256 maxBPTAmountIn) = abi.decode(userData, (ExitKind, uint256));
-
-            // minAmountsOut are fully used
-            amountsOut = minAmountsOut;
-
-            bptAmountIn = _bptInForExactTokensOut(
-                currentBalances,
+        if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+            (bptAmountIn, amountsOut) = _exitExactBPTInForOneTokenOut(
                 normalizedWeights,
+                currentBalances,
                 minAmountsOut,
-                totalSupply(),
-                _swapFee
+                userData
             );
-            require(bptAmountIn <= maxBPTAmountIn, "ERR_BPT_IN_MAX_AMOUNT");
+        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+            (bptAmountIn, amountsOut) = _exitExactBPTInForAllTokensOut(currentBalances, minAmountsOut, userData);
+        } else {
+            // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
+            (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
+                normalizedWeights,
+                currentBalances,
+                minAmountsOut,
+                userData
+            );
         }
 
         _burnPoolTokens(sender, bptAmountIn);
@@ -522,6 +542,67 @@ contract ConstantProductPool is
         _lastInvariant = _invariant(normalizedWeights, currentBalances);
 
         return (amountsOut, dueProtocolFeeAmounts);
+    }
+
+    function _exitExactBPTInForOneTokenOut(
+        uint256[] memory normalizedWeights,
+        uint256[] memory currentBalances,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) private view returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        uint256 tokenIndex;
+        (, bptAmountIn, tokenIndex) = abi.decode(userData, (ExitKind, uint256, uint256));
+
+        require(tokenIndex < currentBalances.length, "ERR_INVALID_TOKEN_INDEX");
+
+        amountsOut = new uint256[](_totalTokens);
+        amountsOut[0] = _exactBPTInForTokenOut(
+            currentBalances[tokenIndex],
+            normalizedWeights[tokenIndex],
+            bptAmountIn,
+            totalSupply(),
+            _swapFee
+        );
+        require(amountsOut[0] >= minAmountsOut[tokenIndex], "ERR_TOKEN_OUT_MIN_AMOUNT");
+    }
+
+    function _exitExactBPTInForAllTokensOut(
+        uint256[] memory currentBalances,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) private view returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        (, bptAmountIn) = abi.decode(userData, (ExitKind, uint256));
+        uint256 bptRatio = _getSupplyRatio(bptAmountIn);
+
+        amountsOut = new uint256[](_totalTokens);
+        for (uint256 i = 0; i < _totalTokens; i++) {
+            uint256 amountOut = currentBalances[i].mul(bptRatio);
+            require(amountOut >= minAmountsOut[i], "ERR_TOKENS_OUT_MIN_AMOUNT");
+
+            amountsOut[i] = amountOut;
+        }
+    }
+
+    function _exitBPTInForExactTokensOut(
+        uint256[] memory normalizedWeights,
+        uint256[] memory currentBalances,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) private view returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        // ExitKind.EXACT_TOKENS_OUT
+        (, uint256 maxBPTAmountIn) = abi.decode(userData, (ExitKind, uint256));
+
+        // minAmountsOut are fully used
+        amountsOut = minAmountsOut;
+
+        bptAmountIn = _bptInForExactTokensOut(
+            currentBalances,
+            normalizedWeights,
+            minAmountsOut,
+            totalSupply(),
+            _swapFee
+        );
+        require(bptAmountIn <= maxBPTAmountIn, "ERR_BPT_IN_MAX_AMOUNT");
     }
 
     //Quote Swaps

@@ -29,3 +29,14 @@ export function calcInGivenOut(
   const tokenAmountIn = new Decimal(tokenBalanceIn).times(foo);
   return tokenAmountIn;
 }
+
+export function calculateInvariant(balances: string[], weights: string[]): Decimal {
+  const sumWeights = weights.reduce((acc: Decimal, b: string) => {
+    return acc.add(b);
+  }, new Decimal(0));
+  let invariant = new Decimal(1);
+  for (let index = 0; index < balances.length; index++) {
+    invariant = invariant.mul(new Decimal(balances[index]).pow(new Decimal(weights[index]).div(sumWeights)));
+  }
+  return invariant;
+}
