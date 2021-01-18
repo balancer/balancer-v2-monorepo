@@ -3,7 +3,7 @@ import { Decimal } from 'decimal.js';
 //TODO: Test this math by checking  extremes values for the amplification field (0 and infinite)
 //to verify that it equals constant sum and constant product invariants.
 
-function _invariant(amp: Decimal, balances: Decimal[]): Decimal {
+export function calculateInvariant(amp: Decimal, balances: Decimal[]): Decimal {
   const n = new Decimal(balances.length);
   //Sum
   const sum = balances.reduce((a: Decimal, b: Decimal) => a.add(b), new Decimal(0));
@@ -36,7 +36,7 @@ function _invariant(amp: Decimal, balances: Decimal[]): Decimal {
 function calcBalance(amp: Decimal, oldBalances: Decimal[], newBalances: Decimal[], balanceIndex: number): Decimal {
   const n = new Decimal(oldBalances.length);
   //Invariant
-  const invariant = _invariant(amp, oldBalances);
+  const invariant = calculateInvariant(amp, oldBalances);
 
   //Sum (without amount in)
   const sum = newBalances.reduce((a: Decimal, b: Decimal, index: number) => {

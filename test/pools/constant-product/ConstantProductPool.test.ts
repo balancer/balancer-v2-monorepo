@@ -1217,7 +1217,7 @@ describe('ConstantProductPool', function () {
       });
     });
 
-    context('exit BPT in exact tokens out', () => {
+    context('exit BPT in exact for tokens out', () => {
       it('grants exact tokens for bpt', async () => {
         const maxBPTAmountIn = await pool.balanceOf(lp.address);
         const prevBalances = await vault.getPoolCurrentBalances();

@@ -182,7 +182,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
         return dueProtocolFeeAmounts;
     }
 
-    enum JoinKind { INIT, EXACT_BPT_OUT }
+    enum JoinKind { INIT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
 
     function onJoinPool(
         bytes32 poolId,
@@ -203,9 +203,9 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
         if (kind == JoinKind.INIT) {
             return _joinInitial(currentBalances.length, recipient, maxAmountsIn);
         } else {
-            // JoinKind.EXACT_BPT_OUT
+            // JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT
             return
-                _joinExactBPTOut(
+                _joinAllTokensInForExactBPTOut(
                     currentBalances.length,
                     currentBalances,
                     recipient,
@@ -235,7 +235,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
         return (maxAmountsIn, dueProtocolFeeAmounts);
     }
 
-    function _joinExactBPTOut(
+    function _joinAllTokensInForExactBPTOut(
         uint256 totalTokens,
         uint256[] memory currentBalances,
         address recipient,
@@ -296,7 +296,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
 
         uint256 totalTokens = currentBalances.length;
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _exitExactBPTIn(
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = _exitExactBPTInForAllTokensOut(
             totalTokens,
             currentBalances,
             minAmountsOut,
@@ -314,7 +314,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
         return (amountsOut, dueProtocolFeeAmounts);
     }
 
-    function _exitExactBPTIn(
+    function _exitExactBPTInForAllTokensOut(
         uint256 totalTokens,
         uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
