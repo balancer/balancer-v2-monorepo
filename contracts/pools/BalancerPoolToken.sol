@@ -47,7 +47,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
     );
 
-    mapping (address => Counters.Counter) private _nonces;
+    mapping(address => Counters.Counter) private _nonces;
 
     mapping(address => uint256) private _balance;
     mapping(address => mapping(address => uint256)) private _allowance;
@@ -146,7 +146,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         require(signer != address(0) && signer == owner, "BalancerV2: INVALID_SIGNATURE");
 
         _nonces[owner].increment();
-        
+
         _setAllowance(owner, spender, value);
     }
 

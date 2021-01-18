@@ -7,10 +7,13 @@ export const EIP712Domain = [
   { name: 'verifyingContract', type: 'address' },
 ];
 
-export async function domainSeparator (name: string, version: string, chainId: Uint8Array, verifyingContract: string) {
-  return '0x' + ethSigUtil.TypedDataUtils.hashStruct(
-    'EIP712Domain',
-    { name, version, chainId, verifyingContract },
-    { EIP712Domain },
-  ).toString('hex');
+export async function domainSeparator(name: string, version: string, chainId: Uint8Array, verifyingContract: string) {
+  return (
+    '0x' +
+    ethSigUtil.TypedDataUtils.hashStruct(
+      'EIP712Domain',
+      { name, version, chainId, verifyingContract },
+      { EIP712Domain }
+    ).toString('hex')
+  );
 }

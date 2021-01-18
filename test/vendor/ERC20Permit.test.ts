@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../../scripts/helpers/deploy';
 import { BigNumber, Contract, Wallet } from 'ethers';
 import { EIP712Domain, domainSeparator } from './helpers/EIP712';
@@ -34,7 +34,7 @@ describe('ERC20Permit', function () {
 
   beforeEach('set up asset manager', async () => {
     token = await deploy('MockBalancerPoolToken', { args: [name, symbol, initialHolder.address, initialSupply] });
- 
+
     // We get the chain id from the contract because Ganache (used for coverage) does not return the same chain id
     // from within the EVM as from the JSON RPC interface.
     // See https://github.com/trufflesuite/ganache-core/issues/515
@@ -46,11 +46,7 @@ describe('ERC20Permit', function () {
   });
 
   xit('domain separator', async function () {
-    expect(
-      await token.DOMAIN_SEPARATOR(),
-    ).to.equal(
-      await domainSeparator(name, version, chainId, token.address),
-    );
+    expect(await token.DOMAIN_SEPARATOR()).to.equal(await domainSeparator(name, version, chainId, token.address));
   });
 
   describe('permit', function () {
@@ -110,7 +106,7 @@ describe('ERC20Permit', function () {
       const deadline = BigNumber.from(now.valueOf() - now.setFullYear(now.getFullYear() - 1));
 
       const data = buildData(chainId, token.address, deadline);
-     
+
       // Doesn't compile
       // const signature = ethSigUtil.signTypedMessage(Buffer.from(wallet.privateKey), { data });
       /*const { v, r, s } = fromRpcSig(signature);

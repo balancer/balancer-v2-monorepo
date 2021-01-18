@@ -12,22 +12,20 @@ describe('EIP712', function () {
 
   const name = 'A Name';
   const symbol = 'A Symbol';
-  const version = '1'
+  const version = '1';
 
   before('deploy base contracts', async () => {
-      [mailTo] = await ethers.getSigners();
+    [mailTo] = await ethers.getSigners();
 
-      eip712 = await deploy('MockBalancerPoolToken', { args: [name, symbol, mailTo.address, BigNumber.from((100e18).toString())] });
+    eip712 = await deploy('MockBalancerPoolToken', {
+      args: [name, symbol, mailTo.address, BigNumber.from((100e18).toString())],
+    });
 
-      chainId = await eip712.getChainId();
+    chainId = await eip712.getChainId();
   });
 
   xit('domain separator', async function () {
-    expect(
-      await eip712.DOMAIN_SEPARATOR(),
-    ).to.equal(
-      await domainSeparator(name, version, chainId, eip712.address),
-    );
+    expect(await eip712.DOMAIN_SEPARATOR()).to.equal(await domainSeparator(name, version, chainId, eip712.address));
   });
 
   xit('digest', async function () {

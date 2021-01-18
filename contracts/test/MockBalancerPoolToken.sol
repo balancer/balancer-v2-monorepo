@@ -5,7 +5,7 @@ pragma solidity ^0.7.1;
 import "../pools/BalancerPoolToken.sol";
 
 contract MockBalancerPoolToken is BalancerPoolToken {
-    constructor (
+    constructor(
         string memory name,
         string memory symbol,
         address initialAccount,
