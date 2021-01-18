@@ -418,7 +418,7 @@ describe('Vault - pool registry', () => {
     const setTokensAddresses = (length: number) => {
       beforeEach('define token addresses', () => {
         tokenAddresses = symbols.slice(0, length).map((symbol: string) => tokens[symbol].address);
-        assetManagers = symbols.slice(0, length).map((symbol: string) => ZERO_ADDRESS);
+        assetManagers = symbols.slice(0, length).map(() => ZERO_ADDRESS);
       });
     };
 
@@ -446,7 +446,9 @@ describe('Vault - pool registry', () => {
                 it('reverts', async () => {
                   const error = 'ERR_TOKEN_IS_ZERO';
                   await expect(vault.registerTokens(poolId, tokenAddresses, assetManagers)).to.be.revertedWith(error);
-                  await expect(vault.registerTokens(poolId, tokenAddresses.reverse(), assetManagers)).to.be.revertedWith(error);
+                  await expect(
+                    vault.registerTokens(poolId, tokenAddresses.reverse(), assetManagers)
+                  ).to.be.revertedWith(error);
                 });
               });
 
@@ -470,7 +472,9 @@ describe('Vault - pool registry', () => {
                   if (optimization == TwoTokenPool) {
                     it('cannot be registered individually', async () => {
                       const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
-                      await expect(vault.registerTokens(poolId, [tokenAddresses[0]], [assetManagers[0]])).to.be.revertedWith(error);
+                      await expect(
+                        vault.registerTokens(poolId, [tokenAddresses[0]], [assetManagers[0]])
+                      ).to.be.revertedWith(error);
                     });
                   } else {
                     it('can be registered individually', async () => {
@@ -531,14 +535,18 @@ describe('Vault - pool registry', () => {
             });
 
             it('reverts', async () => {
-              await expect(vault.registerTokens(poolId, tokenAddresses, assetManagers)).to.be.revertedWith('Caller is not the pool');
+              await expect(vault.registerTokens(poolId, tokenAddresses, assetManagers)).to.be.revertedWith(
+                'Caller is not the pool'
+              );
             });
           });
         });
 
         context('when the pool was not created', () => {
           it('reverts', async () => {
-            await expect(vault.registerTokens(ZERO_BYTES32, tokenAddresses, assetManagers)).to.be.revertedWith('Nonexistent pool');
+            await expect(vault.registerTokens(ZERO_BYTES32, tokenAddresses, assetManagers)).to.be.revertedWith(
+              'Nonexistent pool'
+            );
           });
         });
       };

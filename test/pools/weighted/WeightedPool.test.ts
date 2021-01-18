@@ -242,7 +242,7 @@ describe('WeightedPool', function () {
       for (const symbol in tokens) {
         expect(await vault.getPoolAssetManager(poolId, tokens[symbol].address)).to.equal(ZERO_ADDRESS);
       }
-    })
+    });
   });
 
   context('with pool', () => {

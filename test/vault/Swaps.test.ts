@@ -111,7 +111,7 @@ describe('Vault - swaps', () => {
     await vault.connect(lp).addUserAgent(pool.address);
 
     const tokenAddresses = tokenSymbols.map((symbol) => tokens[symbol].address);
-    const assetManagers = tokenSymbols.map((symbol) => ZERO_ADDRESS);
+    const assetManagers = tokenSymbols.map(() => ZERO_ADDRESS);
     const tokenAmounts = tokenSymbols.map(() => (100e18).toString());
 
     await pool.connect(lp).registerTokens(tokenAddresses, assetManagers);

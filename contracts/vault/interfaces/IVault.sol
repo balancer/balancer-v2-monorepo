@@ -199,7 +199,11 @@ interface IVault {
      * Also define the asset manager for each token at registration time
      * (can be the zero address, if a token is unmanaged)
      */
-    function registerTokens(bytes32 poolId, IERC20[] calldata tokens, address[] calldata assetManagers) external;
+    function registerTokens(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        address[] calldata assetManagers
+    ) external;
 
     event TokensRegistered(bytes32 poolId, IERC20[] tokens);
 

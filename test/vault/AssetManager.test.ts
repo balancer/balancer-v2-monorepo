@@ -11,7 +11,6 @@ import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPoo
 
 describe('assetManager', function () {
   let tokens: TokenList;
-  let otherToken: Contract;
   let vault: Contract;
 
   let pool: SignerWithAddress;
@@ -25,8 +24,6 @@ describe('assetManager', function () {
   beforeEach('set up asset manager', async () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'USDT'], [18, 18]);
-
-    otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
   });
 
   describe('asset manager setting', () => {
@@ -43,7 +40,9 @@ describe('assetManager', function () {
     });
 
     it('different managers can be set for different tokens', async () => {
-      await vault.connect(pool).registerTokens(poolId, [tokens.DAI.address, tokens.USDT.address], [assetManager.address, other.address]);
+      await vault
+        .connect(pool)
+        .registerTokens(poolId, [tokens.DAI.address, tokens.USDT.address], [assetManager.address, other.address]);
 
       expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(assetManager.address);
       expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(other.address);

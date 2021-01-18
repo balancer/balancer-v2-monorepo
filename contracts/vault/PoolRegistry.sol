@@ -183,13 +183,11 @@ abstract contract PoolRegistry is
         return _getPoolData(poolId);
     }
 
-    function registerTokens(bytes32 poolId, IERC20[] calldata tokens, address[] calldata assetManagers)
-        external
-        override
-        nonReentrant
-        withExistingPool(poolId)
-        onlyPool(poolId)
-    {
+    function registerTokens(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        address[] calldata assetManagers
+    ) external override nonReentrant withExistingPool(poolId) onlyPool(poolId) {
         (, PoolOptimization optimization) = _getPoolData(poolId);
         if (optimization == PoolOptimization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
