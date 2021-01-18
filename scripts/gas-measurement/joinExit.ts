@@ -15,93 +15,81 @@ let tokens: TokenList;
 
 let trader: SignerWithAddress;
 
+const printTokens = (poolType: string, numTokens: number) => {
+  if (numTokens % 2 == 0) {
+    console.log(`${poolType} with ${numTokens} tokens`);
+  }
+};
+
 async function main() {
   ({ vault, tokens, trader } = await setupEnvironment());
 
-  console.log('== Full join/exit (no initial BPT) ==');
+  console.log('## Full join/exit (no initial BPT)');
 
-  console.log(`\n# Constant Product Pools, full join/exit, transferring tokens\n`);
-
-  // numTokens is the size of the pool: 2,4,6,8
-  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(() => getWeightedPool(vault, tokens, numTokens), 'ConstantProductPool', numTokens, true);
-  }
-
-  console.log(`# Constant Product Pools, full join/exit, with user balance\n`);
+  console.log(`\n#Transferring tokens\n`);
 
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(() => getWeightedPool(vault, tokens, numTokens), 'ConstantProductPool', numTokens, false);
+    printTokens('Weighted pool', numTokens);
+    await joinAndExitPool(() => getWeightedPool(vault, tokens, numTokens), numTokens, true);
   }
-
-  console.log(`# Stablecoin Pools, full join/exit, transferring tokens\n`);
+  console.log('\n');
 
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(() => getStablePool(vault, tokens, numTokens), 'StablecoinPool', numTokens, true);
+    printTokens('Stable pool', numTokens);
+    await joinAndExitPool(() => getStablePool(vault, tokens, numTokens), numTokens, true);
   }
+  console.log('\n');
 
-  console.log(`# Stablecoin Pools, full join/exit, with user balance\n`);
+  console.log(`#With user balance\n`);
 
   // numTokens is the size of the pool: 2,4,6,8
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(() => getStablePool(vault, tokens, numTokens), 'ConstantProductPool', numTokens, false);
+    printTokens('Weighted pool', numTokens);
+    await joinAndExitPool(() => getWeightedPool(vault, tokens, numTokens), numTokens, false);
   }
+  console.log('\n');
 
-  console.log('== Partial Join/Exit (2-stage entry/exit)==');
+  // numTokens is the size of the pool: 2,4,6,8
+  for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
+    printTokens('Stable pool', numTokens);
+    await joinAndExitPool(() => getStablePool(vault, tokens, numTokens), numTokens, false);
+  }
+  console.log('\n');
 
-  console.log(`\n# Constant Product Pools, partial join/exit, transferring tokens\n`);
+  console.log('## Partial Join/Exit (2-stage entry/exit)');
+
+  console.log(`\n#Transferring tokens\n`);
 
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(
-      () => getWeightedPool(vault, tokens, numTokens),
-      'ConstantProductPool',
-      numTokens,
-      true,
-      numberJoinsExits
-    );
+    printTokens('Weighted pool', numTokens);
+    await joinAndExitPool(() => getWeightedPool(vault, tokens, numTokens), numTokens, true, numberJoinsExits);
   }
-
-  console.log(`# Constant Product Pools, partial join/exit, with user balance\n`);
+  console.log('\n');
 
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(
-      () => getWeightedPool(vault, tokens, numTokens),
-      'ConstantProductPool',
-      numTokens,
-      false,
-      numberJoinsExits
-    );
+    printTokens('Stable pool', numTokens);
+    await joinAndExitPool(() => getStablePool(vault, tokens, numTokens), numTokens, true, numberJoinsExits);
   }
+  console.log('\n');
 
-  console.log(`# Stablecoin Pools, partial join/exit, transferring tokens\n`);
+  console.log(`#With user balance\n`);
 
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(
-      () => getStablePool(vault, tokens, numTokens),
-      'StablecoinPool',
-      numTokens,
-      true,
-      numberJoinsExits
-    );
+    printTokens('Weighted pool', numTokens);
+    await joinAndExitPool(() => getWeightedPool(vault, tokens, numTokens), numTokens, false, numberJoinsExits);
   }
-
-  console.log(`# Stablecoin Pools, partial join/exit, with user balance\n`);
+  console.log('\n');
 
   for (let numTokens = 2; numTokens <= 8; numTokens += 2) {
-    await joinAndExitPool(
-      () => getStablePool(vault, tokens, numTokens),
-      'StablecoinPool',
-      numTokens,
-      false,
-      numberJoinsExits
-    );
+    printTokens('Stable pool', numTokens);
+    await joinAndExitPool(() => getStablePool(vault, tokens, numTokens), numTokens, false, numberJoinsExits);
   }
 }
 
 async function joinAndExitPool(
   getPoolId: () => Promise<string>,
-  poolType: string,
   numTokens: number,
   transferTokens: boolean,
   stageIdx = 1
@@ -109,7 +97,6 @@ async function joinAndExitPool(
   const poolId: string = await getPoolId();
   const [poolAddress] = await vault.getPool(poolId);
   const pool: Contract = await ethers.getContractAt('WeightedPool', poolAddress);
-  const transfer = transferTokens ? 'Transferring tokens' : 'With User Balance';
   let receipt;
   let bpt;
 
@@ -119,9 +106,7 @@ async function joinAndExitPool(
         .connect(trader)
         .joinPool(BPTAmount, Array(numTokens).fill(MAX_UINT256), transferTokens, trader.address)
     ).wait();
-    console.log(
-      `${printGas(receipt.gasUsed)} gas for join ${idx} to a ${poolType} with ${numTokens} tokens (${transfer})`
-    );
+    console.log(`${printGas(receipt.gasUsed)} gas for join ${idx}`);
 
     bpt = await pool.balanceOf(trader.address);
     // check token balances
@@ -133,15 +118,11 @@ async function joinAndExitPool(
     receipt = await (
       await pool.connect(trader).exitPool(BPTAmount, Array(numTokens).fill(0), transferTokens, trader.address)
     ).wait();
-    console.log(
-      `${printGas(receipt.gasUsed)} gas for exit ${idx} of a ${poolType} with ${numTokens} tokens (${transfer})`
-    );
+    console.log(`${printGas(receipt.gasUsed)} gas for exit ${idx}`);
 
     bpt = await pool.balanceOf(trader.address);
     assert(bpt.toString() == BPTAmount.mul(stageIdx - idx).toString(), 'Did not actually exit pool');
   }
-
-  console.log('\n');
 
   bpt = await pool.balanceOf(trader.address);
   assert(bpt.toString() == '0', 'Did not actually join pool');
