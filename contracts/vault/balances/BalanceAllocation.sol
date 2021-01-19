@@ -172,14 +172,14 @@ library BalanceAllocation {
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token A.
      */
     function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedManaged) internal pure returns (bytes32) {
-        return toBalance(uint128(uint256(sharedCash >> 128) & _MASK), uint128(uint256(sharedManaged >> 128) & _MASK));
+        return toBalance(decodeBalanceA(sharedCash), decodeBalanceA(sharedManaged));
     }
 
     /**
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token B.
      */
     function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedManaged) internal pure returns (bytes32) {
-        return toBalance(uint128(uint256(sharedCash) & _MASK), uint128(uint256(sharedManaged) & _MASK));
+        return toBalance(decodeBalanceB(sharedCash), decodeBalanceB(sharedManaged));
     }
 
     /**
@@ -194,5 +194,30 @@ library BalanceAllocation {
      */
     function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
         return bytes32((uint256(managedBalance(tokenABalance)) << 128) + managedBalance(tokenBBalance));
+    }
+
+    /**
+     * @dev Unpacks a shared balance into the corresponding balances for tokens A and B.
+     * Note that this function can be used to decode both cash and managed balances.
+     */
+    function decodeSharedBalances(bytes32 sharedBalance) internal pure returns (uint128 balanceA, uint128 balanceB) {
+        balanceA = decodeBalanceA(sharedBalance);
+        balanceB = decodeBalanceB(sharedBalance);
+    }
+
+    /**
+     * @dev Unpacks the balance corresponding to token A for a shared balance
+     * Note that this function can be used to decode both cash and managed balances.
+     */
+    function decodeBalanceA(bytes32 sharedBalance) internal pure returns (uint128) {
+        return uint128(uint256(sharedBalance >> 128) & _MASK);
+    }
+
+    /**
+     * @dev Unpacks the balance corresponding to token B for a shared balance
+     * Note that this function can be used to decode both cash and managed balances.
+     */
+    function decodeBalanceB(bytes32 sharedBalance) internal pure returns (uint128) {
+        return uint128(uint256(sharedBalance) & _MASK);
     }
 }
