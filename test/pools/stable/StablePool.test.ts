@@ -278,8 +278,8 @@ describe('StablePool', function () {
       });
 
       it('can withdraw from internal balance', async () => {
-        await vault.connect(lp).deposit(tokens.DAI.address, (1e18).toString(), lp.address);
-        await vault.connect(lp).deposit(tokens.MKR.address, (1e18).toString(), lp.address);
+        await vault.connect(lp).depositToInternalBalance(tokens.DAI.address, (1e18).toString(), lp.address);
+        await vault.connect(lp).depositToInternalBalance(tokens.MKR.address, (1e18).toString(), lp.address);
 
         await expectBalanceChange(
           () =>
@@ -290,13 +290,15 @@ describe('StablePool', function () {
           { account: lp }
         );
 
-        expect(await vault.getInternalTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.9e18).toString());
-        expect(await vault.getInternalTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
+        expect(await vault.getInternalBalance(lp.address, tokens.DAI.address)).to.equal((0.9e18).toString());
+        expect(await vault.getInternalBalance(lp.address, tokens.MKR.address)).to.equal((0.8e18).toString());
       });
 
       it('transfers missing tokens if internal balance is not enough', async () => {
-        await vault.connect(lp).deposit(tokens.DAI.address, BigNumber.from((0.1e18).toString()).sub(1), lp.address);
-        await vault.connect(lp).deposit(tokens.MKR.address, (0.2e18).toString(), lp.address);
+        await vault
+          .connect(lp)
+          .depositToInternalBalance(tokens.DAI.address, BigNumber.from((0.1e18).toString()).sub(1), lp.address);
+        await vault.connect(lp).depositToInternalBalance(tokens.MKR.address, (0.2e18).toString(), lp.address);
 
         await expectBalanceChange(
           () =>
@@ -437,8 +439,8 @@ describe('StablePool', function () {
           { account: lp }
         );
 
-        expect(await vault.getInternalTokenBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
-        expect(await vault.getInternalTokenBalance(lp.address, tokens.MKR.address)).to.equal((0.2e18).toString());
+        expect(await vault.getInternalBalance(lp.address, tokens.DAI.address)).to.equal((0.1e18).toString());
+        expect(await vault.getInternalBalance(lp.address, tokens.MKR.address)).to.equal((0.2e18).toString());
       });
 
       it("can deposit into a beneficiary's internal balance", async () => {
@@ -448,12 +450,8 @@ describe('StablePool', function () {
           { account: beneficiary }
         );
 
-        expect(await vault.getInternalTokenBalance(beneficiary.address, tokens.DAI.address)).to.equal(
-          (0.1e18).toString()
-        );
-        expect(await vault.getInternalTokenBalance(beneficiary.address, tokens.MKR.address)).to.equal(
-          (0.2e18).toString()
-        );
+        expect(await vault.getInternalBalance(beneficiary.address, tokens.DAI.address)).to.equal((0.1e18).toString());
+        expect(await vault.getInternalBalance(beneficiary.address, tokens.MKR.address)).to.equal((0.2e18).toString());
       });
     });
 
