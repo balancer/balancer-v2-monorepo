@@ -28,7 +28,7 @@ export async function deploySortedTokens(
 ): Promise<TokenList> {
   return fromPairs(
     (await Promise.all(symbols.map((_, i) => deploy('TestToken', { from, args: [`T${i}`, `T${i}`, decimals[i]] }))))
-      .sort((tokenA, tokenB) => (tokenA.address > tokenB.address ? 1 : -1))
+      .sort((tokenA, tokenB) => (tokenA.address.toLowerCase() > tokenB.address.toLowerCase() ? 1 : -1))
       .map((token, index) => [symbols[index], token])
   );
 }
