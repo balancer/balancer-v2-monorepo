@@ -200,7 +200,7 @@ describe('Vault - join & exit pool', () => {
 
             it('uses both token transfers and internal balance if it is not enough', async () => {
               // Deposit the required amount, minus one
-              await vault.connect(lp).deposit(tokenAddresses[1], joinAmounts[1].sub(1), lp.address);
+              await vault.connect(lp).depositToInternalBalance(tokenAddresses[1], joinAmounts[1].sub(1), lp.address);
 
               // Expect a minus one delta for the deposited token (since the deposit was not enough)
               await assertJoinBalanceChanges(
@@ -209,12 +209,12 @@ describe('Vault - join & exit pool', () => {
               );
 
               // All internal balance was used up
-              expect(await vault.connect(lp).getUserTokenBalance(lp.address, tokenAddresses[1])).to.equal(0);
+              expect(await vault.connect(lp).getInternalBalance(lp.address, tokenAddresses[1])).to.equal(0);
             });
 
             it('uses internal balance exclusively if it suffices', async () => {
               // Deposit the required amount, plus one
-              await vault.connect(lp).deposit(tokenAddresses[1], joinAmounts[1].add(1), lp.address);
+              await vault.connect(lp).depositToInternalBalance(tokenAddresses[1], joinAmounts[1].add(1), lp.address);
 
               // Expect no delta for the deposited token (since the deposit is large enough)
               await assertJoinBalanceChanges(
@@ -223,7 +223,7 @@ describe('Vault - join & exit pool', () => {
               );
 
               // The excess internal balance remains
-              expect(await vault.connect(lp).getUserTokenBalance(lp.address, tokenAddresses[1])).to.equal(1);
+              expect(await vault.connect(lp).getInternalBalance(lp.address, tokenAddresses[1])).to.equal(1);
             });
           });
         });
@@ -248,7 +248,9 @@ describe('Vault - join & exit pool', () => {
           it('reverts if withdrawing from internal balance', async () => {
             // Deposit sufficient internal balance for all tokens
             await Promise.all(
-              tokenAddresses.map((token, i) => vault.connect(lp).deposit(token, joinAmounts[i], lp.address))
+              tokenAddresses.map((token, i) =>
+                vault.connect(lp).depositToInternalBalance(token, joinAmounts[i], lp.address)
+              )
             );
 
             // The limit is enforced even if tokens need not be transferred
@@ -536,7 +538,7 @@ describe('Vault - join & exit pool', () => {
 
             it('deposits tokens to for the recipient', async () => {
               const preInternalBalance = await Promise.all(
-                tokenAddresses.map((token) => vault.getUserTokenBalance(recipient.address, token))
+                tokenAddresses.map((token) => vault.getInternalBalance(recipient.address, token))
               );
 
               await assertExitBalanceChanges(
@@ -545,7 +547,7 @@ describe('Vault - join & exit pool', () => {
               );
 
               const postInternalBalance = await Promise.all(
-                tokenAddresses.map((token) => vault.getUserTokenBalance(recipient.address, token))
+                tokenAddresses.map((token) => vault.getInternalBalance(recipient.address, token))
               );
 
               const internalBalanceDeltas = [];
