@@ -39,6 +39,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
 
     event Deposited(address indexed depositor, address indexed user, IERC20 indexed token, uint256 amount);
     event Withdrawn(address indexed user, address indexed recipient, IERC20 indexed token, uint256 amount);
+    event Transferred(address indexed from, address indexed to, IERC20 indexed token, uint256 amount);
 
     function getInternalBalance(address user, IERC20 token) public view override returns (uint256) {
         return _internalTokenBalance[user][token];
@@ -70,5 +71,25 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
         token.safeTransfer(recipient, amount.sub(feeAmount));
 
         emit Withdrawn(msg.sender, recipient, token, amount);
+    }
+
+    function transferInternalBalance(
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        address recipient
+    ) external override nonReentrant {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20 token = tokens[i];
+            uint128 amount = amounts[i].toUint128();
+
+            // If zero is specified use current balance.
+            uint128 currentBalance = _internalTokenBalance[msg.sender][token];
+            uint128 amountToTransfer = (amount == 0) ? currentBalance : amount;
+            require(amountToTransfer > 0 && amountToTransfer <= currentBalance, "ERR_NOT_ENOUGH_INTERNAL_BALANCE");
+
+            _internalTokenBalance[msg.sender][token] -= amountToTransfer;
+            _internalTokenBalance[recipient][token] = _internalTokenBalance[recipient][token].add128(amountToTransfer);
+            emit Transferred(msg.sender, recipient, token, amountToTransfer);
+        }
     }
 }

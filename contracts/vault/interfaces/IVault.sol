@@ -56,6 +56,16 @@ interface IVault {
         address recipient
     ) external;
 
+    /**
+     * @dev Transfers tokens from the caller's Internal Balance, transferring them to `recipient`'s Internal Balance.
+     * This does not charge protocol withdrawal fees.
+     */
+    function transferInternalBalance(
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        address recipient
+    ) external;
+
     // Agents
 
     /**
