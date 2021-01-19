@@ -247,8 +247,10 @@ describe('WeightedPool', function () {
         });
 
         it('can withdraw from internal balance', async () => {
-          const depositedAmount = BigNumber.from((1e18).toString());
-          for (const token of poolTokens) await vault.connect(lp).deposit(token, depositedAmount, lp.address);
+          const depositedAmount = bn(1e18);
+          await Promise.all(
+            poolTokens.map((token) => vault.connect(lp).depositToInternalBalance(token, depositedAmount, lp.address))
+          );
 
           await expectBalanceChange(
             () => pool.connect(lp).joinPool(BPT_AMOUNT_OUT, maxAmountsIn, false, lp.address),
@@ -257,7 +259,7 @@ describe('WeightedPool', function () {
           );
 
           for (const token of poolTokens) {
-            const internalBalance = await vault.getInternalTokenBalance(lp.address, token);
+            const internalBalance = await vault.getInternalBalance(lp.address, token);
             const expectedBalance = depositedAmount.sub(maxAmountsIn[poolTokens.indexOf(token)]);
             expect(internalBalance).to.equal(expectedBalance);
           }
@@ -265,13 +267,16 @@ describe('WeightedPool', function () {
 
         it('transfers missing tokens if internal balance is not enough', async () => {
           for (const token of poolTokens) {
-            const internalBalance = await vault.getInternalTokenBalance(lp.address, token);
-            await vault.connect(lp).withdraw(token, internalBalance, lp.address);
+            const internalBalance = await vault.getInternalBalance(lp.address, token);
+            await vault.connect(lp).withdrawFromInternalBalance(token, internalBalance, lp.address);
           }
 
-          await vault.connect(lp).deposit(poolTokens[0], BigNumber.from((0.1e18).toString()).sub(1), lp.address);
+          await vault.connect(lp).depositToInternalBalance(poolTokens[0], bn(0.1e18).sub(1), lp.address);
+
           const otherTokens = poolTokens.slice(1);
-          for (const token of otherTokens) await vault.connect(lp).deposit(token, (1e18).toString(), lp.address);
+          await Promise.all(
+            otherTokens.map((token) => vault.connect(lp).depositToInternalBalance(token, bn(1e18), lp.address))
+          );
 
           await expectBalanceChange(
             () => pool.connect(lp).joinPool(BPT_AMOUNT_OUT, maxAmountsIn, false, lp.address),
@@ -437,7 +442,7 @@ describe('WeightedPool', function () {
 
           await Promise.all(
             poolTokens.map(async (token, index) => {
-              const internalBalance = await vault.getInternalTokenBalance(lp.address, token);
+              const internalBalance = await vault.getInternalBalance(lp.address, token);
               expect(internalBalance).to.equal(minAmountsOut[index]);
             })
           );
@@ -451,7 +456,7 @@ describe('WeightedPool', function () {
           );
 
           for (const token of poolTokens) {
-            const internalBalance = await vault.getInternalTokenBalance(beneficiary.address, token);
+            const internalBalance = await vault.getInternalBalance(beneficiary.address, token);
             expect(internalBalance).to.equal(minAmountsOut[poolTokens.indexOf(token)]);
           }
         });
@@ -778,7 +783,7 @@ describe('WeightedPool', function () {
 
           async function assertProtocolSwapFeeIsCharged(payFeesAction: ContractFunction) {
             const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
-            const paidTokenIndex = BigNumber.from(previousBlockHash).mod(numberOfTokens).toNumber();
+            const paidTokenIndex = bn(previousBlockHash).mod(numberOfTokens).toNumber();
             const paidFeeToken = poolTokens[paidTokenIndex];
 
             const lastInvariant = new Decimal((await pool.getLastInvariant()).toString());
