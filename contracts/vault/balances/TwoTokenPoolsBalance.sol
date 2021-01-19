@@ -21,12 +21,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../math/FixedPoint.sol";
 
-import "./CashInvested.sol";
+import "./BalanceAllocation.sol";
 
 contract TwoTokenPoolsBalance {
     using SafeCast for uint256;
     using FixedPoint for int256;
-    using CashInvested for bytes32;
+    using BalanceAllocation for bytes32;
 
     // Data for Pools with Two Tokens
     //
@@ -34,7 +34,7 @@ contract TwoTokenPoolsBalance {
     // are only two balances to read), but there's a key difference in how data is stored. Keeping a set makes little
     // sense, as it will only ever hold two tokens, so we can just store those two directly.
     // The gas savings associated with using these Pools come from how token balances are stored: cash for token A and
-    // token B is packed together, as are invested amounts. Because only cash changes in a swap, there's no need to
+    // token B is packed together, as are external amounts. Because only cash changes in a swap, there's no need to
     // write to this second storage slot.
     // This however makes Vault code that interacts with these Pools cumbersome: both balances must be accessed at the
     // same time by using both token addresses, and some logic is needed to differentiate token A from token B. In this
@@ -62,7 +62,7 @@ contract TwoTokenPoolsBalance {
 
     struct TwoTokenSharedBalances {
         bytes32 sharedCash;
-        bytes32 sharedInvested;
+        bytes32 sharedManaged;
     }
 
     mapping(bytes32 => TwoTokenTokens) internal _poolTwoTokenTokens;
@@ -116,12 +116,12 @@ contract TwoTokenPoolsBalance {
         TwoTokenSharedBalances storage poolSharedBalance = _poolTwoTokenSharedBalances[poolId][pairHash];
 
         bytes32 sharedCash = poolSharedBalance.sharedCash;
-        bytes32 sharedInvested = poolSharedBalance.sharedInvested;
+        bytes32 sharedManaged = poolSharedBalance.sharedManaged;
 
         if (token == poolTokens.tokenA) {
-            return CashInvested.fromSharedToBalanceA(sharedCash, sharedInvested);
+            return BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
         } else if (token == poolTokens.tokenB) {
-            return CashInvested.fromSharedToBalanceB(sharedCash, sharedInvested);
+            return BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
         } else {
             revert("ERR_TOKEN_NOT_REGISTERED");
         }
@@ -213,7 +213,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, CashInvested.increaseCash);
+        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, BalanceAllocation.increaseCash);
     }
 
     function _alterTwoTokenPoolCash(
@@ -227,10 +227,10 @@ contract TwoTokenPoolsBalance {
             poolId,
             tokenX,
             amountX.abs().toUint128(),
-            amountX > 0 ? CashInvested.increaseCash : CashInvested.decreaseCash,
+            amountX > 0 ? BalanceAllocation.increaseCash : BalanceAllocation.decreaseCash,
             tokenY,
             amountY.abs().toUint128(),
-            amountY > 0 ? CashInvested.increaseCash : CashInvested.decreaseCash
+            amountY > 0 ? BalanceAllocation.increaseCash : BalanceAllocation.decreaseCash
         );
     }
 
@@ -249,31 +249,31 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, CashInvested.decreaseCash);
+        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, BalanceAllocation.decreaseCash);
     }
 
-    function _investTwoTokenPoolCash(
+    function _twoTokenPoolCashToManaged(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateTwoTokenPoolSharedTokenBalance(poolId, token, CashInvested.cashToInvested, amount);
+        _updateTwoTokenPoolSharedTokenBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
-    function _divestTwoTokenPoolCash(
+    function _twoTokenPoolManagedToCash(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateTwoTokenPoolSharedTokenBalance(poolId, token, CashInvested.investedToCash, amount);
+        _updateTwoTokenPoolSharedTokenBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
-    function _setTwoTokenPoolInvestment(
+    function _setTwoTokenPoolManagedBalance(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateTwoTokenPoolSharedTokenBalance(poolId, token, CashInvested.setInvested, amount);
+        _updateTwoTokenPoolSharedTokenBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
 
     function _updateTwoTokenPoolCashTokenBalance(
@@ -300,8 +300,8 @@ contract TwoTokenPoolsBalance {
             tokenBBalance = mutation(tokenBBalance, amountX);
         }
 
-        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-        // We don't need to write to the sharedInvested entry
+        poolSharedBalances.sharedCash = BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
+        // We don't need to write to the sharedManaged entry
     }
 
     function _updateTwoTokenPoolCashTokenBalance(
@@ -329,8 +329,8 @@ contract TwoTokenPoolsBalance {
             tokenBBalance = mutationX(tokenBBalance, amountX);
         }
 
-        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-        // We don't need to write to the sharedInvested entry
+        poolSharedBalances.sharedCash = BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
+        // We don't need to write to the sharedManaged entry
     }
 
     function _updateTwoTokenPoolSharedTokenBalance(
@@ -355,13 +355,13 @@ contract TwoTokenPoolsBalance {
             revert("ERR_TOKEN_NOT_REGISTERED");
         }
 
-        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-        poolSharedBalances.sharedInvested = CashInvested.toSharedInvested(tokenABalance, tokenBBalance);
+        poolSharedBalances.sharedCash = BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
+        poolSharedBalances.sharedManaged = BalanceAllocation.toSharedManaged(tokenABalance, tokenBBalance);
     }
 
-    function _isTwoTokenPoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
+    function _twoTokenPoolIsManaged(bytes32 poolId, IERC20 token) internal view returns (bool) {
         bytes32 currentBalance = _getTwoTokenPoolBalance(poolId, token);
-        return currentBalance.isInvested();
+        return currentBalance.isManaged();
     }
 
     function _getTwoTokenPoolSharedBalances(
@@ -385,9 +385,9 @@ contract TwoTokenPoolsBalance {
         poolSharedBalance = _poolTwoTokenSharedBalances[poolId][pairHash];
 
         bytes32 sharedCash = poolSharedBalance.sharedCash;
-        bytes32 sharedInvested = poolSharedBalance.sharedInvested;
+        bytes32 sharedManaged = poolSharedBalance.sharedManaged;
 
-        tokenABalance = CashInvested.fromSharedToBalanceA(sharedCash, sharedInvested);
-        tokenBBalance = CashInvested.fromSharedToBalanceB(sharedCash, sharedInvested);
+        tokenABalance = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
+        tokenBBalance = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
     }
 }

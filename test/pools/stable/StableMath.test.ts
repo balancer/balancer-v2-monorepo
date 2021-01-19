@@ -1,5 +1,5 @@
 import { deploy } from '../../../scripts/helpers/deploy';
-import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/stablecoin';
+import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/stable';
 import { expectRelativeError } from '../../helpers/relativeError';
 import { Contract } from 'ethers';
 import { Decimal } from 'decimal.js';
@@ -70,11 +70,11 @@ async function compareInGivenOut(
   );
 }
 
-describe('StablecoinMath', function () {
+describe('StableMath', function () {
   let mock: Contract;
 
   beforeEach(async function () {
-    mock = await deploy('MockStablecoinMath', { args: [] });
+    mock = await deploy('MockStableMath', { args: [] });
   });
 
   describe('Simple swap', () => {

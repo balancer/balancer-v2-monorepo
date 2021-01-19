@@ -9,14 +9,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const vault = await deployments.get('Vault');
 
-  const constantProductPoolFactory = await deploy('ConstantProductPoolFactory', {
+  const weightedPoolFactory = await deploy('WeightedPoolFactory', {
     from: deployer,
     args: [vault.address],
     log: true,
     deterministicDeployment: true,
   });
 
-  const stablecoinPoolFactory = await deploy('StablecoinPoolFactory', {
+  const stablePoolFactory = await deploy('StablePoolFactory', {
     from: deployer,
     args: [vault.address],
     log: true,
@@ -35,7 +35,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
     'grantRole',
     addUniversalAgentRole,
-    constantProductPoolFactory.address
+    weightedPoolFactory.address
   );
 
   await execute(
@@ -46,7 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
     'grantRole',
     addUniversalAgentRole,
-    stablecoinPoolFactory.address
+    stablePoolFactory.address
   );
 };
 export default func;

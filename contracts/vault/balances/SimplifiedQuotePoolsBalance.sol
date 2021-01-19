@@ -20,13 +20,14 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import "./CashInvested.sol";
+import "./BalanceAllocation.sol";
 import "../../math/FixedPoint.sol";
 
 contract SimplifiedQuotePoolsBalance {
     using SafeCast for uint256;
     using FixedPoint for int256;
-    using CashInvested for bytes32;
+    using BalanceAllocation for bytes32;
+
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Data for Pools with Simplified Quote Pool Optimization setting
@@ -126,7 +127,7 @@ contract SimplifiedQuotePoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint128 amount = amounts[i].toUint128();
-            _updateSimplifiedQuotePoolBalance(poolTokens, poolId, tokens[i], CashInvested.increaseCash, amount);
+            _updateSimplifiedQuotePoolBalance(poolTokens, poolId, tokens[i], BalanceAllocation.increaseCash, amount);
         }
     }
 
@@ -144,7 +145,7 @@ contract SimplifiedQuotePoolsBalance {
                 poolTokens,
                 poolId,
                 tokens[i],
-                amount > 0 ? CashInvested.increaseCash : CashInvested.decreaseCash,
+                amount > 0 ? BalanceAllocation.increaseCash : BalanceAllocation.decreaseCash,
                 amount.abs().toUint128()
             );
         }
@@ -168,38 +169,38 @@ contract SimplifiedQuotePoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint128 amount = amounts[i].toUint128();
-            _updateSimplifiedQuotePoolBalance(poolTokens, poolId, tokens[i], CashInvested.decreaseCash, amount);
+            _updateSimplifiedQuotePoolBalance(poolTokens, poolId, tokens[i], BalanceAllocation.decreaseCash, amount);
         }
     }
 
-    function _investSimplifiedQuotePoolCash(
+    function _simplifiedQuotePoolCashToManaged(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateSimplifiedQuotePoolBalance(poolId, token, CashInvested.cashToInvested, amount);
+        _updateSimplifiedQuotePoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
-    function _divestSimplifiedQuotePoolCash(
+    function _simplifiedQuotePoolManagedToCash(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateSimplifiedQuotePoolBalance(poolId, token, CashInvested.investedToCash, amount);
+        _updateSimplifiedQuotePoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
-    function _setSimplifiedQuotePoolInvestment(
+    function _setSimplifiedQuotePoolManagedBalance(
         bytes32 poolId,
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateSimplifiedQuotePoolBalance(poolId, token, CashInvested.setInvested, amount);
+        _updateSimplifiedQuotePoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
 
-    function _isSimplifiedQuotePoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
+    function _simplifiedQuotePoolIsManaged(bytes32 poolId, IERC20 token) internal view returns (bool) {
         EnumerableSet.AddressSet storage poolTokens = _simplifiedQuotePoolsTokens[poolId];
         bytes32 currentBalance = _getSimplifiedQuotePoolTokenBalance(poolTokens, poolId, token);
-        return currentBalance.isInvested();
+        return currentBalance.isManaged();
     }
 
     function _updateSimplifiedQuotePoolBalance(
