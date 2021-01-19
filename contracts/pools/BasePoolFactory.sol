@@ -37,9 +37,9 @@ abstract contract BasePoolFactory {
      * a revert.
      *
      * Before the constructor of the created contract is executed, the factory will register it in the Vault as a
-     * Universal Agent. This means the contract will be able to pull funds from both User Balance and tokens that have
-     * been granted allowance. As is always the case when dealing with Universal Agents, the contract should be careful
-     * to authenticate any addresses they use this way.
+     * Universal Agent. This means the contract will be able to pull funds from both Internal Balance and tokens
+     * that have been granted allowance. As is always the case when dealing with Universal Agents, the contract should
+     * be careful to authenticate any addresses they use this way.
      *
      * The creation code for a Solidity contract can be constructed by concatenating the `creationCode` property of the
      * contract type with the ABI-encoded constructor arguments. Note that the compiler doesn't perform any type
@@ -53,10 +53,6 @@ abstract contract BasePoolFactory {
      * Returns the address of the created contract.
      */
     function _create(bytes memory creationCode, bytes32 salt) internal returns (address) {
-        // TODO: consider internally choosing a salt value (e.g. an incrementing counter hash with the blockhash) to
-        // disallow vanity pool addresses (which might cause phishing issues). This might not make sense because other
-        // arguments could still be changed slightly to act as a nonce.
-
         address expectedPool = Create2.computeAddress(salt, keccak256(creationCode));
         require(!expectedPool.isContract(), "Salt cannot be reused");
 

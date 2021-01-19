@@ -36,8 +36,8 @@ export type SwapOut = {
 export type FundManagement = {
   sender: string;
   recipient: string;
-  withdrawFromUserBalance: boolean;
-  depositToUserBalance: boolean;
+  withdrawFromInternalBalance: boolean;
+  depositToInternalBalance: boolean;
 };
 
 export type OneToOneValidatorData = {

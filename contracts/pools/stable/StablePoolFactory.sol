@@ -19,13 +19,20 @@ import "../../vault/interfaces/IVault.sol";
 
 import "../BasePoolFactory.sol";
 
-import "./StablecoinPool.sol";
+import "./StablePool.sol";
 
-contract StablecoinPoolFactory is BasePoolFactory {
+contract StablePoolFactory is BasePoolFactory {
     constructor(IVault _vault) BasePoolFactory(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /**
+     * @dev Deploys a new `StablePool`. This must be done via a factory contract because the Pool must be an
+     * Universal Agent during construction.
+     *
+     * For the deployment to succeed, this contract must be allowed to add Universal Agents
+     * (`IAuthorizer.canAddUniversalAgent`).
+     */
     function create(
         string memory name,
         string memory symbol,
@@ -39,7 +46,7 @@ contract StablecoinPoolFactory is BasePoolFactory {
         return
             _create(
                 abi.encodePacked(
-                    type(StablecoinPool).creationCode,
+                    type(StablePool).creationCode,
                     // Make the sender the `from` address
                     abi.encode(vault, name, symbol, initialBPT, tokens, amounts, msg.sender, amp, swapFee)
                 ),

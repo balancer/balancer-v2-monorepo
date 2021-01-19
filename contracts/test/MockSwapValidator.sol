@@ -18,13 +18,12 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
-import "../validators/ISwapValidator.sol";
+import "../vault/interfaces/ISwapValidator.sol";
 
 contract MockSwapValidator is ISwapValidator {
     event ValidationData(IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut);
 
     function validate(
-        IVault.SwapKind,
         IERC20[] calldata,
         int256[] calldata,
         bytes calldata data

@@ -33,8 +33,8 @@ export async function setupEnvironment(): Promise<{
     await mintTokens(tokens, symbol, trader, 200e18);
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
-    // deposit user balance for trader to make it non-zero
-    await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), trader.address);
+    // deposit user balance for trader
+    await vault.connect(trader).deposit(tokens[symbol].address, (100e18).toString(), trader.address);
   }
 
   return { vault, validator, tokens, trader };
@@ -58,17 +58,17 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   let pool: Contract;
 
-  if (poolName == 'ConstantProductPool') {
+  if (poolName == 'WeightedPool') {
     const weights = symbols.map(() => toFixedPoint(1)); // Equal weights for all tokens
 
-    pool = await deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+    pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
       from: creator,
       parameters: [initialBPT, tokenAddresses, initialBalances, weights, swapFee],
     });
-  } else if (poolName == 'StablecoinPool') {
+  } else if (poolName == 'StablePool') {
     const amp = (30e18).toString();
 
-    pool = await deployPoolFromFactory(vault, admin, 'StablecoinPool', {
+    pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
       from: creator,
       parameters: [initialBPT, tokenAddresses, initialBalances, amp, swapFee],
     });
@@ -79,29 +79,29 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   return pool.getPoolId();
 }
 
-export async function getConstantProductPool(
+export async function getWeightedPool(
   vault: Contract,
   tokens: TokenList,
   size: number,
   offset?: number
 ): Promise<string> {
-  return deployPool(vault, pickTokens(tokens, size, offset), 'ConstantProductPool');
+  return deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool');
 }
 
-export async function getStablecoinPool(
+export async function getStablePool(
   vault: Contract,
   tokens: TokenList,
   size: number,
   offset?: number
 ): Promise<string> {
-  return deployPool(vault, pickTokens(tokens, size, offset), 'StablecoinPool');
+  return deployPool(vault, pickTokens(tokens, size, offset), 'StablePool');
 }
 
 function pickTokens(tokens: TokenList, size: number, offset?: number): TokenList {
   return pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)));
 }
 
-async function getSigners(): Promise<{
+export async function getSigners(): Promise<{
   admin: SignerWithAddress;
   trader: SignerWithAddress;
   creator: SignerWithAddress;

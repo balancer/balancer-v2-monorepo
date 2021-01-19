@@ -18,7 +18,9 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
-import "./ISwapValidator.sol";
+import "../vault/interfaces/ISwapValidator.sol";
+
+import "../math/FixedPoint.sol";
 
 contract OneToOneSwapValidator is ISwapValidator {
     using SafeCast for uint256;
@@ -28,7 +30,6 @@ contract OneToOneSwapValidator is ISwapValidator {
     using FixedPoint for uint128;
 
     function validate(
-        IVault.SwapKind,
         IERC20[] calldata tokens,
         int256[] calldata vaultDeltas,
         bytes calldata data

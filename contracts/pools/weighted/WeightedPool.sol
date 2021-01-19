@@ -28,19 +28,13 @@ import "../../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
-import "./ConstantProductMath.sol";
+import "./WeightedMath.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract ConstantProductPool is
-    IBPTPool,
-    IPoolQuoteSimplified,
-    BalancerPoolToken,
-    ConstantProductMath,
-    ReentrancyGuard
-{
+contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -94,6 +88,10 @@ contract ConstantProductPool is
     uint256 private constant _MIN_SWAP_FEE = 0;
     uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
 
+    /**
+     * @dev This contract cannot be deployed directly because it must be an Universal Agent during construction. Use
+     * `WeightedPoolFactory` to create new instances of it instead.
+     */
     constructor(
         IVault vault,
         string memory name,
@@ -417,7 +415,7 @@ contract ConstantProductPool is
      * of BPT they want to get `minBPTAmountOut`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `bptAmountOut` will be minted and transferred to `beneficiary`.
      */
@@ -447,7 +445,7 @@ contract ConstantProductPool is
         bptAmountOut = _exactTokensInForBPTOut(balances, normalizedWeights, amountsIn, totalSupply(), _swapFee);
         require(bptAmountOut >= minBPTAmountOut, "ERR_BPT_OUT_MIN_AMOUNT");
 
-        /* 
+        /*
         // TODO for Oracle/MLP integration
         // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
         if(_optInOracleCandidate || _mandatoryOracleCandidate)
@@ -473,7 +471,7 @@ contract ConstantProductPool is
      * of token they want to pay `maxAmountIn`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `BPTAmountOut` will be minted and transferred to `beneficiary`.
      */
@@ -543,7 +541,7 @@ contract ConstantProductPool is
      *  and the minimum amount for each token they want to get `minAmountsOut`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `tokens` -> list of tokens that user wants to receive
      * `BPTAmountsIn` -> list with the amounts of BPT that are going to be redeemed for each token in `tokens`
@@ -615,7 +613,7 @@ contract ConstantProductPool is
      *  and the maximum amount of BPT they want to redeem `maxBPTAmountIn`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `tokens` -> list of tokens that user wants to receive
      * `amountsOut` -> list with the amounts of each token the user wants to receive

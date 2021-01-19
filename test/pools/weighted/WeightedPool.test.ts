@@ -16,9 +16,9 @@ import {
   calcBptOutGivenExactTokensIn,
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
-} from '../../helpers/math/weightedProduct';
+} from '../../helpers/math/weighted';
 
-describe('ConstantProductPool', function () {
+describe('WeightedPool', function () {
   let authorizer: Contract, vault: Contract;
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -54,14 +54,14 @@ describe('ConstantProductPool', function () {
   });
 
   context('for a 2 token pool', () => {
-    itBehavesAsConstantProductPool(2);
+    itBehavesAsWeightedPool(2);
   });
 
   context('for a 3 token pool', () => {
-    itBehavesAsConstantProductPool(3);
+    itBehavesAsWeightedPool(3);
   });
 
-  function itBehavesAsConstantProductPool(numberOfTokens: number) {
+  function itBehavesAsWeightedPool(numberOfTokens: number) {
     let poolTokens: string[];
 
     const poolSymbols = SYMBOLS.slice(0, numberOfTokens);
@@ -69,7 +69,7 @@ describe('ConstantProductPool', function () {
     const poolInitialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
     async function deployPool({ tokens, balances, weights, swapFee }: any = {}) {
-      return deployPoolFromFactory(vault, admin, 'ConstantProductPool', {
+      return deployPoolFromFactory(vault, admin, 'WeightedPool', {
         from: creator,
         parameters: [
           INITIAL_BPT,
@@ -246,7 +246,7 @@ describe('ConstantProductPool', function () {
           );
         });
 
-        it('can withdraw from user balance', async () => {
+        it('can withdraw from internal balance', async () => {
           const depositedAmount = BigNumber.from((1e18).toString());
           for (const token of poolTokens) await vault.connect(lp).deposit(token, depositedAmount, lp.address);
 
@@ -257,16 +257,16 @@ describe('ConstantProductPool', function () {
           );
 
           for (const token of poolTokens) {
-            const userBalance = await vault.getUserTokenBalance(lp.address, token);
+            const internalBalance = await vault.getInternalTokenBalance(lp.address, token);
             const expectedBalance = depositedAmount.sub(maxAmountsIn[poolTokens.indexOf(token)]);
-            expect(userBalance).to.equal(expectedBalance);
+            expect(internalBalance).to.equal(expectedBalance);
           }
         });
 
-        it('transfers missing tokens if user balance is not enough', async () => {
+        it('transfers missing tokens if internal balance is not enough', async () => {
           for (const token of poolTokens) {
-            const userBalance = await vault.getUserTokenBalance(lp.address, token);
-            await vault.connect(lp).withdraw(token, userBalance, lp.address);
+            const internalBalance = await vault.getInternalTokenBalance(lp.address, token);
+            await vault.connect(lp).withdraw(token, internalBalance, lp.address);
           }
 
           await vault.connect(lp).deposit(poolTokens[0], BigNumber.from((0.1e18).toString()).sub(1), lp.address);
@@ -428,7 +428,7 @@ describe('ConstantProductPool', function () {
           );
         });
 
-        it('can deposit into user balance', async () => {
+        it('can deposit into internal balance', async () => {
           await expectBalanceChange(
             () => pool.connect(lp).exitPool(BPT_AMOUNT_IN, ZEROED_MIN_AMOUNTS_OUT, false, lp.address),
             tokenList,
@@ -437,13 +437,13 @@ describe('ConstantProductPool', function () {
 
           await Promise.all(
             poolTokens.map(async (token, index) => {
-              const userTokenBalance = await vault.getUserTokenBalance(lp.address, token);
-              expect(userTokenBalance).to.equal(minAmountsOut[index]);
+              const internalBalance = await vault.getInternalTokenBalance(lp.address, token);
+              expect(internalBalance).to.equal(minAmountsOut[index]);
             })
           );
         });
 
-        it("can deposit into a beneficiary's user balance", async () => {
+        it("can deposit into a beneficiary's internal balance", async () => {
           await expectBalanceChange(
             () => pool.connect(lp).exitPool(BPT_AMOUNT_IN, ZEROED_MIN_AMOUNTS_OUT, false, beneficiary.address),
             tokenList,
@@ -451,8 +451,8 @@ describe('ConstantProductPool', function () {
           );
 
           for (const token of poolTokens) {
-            const userBalance = await vault.getUserTokenBalance(beneficiary.address, token);
-            expect(userBalance).to.equal(minAmountsOut[poolTokens.indexOf(token)]);
+            const internalBalance = await vault.getInternalTokenBalance(beneficiary.address, token);
+            expect(internalBalance).to.equal(minAmountsOut[poolTokens.indexOf(token)]);
           }
         });
 
@@ -769,8 +769,8 @@ describe('ConstantProductPool', function () {
             const funds = {
               sender: trader.address,
               recipient: trader.address,
-              withdrawFromUserBalance: false,
-              depositToUserBalance: false,
+              withdrawFromInternalBalance: false,
+              depositToInternalBalance: false,
             };
 
             await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', [swap], poolTokens, funds);

@@ -16,9 +16,9 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "../pools/stablecoin/StablecoinMath.sol";
+import "../pools/stable/StableMath.sol";
 
-contract MockStablecoinMath is StablecoinMath {
+contract MockStableMath is StableMath {
     using SafeCast for uint256;
 
     function outGivenIn(

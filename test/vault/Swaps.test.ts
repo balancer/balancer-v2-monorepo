@@ -40,7 +40,7 @@ describe('Vault - swaps', () => {
 
     // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
     // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
-    // or rely on user balance or agents).
+    // or rely on internal balance or agents).
 
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
@@ -60,8 +60,8 @@ describe('Vault - swaps', () => {
     funds = {
       sender: trader.address,
       recipient: trader.address,
-      withdrawFromUserBalance: false,
-      depositToUserBalance: false,
+      withdrawFromInternalBalance: false,
+      depositToInternalBalance: false,
     };
   });
 
@@ -171,18 +171,18 @@ describe('Vault - swaps', () => {
                   const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
                   context('when the sender is using his own tokens', () => {
-                    context('when using external balance', () => {
+                    context('when using managed balance', () => {
                       assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -1e18 });
                     });
 
-                    context('when withdrawing from user balance', () => {
-                      context.skip('when using less than available as user balance', () => {
-                        // TODO: add tests where no token transfers are needed and user balance remains
+                    context('when withdrawing from internal balance', () => {
+                      context.skip('when using less than available as internal balance', () => {
+                        // TODO: add tests where no token transfers are needed and internal balance remains
                       });
 
-                      context('when using more than available as user balance', () => {
-                        beforeEach('deposit to user balance', async () => {
-                          funds.withdrawFromUserBalance = true;
+                      context('when using more than available as internal balance', () => {
+                        beforeEach('deposit to internal balance', async () => {
+                          funds.withdrawFromInternalBalance = true;
                           await vault.connect(trader).deposit(tokens.MKR.address, (0.3e18).toString(), trader.address);
                         });
 
@@ -190,9 +190,9 @@ describe('Vault - swaps', () => {
                       });
                     });
 
-                    context('when depositing from user balance', () => {
-                      beforeEach('deposit to user balance', async () => {
-                        funds.depositToUserBalance = true;
+                    context('when depositing from internal balance', () => {
+                      beforeEach('deposit to internal balance', async () => {
+                        funds.depositToInternalBalance = true;
                       });
 
                       assertSwapGivenIn({ swaps }, { MKR: -1e18 });
@@ -223,7 +223,7 @@ describe('Vault - swaps', () => {
                 context('when draining the pool', () => {
                   const swaps = [{ in: 1, out: 0, amount: 50e18 }];
 
-                  assertSwapGivenInReverts({ swaps }, 'Fully draining token out');
+                  assertSwapGivenIn({ swaps }, { DAI: 100e18, MKR: -50e18 });
                 });
 
                 context('when requesting more than the available balance', () => {
@@ -503,18 +503,18 @@ describe('Vault - swaps', () => {
                   const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
                   context('when the sender is using his own tokens', () => {
-                    context('when using external balance', () => {
+                    context('when using managed balance', () => {
                       assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.5e18 });
                     });
 
-                    context('when withdrawing from user balance', () => {
-                      context.skip('when using less than available as user balance', () => {
-                        // TODO: add tests where no token transfers are needed and user balance remains
+                    context('when withdrawing from internal balance', () => {
+                      context.skip('when using less than available as internal balance', () => {
+                        // TODO: add tests where no token transfers are needed and internal balance remains
                       });
 
-                      context('when using more than available as user balance', () => {
-                        beforeEach('deposit to user balance', async () => {
-                          funds.withdrawFromUserBalance = true;
+                      context('when using more than available as internal balance', () => {
+                        beforeEach('deposit to internal balance', async () => {
+                          funds.withdrawFromInternalBalance = true;
                           await vault.connect(trader).deposit(tokens.MKR.address, (0.3e18).toString(), trader.address);
                         });
 
@@ -522,9 +522,9 @@ describe('Vault - swaps', () => {
                       });
                     });
 
-                    context('when depositing from user balance', () => {
-                      beforeEach('deposit to user balance', async () => {
-                        funds.depositToUserBalance = true;
+                    context('when depositing from internal balance', () => {
+                      beforeEach('deposit to internal balance', async () => {
+                        funds.depositToInternalBalance = true;
                       });
 
                       assertSwapGivenOut({ swaps }, { MKR: -0.5e18 });
@@ -553,7 +553,7 @@ describe('Vault - swaps', () => {
                 context('when draining the pool', () => {
                   const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                  assertSwapGivenOutReverts({ swaps }, 'Fully draining token out');
+                  assertSwapGivenOut({ swaps }, { DAI: 100e18, MKR: -50e18 });
                 });
 
                 context('when requesting more than the available balance', () => {

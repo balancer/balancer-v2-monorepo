@@ -29,10 +29,12 @@ contract Authorizer is IAuthorizer, AccessControl {
     bytes32 public immutable SET_PROTOCOL_SWAP_FEE_ROLE = keccak256("SET_PROTOCOL_SWAP_FEE_ROLE");
     bytes32 public immutable SET_PROTOCOL_FLASH_LOAN_FEE_ROLE = keccak256("SET_PROTOCOL_FLASH_LOAN_FEE_ROLE");
 
-    bytes32 public immutable COLLECT_PROTOCOL_FEES_ALL_TOKENS_ROLE = keccak256("COLLECT_PROTOCOL_FEES_ALL_TOKENS_ROLE");
+    bytes32 public immutable WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE = keccak256(
+        "WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE"
+    );
 
-    function COLLECT_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(IERC20 token) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked("COLLECT_PROTOCOL_FEES_SINGLE_TOKEN_ROLE", token));
+    function WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(IERC20 token) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked("WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE", token));
     }
 
     bytes32 public immutable ADD_UNIVERSAL_AGENT_ROLE = keccak256("ADD_UNIVERSAL_AGENT_ROLE");
@@ -58,10 +60,10 @@ contract Authorizer is IAuthorizer, AccessControl {
         return hasRole(SET_PROTOCOL_FLASH_LOAN_FEE_ROLE, account);
     }
 
-    function canCollectProtocolFees(address account, IERC20 token) external view override returns (bool) {
+    function canWithdrawProtocolFees(address account, IERC20 token) external view override returns (bool) {
         return
-            hasRole(COLLECT_PROTOCOL_FEES_ALL_TOKENS_ROLE, account) ||
-            hasRole(COLLECT_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(token), account);
+            hasRole(WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE, account) ||
+            hasRole(WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(token), account);
     }
 
     function canAddUniversalAgent(address account) external view override returns (bool) {

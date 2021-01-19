@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./IFlashLoanReceiver.sol";
 import "./IAuthorizer.sol";
-import "../../validators/ISwapValidator.sol";
+import "./ISwapValidator.sol";
 
 pragma solidity ^0.7.1;
 
@@ -29,15 +29,16 @@ pragma solidity ^0.7.1;
 // execution control is transferred to a token contract during a transfer) will result in a revert. View functions can
 // be called, but they might return inconsistent results if called in a reentrant manner.
 interface IVault {
-    // User Balance
+    // Internal Balance
 
     /**
-     * @dev Returns `user`'s User Balance for a specific token.
+     * @dev Returns `user`'s Internal Balance for a specific token.
      */
-    function getUserTokenBalance(address user, IERC20 token) external view returns (uint256);
+    function getInternalTokenBalance(address user, IERC20 token) external view returns (uint256);
 
     /**
-     * @dev Deposits tokens from the caller into `user`'s User Balance.
+     * @dev Deposits tokens from the caller into `user`'s Internal Balance. The caller must have allowed the Vault
+     * to use their tokens via `IERC20.approve()`.
      */
     function deposit(
         IERC20 token,
@@ -46,8 +47,8 @@ interface IVault {
     ) external;
 
     /**
-     * @dev Withdraws tokens from the caller's User Balance, transferring them to `recipient`. Withdraw protocol fees
-     * are charged by this.
+     * @dev Withdraws tokens from the caller's Internal Balance, transferring them to `recipient`.
+     * This charges protocol withdrawal fees.
      */
     function withdraw(
         IERC20 token,
@@ -58,18 +59,8 @@ interface IVault {
     // Agents
 
     /**
-     * @dev Authorizes `agent` to act as an agent for the caller.
-     */
-    function addUserAgent(address agent) external;
-
-    /**
-     * @dev Revokes `agent` so that it no longer is an agent for the caller. An account is always its own agent
-     * and cannot revoke itself. Universal Agents also cannot be revoked.
-     */
-    function removeUserAgent(address agent) external;
-
-    /**
-     * @dev Returns true of `agent` is an agent for `user`.
+     * @dev Returns true if `agent` is an agent for `user`. An account's agent can make the Vault use the managed
+     * account's approved tokens. All accounts are agents for themselves.
      */
     function isAgentFor(address user, address agent) external view returns (bool);
 
@@ -82,13 +73,24 @@ interface IVault {
      * @dev Returns a partial list of `user`'s agents, starting at index `start`, up to index `end`. This does not
      * include `user` itself, nor Universal Agents.
      *
-     * The ordering of this list may change as agents are authorized and revoked.
+     * The ordering of this list may change as agents are added and removed.
      */
     function getUserAgents(
         address user,
         uint256 start,
         uint256 end
     ) external view returns (address[] memory);
+
+    /**
+     * @dev Adds `agent` as an agent for the caller.
+     */
+    function addUserAgent(address agent) external;
+
+    /**
+     * @dev Removes `agent` as an agent for the caller. An account is always its own agent: removing itself does
+     * nothing. Universal Agents cannot be removed either.
+     */
+    function removeUserAgent(address agent) external;
 
     // Universal Agents
 
@@ -98,17 +100,28 @@ interface IVault {
     function getNumberOfUniversalAgents() external view returns (uint256);
 
     /**
-     * @dev Returns a partial list of Universal Agents, starting at index `start`, up to index `end`.
+     * @dev Returns a partial list of Universal Agents, starting at index `start`, up to index `end`. * The ordering of
+     * this list may change as Universal Agents are added and removed.
+     *
+     * Universal Agents are agents for all accounts.
      */
     function getUniversalAgents(uint256 start, uint256 end) external view returns (address[] memory);
 
     /**
-     * @dev Adds `agent` as a Universal Agent. Can only be called by a Universal Agent Manager.
+     * @dev Adds `agent` as a Universal Agent.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canAddUniversalAgent`).
      */
     function addUniversalAgent(address agent) external;
 
     /**
-     * @dev Removes `agent` as a Universal Agent. Can only be called by a Universal Agent Manager.
+     * @dev Removes `agent` as a Universal Agent.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canRemoveUniversalAgent`).
      */
     function removeUniversalAgent(address agent) external;
 
@@ -137,7 +150,7 @@ interface IVault {
     function registerPool(PoolOptimization optimization) external returns (bytes32);
 
     /**
-     * @dev Emitted when a Pool is created by calling `registerPool`. Contains the Pool ID of the created pool.
+     * @dev Emitted when a Pool is created by calling `registerPool`. Contains the Pool ID of the registered pool.
      */
     event PoolCreated(bytes32 poolId);
 
@@ -153,98 +166,115 @@ interface IVault {
      */
     function getPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory);
 
+    // These functions revert if querying a Pool that doesn't exist
+
     /**
      * @dev Returns a Pool's address and optimization level.
      */
     function getPool(bytes32 poolId) external view returns (address, PoolOptimization);
 
     /**
-     * @dev Returns all tokens in the Pool (tokens for which the Pool has balance).
+     * @dev Returns all tokens registered by a Pool. The order of this list might change as tokens are registered and
+     * unregistered.
      */
     function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory);
 
     /**
-     * @dev Returns the Pool's balance of `tokens`. This might be zero if the tokens are not in the Pool.
+     * @dev Returns the Pool's balance of `tokens`. This is the total balance, including assets held by the Pool's
+     * Asset Manager and not currently held by the Vault.
+     *
+     * Each token in `tokens` must have been registered by the Pool.
      */
     function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint256[] memory);
 
     // Pool Management
 
     /**
-     * @dev TODO
+     * @dev Called by the Pool to register `tokens`. A Pool can only add and remove liquidity for tokens it has
+     * registered, and all swaps with a Pool must involve registered tokens.
+     *
+     * Each token in `tokens` must not be already registered before this call. For Pools with the Two Token
+     * optimization, `tokens` must have a length of two, that is, both tokens must be registered at the same time.
      */
     function registerTokens(bytes32 poolId, IERC20[] calldata tokens) external;
 
     event TokensRegistered(bytes32 poolId, IERC20[] tokens);
 
     /**
-     * @dev TODO
+     * @dev Called by the Pool to unregisted `tokens`. This prevents adding and removing liquidity in the future, as
+     * well as swaps. Unregistered tokens can be re-registered in the future.
+     *
+     *
+     * Each token in `tokens` must be registered before this call, and have zero balance. For Pools with the Two Token
+     * optimization, `tokens` must have a length of two, that is, both tokens must be unregistered at the same time.
      */
     function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
 
     event TokensUnregistered(bytes32 poolId, IERC20[] tokens);
 
     /**
-     * @dev Adds liquidity into a Pool. Can only be called by its controller.
+     * @dev Called by the Pool to add tokens to its balance. Only registered tokens can have liquidity added.
      *
-     * For each token, the Pool's balance will be increased by `totalAmounts[i]`. This is achieved by first transferring
-     * `amountsToTransfer[i]` tokens, and then withdrawing any amount remaining from User Balance. In both cases, the
-     * tokens will come from `from`. `from` must have granted allowance to the Vault, and the caller (Pool controller)
-     * must be an agent for `from`.
-     *
-     * If a token that was not previously in the Pool is granted balance by this function, it will become part of the
-     * Pool. This is the only way tokens can be added to a Pool.
+     * The tokens will be withdrawn from the `from` account, which the Pool must be an agent for. If
+     * `withdrawFromInternalBalance` is true, `from`'s Internal Balance will be preferred, performing an ERC20
+     * transfer for the difference between the requested amount and Internal Balance (if any). `from` must have
+     * allowed the Vault to use their tokens via `IERC20.approve()`.
      */
     function addLiquidity(
         bytes32 poolId,
         address from,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool withdrawFromUserBalance
+        bool withdrawFromInternalBalance
     ) external;
 
     /**
-     * @dev Removes liquidity from a Pool. Can only be called by its controller.
+     * @dev Called by the Pool to remove tokens from its balance. Only registered tokens can have liquidity removed.
      *
-     * For each token, the Pool's balance will be decreased by `totalAmounts[i]`. This is achieved by first transferring
-     * `amountsToTransfer[i]` tokens, and then depositing any amount remaining into User Balance. In both cases, the
-     * tokens are sent to `to`. Withdraw protocol fees are charged over any tokens transferred out.
-     *
-     * If a token that was previously in the Pool has all of its balance removed by this function, it will no longer be
-     * in the Pool. This is the only way tokens can be removed from a Pool.
+     * The tokens will be sent to the `to` account. If `depositToInternalBalance` is true, they will be added as
+     * Internal Balance instead of transferred.
      */
     function removeLiquidity(
         bytes32 poolId,
         address to,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool depositToUserBalance
+        bool depositToInternalBalance
     ) external;
 
-    // Trading interface
-
-    // Despite the external API having two separate functions for given in and given out, internally their are handled
-    // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
-    enum SwapKind { GIVEN_IN, GIVEN_OUT }
+    // Swap interface
 
     /**
-     * @dev Performs a series of swaps with one or multiple Pools. Each swap is validated and executed in order.
-     * However, tokens are only transferred in and out of the Vault (or withdrawn/deposited from User Balance) after all
-     * swaps have been validated and the net token balance change computed. This means it is possible to e.g. under
-     * certain conditions perform arbitrage by swapping with multiple Pools in a way that results in net token movement
-     * out of the Vault (profit), with no tokens being sent in.
+     * @dev Performs a series of swaps with one or multiple Pools. In each swap, the amount of tokens sent to the Pool
+     * is known. For swaps where the amount of tokens received from the Pool is known, see `batchSwapGivenOut`.
      *
-     * The `diffs` array contains the addresses of all tokens involved in the swaps, along with how many tokens the
-     * caller expects to transfer into the Vault for each. Any tokens due to the Vault not included in this amount will
-     * be withdrawn from User Balance.
+     * Returns an array with the net Vault token balance deltas. Positive amounts represent tokens sent to the Vault,
+     * and negative amounts tokens sent by the Vault. Each delta corresponds to the token at the same index in the
+     * `tokens` array.
+     *
+     * A `validator` can be optionally supplied, and if so it will be called with `tokens`, the Vault deltas, and
+     * user-supplied `validatorData`. This is useful to check a swap has happened according to user expectations (and
+     * wasn't, for example, affected by other transactions), and potentially revert if not.
+     *
+     * Each swap is executed independently in the order specified by the `swaps` array. However, tokens are only
+     * transferred in and out of the Vault (or withdrawn from and deposited into the User's Internal Balance) after
+     * all swaps have been completed and the net token balance change computed. This means it is possible to e.g.
+     * under certain conditions perform arbitrage by swapping with multiple Pools in a way that results in net token
+     * movement out of the Vault (profit), with no tokens being sent in (but updating the Pool's internal balances).
      *
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
-     * A swap can cause `tokenOut` to be fully drained. The Pools' optimization settings will validate each swap,
-     * possibly charging a swap fee on the amount going in. If so, the protocol will then charge the protocol swap fee
-     * to the Pool's own swap fee.
+     * The `tokenOut` amount is determined by the Pool's pricing algorithm by calling the `quoteOutGivenIn` function
+     * (from IPoolQuote or IPoolQuoteSimplified).
      *
-     * Funds will be received according to the data in `fundsIn`, and sent according to `fundsOut`.
+     * Multihop swaps, where one token is exchanged for another one by passing through one or more intermediate tokens,
+     * can be executed by passing an `amountIn` value of zero for a swap. This will cause the amount out of the previous
+     * swap to be used as the amount in of the current one. In such a scenario, `tokenIn` must equal the previous swap's
+     * `tokenOut`.
+     *
+     * The `tokens` array contains the addresses of all tokens involved in the swaps.
+     *
+     * Funds will be sent and  received according to the data in the `funds` struct.
      */
     function batchSwapGivenIn(
         ISwapValidator validator,
@@ -252,21 +282,15 @@ interface IVault {
         SwapIn[] calldata swaps,
         IERC20[] memory tokens,
         FundManagement calldata funds
-    ) external;
+    ) external returns (int256[] memory);
 
-    function batchSwapGivenOut(
-        ISwapValidator validator,
-        bytes calldata validatorData,
-        SwapOut[] calldata swaps,
-        IERC20[] memory tokens,
-        FundManagement calldata funds
-    ) external;
-
-    // batchSwap helper data structures
-
-    // A batched swap is made up of a number of Swaps. Each swap indicates a token balance increasing (tokenIn) and one
-    // decreasing (tokenOut) in a pool.
-    // Indexes instead of token addresses to not perform lookup in the tokens array.
+    /**
+     * @dev Data for a swap executed via `batchSwapGivenIn`. The tokens in and out are indexed in the `tokens` array
+     * passed to that function.
+     *
+     * `amountIn` tokens are sent to the `poolId` Pool for the token in, and `userData` is forwarded to the Pool in the
+     * `quoteOutGivenIn` function. If `amountIn` is zero, the multihop mechanism is used to determine the actual amount.
+     */
     struct SwapIn {
         bytes32 poolId;
         uint256 tokenInIndex;
@@ -275,6 +299,54 @@ interface IVault {
         bytes userData;
     }
 
+    /**
+     * @dev Performs a series of swaps with one or multiple Pools. In each swap, the amount of tokens received from the
+     * Pool is known. For swaps where the amount of tokens sent to the Pool is known, see `batchSwapGivenIn`.
+     *
+     * Returns an array with the net Vault token balance deltas. Positive amounts represent tokens sent to the Vault,
+     * and negative amounts tokens sent by the Vault. Each delta corresponds to the token at the same index in the
+     * `tokens` array.
+     *
+     * A `validator` can be optionally supplied, and if so it will be called with `tokens`, the Vault deltas, and
+     * user-supplied `validatorData`. This is useful to check a swap has happened according to user expectations (and
+     * wasn't, for example, affected by other transactions), and potentially revert if not.
+     *
+     * Each swap is executed independently in the order specified by the `swaps` array. However, tokens are only
+     * transferred in and out of the Vault (or withdrawn from and deposited into the User's Internal Balance) after
+     * all swaps have been completed and the net token balance change computed. This means it is possible to e.g.
+     * under certain conditions perform arbitrage by swapping with multiple Pools in a way that results in net token
+     * movement out of the Vault (profit), with no tokens being sent in (but updating the Pool's internal balances).
+     *
+     * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
+     * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
+     * The `tokenIn` amount is determined by the Pool's pricing algorithm by calling the `quoteInGivenOut` function
+     * (from IPoolQuote or IPoolQuoteSimplified).
+     *
+     * Multihop swaps, where one token is exchanged for another one by passing through one or more intermediate tokens,
+     * can be executed by passing an `amountOut` value of zero for a swap. This will cause the amount in of the previous
+     * swap to be used as the amount out of the current one. In such a scenario, `tokenOut` must equal the previous
+     * swap's `tokenIn`.
+     *
+     * The `tokens` array contains the addresses of all tokens involved in the swaps.
+     *
+     * Funds will be sent and  received according to the data in the `funds` struct.
+     */
+    function batchSwapGivenOut(
+        ISwapValidator validator,
+        bytes calldata validatorData,
+        SwapOut[] calldata swaps,
+        IERC20[] memory tokens,
+        FundManagement calldata funds
+    ) external returns (int256[] memory);
+
+    /**
+     * @dev Data for a swap executed via `batchSwapGivenOut`. The tokens in and out are indexed in the `tokens` array
+     * passed to that function.
+     *
+     * `amountOut` tokens are received from the `poolId` Pool for the token out, and `userData` is forwarded to the Pool
+     *  in the `quoteInGivenOut` function. If `amountOut` is zero, the multihop mechanism is used to determine the
+     * actual amount.
+     */
     struct SwapOut {
         bytes32 poolId;
         uint256 tokenInIndex;
@@ -283,15 +355,23 @@ interface IVault {
         bytes userData;
     }
 
-    // Funds in are received by `IERC20.transferFrom` from `withdrawFrom`. If received funds are not enough, they are
-    // withdrawn from withdrawFrom's User Balance.
-    // In any case, the caller must be an agent for withdrawFrom.
-    // Funds out are deposited to recipient's User Balance, or transferred out if transferToRecipient is true.
+    /**
+     * @dev All tokens in a swap are sent to the Vault from the `sender`'s account, and sent to the `recipient`. The
+     * caller of the swap function must be an agent for `sender`.
+     *
+     * If `withdrawFromInternalBalance` is true, `sender`'s Internal Balance will be preferred, performing an ERC20
+     * transfer for the difference between the requested amount and the User's Internal Balance (if any). `sender`
+     * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
+     * `addLiquidity`.
+     *
+     * If `depositToInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
+     * transferred. This matches the behavior of `removeLiquidity`.
+     */
     struct FundManagement {
         address sender;
         address recipient;
-        bool withdrawFromUserBalance;
-        bool depositToUserBalance;
+        bool withdrawFromInternalBalance;
+        bool depositToInternalBalance;
     }
 
     // Swap query methods
@@ -321,7 +401,7 @@ interface IVault {
      * sender (if positive) or send to the recipient (if negative). The arguments it receives are the same that
      * an equivalent batchSwapGivenOut would receive.
      *
-     * Unlike batchSwapGivenIn, this function performs no checks on its caller nor the sender and recipient fields in
+     * Unlike batchSwapGivenOut, this function performs no checks on its caller nor the sender and recipient fields in
      * the FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
      * needing to hold tokens, approve them for the Vault, or even know a user's address.
      *
@@ -334,11 +414,14 @@ interface IVault {
         FundManagement calldata funds
     ) external returns (int256[] memory);
 
-    // Pay Swap Protocol Fee interface
+    // Protocol Fees
+
     /**
-     * @dev Receives an array of tokens and their corresponding amounts to which swap protocol fees will be applied.
-     * If amounts are greater than zero, it uses them to calculate the corresponding swap protocol fee for the token
-     * which is collected by substracting it from the token pool balance.
+     * @dev Called by a Pool with an array of some of its registered tokens, and the amount of swap fees it has
+     * collected for each of them. The Vault will then apply the protocol swap fee to these amounts, substracting from
+     * the Pool's balance.
+     *
+     * Returns the updated Pool balance for each of `tokens`.
      */
     function paySwapProtocolFees(
         bytes32 poolId,
@@ -362,74 +445,134 @@ interface IVault {
         bytes calldata receiverData
     ) external;
 
-    // Investment interface
+    // Asset management interface
 
     /**
-     * @dev Set the investment manager for a pool token
+     * @dev Called by a Pool to set its Asset Manager for one of its registered tokens.
      */
-    function setPoolInvestmentManager(
+    function setPoolAssetManager(
         bytes32 poolId,
         IERC20 token,
         address manager
     ) external;
 
     /**
-     * @dev Returns the investment manager for a token in a pool
+     * @dev Returns a Pool's Asset Manager for `token`. Asset Managers can manage a Pool's assets by taking
+     * them out of the Vault via `withdrawPoolBalance`, `depositPoolBalance` and `updateManagedBalance`.
      */
-    function getPoolInvestmentManager(bytes32 poolId, IERC20 token) external view returns (address);
+    function getPoolAssetManager(bytes32 poolId, IERC20 token) external view returns (address);
 
     /**
-     * @dev Increase the invested amount of a given pool token
+     * @dev Called by a Pool's Asset Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
+     * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
      */
-    function investPoolBalance(
+    function withdrawPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
     ) external;
 
     /**
-     * @dev Decrease the invested amount of a given pool token
+     * @dev Called by a Pool's Asset Manager for `token` to deposit `amount` tokens into the Vault. This increases
+     * the Pool's cash but decreases its managed balance, leaving the total balance unchanged. The Asset Manager
+     * must have approved the Vault to use `token`.
      */
-    function divestPoolBalance(
+    function depositPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
     ) external;
 
     /**
-     * @dev Update invested amount of a given pool token
+     * @dev Called by a Pool's Asset Manager for `token` to update the external amount. This causes no change on
+     * the Pool's cash, but because the managed balance changes, so does the total balance. The external amount can be
+     * both increased and decreased by this call.
      */
-    function updateInvested(
+    function updateManagedBalance(
         bytes32 poolId,
         IERC20 token,
-        uint256 amountInvested
+        uint256 amount
     ) external;
 
     // Authorizer
 
+    /**
+     * @dev Returns the Vault's Authorizer.
+     */
     function getAuthorizer() external view returns (IAuthorizer);
 
+    /**
+     * @dev Sets a new Authorizer for the Vault.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canChangeAuthorizer`).
+     */
     function changeAuthorizer(IAuthorizer newAuthorizer) external;
 
     // Protocol Fees
 
-    function getProtocolWithdrawFee() external view returns (uint128);
-
-    function getProtocolSwapFee() external view returns (uint128);
-
-    function getProtocolFlashLoanFee() external view returns (uint256);
-
-    function setProtocolWithdrawFee(uint128 newFee) external;
-
-    function setProtocolSwapFee(uint128 newFee) external;
-
-    function setProtocolFlashLoanFee(uint128 newFee) external;
+    /**
+     * @dev Returns the Protocol Withdraw Fee. Withdraw fees are applied on `withdraw` and `removeLiquidity` (unless
+     * depositing into User's Internal Balance). Swaps and `withdrawPoolBalance` are not charged withdraw fees.
+     *
+     * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
+     */
+    function getProtocolWithdrawFee() external view returns (uint256);
 
     /**
-     * @dev Returns the amount in protocol fees collected for a specific `token`.
+     * @dev Returns the Protocol Swap Fee. These are paid by Pools via `paySwapProtocolFees`.
+     *
+     * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
+     */
+    function getProtocolSwapFee() external view returns (uint256);
+
+    /**
+     * @dev Returns the Protocol Flash Loan Fee. These are collected on all Flash Loans.
+     *
+     * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
+     */
+    function getProtocolFlashLoanFee() external view returns (uint256);
+
+    /**
+     * @dev Sets a new Protocol Withdraw Fee.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canSetProtocolWithdrawFee`).
+     */
+    function setProtocolWithdrawFee(uint256 newFee) external;
+
+    /**
+     * @dev Sets a new Protocol Swap Fee.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canSetProtocolSwapFee`).
+     */
+    function setProtocolSwapFee(uint256 newFee) external;
+
+    /**
+     * @dev Sets a new Protocol Flash Loan Fee.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canSetProtocolFlashLoanFee`).
+     */
+    function setProtocolFlashLoanFee(uint256 newFee) external;
+
+    /**
+     * @dev Returns the amount of protocol fees collected by the Vault for `token`.
      */
     function getCollectedFeesByToken(IERC20 token) external view returns (uint256);
 
+    /**
+     * @dev Withdraws collected protocol fees.
+     *
+     * Requirements:
+     *
+     * - the caller must be approved by the authorizer (`IAuthorizer.canWithdrawProtocolFees`) for each token.
+     */
     function withdrawProtocolFees(
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
