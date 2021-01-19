@@ -33,8 +33,8 @@ export async function setupEnvironment(): Promise<{
     await mintTokens(tokens, symbol, trader, 200e18);
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
 
-    // deposit internal balance for trader to make it non-zero
-    await vault.connect(trader).deposit(tokens[symbol].address, (1e18).toString(), trader.address);
+    // deposit user balance for trader
+    await vault.connect(trader).deposit(tokens[symbol].address, (100e18).toString(), trader.address);
   }
 
   return { vault, validator, tokens, trader };
@@ -101,7 +101,7 @@ function pickTokens(tokens: TokenList, size: number, offset?: number): TokenList
   return pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)));
 }
 
-async function getSigners(): Promise<{
+export async function getSigners(): Promise<{
   admin: SignerWithAddress;
   trader: SignerWithAddress;
   creator: SignerWithAddress;
