@@ -368,7 +368,7 @@ abstract contract PoolRegistry is
         return _isPoolAssetManager(poolId, token, account);
     }
 
-    function withdrawPoolBalance(
+    function withdrawFromPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
@@ -385,7 +385,7 @@ abstract contract PoolRegistry is
         token.safeTransfer(msg.sender, amount);
     }
 
-    function depositPoolBalance(
+    function depositToPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
