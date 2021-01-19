@@ -914,7 +914,7 @@ describe('ConstantProductPool', function () {
     return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_TOKENS_IN_FOR_BPT_OUT, minimumBPT]);
   };
 
-  describe('join hook', () => {
+  describe.only('join hook', () => {
     const protocolSwapFee = toFixedPoint(0);
     const emptyBalances = (poolInitialBalances = [0, 0].map((value) => BigNumber.from(value.toString())));
 
@@ -1058,7 +1058,7 @@ describe('ConstantProductPool', function () {
     });
   });
 
-  describe('exit hook', () => {
+  describe.only('exit hook', () => {
     let vault: Contract;
     let pool: Contract;
     let poolId: string;
@@ -1168,18 +1168,6 @@ describe('ConstantProductPool', function () {
         const newBPT = await pool.balanceOf(lp.address);
         expect(newBPT).to.be.equal((0).toString());
       });
-
-      it('fails if not enough token out', async () => {
-        const prevBPT = await pool.balanceOf(lp.address);
-
-        const tokenIndex = 0;
-        const exitUserData = encodeExitExactBPTInForOneTokenOutUserData(prevBPT, tokenIndex);
-        const minAmountsOut = [1e18, 0].map((value) => BigNumber.from(value.toString()));
-
-        await expect(
-          vault.connect(lp).exitPool(pool.address, poolId, lp.address, poolTokens, minAmountsOut, false, exitUserData)
-        ).to.be.be.revertedWith('ERR_TOKEN_OUT_MIN_AMOUNT');
-      });
     });
 
     context('exit exact BPT in for all tokens out', () => {
@@ -1204,17 +1192,6 @@ describe('ConstantProductPool', function () {
         const newBPT = await pool.balanceOf(lp.address);
         expect(newBPT).to.be.equal((0).toString());
       });
-
-      it('fails if not enough tokens out', async () => {
-        const prevBPT = await pool.balanceOf(lp.address);
-
-        const exitUserData = encodeExitExactBPTInForAllTokensOutUserData(prevBPT);
-        const minAmountsOut = [0.02e18, 0.04e18].map((value) => BigNumber.from(value.toString()));
-
-        await expect(
-          vault.connect(lp).exitPool(pool.address, poolId, lp.address, poolTokens, minAmountsOut, false, exitUserData)
-        ).to.be.be.revertedWith('ERR_TOKENS_OUT_MIN_AMOUNT');
-      });
     });
 
     context('exit BPT in exact for tokens out', () => {
@@ -1236,7 +1213,7 @@ describe('ConstantProductPool', function () {
         expect(newBPT).to.be.at.most((0.001e18).toString());
       });
 
-      it('fails if not enough tokens out', async () => {
+      it('fails if more BTP needed', async () => {
         const maxBPTAmountIn = await pool.balanceOf(lp.address);
 
         const exitUserData = encodeExitBPTInForExactTokensOutUserData(maxBPTAmountIn);

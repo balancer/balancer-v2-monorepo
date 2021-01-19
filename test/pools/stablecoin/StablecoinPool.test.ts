@@ -703,7 +703,7 @@ describe('StablecoinPool', function () {
     });
   });
 
-  describey('exit hook', () => {
+  describe('exit hook', () => {
     let vault: Contract;
     let pool: Contract;
     let poolId: string;
