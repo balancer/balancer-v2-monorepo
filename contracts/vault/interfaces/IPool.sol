@@ -25,4 +25,14 @@ interface IPool {
         uint256 protocolSwapFee,
         bytes calldata userData
     ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
+
+    function onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] calldata currentBalances,
+        uint256[] calldata minAmountsOut,
+        uint256 protocolSwapFee,
+        bytes calldata userData
+    ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
 }

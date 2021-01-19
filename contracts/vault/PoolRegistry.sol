@@ -282,6 +282,7 @@ abstract contract PoolRegistry is
         require(amountsIn.length == tokens.length, "ERR_AMOUNTS_IN_LENGTH");
         require(dueProtocolFeeAmounts.length == tokens.length, "ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH");
 
+        // Signed because the fees might be larger than the amounts in for a token
         int256[] memory poolBalanceDeltas = new int256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -313,7 +314,7 @@ abstract contract PoolRegistry is
 
             // Charge swap protocol fees to pool
             {
-                _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToPay.toUint128());
+                _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToPay);
             }
 
             poolBalanceDeltas[i] = SignedSafeMath.sub(amountIn, feeToPay);
@@ -327,6 +328,85 @@ abstract contract PoolRegistry is
             _alterSimplifiedQuotePoolCash(poolId, tokens, poolBalanceDeltas);
         } else {
             _alterStandardPoolCash(poolId, tokens, poolBalanceDeltas);
+        }
+    }
+
+    function exitPool(
+        bytes32 poolId,
+        address recipient,
+        IERC20[] memory tokens,
+        uint256[] memory minAmountsOut,
+        bool depositToUserBalance,
+        bytes memory userData
+    ) external override nonReentrant withExistingPool(poolId) {
+        require(tokens.length == minAmountsOut.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
+
+        {
+            // require tokens are the same as the pool tokens, in the same order and complete
+            IERC20[] memory poolTokens = getPoolTokens(poolId);
+            require(poolTokens.length == tokens.length, "ERR_TOKENS_MISMATCH");
+            for (uint256 i = 0; i < poolTokens.length; ++i) {
+                require(poolTokens[i] == tokens[i], "ERR_TOKENS_MISMATCH");
+            }
+        }
+
+        (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _callOnExitPool(
+            poolId,
+            tokens,
+            recipient,
+            minAmountsOut,
+            userData
+        );
+
+        require(amountsOut.length == tokens.length, "ERR_AMOUNTS_OUT_LENGTH");
+        require(dueProtocolFeeAmounts.length == tokens.length, "ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH");
+
+        uint256[] memory poolBalanceDeltas = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+
+            uint128 amountOut = amountsOut[i].toUint128();
+            require(amountOut >= minAmountsOut[i], "ERR_EXIT_BELOW_MIN");
+
+            // Send token
+            if (amountOut > 0) {
+                if (depositToUserBalance) {
+                    // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
+                    _userTokenBalance[recipient][token] = _userTokenBalance[recipient][token].add128(amountOut);
+                } else {
+                    // Transfer the tokens to the recipient, charging the protocol exit fee
+                    uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amountOut);
+                    _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
+
+                    token.safeTransfer(recipient, amountOut.sub(feeAmount));
+                }
+            }
+
+            uint128 feeToPay = dueProtocolFeeAmounts[i].toUint128();
+
+            // Charge swap protocol fees to pool
+            {
+                _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToPay);
+            }
+
+            poolBalanceDeltas[i] = amountOut.add(feeToPay);
+        }
+
+        // Grant tokens to pools - how this is done depends on the Pool optimization setting
+        (, PoolOptimization optimization) = _getPoolData(poolId);
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            _decreaseTwoTokenPoolCash(
+                poolId,
+                tokens[0],
+                poolBalanceDeltas[0].toUint128(),
+                tokens[1],
+                poolBalanceDeltas[1].toUint128()
+            );
+        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            _decreaseSimplifiedQuotePoolCash(poolId, tokens, poolBalanceDeltas);
+        } else {
+            _decreaseStandardPoolCash(poolId, tokens, poolBalanceDeltas);
         }
     }
 
@@ -348,6 +428,29 @@ abstract contract PoolRegistry is
                 recipient,
                 currentBalances,
                 maxAmountsIn,
+                getProtocolSwapFee(),
+                userData
+            );
+    }
+
+    // Needed to avoid stack too deep issues
+    function _callOnExitPool(
+        bytes32 poolId,
+        IERC20[] memory tokens,
+        address recipient,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) private returns (uint256[] memory, uint256[] memory) {
+        (address pool, ) = _getPoolData(poolId);
+        uint256[] memory currentBalances = getPoolTokenBalances(poolId, tokens);
+
+        return
+            IPool(pool).onExitPool(
+                poolId,
+                msg.sender,
+                recipient,
+                currentBalances,
+                minAmountsOut,
                 getProtocolSwapFee(),
                 userData
             );

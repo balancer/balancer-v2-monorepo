@@ -20,12 +20,13 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
+import "../vault/interfaces/IPool.sol";
 import "../vault/interfaces/IPoolQuote.sol";
 import "../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../math/FixedPoint.sol";
 
-contract MockPool is IPoolQuote, IPoolQuoteSimplified {
+contract MockPool is IPool, IPoolQuote, IPoolQuoteSimplified {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -50,13 +51,13 @@ contract MockPool is IPoolQuote, IPoolQuoteSimplified {
         _vault.unregisterTokens(_poolId, tokens);
     }
 
-    uint256[] private _onJoinPoolAmountsIn;
+    uint256[] private _onJoinExitPoolAmounts;
     uint256[] private _onJoinPoolDueProtocolFeeAmounts;
 
-    function setOnJoinPoolReturnValues(uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) external {
-        delete _onJoinPoolAmountsIn;
-        for (uint256 i = 0; i < amountsIn.length; ++i) {
-            _onJoinPoolAmountsIn.push(amountsIn[i]);
+    function setOnJoinExitPoolReturnValues(uint256[] memory amounts, uint256[] memory dueProtocolFeeAmounts) external {
+        delete _onJoinExitPoolAmounts;
+        for (uint256 i = 0; i < amounts.length; ++i) {
+            _onJoinExitPoolAmounts.push(amounts[i]);
         }
 
         delete _onJoinPoolDueProtocolFeeAmounts;
@@ -73,10 +74,30 @@ contract MockPool is IPoolQuote, IPoolQuoteSimplified {
         uint256[] memory,
         uint256,
         bytes memory
-    ) external view returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
-        amountsIn = new uint256[](_onJoinPoolAmountsIn.length);
+    ) external view override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
+        amountsIn = new uint256[](_onJoinExitPoolAmounts.length);
         for (uint256 i = 0; i < amountsIn.length; ++i) {
-            amountsIn[i] = _onJoinPoolAmountsIn[i];
+            amountsIn[i] = _onJoinExitPoolAmounts[i];
+        }
+
+        dueProtocolFeeAmounts = new uint256[](_onJoinPoolDueProtocolFeeAmounts.length);
+        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
+            dueProtocolFeeAmounts[i] = _onJoinPoolDueProtocolFeeAmounts[i];
+        }
+    }
+
+    function onExitPool(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) external view override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
+        amountsOut = new uint256[](_onJoinExitPoolAmounts.length);
+        for (uint256 i = 0; i < amountsOut.length; ++i) {
+            amountsOut[i] = _onJoinExitPoolAmounts[i];
         }
 
         dueProtocolFeeAmounts = new uint256[](_onJoinPoolDueProtocolFeeAmounts.length);
