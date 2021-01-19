@@ -281,6 +281,11 @@ describe('assetManager', function () {
 
         expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(assetManager.address);
         expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(ZERO_ADDRESS);
+
+        // Check two ways
+        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, assetManager.address)).to.equal(true);
+        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, other.address)).to.equal(false);
+        expect(await vault.isPoolAssetManager(poolId, tokens.USDT.address, assetManager.address)).to.equal(false);
       });
     });
   }
