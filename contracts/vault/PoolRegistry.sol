@@ -440,8 +440,8 @@ abstract contract PoolRegistry is
 
             IERC20 tokenX = tokens[0];
             IERC20 tokenY = tokens[1];
-            uint128 feeToCollectTokenX = collectedFees[0].toUint128().mul128(swapFee);
-            uint128 feeToCollectTokenY = collectedFees[1].toUint128().mul128(swapFee);
+            uint128 feeToCollectTokenX = _collectProtocolSwapFee(tokenX, collectedFees[0], swapFee).toUint128();
+            uint128 feeToCollectTokenY = _collectProtocolSwapFee(tokenY, collectedFees[1], swapFee).toUint128();
 
             _decreaseTwoTokenPoolCash(poolId, tokenX, feeToCollectTokenX, tokenY, feeToCollectTokenY);
         } else {
@@ -468,10 +468,17 @@ abstract contract PoolRegistry is
     ) private returns (uint256[] memory feesToCollect) {
         feesToCollect = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            uint256 feeToCollect = collectedFees[i].mul(swapFee);
-            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToCollect.toUint128());
-            feesToCollect[i] = feeToCollect;
+            feesToCollect[i] = _collectProtocolSwapFee(tokens[i], collectedFees[i], swapFee);
         }
+    }
+
+    function _collectProtocolSwapFee(
+        IERC20 token,
+        uint256 collectedFee,
+        uint256 swapFee
+    ) private returns (uint256) {
+        uint256 feeToCollect = collectedFee.mul(swapFee);
+        _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToCollect);
+        return feeToCollect;
     }
 }
