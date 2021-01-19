@@ -34,13 +34,13 @@ interface IVault {
     /**
      * @dev Returns `user`'s Internal Balance for a specific token.
      */
-    function getInternalTokenBalance(address user, IERC20 token) external view returns (uint256);
+    function getInternalBalance(address user, IERC20 token) external view returns (uint256);
 
     /**
      * @dev Deposits tokens from the caller into `user`'s Internal Balance. The caller must have allowed the Vault
      * to use their tokens via `IERC20.approve()`.
      */
-    function deposit(
+    function depositToInternalBalance(
         IERC20 token,
         uint256 amount,
         address user
@@ -50,7 +50,7 @@ interface IVault {
      * @dev Withdraws tokens from the caller's Internal Balance, transferring them to `recipient`.
      * This charges protocol withdrawal fees.
      */
-    function withdraw(
+    function withdrawFromInternalBalance(
         IERC20 token,
         uint256 amount,
         address recipient
@@ -216,7 +216,7 @@ interface IVault {
      * @dev Called by the Pool to add tokens to its balance. Only registered tokens can have liquidity added.
      *
      * The tokens will be withdrawn from the `from` account, which the Pool must be an agent for. If
-     * `withdrawFromInternalBalance` is true, `from`'s Internal Balance will be preferred, performing an ERC20
+     * `_withdrawFromInternalBalance` is true, `from`'s Internal Balance will be preferred, performing an ERC20
      * transfer for the difference between the requested amount and Internal Balance (if any). `from` must have
      * allowed the Vault to use their tokens via `IERC20.approve()`.
      */
@@ -225,13 +225,13 @@ interface IVault {
         address from,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool withdrawFromInternalBalance
+        bool _withdrawFromInternalBalance
     ) external;
 
     /**
      * @dev Called by the Pool to remove tokens from its balance. Only registered tokens can have liquidity removed.
      *
-     * The tokens will be sent to the `to` account. If `depositToInternalBalance` is true, they will be added as
+     * The tokens will be sent to the `to` account. If `_depositToInternalBalance` is true, they will be added as
      * Internal Balance instead of transferred.
      */
     function removeLiquidity(
@@ -239,7 +239,7 @@ interface IVault {
         address to,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool depositToInternalBalance
+        bool _depositToInternalBalance
     ) external;
 
     // Swap interface
@@ -458,7 +458,7 @@ interface IVault {
 
     /**
      * @dev Returns a Pool's Asset Manager for `token`. Asset Managers can manage a Pool's assets by taking
-     * them out of the Vault via `withdrawPoolBalance`, `depositPoolBalance` and `updateManagedBalance`.
+     * them out of the Vault via `withdrawFromPoolBalance`, `depositToPoolBalance` and `updateManagedBalance`.
      */
     function getPoolAssetManager(bytes32 poolId, IERC20 token) external view returns (address);
 
@@ -466,7 +466,7 @@ interface IVault {
      * @dev Called by a Pool's Asset Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
      * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
      */
-    function withdrawPoolBalance(
+    function withdrawFromPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
@@ -477,7 +477,7 @@ interface IVault {
      * the Pool's cash but decreases its managed balance, leaving the total balance unchanged. The Asset Manager
      * must have approved the Vault to use `token`.
      */
-    function depositPoolBalance(
+    function depositToPoolBalance(
         bytes32 poolId,
         IERC20 token,
         uint256 amount
@@ -514,7 +514,7 @@ interface IVault {
 
     /**
      * @dev Returns the Protocol Withdraw Fee. Withdraw fees are applied on `withdraw` and `removeLiquidity` (unless
-     * depositing into User's Internal Balance). Swaps and `withdrawPoolBalance` are not charged withdraw fees.
+     * depositing into User's Internal Balance). Swaps and `withdrawFromPoolBalance` are not charged withdraw fees.
      *
      * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
      */
