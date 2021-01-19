@@ -24,7 +24,7 @@ const printTokens = (poolType: string, numTokens: number) => {
 async function main() {
   ({ vault, tokens, trader } = await setupEnvironment());
 
-  console.log('## Full join/exit (no initial BPT)');
+  console.log('== Full join/exit (no initial BPT) ==');
 
   console.log(`\n#Transferring tokens\n`);
 
@@ -58,7 +58,7 @@ async function main() {
   }
   console.log('\n');
 
-  console.log('## Partial Join/Exit (2-stage entry/exit)');
+  console.log('== Partial Join/Exit (2-stage entry/exit) ==');
 
   console.log(`\n#Transferring tokens\n`);
 
