@@ -86,6 +86,8 @@ describe('WeightedPool', function () {
       return balances.reduce((changes: any, balance: any, i) => ({ ...changes, [poolSymbols[i]]: balance }), {});
     }
 
+    const itOnlySimplifiedQuotePool = (title: string, test: any) => (numberOfTokens == 2 ? it.skip : it)(title, test);
+
     beforeEach('define pool tokens', () => {
       poolTokens = tokens.map((token) => token.address).slice(0, numberOfTokens);
     });
@@ -102,8 +104,7 @@ describe('WeightedPool', function () {
           expect(await pool.getVault()).to.equal(vault.address);
         });
 
-        // TODO: Un-skip test when implemented
-        it.skip('uses the corresponding optimization', async () => {
+        it('uses the corresponding optimization', async () => {
           const poolId = await pool.getPoolId();
           const expectedOptimization = numberOfTokens == 2 ? TwoTokenPool : SimplifiedQuotePool;
 
@@ -323,7 +324,7 @@ describe('WeightedPool', function () {
           previousTokenBalances = await Promise.all(tokens.map((token) => token.balanceOf(lp.address)));
         });
 
-        it('grants BPT for exact tokens', async () => {
+        itOnlySimplifiedQuotePool('grants BPT for exact tokens', async () => {
           const MIN_BPT_OUT = bn(1e18);
           const EXACT_TOKENS_IN = [bn(0), bn(0.1e18), bn(0)].slice(0, numberOfTokens);
 
@@ -351,7 +352,7 @@ describe('WeightedPool', function () {
           expect(currentSNXBalance).to.be.equal(previousTokenBalances[2]);
         });
 
-        it('grants exact BPT for tokens', async () => {
+        itOnlySimplifiedQuotePool('grants exact BPT for tokens', async () => {
           const MIN_MKR_IN = bn(0.15e18);
           const EXACT_BPT_OUT = bn(1.626e18);
 
@@ -533,7 +534,7 @@ describe('WeightedPool', function () {
           previousTokenBalances = await Promise.all(tokens.map((token) => token.balanceOf(lp.address)));
         });
 
-        it('takes exact BPT for tokens', async () => {
+        itOnlySimplifiedQuotePool('takes exact BPT for tokens', async () => {
           const EXACT_BPT_IN = bn(10e18);
           const MIN_MKR_OUT = bn(0.5e18);
 
@@ -564,7 +565,7 @@ describe('WeightedPool', function () {
           expect(currentSNXBalance).to.be.equal(previousTokenBalances[2]);
         });
 
-        it('takes BPT for exact tokens', async () => {
+        itOnlySimplifiedQuotePool('takes BPT for exact tokens', async () => {
           const MAX_BPT_IN = bn(2e18);
           const EXACT_TOKENS_OUT = [bn(0), bn(0.1e18), bn(0)].slice(0, numberOfTokens);
 
@@ -592,7 +593,7 @@ describe('WeightedPool', function () {
           expect(currentSNXBalance).to.be.equal(previousTokenBalances[2]);
         });
 
-        it('cannot exit with more tokens than joined', async () => {
+        itOnlySimplifiedQuotePool('cannot exit with more tokens than joined', async () => {
           const previousBPT = await pool.balanceOf(lp.address);
           const previousTokenBalance = await tokenList.MKR.balanceOf(lp.address);
 
@@ -800,10 +801,8 @@ describe('WeightedPool', function () {
 
             await payFeesAction();
 
-            const error = expectedPaidFees.div(1000);
             const paidTokenFees = await vault.getCollectedFeesByToken(poolTokens[paidTokenIndex]);
-            expect(paidTokenFees).be.at.least(expectedPaidFees.sub(error));
-            expect(paidTokenFees).be.at.most(expectedPaidFees.add(error));
+            assertEqualWithError(paidTokenFees, expectedPaidFees, 0.001);
 
             const nonPaidTokens = poolTokens.filter((token) => token != paidFeeToken);
             for (const token of nonPaidTokens) {
@@ -828,7 +827,7 @@ describe('WeightedPool', function () {
             );
           });
 
-          it('pays swap protocol fees on join exact BPT out', async () => {
+          itOnlySimplifiedQuotePool('pays swap protocol fees on join exact BPT out', async () => {
             await assertProtocolSwapFeeIsCharged(() =>
               pool
                 .connect(lp)
@@ -842,7 +841,7 @@ describe('WeightedPool', function () {
             );
           });
 
-          it('pays swap protocol fees on exit exact BPT in', async () => {
+          itOnlySimplifiedQuotePool('pays swap protocol fees on exit exact BPT in', async () => {
             await assertProtocolSwapFeeIsCharged(() =>
               pool.connect(lp).exitPoolExactBPTInForTokenOut(bn(1e18), tokenList.DAI.address, 0, true, lp.address)
             );

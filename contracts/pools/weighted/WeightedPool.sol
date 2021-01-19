@@ -109,8 +109,9 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LENGTH");
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
-        // TODO: make it TWO_TOKEN if tokens.length == 2
-        IVault.PoolOptimization optimization = IVault.PoolOptimization.SIMPLIFIED_QUOTE;
+        IVault.PoolOptimization optimization = tokens.length == 2
+            ? IVault.PoolOptimization.TWO_TOKEN
+            : IVault.PoolOptimization.SIMPLIFIED_QUOTE;
 
         bytes32 poolId = vault.registerPool(optimization);
         vault.registerTokens(poolId, tokens);
