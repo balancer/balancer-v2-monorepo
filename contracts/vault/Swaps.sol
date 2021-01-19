@@ -530,6 +530,16 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
     }
 
+    function _collectFee(
+        IERC20 token,
+        uint256 collectedFee,
+        uint256 swapFee
+    ) private returns (uint256) {
+        uint256 feeToCollect = collectedFee.mul(swapFee);
+        _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToCollect);
+        return feeToCollect;
+    }
+
     function queryBatchSwapGivenIn(
         SwapIn[] memory swaps,
         IERC20[] calldata tokens,
