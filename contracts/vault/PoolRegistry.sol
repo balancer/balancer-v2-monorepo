@@ -209,8 +209,6 @@ abstract contract PoolRegistry is
                 // pool token calls above will revert if the token has already been registered,
                 // so we should only get here during pool creation (or adding new tokens)
                 // Calling unregister will remove the asset manager, so it should be zero on re-registration
-                assert(_poolAssetManagers[poolId][token] == address(0));
-
                 _poolAssetManagers[poolId][token] = assetManager;
 
                 emit PoolAssetManagerSet(poolId, token, assetManager);

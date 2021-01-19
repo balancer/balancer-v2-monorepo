@@ -247,6 +247,33 @@ describe('assetManager', function () {
           'SENDER_NOT_ASSET_MANAGER'
         );
       });
+
+      it('removes asset managers when unregistering', async () => {
+        // First asset the managers are set
+        expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(assetManager.address);
+        expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(assetManager.address);
+
+        // Balances must be zero to unregister
+        await vault
+          .connect(pool)
+          .removeLiquidity(
+            poolId,
+            pool.address,
+            [tokens.DAI.address, tokens.USDT.address],
+            [tokenInitialBalance, tokenInitialBalance],
+            false
+          );
+
+        // Unregistering tokens should remove the asset managers
+        await vault.connect(pool).unregisterTokens(poolId, [tokens.DAI.address, tokens.USDT.address]);
+
+        expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(ZERO_ADDRESS);
+        expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(ZERO_ADDRESS);
+
+        // Check two ways
+        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, assetManager.address)).to.equal(false);
+        expect(await vault.isPoolAssetManager(poolId, tokens.USDT.address, assetManager.address)).to.equal(false);
+      });
     });
   }
 });
