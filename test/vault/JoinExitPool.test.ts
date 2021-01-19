@@ -440,6 +440,7 @@ describe('Vault - join & exit pool', () => {
           .exitPool(poolId, recipient.address, tokenAddresses, minAmountsOut, depositToInternalBalance, '0x');
       }
 
+      // TODO: merge with assertJoinBalanceChanges
       async function assertExitBalanceChanges(
         expectedRecipientDeltas: BigNumberish[],
         expectedPoolDeltas: BigNumberish[]
