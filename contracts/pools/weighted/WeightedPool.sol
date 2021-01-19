@@ -24,17 +24,17 @@ import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
 
 import "../../vault/interfaces/IVault.sol";
+import "../../vault/interfaces/IPool.sol";
 import "../../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../BalancerPoolToken.sol";
-import "../IBPTPool.sol";
 import "./WeightedMath.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, WeightedMath, ReentrancyGuard {
+contract WeightedPool is IPool, IPoolQuoteSimplified, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -62,7 +62,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
     IERC20 private immutable _token15;
 
     uint256 private immutable _totalTokens;
-    uint256 private _sumWeights;
+    uint256 private immutable _sumWeights;
 
     uint256 private immutable _weight0;
     uint256 private immutable _weight1;
@@ -96,17 +96,13 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         IVault vault,
         string memory name,
         string memory symbol,
-        uint256 initialBPT,
         IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address from,
         uint256[] memory weights,
         uint256 swapFee
     ) BalancerPoolToken(name, symbol) {
-        require(tokens.length >= _MIN_TOKENS, "ERR__MIN_TOKENS");
-        require(tokens.length <= _MAX_TOKENS, "ERR__MAX_TOKENS");
+        require(tokens.length >= _MIN_TOKENS, "ERR_MIN_TOKENS");
+        require(tokens.length <= _MAX_TOKENS, "ERR_MAX_TOKENS");
 
-        require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LENGTH");
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
         IVault.PoolOptimization optimization = tokens.length == 2
@@ -115,17 +111,23 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
 
         bytes32 poolId = vault.registerPool(optimization);
         vault.registerTokens(poolId, tokens);
-        vault.addLiquidity(poolId, from, tokens, amounts, false);
-
-        require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
-
-        _mintPoolTokens(from, initialBPT);
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
         _poolId = poolId;
 
         _totalTokens = tokens.length;
+
+        require(swapFee >= _MIN_SWAP_FEE, "ERR_MIN_SWAP_FEE");
+        require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_SWAP_FEE");
+        _swapFee = swapFee;
+
+        //Saves the sum of the weights
+        uint256 sumWeights = 0;
+        for (uint8 i = 0; i < weights.length; i++) {
+            sumWeights = sumWeights.add(weights[i]);
+        }
+        _sumWeights = sumWeights;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _token0 = tokens.length > 0 ? tokens[0] : IERC20(0);
@@ -161,156 +163,52 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         _weight13 = weights.length > 13 ? weights[13] : 0;
         _weight14 = weights.length > 14 ? weights[14] : 0;
         _weight15 = weights.length > 15 ? weights[15] : 0;
-
-        require(swapFee >= _MIN_SWAP_FEE, "ERR__MIN_SWAP_FEE");
-        require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_MAX_FEE");
-        _swapFee = swapFee;
-
-        //Saves the sum of the weights
-        uint256 sumWeights = 0;
-        for (uint8 i = 0; i < weights.length; i++) {
-            sumWeights = sumWeights.add(weights[i]);
-        }
-        _sumWeights = sumWeights;
-
-        //Reset Invariant
-        uint256[] memory normalizedWeights = new uint256[](tokens.length);
-        for (uint8 i = 0; i < tokens.length; i++) {
-            normalizedWeights[i] = weights[i].div(_sumWeights);
-        }
-        _lastInvariant = _invariant(normalizedWeights, amounts);
     }
 
     function _weight(IERC20 token) private view returns (uint256) {
-        if (token == _token0) {
-            return _weight0;
-        } else if (token == _token1) {
-            return _weight1;
-        } else if (token == _token2) {
-            return _weight2;
-        } else if (token == _token3) {
-            return _weight3;
-        } else if (token == _token4) {
-            return _weight4;
-        } else if (token == _token5) {
-            return _weight5;
-        } else if (token == _token6) {
-            return _weight6;
-        } else if (token == _token7) {
-            return _weight7;
-        } else if (token == _token8) {
-            return _weight8;
-        } else if (token == _token9) {
-            return _weight9;
-        } else if (token == _token10) {
-            return _weight10;
-        } else if (token == _token11) {
-            return _weight11;
-        } else if (token == _token12) {
-            return _weight12;
-        } else if (token == _token13) {
-            return _weight13;
-        } else if (token == _token14) {
-            return _weight14;
-        } else if (token == _token15) {
-            return _weight15;
-        } else {
+        // prettier-ignore
+        if (token == _token0) { return _weight0; }
+        else if (token == _token1) { return _weight1; }
+        else if (token == _token2) { return _weight2; }
+        else if (token == _token3) { return _weight3; }
+        else if (token == _token4) { return _weight4; }
+        else if (token == _token5) { return _weight5; }
+        else if (token == _token6) { return _weight6; }
+        else if (token == _token7) { return _weight7; }
+        else if (token == _token8) { return _weight8; }
+        else if (token == _token9) { return _weight9; }
+        else if (token == _token10) { return _weight10; }
+        else if (token == _token11) { return _weight11; }
+        else if (token == _token12) { return _weight12; }
+        else if (token == _token13) { return _weight13; }
+        else if (token == _token14) { return _weight14; }
+        else if (token == _token15) { return _weight15; }
+        else {
             revert("ERR_INVALID_TOKEN");
         }
     }
 
-    function _weights(IERC20[] memory tokens) internal view returns (uint256[] memory) {
-        uint256[] memory weights = new uint256[](tokens.length);
-
-        for (uint256 i = 0; i < weights.length; ++i) {
-            weights[i] = _weight(tokens[i]);
-        }
-
-        return weights;
-    }
-
-    function _getAllWeights() internal view returns (uint256[] memory) {
+    function _weights() private view returns (uint256[] memory) {
         uint256[] memory weights = new uint256[](_totalTokens);
 
-        if (_totalTokens > 0) {
-            weights[0] = _weight0;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 1) {
-            weights[1] = _weight1;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 2) {
-            weights[2] = _weight2;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 3) {
-            weights[3] = _weight3;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 4) {
-            weights[4] = _weight4;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 5) {
-            weights[5] = _weight5;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 6) {
-            weights[6] = _weight6;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 7) {
-            weights[7] = _weight7;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 8) {
-            weights[8] = _weight8;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 9) {
-            weights[9] = _weight9;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 10) {
-            weights[10] = _weight10;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 11) {
-            weights[11] = _weight11;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 12) {
-            weights[12] = _weight12;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 13) {
-            weights[13] = _weight13;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 14) {
-            weights[14] = _weight14;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 15) {
-            weights[15] = _weight15;
-        } else {
-            return weights;
+        // prettier-ignore
+        {
+            if (_totalTokens > 0) { weights[0] = _weight0; } else { return weights; }
+            if (_totalTokens > 1) { weights[1] = _weight1; } else { return weights; }
+            if (_totalTokens > 2) { weights[2] = _weight2; } else { return weights; }
+            if (_totalTokens > 3) { weights[3] = _weight3; } else { return weights; }
+            if (_totalTokens > 4) { weights[4] = _weight4; } else { return weights; }
+            if (_totalTokens > 5) { weights[5] = _weight5; } else { return weights; }
+            if (_totalTokens > 6) { weights[6] = _weight6; } else { return weights; }
+            if (_totalTokens > 7) { weights[7] = _weight7; } else { return weights; }
+            if (_totalTokens > 8) { weights[8] = _weight8; } else { return weights; }
+            if (_totalTokens > 9) { weights[9] = _weight9; } else { return weights; }
+            if (_totalTokens > 10) { weights[10] = _weight10; } else { return weights; }
+            if (_totalTokens > 11) { weights[11] = _weight11; } else { return weights; }
+            if (_totalTokens > 12) { weights[12] = _weight12; } else { return weights; }
+            if (_totalTokens > 13) { weights[13] = _weight13; } else { return weights; }
+            if (_totalTokens > 14) { weights[14] = _weight14; } else { return weights; }
+            if (_totalTokens > 15) { weights[15] = _weight15; } else { return weights; }
         }
 
         return weights;
@@ -326,11 +224,11 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
 
     //Getters
 
-    function getVault() external view override returns (IVault) {
+    function getVault() external view returns (IVault) {
         return _vault;
     }
 
-    function getPoolId() external view override returns (bytes32) {
+    function getPoolId() external view returns (bytes32) {
         return _poolId;
     }
 
@@ -339,8 +237,16 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
     }
 
     function getInvariant() external view returns (uint256) {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        return _getInvariant(tokens, balances);
+        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
+        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+
+        uint256[] memory normalizedWeights = new uint256[](tokens.length);
+
+        for (uint8 i = 0; i < tokens.length; i++) {
+            normalizedWeights[i] = _normalizedWeight(tokens[i]);
+        }
+
+        return _invariant(normalizedWeights, balances);
     }
 
     function getWeights(IERC20[] memory tokens) external view returns (uint256[] memory weights) {
@@ -364,51 +270,21 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
 
     // Join / Exit Hooks
 
-    function _getAndApplyDueProtocolFeeAmounts(
-        uint256[] memory currentBalances,
-        uint256[] memory normalizedWeights,
-        uint256 protocolFeePercentage
-    ) private view returns (uint256[] memory) {
-        // Compute by how much a token balance increased to go from last invariant to current invariant
-
-        // balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))
-
-        uint256 chosenTokenIndex = 1; // UnsafeRandom.rand(_totalTokens);
-
-        uint256 exponent = FixedPoint.ONE.div(normalizedWeights[chosenTokenIndex]);
-
-        uint256 currentInvariant = _invariant(normalizedWeights, currentBalances);
-        uint256 invariantRatio = _lastInvariant.div(currentInvariant);
-
-        uint256 chosenTokenAccruedFees = currentBalances[chosenTokenIndex].mul(
-            FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent))
-        );
-        uint256 chosenTokenDueProtocolFeeAmount = chosenTokenAccruedFees.mul(protocolFeePercentage);
-
-        uint256[] memory dueProtocolFeeAmounts = new uint256[](currentBalances.length);
-        // All other values are initialized to zero
-        dueProtocolFeeAmounts[chosenTokenIndex] = chosenTokenDueProtocolFeeAmount;
-
-        currentBalances[chosenTokenIndex] = currentBalances[chosenTokenIndex].sub(chosenTokenDueProtocolFeeAmount);
-
-        return dueProtocolFeeAmounts;
-    }
-
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT }
 
     function onJoinPool(
         bytes32 poolId,
-        uint256[] memory currentBalances,
         address, // sender - potential whitelisting
         address recipient,
+        uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory, uint256[] memory) {
+    ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
-        uint256[] memory normalizedWeights = _getAllWeights();
+        uint256[] memory normalizedWeights = _weights();
         for (uint8 i = 0; i < _totalTokens; i++) {
             normalizedWeights[i] = normalizedWeights[i].div(_sumWeights);
         }
@@ -500,17 +376,17 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
 
     function onExitPool(
         bytes32 poolId,
-        uint256[] memory currentBalances,
         address sender,
         address, //recipient -  potential whitelisting
+        uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory, uint256[] memory) {
+    ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
-        uint256[] memory normalizedWeights = _getAllWeights();
+        uint256[] memory normalizedWeights = _weights();
         for (uint8 i = 0; i < _totalTokens; i++) {
             normalizedWeights[i] = normalizedWeights[i].div(_sumWeights);
         }
@@ -617,6 +493,36 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         return (bptAmountIn, amountsOut);
     }
 
+    function _getAndApplyDueProtocolFeeAmounts(
+        uint256[] memory currentBalances,
+        uint256[] memory normalizedWeights,
+        uint256 protocolFeePercentage
+    ) private view returns (uint256[] memory) {
+        // Compute by how much a token balance increased to go from last invariant to current invariant
+
+        // balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))
+
+        uint256 chosenTokenIndex = 1; // UnsafeRandom.rand(_totalTokens);
+
+        uint256 exponent = FixedPoint.ONE.div(normalizedWeights[chosenTokenIndex]);
+
+        uint256 currentInvariant = _invariant(normalizedWeights, currentBalances);
+        uint256 invariantRatio = _lastInvariant.div(currentInvariant);
+
+        uint256 chosenTokenAccruedFees = currentBalances[chosenTokenIndex].mul(
+            FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent))
+        );
+        uint256 chosenTokenDueProtocolFeeAmount = chosenTokenAccruedFees.mul(protocolFeePercentage);
+
+        uint256[] memory dueProtocolFeeAmounts = new uint256[](currentBalances.length);
+        // All other values are initialized to zero
+        dueProtocolFeeAmounts[chosenTokenIndex] = chosenTokenDueProtocolFeeAmount;
+
+        currentBalances[chosenTokenIndex] = currentBalances[chosenTokenIndex].sub(chosenTokenDueProtocolFeeAmount);
+
+        return dueProtocolFeeAmounts;
+    }
+
     //Quote Swaps
 
     function quoteOutGivenIn(
@@ -655,371 +561,6 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         return _addSwapFee(minimumAmountIn);
     }
 
-    //Protocol Fees
-
-    function _payProtocolFees(IERC20[] memory tokens, uint256[] memory balances) internal returns (uint256[] memory) {
-        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
-        return _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-    }
-
-    /**************************************************************************************************/
-    /***********  balanceToken ( 1 - (lastInvariant / currentInvariant)^(1 / weightToken) ) ***********
-    /**************************************************************************************************/
-    function _getAccumulatedSwapFees(IERC20[] memory tokens, uint256[] memory balances)
-        internal
-        view
-        returns (uint256[] memory)
-    {
-        uint256[] memory swapFeesCollected = new uint256[](tokens.length);
-
-        uint256 currentInvariant = _getInvariant(tokens, balances);
-        uint256 ratio = _lastInvariant.div(currentInvariant);
-
-        (IERC20 token, uint256 index) = UnsafeRandom.rand(tokens);
-        uint256 exponent = FixedPoint.ONE.div(_normalizedWeight(token));
-        swapFeesCollected[index] = balances[index].mul(uint256(FixedPoint.ONE).sub(LogExpMath.pow(ratio, exponent)));
-        return swapFeesCollected;
-    }
-
-    function _resetAccumulatedSwapFees(IERC20[] memory tokens, uint256[] memory balances) internal {
-        _lastInvariant = _getInvariant(tokens, balances);
-    }
-
-    function _getInvariant(IERC20[] memory tokens, uint256[] memory balances) private view returns (uint256) {
-        uint256[] memory normalizedWeights = new uint256[](tokens.length);
-        for (uint8 i = 0; i < tokens.length; i++) {
-            normalizedWeights[i] = _normalizedWeight(tokens[i]);
-        }
-        return _invariant(normalizedWeights, balances);
-    }
-
-    // Pays protocol swap fees
-    function payProtocolFees() external nonReentrant {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        balances = _payProtocolFees(tokens, balances);
-        _resetAccumulatedSwapFees(tokens, balances);
-    }
-
-    //Join / Exit
-
-    function joinPool(
-        uint256 poolAmountOut,
-        uint256[] calldata maxAmountsIn,
-        bool transferTokens,
-        address beneficiary
-    ) external override nonReentrant {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
-
-        //Pay protocol fees to have balances up to date
-        balances = _payProtocolFees(tokens, balances);
-
-        uint256 ratio = _getSupplyRatio(poolAmountOut);
-        uint256[] memory amountsIn = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 amount = balances[i].mul(ratio);
-            require(amount <= maxAmountsIn[i], "ERR_LIMIT_IN");
-
-            amountsIn[i] = amount;
-            balances[i] = balances[i].add(amount);
-        }
-
-        _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
-
-        // Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, balances);
-
-        _mintPoolTokens(beneficiary, poolAmountOut);
-    }
-
-    function exitPool(
-        uint256 poolAmountIn,
-        uint256[] calldata minAmountsOut,
-        bool withdrawTokens,
-        address beneficiary
-    ) external override nonReentrant {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
-
-        //Pay protocol fees to have balances up to date
-        balances = _payProtocolFees(tokens, balances);
-
-        uint256 ratio = _getSupplyRatio(poolAmountIn);
-        uint256[] memory amountsOut = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 amount = balances[i].mul(ratio);
-            require(amount >= minAmountsOut[i], "NOT EXITING ENOUGH");
-
-            amountsOut[i] = amount;
-            balances[i] = balances[i].sub(amount);
-        }
-
-        _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
-
-        //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, balances);
-
-        _burnPoolTokens(msg.sender, poolAmountIn);
-    }
-
-    /**
-     * @dev Called by liquidity providers to join the associated Pool, adding `tokens` and getting BPT in return. The
-     * caller specifies how much of each token they want to add `amountsIn`, and the minimum amount
-     * of BPT they want to get `minBPTAmountOut`
-     *
-     * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from the User's Internal Balance.
-     *
-     * `bptAmountOut` will be minted and transferred to `beneficiary`.
-     */
-
-    function joinPoolExactTokensInForBPTOut(
-        uint256 minBPTAmountOut,
-        uint256[] calldata amountsIn,
-        bool transferTokens,
-        address beneficiary
-    ) external nonReentrant returns (uint256 bptAmountOut) {
-        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
-
-        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-
-        require(amountsIn.length == tokens.length, "AmountsIn and tokens length mismatch");
-
-        //Pay protocol fees to have balances up to date
-        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-
-        uint256[] memory normalizedWeights = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            normalizedWeights[i] = _normalizedWeight(tokens[i]);
-        }
-
-        bptAmountOut = _exactTokensInForBPTOut(balances, normalizedWeights, amountsIn, totalSupply(), _swapFee);
-        require(bptAmountOut >= minBPTAmountOut, "ERR_BPT_OUT_MIN_AMOUNT");
-
-        /*
-        // TODO for Oracle/MLP integration
-        // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
-        if(_optInOracleCandidate || _mandatoryOracleCandidate)
-                updateBalancesBeforeLastLiquidityChange(balances);
-        */
-
-        _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
-
-        //Update balances
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = balances[i].add(amountsIn[i]);
-        }
-
-        //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, balances);
-
-        _mintPoolTokens(beneficiary, bptAmountOut);
-    }
-
-    /**
-     * @dev Called by liquidity providers to join the associated Pool, adding `token` and getting BPT in return. The
-     * caller specifies how much BPTOut they want `BPTAmountOut`, and the maximum amount
-     * of token they want to pay `maxAmountIn`
-     *
-     * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from the User's Internal Balance.
-     *
-     * `BPTAmountOut` will be minted and transferred to `beneficiary`.
-     */
-
-    function joinPoolTokenInForExactBPTOut(
-        uint256 bptAmountOut,
-        IERC20 token,
-        uint256 maxAmountIn,
-        bool transferTokens,
-        address beneficiary
-    ) external nonReentrant returns (uint256) {
-        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
-
-        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-
-        //Pay protocol fees to have balances up to date
-        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-
-        IERC20[] memory tokensToAdd = new IERC20[](1);
-        uint256[] memory amountsToAdd = new uint256[](1);
-        uint256 tokenBalance;
-        uint256 tokenNormalizedWeight;
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == token) {
-                tokensToAdd[0] = token;
-                tokenBalance = balances[i];
-                tokenNormalizedWeight = _normalizedWeight(tokens[i]);
-                break;
-            }
-        }
-        require(tokenBalance != 0, "TOKEN_NOT_IN_POOL");
-
-        amountsToAdd[0] = _tokenInForExactBPTOut(
-            tokenBalance,
-            tokenNormalizedWeight,
-            bptAmountOut,
-            totalSupply(),
-            _swapFee
-        );
-        require(amountsToAdd[0] <= maxAmountIn, "ERR_TOKEN_IN_MAX_AMOUNT");
-
-        /*
-        // TODO for Oracle/MLP integration
-        // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
-        if(_optInOracleCandidate || _mandatoryOracleCandidate)
-                updateBalancesBeforeLastLiquidityChange(balances);
-        */
-
-        _vault.addLiquidity(_poolId, msg.sender, tokensToAdd, amountsToAdd, !transferTokens);
-
-        _mintPoolTokens(beneficiary, bptAmountOut);
-
-        //Update balance
-        balances[0] = balances[0].add(amountsToAdd[0]);
-
-        //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, balances);
-
-        return amountsToAdd[0];
-    }
-
-    /**
-     * @dev Called by liquidity providers to exit the associated Pool, receiving `tokens` in exchange for
-     *  BPT in return. The caller specifies for each token how much in BTP they want to redeem: `BPTAmountsIn`
-     *  and the minimum amount for each token they want to get `minAmountsOut`
-     *
-     * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from the User's Internal Balance.
-     *
-     * `tokens` -> list of tokens that user wants to receive
-     * `BPTAmountsIn` -> list with the amounts of BPT that are going to be redeemed for each token in `tokens`
-     * `minAmountsOut` -> the minimum amount of each token the user requires to receive
-     */
-
-    function exitPoolExactBPTInForTokenOut(
-        uint256 bptAmountIn,
-        IERC20 token,
-        uint256 minAmountOut,
-        bool transferTokens,
-        address beneficiary
-    ) public nonReentrant returns (uint256) {
-        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
-
-        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-
-        //Pay protocol fees to have balances up to date
-        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-
-        IERC20[] memory tokensToRemove = new IERC20[](1);
-        uint256[] memory amountsToRemove = new uint256[](1);
-        uint256 tokenBalance;
-        uint256 tokenNormalizedWeight;
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == token) {
-                tokensToRemove[0] = token;
-                tokenBalance = balances[i];
-                tokenNormalizedWeight = _normalizedWeight(tokens[i]);
-                break;
-            }
-        }
-        require(tokenBalance != 0, "TOKEN_NOT_IN_POOL");
-
-        amountsToRemove[0] = _exactBPTInForTokenOut(
-            tokenBalance,
-            tokenNormalizedWeight,
-            bptAmountIn,
-            totalSupply(),
-            _swapFee
-        );
-        require(amountsToRemove[0] >= minAmountOut, "ERR_TOKEN_OUT_MIN_AMOUNT");
-
-        /*
-        // TODO for Oracle/MLP integration
-        // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
-        if(_optInOracleCandidate || _mandatoryOracleCandidate)
-                updateBalancesBeforeLastLiquidityChange(balances);
-        */
-
-        _vault.removeLiquidity(_poolId, beneficiary, tokensToRemove, amountsToRemove, !transferTokens);
-
-        //Update balance
-        balances[0] = balances[0].sub(amountsToRemove[0]);
-
-        //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, balances);
-
-        _burnPoolTokens(msg.sender, bptAmountIn);
-
-        return amountsToRemove[0];
-    }
-
-    /**
-     * @dev Called by liquidity providers to exit the associated Pool, receiving `tokens` in exchange for
-     *  BPT in return. The caller specifies how much of each token they want to receive: `amountsOut`
-     *  and the maximum amount of BPT they want to redeem `maxBPTAmountIn`
-     *
-     * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from the User's Internal Balance.
-     *
-     * `tokens` -> list of tokens that user wants to receive
-     * `amountsOut` -> list with the amounts of each token the user wants to receive
-     * `maxBPTAmountIn` -> the maximum amount of BPT the user wants to redeem
-     */
-
-    function exitPoolBPTInForExactTokensOut(
-        uint256 maxBPTAmountIn,
-        uint256[] calldata amountsOut,
-        bool transferTokens,
-        address beneficiary
-    ) public nonReentrant returns (uint256 bptAmountIn) {
-        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        require(tokens.length == _totalTokens, "ERR_EMPTY_POOL");
-
-        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-
-        require(amountsOut.length == tokens.length, "AmountsOut and tokens length mismatch");
-
-        //Pay protocol fees to have balances up to date
-        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(tokens, balances);
-        balances = _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-
-        uint256[] memory normalizedWeights = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            normalizedWeights[i] = _normalizedWeight(tokens[i]);
-        }
-
-        bptAmountIn = _bptInForExactTokensOut(balances, normalizedWeights, amountsOut, totalSupply(), _swapFee);
-        require(bptAmountIn <= maxBPTAmountIn, "ERR_BPT_IN_MAX_AMOUNT");
-
-        /*
-        // TODO for Oracle/MLP integration
-        // If this pool is an oracle candidate then update balancesBeforeLastLiquidityChange
-        if(_optInOracleCandidate || _mandatoryOracleCandidate)
-                updateBalancesBeforeLastLiquidityChange(balances);
-        */
-
-        _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !transferTokens);
-
-        //Update balances
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = balances[i].sub(amountsOut[i]);
-        }
-
-        //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, balances);
-
-        _burnPoolTokens(msg.sender, bptAmountIn);
-
-        return bptAmountIn;
-    }
-
     // Potential helpers
 
     function _getSupplyRatio(uint256 amount) internal view returns (uint256) {
@@ -1036,18 +577,5 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
     function _subtractSwapFee(uint256 amount) private view returns (uint256) {
         uint256 fees = amount.mul(_swapFee);
         return amount.sub(fees);
-    }
-
-    function _getPoolTokenBalances() internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
-        tokens = _vault.getPoolTokens(_poolId);
-        // We trust the number of tokens returned from the Vault since these are registered in the constructor
-
-        balances = _vault.getPoolTokenBalances(_poolId, tokens);
-        bool someLiquidity = true;
-        for (uint256 i = 0; i < tokens.length && someLiquidity; i++) {
-            someLiquidity = balances[i] != 0;
-        }
-
-        require(someLiquidity, "ERR_ZERO_LIQUIDITY");
     }
 }

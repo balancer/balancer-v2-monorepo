@@ -169,8 +169,11 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        require(tokenX != tokenY, "ERR_TOKENS_ARE_THE_SAME");
         require(tokenX != IERC20(0) && tokenY != IERC20(0), "ERR_TOKEN_IS_ZERO");
+
+        // Not technically true since we didn't register yet, but this is consistent with the error messages of other
+        // optimization settings.
+        require(tokenX != tokenY, "ERR_TOKEN_ALREADY_REGISTERED");
 
         TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
         require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "ERR_TOKENS_ALREADY_SET");
