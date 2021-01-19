@@ -173,7 +173,11 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         _sumWeights = sumWeights;
 
         //Reset Invariant
-        _resetAccumulatedSwapFees(tokens, weights, amounts);
+        uint256[] memory normalizedWeights = new uint256[](tokens.length);
+        for (uint8 i = 0; i < tokens.length; i++) {
+            normalizedWeights[i] = weights[i].div(_sumWeights);
+        }
+        _lastInvariant = _invariant(normalizedWeights, amounts);
     }
 
     function _weight(IERC20 token) private view returns (uint256) {
@@ -214,16 +218,6 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         }
     }
 
-    function _weights(IERC20[] memory tokens) internal view returns (uint256[] memory) {
-        uint256[] memory weights = new uint256[](tokens.length);
-
-        for (uint256 i = 0; i < weights.length; ++i) {
-            weights[i] = _weight(tokens[i]);
-        }
-
-        return weights;
-    }
-
     /**
      * @dev Internal function to tell the normalized weight associated to a token
      * @param token Address of the token querying the normalized weight of
@@ -242,8 +236,20 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         return _poolId;
     }
 
-    function getWeights(IERC20[] memory tokens) external view returns (uint256[] memory) {
-        return _weights(tokens);
+    function getLastInvariant() external view returns (uint256) {
+        return _lastInvariant;
+    }
+
+    function getInvariant() external view returns (uint256) {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
+        return _getInvariant(tokens, balances);
+    }
+
+    function getWeights(IERC20[] memory tokens) external view returns (uint256[] memory weights) {
+        weights = new uint256[](tokens.length);
+        for (uint256 i = 0; i < weights.length; ++i) {
+            weights[i] = _weight(tokens[i]);
+        }
     }
 
     /**
@@ -313,7 +319,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
     {
         uint256[] memory swapFeesCollected = new uint256[](tokens.length);
 
-        uint256 currentInvariant = _getInvariant(tokens, _weights(tokens), balances);
+        uint256 currentInvariant = _getInvariant(tokens, balances);
         uint256 ratio = _lastInvariant.div(currentInvariant);
 
         (IERC20 token, uint256 index) = UnsafeRandom.rand(tokens);
@@ -322,22 +328,14 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         return swapFeesCollected;
     }
 
-    function _resetAccumulatedSwapFees(
-        IERC20[] memory tokens,
-        uint256[] memory weights,
-        uint256[] memory balances
-    ) internal {
-        _lastInvariant = _getInvariant(tokens, weights, balances);
+    function _resetAccumulatedSwapFees(IERC20[] memory tokens, uint256[] memory balances) internal {
+        _lastInvariant = _getInvariant(tokens, balances);
     }
 
-    function _getInvariant(
-        IERC20[] memory tokens,
-        uint256[] memory weights,
-        uint256[] memory balances
-    ) private view returns (uint256) {
+    function _getInvariant(IERC20[] memory tokens, uint256[] memory balances) private view returns (uint256) {
         uint256[] memory normalizedWeights = new uint256[](tokens.length);
         for (uint8 i = 0; i < tokens.length; i++) {
-            normalizedWeights[i] = weights[i].div(_sumWeights);
+            normalizedWeights[i] = _normalizedWeight(tokens[i]);
         }
         return _invariant(normalizedWeights, balances);
     }
@@ -346,7 +344,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
     function payProtocolFees() external nonReentrant {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
         balances = _payProtocolFees(tokens, balances);
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
     }
 
     //Join / Exit
@@ -376,7 +374,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
 
         // Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _mintPoolTokens(beneficiary, poolAmountOut);
     }
@@ -406,7 +404,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _burnPoolTokens(msg.sender, poolAmountIn);
     }
@@ -462,7 +460,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         }
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _mintPoolTokens(beneficiary, bptAmountOut);
     }
@@ -532,7 +530,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         balances[0] = balances[0].add(amountsToAdd[0]);
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         return amountsToAdd[0];
     }
@@ -602,7 +600,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         balances[0] = balances[0].sub(amountsToRemove[0]);
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _burnPoolTokens(msg.sender, bptAmountIn);
 
@@ -662,7 +660,7 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         }
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _burnPoolTokens(msg.sender, bptAmountIn);
 
