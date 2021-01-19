@@ -561,7 +561,7 @@ describe('StablePool', function () {
     return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_TOKENS_IN_FOR_EXACT_BPT_OUT, minimumBPT]);
   };
 
-  describe.only('join hook', () => {
+  describe('join hook', () => {
     const protocolSwapFee = toFixedPoint(0);
     const emptyBalances = (poolInitialBalances = [0, 0].map((value) => BigNumber.from(value.toString())));
 
@@ -705,7 +705,7 @@ describe('StablePool', function () {
     });
   });
 
-  describe.only('exit hook', () => {
+  describe('exit hook', () => {
     let vault: Contract;
     let pool: Contract;
     let poolId: string;
