@@ -212,6 +212,15 @@ interface IVault {
 
     event TokensUnregistered(bytes32 poolId, IERC20[] tokens);
 
+    function joinPool(
+        bytes32 poolId,
+        address recipient,
+        IERC20[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        bool withdrawFromUserBalance,
+        bytes memory userData
+    ) external;
+
     /**
      * @dev Called by the Pool to add tokens to its balance. Only registered tokens can have liquidity added.
      *

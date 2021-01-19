@@ -18,10 +18,13 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../vendor/ReentrancyGuard.sol";
 
 import "./UserBalance.sol";
+
+import "./interfaces/IPool.sol";
 
 import "./balances/CashInvested.sol";
 import "./balances/StandardPoolsBalance.sol";
@@ -40,6 +43,7 @@ abstract contract PoolRegistry is
     using CashInvested for bytes32;
     using FixedPoint for uint128;
     using FixedPoint for uint256;
+    using FixedPoint for int256;
     using SafeCast for uint256;
     using SafeCast for uint128;
 
@@ -123,7 +127,7 @@ abstract contract PoolRegistry is
         return poolIds;
     }
 
-    function getPoolTokens(bytes32 poolId) external view override withExistingPool(poolId) returns (IERC20[] memory) {
+    function getPoolTokens(bytes32 poolId) public view override withExistingPool(poolId) returns (IERC20[] memory) {
         (, PoolOptimization optimization) = _getPoolData(poolId);
 
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
@@ -156,8 +160,8 @@ abstract contract PoolRegistry is
         }
     }
 
-    function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens)
-        external
+    function getPoolTokenBalances(bytes32 poolId, IERC20[] memory tokens)
+        public
         view
         override
         withExistingPool(poolId)
@@ -246,6 +250,107 @@ abstract contract PoolRegistry is
         } else {
             _increaseStandardPoolCash(poolId, tokens, amounts);
         }
+    }
+
+    function joinPool(
+        bytes32 poolId,
+        address recipient,
+        IERC20[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        bool withdrawFromUserBalance,
+        bytes memory userData
+    ) external override nonReentrant withExistingPool(poolId) {
+        require(tokens.length == maxAmountsIn.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
+
+        {
+            // require tokens are the same as the pool tokens, in the same order and complete
+            IERC20[] memory poolTokens = getPoolTokens(poolId);
+            require(poolTokens.length == tokens.length, "ERR_TOKENS_MISMATCH");
+            for (uint256 i = 0; i < poolTokens.length; ++i) {
+                require(poolTokens[i] == tokens[i], "ERR_TOKENS_MISMATCH");
+            }
+        }
+
+        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _callOnJoinPool(
+            poolId,
+            tokens,
+            recipient,
+            maxAmountsIn,
+            userData
+        );
+
+        require(amountsIn.length == tokens.length, "ERR_AMOUNTS_IN_LENGTH");
+        require(dueProtocolFeeAmounts.length == tokens.length, "ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH");
+
+        int256[] memory poolBalanceDeltas = new int256[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+
+            uint128 amountIn = amountsIn[i].toUint128();
+            require(amountIn <= maxAmountsIn[i], "ERR_JOIN_ABOVE_MAX");
+
+            // Receive token
+            {
+                uint128 tokensToReceive = amountIn;
+                if (tokensToReceive > 0) {
+                    if (withdrawFromUserBalance) {
+                        uint128 toWithdraw = Math
+                            .min(_userTokenBalance[msg.sender][token], tokensToReceive)
+                            .toUint128();
+
+                        // toWithdraw is guaranteed to be less or equal than both of these two amounts because it equals
+                        // the smallest of the two, which means the subtraction cannot overflow.
+                        _userTokenBalance[msg.sender][token] -= toWithdraw;
+                        tokensToReceive -= toWithdraw;
+                    }
+
+                    token.safeTransferFrom(msg.sender, address(this), tokensToReceive);
+                }
+            }
+
+            uint128 feeToPay = dueProtocolFeeAmounts[i].toUint128();
+
+            // Charge swap protocol fees to pool
+            {
+                _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToPay.toUint128());
+            }
+
+            poolBalanceDeltas[i] = SignedSafeMath.sub(amountIn, feeToPay);
+        }
+
+        // Grant tokens to pools - how this is done depends on the Pool optimization setting
+        (, PoolOptimization optimization) = _getPoolData(poolId);
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            _alterTwoTokenPoolCash(poolId, tokens[0], poolBalanceDeltas[0], tokens[1], poolBalanceDeltas[1]);
+        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            _alterSimplifiedQuotePoolCash(poolId, tokens, poolBalanceDeltas);
+        } else {
+            _alterStandardPoolCash(poolId, tokens, poolBalanceDeltas);
+        }
+    }
+
+    // Needed to avoid stack too deep issues
+    function _callOnJoinPool(
+        bytes32 poolId,
+        IERC20[] memory tokens,
+        address recipient,
+        uint256[] memory maxAmountsIn,
+        bytes memory userData
+    ) private returns (uint256[] memory, uint256[] memory) {
+        (address pool, ) = _getPoolData(poolId);
+        uint256[] memory currentBalances = getPoolTokenBalances(poolId, tokens);
+
+        return
+            IPool(pool).onJoinPool(
+                poolId,
+                msg.sender,
+                recipient,
+                currentBalances,
+                maxAmountsIn,
+                getProtocolSwapFee(),
+                userData
+            );
     }
 
     function _receiveLiquidity(

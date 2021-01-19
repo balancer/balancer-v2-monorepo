@@ -25,6 +25,7 @@ import "../../math/FixedPoint.sol";
 
 contract SimplifiedQuotePoolsBalance {
     using SafeCast for uint256;
+    using FixedPoint for int256;
     using CashInvested for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -126,6 +127,26 @@ contract SimplifiedQuotePoolsBalance {
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint128 amount = amounts[i].toUint128();
             _updateSimplifiedQuotePoolBalance(poolTokens, poolId, tokens[i], CashInvested.increaseCash, amount);
+        }
+    }
+
+    function _alterSimplifiedQuotePoolCash(
+        bytes32 poolId,
+        IERC20[] memory tokens,
+        int256[] memory amounts
+    ) internal {
+        EnumerableSet.AddressSet storage poolTokens = _simplifiedQuotePoolsTokens[poolId];
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            int256 amount = amounts[i];
+
+            _updateSimplifiedQuotePoolBalance(
+                poolTokens,
+                poolId,
+                tokens[i],
+                amount > 0 ? CashInvested.increaseCash : CashInvested.decreaseCash,
+                amount.abs().toUint128()
+            );
         }
     }
 
