@@ -273,6 +273,14 @@ describe('assetManager', function () {
         // Check two ways
         expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, assetManager.address)).to.equal(false);
         expect(await vault.isPoolAssetManager(poolId, tokens.USDT.address, assetManager.address)).to.equal(false);
+
+        // Should also be able to re-register (just one in this case)
+        await vault
+        .connect(pool)
+        .registerTokens(poolId, [tokens.DAI.address, tokens.USDT.address], [assetManager.address, ZERO_ADDRESS]);
+
+        expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(assetManager.address);
+        expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(ZERO_ADDRESS);
       });
     });
   }
