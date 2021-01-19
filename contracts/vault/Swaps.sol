@@ -30,7 +30,7 @@ import "./interfaces/IPoolQuoteStructs.sol";
 import "./interfaces/IPoolQuote.sol";
 import "./interfaces/IPoolQuoteSimplified.sol";
 import "./interfaces/ISwapValidator.sol";
-import "./balances/CashInvested.sol";
+import "./balances/BalanceAllocation.sol";
 
 import "../math/FixedPoint.sol";
 
@@ -41,7 +41,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
-    using CashInvested for bytes32;
+    using BalanceAllocation for bytes32;
     using FixedPoint for int256;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
@@ -177,10 +177,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             if (tokenDeltas[i] > 0) {
                 uint128 toReceive = uint128(tokenDeltas[i]);
 
-                if (funds.withdrawFromUserBalance) {
-                    uint128 toWithdraw = uint128(Math.min(_userTokenBalance[funds.sender][token], toReceive));
+                if (funds.withdrawFromInternalBalance) {
+                    uint128 toWithdraw = uint128(Math.min(_internalTokenBalance[funds.sender][token], toReceive));
 
-                    _userTokenBalance[funds.sender][token] -= toWithdraw;
+                    _internalTokenBalance[funds.sender][token] -= toWithdraw;
                     toReceive -= toWithdraw;
                 }
 
@@ -188,11 +188,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             } else {
                 uint128 toSend = tokenDeltas[i].abs().toUint128();
 
-                if (funds.depositToUserBalance) {
-                    // Deposit tokens to the recipient's User Balance - the Vault's balance doesn't change
-                    _userTokenBalance[funds.recipient][token] = _userTokenBalance[funds.recipient][token].add128(
-                        toSend
-                    );
+                if (funds.depositToInternalBalance) {
+                    // Deposit tokens to the recipient's Internal Balance - the Vault's balance doesn't change
+                    _internalTokenBalance[funds.recipient][token] = _internalTokenBalance[funds.recipient][token]
+                        .add128(toSend);
                 } else {
                     // Actually transfer the tokens to the recipient - note protocol withdraw fees are not charged by
                     // this
@@ -399,10 +398,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenInBalance = tokenBBalance;
         }
 
-        uint128 tokenInTotalBalance = tokenInBalance.total();
+        uint128 tokenInTotalBalance = tokenInBalance.totalBalance();
         require(tokenInTotalBalance > 0, "Token in not in pool");
 
-        uint128 tokenOutTotalBalance = tokenOutBalance.total();
+        uint128 tokenOutTotalBalance = tokenOutBalance.totalBalance();
         require(tokenOutTotalBalance > 0, "Token out not in pool");
 
         // Perform the quote request and compute the new balances for token in and token out after the swap
@@ -430,10 +429,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 newSharedCash;
         if (request.tokenIn < request.tokenOut) {
             // in is A, out is B
-            newSharedCash = CashInvested.toSharedCash(tokenInBalance, tokenOutBalance);
+            newSharedCash = BalanceAllocation.toSharedCash(tokenInBalance, tokenOutBalance);
         } else {
             // in is B, out is A
-            newSharedCash = CashInvested.toSharedCash(tokenOutBalance, tokenInBalance);
+            newSharedCash = BalanceAllocation.toSharedCash(tokenOutBalance, tokenInBalance);
         }
 
         poolSharedBalances.sharedCash = newSharedCash;
@@ -445,11 +444,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
         bytes32 tokenInBalance = _getSimplifiedQuotePoolBalance(request.poolId, request.tokenIn);
-        uint128 tokenInTotalBalance = tokenInBalance.total();
+        uint128 tokenInTotalBalance = tokenInBalance.totalBalance();
         require(tokenInTotalBalance > 0, "Token A not in pool");
 
         bytes32 tokenOutBalance = _getSimplifiedQuotePoolBalance(request.poolId, request.tokenOut);
-        uint128 tokenOutTotalBalance = tokenOutBalance.total();
+        uint128 tokenOutTotalBalance = tokenOutBalance.totalBalance();
         require(tokenOutTotalBalance > 0, "Token B not in pool");
 
         // Perform the quote request and compute the new balances for token in and token out after the swap
@@ -497,7 +496,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
-            currentBalances[i] = balance.total();
+            currentBalances[i] = balance.totalBalance();
 
             if (i == indexIn) {
                 tokenInBalance = balance;

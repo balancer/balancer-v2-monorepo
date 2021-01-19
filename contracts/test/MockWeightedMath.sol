@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.1;
 
-import "../pools/constant-product/ConstantProductMath.sol";
+import "../pools/weighted/WeightedMath.sol";
 
-contract MockConstantProductMath is ConstantProductMath {
+contract MockWeightedMath is WeightedMath {
     function outGivenIn(
         uint256 tokenBalanceIn,
         uint256 tokenWeightIn,

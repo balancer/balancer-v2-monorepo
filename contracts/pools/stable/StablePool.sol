@@ -29,9 +29,9 @@ import "../../vault/interfaces/IPoolQuote.sol";
 import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
 
-import "./StablecoinMath.sol";
+import "./StableMath.sol";
 
-contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolToken, ReentrancyGuard {
+contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -47,7 +47,7 @@ contract StablecoinPool is IPoolQuote, IBPTPool, StablecoinMath, BalancerPoolTok
 
     /**
      * @dev This contract cannot be deployed directly because it must be an Universal Agent during construction. Use
-     * `StablecoinPoolFactory` to create new instances of it instead.
+     * `StablePoolFactory` to create new instances of it instead.
      */
     constructor(
         IVault vault,

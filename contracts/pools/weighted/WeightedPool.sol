@@ -28,19 +28,13 @@ import "../../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
-import "./ConstantProductMath.sol";
+import "./WeightedMath.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract ConstantProductPool is
-    IBPTPool,
-    IPoolQuoteSimplified,
-    BalancerPoolToken,
-    ConstantProductMath,
-    ReentrancyGuard
-{
+contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -96,7 +90,7 @@ contract ConstantProductPool is
 
     /**
      * @dev This contract cannot be deployed directly because it must be an Universal Agent during construction. Use
-     * `ConstantProductPoolFactory` to create new instances of it instead.
+     * `WeightedPoolFactory` to create new instances of it instead.
      */
     constructor(
         IVault vault,
@@ -179,7 +173,11 @@ contract ConstantProductPool is
         _sumWeights = sumWeights;
 
         //Reset Invariant
-        _resetAccumulatedSwapFees(tokens, weights, amounts);
+        uint256[] memory normalizedWeights = new uint256[](tokens.length);
+        for (uint8 i = 0; i < tokens.length; i++) {
+            normalizedWeights[i] = weights[i].div(_sumWeights);
+        }
+        _lastInvariant = _invariant(normalizedWeights, amounts);
     }
 
     function _weight(IERC20 token) private view returns (uint256) {
@@ -335,8 +333,20 @@ contract ConstantProductPool is
         return _poolId;
     }
 
-    function getWeights(IERC20[] memory tokens) external view returns (uint256[] memory) {
-        return _weights(tokens);
+    function getLastInvariant() external view returns (uint256) {
+        return _lastInvariant;
+    }
+
+    function getInvariant() external view returns (uint256) {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
+        return _getInvariant(tokens, balances);
+    }
+
+    function getWeights(IERC20[] memory tokens) external view returns (uint256[] memory weights) {
+        weights = new uint256[](tokens.length);
+        for (uint256 i = 0; i < weights.length; ++i) {
+            weights[i] = _weight(tokens[i]);
+        }
     }
 
     /**
@@ -661,7 +671,7 @@ contract ConstantProductPool is
     {
         uint256[] memory swapFeesCollected = new uint256[](tokens.length);
 
-        uint256 currentInvariant = _getInvariant(tokens, _weights(tokens), balances);
+        uint256 currentInvariant = _getInvariant(tokens, balances);
         uint256 ratio = _lastInvariant.div(currentInvariant);
 
         (IERC20 token, uint256 index) = UnsafeRandom.rand(tokens);
@@ -670,22 +680,14 @@ contract ConstantProductPool is
         return swapFeesCollected;
     }
 
-    function _resetAccumulatedSwapFees(
-        IERC20[] memory tokens,
-        uint256[] memory weights,
-        uint256[] memory balances
-    ) internal {
-        _lastInvariant = _getInvariant(tokens, weights, balances);
+    function _resetAccumulatedSwapFees(IERC20[] memory tokens, uint256[] memory balances) internal {
+        _lastInvariant = _getInvariant(tokens, balances);
     }
 
-    function _getInvariant(
-        IERC20[] memory tokens,
-        uint256[] memory weights,
-        uint256[] memory balances
-    ) private view returns (uint256) {
+    function _getInvariant(IERC20[] memory tokens, uint256[] memory balances) private view returns (uint256) {
         uint256[] memory normalizedWeights = new uint256[](tokens.length);
         for (uint8 i = 0; i < tokens.length; i++) {
-            normalizedWeights[i] = weights[i].div(_sumWeights);
+            normalizedWeights[i] = _normalizedWeight(tokens[i]);
         }
         return _invariant(normalizedWeights, balances);
     }
@@ -694,7 +696,7 @@ contract ConstantProductPool is
     function payProtocolFees() external nonReentrant {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
         balances = _payProtocolFees(tokens, balances);
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
     }
 
     //Join / Exit
@@ -724,7 +726,7 @@ contract ConstantProductPool is
         _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
 
         // Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _mintPoolTokens(beneficiary, poolAmountOut);
     }
@@ -754,7 +756,7 @@ contract ConstantProductPool is
         _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _burnPoolTokens(msg.sender, poolAmountIn);
     }
@@ -765,7 +767,7 @@ contract ConstantProductPool is
      * of BPT they want to get `minBPTAmountOut`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `bptAmountOut` will be minted and transferred to `beneficiary`.
      */
@@ -810,7 +812,7 @@ contract ConstantProductPool is
         }
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _mintPoolTokens(beneficiary, bptAmountOut);
     }
@@ -821,7 +823,7 @@ contract ConstantProductPool is
      * of token they want to pay `maxAmountIn`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `BPTAmountOut` will be minted and transferred to `beneficiary`.
      */
@@ -880,7 +882,7 @@ contract ConstantProductPool is
         balances[0] = balances[0].add(amountsToAdd[0]);
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         return amountsToAdd[0];
     }
@@ -891,7 +893,7 @@ contract ConstantProductPool is
      *  and the minimum amount for each token they want to get `minAmountsOut`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `tokens` -> list of tokens that user wants to receive
      * `BPTAmountsIn` -> list with the amounts of BPT that are going to be redeemed for each token in `tokens`
@@ -950,7 +952,7 @@ contract ConstantProductPool is
         balances[0] = balances[0].sub(amountsToRemove[0]);
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _burnPoolTokens(msg.sender, bptAmountIn);
 
@@ -963,7 +965,7 @@ contract ConstantProductPool is
      *  and the maximum amount of BPT they want to redeem `maxBPTAmountIn`
      *
      * If `transferTokens` is true, the Vault will pull tokens from the caller's account, who must have granted it
-     * allowance. Otherwise, they are pulled from User Balance.
+     * allowance. Otherwise, they are pulled from the User's Internal Balance.
      *
      * `tokens` -> list of tokens that user wants to receive
      * `amountsOut` -> list with the amounts of each token the user wants to receive
@@ -1010,7 +1012,7 @@ contract ConstantProductPool is
         }
 
         //Reset swap fees counter
-        _resetAccumulatedSwapFees(tokens, _weights(tokens), balances);
+        _resetAccumulatedSwapFees(tokens, balances);
 
         _burnPoolTokens(msg.sender, bptAmountIn);
 
