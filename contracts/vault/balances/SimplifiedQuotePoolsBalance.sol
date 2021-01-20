@@ -83,7 +83,7 @@ contract SimplifiedQuotePoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "ERR_TOKEN_IS_ZERO");
+            require(token != IERC20(0), "ERR_TOKEN_CANT_BE_ZERO");
             bool added = poolTokens.add(address(token));
             require(added, "ERR_TOKEN_ALREADY_REGISTERED");
         }

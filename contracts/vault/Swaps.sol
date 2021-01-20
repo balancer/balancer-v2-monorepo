@@ -321,10 +321,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             // current swap's token given is the previous' token quoted.
             // This makes it possible to e.g. swap a given amount of token A for token B, and then use the resulting
             // token B amount to swap for token C.
-
-            require(previous.tokenQuoted != IERC20(0), "Unknown amount in on first swap");
             require(previous.tokenQuoted == _tokenGiven(kind, tokenIn, tokenOut), "Misconstructed multihop swap");
-
             amountGiven = previous.amountQuoted;
         }
 

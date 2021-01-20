@@ -440,7 +440,7 @@ describe('Vault - pool registry', () => {
                 });
 
                 it('reverts', async () => {
-                  const error = 'ERR_TOKEN_IS_ZERO';
+                  const error = 'ERR_TOKEN_CANT_BE_ZERO';
                   await expect(vault.registerTokens(poolId, tokenAddresses)).to.be.revertedWith(error);
                   await expect(vault.registerTokens(poolId, tokenAddresses.reverse())).to.be.revertedWith(error);
                 });
