@@ -129,11 +129,11 @@ describe('Vault - pool registry', () => {
       it('pool cannot add liquidity for the zero address token', async () => {
         await expect(
           vault.connect(pool).addLiquidity(poolId, pool.address, [tokens.DAI.address, ZERO_ADDRESS], [5, 10], false)
-        ).to.be.revertedWith('Token is the zero address');
+        ).to.be.revertedWith('Address: call to non-contract');
 
         await expect(
           vault.connect(pool).addLiquidity(poolId, pool.address, [ZERO_ADDRESS, tokens.MKR.address], [5, 10], false)
-        ).to.be.revertedWith('Token is the zero address');
+        ).to.be.revertedWith('Address: call to non-contract');
       });
 
       it('the pool can add zero liquidity to registered tokens', async () => {
