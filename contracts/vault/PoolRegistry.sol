@@ -321,6 +321,7 @@ abstract contract PoolRegistry is
     // Assets under management
 
     modifier onlyPoolAssetManager(bytes32 poolId, IERC20 token) {
+        _ensureExistingPool(poolId);
         require(_isPoolAssetManager(poolId, token, msg.sender), "SENDER_NOT_ASSET_MANAGER");
         _;
     }
@@ -351,7 +352,13 @@ abstract contract PoolRegistry is
         emit PoolAssetManagerSet(poolId, token, manager);
     }
 
-    function getPoolAssetManager(bytes32 poolId, IERC20 token) external view override returns (address) {
+    function getPoolAssetManager(bytes32 poolId, IERC20 token)
+        external
+        view
+        override
+        withExistingPool(poolId)
+        returns (address)
+    {
         return _poolAssetManagers[poolId][token];
     }
 
@@ -359,7 +366,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20 token,
         address account
-    ) external view returns (bool) {
+    ) external view override withExistingPool(poolId) returns (bool) {
         return _isPoolAssetManager(poolId, token, account);
     }
 

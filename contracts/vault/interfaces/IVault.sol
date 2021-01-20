@@ -463,6 +463,15 @@ interface IVault {
     function getPoolAssetManager(bytes32 poolId, IERC20 token) external view returns (address);
 
     /**
+     * @dev Tells whether a given account is the Pool's Asset Manager for `token` or not.
+     */
+    function isPoolAssetManager(
+        bytes32 poolId,
+        IERC20 token,
+        address account
+    ) external view returns (bool);
+
+    /**
      * @dev Called by a Pool's Asset Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
      * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
      */
