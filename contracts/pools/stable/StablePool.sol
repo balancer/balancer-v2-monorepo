@@ -111,6 +111,7 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint256) {
+        _validateIndexes(indexIn, indexOut, balances.length);
         uint256 adjustedIn = _subtractSwapFee(request.amountIn);
         uint256 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
         return maximumAmountOut;
@@ -122,6 +123,7 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint256) {
+        _validateIndexes(indexIn, indexOut, balances.length);
         uint256 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
         return _addSwapFee(minimumAmountIn);
     }
@@ -244,5 +246,13 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
         }
 
         require(someLiquidity, "ERR_ZERO_LIQUIDITY");
+    }
+
+    function _validateIndexes(
+        uint256 indexIn,
+        uint256 indexOut,
+        uint256 limit
+    ) internal pure {
+        require(indexIn < limit && indexOut < limit, "ERR_INDEX_OUT_OF_BOUNDS");
     }
 }
