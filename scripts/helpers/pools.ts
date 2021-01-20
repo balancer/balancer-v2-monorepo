@@ -26,7 +26,7 @@ export async function deployPoolFromFactory(
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
   const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
-  // We could reuse this factory if we saved it accross tokenizer deployments
+  // We could reuse this factory if we saved it across tokenizer deployments
 
   const authorizer = await ethers.getContractAt('Authorizer', await vault.getAuthorizer());
   await authorizer.connect(admin).grantRole(await authorizer.ADD_UNIVERSAL_AGENT_ROLE(), factory.address);

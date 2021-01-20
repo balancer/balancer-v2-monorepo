@@ -267,7 +267,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     ) private returns (int256[] memory tokenDeltas) {
         tokenDeltas = new int256[](tokens.length);
 
-        // Passed to _swapWithPool, which stores data about the previous swap here to implement multihop logic accross
+        // Passed to _swapWithPool, which stores data about the previous swap here to implement multihop logic across
         // swaps.
         LastSwapData memory previous;
 
@@ -286,7 +286,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 kind
             );
 
-            // Accumulate Vault deltas accross swaps
+            // Accumulate Vault deltas across swaps
             tokenDeltas[swap.tokenInIndex] = SignedSafeMath.add(tokenDeltas[swap.tokenInIndex], amountIn);
             tokenDeltas[swap.tokenOutIndex] = SignedSafeMath.sub(tokenDeltas[swap.tokenOutIndex], amountOut);
         }
