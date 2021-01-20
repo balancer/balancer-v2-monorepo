@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from "../helpers/constants";
+import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
 import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { deploy } from '../../scripts/helpers/deploy';
@@ -39,6 +39,8 @@ describe('assetManager', function () {
     });
 
     it('has no managers at creation', async () => {
+      await vault.connect(pool).registerTokens(poolId, [tokens.DAI.address]);
+
       expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(ZERO_ADDRESS);
     });
 
@@ -50,7 +52,17 @@ describe('assetManager', function () {
       await expect(isManagerQuery).to.be.revertedWith('Nonexistent pool');
     });
 
+    it('reverts when querying the asset manager of an unknown token', async () => {
+      const getManagerQuery = vault.connect(pool).getPoolAssetManager(poolId, otherToken.address);
+      await expect(getManagerQuery).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
+
+      const isManagerQuery = vault.connect(pool).isPoolAssetManager(poolId, otherToken.address, other.address);
+      await expect(isManagerQuery).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
+    });
+
     it('different managers can be set for different tokens', async () => {
+      await vault.connect(pool).registerTokens(poolId, [tokens.DAI.address, tokens.USDT.address]);
+
       await vault.connect(pool).setPoolAssetManager(poolId, tokens.DAI.address, assetManager.address);
       await vault.connect(pool).setPoolAssetManager(poolId, tokens.USDT.address, other.address);
 

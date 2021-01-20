@@ -340,4 +340,9 @@ contract TwoTokenPoolsBalance {
         tokenABalance = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
         tokenBBalance = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
     }
+
+    function _isTwoTokenPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+        return token == poolTokens.tokenA || token == poolTokens.tokenB;
+    }
 }

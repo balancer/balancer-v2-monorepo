@@ -210,4 +210,9 @@ contract SimplifiedQuotePoolsBalance {
         require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
         return _simplifiedQuotePoolsBalances[poolId][token];
     }
+
+    function _isSimplifiedQuotePoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        EnumerableSet.AddressSet storage poolTokens = _simplifiedQuotePoolsTokens[poolId];
+        return poolTokens.contains(address(token));
+    }
 }
