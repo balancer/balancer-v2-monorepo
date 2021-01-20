@@ -74,15 +74,15 @@ describe('Vault - pool registry', () => {
       expect(await vault.getPoolIds(0, 1)).to.have.members([poolId]);
     });
 
-    it('pool and type are set', async () => {
+    it('has an address and an optimization setting', async () => {
       expect(await vault.getPool(poolId)).to.deep.equal([pool.address, StandardPool]);
     });
 
-    it('pool starts with no tokens', async () => {
+    it('starts with no tokens', async () => {
       expect(await vault.getPoolTokens(poolId)).to.have.members([]);
     });
 
-    it('new pool gets a different id', async () => {
+    it('gets a new id', async () => {
       const receipt = await (await vault.registerPool(StandardPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -114,6 +114,11 @@ describe('Vault - pool registry', () => {
           expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
         });
       }
+
+      it('reverts when querying token balances of unregistered tokens', async () => {
+        const query = vault.getPoolTokenBalances(poolId, [tokens.SNX.address]);
+        await expect(query).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
+      });
 
       it('pool can add liquidity to multiple tokens', async () => {
         await vault
