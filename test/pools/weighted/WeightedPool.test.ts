@@ -237,7 +237,7 @@ describe.only('WeightedPool', function () {
         await expect(
           vault
             .connect(lp)
-            .joinPool(
+            .callJoinPool(
               pool.address,
               poolId,
               beneficiary.address,
@@ -255,7 +255,7 @@ describe.only('WeightedPool', function () {
         await expect(
           vault
             .connect(lp)
-            .joinPool(
+            .callJoinPool(
               pool.address,
               poolId,
               beneficiary.address,
@@ -285,7 +285,7 @@ describe.only('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(creator)
-              .joinPool(
+              .callJoinPool(
                 pool.address,
                 poolId,
                 beneficiary.address,
@@ -314,7 +314,7 @@ describe.only('WeightedPool', function () {
         it('fails if already intialized', async () => {
           await vault
             .connect(creator)
-            .joinPool(
+            .callJoinPool(
               pool.address,
               poolId,
               beneficiary.address,
@@ -327,7 +327,7 @@ describe.only('WeightedPool', function () {
           await expect(
             vault
               .connect(creator)
-              .joinPool(
+              .callJoinPool(
                 pool.address,
                 poolId,
                 beneficiary.address,
@@ -346,7 +346,7 @@ describe.only('WeightedPool', function () {
           await expect(
             vault
               .connect(creator)
-              .joinPool(
+              .callJoinPool(
                 pool.address,
                 poolId,
                 beneficiary.address,
@@ -363,7 +363,7 @@ describe.only('WeightedPool', function () {
             const initialJoinUserData = encodeInitialJoinUserData();
             await vault
               .connect(creator)
-              .joinPool(
+              .callJoinPool(
                 pool.address,
                 poolId,
                 beneficiary.address,
@@ -385,7 +385,15 @@ describe.only('WeightedPool', function () {
             const receipt = await (
               await vault
                 .connect(lp)
-                .joinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, maxAmountsIn, 0, joinUserData)
+                .callJoinPool(
+                  pool.address,
+                  poolId,
+                  beneficiary.address,
+                  poolInitialBalances,
+                  maxAmountsIn,
+                  0,
+                  joinUserData
+                )
             ).wait();
 
             const event = expectEvent.inReceipt(receipt, 'PoolJoined');
@@ -411,7 +419,15 @@ describe.only('WeightedPool', function () {
             await expect(
               vault
                 .connect(lp)
-                .joinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, maxAmountsIn, 0, joinUserData)
+                .callJoinPool(
+                  pool.address,
+                  poolId,
+                  beneficiary.address,
+                  poolInitialBalances,
+                  maxAmountsIn,
+                  0,
+                  joinUserData
+                )
             ).to.be.be.revertedWith('ERR_BPT_OUT_MIN_AMOUNT');
           });
         });
@@ -432,7 +448,7 @@ describe.only('WeightedPool', function () {
         const initialJoinUserData = encodeInitialJoinUserData();
         await vault
           .connect(creator)
-          .joinPool(
+          .callJoinPool(
             pool.address,
             poolId,
             lp.address,
@@ -455,7 +471,7 @@ describe.only('WeightedPool', function () {
         await expect(
           vault
             .connect(lp)
-            .exitPool(
+            .callExitPool(
               pool.address,
               poolId,
               beneficiary.address,
@@ -473,7 +489,7 @@ describe.only('WeightedPool', function () {
         await expect(
           vault
             .connect(lp)
-            .exitPool(
+            .callExitPool(
               pool.address,
               poolId,
               beneficiary.address,
@@ -499,7 +515,15 @@ describe.only('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .exitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, minAmountsOut, 0, exitUserData)
+              .callExitPool(
+                pool.address,
+                poolId,
+                beneficiary.address,
+                poolInitialBalances,
+                minAmountsOut,
+                0,
+                exitUserData
+              )
           ).wait();
 
           const event = expectEvent.inReceipt(receipt, 'PoolExited');
@@ -531,7 +555,15 @@ describe.only('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .exitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, minAmountsOut, 0, exitUserData)
+              .callExitPool(
+                pool.address,
+                poolId,
+                beneficiary.address,
+                poolInitialBalances,
+                minAmountsOut,
+                0,
+                exitUserData
+              )
           ).wait();
 
           const event = expectEvent.inReceipt(receipt, 'PoolExited');
@@ -556,7 +588,15 @@ describe.only('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .exitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, minAmountsOut, 0, exitUserData)
+              .callExitPool(
+                pool.address,
+                poolId,
+                beneficiary.address,
+                poolInitialBalances,
+                minAmountsOut,
+                0,
+                exitUserData
+              )
           ).wait();
 
           const event = expectEvent.inReceipt(receipt, 'PoolExited');
@@ -583,7 +623,15 @@ describe.only('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .exitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, minAmountsOut, 0, exitUserData)
+              .callExitPool(
+                pool.address,
+                poolId,
+                beneficiary.address,
+                poolInitialBalances,
+                minAmountsOut,
+                0,
+                exitUserData
+              )
           ).wait();
 
           const event = expectEvent.inReceipt(receipt, 'PoolExited');
@@ -607,7 +655,15 @@ describe.only('WeightedPool', function () {
           await expect(
             vault
               .connect(lp)
-              .exitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, minAmountsOut, 0, exitUserData)
+              .callExitPool(
+                pool.address,
+                poolId,
+                beneficiary.address,
+                poolInitialBalances,
+                minAmountsOut,
+                0,
+                exitUserData
+              )
           ).to.be.be.revertedWith('ERR_BPT_IN_MAX_AMOUNT');
         });
       });
@@ -730,19 +786,19 @@ describe.only('WeightedPool', function () {
 
         pool = await deployPool({ swapFee: SWAP_FEE });
         poolId = await pool.getPoolId();
-        await pool.connect(lp).joinPool((1e18).toString(), MAX_UINT128S, true, lp.address);
+        await pool.connect(lp).callJoinPool((1e18).toString(), MAX_UINT128S, true, lp.address);
       });
 
       it('joins and exits do not accumulate fees', async () => {
-        await pool.connect(lp).joinPool(bn(1e18), MAX_UINT128S, true, lp.address);
-        await pool.connect(lp).joinPool(bn(4e18), MAX_UINT128S, true, lp.address);
+        await pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT128S, true, lp.address);
+        await pool.connect(lp).callJoinPool(bn(4e18), MAX_UINT128S, true, lp.address);
 
-        await pool.connect(lp).exitPool(bn(0.5e18), ZEROS, true, lp.address);
-        await pool.connect(lp).exitPool(bn(2.5e18), ZEROS, true, lp.address);
+        await pool.connect(lp).callExitPool(bn(0.5e18), ZEROS, true, lp.address);
+        await pool.connect(lp).callExitPool(bn(2.5e18), ZEROS, true, lp.address);
 
-        await pool.connect(lp).joinPool(bn(7e18), MAX_UINT128S, true, lp.address);
+        await pool.connect(lp).callJoinPool(bn(7e18), MAX_UINT128S, true, lp.address);
 
-        await pool.connect(lp).exitPool(bn(5e18), ZEROS, true, lp.address);
+        await pool.connect(lp).callExitPool(bn(5e18), ZEROS, true, lp.address);
 
         for (const token of poolTokens) {
           const collectedFees = await vault.getCollectedFeesByToken(token);
@@ -806,7 +862,7 @@ describe.only('WeightedPool', function () {
 
         it('pays swap protocol fees on join', async () => {
           await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).joinPool((1e18).toString(), MAX_UINT128S, true, lp.address)
+            pool.connect(lp).callJoinPool((1e18).toString(), MAX_UINT128S, true, lp.address)
           );
         });
 
@@ -826,7 +882,7 @@ describe.only('WeightedPool', function () {
 
         it('pays swap protocol fees on exit', async () => {
           await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).exitPool((1e18).toString(), ZEROS, true, lp.address)
+            pool.connect(lp).callExitPool((1e18).toString(), ZEROS, true, lp.address)
           );
         });
 

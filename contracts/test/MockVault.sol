@@ -18,28 +18,6 @@ pragma experimental ABIEncoderV2;
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IPool.sol";
 
-interface IMockPool {
-    function onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] calldata currentBalances,
-        uint256[] calldata maxAmountsIn,
-        uint256 protocolSwapFee,
-        bytes calldata userData
-    ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
-
-    function onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] calldata currentBalances,
-        uint256[] calldata minAmountsOut,
-        uint256 protocolSwapFee,
-        bytes calldata userData
-    ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
-}
-
 contract MockVault {
     event PoolJoined(uint256[] amountsIn, uint256[] dueProtocolFeeAmounts);
     event PoolExited(uint256[] amountsOut, uint256[] dueProtocolFeeAmounts);
@@ -62,7 +40,7 @@ contract MockVault {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function joinPool(
+    function callJoinPool(
         address poolAddress,
         bytes32 poolId,
         address recipient,
@@ -71,7 +49,7 @@ contract MockVault {
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
-        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = IMockPool(poolAddress).onJoinPool(
+        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = IPool(poolAddress).onJoinPool(
             poolId,
             msg.sender,
             recipient,
@@ -83,7 +61,7 @@ contract MockVault {
         emit PoolJoined(amountsIn, dueProtocolFeeAmounts);
     }
 
-    function exitPool(
+    function callExitPool(
         address poolAddress,
         bytes32 poolId,
         address recipient,
