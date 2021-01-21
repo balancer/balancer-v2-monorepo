@@ -99,7 +99,7 @@ const config: HardhatUserConfig = {
     },
   },
   abiExporter: {
-    only: ['Vault', 'WeightedPool', 'StablePool', 'FixedSetPoolTokenizer', 'BalancerPoolToken', 'BasePoolFactory', 'ERC20'],
+    only: ['Vault', 'WeightedPool', 'StablePool', 'WeightedPoolFactory','StablePoolFactory', 'BalancerPoolToken', 'BasePoolFactory', 'ERC20'],
     flat: true,
   },
   tenderly: {
