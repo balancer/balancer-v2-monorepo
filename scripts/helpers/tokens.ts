@@ -32,7 +32,7 @@ export async function deployToken(
   decimals?: number,
   from?: SignerWithAddress
 ): Promise<string> {
-  const [_, defaultDeployer] = await ethers.getSigners();
+  const [, defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
   const testToken = await deploy('TestToken', { from: deployer, args: [deployer.address, symbol, symbol, decimals] });
   return testToken.address;
@@ -54,7 +54,7 @@ export async function deployTokensFromFactory(
   //const tokenFactory = await ethers.getContract('TokenFactory');
   // Find list of tokens already deployed by factory
   const totalTokens = await tokenFactory.getTotalTokens();
-  const deployedTokens = await tokenFactory.getTokens(0, totalTokens);
+  //const deployedTokens = await tokenFactory.getTokens(0, totalTokens);
   // For each token deploy if not already deployed
   for (let i = 0; i < symbols.length; i++) {
     if (symbols[i] === 'WETH') {

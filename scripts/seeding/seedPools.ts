@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { Trade, encodeValidatorData, SwapIn, FundManagement } from '../helpers/trading';
 import { BigNumber } from 'ethers';
 import { Dictionary } from 'lodash';
-import { Contract } from 'ethers';
+import { Contract, Event } from 'ethers';
 
 import * as allPools from './allPools.json';
 import { task } from 'hardhat/config';
@@ -68,27 +68,30 @@ async function action(hre: HardhatRuntimeEnvironment) {
     await tokenContracts[symbols[i]].connect(controller).approve(vault.address, MAX_UINT256);
     await tokenContracts[symbols[i]].connect(deployer).mint(controller.address, balances[i]);
     //const tradingBalance = balances[i].div(BigNumber.from('10'))
-    const tradingBalance = balances[i]//.div(BigNumber.from('10'))
+    const tradingBalance = balances[i]; //.div(BigNumber.from('10'))
     await tokenContracts[symbols[i]].connect(deployer).mint(trader.address, tradingBalance);
     await tokenContracts[symbols[i]].connect(trader).approve(vault.address, MAX_UINT256);
     await tokenContracts[symbols[i]].connect(investmentManager).approve(vault.address, MAX_UINT256);
 
     // deposit half into user balance
-    const depositBalance = tradingBalance.div(BigNumber.from('2'))
-    await vault.connect(trader).depositToInternalBalance(tokenContracts[symbols[i]].address, depositBalance, trader.address);
+    const depositBalance = tradingBalance.div(BigNumber.from('2'));
+    await vault
+      .connect(trader)
+      .depositToInternalBalance(tokenContracts[symbols[i]].address, depositBalance, trader.address);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
-  let pools: Contract[] = (await deployPools(filteredPools, tokenContracts)).filter((x): x is Contract => x !== undefined);
+  const pools: Contract[] = (await deployPools(filteredPools, tokenContracts)).filter(
+    (x): x is Contract => x !== undefined
+  );
 
   console.log(`\nSwapping a few tokens...`);
   validator = await ethers.getContract('OneToOneSwapValidator');
-  await Promise.all(pools.map(p => swapInPool(p)));
-
+  await Promise.all(pools.map((p) => swapInPool(p)));
 
   console.log('Making a few investments...');
   //investmentManager = await ethers.getContract('MockInvestmentManager');
-  await Promise.all(pools.map(p => investPool(p)));
+  await Promise.all(pools.map((p) => investPool(p)));
   return;
 }
 
@@ -98,7 +101,7 @@ async function investPool(pool: Contract) {
   const vault = await ethers.getContract('Vault');
   const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
 
-  const token = tokenAddresses[0]
+  const token = tokenAddresses[0];
 
   await pool.authorizeAssetManager(token, investmentManager.address);
   return vault.connect(investmentManager).withdrawFromPoolBalance(poolId, token, 123);
@@ -112,17 +115,17 @@ async function swapInPool(pool: Contract) {
 
   const [overallTokenIn, overallTokenOut] = tokenAddresses;
 
-  const Token = await ethers.getContractFactory('TestToken');
-  const token = await Token.attach(overallTokenIn)
+  //const Token = await ethers.getContractFactory('TestToken');
+  //const token = await Token.attach(overallTokenIn);
 
   const swap: SwapIn = {
-      poolId,
-      tokenInIndex: 0,
-      tokenOutIndex: 1,
-      amountIn: 100,
-      userData: '0x',
-    }
-  const swaps: SwapIn[] = [swap]
+    poolId,
+    tokenInIndex: 0,
+    tokenOutIndex: 1,
+    amountIn: 100,
+    userData: '0x',
+  };
+  const swaps: SwapIn[] = [swap];
 
   const funds: FundManagement = {
     sender: trader.address,
@@ -131,7 +134,7 @@ async function swapInPool(pool: Contract) {
     depositToInternalBalance: false,
   };
 
-  const receipt = await (
+  await (
     await vault.connect(trader).batchSwapGivenIn(
       validator.address,
       encodeValidatorData({
@@ -146,12 +149,10 @@ async function swapInPool(pool: Contract) {
       funds
     )
   ).wait();
-
-
 }
 
 async function deployPools(filteredPools: Pool[], tokens: ContractList): Promise<(Contract | undefined)[]> {
-  let promises = []
+  const promises = [];
   for (let i = 0; i < filteredPools.length; i++) {
     const tokensList: Array<string> = [];
     const weights: Array<BigNumber> = [];
@@ -167,7 +168,7 @@ async function deployPools(filteredPools: Pool[], tokens: ContractList): Promise
     // Deploy pool and provide liquidity
     promises.push(deployStrategyPool(tokensList, weights, balances, swapFee));
   }
-  return await Promise.all(promises)
+  return await Promise.all(promises);
 }
 
 // Deploy strategy then newPool with that strategy
@@ -194,20 +195,20 @@ async function deployStrategyPool(
   const initialBPT = (100e18).toString();
   const salt = ethers.utils.id(Math.random().toString());
 
-  const name = tokens.length + " token pool"
-  const sym = "TESTPOOL"
+  const name = tokens.length + ' token pool';
+  const sym = 'TESTPOOL';
   const parameters = [name, sym, initialBPT, tokens, balances, weights, swapFee, salt];
 
   const tx = await wpFactoryContract.connect(controller).create(...parameters);
   const receipt = await tx.wait();
-  const event = receipt.events?.find((e: any) => e.event == 'PoolCreated');
+  const event = receipt.events?.find((e: Event) => e.event == 'PoolCreated');
   if (event == undefined) {
     throw new Error('Could not find PoolCreated event');
   }
   const poolAddress = event.args.pool;
 
   console.log(`New Pool Address: ${poolAddress}`);
-  return await wpFactory.attach(poolAddress)
+  return await wpFactory.attach(poolAddress);
 }
 
 // Convert all pools to BigNumber/scaled format
@@ -292,8 +293,7 @@ async function deployToken(admin: SignerWithAddress, symbol: string, decimals?: 
   // Get deployed Token Factory
   const tokenFactory = await ethers.getContract('TokenFactory');
 
-  const salt = ethers.utils.id(Math.random().toString());
-  const parameters = [admin.address, symbol, symbol, decimals ?? 18]
+  const parameters = [admin.address, symbol, symbol, decimals ?? 18];
 
   const tx = await tokenFactory.connect(admin).create(...parameters);
   const receipt = await tx.wait();
@@ -306,7 +306,11 @@ async function deployToken(admin: SignerWithAddress, symbol: string, decimals?: 
 }
 
 // Deploys multiple tokens and returns a symbol -> token dictionary
-async function deployTokens(admin: SignerWithAddress, symbols: Array<string>, decimals: Array<number>): Promise<ContractList> {
+async function deployTokens(
+  admin: SignerWithAddress,
+  symbols: Array<string>,
+  decimals: Array<number>
+): Promise<ContractList> {
   const tokenContracts: ContractList = {};
 
   // Get artifact for TestToken
@@ -325,8 +329,8 @@ async function deployTokens(admin: SignerWithAddress, symbols: Array<string>, de
     }
     //const address = await tokenFactory.callStatic.create(admin, symbols[i], symbols[i], decimals[i]);
     //if (!deployedTokens.includes(address)) {
-      const addr = await deployToken(admin, symbols[i], decimals[i]);
-      //if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
+    const addr = await deployToken(admin, symbols[i], decimals[i]);
+    //if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
     //}
     const address = addr;
     // Get token contract

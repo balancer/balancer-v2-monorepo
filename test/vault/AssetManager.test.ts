@@ -13,16 +13,16 @@ import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
 
 describe('assetManager', function () {
   let tokens: TokenList, otherToken: Contract, vault: Contract;
-  let pool: SignerWithAddress, assetManager: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, pool: SignerWithAddress, assetManager: SignerWithAddress, other: SignerWithAddress;
 
   before('deploy base contracts', async () => {
-    [, pool, assetManager, other] = await ethers.getSigners();
+    [admin, pool, assetManager, other] = await ethers.getSigners();
   });
 
   beforeEach('set up asset manager', async () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'USDT'], [18, 18]);
-    otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
+    otherToken = await deploy('TestToken', { args: [admin.address, 'OTHER', 'OTHER', 18] });
   });
 
   context('with general pool', () => {

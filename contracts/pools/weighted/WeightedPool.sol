@@ -38,8 +38,8 @@ contract WeightedPool is IBPTPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken,
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
-    IVault public immutable _vault;
-    bytes32 public immutable _poolId;
+    IVault private immutable _vault;
+    bytes32 private immutable _poolId;
 
     uint8 private constant _MIN_TOKENS = 2;
     uint8 private constant _MAX_TOKENS = 16;

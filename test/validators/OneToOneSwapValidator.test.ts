@@ -11,7 +11,6 @@ import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
 
 describe('OneToOneSwapValidator', () => {
-  let admin: SignerWithAddress;
   let lp: SignerWithAddress;
   let trader: SignerWithAddress;
 
@@ -28,7 +27,7 @@ describe('OneToOneSwapValidator', () => {
   let assetManagers: string[];
 
   before('setup', async () => {
-    [admin, lp, trader] = await ethers.getSigners();
+    [, lp, trader] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {

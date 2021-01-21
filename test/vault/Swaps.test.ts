@@ -5,7 +5,6 @@ import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../scripts/helpers/deploy';
-import { MAX_UINT256 } from '../helpers/constants';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
@@ -35,7 +34,7 @@ describe('Vault - swaps', () => {
   let vault: Contract, funds: FundManagement;
   let tokens: TokenList, tokenAddresses: string[];
   let poolIds: string[], poolId: string, anotherPoolId: string;
-  let admin: SignerWithAddress, lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
+  let lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
 
   before('setup', async () => {
     [, lp, trader, other] = await ethers.getSigners();

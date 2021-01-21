@@ -18,7 +18,7 @@ const chainIds = {
   mainnet: 1,
   rinkeby: 4,
   ropsten: 3,
-  dockerParity: 17
+  dockerParity: 17,
 };
 
 // Ensure that we have all the environment variables we need.
@@ -99,7 +99,16 @@ const config: HardhatUserConfig = {
     },
   },
   abiExporter: {
-    only: ['Vault', 'WeightedPool', 'StablePool', 'WeightedPoolFactory','StablePoolFactory', 'BalancerPoolToken', 'BasePoolFactory', 'ERC20'],
+    only: [
+      'Vault',
+      'WeightedPool',
+      'StablePool',
+      'WeightedPoolFactory',
+      'StablePoolFactory',
+      'BalancerPoolToken',
+      'BasePoolFactory',
+      'ERC20',
+    ],
     flat: true,
   },
   tenderly: {

@@ -13,7 +13,7 @@ export async function deployTokens(
   from?: SignerWithAddress,
   admin?: SignerWithAddress
 ): Promise<TokenList> {
-  const adminAddress = admin?.address || (await ethers.getSigners())[0].address;
+  //const adminAddress = admin?.address || (await ethers.getSigners())[0].address;
   const tokenSymbols: TokenList = {};
   const Token = await ethers.getContractFactory('TestToken');
 
@@ -24,6 +24,7 @@ export async function deployTokens(
       tokenSymbols[symbols[i]] = weth;
       continue;
     }
+    // TODO callStatic cannot be called on all chains
     //const address = await tokenFactory.callStatic.create(from.address, symbols[i], symbols[i], decimals[i]);
     //if (!deployedTokens.includes(address)) {
     const token = await deployToken(symbols[i], decimals[i], from);
@@ -34,15 +35,6 @@ export async function deployTokens(
     tokenSymbols[symbols[i]] = tokenContract;
   }
   return tokenSymbols;
-
-  //return fromPairs(
-    //await Promise.all(
-      //symbols.map(async (symbol, index) => [
-        //symbol,
-        //await deploy('TestToken', { from, args: [adminAddress, symbol, symbol, decimals[index]] }),
-      //])
-    //)
-  //);
 }
 
 export async function deploySortedTokens(
@@ -58,10 +50,9 @@ export async function deploySortedTokens(
 }
 
 export async function deployToken(symbol: string, decimals?: number, from?: SignerWithAddress): Promise<Contract> {
-  const [admin, defaultDeployer] = await ethers.getSigners();
+  const [defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
-  const testToken = await deploy('TestToken', { from: deployer, args: [admin.address, symbol, symbol, decimals] });
-  //return testToken.address;
+  const testToken = await deploy('TestToken', { from: deployer, args: [deployer.address, symbol, symbol, decimals] });
   return testToken;
 }
 
