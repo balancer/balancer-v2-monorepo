@@ -207,7 +207,7 @@ abstract contract PoolRegistry is
             address assetManager = assetManagers[i];
             IERC20 token = tokens[i];
 
-              // The asset manager feature is disabled by setting it to the zero address
+            // The asset manager feature is disabled by setting it to the zero address
             _poolAssetManagers[poolId][token] = assetManager;
             emit PoolAssetManagerSet(poolId, token, assetManager);
         }
