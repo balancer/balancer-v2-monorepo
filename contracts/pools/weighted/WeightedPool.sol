@@ -1051,8 +1051,4 @@ contract WeightedPool is IBPTPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken,
 
         require(someLiquidity, "ERR_ZERO_LIQUIDITY");
     }
-
-    function authorizeAssetManager(IERC20 token, address assetManager) external {
-        _vault.setPoolAssetManager(_poolId, token, assetManager);
-    }
 }

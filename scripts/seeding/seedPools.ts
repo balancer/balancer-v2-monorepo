@@ -91,7 +91,8 @@ async function action(hre: HardhatRuntimeEnvironment) {
 
   console.log('Making a few investments...');
   //investmentManager = await ethers.getContract('MockInvestmentManager');
-  await Promise.all(pools.map((p) => investPool(p)));
+  // TODO add pool type which supports investment
+  //await Promise.all(pools.map((p) => investPool(p)));
   return;
 }
 
