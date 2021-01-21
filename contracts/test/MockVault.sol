@@ -18,27 +18,38 @@ pragma experimental ABIEncoderV2;
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IPool.sol";
 
+interface IMockPool {
+    function onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] calldata currentBalances,
+        uint256[] calldata maxAmountsIn,
+        uint256 protocolSwapFee,
+        bytes calldata userData
+    ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
+
+    function onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] calldata currentBalances,
+        uint256[] calldata minAmountsOut,
+        uint256 protocolSwapFee,
+        bytes calldata userData
+    ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
+}
+
 contract MockVault {
-    uint256[] private _currentBalances;
-    IERC20[] private _tokens;
-
-    function getPoolTokens(bytes32) external view returns (IERC20[] memory) {
-        return _tokens;
-    }
-
-    function getPoolCurrentBalances() external view returns (uint256[] memory) {
-        return _currentBalances;
-    }
+    event PoolJoined(uint256[] amountsIn, uint256[] dueProtocolFeeAmounts);
+    event PoolExited(uint256[] amountsOut, uint256[] dueProtocolFeeAmounts);
 
     function registerPool(IVault.PoolOptimization) external view returns (bytes32) {
-        return bytes32(uint256(msg.sender) << 96); //poolId
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function registerTokens(bytes32, IERC20[] calldata tokens) external {
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            _tokens.push(tokens[i]);
-            _currentBalances.push(0);
-        }
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function addLiquidity(
@@ -55,45 +66,41 @@ contract MockVault {
         address poolAddress,
         bytes32 poolId,
         address recipient,
-        IERC20[] memory,
+        uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
-        bool,
+        uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
-        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = IPool(poolAddress).onJoinPool(
+        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = IMockPool(poolAddress).onJoinPool(
             poolId,
             msg.sender,
             recipient,
-            _currentBalances,
+            currentBalances,
             maxAmountsIn,
-            0, //ProtocolFeePercentage
+            protocolFeePercentage,
             userData
         );
-        for (uint8 i = 0; i < _currentBalances.length; i++) {
-            _currentBalances[i] = _currentBalances[i] + amountsIn[i] - dueProtocolFeeAmounts[i];
-        }
+        emit PoolJoined(amountsIn, dueProtocolFeeAmounts);
     }
 
     function exitPool(
         address poolAddress,
         bytes32 poolId,
         address recipient,
-        IERC20[] memory,
-        uint256[] memory maxAmountsIn,
-        bool,
+        uint256[] memory currentBalances,
+        uint256[] memory minAmountsOut,
+        uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
         (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = IPool(poolAddress).onExitPool(
             poolId,
-            _currentBalances,
             msg.sender,
             recipient,
-            maxAmountsIn,
-            0, //ProtocolFeePercentage
+            currentBalances,
+            minAmountsOut,
+            protocolFeePercentage,
             userData
         );
-        for (uint8 i = 0; i < _currentBalances.length; i++) {
-            _currentBalances[i] = _currentBalances[i] - amountsOut[i] - dueProtocolFeeAmounts[i];
-        }
+        emit PoolExited(amountsOut, dueProtocolFeeAmounts);
     }
 }
