@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 
 import "hardhat/console.sol";
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../math/FixedPoint.sol";
@@ -23,6 +24,8 @@ import "../../math/FixedPoint.sol";
 import "./BalanceAllocation.sol";
 
 contract TwoTokenPoolsBalance {
+    using SafeCast for uint256;
+    using FixedPoint for int256;
     using BalanceAllocation for bytes32;
 
     // Data for Pools with Two Tokens
@@ -213,6 +216,24 @@ contract TwoTokenPoolsBalance {
         _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, BalanceAllocation.increaseCash);
     }
 
+    function _alterTwoTokenPoolCash(
+        bytes32 poolId,
+        IERC20 tokenX,
+        int256 amountX,
+        IERC20 tokenY,
+        int256 amountY
+    ) internal {
+        _updateTwoTokenPoolCashTokenBalance(
+            poolId,
+            tokenX,
+            amountX.abs().toUint128(),
+            amountX > 0 ? BalanceAllocation.increaseCash : BalanceAllocation.decreaseCash,
+            tokenY,
+            amountY.abs().toUint128(),
+            amountY > 0 ? BalanceAllocation.increaseCash : BalanceAllocation.decreaseCash
+        );
+    }
+
     /**
      * @dev Removes cash from a Two Token Pool.
      *
@@ -277,6 +298,35 @@ contract TwoTokenPoolsBalance {
             // X is B, Y is A
             tokenABalance = mutation(tokenABalance, amountY);
             tokenBBalance = mutation(tokenBBalance, amountX);
+        }
+
+        poolSharedBalances.sharedCash = BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
+        // We don't need to write to the sharedManaged entry
+    }
+
+    function _updateTwoTokenPoolCashTokenBalance(
+        bytes32 poolId,
+        IERC20 tokenX,
+        uint128 amountX,
+        function(bytes32, uint128) pure returns (bytes32) mutationX,
+        IERC20 tokenY,
+        uint128 amountY,
+        function(bytes32, uint128) pure returns (bytes32) mutationY
+    ) private {
+        (
+            bytes32 tokenABalance,
+            bytes32 tokenBBalance,
+            TwoTokenSharedBalances storage poolSharedBalances
+        ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
+
+        if (tokenX < tokenY) {
+            // X is A, Y is B
+            tokenABalance = mutationX(tokenABalance, amountX);
+            tokenBBalance = mutationY(tokenBBalance, amountY);
+        } else {
+            // X is B, Y is A
+            tokenABalance = mutationY(tokenABalance, amountY);
+            tokenBBalance = mutationX(tokenBBalance, amountX);
         }
 
         poolSharedBalances.sharedCash = BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
