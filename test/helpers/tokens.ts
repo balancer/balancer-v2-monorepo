@@ -13,23 +13,18 @@ export async function deployTokens(
   from?: SignerWithAddress,
   admin?: SignerWithAddress
 ): Promise<TokenList> {
-  //const adminAddress = admin?.address || (await ethers.getSigners())[0].address;
   const tokenSymbols: TokenList = {};
   const Token = await ethers.getContractFactory('TestToken');
 
-  // For each token deploy if not already deployed
+  // Deploy each token
   for (let i = 0; i < symbols.length; i++) {
     if (symbols[i] === 'WETH') {
       const weth = await deploy('WETH9', { from, args: [from] });
       tokenSymbols[symbols[i]] = weth;
       continue;
     }
-    // TODO callStatic cannot be called on all chains
-    //const address = await tokenFactory.callStatic.create(from.address, symbols[i], symbols[i], decimals[i]);
-    //if (!deployedTokens.includes(address)) {
     const token = await deployToken(symbols[i], decimals[i], from);
-    //if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
-    //}
+
     // Get token contract
     const tokenContract = await Token.attach(token.address);
     tokenSymbols[symbols[i]] = tokenContract;
