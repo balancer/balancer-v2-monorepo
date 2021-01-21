@@ -203,16 +203,9 @@ abstract contract PoolRegistry is
             address assetManager = assetManagers[i];
             IERC20 token = tokens[i];
 
-            // The zero address means this token is unmanaged
-            if (assetManager != address(0)) {
-                // Should never have a non-zero asset manager here
-                // pool token calls above will revert if the token has already been registered,
-                // so we should only get here during pool creation (or adding new tokens)
-                // Calling unregister will remove the asset manager, so it should be zero on re-registration
-                _poolAssetManagers[poolId][token] = assetManager;
-
-                emit PoolAssetManagerSet(poolId, token, assetManager);
-            }
+              // The asset manager feature is disabled by setting it to the zero address
+            _poolAssetManagers[poolId][token] = assetManager;
+            emit PoolAssetManagerSet(poolId, token, assetManager);
         }
 
         emit TokensRegistered(poolId, tokens);
