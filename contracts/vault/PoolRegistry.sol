@@ -89,8 +89,7 @@ abstract contract PoolRegistry is
      */
     function _getPoolAddress(bytes32 poolId) internal pure returns (address) {
         // | 20 bytes pool address | 2 bytes optimization setting | 10 bytes nonce |
-        address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
-        return address(uint256(poolId) & (2**(20 * 8) - 1));
+        return address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
     }
 
     /**
