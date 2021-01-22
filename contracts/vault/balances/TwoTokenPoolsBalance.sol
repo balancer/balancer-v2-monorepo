@@ -298,7 +298,7 @@ contract TwoTokenPoolsBalance {
         uint128 amount
     ) private {
         TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-        bytes32 pairHash = keccak256(abi.encodePacked(poolTokens.tokenA, poolTokens.tokenB));
+        bytes32 pairHash = _getTwoTokenPairHash(poolTokens.tokenA, poolTokens.tokenB);
         TwoTokenSharedBalances storage poolSharedBalances = _poolTwoTokenSharedBalances[poolId][pairHash];
 
         bytes32 sharedCash = poolSharedBalances.sharedCash;
@@ -325,9 +325,8 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * @dev Returns the balance for a token pair in a Two Token Pool. This doesn't check for token existence: if the
-     * tokens are not in the Pool, it will simply return balances of zero (for both tokens, even if one of them is in
-     * the Pool).
+     * @dev Returns the balance for a token pair in a Two Token Pool, reverting if either of the tokens is
+     * not registered by the Pool.
      *
      * The returned balances are those of token A and token B, where token A is the lowest of token X and token Y, and
      * token B the other.
@@ -354,6 +353,9 @@ contract TwoTokenPoolsBalance {
 
         bytes32 sharedCash = poolSharedBalances.sharedCash;
         bytes32 sharedManaged = poolSharedBalances.sharedManaged;
+
+        // Only registered tokens can have non-zero balances, so we can use this as a shortcut to avoid the
+        // expensive _hasPoolTwoTokens check.
         bool exists = sharedCash.isNotZero() || sharedManaged.isNotZero() || _hasPoolTwoTokens(poolId, tokenA, tokenB);
         require(exists, "ERR_TOKEN_NOT_REGISTERED");
 

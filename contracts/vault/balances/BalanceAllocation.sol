@@ -172,14 +172,14 @@ library BalanceAllocation {
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token A.
      */
     function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedManaged) internal pure returns (bytes32) {
-        return toBalance(decodeBalanceA(sharedCash), decodeBalanceA(sharedManaged));
+        return toBalance(_decodeBalanceA(sharedCash), _decodeBalanceA(sharedManaged));
     }
 
     /**
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token B.
      */
     function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedManaged) internal pure returns (bytes32) {
-        return toBalance(decodeBalanceB(sharedCash), decodeBalanceB(sharedManaged));
+        return toBalance(_decodeBalanceB(sharedCash), _decodeBalanceB(sharedManaged));
     }
 
     /**
@@ -197,19 +197,10 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev Unpacks a shared balance into the corresponding balances for tokens A and B.
-     * Note that this function can be used to decode both cash and managed balances.
-     */
-    function decodeSharedBalances(bytes32 sharedBalance) internal pure returns (uint128 balanceA, uint128 balanceB) {
-        balanceA = decodeBalanceA(sharedBalance);
-        balanceB = decodeBalanceB(sharedBalance);
-    }
-
-    /**
      * @dev Unpacks the balance corresponding to token A for a shared balance
      * Note that this function can be used to decode both cash and managed balances.
      */
-    function decodeBalanceA(bytes32 sharedBalance) internal pure returns (uint128) {
+    function _decodeBalanceA(bytes32 sharedBalance) private pure returns (uint128) {
         return uint128(uint256(sharedBalance >> 128) & _MASK);
     }
 
@@ -217,7 +208,7 @@ library BalanceAllocation {
      * @dev Unpacks the balance corresponding to token B for a shared balance
      * Note that this function can be used to decode both cash and managed balances.
      */
-    function decodeBalanceB(bytes32 sharedBalance) internal pure returns (uint128) {
+    function _decodeBalanceB(bytes32 sharedBalance) private pure returns (uint128) {
         return uint128(uint256(sharedBalance) & _MASK);
     }
 }
