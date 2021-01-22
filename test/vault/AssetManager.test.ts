@@ -38,19 +38,6 @@ describe('assetManager', function () {
       poolId = event.args.poolId;
     });
 
-    it('reverts when querying the asset manager of an unknown pool', async () => {
-      const getManagerQuery = vault.connect(pool).getPoolAssetManager(ZERO_BYTES32, tokens.DAI.address);
-      await expect(getManagerQuery).to.be.revertedWith('Nonexistent pool');
-    });
-
-    it('reverts when querying the asset manager of an unknown token', async () => {
-      const getManagerQuery = vault.connect(pool).getPoolAssetManager(poolId, otherToken.address);
-      await expect(getManagerQuery).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
-
-      const isManagerQuery = vault.connect(pool).isPoolAssetManager(poolId, otherToken.address, other.address);
-      await expect(isManagerQuery).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
-    });
-
     it('different managers can be set for different tokens', async () => {
       await vault
         .connect(pool)
@@ -100,6 +87,23 @@ describe('assetManager', function () {
 
       await vault.connect(pool).registerTokens(poolId, tokenAddresses, assetManagers);
       await vault.connect(pool).addLiquidity(poolId, pool.address, tokenAddresses, tokenAmounts, false);
+    });
+
+    describe('setting', () => {
+      it('reverts when querying the asset manager of an unknown pool', async () => {
+        const error = 'Nonexistent pool';
+        const token = tokens.DAI.address;
+        await expect(vault.connect(pool).getPoolAssetManager(ZERO_BYTES32, token)).to.be.revertedWith(error);
+        await expect(vault.connect(pool).isPoolAssetManager(ZERO_BYTES32, token, token)).to.be.revertedWith(error);
+      });
+
+      it('reverts when querying the asset manager of an unknown token', async () => {
+        for (const token of [ZERO_ADDRESS, otherToken.address]) {
+          const error = 'ERR_TOKEN_NOT_REGISTERED';
+          await expect(vault.connect(pool).getPoolAssetManager(poolId, token)).to.be.revertedWith(error);
+          await expect(vault.connect(pool).isPoolAssetManager(poolId, token, other.address)).to.be.revertedWith(error);
+        }
+      });
     });
 
     describe('transfer to manager', () => {
