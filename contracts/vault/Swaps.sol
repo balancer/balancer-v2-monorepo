@@ -317,7 +317,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      * @dev Performs `swap`, updating the Pool balance. Returns a pair with the amount of tokens going into and out of
      * the Vault as a result of this swap.
      *
-     * This function expects to be called successively with the same `previous` struct, which it updates internally to
+     * This function expects to be called with the `previous` swap struct, which will be updated internally to
      * implement multihop logic.
      */
     function _swapWithPool(
