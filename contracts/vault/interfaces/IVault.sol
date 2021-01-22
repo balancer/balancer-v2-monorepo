@@ -56,6 +56,16 @@ interface IVault {
         address recipient
     ) external;
 
+    /**
+     * @dev Transfers tokens from the caller's Internal Balance, transferring them to `recipient`'s Internal Balance.
+     * This does not charge protocol withdrawal fees.
+     */
+    function transferInternalBalance(
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        address recipient
+    ) external;
+
     // Agents
 
     /**
@@ -195,8 +205,15 @@ interface IVault {
      *
      * Each token in `tokens` must not be already registered before this call. For Pools with the Two Token
      * optimization, `tokens` must have a length of two, that is, both tokens must be registered at the same time.
+     *
+     * Also define the asset manager for each token at registration time
+     * (can be the zero address, if a token is unmanaged)
      */
-    function registerTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+    function registerTokens(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        address[] calldata assetManagers
+    ) external;
 
     event TokensRegistered(bytes32 poolId, IERC20[] tokens);
 
@@ -464,15 +481,6 @@ interface IVault {
     ) external;
 
     // Asset management interface
-
-    /**
-     * @dev Called by a Pool to set its Asset Manager for one of its registered tokens.
-     */
-    function setPoolAssetManager(
-        bytes32 poolId,
-        IERC20 token,
-        address manager
-    ) external;
 
     /**
      * @dev Returns a Pool's Asset Manager for `token`. Asset Managers can manage a Pool's assets by taking

@@ -34,7 +34,11 @@ contract MockVault {
         return bytes32(uint256(msg.sender) << 96); //poolId
     }
 
-    function registerTokens(bytes32, IERC20[] calldata tokens) external {
+    function registerTokens(
+        bytes32,
+        IERC20[] calldata tokens,
+        address[] calldata
+    ) external {
         for (uint256 i = 0; i < tokens.length; ++i) {
             _tokens.push(tokens[i]);
             _currentBalances.push(0);
