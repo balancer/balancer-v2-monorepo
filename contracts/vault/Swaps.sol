@@ -276,9 +276,28 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapInternal memory swap;
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
+            IERC20 tokenIn = tokens[swap.tokenInIndex];
+            IERC20 tokenOut = tokens[swap.tokenOutIndex];
+            require(tokenIn != tokenOut, "Swap for same token");
+
+            if (swap.amount == 0) {
+                if (swaps.length > 1) {
+                    // Sentinel value for multihop logic
+                    // When the amount given is not provided, we use the amount quoted for the previous swap,
+                    // assuming the current swap's token given is the previous' token quoted.
+                    // This makes it possible to e.g. swap a given amount of token A for token B,
+                    // and then use the resulting token B amount to swap for token C.
+                    bool usingPreviousToken = previous.tokenQuoted == _tokenGiven(kind, tokenIn, tokenOut);
+                    require(usingPreviousToken, "Misconstructed multihop swap");
+                    swap.amount = previous.amountQuoted;
+                } else {
+                    revert("Unknown amount in on first swap");
+                }
+            }
 
             (uint128 amountIn, uint128 amountOut) = _swapWithPool(
-                tokens,
+                tokenIn,
+                tokenOut,
                 swap,
                 funds.sender,
                 funds.recipient,
@@ -298,35 +317,19 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      * @dev Performs `swap`, updating the Pool balance. Returns a pair with the amount of tokens going into and out of
      * the Vault as a result of this swap.
      *
-     * This function expects to be called successively with the same `previous` struct, which it updates internally to
+     * This function expects to be called with the `previous` swap struct, which will be updated internally to
      * implement multihop logic.
      */
     function _swapWithPool(
-        IERC20[] memory tokens,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
         SwapInternal memory swap,
         address from,
         address to,
         LastSwapData memory previous,
         SwapKind kind
     ) private returns (uint128 amountIn, uint128 amountOut) {
-        IERC20 tokenIn = tokens[swap.tokenInIndex];
-        IERC20 tokenOut = tokens[swap.tokenOutIndex];
-        require(tokenIn != tokenOut, "Swap for same token");
-
         uint128 amountGiven = swap.amount.toUint128();
-
-        // Sentinel value for multihop logic
-        if (amountGiven == 0) {
-            // When the amount given is not provided, we use the amount quoted for the previous swap, assuming the
-            // current swap's token given is the previous' token quoted.
-            // This makes it possible to e.g. swap a given amount of token A for token B, and then use the resulting
-            // token B amount to swap for token C.
-
-            require(previous.tokenQuoted != IERC20(0), "Unknown amount in on first swap");
-            require(previous.tokenQuoted == _tokenGiven(kind, tokenIn, tokenOut), "Misconstructed multihop swap");
-
-            amountGiven = previous.amountQuoted;
-        }
 
         QuoteRequestInternal memory request = QuoteRequestInternal({
             tokenIn: tokenIn,

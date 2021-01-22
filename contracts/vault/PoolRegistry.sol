@@ -478,10 +478,10 @@ abstract contract PoolRegistry is
         bool withdrawFromInternalBalance
     ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Not technically necessary since the transfer call would fail
+            // We are not checking for non-zero token addresses here for two reasons:
+            // 1. Not technically necessary since the transfer call would fail
+            // 2. Pools can't register the zero address as a token, it's already ensured at that point
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "Token is the zero address");
-
             uint256 toReceive = amounts[i];
             if (toReceive > 0) {
                 if (withdrawFromInternalBalance) {
@@ -526,10 +526,10 @@ abstract contract PoolRegistry is
         bool depositToInternalBalance
     ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Not technically necessary since the transfer call would fail
+            // We are not checking for non-zero token addresses here for two reasons:
+            // 1. Not technically necessary since the transfer call would fail
+            // 2. Pools can't register the zero address as a token, it's already ensured at that point
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "Token is the zero address");
-
             uint256 amount256 = amounts[i];
             uint128 amount128 = amount256.toUint128();
             if (amount256 > 0) {
