@@ -79,10 +79,10 @@ abstract contract PoolRegistry is
     ) internal pure returns (bytes32) {
         uint256 serialized;
 
-        // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
-        serialized |= uint256(nonce) << (22 * 8);
-        serialized |= uint256(optimization) << (20 * 8);
-        serialized |= uint256(pool);
+        // | 20 bytes pool address | 2 bytes optimization setting | 10 bytes nonce |
+        serialized |= uint256(nonce);
+        serialized |= uint256(optimization) << (10 * 8);
+        serialized |= uint256(pool) << (12 * 8);
 
         return bytes32(serialized);
     }
@@ -92,9 +92,9 @@ abstract contract PoolRegistry is
      * done with no storage accesses.
      */
     function _getPoolData(bytes32 poolId) internal pure returns (address, PoolOptimization) {
-        // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
-        address pool = address(uint256(poolId) & (2**(20 * 8) - 1));
-        PoolOptimization optimization = PoolOptimization(uint256(poolId >> (20 * 8)) & (2**(2 * 8) - 1));
+        // | 20 bytes pool address | 2 bytes optimization setting | 10 bytes nonce |
+        address pool = address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
+        PoolOptimization optimization = PoolOptimization(uint256(poolId >> (10 * 8)) & (2**(2 * 8) - 1));
 
         return (pool, optimization);
     }
