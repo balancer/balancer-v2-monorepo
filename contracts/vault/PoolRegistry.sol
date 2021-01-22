@@ -549,8 +549,7 @@ abstract contract PoolRegistry is
     // Assets under management
 
     modifier onlyPoolAssetManager(bytes32 poolId, IERC20 token) {
-        _ensureExistingPool(poolId);
-        require(_isPoolAssetManager(poolId, token, msg.sender), "SENDER_NOT_ASSET_MANAGER");
+        _ensurePoolAssetManagerIsSender(poolId, token);
         _;
     }
 
@@ -577,14 +576,6 @@ abstract contract PoolRegistry is
     {
         _ensureTokenRegistered(poolId, token);
         return _poolAssetManagers[poolId][token];
-    }
-
-    function isPoolAssetManager(
-        bytes32 poolId,
-        IERC20 token,
-        address account
-    ) external view override withExistingPool(poolId) returns (bool) {
-        return _isPoolAssetManager(poolId, token, account);
     }
 
     function withdrawFromPoolBalance(
@@ -634,15 +625,6 @@ abstract contract PoolRegistry is
         } else {
             _setStandardPoolManagedBalance(poolId, token, amount.toUint128());
         }
-    }
-
-    function _isPoolAssetManager(
-        bytes32 poolId,
-        IERC20 token,
-        address account
-    ) internal view returns (bool) {
-        _ensureTokenRegistered(poolId, token);
-        return _poolAssetManagers[poolId][token] == account;
     }
 
     function paySwapProtocolFees(
@@ -704,6 +686,12 @@ abstract contract PoolRegistry is
 
     function _ensureTokenRegistered(bytes32 poolId, IERC20 token) internal view {
         require(_isTokenRegistered(poolId, token), "ERR_TOKEN_NOT_REGISTERED");
+    }
+
+    function _ensurePoolAssetManagerIsSender(bytes32 poolId, IERC20 token) internal view {
+        _ensureExistingPool(poolId);
+        _ensureTokenRegistered(poolId, token);
+        require(_poolAssetManagers[poolId][token] == msg.sender, "SENDER_NOT_ASSET_MANAGER");
     }
 
     function _isTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
