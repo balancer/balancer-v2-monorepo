@@ -4,7 +4,7 @@ import { BigNumber, BigNumberish, Contract } from 'ethers';
 import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256 } from '../helpers/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { PoolOptimizationSetting, SimplifiedQuotePool, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
@@ -77,7 +77,7 @@ describe('Vault - join & exit pool', () => {
           .map((address) => address.toLowerCase())
           .sort();
 
-        await pool.registerTokens(tokenAddresses);
+        await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
         // Perform an initial join so that the pool has balance that can be charged as fees
         await pool.setOnJoinExitPoolReturnValues(
@@ -417,7 +417,7 @@ describe('Vault - join & exit pool', () => {
           .map((address) => address.toLowerCase())
           .sort();
 
-        await pool.registerTokens(tokenAddresses);
+        await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
         // Perform an initial join so that the pool has balance that can be exited and charged as fees
         await pool.setOnJoinExitPoolReturnValues(

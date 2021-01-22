@@ -69,6 +69,7 @@ describe('WeightedPool', function () {
     const poolWeights = WEIGHTS.slice(0, numberOfTokens);
     const poolInitialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     async function deployPool({ tokens, balances, weights, swapFee }: any = {}) {
       return deployPoolFromFactory(vault, admin, 'WeightedPool', {
         from: creator,
@@ -139,6 +140,14 @@ describe('WeightedPool', function () {
           expect(await vault.getPoolTokenBalances(poolId, poolTokens)).to.deep.equal(poolInitialBalances);
         });
 
+        it('sets the asset managers', async () => {
+          const poolId = await pool.getPoolId();
+
+          for (const symbol in tokens) {
+            expect(await vault.getPoolAssetManager(poolId, tokens[symbol].address)).to.equal(ZERO_ADDRESS);
+          }
+        });
+
         it('sets token weights', async () => {
           expect(await pool.getWeights(poolTokens)).to.deep.equal(poolWeights);
         });
@@ -169,8 +178,16 @@ describe('WeightedPool', function () {
 
         it('reverts if the number of tokens and weights do not match', async () => {
           const weights = poolWeights.slice(1);
-
           await expect(deployPool({ weights })).to.be.revertedWith('Create2: Failed on deploy');
+        });
+
+        it('initializes the asset managers', async () => {
+          const pool = await deployPool();
+          const poolId = await pool.getPoolId();
+
+          for (const symbol in tokens) {
+            expect(await vault.getPoolAssetManager(poolId, tokens[symbol].address)).to.equal(ZERO_ADDRESS);
+          }
         });
 
         it('reverts if there is a single token', async () => {
@@ -874,7 +891,7 @@ describe('WeightedPool', function () {
         vault.address,
         name,
         symbol,
-        0, //Initial BPT is always cero
+        0, //Initial BPT is always zero
         poolTokens,
         ['0', '0'], //Initial Balances are empty
         admin.address,
