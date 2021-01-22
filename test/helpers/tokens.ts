@@ -37,8 +37,16 @@ export async function deploySortedTokens(
   decimals: Array<number>,
   from?: SignerWithAddress
 ): Promise<TokenList> {
+  const [defaultDeployer] = await ethers.getSigners();
+  const deployer = from || defaultDeployer;
   return fromPairs(
-    (await Promise.all(symbols.map((_, i) => deploy('TestToken', { from, args: [`T${i}`, `T${i}`, decimals[i]] }))))
+    (
+      await Promise.all(
+        symbols.map((_, i) =>
+          deploy('TestToken', { from: deployer, args: [deployer.address, `T${i}`, `T${i}`, decimals[i]] })
+        )
+      )
+    )
       .sort((tokenA, tokenB) => (tokenA.address.toLowerCase() > tokenB.address.toLowerCase() ? 1 : -1))
       .map((token, index) => [symbols[index], token])
   );
