@@ -80,16 +80,13 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
     ) external override nonReentrant {
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
-            uint128 amount = amounts[i].toUint128();
-
-            // If zero is specified use current balance.
             uint128 currentBalance = _internalTokenBalance[msg.sender][token];
-            uint128 amountToTransfer = (amount == 0) ? currentBalance : amount;
-            require(amountToTransfer > 0 && amountToTransfer <= currentBalance, "ERR_NOT_ENOUGH_INTERNAL_BALANCE");
+            uint128 amount = amounts[i].toUint128();
+            require(amount <= currentBalance, "ERR_NOT_ENOUGH_INTERNAL_BALANCE");
 
-            _internalTokenBalance[msg.sender][token] -= amountToTransfer;
-            _internalTokenBalance[recipient][token] = _internalTokenBalance[recipient][token].add128(amountToTransfer);
-            emit Transferred(msg.sender, recipient, token, amountToTransfer);
+            _internalTokenBalance[msg.sender][token] = currentBalance - amount;
+            _internalTokenBalance[recipient][token] = _internalTokenBalance[recipient][token].add128(amount);
+            emit Transferred(msg.sender, recipient, token, amount);
         }
     }
 }

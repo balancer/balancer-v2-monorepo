@@ -1,8 +1,10 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
+import { Dictionary } from 'lodash';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { bn } from '../helpers/numbers';
 import { deploy } from '../../scripts/helpers/deploy';
 import { MAX_UINT128 } from '../helpers/constants';
 import * as expectEvent from '../helpers/expectEvent';
@@ -147,7 +149,7 @@ describe('Vault - internal balance', () => {
       tokenAddresses = Object.values(tokens).map((token) => token.address);
     });
 
-    function depositInitialBalances(initialBalances: any) {
+    function depositInitialBalances(initialBalances: Dictionary<BigNumber>) {
       beforeEach('deposit initial balances', async () => {
         for (const symbol in tokens) {
           const token = tokens[symbol];
@@ -159,114 +161,111 @@ describe('Vault - internal balance', () => {
       });
     }
 
-    function itHandlesTransfersProperly(transferredAmounts: any, expectedAmounts = transferredAmounts) {
+    function itHandlesTransfersProperly(transferredAmounts: Dictionary<BigNumber>) {
       const amounts = Object.values(transferredAmounts);
 
-      context('when the recipient can hold more tokens', () => {
-        it('transfers the tokens from the sender to the recipient', async () => {
-          const previousBalances: any = {};
+      it('transfers the tokens from the sender to the recipient', async () => {
+        const previousBalances: Dictionary<Dictionary<BigNumber>> = {};
 
-          for (const symbol in tokens) {
-            const senderBalance = await vault.getInternalBalance(trader.address, tokens[symbol].address);
-            const recipientBalance = await vault.getInternalBalance(user.address, tokens[symbol].address);
-            previousBalances[symbol] = { sender: senderBalance, recipient: recipientBalance };
-          }
+        for (const symbol in tokens) {
+          const senderBalance = await vault.getInternalBalance(trader.address, tokens[symbol].address);
+          const recipientBalance = await vault.getInternalBalance(user.address, tokens[symbol].address);
+          previousBalances[symbol] = { sender: senderBalance, recipient: recipientBalance };
+        }
 
-          await vault.transferInternalBalance(tokenAddresses, amounts, user.address);
+        await vault.transferInternalBalance(tokenAddresses, amounts, user.address);
 
-          for (const symbol in tokens) {
-            const senderBalance = await vault.getInternalBalance(trader.address, tokens[symbol].address);
-            expect(senderBalance).to.equal(previousBalances[symbol].sender.sub(expectedAmounts[symbol]));
+        for (const symbol in tokens) {
+          const senderBalance = await vault.getInternalBalance(trader.address, tokens[symbol].address);
+          expect(senderBalance).to.equal(previousBalances[symbol].sender.sub(transferredAmounts[symbol]));
 
-            const recipientBalance = await vault.getInternalBalance(user.address, tokens[symbol].address);
-            expect(recipientBalance).to.equal(previousBalances[symbol].recipient.add(expectedAmounts[symbol]));
-          }
-        });
-
-        it('does not affect the token balances of the sender nor the recipient', async () => {
-          const previousBalances: any = {};
-
-          for (const symbol in tokens) {
-            const senderBalance = await tokens[symbol].balanceOf(trader.address);
-            const recipientBalance = await tokens[symbol].balanceOf(user.address);
-            previousBalances[symbol] = { sender: senderBalance, recipient: recipientBalance };
-          }
-
-          await vault.transferInternalBalance(tokenAddresses, amounts, user.address);
-
-          for (const symbol in tokens) {
-            const senderBalance = await tokens[symbol].balanceOf(trader.address);
-            expect(senderBalance).to.equal(previousBalances[symbol].sender);
-
-            const recipientBalance = await tokens[symbol].balanceOf(user.address);
-            expect(recipientBalance).to.equal(previousBalances[symbol].recipient);
-          }
-        });
-
-        it('emits an event for each transfer', async () => {
-          const receipt = await (await vault.transferInternalBalance(tokenAddresses, amounts, user.address)).wait();
-
-          expectEvent.inReceipt(receipt, 'Transferred', {
-            from: trader.address,
-            to: user.address,
-            token: tokens.DAI.address,
-            amount: expectedAmounts.DAI,
-          });
-
-          expectEvent.inReceipt(receipt, 'Transferred', {
-            from: trader.address,
-            to: user.address,
-            token: tokens.MKR.address,
-            amount: expectedAmounts.MKR,
-          });
-        });
+          const recipientBalance = await vault.getInternalBalance(user.address, tokens[symbol].address);
+          expect(recipientBalance).to.equal(previousBalances[symbol].recipient.add(transferredAmounts[symbol]));
+        }
       });
 
-      context('when the recipient cannot hold any more tokens', () => {
-        beforeEach('deposit huge amount to recipient', async () => {
-          await mintTokens(tokens, 'DAI', user, MAX_UINT128);
-          await tokens.DAI.connect(user).approve(vault.address, MAX_UINT128);
-          await vault.connect(user).depositToInternalBalance(tokens.DAI.address, MAX_UINT128, user.address);
+      it('does not affect the token balances of the sender nor the recipient', async () => {
+        const previousBalances: Dictionary<Dictionary<BigNumber>> = {};
+
+        for (const symbol in tokens) {
+          const senderBalance = await tokens[symbol].balanceOf(trader.address);
+          const recipientBalance = await tokens[symbol].balanceOf(user.address);
+          previousBalances[symbol] = { sender: senderBalance, recipient: recipientBalance };
+        }
+
+        await vault.transferInternalBalance(tokenAddresses, amounts, user.address);
+
+        for (const symbol in tokens) {
+          const senderBalance = await tokens[symbol].balanceOf(trader.address);
+          expect(senderBalance).to.equal(previousBalances[symbol].sender);
+
+          const recipientBalance = await tokens[symbol].balanceOf(user.address);
+          expect(recipientBalance).to.equal(previousBalances[symbol].recipient);
+        }
+      });
+
+      it('emits an event for each transfer', async () => {
+        const receipt = await (await vault.transferInternalBalance(tokenAddresses, amounts, user.address)).wait();
+
+        expectEvent.inReceipt(receipt, 'Transferred', {
+          from: trader.address,
+          to: user.address,
+          token: tokens.DAI.address,
+          amount: transferredAmounts.DAI,
         });
 
-        it('reverts', async () => {
-          const transfer = vault.transferInternalBalance(tokenAddresses, amounts, user.address);
-          await expect(transfer).to.be.revertedWith('ERR_ADD_OVERFLOW');
+        expectEvent.inReceipt(receipt, 'Transferred', {
+          from: trader.address,
+          to: user.address,
+          token: tokens.MKR.address,
+          amount: transferredAmounts.MKR,
         });
       });
     }
 
-    function itReverts(transferredAmounts: any) {
+    function itReverts(transferredAmounts: Dictionary<BigNumber>, errorReason = 'ERR_NOT_ENOUGH_INTERNAL_BALANCE') {
       it('reverts', async () => {
         const transfer = vault.transferInternalBalance(tokenAddresses, Object.values(transferredAmounts), user.address);
-        await expect(transfer).to.be.revertedWith('ERR_NOT_ENOUGH_INTERNAL_BALANCE');
+        await expect(transfer).to.be.revertedWith(errorReason);
       });
     }
 
     context('when the sender specifies some balance', () => {
-      const transferredAmounts = { DAI: (1e16).toString(), MKR: (2e16).toString() };
+      const transferredAmounts = { DAI: bn(1e16), MKR: bn(2e16) };
 
       context('when the sender holds enough balance', () => {
-        depositInitialBalances({ DAI: (1e18).toString(), MKR: (5e19).toString() });
+        depositInitialBalances({ DAI: bn(1e18), MKR: bn(5e19) });
 
-        itHandlesTransfersProperly(transferredAmounts);
+        context('when the recipient can hold more tokens', () => {
+          itHandlesTransfersProperly(transferredAmounts);
+        });
+
+        context('when the recipient cannot hold any more tokens', () => {
+          beforeEach('deposit huge amount to recipient', async () => {
+            await mintTokens(tokens, 'DAI', user, MAX_UINT128);
+            await tokens.DAI.connect(user).approve(vault.address, MAX_UINT128);
+            await vault.connect(user).depositToInternalBalance(tokens.DAI.address, MAX_UINT128, user.address);
+          });
+
+          itReverts(transferredAmounts, 'ERR_ADD_OVERFLOW');
+        });
       });
 
       context('when the sender does not hold said balance', () => {
         context('when the sender does not hold enough balance of one token', () => {
-          depositInitialBalances({ DAI: (10).toString(), MKR: (5e19).toString() });
+          depositInitialBalances({ DAI: bn(10), MKR: bn(5e19) });
 
           itReverts(transferredAmounts);
         });
 
         context('when the sender does not hold enough balance of the other token', () => {
-          depositInitialBalances({ DAI: (1e18).toString(), MKR: (5).toString() });
+          depositInitialBalances({ DAI: bn(1e18), MKR: bn(5) });
 
           itReverts(transferredAmounts);
         });
 
         context('when the sender does not hold enough balance of both tokens', () => {
-          depositInitialBalances({ DAI: (10).toString(), MKR: (5).toString() });
+          depositInitialBalances({ DAI: bn(10), MKR: bn(5) });
 
           itReverts(transferredAmounts);
         });
@@ -274,17 +273,17 @@ describe('Vault - internal balance', () => {
     });
 
     context('when the sender does not specify any balance', () => {
-      const transferredAmounts = { DAI: 0, MKR: 0 };
+      const transferredAmounts = { DAI: bn(0), MKR: bn(0) };
 
       context('when the sender holds some balance', () => {
-        const initialBalances = { DAI: (1e18).toString(), MKR: (5e19).toString() };
+        const initialBalances: Dictionary<BigNumber> = { DAI: bn(1e18), MKR: bn(5e19) };
 
         depositInitialBalances(initialBalances);
-        itHandlesTransfersProperly(transferredAmounts, initialBalances);
+        itHandlesTransfersProperly(transferredAmounts);
       });
 
       context('when the sender does not have any balance', () => {
-        itReverts(transferredAmounts);
+        itHandlesTransfersProperly(transferredAmounts);
       });
     });
   });
