@@ -402,10 +402,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         uint128 tokenInTotalBalance = tokenInBalance.totalBalance();
-        require(tokenInTotalBalance > 0, "Token in not in pool");
-
         uint128 tokenOutTotalBalance = tokenOutBalance.totalBalance();
-        require(tokenOutTotalBalance > 0, "Token out not in pool");
 
         // Perform the quote request and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
@@ -447,12 +444,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapKind kind
     ) private returns (uint128 amountQuoted) {
         bytes32 tokenInBalance = _getSimplifiedQuotePoolBalance(request.poolId, request.tokenIn);
-        uint128 tokenInTotalBalance = tokenInBalance.totalBalance();
-        require(tokenInTotalBalance > 0, "Token A not in pool");
-
         bytes32 tokenOutBalance = _getSimplifiedQuotePoolBalance(request.poolId, request.tokenOut);
+
+        uint128 tokenInTotalBalance = tokenInBalance.totalBalance();
         uint128 tokenOutTotalBalance = tokenOutBalance.totalBalance();
-        require(tokenOutTotalBalance > 0, "Token B not in pool");
 
         // Perform the quote request and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {

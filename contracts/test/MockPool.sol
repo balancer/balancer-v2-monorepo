@@ -43,8 +43,8 @@ contract MockPool is IPool, IPoolQuote, IPoolQuoteSimplified {
         return _poolId;
     }
 
-    function registerTokens(IERC20[] memory tokens) external {
-        _vault.registerTokens(_poolId, tokens);
+    function registerTokens(IERC20[] memory tokens, address[] memory assetManagers) external {
+        _vault.registerTokens(_poolId, tokens, assetManagers);
     }
 
     function unregisterTokens(IERC20[] memory tokens) external {

@@ -64,7 +64,8 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
 
         bytes32 poolId = vault.registerPool(IVault.PoolOptimization.STANDARD);
 
-        vault.registerTokens(poolId, tokens);
+        // Pass in zero addresses for Asset Managers
+        vault.registerTokens(poolId, tokens, new address[](tokens.length));
         vault.addLiquidity(poolId, from, tokens, amounts, false);
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");

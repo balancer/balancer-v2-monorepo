@@ -60,9 +60,7 @@ abstract contract PoolRegistry is
     event PoolAssetManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
 
     modifier onlyPool(bytes32 poolId) {
-        _ensureExistingPool(poolId);
-        address pool = _getPoolAddress(poolId);
-        require(pool == msg.sender, "Caller is not the pool");
+        _ensurePoolIsSender(poolId);
         _;
     }
 
@@ -86,7 +84,8 @@ abstract contract PoolRegistry is
     }
 
     /**
-     * @dev Returns a Pool's address. Due to how Pool IDs are created, this is done with no storage access.
+     * @dev Returns a Pool's address. Due to how Pool IDs are created, this is done with no storage
+     * accesses and costs little gas.
      */
     function _getPoolAddress(bytes32 poolId) internal pure returns (address) {
         // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
@@ -94,7 +93,8 @@ abstract contract PoolRegistry is
     }
 
     /**
-     * @dev Returns a Pool's optimization setting. Due to how Pool IDs are created, this is done with no storage access.
+     * @dev Returns a Pool's optimization setting. Due to how Pool IDs are created, this is done with no storage
+     * accesses and costs little gas.
      */
     function _getPoolOptimization(bytes32 poolId) internal pure returns (PoolOptimization) {
         // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
@@ -189,7 +189,11 @@ abstract contract PoolRegistry is
         return (_getPoolAddress(poolId), _getPoolOptimization(poolId));
     }
 
-    function registerTokens(bytes32 poolId, IERC20[] calldata tokens) external override nonReentrant onlyPool(poolId) {
+    function registerTokens(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        address[] calldata assetManagers
+    ) external override nonReentrant onlyPool(poolId) {
         PoolOptimization optimization = _getPoolOptimization(poolId);
         if (optimization == PoolOptimization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
@@ -198,6 +202,16 @@ abstract contract PoolRegistry is
             _registerSimplifiedQuotePoolTokens(poolId, tokens);
         } else {
             _registerStandardPoolTokens(poolId, tokens);
+        }
+
+        // Assign each token's asset manager
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            address assetManager = assetManagers[i];
+            IERC20 token = tokens[i];
+
+            // The asset manager feature is disabled by setting it to the zero address
+            _poolAssetManagers[poolId][token] = assetManager;
+            emit PoolAssetManagerSet(poolId, token, assetManager);
         }
 
         emit TokensRegistered(poolId, tokens);
@@ -217,6 +231,12 @@ abstract contract PoolRegistry is
             _unregisterSimplifiedQuotePoolTokens(poolId, tokens);
         } else {
             _unregisterStandardPoolTokens(poolId, tokens);
+        }
+
+        // The unregister calls above ensure the token balance is zero
+        // So safe to remove any associated asset managers
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            delete _poolAssetManagers[poolId][tokens[i]];
         }
 
         emit TokensUnregistered(poolId, tokens);
@@ -316,7 +336,7 @@ abstract contract PoolRegistry is
         }
 
         // Grant tokens to pools - how this is done depends on the Pool optimization setting
-        (, PoolOptimization optimization) = _getPoolData(poolId);
+        PoolOptimization optimization = _getPoolOptimization(poolId);
         if (optimization == PoolOptimization.TWO_TOKEN) {
             _alterTwoTokenPoolCash(poolId, tokens[0], poolBalanceDeltas[0], tokens[1], poolBalanceDeltas[1]);
         } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
@@ -389,7 +409,7 @@ abstract contract PoolRegistry is
         }
 
         // Grant tokens to pools - how this is done depends on the Pool optimization setting
-        (, PoolOptimization optimization) = _getPoolData(poolId);
+        PoolOptimization optimization = _getPoolOptimization(poolId);
         if (optimization == PoolOptimization.TWO_TOKEN) {
             _decreaseTwoTokenPoolCash(
                 poolId,
@@ -413,7 +433,7 @@ abstract contract PoolRegistry is
         uint256[] memory maxAmountsIn,
         bytes memory userData
     ) private returns (uint256[] memory, uint256[] memory) {
-        (address pool, ) = _getPoolData(poolId);
+        address pool = _getPoolAddress(poolId);
         uint256[] memory currentBalances = getPoolTokenBalances(poolId, tokens);
 
         return
@@ -436,7 +456,7 @@ abstract contract PoolRegistry is
         uint256[] memory minAmountsOut,
         bytes memory userData
     ) private returns (uint256[] memory, uint256[] memory) {
-        (address pool, ) = _getPoolData(poolId);
+        address pool = _getPoolAddress(poolId);
         uint256[] memory currentBalances = getPoolTokenBalances(poolId, tokens);
 
         return
@@ -546,18 +566,6 @@ abstract contract PoolRegistry is
         } else {
             return _standardPoolIsManaged(poolId, token);
         }
-    }
-
-    function setPoolAssetManager(
-        bytes32 poolId,
-        IERC20 token,
-        address manager
-    ) external override nonReentrant onlyPool(poolId) {
-        require(_poolAssetManagers[poolId][token] == address(0), "CANNOT_RESET_ASSET_MANAGER");
-        require(manager != address(0), "Asset manager is the zero address");
-
-        _poolAssetManagers[poolId][token] = manager;
-        emit PoolAssetManagerSet(poolId, token, manager);
     }
 
     function getPoolAssetManager(bytes32 poolId, IERC20 token)
@@ -684,6 +692,12 @@ abstract contract PoolRegistry is
         }
     }
 
+    function _ensurePoolIsSender(bytes32 poolId) internal view {
+        _ensureExistingPool(poolId);
+        address pool = _getPoolAddress(poolId);
+        require(pool == msg.sender, "Caller is not the pool");
+    }
+
     function _ensureExistingPool(bytes32 poolId) internal view {
         require(_pools.contains(poolId), "Nonexistent pool");
     }
@@ -702,7 +716,7 @@ abstract contract PoolRegistry is
             return _isStandardPoolTokenRegistered(poolId, token);
         }
     }
-    
+
     function _collectProtocolSwapFee(
         IERC20 token,
         uint256 collectedFee,

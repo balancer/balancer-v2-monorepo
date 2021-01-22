@@ -1,13 +1,14 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract, BigNumber } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
-import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
-import { expectBalanceChange } from '../helpers/tokenBalance';
+
 import { deploy } from '../../scripts/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
-import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
+import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
+import { PoolOptimizationSetting, SimplifiedQuotePool, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 
 describe('assetManager', function () {
   let tokens: TokenList;
@@ -25,7 +26,6 @@ describe('assetManager', function () {
   beforeEach('set up asset manager', async () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'USDT'], [18, 18]);
-
     otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
   });
 
@@ -38,18 +38,9 @@ describe('assetManager', function () {
       poolId = event.args.poolId;
     });
 
-    it('has no managers at creation', async () => {
-      await vault.connect(pool).registerTokens(poolId, [tokens.DAI.address]);
-
-      expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(ZERO_ADDRESS);
-    });
-
     it('reverts when querying the asset manager of an unknown pool', async () => {
       const getManagerQuery = vault.connect(pool).getPoolAssetManager(ZERO_BYTES32, tokens.DAI.address);
       await expect(getManagerQuery).to.be.revertedWith('Nonexistent pool');
-
-      const isManagerQuery = vault.connect(pool).isPoolAssetManager(ZERO_BYTES32, tokens.DAI.address, other.address);
-      await expect(isManagerQuery).to.be.revertedWith('Nonexistent pool');
     });
 
     it('reverts when querying the asset manager of an unknown token', async () => {
@@ -61,32 +52,12 @@ describe('assetManager', function () {
     });
 
     it('different managers can be set for different tokens', async () => {
-      await vault.connect(pool).registerTokens(poolId, [tokens.DAI.address, tokens.USDT.address]);
-
-      await vault.connect(pool).setPoolAssetManager(poolId, tokens.DAI.address, assetManager.address);
-      await vault.connect(pool).setPoolAssetManager(poolId, tokens.USDT.address, other.address);
+      await vault
+        .connect(pool)
+        .registerTokens(poolId, [tokens.DAI.address, tokens.USDT.address], [assetManager.address, other.address]);
 
       expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(assetManager.address);
       expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(other.address);
-    });
-
-    it('the manager cannot be changed', async () => {
-      await vault.connect(pool).setPoolAssetManager(poolId, tokens.DAI.address, assetManager.address);
-      await expect(
-        vault.connect(pool).setPoolAssetManager(poolId, tokens.DAI.address, other.address)
-      ).to.be.revertedWith('CANNOT_RESET_ASSET_MANAGER');
-    });
-
-    it('the manager can only be set by the pool be the zero address', async () => {
-      await expect(
-        vault.connect(other).setPoolAssetManager(poolId, tokens.DAI.address, assetManager.address)
-      ).to.be.revertedWith('Caller is not the pool');
-    });
-
-    it('the manager cannot be the zero address', async () => {
-      await expect(
-        vault.connect(pool).setPoolAssetManager(poolId, tokens.DAI.address, ZERO_ADDRESS)
-      ).to.be.revertedWith('Asset manager is the zero address');
     });
   });
 
@@ -114,20 +85,20 @@ describe('assetManager', function () {
 
       const tokenAddresses = [];
       const tokenAmounts = [];
+      const assetManagers = [];
       for (const symbol in tokens) {
         // Mint tokens for the pool to add liquidity with
         await mintTokens(tokens, symbol, pool, tokenInitialBalance);
 
         tokenAddresses.push(tokens[symbol].address);
         tokenAmounts.push(tokenInitialBalance);
+        assetManagers.push(assetManager.address);
 
         await tokens[symbol].connect(pool).approve(vault.address, MAX_UINT256);
-
         await tokens[symbol].connect(assetManager).approve(vault.address, MAX_UINT256);
-        await vault.connect(pool).setPoolAssetManager(poolId, tokens[symbol].address, assetManager.address);
       }
 
-      await vault.connect(pool).registerTokens(poolId, tokenAddresses);
+      await vault.connect(pool).registerTokens(poolId, tokenAddresses, assetManagers);
       await vault.connect(pool).addLiquidity(poolId, pool.address, tokenAddresses, tokenAmounts, false);
     });
 
@@ -157,14 +128,6 @@ describe('assetManager', function () {
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
           });
-        });
-
-        it('reverts when setting a manager for a token not in the pool', async () => {
-          await vault.connect(pool).setPoolAssetManager(poolId, otherToken.address, assetManager.address);
-
-          await expect(
-            vault.connect(assetManager).withdrawFromPoolBalance(poolId, otherToken.address, 0)
-          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
 
         it('reverts when sending more than the pool balance', async () => {
@@ -226,14 +189,6 @@ describe('assetManager', function () {
           await expect(
             vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, 1)
           ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
-        });
-
-        it('reverts when cashing out a token not in the pool', async () => {
-          await vault.connect(pool).setPoolAssetManager(poolId, otherToken.address, assetManager.address);
-
-          await expect(
-            vault.connect(assetManager).depositToPoolBalance(poolId, otherToken.address, 0)
-          ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
         });
       });
 
@@ -299,18 +254,48 @@ describe('assetManager', function () {
         });
       });
 
-      it('revert if setting a token not in the pool', async () => {
-        await vault.connect(pool).setPoolAssetManager(poolId, otherToken.address, assetManager.address);
-
-        await expect(
-          vault.connect(assetManager).updateManagedBalance(poolId, otherToken.address, 0)
-        ).to.be.revertedWith('ERR_TOKEN_NOT_REGISTERED');
-      });
-
       it('revert if the sender is not the manager', async () => {
         await expect(vault.connect(other).updateManagedBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
           'SENDER_NOT_ASSET_MANAGER'
         );
+      });
+
+      it('removes asset managers when unregistering', async () => {
+        // First asset the managers are set
+        expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(assetManager.address);
+        expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(assetManager.address);
+
+        // Balances must be zero to unregister
+        await vault
+          .connect(pool)
+          .removeLiquidity(
+            poolId,
+            pool.address,
+            [tokens.DAI.address, tokens.USDT.address],
+            [tokenInitialBalance, tokenInitialBalance],
+            false
+          );
+
+        // Unregistering tokens should remove the asset managers
+        await vault.connect(pool).unregisterTokens(poolId, [tokens.DAI.address, tokens.USDT.address]);
+
+        for (const symbol in tokens) {
+          const token = tokens[symbol].address;
+          const error = 'ERR_TOKEN_NOT_REGISTERED';
+          await expect(vault.getPoolAssetManager(poolId, token)).to.be.revertedWith(error);
+          await expect(vault.isPoolAssetManager(poolId, token, assetManager.address)).to.be.revertedWith(error);
+        }
+
+        // Should also be able to re-register (just one in this case)
+        await vault
+          .connect(pool)
+          .registerTokens(poolId, [tokens.DAI.address, tokens.USDT.address], [assetManager.address, ZERO_ADDRESS]);
+
+        expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(assetManager.address);
+        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, assetManager.address)).to.be.true;
+        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, other.address)).to.be.false;
+
+        expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(ZERO_ADDRESS);
       });
     });
   }
