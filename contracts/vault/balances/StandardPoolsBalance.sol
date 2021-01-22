@@ -25,7 +25,9 @@ import "../../vendor/EnumerableMap.sol";
 
 contract StandardPoolsBalance {
     using SafeCast for uint256;
+    using FixedPoint for int256;
     using BalanceAllocation for bytes32;
+
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     // Data for Pools with Standard Pool Optimization setting
@@ -130,6 +132,25 @@ contract StandardPoolsBalance {
         }
     }
 
+    function _alterStandardPoolCash(
+        bytes32 poolId,
+        IERC20[] memory tokens,
+        int256[] memory amounts
+    ) internal {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _standardPoolsBalances[poolId];
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            int256 amount = amounts[i];
+
+            _updateStandardPoolBalance(
+                poolBalances,
+                tokens[i],
+                amount > 0 ? BalanceAllocation.increaseCash : BalanceAllocation.decreaseCash,
+                amount.abs().toUint128()
+            );
+        }
+    }
+
     /**
      * @dev Removes cash from a Standard Pool for a list of tokens. This function doesn't check that the lengths of
      * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
@@ -199,6 +220,7 @@ contract StandardPoolsBalance {
         uint128 amount
     ) internal {
         bytes32 currentBalance = _getStandardPoolTokenBalance(poolBalances, token);
+
         poolBalances.set(token, mutation(currentBalance, amount));
     }
 

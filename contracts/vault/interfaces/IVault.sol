@@ -195,8 +195,15 @@ interface IVault {
      *
      * Each token in `tokens` must not be already registered before this call. For Pools with the Two Token
      * optimization, `tokens` must have a length of two, that is, both tokens must be registered at the same time.
+     *
+     * Also define the asset manager for each token at registration time
+     * (can be the zero address, if a token is unmanaged)
      */
-    function registerTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+    function registerTokens(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        address[] calldata assetManagers
+    ) external;
 
     event TokensRegistered(bytes32 poolId, IERC20[] tokens);
 
@@ -211,6 +218,24 @@ interface IVault {
     function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
 
     event TokensUnregistered(bytes32 poolId, IERC20[] tokens);
+
+    function joinPool(
+        bytes32 poolId,
+        address recipient,
+        IERC20[] memory tokens,
+        uint256[] memory maxAmountsIn,
+        bool withdrawFromUserBalance,
+        bytes memory userData
+    ) external;
+
+    function exitPool(
+        bytes32 poolId,
+        address recipient,
+        IERC20[] memory tokens,
+        uint256[] memory minAmountsOut,
+        bool depositToUserBalance,
+        bytes memory userData
+    ) external;
 
     /**
      * @dev Called by the Pool to add tokens to its balance. Only registered tokens can have liquidity added.
@@ -446,15 +471,6 @@ interface IVault {
     ) external;
 
     // Asset management interface
-
-    /**
-     * @dev Called by a Pool to set its Asset Manager for one of its registered tokens.
-     */
-    function setPoolAssetManager(
-        bytes32 poolId,
-        IERC20 token,
-        address manager
-    ) external;
 
     /**
      * @dev Returns a Pool's Asset Manager for `token`. Asset Managers can manage a Pool's assets by taking

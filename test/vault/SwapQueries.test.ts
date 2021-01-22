@@ -14,6 +14,7 @@ import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
 describe('Vault - swap queries', () => {
   let vault: Contract, funds: FundManagement;
   let tokens: TokenList, tokenAddresses: string[];
+  let assetManagers: string[];
   let lp: SignerWithAddress;
   const poolIds: string[] = [];
 
@@ -27,6 +28,7 @@ describe('Vault - swap queries', () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
+    assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
 
     for (const symbol in tokens) {
       await tokens[symbol].mint(lp.address, MAX_UINT128.div(2));
@@ -39,7 +41,7 @@ describe('Vault - swap queries', () => {
 
       await vault.connect(lp).addUserAgent(pool.address);
 
-      await pool.connect(lp).registerTokens(tokenAddresses);
+      await pool.connect(lp).registerTokens(tokenAddresses, assetManagers);
 
       await pool.connect(lp).addLiquidity(
         tokenAddresses,

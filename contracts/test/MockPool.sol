@@ -15,15 +15,18 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
+import "../vault/interfaces/IPool.sol";
 import "../vault/interfaces/IPoolQuote.sol";
 import "../vault/interfaces/IPoolQuoteSimplified.sol";
 
 import "../math/FixedPoint.sol";
 
-contract MockPool is IPoolQuote, IPoolQuoteSimplified {
+contract MockPool is IPool, IPoolQuote, IPoolQuoteSimplified {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -40,12 +43,67 @@ contract MockPool is IPoolQuote, IPoolQuoteSimplified {
         return _poolId;
     }
 
-    function registerTokens(IERC20[] memory tokens) external {
-        _vault.registerTokens(_poolId, tokens);
+    function registerTokens(IERC20[] memory tokens, address[] memory assetManagers) external {
+        _vault.registerTokens(_poolId, tokens, assetManagers);
     }
 
     function unregisterTokens(IERC20[] memory tokens) external {
         _vault.unregisterTokens(_poolId, tokens);
+    }
+
+    uint256[] private _onJoinExitPoolAmounts;
+    uint256[] private _onJoinPoolDueProtocolFeeAmounts;
+
+    function setOnJoinExitPoolReturnValues(uint256[] memory amounts, uint256[] memory dueProtocolFeeAmounts) external {
+        delete _onJoinExitPoolAmounts;
+        for (uint256 i = 0; i < amounts.length; ++i) {
+            _onJoinExitPoolAmounts.push(amounts[i]);
+        }
+
+        delete _onJoinPoolDueProtocolFeeAmounts;
+        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
+            _onJoinPoolDueProtocolFeeAmounts.push(dueProtocolFeeAmounts[i]);
+        }
+    }
+
+    function onJoinPool(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) external view override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
+        amountsIn = new uint256[](_onJoinExitPoolAmounts.length);
+        for (uint256 i = 0; i < amountsIn.length; ++i) {
+            amountsIn[i] = _onJoinExitPoolAmounts[i];
+        }
+
+        dueProtocolFeeAmounts = new uint256[](_onJoinPoolDueProtocolFeeAmounts.length);
+        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
+            dueProtocolFeeAmounts[i] = _onJoinPoolDueProtocolFeeAmounts[i];
+        }
+    }
+
+    function onExitPool(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) external view override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
+        amountsOut = new uint256[](_onJoinExitPoolAmounts.length);
+        for (uint256 i = 0; i < amountsOut.length; ++i) {
+            amountsOut[i] = _onJoinExitPoolAmounts[i];
+        }
+
+        dueProtocolFeeAmounts = new uint256[](_onJoinPoolDueProtocolFeeAmounts.length);
+        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
+            dueProtocolFeeAmounts[i] = _onJoinPoolDueProtocolFeeAmounts[i];
+        }
     }
 
     function addLiquidity(IERC20[] memory tokens, uint256[] memory amounts) external {
