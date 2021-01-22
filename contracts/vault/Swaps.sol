@@ -358,7 +358,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         private
         returns (uint128 amountQuoted)
     {
-        (address pool, PoolOptimization optimization) = _getPoolData(request.poolId);
+        address pool = _getPoolAddress(request.poolId);
+        PoolOptimization optimization = _getPoolOptimization(request.poolId);
 
         if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
             amountQuoted = _processSimplifiedQuotePoolQuoteRequest(request, IPoolQuoteSimplified(pool), kind);
