@@ -60,9 +60,7 @@ abstract contract PoolRegistry is
     event PoolAssetManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
 
     modifier onlyPool(bytes32 poolId) {
-        _ensureExistingPool(poolId);
-        address pool = _getPoolAddress(poolId);
-        require(pool == msg.sender, "Caller is not the pool");
+        _ensurePoolIsSender(poolId);
         _;
     }
 
@@ -86,7 +84,8 @@ abstract contract PoolRegistry is
     }
 
     /**
-     * @dev Returns a Pool's address. Due to how Pool IDs are created, this is done with no storage access.
+     * @dev Returns a Pool's address. Due to how Pool IDs are created, this is done with no storage
+     * accesses and costs little gas.
      */
     function _getPoolAddress(bytes32 poolId) internal pure returns (address) {
         // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
@@ -94,7 +93,8 @@ abstract contract PoolRegistry is
     }
 
     /**
-     * @dev Returns a Pool's optimization setting. Due to how Pool IDs are created, this is done with no storage access.
+     * @dev Returns a Pool's optimization setting. Due to how Pool IDs are created, this is done with no storage
+     * accesses and costs little gas.
      */
     function _getPoolOptimization(bytes32 poolId) internal pure returns (PoolOptimization) {
         // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
@@ -683,7 +683,13 @@ abstract contract PoolRegistry is
         }
     }
 
-    function _ensureExistingPool(bytes32 poolId) internal view {
+    function _ensurePoolIsSender(bytes32 poolId) private view {
+        _ensureExistingPool(poolId);
+        address pool = _getPoolAddress(poolId);
+        require(pool == msg.sender, "Caller is not the pool");
+    }
+
+    function _ensureExistingPool(bytes32 poolId) private view {
         require(_pools.contains(poolId), "Nonexistent pool");
     }
 
