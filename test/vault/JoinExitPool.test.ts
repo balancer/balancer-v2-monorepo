@@ -5,7 +5,7 @@ import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
-import { PoolOptimizationSetting, SimplifiedQuotePool, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 let admin: SignerWithAddress;
@@ -52,24 +52,24 @@ describe('Vault - join & exit pool', () => {
   }
 
   describe('joinPool', async () => {
-    describe('with standard pool', () => {
-      itJoinsPoolCorrectly(StandardPool, 3);
+    describe('with general pool', () => {
+      itJoinsPoolCorrectly(GeneralPool, 3);
     });
 
-    describe('with simplified quote pool', () => {
-      itJoinsPoolCorrectly(SimplifiedQuotePool, 3);
+    describe('with minimal swap info pool', () => {
+      itJoinsPoolCorrectly(MinimalSwapInfoPool, 3);
     });
 
     describe('with two token pool', () => {
       itJoinsPoolCorrectly(TwoTokenPool, 2);
     });
 
-    function itJoinsPoolCorrectly(optimization: PoolOptimizationSetting, tokenAmount: number) {
+    function itJoinsPoolCorrectly(specialization: PoolSpecializationSetting, tokenAmount: number) {
       let pool: Contract;
       let poolId: string;
 
       beforeEach(async () => {
-        pool = await deploy('MockPool', { args: [vault.address, optimization] });
+        pool = await deploy('MockPool', { args: [vault.address, specialization] });
         poolId = await pool.getPoolId();
 
         tokenAddresses = tokenAddresses
@@ -392,24 +392,24 @@ describe('Vault - join & exit pool', () => {
   });
 
   describe('exitPool', async () => {
-    describe('with standard pool', () => {
-      itExitsPoolCorrectly(StandardPool, 3);
+    describe('with general pool', () => {
+      itExitsPoolCorrectly(GeneralPool, 3);
     });
 
-    describe('with simplified quote pool', () => {
-      itExitsPoolCorrectly(SimplifiedQuotePool, 3);
+    describe('with minimal swap info pool', () => {
+      itExitsPoolCorrectly(MinimalSwapInfoPool, 3);
     });
 
     describe('with two token pool', () => {
       itExitsPoolCorrectly(TwoTokenPool, 2);
     });
 
-    function itExitsPoolCorrectly(optimization: PoolOptimizationSetting, tokenAmount: number) {
+    function itExitsPoolCorrectly(specialization: PoolSpecializationSetting, tokenAmount: number) {
       let pool: Contract;
       let poolId: string;
 
       beforeEach(async () => {
-        pool = await deploy('MockPool', { args: [vault.address, optimization] });
+        pool = await deploy('MockPool', { args: [vault.address, specialization] });
         poolId = await pool.getPoolId();
 
         tokenAddresses = tokenAddresses

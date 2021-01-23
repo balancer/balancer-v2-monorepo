@@ -27,15 +27,15 @@ import "./InternalBalance.sol";
 import "./interfaces/IPool.sol";
 
 import "./balances/BalanceAllocation.sol";
-import "./balances/StandardPoolsBalance.sol";
-import "./balances/SimplifiedQuotePoolsBalance.sol";
+import "./balances/GeneralPoolsBalance.sol";
+import "./balances/MinimalSwapInfoPoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
 
 abstract contract PoolRegistry is
     ReentrancyGuard,
     InternalBalance,
-    StandardPoolsBalance,
-    SimplifiedQuotePoolsBalance,
+    GeneralPoolsBalance,
+    MinimalSwapInfoPoolsBalance,
     TwoTokenPoolsBalance
 {
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -66,18 +66,18 @@ abstract contract PoolRegistry is
 
     /**
      * @dev Returns a Pool ID. These are deterministically created, by packing into the ID the Pool address and its
-     * optimization setting. In order to make them unique, a nonce is also added.
+     * specialization setting. In order to make them unique, a nonce is also added.
      */
     function _toPoolId(
         address pool,
-        PoolOptimization optimization,
+        PoolSpecialization specialization,
         uint80 nonce
     ) internal pure returns (bytes32) {
         uint256 serialized;
 
-        // | 20 bytes pool address | 2 bytes optimization setting | 10 bytes nonce |
+        // | 20 bytes pool address | 2 bytes specialization setting | 10 bytes nonce |
         serialized |= uint256(nonce);
-        serialized |= uint256(optimization) << (10 * 8);
+        serialized |= uint256(specialization) << (10 * 8);
         serialized |= uint256(pool) << (12 * 8);
 
         return bytes32(serialized);
@@ -88,23 +88,23 @@ abstract contract PoolRegistry is
      * accesses and costs little gas.
      */
     function _getPoolAddress(bytes32 poolId) internal pure returns (address) {
-        // | 20 bytes pool address | 2 bytes optimization setting | 10 bytes nonce |
+        // | 20 bytes pool address | 2 bytes specialization setting | 10 bytes nonce |
         return address((uint256(poolId) >> (12 * 8)) & (2**(20 * 8) - 1));
     }
 
     /**
-     * @dev Returns a Pool's optimization setting. Due to how Pool IDs are created, this is done with no storage
+     * @dev Returns a Pool's specialization setting. Due to how Pool IDs are created, this is done with no storage
      * accesses and costs little gas.
      */
-    function _getPoolOptimization(bytes32 poolId) internal pure returns (PoolOptimization) {
-        // | 20 bytes pool address | 2 bytes optimization setting | 10 bytes nonce |
-        return PoolOptimization(uint256(poolId >> (10 * 8)) & (2**(2 * 8) - 1));
+    function _getPoolSpecialization(bytes32 poolId) internal pure returns (PoolSpecialization) {
+        // | 20 bytes pool address | 2 bytes specialization setting | 10 bytes nonce |
+        return PoolSpecialization(uint256(poolId >> (10 * 8)) & (2**(2 * 8) - 1));
     }
 
-    function registerPool(PoolOptimization optimization) external override nonReentrant returns (bytes32) {
+    function registerPool(PoolSpecialization specialization) external override nonReentrant returns (bytes32) {
         // We use the Pool length as the Pool ID creation nonce. Since Pools cannot be deleted, nonces are unique. This
         // however assumes there will never be more than than 2**80 Pools.
-        bytes32 poolId = _toPoolId(msg.sender, optimization, uint80(_pools.length()));
+        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_pools.length()));
 
         bool added = _pools.add(poolId);
         require(added, "Pool ID already exists");
@@ -130,14 +130,14 @@ abstract contract PoolRegistry is
     }
 
     function getPoolTokens(bytes32 poolId) public view override withExistingPool(poolId) returns (IERC20[] memory) {
-        PoolOptimization optimization = _getPoolOptimization(poolId);
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
 
-        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _getSimplifiedQuotePoolTokens(poolId);
-        } else if (optimization == PoolOptimization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            return _getMinimalSwapInfoPoolTokens(poolId);
+        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             return _getTwoTokenPoolTokens(poolId);
         } else {
-            return _getStandardPoolTokens(poolId);
+            return _getGeneralPoolTokens(poolId);
         }
     }
 
@@ -150,15 +150,15 @@ abstract contract PoolRegistry is
      */
     function _getPoolTokenBalance(
         bytes32 poolId,
-        PoolOptimization optimization,
+        PoolSpecialization specialization,
         IERC20 token
     ) internal view returns (bytes32) {
-        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _getSimplifiedQuotePoolBalance(poolId, token);
-        } else if (optimization == PoolOptimization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            return _getMinimalSwapInfoPoolBalance(poolId, token);
+        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             return _getTwoTokenPoolBalance(poolId, token);
         } else {
-            return _getStandardPoolBalance(poolId, token);
+            return _getGeneralPoolBalance(poolId, token);
         }
     }
 
@@ -169,11 +169,11 @@ abstract contract PoolRegistry is
         withExistingPool(poolId)
         returns (uint256[] memory)
     {
-        PoolOptimization optimization = _getPoolOptimization(poolId);
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
 
         uint256[] memory balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _getPoolTokenBalance(poolId, optimization, tokens[i]).totalBalance();
+            balances[i] = _getPoolTokenBalance(poolId, specialization, tokens[i]).totalBalance();
         }
 
         return balances;
@@ -184,9 +184,9 @@ abstract contract PoolRegistry is
         view
         override
         withExistingPool(poolId)
-        returns (address, PoolOptimization)
+        returns (address, PoolSpecialization)
     {
-        return (_getPoolAddress(poolId), _getPoolOptimization(poolId));
+        return (_getPoolAddress(poolId), _getPoolSpecialization(poolId));
     }
 
     function registerTokens(
@@ -194,14 +194,14 @@ abstract contract PoolRegistry is
         IERC20[] calldata tokens,
         address[] calldata assetManagers
     ) external override nonReentrant onlyPool(poolId) {
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.TWO_TOKEN) {
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
             _registerTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
-        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _registerSimplifiedQuotePoolTokens(poolId, tokens);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _registerMinimalSwapInfoPoolTokens(poolId, tokens);
         } else {
-            _registerStandardPoolTokens(poolId, tokens);
+            _registerGeneralPoolTokens(poolId, tokens);
         }
 
         // Assign each token's asset manager
@@ -223,14 +223,14 @@ abstract contract PoolRegistry is
         nonReentrant
         onlyPool(poolId)
     {
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.TWO_TOKEN) {
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
             _unregisterTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
-        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _unregisterSimplifiedQuotePoolTokens(poolId, tokens);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _unregisterMinimalSwapInfoPoolTokens(poolId, tokens);
         } else {
-            _unregisterStandardPoolTokens(poolId, tokens);
+            _unregisterGeneralPoolTokens(poolId, tokens);
         }
 
         // The unregister calls above ensure the token balance is zero
@@ -255,15 +255,15 @@ abstract contract PoolRegistry is
         // Receive all tokens
         _receiveLiquidity(from, tokens, amounts, withdrawFromInternalBalance);
 
-        // Grant tokens to pools - how this is done depends on the Pool optimization setting
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.TWO_TOKEN) {
+        // Grant tokens to pools - how this is done depends on the Pool specialization setting
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
             _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
-        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _increaseSimplifiedQuotePoolCash(poolId, tokens, amounts);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _increaseMinimalSwapInfoPoolCash(poolId, tokens, amounts);
         } else {
-            _increaseStandardPoolCash(poolId, tokens, amounts);
+            _increaseGeneralPoolCash(poolId, tokens, amounts);
         }
     }
 
@@ -335,14 +335,14 @@ abstract contract PoolRegistry is
             poolBalanceDeltas[i] = SignedSafeMath.sub(amountIn, feeToPay);
         }
 
-        // Grant tokens to pools - how this is done depends on the Pool optimization setting
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.TWO_TOKEN) {
+        // Grant tokens to pools - how this is done depends on the Pool specialization setting
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             _alterTwoTokenPoolCash(poolId, tokens[0], poolBalanceDeltas[0], tokens[1], poolBalanceDeltas[1]);
-        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _alterSimplifiedQuotePoolCash(poolId, tokens, poolBalanceDeltas);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _alterMinimalSwapInfoPoolCash(poolId, tokens, poolBalanceDeltas);
         } else {
-            _alterStandardPoolCash(poolId, tokens, poolBalanceDeltas);
+            _alterGeneralPoolCash(poolId, tokens, poolBalanceDeltas);
         }
     }
 
@@ -408,9 +408,9 @@ abstract contract PoolRegistry is
             poolBalanceDeltas[i] = amountOut.add(feeToPay);
         }
 
-        // Grant tokens to pools - how this is done depends on the Pool optimization setting
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.TWO_TOKEN) {
+        // Grant tokens to pools - how this is done depends on the Pool specialization setting
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             _decreaseTwoTokenPoolCash(
                 poolId,
                 tokens[0],
@@ -418,10 +418,10 @@ abstract contract PoolRegistry is
                 tokens[1],
                 poolBalanceDeltas[1].toUint128()
             );
-        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _decreaseSimplifiedQuotePoolCash(poolId, tokens, poolBalanceDeltas);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _decreaseMinimalSwapInfoPoolCash(poolId, tokens, poolBalanceDeltas);
         } else {
-            _decreaseStandardPoolCash(poolId, tokens, poolBalanceDeltas);
+            _decreaseGeneralPoolCash(poolId, tokens, poolBalanceDeltas);
         }
     }
 
@@ -504,15 +504,15 @@ abstract contract PoolRegistry is
     ) external override nonReentrant onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
-        // Deduct tokens from pools - how this is done depends on the Pool optimization setting
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.TWO_TOKEN) {
+        // Deduct tokens from pools - how this is done depends on the Pool specialization setting
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
             _decreaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
-        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _decreaseSimplifiedQuotePoolCash(poolId, tokens, amounts);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _decreaseMinimalSwapInfoPoolCash(poolId, tokens, amounts);
         } else {
-            _decreaseStandardPoolCash(poolId, tokens, amounts);
+            _decreaseGeneralPoolCash(poolId, tokens, amounts);
         }
 
         // Send all tokens
@@ -555,15 +555,15 @@ abstract contract PoolRegistry is
 
     function _poolIsManaged(
         bytes32 poolId,
-        PoolOptimization optimization,
+        PoolSpecialization specialization,
         IERC20 token
     ) internal view returns (bool) {
-        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _simplifiedQuotePoolIsManaged(poolId, token);
-        } else if (optimization == PoolOptimization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            return _minimalSwapInfoPoolIsManaged(poolId, token);
+        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             return _twoTokenPoolIsManaged(poolId, token);
         } else {
-            return _standardPoolIsManaged(poolId, token);
+            return _generalPoolIsManaged(poolId, token);
         }
     }
 
@@ -583,13 +583,13 @@ abstract contract PoolRegistry is
         IERC20 token,
         uint256 amount
     ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _simplifiedQuotePoolCashToManaged(poolId, token, amount.toUint128());
-        } else if (optimization == PoolOptimization.TWO_TOKEN) {
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _minimalSwapInfoPoolCashToManaged(poolId, token, amount.toUint128());
+        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolCashToManaged(poolId, token, amount.toUint128());
         } else {
-            _standardPoolCashToManaged(poolId, token, amount.toUint128());
+            _generalPoolCashToManaged(poolId, token, amount.toUint128());
         }
 
         token.safeTransfer(msg.sender, amount);
@@ -602,13 +602,13 @@ abstract contract PoolRegistry is
     ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _simplifiedQuotePoolManagedToCash(poolId, token, amount.toUint128());
-        } else if (optimization == PoolOptimization.TWO_TOKEN) {
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _minimalSwapInfoPoolManagedToCash(poolId, token, amount.toUint128());
+        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolManagedToCash(poolId, token, amount.toUint128());
         } else {
-            _standardPoolManagedToCash(poolId, token, amount.toUint128());
+            _generalPoolManagedToCash(poolId, token, amount.toUint128());
         }
     }
 
@@ -617,13 +617,13 @@ abstract contract PoolRegistry is
         IERC20 token,
         uint256 amount
     ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            _setSimplifiedQuotePoolManagedBalance(poolId, token, amount.toUint128());
-        } else if (optimization == PoolOptimization.TWO_TOKEN) {
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount.toUint128());
+        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             _setTwoTokenPoolManagedBalance(poolId, token, amount.toUint128());
         } else {
-            _setStandardPoolManagedBalance(poolId, token, amount.toUint128());
+            _setGeneralPoolManagedBalance(poolId, token, amount.toUint128());
         }
     }
 
@@ -635,9 +635,9 @@ abstract contract PoolRegistry is
         require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
 
         uint128 swapFee = getProtocolSwapFee().toUint128();
-        PoolOptimization optimization = _getPoolOptimization(poolId);
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
 
-        if (optimization == PoolOptimization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
 
             IERC20 tokenX = tokens[0];
@@ -648,16 +648,16 @@ abstract contract PoolRegistry is
             _decreaseTwoTokenPoolCash(poolId, tokenX, feeToCollectTokenX, tokenY, feeToCollectTokenY);
         } else {
             uint256[] memory feesToCollect = _collectProtocolSwapFees(tokens, collectedFees, swapFee);
-            if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-                _decreaseSimplifiedQuotePoolCash(poolId, tokens, feesToCollect);
+            if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+                _decreaseMinimalSwapInfoPoolCash(poolId, tokens, feesToCollect);
             } else {
-                _decreaseStandardPoolCash(poolId, tokens, feesToCollect);
+                _decreaseGeneralPoolCash(poolId, tokens, feesToCollect);
             }
         }
 
         balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _getPoolTokenBalance(poolId, optimization, tokens[i]).totalBalance();
+            balances[i] = _getPoolTokenBalance(poolId, specialization, tokens[i]).totalBalance();
         }
 
         return balances;
@@ -695,13 +695,13 @@ abstract contract PoolRegistry is
     }
 
     function _isTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        PoolOptimization optimization = _getPoolOptimization(poolId);
-        if (optimization == PoolOptimization.TWO_TOKEN) {
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             return _isTwoTokenPoolTokenRegistered(poolId, token);
-        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
-            return _isSimplifiedQuotePoolTokenRegistered(poolId, token);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            return _isMinimalSwapInfoPoolTokenRegistered(poolId, token);
         } else {
-            return _isStandardPoolTokenRegistered(poolId, token);
+            return _isGeneralPoolTokenRegistered(poolId, token);
         }
     }
 

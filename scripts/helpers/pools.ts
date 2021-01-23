@@ -3,11 +3,11 @@ import { Contract, ContractReceipt, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import { deploy } from './deploy';
 
-export const StandardPool = 0;
-export const SimplifiedQuotePool = 1;
+export const GeneralPool = 0;
+export const MinimalSwapInfoPool = 1;
 export const TwoTokenPool = 2;
 
-export type PoolOptimizationSetting = typeof SimplifiedQuotePool | typeof StandardPool | typeof TwoTokenPool;
+export type PoolSpecializationSetting = typeof MinimalSwapInfoPool | typeof GeneralPool | typeof TwoTokenPool;
 export type PoolName = 'WeightedPool' | 'StablePool';
 
 /**

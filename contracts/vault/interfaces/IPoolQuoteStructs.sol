@@ -17,8 +17,8 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IPoolQuoteStructs {
-    // This is not really an interface - it just defines common structs used by other interfaces: IPoolQuote and
-    // IPoolQuoteSimplified.
+    // This is not really an interface - it just defines common structs used by other interfaces: IGeneralPoolQuote and
+    // IMinimalSwapInfoPoolQuote.
 
     // This data structure represents a request for a token swap, where the amount received by the Pool is known.
     //

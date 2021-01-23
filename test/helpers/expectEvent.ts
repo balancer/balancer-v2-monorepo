@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
+import { Interface } from 'ethers/lib/utils';
 
 // Ported from @openzeppelin/test-helpers to use with Ethers. The Test Helpers don't
 // yet have Typescript typings, so we're being lax about them here.
@@ -13,6 +14,41 @@ export function inReceipt(receipt: ContractReceipt, eventName: string, eventArgs
   }
 
   const events = receipt.events.filter((e) => e.event === eventName);
+  expect(events.length > 0).to.equal(true, `No '${eventName}' events found`);
+
+  const exceptions: Array<string> = [];
+  const event = events.find(function (e) {
+    for (const [k, v] of Object.entries(eventArgs)) {
+      try {
+        if (e.args == undefined) {
+          throw new Error('Event has no arguments');
+        }
+
+        contains(e.args, k, v);
+      } catch (error) {
+        exceptions.push(error);
+        return false;
+      }
+    }
+    return true;
+  });
+
+  if (event === undefined) {
+    // Each event entry may have failed to match for different reasons,
+    // throw the first one
+    throw exceptions[0];
+  }
+
+  return event;
+}
+
+export function inIndirectReceipt(
+  receipt: ContractReceipt,
+  emitter: Interface,
+  eventName: string,
+  eventArgs = {}
+): any {
+  const events = receipt.logs.map((log) => emitter.parseLog(log)).filter((event) => event.name === eventName);
   expect(events.length > 0).to.equal(true, `No '${eventName}' events found`);
 
   const exceptions: Array<string> = [];

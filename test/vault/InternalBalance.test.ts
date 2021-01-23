@@ -121,7 +121,7 @@ describe('Vault - internal balance', () => {
         await vault.depositToInternalBalance(tokens.DAI.address, depositedAmount, sender.address);
       });
 
-      const itHandlesWithdrawsProperly = (amount: BigNumber) => {
+      const itHandlesWithdrawalsProperly = (amount: BigNumber) => {
         context('without protocol withdraw fees', () => {
           it('transfers the tokens from the vault to recipient', async () => {
             await expectBalanceChange(
@@ -189,19 +189,19 @@ describe('Vault - internal balance', () => {
       context('when requesting all the available balance', () => {
         const amount = depositedAmount;
 
-        itHandlesWithdrawsProperly(amount);
+        itHandlesWithdrawalsProperly(amount);
       });
 
       context('when requesting part of the balance', () => {
         const amount = depositedAmount.div(2);
 
-        itHandlesWithdrawsProperly(amount);
+        itHandlesWithdrawalsProperly(amount);
       });
 
       context('when requesting no balance', () => {
         const amount = bn(0);
 
-        itHandlesWithdrawsProperly(amount);
+        itHandlesWithdrawalsProperly(amount);
       });
 
       context('with requesting more balance than available', () => {
