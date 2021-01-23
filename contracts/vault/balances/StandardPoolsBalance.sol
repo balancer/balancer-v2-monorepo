@@ -84,7 +84,7 @@ contract StandardPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "ERR_TOKEN_IS_ZERO");
+            require(token != IERC20(0), "ERR_TOKEN_CANT_BE_ZERO");
             bool added = poolBalances.set(token, 0);
             require(added, "ERR_TOKEN_ALREADY_REGISTERED");
             // No need to delete the balance entries, since they already are zero
