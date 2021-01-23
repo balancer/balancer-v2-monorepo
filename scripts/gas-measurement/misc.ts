@@ -24,8 +24,10 @@ export async function setupEnvironment(): Promise<{
   const validator = await deploy('OneToOneSwapValidator', { args: [] });
 
   const tokens = await deployTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
-  const tokenAddresses = Object.keys(tokens);
 
+  const symbols = Object.keys(tokens);
+  const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
+  
   for (const symbol in tokens) {
     // creator tokens are used to add liquidity to pools, but minted when required
     await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
@@ -39,7 +41,6 @@ export async function setupEnvironment(): Promise<{
   await vault
     .connect(trader)
     .depositToInternalBalance(tokenAddresses, Array(tokenAddresses.length).fill((1e18).toString()), trader.address);
-  //await vault.connect(trader).depositToInternalBalance(tokens[symbol].address, (1e18).toString(), trader.address);
 
   return { vault, validator, tokens, trader };
 }
