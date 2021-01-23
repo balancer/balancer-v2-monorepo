@@ -173,6 +173,16 @@ describe('Vault - internal balance', () => {
               { account: recipient, changes: { DAI: amount.sub(pct(amount, protocolWithdrawFee)) } }
             );
           });
+
+          it('protocol fees are collected', async () => {
+            const previousCollectedFees = await vault.getCollectedFeesByToken(tokens.DAI.address);
+
+            await vault.withdrawFromInternalBalance(tokens.DAI.address, amount, recipient.address);
+
+            const currentCollectedFees = await vault.getCollectedFeesByToken(tokens.DAI.address);
+
+            expect(currentCollectedFees.sub(previousCollectedFees)).to.equal(pct(amount, protocolWithdrawFee));
+          });
         });
       };
 
@@ -193,10 +203,19 @@ describe('Vault - internal balance', () => {
 
         itHandlesWithdrawsProperly(amount);
       });
+
+      context('with requesting more balance than available', () => {
+        const amount = depositedAmount.add(1);
+
+        it('reverts', async () => {
+          const withdraw = vault.withdrawFromInternalBalance(tokens.DAI.address, amount, recipient.address);
+          await expect(withdraw).to.be.revertedWith('Vault: withdraw amount exceeds balance');
+        });
+      });
     });
 
-    context('when the sender does not have enough internal balance', () => {
-      const amount = depositedAmount.add(1);
+    context('when the sender does not have any internal balance', () => {
+      const amount = 1;
 
       it('reverts', async () => {
         const withdraw = vault.withdrawFromInternalBalance(tokens.DAI.address, amount, recipient.address);
