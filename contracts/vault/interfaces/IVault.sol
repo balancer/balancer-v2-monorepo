@@ -229,6 +229,21 @@ interface IVault {
 
     event TokensUnregistered(bytes32 poolId, IERC20[] tokens);
 
+    /**
+     * @dev Called by users to join a Pool, transferring tokens into its balance. The `IPool.onJoinPool` hook will be
+     * called on the Pool by the Vault, which will typically grant something to the user in return - often tokenized
+     * Pool shares.
+     *
+     * `maxAmountsIn` is the maximum amount of tokens the user is willing to provide to the Pool, for each token in the
+     * `tokens` array. This array must match the Pool's registered tokens, obtainable via `getPoolTokens`.
+     *
+     * Pools are free to implement any arbitrary logic in the `IPool.onJoinPool` hook, and may require additional
+     * information (such as the expected number of Pool shares to obtain). This can be encoded in the `userData`
+     * argument, which is ignored by the Vault and passed directly to the Pool, as is `recipient`.
+     *
+     * If `withdrawFromUserBalance` is true, the caller's Internal Balance will be preferred, performing an ERC20
+     * transfer for the difference between the requested amount and Internal Balance (if any).
+     */
     function joinPool(
         bytes32 poolId,
         address recipient,
@@ -238,6 +253,21 @@ interface IVault {
         bytes memory userData
     ) external;
 
+    /**
+     * @dev Called by users to exit a Pool, transferring tokens from its balance. The `IPool.onExitPool` hook will be
+     * called on the Pool by the Vault, which will typically take something to the user in return - often tokenized
+     * Pool shares.
+     *
+     * `minAmountsOut` is the minimum amount of tokens the user expects to get out of the Pool, for each token in the
+     * `tokens` array. This array must match the Pool's registered tokens, obtainable via `getPoolTokens`.
+     *
+     * Pools are free to implement any arbitrary logic in the `IPool.onExitPool` hook, and may require additional
+     * information (such as the number of Pool shares to provide). This can be encoded in the `userData` argument, which
+     * is ignored by the Vault and passed directly to the Pool.
+     *
+     * If `depositToUserBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
+     * an ERC20 transfer will be performed, and charged protocol withdraw fees accordingly.
+     */
     function exitPool(
         bytes32 poolId,
         address recipient,
@@ -248,6 +278,8 @@ interface IVault {
     ) external;
 
     /**
+     * Deprecated: use joinPool instead.
+     *
      * @dev Called by the Pool to add tokens to its balance. Only registered tokens can have liquidity added.
      *
      * The tokens will be withdrawn from the `from` account, which the Pool must be an agent for. If
@@ -264,6 +296,8 @@ interface IVault {
     ) external;
 
     /**
+     * Deprecated: use exitPool instead.
+     *
      * @dev Called by the Pool to remove tokens from its balance. Only registered tokens can have liquidity removed.
      *
      * The tokens will be sent to the `to` account. If `_depositToInternalBalance` is true, they will be added as
@@ -487,6 +521,15 @@ interface IVault {
      * them out of the Vault via `withdrawFromPoolBalance`, `depositToPoolBalance` and `updateManagedBalance`.
      */
     function getPoolAssetManager(bytes32 poolId, IERC20 token) external view returns (address);
+
+    /**
+     * @dev Tells whether a given account is the Pool's Asset Manager for `token` or not.
+     */
+    function isPoolAssetManager(
+        bytes32 poolId,
+        IERC20 token,
+        address account
+    ) external view returns (bool);
 
     /**
      * @dev Called by a Pool's Asset Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
