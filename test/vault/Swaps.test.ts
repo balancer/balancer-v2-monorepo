@@ -9,9 +9,10 @@ import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
+import { BigNumberish } from '../helpers/numbers';
 import { deployTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
-import { BigNumberish, Comparison, expectBalanceChange } from '../helpers/tokenBalance';
+import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
