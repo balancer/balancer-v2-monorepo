@@ -141,7 +141,7 @@ describe('Vault - internal balance', () => {
             expect(currentSenderBalance).to.be.equal(previousSenderBalance.sub(amount));
 
             const currentRecipientBalance = await vault.getInternalBalance(recipient.address, tokens.DAI.address);
-            expect(previousRecipientBalance).to.be.equal(currentRecipientBalance);
+            expect(currentRecipientBalance).to.be.equal(previousRecipientBalance);
           });
 
           it('emits an event', async () => {
