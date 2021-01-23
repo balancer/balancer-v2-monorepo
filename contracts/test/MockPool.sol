@@ -106,14 +106,6 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         }
     }
 
-    function addLiquidity(IERC20[] memory tokens, uint256[] memory amounts) external {
-        _vault.addLiquidity(_poolId, msg.sender, tokens, amounts, false);
-    }
-
-    function removeLiquidity(IERC20[] memory tokens, uint256[] memory amounts) external {
-        _vault.removeLiquidity(_poolId, msg.sender, tokens, amounts, false);
-    }
-
     function paySwapProtocolFees(IERC20[] memory tokens, uint256[] memory collectedFees) external {
         uint256[] memory balances = _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
         emit UpdatedBalances(balances);

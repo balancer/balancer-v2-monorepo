@@ -278,40 +278,6 @@ interface IVault {
         bytes memory userData
     ) external;
 
-    /**
-     * Deprecated: use joinPool instead.
-     *
-     * @dev Called by the Pool to add tokens to its balance. Only registered tokens can have liquidity added.
-     *
-     * The tokens will be withdrawn from the `from` account, which the Pool must be an agent for. If
-     * `_withdrawFromInternalBalance` is true, `from`'s Internal Balance will be preferred, performing an ERC20
-     * transfer for the difference between the requested amount and Internal Balance (if any). `from` must have
-     * allowed the Vault to use their tokens via `IERC20.approve()`.
-     */
-    function addLiquidity(
-        bytes32 poolId,
-        address from,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        bool _withdrawFromInternalBalance
-    ) external;
-
-    /**
-     * Deprecated: use exitPool instead.
-     *
-     * @dev Called by the Pool to remove tokens from its balance. Only registered tokens can have liquidity removed.
-     *
-     * The tokens will be sent to the `to` account. If `_depositToInternalBalance` is true, they will be added as
-     * Internal Balance instead of transferred.
-     */
-    function removeLiquidity(
-        bytes32 poolId,
-        address to,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        bool _depositToInternalBalance
-    ) external;
-
     // Swap interface
 
     /**
@@ -432,10 +398,10 @@ interface IVault {
      * If `withdrawFromInternalBalance` is true, `sender`'s Internal Balance will be preferred, performing an ERC20
      * transfer for the difference between the requested amount and the User's Internal Balance (if any). `sender`
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
-     * `addLiquidity`.
+     * `joinPool`.
      *
      * If `depositToInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
-     * transferred. This matches the behavior of `removeLiquidity`.
+     * transferred. This matches the behavior of `exitPool`.
      */
     struct FundManagement {
         address sender;
@@ -574,7 +540,7 @@ interface IVault {
     // Protocol Fees
 
     /**
-     * @dev Returns the Protocol Withdraw Fee. Withdraw fees are applied on `withdraw` and `removeLiquidity` (unless
+     * @dev Returns the Protocol Withdraw Fee. Withdraw fees are applied on `withdraw` and `exitPool` (unless
      * depositing into User's Internal Balance). Swaps and `withdrawFromPoolBalance` are not charged withdraw fees.
      *
      * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.

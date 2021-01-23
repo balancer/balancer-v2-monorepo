@@ -9,7 +9,8 @@ import { MinimalSwapInfoPool } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
 import { deployTokens, TokenList } from '../helpers/tokens';
-import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
+import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
+import { bn } from '../helpers/numbers';
 
 describe('Vault - swap queries', () => {
   let vault: Contract, funds: FundManagement;
@@ -39,16 +40,33 @@ describe('Vault - swap queries', () => {
       const pool = await deploy('MockPool', { args: [vault.address, MinimalSwapInfoPool] });
       await pool.setMultiplier(toFixedPoint(2));
 
-      await vault.connect(lp).addUserAgent(pool.address);
+      const poolId = await pool.getPoolId();
 
-      await pool.connect(lp).registerTokens(tokenAddresses, assetManagers);
+      await pool.setMultiplier(toFixedPoint(2));
 
-      await pool.connect(lp).addLiquidity(
-        tokenAddresses,
-        tokenAddresses.map(() => (100e18).toString())
+      // We sort the tokens when joining to avoid issues with two token pools - since this MockPool ignores Pool
+      // balances and we join with equal amounts, this doesn't cause any difference.
+      const sortedTokenAddresses = [...tokenAddresses].sort((tokenA, tokenB) =>
+        tokenA.toLowerCase() > tokenB.toLowerCase() ? 1 : -1
       );
 
-      poolIds.push(await pool.getPoolId());
+      await pool.registerTokens(sortedTokenAddresses, assetManagers);
+
+      await pool.setOnJoinExitPoolReturnValues(
+        sortedTokenAddresses.map((_) => bn(100e18)),
+        sortedTokenAddresses.map((_) => 0)
+      );
+
+      await vault.connect(lp).joinPool(
+        poolId,
+        lp.address,
+        sortedTokenAddresses,
+        sortedTokenAddresses.map((_) => MAX_UINT256),
+        false,
+        '0x'
+      );
+
+      poolIds.push(poolId);
     }
 
     funds = {

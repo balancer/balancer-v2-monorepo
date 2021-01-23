@@ -45,16 +45,6 @@ contract MockVault {
         }
     }
 
-    function addLiquidity(
-        bytes32,
-        address,
-        IERC20[] calldata,
-        uint256[] calldata,
-        bool
-    ) external {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     function joinPool(
         address poolAddress,
         bytes32 poolId,

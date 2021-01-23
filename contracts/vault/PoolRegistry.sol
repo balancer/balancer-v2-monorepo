@@ -242,31 +242,6 @@ abstract contract PoolRegistry is
         emit TokensUnregistered(poolId, tokens);
     }
 
-    function addLiquidity(
-        bytes32 poolId,
-        address from,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        bool withdrawFromInternalBalance
-    ) external override nonReentrant onlyPool(poolId) {
-        require(isAgentFor(from, msg.sender), "Caller is not an agent");
-        require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
-
-        // Receive all tokens
-        _receiveLiquidity(from, tokens, amounts, withdrawFromInternalBalance);
-
-        // Grant tokens to pools - how this is done depends on the Pool specialization setting
-        PoolSpecialization specialization = _getPoolSpecialization(poolId);
-        if (specialization == PoolSpecialization.TWO_TOKEN) {
-            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
-            _increaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
-        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _increaseMinimalSwapInfoPoolCash(poolId, tokens, amounts);
-        } else {
-            _increaseGeneralPoolCash(poolId, tokens, amounts);
-        }
-    }
-
     function joinPool(
         bytes32 poolId,
         address recipient,
@@ -493,30 +468,6 @@ abstract contract PoolRegistry is
                 token.safeTransferFrom(from, address(this), toReceive);
             }
         }
-    }
-
-    function removeLiquidity(
-        bytes32 poolId,
-        address to,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        bool depositToInternalBalance
-    ) external override nonReentrant onlyPool(poolId) {
-        require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
-
-        // Deduct tokens from pools - how this is done depends on the Pool specialization setting
-        PoolSpecialization specialization = _getPoolSpecialization(poolId);
-        if (specialization == PoolSpecialization.TWO_TOKEN) {
-            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
-            _decreaseTwoTokenPoolCash(poolId, tokens[0], amounts[0].toUint128(), tokens[1], amounts[1].toUint128());
-        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _decreaseMinimalSwapInfoPoolCash(poolId, tokens, amounts);
-        } else {
-            _decreaseGeneralPoolCash(poolId, tokens, amounts);
-        }
-
-        // Send all tokens
-        _withdrawLiquidity(to, tokens, amounts, depositToInternalBalance);
     }
 
     function _withdrawLiquidity(
