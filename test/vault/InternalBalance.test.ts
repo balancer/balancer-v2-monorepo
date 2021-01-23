@@ -196,7 +196,7 @@ describe('Vault - internal balance', () => {
     });
 
     context('when the sender does not have enough internal balance', () => {
-      const amount = bn(1e18);
+      const amount = depositedAmount.add(1);
 
       it('reverts', async () => {
         const withdraw = vault.withdrawFromInternalBalance(tokens.DAI.address, amount, recipient.address);
