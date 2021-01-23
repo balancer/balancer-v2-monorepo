@@ -24,6 +24,7 @@ describe('WeightedPool', function () {
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
+  let tokenAddresses: string[];
 
   const INITIAL_BPT = bn(90e18);
   const POOL_SWAP_FEE = toFixedPoint(0.01);
@@ -41,6 +42,7 @@ describe('WeightedPool', function () {
     vault = await deploy('Vault', { args: [authorizer.address] });
     tokenList = await deploySortedTokens(SYMBOLS, [18, 18, 18, 18]);
     tokens = Object.values(tokenList);
+    tokenAddresses = Object.values(tokens).map((token) => token.address);
 
     for (const token of tokens) {
       await token.mint(creator.address, bn(100e18));
@@ -268,7 +270,9 @@ describe('WeightedPool', function () {
         it('can withdraw from internal balance', async () => {
           const depositedAmount = bn(1e18);
           await Promise.all(
-            poolTokens.map((token) => vault.connect(lp).depositToInternalBalance(token, depositedAmount, lp.address))
+            poolTokens.map((token) =>
+              vault.connect(lp).depositToInternalBalance([token], [depositedAmount], lp.address)
+            )
           );
 
           await expectBalanceChange(
@@ -278,23 +282,20 @@ describe('WeightedPool', function () {
           );
 
           for (const token of poolTokens) {
-            const internalBalance = await vault.getInternalBalance(lp.address, token);
+            const internalBalance = await vault.getInternalBalance(lp.address, [token]);
             const expectedBalance = depositedAmount.sub(maxAmountsIn[poolTokens.indexOf(token)]);
-            expect(internalBalance).to.equal(expectedBalance);
+            expect(internalBalance[0]).to.equal(expectedBalance);
           }
         });
 
         it('transfers missing tokens if internal balance is not enough', async () => {
-          for (const token of poolTokens) {
-            const internalBalance = await vault.getInternalBalance(lp.address, token);
-            await vault.connect(lp).withdrawFromInternalBalance(token, internalBalance, lp.address);
-          }
-
-          await vault.connect(lp).depositToInternalBalance(poolTokens[0], bn(0.1e18).sub(1), lp.address);
+          const internalBalances = await vault.getInternalBalance(lp.address, tokenAddresses);
+          await vault.connect(lp).withdrawFromInternalBalance(tokenAddresses, internalBalances, lp.address);
+          await vault.connect(lp).depositToInternalBalance([poolTokens[0]], [bn(0.1e18).sub(1)], lp.address);
 
           const otherTokens = poolTokens.slice(1);
           await Promise.all(
-            otherTokens.map((token) => vault.connect(lp).depositToInternalBalance(token, bn(1e18), lp.address))
+            otherTokens.map((token) => vault.connect(lp).depositToInternalBalance([token], [bn(1e18)], lp.address))
           );
 
           await expectBalanceChange(
@@ -461,8 +462,8 @@ describe('WeightedPool', function () {
 
           await Promise.all(
             poolTokens.map(async (token, index) => {
-              const internalBalance = await vault.getInternalBalance(lp.address, token);
-              expect(internalBalance).to.equal(minAmountsOut[index]);
+              const internalBalance = await vault.getInternalBalance(lp.address, [token]);
+              expect(internalBalance[0]).to.equal(minAmountsOut[index]);
             })
           );
         });
@@ -475,8 +476,8 @@ describe('WeightedPool', function () {
           );
 
           for (const token of poolTokens) {
-            const internalBalance = await vault.getInternalBalance(beneficiary.address, token);
-            expect(internalBalance).to.equal(minAmountsOut[poolTokens.indexOf(token)]);
+            const internalBalance = await vault.getInternalBalance(beneficiary.address, [token]);
+            expect(internalBalance[0]).to.equal(minAmountsOut[poolTokens.indexOf(token)]);
           }
         });
 

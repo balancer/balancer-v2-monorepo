@@ -24,6 +24,7 @@ export async function setupEnvironment(): Promise<{
   const validator = await deploy('OneToOneSwapValidator', { args: [] });
 
   const tokens = await deployTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
+  const tokenAddresses = Object.keys(tokens);
 
   for (const symbol in tokens) {
     // creator tokens are used to add liquidity to pools, but minted when required
@@ -32,10 +33,13 @@ export async function setupEnvironment(): Promise<{
     // trader tokens are used to trade and not have non-zero balances
     await mintTokens(tokens, symbol, trader, 200e18);
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
-
-    // deposit internal balance for trader to make it non-zero
-    await vault.connect(trader).depositToInternalBalance(tokens[symbol].address, (1e18).toString(), trader.address);
   }
+
+  // deposit internal balance for trader to make it non-zero
+  await vault
+    .connect(trader)
+    .depositToInternalBalance(tokenAddresses, Array(tokenAddresses.length).fill((1e18).toString()), trader.address);
+  //await vault.connect(trader).depositToInternalBalance(tokens[symbol].address, (1e18).toString(), trader.address);
 
   return { vault, validator, tokens, trader };
 }

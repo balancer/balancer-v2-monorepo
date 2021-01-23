@@ -209,8 +209,9 @@ describe('Vault - pool registry', () => {
       });
 
       it('the pool can add liquidity by withdrawing tokens from the internal balance', async () => {
-        await vault.connect(pool).depositToInternalBalance(tokens.DAI.address, 50, pool.address);
-        await vault.connect(pool).depositToInternalBalance(tokens.MKR.address, 100, pool.address);
+        await vault
+          .connect(pool)
+          .depositToInternalBalance([tokens.DAI.address, tokens.MKR.address], [50, 100], pool.address);
 
         await expectBalanceChange(
           () =>
@@ -221,13 +222,18 @@ describe('Vault - pool registry', () => {
           [{ account: pool }]
         );
 
-        expect(await vault.getInternalBalance(pool.address, tokens.DAI.address)).to.equal(45); // 5 out of 50 taken
-        expect(await vault.getInternalBalance(pool.address, tokens.MKR.address)).to.equal(90); // 10 out of 100 taken
+        // 5 out of 50, and 10 out of 100 taken, respectively
+        expect(
+          (
+            await vault.getInternalBalance(pool.address, [tokens.DAI.address, tokens.MKR.address])
+          ).map((balance: BigNumber) => balance.toString())
+        ).to.deep.equal(['45', '90']);
       });
 
       it('the pool can add liquidity by both transferring and withdrawing tokens from the internal balance', async () => {
-        await vault.connect(pool).depositToInternalBalance(tokens.DAI.address, 3, pool.address);
-        await vault.connect(pool).depositToInternalBalance(tokens.MKR.address, 6, pool.address);
+        await vault
+          .connect(pool)
+          .depositToInternalBalance([tokens.DAI.address, tokens.MKR.address], [3, 6], pool.address);
 
         await expectBalanceChange(
           () =>
@@ -238,8 +244,11 @@ describe('Vault - pool registry', () => {
           [{ account: pool, changes: { DAI: -2, MKR: -4 } }]
         );
 
-        expect(await vault.getInternalBalance(pool.address, tokens.DAI.address)).to.equal(0);
-        expect(await vault.getInternalBalance(pool.address, tokens.MKR.address)).to.equal(0);
+        expect(
+          (
+            await vault.getInternalBalance(pool.address, [tokens.DAI.address, tokens.MKR.address])
+          ).map((balance: BigNumber) => balance.toString())
+        ).to.deep.equal(['0', '0']);
       });
 
       it('non-pool cannot add liquidity', async () => {
@@ -366,8 +375,11 @@ describe('Vault - pool registry', () => {
             [{ account: pool }]
           );
 
-          expect(await vault.getInternalBalance(pool.address, tokens.DAI.address)).to.equal(4);
-          expect(await vault.getInternalBalance(pool.address, tokens.MKR.address)).to.equal(8);
+          expect(
+            (
+              await vault.getInternalBalance(pool.address, [tokens.DAI.address, tokens.MKR.address])
+            ).map((balance: BigNumber) => balance.toString())
+          ).to.deep.equal(['4', '8']);
         });
 
         it('tokens are pushed to lp when removing liquidity', async () => {

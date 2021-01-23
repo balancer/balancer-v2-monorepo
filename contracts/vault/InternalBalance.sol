@@ -40,28 +40,25 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
     event DepositedToInternalBalance(
         address indexed depositor,
         address indexed user,
-        IERC20[] indexed tokens,
-        uint256[] amounts
+        IERC20 indexed token,
+        uint256 amount
     );
 
     event WithdrawnFromInternalBalance(
         address indexed user,
         address indexed recipient,
-        IERC20[] indexed tokens,
-        uint256[] amounts
-    );
-
-    event TransferredInternalBalance(
-        address indexed from,
-        address indexed to,
         IERC20 indexed token,
         uint256 amount
     );
 
-    function getInternalBalance(
-        address user,
-        IERC20[] memory tokens
-    ) external view override returns (uint256[] memory) {
+    event TransferredInternalBalance(address indexed from, address indexed to, IERC20 indexed token, uint256 amount);
+
+    function getInternalBalance(address user, IERC20[] memory tokens)
+        external
+        view
+        override
+        returns (uint256[] memory)
+    {
         uint256[] memory balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -86,10 +83,10 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
             token.safeTransferFrom(msg.sender, address(this), amount);
 
             _internalTokenBalance[user][token] = _internalTokenBalance[user][token].add128(amount.toUint128());
+
+            emit DepositedToInternalBalance(msg.sender, user, token, amount);
         }
-        
-        emit DepositedToInternalBalance(msg.sender, user, tokens, amounts);
-   }
+    }
 
     function withdrawFromInternalBalance(
         IERC20[] memory tokens,
@@ -111,9 +108,9 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
 
             _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
             token.safeTransfer(recipient, amount.sub(feeAmount));
+
+            emit WithdrawnFromInternalBalance(msg.sender, recipient, token, amount);
         }
- 
-        emit WithdrawnFromInternalBalance(msg.sender, recipient, tokens, amounts);
     }
 
     function transferInternalBalance(
@@ -134,6 +131,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
             _internalTokenBalance[recipient][token] = _internalTokenBalance[recipient][token].add128(amount);
 
             emit TransferredInternalBalance(msg.sender, recipient, token, amount);
-         }       
+        }
     }
 }

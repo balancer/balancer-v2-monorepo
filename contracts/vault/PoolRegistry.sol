@@ -247,13 +247,13 @@ abstract contract PoolRegistry is
         address from,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool withdrawFromInternalBalance
+        bool _withdrawFromInternalBalance
     ) external override nonReentrant onlyPool(poolId) {
         require(isAgentFor(from, msg.sender), "Caller is not an agent");
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
         // Receive all tokens
-        _receiveLiquidity(from, tokens, amounts, withdrawFromInternalBalance);
+        _receiveLiquidity(from, tokens, amounts, _withdrawFromInternalBalance);
 
         // Grant tokens to pools - how this is done depends on the Pool specialization setting
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -351,7 +351,7 @@ abstract contract PoolRegistry is
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
-        bool depositToInternalBalance,
+        bool _depositToInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
         require(tokens.length == minAmountsOut.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
@@ -386,7 +386,7 @@ abstract contract PoolRegistry is
 
             // Send token
             if (amountOut > 0) {
-                if (depositToInternalBalance) {
+                if (_depositToInternalBalance) {
                     // Deposit tokens to the recipient's Internal Balance - the Vault's balance doesn't change
                     _internalTokenBalance[recipient][token] = _internalTokenBalance[recipient][token].add128(amountOut);
                 } else {
@@ -475,7 +475,7 @@ abstract contract PoolRegistry is
         address from,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        bool withdrawFromInternalBalance
+        bool _withdrawFromInternalBalance
     ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
             // We are not checking for non-zero token addresses here for two reasons:
@@ -484,7 +484,7 @@ abstract contract PoolRegistry is
             IERC20 token = tokens[i];
             uint256 toReceive = amounts[i];
             if (toReceive > 0) {
-                if (withdrawFromInternalBalance) {
+                if (_withdrawFromInternalBalance) {
                     uint128 toWithdraw = uint128(Math.min(_internalTokenBalance[from][token], toReceive));
                     _internalTokenBalance[from][token] -= toWithdraw;
                     toReceive -= toWithdraw;
@@ -500,7 +500,7 @@ abstract contract PoolRegistry is
         address to,
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
-        bool depositToInternalBalance
+        bool _depositToInternalBalance
     ) external override nonReentrant onlyPool(poolId) {
         require(tokens.length == amounts.length, "Tokens and total amounts length mismatch");
 
@@ -516,14 +516,14 @@ abstract contract PoolRegistry is
         }
 
         // Send all tokens
-        _withdrawLiquidity(to, tokens, amounts, depositToInternalBalance);
+        _withdrawLiquidity(to, tokens, amounts, _depositToInternalBalance);
     }
 
     function _withdrawLiquidity(
         address to,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        bool depositToInternalBalance
+        bool _depositToInternalBalance
     ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
             // We are not checking for non-zero token addresses here for two reasons:
@@ -533,7 +533,7 @@ abstract contract PoolRegistry is
             uint256 amount256 = amounts[i];
             uint128 amount128 = amount256.toUint128();
             if (amount256 > 0) {
-                if (depositToInternalBalance) {
+                if (_depositToInternalBalance) {
                     // Deposit tokens to the recipient User's Internal Balance - the Vault's balance doesn't change
                     _internalTokenBalance[to][token] = _internalTokenBalance[to][token].add128(amount128);
                 } else {
