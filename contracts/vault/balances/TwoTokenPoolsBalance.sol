@@ -372,6 +372,11 @@ contract TwoTokenPoolsBalance {
         return poolTokens.tokenA == tokenA && tokenB == poolTokens.tokenB;
     }
 
+    function _isTwoTokenPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+        return (token == poolTokens.tokenA || token == poolTokens.tokenB) && token != IERC20(0);
+    }
+
     /**
      * @dev Returns a hash associated with a given token pair.
      */
