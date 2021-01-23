@@ -12,8 +12,6 @@ describe('BasePoolFactory', function () {
   let vault: Contract;
   let factory: Contract;
 
-  const salt = ethers.utils.id('salt');
-
   before(async () => {
     [, admin] = await ethers.getSigners();
   });
@@ -24,41 +22,30 @@ describe('BasePoolFactory', function () {
     factory = await deploy('MockPoolFactory', { args: [vault.address] });
   });
 
-  it('reverts if the factory is not authorized', async () => {
-    await expect(factory.create(salt)).to.be.revertedWith('Caller cannot add Universal Agents');
+  it('creates a pool', async () => {
+    const receipt = await (await factory.create()).wait();
+    expectEvent.inReceipt(receipt, 'PoolCreated');
   });
 
-  context('once authorized', () => {
+  context('with pool', () => {
+    let pool: Contract;
+
     beforeEach(async () => {
-      await authorizer.connect(admin).grantRole(await authorizer.ADD_UNIVERSAL_AGENT_ROLE(), factory.address);
+      const receipt = await (await factory.create()).wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+
+      pool = await ethers.getContractAt('MockFactoryCreatedPool', event.args.pool);
     });
 
-    it('creates a pool', async () => {
-      const receipt = await (await factory.create(salt)).wait();
-      expectEvent.inReceipt(receipt, 'PoolCreated');
+    it('reports created pools', async () => {
+      expect(await factory.getNumberOfCreatedPools()).to.equal(1);
+      expect(await factory.getCreatedPoolIds(0, 1)).to.deep.equal([await pool.getPoolId()]);
     });
 
-    it('salt cannot be reused', async () => {
-      await factory.create(salt);
-      await expect(factory.create(salt)).to.be.reverted;
-    });
+    it('creates multiple pools pools', async () => {
+      await factory.create();
 
-    context('with pool', () => {
-      let pool: Contract;
-
-      beforeEach(async () => {
-        const receipt = await (await factory.create(salt)).wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-
-        pool = await ethers.getContractAt('MockFactoryCreatedPool', event.args.pool);
-      });
-
-      it('pool is a universal agent', async () => {
-        // The contract also asserts that it is a universal agent at the time of its construction
-
-        expect(await vault.getNumberOfUniversalAgents()).to.equal(1);
-        expect(await vault.getUniversalAgents(0, 1)).to.have.members([pool.address]);
-      });
+      expect(await factory.getNumberOfCreatedPools()).to.equal(2);
     });
   });
 });

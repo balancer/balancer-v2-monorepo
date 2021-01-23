@@ -22,16 +22,16 @@ import "../../vendor/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../BalancerPoolToken.sol";
-import "../IBPTPool.sol";
 
 import "../../vault/interfaces/IVault.sol";
+import "../../vault/interfaces/IPool.sol";
 import "../../vault/interfaces/IGeneralPoolQuote.sol";
 import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
 
 import "./StableMath.sol";
 
-contract StablePool is IGeneralPoolQuote, IBPTPool, StableMath, BalancerPoolToken, ReentrancyGuard {
+contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -161,13 +161,13 @@ contract StablePool is IGeneralPoolQuote, IBPTPool, StableMath, BalancerPoolToke
 
     function onJoinPool(
         bytes32 poolId,
-        uint256[] memory currentBalances,
         address, // sender - potential whitelisting
         address recipient,
+        uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory, uint256[] memory) {
+    ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
@@ -252,13 +252,13 @@ contract StablePool is IGeneralPoolQuote, IBPTPool, StableMath, BalancerPoolToke
 
     function onExitPool(
         bytes32 poolId,
-        uint256[] memory currentBalances,
         address sender,
         address, //recipient -  potential whitelisting
+        uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory, uint256[] memory) {
+    ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 

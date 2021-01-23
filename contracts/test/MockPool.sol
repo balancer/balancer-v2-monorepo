@@ -37,7 +37,11 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         _vault = vault;
     }
 
-    function getPoolId() external view returns (bytes32) {
+    function getVault() external view override returns (IVault) {
+        return _vault;
+    }
+
+    function getPoolId() external view override returns (bytes32) {
         return _poolId;
     }
 

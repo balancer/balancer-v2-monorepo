@@ -24,17 +24,17 @@ import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
 
 import "../../vault/interfaces/IVault.sol";
+import "../../vault/interfaces/IPool.sol";
 import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
 
 import "../BalancerPoolToken.sol";
-import "../IBPTPool.sol";
 import "./WeightedMath.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract WeightedPool is IBPTPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, WeightedMath, ReentrancyGuard {
+contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -398,13 +398,13 @@ contract WeightedPool is IBPTPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken,
 
     function onJoinPool(
         bytes32 poolId,
-        uint256[] memory currentBalances,
         address, // sender - potential whitelisting
         address recipient,
+        uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory, uint256[] memory) {
+    ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
@@ -500,13 +500,13 @@ contract WeightedPool is IBPTPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken,
 
     function onExitPool(
         bytes32 poolId,
-        uint256[] memory currentBalances,
         address sender,
         address, //recipient -  potential whitelisting
+        uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory, uint256[] memory) {
+    ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 

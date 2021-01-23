@@ -20,10 +20,8 @@ import "../vault/interfaces/IVault.sol";
 import "../pools/BasePoolFactory.sol";
 
 contract MockFactoryCreatedPool {
-    IVault public vault;
-
-    constructor(IVault _vault) {
-        vault = _vault;
+    function getPoolId() external view returns (bytes32) {
+        return bytes32(uint256(address(this)));
     }
 }
 
@@ -31,7 +29,7 @@ contract MockPoolFactory is BasePoolFactory {
     // solhint-disable-next-line no-empty-blocks
     constructor(IVault _vault) BasePoolFactory(_vault) {}
 
-    function create(bytes32 salt) external returns (address) {
-        return _create(abi.encodePacked(type(MockFactoryCreatedPool).creationCode, abi.encode(vault)), salt);
+    function create() external returns (address) {
+        return _create(abi.encodePacked(type(MockFactoryCreatedPool).creationCode));
     }
 }

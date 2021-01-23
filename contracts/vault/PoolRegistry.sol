@@ -47,7 +47,7 @@ abstract contract PoolRegistry is
     using SafeCast for uint256;
     using SafeCast for uint128;
 
-    // Set with all pools in the system
+    // Set with all Pools in the system
     EnumerableSet.Bytes32Set internal _pools;
 
     modifier withExistingPool(bytes32 poolId) {
