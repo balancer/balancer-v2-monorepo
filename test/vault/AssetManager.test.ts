@@ -7,7 +7,7 @@ import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { deploy } from '../../scripts/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
-import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
 
 describe('assetManager', function () {
   let tokens: TokenList;
@@ -30,7 +30,7 @@ describe('assetManager', function () {
     let poolId: string;
 
     beforeEach(async () => {
-      const receipt = await (await vault.connect(pool).registerPool(StandardPool)).wait();
+      const receipt = await (await vault.connect(pool).registerPool(GeneralPool)).wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       poolId = event.args.poolId;
     });
@@ -49,19 +49,19 @@ describe('assetManager', function () {
     });
   });
 
-  context('with standard pool', () => {
-    itManagesAssetsCorrectly(StandardPool);
+  context('with general pool', () => {
+    itManagesAssetsCorrectly(GeneralPool);
   });
 
-  context('with simplified pool', () => {
-    itManagesAssetsCorrectly(SimplifiedQuotePool);
+  context('with minimal swap info pool', () => {
+    itManagesAssetsCorrectly(MinimalSwapInfoPool);
   });
 
   context('with two token pool', () => {
     itManagesAssetsCorrectly(TwoTokenPool);
   });
 
-  function itManagesAssetsCorrectly(poolType: PoolOptimizationSetting) {
+  function itManagesAssetsCorrectly(poolType: PoolSpecializationSetting) {
     let poolId: string;
     const tokenInitialBalance = BigNumber.from((200e18).toString());
 

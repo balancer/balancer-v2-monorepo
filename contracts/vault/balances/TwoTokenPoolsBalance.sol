@@ -30,7 +30,7 @@ contract TwoTokenPoolsBalance {
 
     // Data for Pools with Two Tokens
     //
-    // These are similar to the Simplified Quote Pool case (because the Pool only has two tokens, and therefore there
+    // These are similar to the Minimal Swap Info Pool case (because the Pool only has two tokens, and therefore there
     // are only two balances to read), but there's a key difference in how data is stored. Keeping a set makes little
     // sense, as it will only ever hold two tokens, so we can just store those two directly.
     // The gas savings associated with using these Pools come from how token balances are stored: cash for token A and

@@ -7,7 +7,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { assertEqualWithError, bn } from '../../helpers/numbers';
 import { deploy } from '../../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../../scripts/helpers/fixedPoint';
-import { deployPoolFromFactory, SimplifiedQuotePool, TwoTokenPool } from '../../../scripts/helpers/pools';
+import { deployPoolFromFactory, MinimalSwapInfoPool, TwoTokenPool } from '../../../scripts/helpers/pools';
 import { deploySortedTokens, deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { expectBalanceChange } from '../../helpers/tokenBalance';
@@ -87,7 +87,7 @@ describe('WeightedPool', function () {
       return balances.reduce((changes: any, balance: any, i) => ({ ...changes, [poolSymbols[i]]: balance }), {});
     }
 
-    const itOnlySimplifiedQuotePool = (title: string, test: any) => (numberOfTokens == 2 ? it.skip : it)(title, test);
+    const itOnlyMinimalSwapInfoPool = (title: string, test: any) => (numberOfTokens == 2 ? it.skip : it)(title, test);
 
     beforeEach('define pool tokens', () => {
       poolTokens = tokens.map((token) => token.address).slice(0, numberOfTokens);
@@ -105,11 +105,11 @@ describe('WeightedPool', function () {
           expect(await pool.getVault()).to.equal(vault.address);
         });
 
-        it('uses the corresponding optimization', async () => {
+        it('uses the corresponding specialization', async () => {
           const poolId = await pool.getPoolId();
-          const expectedOptimization = numberOfTokens == 2 ? TwoTokenPool : SimplifiedQuotePool;
+          const expectedSpecialization = numberOfTokens == 2 ? TwoTokenPool : MinimalSwapInfoPool;
 
-          expect(await vault.getPool(poolId)).to.have.members([pool.address, expectedOptimization]);
+          expect(await vault.getPool(poolId)).to.have.members([pool.address, expectedSpecialization]);
         });
 
         it('grants initial BPT to the pool creator', async () => {
@@ -341,7 +341,7 @@ describe('WeightedPool', function () {
           previousTokenBalances = await Promise.all(tokens.map((token) => token.balanceOf(lp.address)));
         });
 
-        itOnlySimplifiedQuotePool('grants BPT for exact tokens', async () => {
+        itOnlyMinimalSwapInfoPool('grants BPT for exact tokens', async () => {
           const MIN_BPT_OUT = bn(1e18);
           const EXACT_TOKENS_IN = [bn(0), bn(0.1e18), bn(0)].slice(0, numberOfTokens);
 
@@ -369,7 +369,7 @@ describe('WeightedPool', function () {
           expect(currentSNXBalance).to.be.equal(previousTokenBalances[2]);
         });
 
-        itOnlySimplifiedQuotePool('grants exact BPT for tokens', async () => {
+        itOnlyMinimalSwapInfoPool('grants exact BPT for tokens', async () => {
           const MIN_MKR_IN = bn(0.15e18);
           const EXACT_BPT_OUT = bn(1.626e18);
 
@@ -551,7 +551,7 @@ describe('WeightedPool', function () {
           previousTokenBalances = await Promise.all(tokens.map((token) => token.balanceOf(lp.address)));
         });
 
-        itOnlySimplifiedQuotePool('takes exact BPT for tokens', async () => {
+        itOnlyMinimalSwapInfoPool('takes exact BPT for tokens', async () => {
           const EXACT_BPT_IN = bn(10e18);
           const MIN_MKR_OUT = bn(0.5e18);
 
@@ -582,7 +582,7 @@ describe('WeightedPool', function () {
           expect(currentSNXBalance).to.be.equal(previousTokenBalances[2]);
         });
 
-        itOnlySimplifiedQuotePool('takes BPT for exact tokens', async () => {
+        itOnlyMinimalSwapInfoPool('takes BPT for exact tokens', async () => {
           const MAX_BPT_IN = bn(2e18);
           const EXACT_TOKENS_OUT = [bn(0), bn(0.1e18), bn(0)].slice(0, numberOfTokens);
 
@@ -610,7 +610,7 @@ describe('WeightedPool', function () {
           expect(currentSNXBalance).to.be.equal(previousTokenBalances[2]);
         });
 
-        itOnlySimplifiedQuotePool('cannot exit with more tokens than joined', async () => {
+        itOnlyMinimalSwapInfoPool('cannot exit with more tokens than joined', async () => {
           const previousBPT = await pool.balanceOf(lp.address);
           const previousTokenBalance = await tokenList.MKR.balanceOf(lp.address);
 
@@ -844,7 +844,7 @@ describe('WeightedPool', function () {
             );
           });
 
-          itOnlySimplifiedQuotePool('pays swap protocol fees on join exact BPT out', async () => {
+          itOnlyMinimalSwapInfoPool('pays swap protocol fees on join exact BPT out', async () => {
             await assertProtocolSwapFeeIsCharged(() =>
               pool
                 .connect(lp)
@@ -858,7 +858,7 @@ describe('WeightedPool', function () {
             );
           });
 
-          itOnlySimplifiedQuotePool('pays swap protocol fees on exit exact BPT in', async () => {
+          itOnlyMinimalSwapInfoPool('pays swap protocol fees on exit exact BPT in', async () => {
             await assertProtocolSwapFeeIsCharged(() =>
               pool.connect(lp).exitPoolExactBPTInForTokenOut(bn(1e18), tokenList.DAI.address, 0, true, lp.address)
             );

@@ -25,13 +25,13 @@ import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
 
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPoolQuote.sol";
+import "../../vault/interfaces/IGeneralPoolQuote.sol";
 import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
 
 import "./StableMath.sol";
 
-contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, ReentrancyGuard {
+contract StablePool is IGeneralPoolQuote, IBPTPool, StableMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -62,7 +62,7 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
     ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= 2, "ERR_MIN_TOKENS");
 
-        bytes32 poolId = vault.registerPool(IVault.PoolOptimization.STANDARD);
+        bytes32 poolId = vault.registerPool(IVault.PoolSpecialization.GENERAL);
 
         // Pass in zero addresses for Asset Managers
         vault.registerTokens(poolId, tokens, new address[](tokens.length));

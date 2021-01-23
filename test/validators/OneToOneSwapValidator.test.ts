@@ -6,7 +6,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { SimplifiedQuotePool, StandardPool } from '../../scripts/helpers/pools';
+import { MinimalSwapInfoPool, GeneralPool } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
 
@@ -48,7 +48,7 @@ describe('OneToOneSwapValidator', () => {
 
     poolIds = [];
     for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-      const poolType = poolIdIdx % 2 ? SimplifiedQuotePool : StandardPool;
+      const poolType = poolIdIdx % 2 ? MinimalSwapInfoPool : GeneralPool;
 
       // All pools have mock strategies with an in-out multiplier of 2
       const pool = await deploy('MockPool', {

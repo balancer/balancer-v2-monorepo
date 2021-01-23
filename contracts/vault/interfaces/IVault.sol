@@ -137,27 +137,28 @@ interface IVault {
 
     // Pools
 
-    // There are three optimization levels for Pools, which allow for lower swap gas costs at the cost of reduced
+    // There are three specialization levels for Pools, which allow for lower swap gas costs at the cost of reduced
     // functionality:
     //
-    //  - standard: no special optimization, IPoolQuote is used to ask for quotes, passing the balance of all tokens in
+    //  - general: no specialization, IGeneralPoolQuote is used to ask for quotes, passing the balance of all tokens in
     // the Pool. Swaps cost more gas the more tokens the Pool has (because of the extra storage reads).
     //
-    //  - simplified quote: IPoolQuoteSimplified is used instead, which saves gas by only passes the balance of the two
-    // tokens involved in the swap. This is suitable for some pricing algorithms, like the weighted constant product one
-    // popularized by Balancer v1. Swap gas cost is independent of the number of tokens in the Pool.
+    //  - minimal swap info: IMinimalSwapInfoPoolQuote is used instead, which saves gas by only passes the balance of
+    // the two tokens involved in the swap. This is suitable for some pricing algorithms, like the weighted constant
+    // product one popularized by Balancer v1. Swap gas cost is independent of the number of tokens in the Pool.
     //
     //  - two tokens: this level achieves the lowest possible swap gas costs by restricting Pools to only having two
-    // tokens, which allows for a specialized balance packing format. Like simplified quote Pools, these are called via
-    // IPoolQuoteSimplified.
-    enum PoolOptimization { STANDARD, SIMPLIFIED_QUOTE, TWO_TOKEN }
+    // tokens, which allows for a specialized balance packing format. Like minimal swap info Pools, these are called via
+    // IMinimalSwapInfoPoolQuote.
+
+    enum PoolSpecialization { GENERAL, MINIMAL_SWAP_INFO, TWO_TOKEN }
 
     /**
-     * @dev Registers a the caller as a Pool, with selected optimization level.
+     * @dev Registers a the caller as a Pool, with selected specialization level.
      *
      * Returns the Pool's ID. Also emits a PoolCreated event.
      */
-    function registerPool(PoolOptimization optimization) external returns (bytes32);
+    function registerPool(PoolSpecialization specialization) external returns (bytes32);
 
     /**
      * @dev Emitted when a Pool is created by calling `registerPool`. Contains the Pool ID of the registered pool.
@@ -179,9 +180,9 @@ interface IVault {
     // These functions revert if querying a Pool that doesn't exist
 
     /**
-     * @dev Returns a Pool's address and optimization level.
+     * @dev Returns a Pool's address and specialization level.
      */
-    function getPool(bytes32 poolId) external view returns (address, PoolOptimization);
+    function getPool(bytes32 poolId) external view returns (address, PoolSpecialization);
 
     /**
      * @dev Returns all tokens registered by a Pool. The order of this list might change as tokens are registered and
@@ -204,7 +205,7 @@ interface IVault {
      * registered, and all swaps with a Pool must involve registered tokens.
      *
      * Each token in `tokens` must not be already registered before this call. For Pools with the Two Token
-     * optimization, `tokens` must have a length of two, that is, both tokens must be registered at the same time.
+     * specialization, `tokens` must have a length of two, that is, both tokens must be registered at the same time.
      *
      * Also define the asset manager for each token at registration time
      * (can be the zero address, if a token is unmanaged)
@@ -223,7 +224,7 @@ interface IVault {
      *
      *
      * Each token in `tokens` must be registered before this call, and have zero balance. For Pools with the Two Token
-     * optimization, `tokens` must have a length of two, that is, both tokens must be unregistered at the same time.
+     * specialization, `tokens` must have a length of two, that is, both tokens must be unregistered at the same time.
      */
     function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
 
@@ -334,7 +335,7 @@ interface IVault {
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
      * The `tokenOut` amount is determined by the Pool's pricing algorithm by calling the `quoteOutGivenIn` function
-     * (from IPoolQuote or IPoolQuoteSimplified).
+     * (from IGeneralPoolQuote or IMinimalSwapInfoPoolQuote).
      *
      * Multihop swaps, where one token is exchanged for another one by passing through one or more intermediate tokens,
      * can be executed by passing an `amountIn` value of zero for a swap. This will cause the amount out of the previous
@@ -389,7 +390,7 @@ interface IVault {
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
      * The `tokenIn` amount is determined by the Pool's pricing algorithm by calling the `quoteInGivenOut` function
-     * (from IPoolQuote or IPoolQuoteSimplified).
+     * (from IGeneralPoolQuote or IMinimalSwapInfoPoolQuote).
      *
      * Multihop swaps, where one token is exchanged for another one by passing through one or more intermediate tokens,
      * can be executed by passing an `amountOut` value of zero for a swap. This will cause the amount in of the previous
