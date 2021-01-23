@@ -277,7 +277,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
             require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "ERR_INDEX_OUT_OF_BOUNDS");
-            
+
             IERC20 tokenIn = tokens[swap.tokenInIndex];
             IERC20 tokenOut = tokens[swap.tokenOutIndex];
             require(tokenIn != tokenOut, "Swap for same token");
