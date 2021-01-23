@@ -627,7 +627,6 @@ abstract contract PoolRegistry is
         }
     }
 
-
     function paySwapProtocolFees(
         bytes32 poolId,
         IERC20[] calldata tokens,
