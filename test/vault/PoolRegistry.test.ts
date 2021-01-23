@@ -1,14 +1,15 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
+
 import * as expectEvent from '../helpers/expectEvent';
-import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
+import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
 import { PoolOptimizationSetting, SimplifiedQuotePool, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
-import { expectBalanceChange } from '../helpers/tokenBalance';
-import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 
 let admin: SignerWithAddress;
 let pool: SignerWithAddress;
@@ -74,15 +75,15 @@ describe('Vault - pool registry', () => {
       expect(await vault.getPoolIds(0, 1)).to.have.members([poolId]);
     });
 
-    it('pool and type are set', async () => {
+    it('has an address and an optimization setting', async () => {
       expect(await vault.getPool(poolId)).to.deep.equal([pool.address, StandardPool]);
     });
 
-    it('pool starts with no tokens', async () => {
+    it('starts with no tokens', async () => {
       expect(await vault.getPoolTokens(poolId)).to.have.members([]);
     });
 
-    it('new pool gets a different id', async () => {
+    it('gets a new id', async () => {
       const receipt = await (await vault.registerPool(StandardPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -116,6 +117,18 @@ describe('Vault - pool registry', () => {
           expect(await vault.getPoolTokenBalances(poolId, [tokens.DAI.address])).to.deep.equal([BigNumber.from(5)]);
         });
       }
+
+      it('reverts when querying token balances of unregistered tokens', async () => {
+        const error = 'ERR_TOKEN_NOT_REGISTERED';
+        await expect(vault.getPoolTokenBalances(poolId, [ZERO_ADDRESS])).to.be.revertedWith(error);
+        await expect(vault.getPoolTokenBalances(poolId, [tokens.SNX.address])).to.be.revertedWith(error);
+      });
+
+      it('reverts when querying token balances of unexisting pools', async () => {
+        const error = 'Nonexistent pool';
+        await expect(vault.getPoolTokenBalances(ZERO_BYTES32, [ZERO_ADDRESS])).to.be.revertedWith(error);
+        await expect(vault.getPoolTokenBalances(ZERO_BYTES32, [tokens.SNX.address])).to.be.revertedWith(error);
+      });
 
       it('pool can add liquidity to multiple tokens', async () => {
         await vault

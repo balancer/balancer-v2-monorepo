@@ -1,16 +1,18 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract, BigNumber } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
-import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
-import { expectBalanceChange } from '../helpers/tokenBalance';
+
 import { deploy } from '../../scripts/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
-import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
+import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
+import { PoolOptimizationSetting, SimplifiedQuotePool, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 
 describe('assetManager', function () {
   let tokens: TokenList;
+  let otherToken: Contract;
   let vault: Contract;
 
   let pool: SignerWithAddress;
@@ -24,6 +26,7 @@ describe('assetManager', function () {
   beforeEach('set up asset manager', async () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'USDT'], [18, 18]);
+    otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
   });
 
   describe('asset manager setting', () => {
@@ -33,10 +36,6 @@ describe('assetManager', function () {
       const receipt = await (await vault.connect(pool).registerPool(StandardPool)).wait();
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
       poolId = event.args.poolId;
-    });
-
-    it('pool has no managers at creation', async () => {
-      expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(ZERO_ADDRESS);
     });
 
     it('different managers can be set for different tokens', async () => {
@@ -88,6 +87,23 @@ describe('assetManager', function () {
 
       await vault.connect(pool).registerTokens(poolId, tokenAddresses, assetManagers);
       await vault.connect(pool).addLiquidity(poolId, pool.address, tokenAddresses, tokenAmounts, false);
+    });
+
+    describe('setting', () => {
+      it('reverts when querying the asset manager of an unknown pool', async () => {
+        const error = 'Nonexistent pool';
+        const token = tokens.DAI.address;
+        await expect(vault.connect(pool).getPoolAssetManager(ZERO_BYTES32, token)).to.be.revertedWith(error);
+        await expect(vault.connect(pool).isPoolAssetManager(ZERO_BYTES32, token, token)).to.be.revertedWith(error);
+      });
+
+      it('reverts when querying the asset manager of an unknown token', async () => {
+        for (const token of [ZERO_ADDRESS, otherToken.address]) {
+          const error = 'ERR_TOKEN_NOT_REGISTERED';
+          await expect(vault.connect(pool).getPoolAssetManager(poolId, token)).to.be.revertedWith(error);
+          await expect(vault.connect(pool).isPoolAssetManager(poolId, token, other.address)).to.be.revertedWith(error);
+        }
+      });
     });
 
     describe('transfer to manager', () => {
@@ -267,12 +283,12 @@ describe('assetManager', function () {
         // Unregistering tokens should remove the asset managers
         await vault.connect(pool).unregisterTokens(poolId, [tokens.DAI.address, tokens.USDT.address]);
 
-        expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(ZERO_ADDRESS);
-        expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(ZERO_ADDRESS);
-
-        // Check two ways
-        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, assetManager.address)).to.equal(false);
-        expect(await vault.isPoolAssetManager(poolId, tokens.USDT.address, assetManager.address)).to.equal(false);
+        for (const symbol in tokens) {
+          const token = tokens[symbol].address;
+          const error = 'ERR_TOKEN_NOT_REGISTERED';
+          await expect(vault.getPoolAssetManager(poolId, token)).to.be.revertedWith(error);
+          await expect(vault.isPoolAssetManager(poolId, token, assetManager.address)).to.be.revertedWith(error);
+        }
 
         // Should also be able to re-register (just one in this case)
         await vault
@@ -280,12 +296,10 @@ describe('assetManager', function () {
           .registerTokens(poolId, [tokens.DAI.address, tokens.USDT.address], [assetManager.address, ZERO_ADDRESS]);
 
         expect(await vault.getPoolAssetManager(poolId, tokens.DAI.address)).to.equal(assetManager.address);
-        expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(ZERO_ADDRESS);
+        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, assetManager.address)).to.be.true;
+        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, other.address)).to.be.false;
 
-        // Check two ways
-        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, assetManager.address)).to.equal(true);
-        expect(await vault.isPoolAssetManager(poolId, tokens.DAI.address, other.address)).to.equal(false);
-        expect(await vault.isPoolAssetManager(poolId, tokens.USDT.address, assetManager.address)).to.equal(false);
+        expect(await vault.getPoolAssetManager(poolId, tokens.USDT.address)).to.equal(ZERO_ADDRESS);
       });
     });
   }

@@ -549,6 +549,7 @@ abstract contract PoolRegistry is
     // Assets under management
 
     modifier onlyPoolAssetManager(bytes32 poolId, IERC20 token) {
+        _ensureExistingPool(poolId);
         require(_isPoolAssetManager(poolId, token, msg.sender), "SENDER_NOT_ASSET_MANAGER");
         _;
     }
@@ -567,7 +568,14 @@ abstract contract PoolRegistry is
         }
     }
 
-    function getPoolAssetManager(bytes32 poolId, IERC20 token) external view override returns (address) {
+    function getPoolAssetManager(bytes32 poolId, IERC20 token)
+        external
+        view
+        override
+        withExistingPool(poolId)
+        returns (address)
+    {
+        _ensureTokenRegistered(poolId, token);
         return _poolAssetManagers[poolId][token];
     }
 
@@ -575,7 +583,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20 token,
         address account
-    ) external view returns (bool) {
+    ) external view override withExistingPool(poolId) returns (bool) {
         return _isPoolAssetManager(poolId, token, account);
     }
 
@@ -633,6 +641,7 @@ abstract contract PoolRegistry is
         IERC20 token,
         address account
     ) internal view returns (bool) {
+        _ensureTokenRegistered(poolId, token);
         return _poolAssetManagers[poolId][token] == account;
     }
 
@@ -683,14 +692,29 @@ abstract contract PoolRegistry is
         }
     }
 
-    function _ensurePoolIsSender(bytes32 poolId) private view {
+    function _ensurePoolIsSender(bytes32 poolId) internal view {
         _ensureExistingPool(poolId);
         address pool = _getPoolAddress(poolId);
         require(pool == msg.sender, "Caller is not the pool");
     }
 
-    function _ensureExistingPool(bytes32 poolId) private view {
+    function _ensureExistingPool(bytes32 poolId) internal view {
         require(_pools.contains(poolId), "Nonexistent pool");
+    }
+
+    function _ensureTokenRegistered(bytes32 poolId, IERC20 token) internal view {
+        require(_isTokenRegistered(poolId, token), "ERR_TOKEN_NOT_REGISTERED");
+    }
+
+    function _isTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        PoolOptimization optimization = _getPoolOptimization(poolId);
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            return _isTwoTokenPoolTokenRegistered(poolId, token);
+        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            return _isSimplifiedQuotePoolTokenRegistered(poolId, token);
+        } else {
+            return _isStandardPoolTokenRegistered(poolId, token);
+        }
     }
 
     function _collectProtocolSwapFee(
