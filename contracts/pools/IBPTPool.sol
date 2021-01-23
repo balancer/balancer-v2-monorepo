@@ -20,22 +20,4 @@ interface IBPTPool {
     function getVault() external view returns (IVault);
 
     function getPoolId() external view returns (bytes32);
-
-    // Joining a pool
-    // poolAmountOut - how much bpt the user expects to get
-    // maxAmountsIn - the max amounts of each token the user is willing to add to the vault
-    // The set of tokens is not specified because it is read from the Vault - and remains immutable that way.
-    function joinPool(
-        uint256 poolAmountOut,
-        uint256[] calldata maxAmountsIn,
-        bool transferTokens,
-        address beneficiary
-    ) external;
-
-    function exitPool(
-        uint256 poolAmountIn,
-        uint256[] calldata minAmountsOut,
-        bool withdrawTokens,
-        address beneficiary
-    ) external;
 }

@@ -66,7 +66,6 @@ contract StablePool is IGeneralPoolQuote, IBPTPool, StableMath, BalancerPoolToke
 
         // Pass in zero addresses for Asset Managers
         vault.registerTokens(poolId, tokens, new address[](tokens.length));
-        vault.addLiquidity(poolId, from, tokens, amounts, false);
 
         require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
 
@@ -83,7 +82,7 @@ contract StablePool is IGeneralPoolQuote, IBPTPool, StableMath, BalancerPoolToke
         _amp = amp;
 
         //Reset Invariant
-        _resetAccumulatedSwapFees(amp, amounts);
+        _lastInvariant = _invariant(amp, amounts);
     }
 
     //Getters
@@ -127,33 +126,6 @@ contract StablePool is IGeneralPoolQuote, IBPTPool, StableMath, BalancerPoolToke
         _validateIndexes(indexIn, indexOut, balances.length);
         uint256 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
         return _addSwapFee(minimumAmountIn);
-    }
-
-    //Protocol Fees
-
-    function _payProtocolFees(IERC20[] memory tokens, uint256[] memory balances) internal returns (uint256[] memory) {
-        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(balances);
-        return _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-    }
-
-    function _getAccumulatedSwapFees(uint256[] memory balances) internal view returns (uint256[] memory) {
-        uint256[] memory swapFeesCollected = new uint256[](balances.length);
-
-        uint256 index = UnsafeRandom.rand(balances.length);
-        swapFeesCollected[index] = _calculateOneTokenSwapFee(_amp, balances, _lastInvariant, index);
-
-        return swapFeesCollected;
-    }
-
-    function _resetAccumulatedSwapFees(uint256 amp, uint256[] memory balances) internal {
-        _lastInvariant = _invariant(amp, balances);
-    }
-
-    // Pays protocol swap fees
-    function payProtocolFees() external nonReentrant {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        balances = _payProtocolFees(tokens, balances);
-        _resetAccumulatedSwapFees(_amp, balances);
     }
 
     // Join / Exit Hooks
@@ -335,68 +307,6 @@ contract StablePool is IGeneralPoolQuote, IBPTPool, StableMath, BalancerPoolToke
         }
     }
 
-    //Join / Exit
-
-    function joinPool(
-        uint256 poolAmountOut,
-        uint256[] calldata maxAmountsIn,
-        bool transferTokens,
-        address beneficiary
-    ) external override nonReentrant {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
-
-        //Pay protocol fees to have balances up to date
-        balances = _payProtocolFees(tokens, balances);
-
-        uint256 ratio = _getSupplyRatio(poolAmountOut);
-        uint256[] memory amountsIn = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 amount = balances[i].mul(ratio);
-            require(amount <= maxAmountsIn[i], "ERR_LIMIT_IN");
-
-            amountsIn[i] = amount;
-            balances[i] = balances[i].add(amount);
-        }
-
-        _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
-
-        //Reset swap fees counter
-        _resetAccumulatedSwapFees(_amp, balances);
-
-        _mintPoolTokens(beneficiary, poolAmountOut);
-    }
-
-    function exitPool(
-        uint256 poolAmountIn,
-        uint256[] calldata minAmountsOut,
-        bool withdrawTokens,
-        address beneficiary
-    ) external override nonReentrant {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
-
-        //Pay protocol fees to have balances up to date
-        balances = _payProtocolFees(tokens, balances);
-
-        uint256 ratio = _getSupplyRatio(poolAmountIn);
-        uint256[] memory amountsOut = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 amount = balances[i].mul(ratio);
-            require(amount >= minAmountsOut[i], "NOT EXITING ENOUGH");
-
-            amountsOut[i] = amount;
-            balances[i] = balances[i].sub(amount);
-        }
-
-        _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
-
-        //Reset swap fees counter
-        _resetAccumulatedSwapFees(_amp, balances);
-
-        _burnPoolTokens(msg.sender, poolAmountIn);
-    }
-
     function _getSupplyRatio(uint256 amount) internal view returns (uint256) {
         uint256 poolTotal = totalSupply();
         uint256 ratio = amount.div(poolTotal);
@@ -413,19 +323,6 @@ contract StablePool is IGeneralPoolQuote, IBPTPool, StableMath, BalancerPoolToke
     function _subtractSwapFee(uint256 amount) internal view returns (uint256) {
         uint256 fees = amount.mul(_swapFee);
         return amount.sub(fees);
-    }
-
-    function _getPoolTokenBalances() internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
-        tokens = _vault.getPoolTokens(_poolId);
-        // We trust the number of tokens returned from the Vault since these are registered in the constructor
-
-        balances = _vault.getPoolTokenBalances(_poolId, tokens);
-        bool someLiquidity = true;
-        for (uint256 i = 0; i < tokens.length && someLiquidity; i++) {
-            someLiquidity = balances[i] != 0;
-        }
-
-        require(someLiquidity, "ERR_ZERO_LIQUIDITY");
     }
 
     function _validateIndexes(
