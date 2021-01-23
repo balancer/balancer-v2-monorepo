@@ -310,7 +310,7 @@ describe('Vault - pool registry', () => {
                       poolId,
                       other.address,
                       tokenAddresses,
-                      tokenAddresses.map((_) => MAX_UINT256),
+                      tokenAddresses.map(() => MAX_UINT256),
                       false,
                       '0x'
                     );
@@ -333,7 +333,7 @@ describe('Vault - pool registry', () => {
                           poolId,
                           other.address,
                           tokenAddresses,
-                          tokenAddresses.map((_) => 0),
+                          tokenAddresses.map(() => 0),
                           false,
                           '0x'
                         );

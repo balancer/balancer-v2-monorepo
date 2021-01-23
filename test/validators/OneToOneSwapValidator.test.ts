@@ -68,15 +68,15 @@ describe('OneToOneSwapValidator', () => {
       await pool.registerTokens(sortedTokenAddresses, assetManagers);
 
       await pool.setOnJoinExitPoolReturnValues(
-        sortedTokenAddresses.map((_) => bn(100e18)),
-        sortedTokenAddresses.map((_) => 0)
+        sortedTokenAddresses.map(() => bn(100e18)),
+        sortedTokenAddresses.map(() => 0)
       );
 
       await vault.connect(lp).joinPool(
         poolId,
         lp.address,
         sortedTokenAddresses,
-        sortedTokenAddresses.map((_) => MAX_UINT256),
+        sortedTokenAddresses.map(() => MAX_UINT256),
         false,
         '0x'
       );

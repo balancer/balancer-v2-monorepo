@@ -75,7 +75,7 @@ describe('Vault - asset manager', function () {
         poolId,
         other.address,
         tokenAddresses,
-        tokenAddresses.map((_) => MAX_UINT256),
+        tokenAddresses.map(() => MAX_UINT256),
         false,
         '0x'
       );
