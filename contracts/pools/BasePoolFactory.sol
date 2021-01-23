@@ -56,8 +56,6 @@ abstract contract BasePoolFactory {
         address expectedPool = Create2.computeAddress(salt, keccak256(creationCode));
         require(!expectedPool.isContract(), "Salt cannot be reused");
 
-        vault.addUniversalAgent(expectedPool);
-
         address pool = Create2.deploy(0, salt, creationCode);
         assert(pool == expectedPool);
 

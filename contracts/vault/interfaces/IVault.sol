@@ -66,75 +66,6 @@ interface IVault {
         address recipient
     ) external;
 
-    // Agents
-
-    /**
-     * @dev Returns true if `agent` is an agent for `user`. An account's agent can make the Vault use the managed
-     * account's approved tokens. All accounts are agents for themselves.
-     */
-    function isAgentFor(address user, address agent) external view returns (bool);
-
-    /**
-     * @dev Returns the number of agents for `user`. This does not include `user` itself, nor Universal Agents.
-     */
-    function getNumberOfUserAgents(address user) external view returns (uint256);
-
-    /**
-     * @dev Returns a partial list of `user`'s agents, starting at index `start`, up to index `end`. This does not
-     * include `user` itself, nor Universal Agents.
-     *
-     * The ordering of this list may change as agents are added and removed.
-     */
-    function getUserAgents(
-        address user,
-        uint256 start,
-        uint256 end
-    ) external view returns (address[] memory);
-
-    /**
-     * @dev Adds `agent` as an agent for the caller.
-     */
-    function addUserAgent(address agent) external;
-
-    /**
-     * @dev Removes `agent` as an agent for the caller. An account is always its own agent: removing itself does
-     * nothing. Universal Agents cannot be removed either.
-     */
-    function removeUserAgent(address agent) external;
-
-    // Universal Agents
-
-    /**
-     @dev Returns the number of Universal Agents.
-     */
-    function getNumberOfUniversalAgents() external view returns (uint256);
-
-    /**
-     * @dev Returns a partial list of Universal Agents, starting at index `start`, up to index `end`. * The ordering of
-     * this list may change as Universal Agents are added and removed.
-     *
-     * Universal Agents are agents for all accounts.
-     */
-    function getUniversalAgents(uint256 start, uint256 end) external view returns (address[] memory);
-
-    /**
-     * @dev Adds `agent` as a Universal Agent.
-     *
-     * Requirements:
-     *
-     * - the caller must be approved by the authorizer (`IAuthorizer.canAddUniversalAgent`).
-     */
-    function addUniversalAgent(address agent) external;
-
-    /**
-     * @dev Removes `agent` as a Universal Agent.
-     *
-     * Requirements:
-     *
-     * - the caller must be approved by the authorizer (`IAuthorizer.canRemoveUniversalAgent`).
-     */
-    function removeUniversalAgent(address agent) external;
-
     // Pools
 
     // There are three specialization levels for Pools, which allow for lower swap gas costs at the cost of reduced
@@ -392,11 +323,10 @@ interface IVault {
     }
 
     /**
-     * @dev All tokens in a swap are sent to the Vault from the `sender`'s account, and sent to the `recipient`. The
-     * caller of the swap function must be an agent for `sender`.
+     * @dev All tokens in a swap are sent to the Vault from the caller's account, and sent to `recipient`.
      *
-     * If `withdrawFromInternalBalance` is true, `sender`'s Internal Balance will be preferred, performing an ERC20
-     * transfer for the difference between the requested amount and the User's Internal Balance (if any). `sender`
+     * If `withdrawFromInternalBalance` is true, the caller's Internal Balance will be preferred, performing an ERC20
+     * transfer for the difference between the requested amount and the User's Internal Balance (if any). The caller
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
      * `joinPool`.
      *
@@ -404,7 +334,6 @@ interface IVault {
      * transferred. This matches the behavior of `exitPool`.
      */
     struct FundManagement {
-        address sender;
         address recipient;
         bool withdrawFromInternalBalance;
         bool depositToInternalBalance;
@@ -415,15 +344,15 @@ interface IVault {
     /**
      * @dev Simulates a call to batchSwapGivenIn, returning an array of Vault token deltas. Each element in the array
      * corresponds to the token at the same index, and indicates the number of tokens the Vault would take from the
-     * sender (if positive) or send to the recipient (if negative). The arguments it receives are the same that
+     * caller (if positive) or send to the recipient (if negative). The arguments it receives are the same that
      * an equivalent batchSwapGivenIn would receive.
      *
-     * Unlike batchSwapGivenIn, this function performs no checks on its caller nor the sender and recipient fields in
-     * the FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
+     * Unlike batchSwapGivenIn, this function performs no checks on its caller nor the recipient field in the
+     * FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
      * needing to hold tokens, approve them for the Vault, or even know a user's address.
      *
-     * Note however that this function is not 'view' (due to implementation details): the client code must explicitly
-     * execute eth_call instead of eth_sendTransaction.
+     * Note that this function is not 'view' (due to implementation details): the client code must explicitly execute
+     * eth_call instead of eth_sendTransaction.
      */
     function queryBatchSwapGivenIn(
         SwapIn[] memory swaps,
@@ -434,15 +363,15 @@ interface IVault {
     /**
      * @dev Simulates a call to batchSwapGivenOut, returning an array of Vault token deltas. Each element in the array
      * corresponds to the token at the same index, and indicates the number of tokens the Vault would take from the
-     * sender (if positive) or send to the recipient (if negative). The arguments it receives are the same that
+     * caller (if positive) or send to the recipient (if negative). The arguments it receives are the same that
      * an equivalent batchSwapGivenOut would receive.
      *
-     * Unlike batchSwapGivenOut, this function performs no checks on its caller nor the sender and recipient fields in
-     * the FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
+     * Unlike batchSwapGivenOut, this function performs no checks on its caller nor the recipient field in the
+     * FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
      * needing to hold tokens, approve them for the Vault, or even know a user's address.
      *
-     * Note however that this function is not 'view' (due to implementation details): the client code must explicitly
-     * execute eth_call instead of eth_sendTransaction.
+     * Note that this function is not 'view' (due to implementation details): the client code must explicitly execute
+     * eth_call instead of eth_sendTransaction.
      */
     function queryBatchSwapGivenOut(
         SwapOut[] memory swaps,

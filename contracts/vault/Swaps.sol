@@ -162,10 +162,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement memory funds,
         SwapKind kind
     ) private nonReentrant returns (int256[] memory) {
-        // Any net token amount going into the Vault will be taken from `funds.sender`, so they must have
-        // approved the caller to use their funds.
-        require(isAgentFor(funds.sender, msg.sender), "Caller is not an agent");
-
         // Perform the swaps, updating the Pool balances and computing the net Vault token deltas
         int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
@@ -178,13 +174,13 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 uint128 toReceive = uint128(tokenDeltas[i]);
 
                 if (funds.withdrawFromInternalBalance) {
-                    uint128 toWithdraw = uint128(Math.min(_internalTokenBalance[funds.sender][token], toReceive));
+                    uint128 toWithdraw = uint128(Math.min(_internalTokenBalance[msg.sender][token], toReceive));
 
-                    _internalTokenBalance[funds.sender][token] -= toWithdraw;
+                    _internalTokenBalance[msg.sender][token] -= toWithdraw;
                     toReceive -= toWithdraw;
                 }
 
-                token.safeTransferFrom(funds.sender, address(this), toReceive);
+                token.safeTransferFrom(msg.sender, address(this), toReceive);
             } else {
                 uint128 toSend = tokenDeltas[i].abs().toUint128();
 
@@ -301,7 +297,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 tokenIn,
                 tokenOut,
                 swap,
-                funds.sender,
+                msg.sender,
                 funds.recipient,
                 previous,
                 kind

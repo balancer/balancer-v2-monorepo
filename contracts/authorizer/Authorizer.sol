@@ -37,9 +37,6 @@ contract Authorizer is IAuthorizer, AccessControl {
         return keccak256(abi.encodePacked("WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE", token));
     }
 
-    bytes32 public immutable ADD_UNIVERSAL_AGENT_ROLE = keccak256("ADD_UNIVERSAL_AGENT_ROLE");
-    bytes32 public immutable REMOVE_UNIVERSAL_AGENT_ROLE = keccak256("REMOVE_UNIVERSAL_AGENT_ROLE");
-
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
@@ -64,13 +61,5 @@ contract Authorizer is IAuthorizer, AccessControl {
         return
             hasRole(WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE, account) ||
             hasRole(WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(token), account);
-    }
-
-    function canAddUniversalAgent(address account) external view override returns (bool) {
-        return hasRole(ADD_UNIVERSAL_AGENT_ROLE, account);
-    }
-
-    function canRemoveUniversalAgent(address account) external view override returns (bool) {
-        return hasRole(REMOVE_UNIVERSAL_AGENT_ROLE, account);
     }
 }

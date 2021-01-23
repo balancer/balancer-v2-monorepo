@@ -41,7 +41,7 @@ describe('Vault - swaps', () => {
 
     // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
     // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
-    // or rely on internal balance or agents).
+    // or rely on internal balance).
 
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
@@ -59,7 +59,7 @@ describe('Vault - swaps', () => {
 
   beforeEach('set up default sender', async () => {
     funds = {
-      sender: trader.address,
+      //sender: trader.address,
       recipient: trader.address,
       withdrawFromInternalBalance: false,
       depositToInternalBalance: false,
@@ -182,55 +182,33 @@ describe('Vault - swaps', () => {
                     // Send 1 MKR, get 2 DAI back
                     const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
-                    context('when the sender is using his own tokens', () => {
-                      context('when using managed balance', () => {
-                        assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -1e18 });
+                    context('when using managed balance', () => {
+                      assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -1e18 });
+                    });
+
+                    context('when withdrawing from internal balance', () => {
+                      context.skip('when using less than available as internal balance', () => {
+                        // TODO: add tests where no token transfers are needed and internal balance remains
                       });
 
-                      context('when withdrawing from internal balance', () => {
-                        context.skip('when using less than available as internal balance', () => {
-                          // TODO: add tests where no token transfers are needed and internal balance remains
-                        });
-
-                        context('when using more than available as internal balance', () => {
-                          beforeEach('deposit to internal balance', async () => {
-                            funds.withdrawFromInternalBalance = true;
-                            await vault
-                              .connect(trader)
-                              .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
-                          });
-
-                          assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
-                        });
-                      });
-
-                      context('when depositing from internal balance', () => {
+                      context('when using more than available as internal balance', () => {
                         beforeEach('deposit to internal balance', async () => {
-                          funds.depositToInternalBalance = true;
+                          funds.withdrawFromInternalBalance = true;
+                          await vault
+                            .connect(trader)
+                            .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
                         });
 
-                        assertSwapGivenIn({ swaps }, { MKR: -1e18 });
+                        assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
                       });
                     });
 
-                    context('when the sender is using tokens from other user', () => {
-                      const fromOther = true;
-
-                      context('when the sender is allowed as an agent', async () => {
-                        beforeEach('add user agent', async () => {
-                          await vault.connect(trader).addUserAgent(other.address);
-                        });
-
-                        assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
+                    context('when depositing from internal balance', () => {
+                      beforeEach('deposit to internal balance', async () => {
+                        funds.depositToInternalBalance = true;
                       });
 
-                      context('when the sender is not allowed as an agent', async () => {
-                        beforeEach('remove user agent', async () => {
-                          await vault.connect(trader).removeUserAgent(other.address);
-                        });
-
-                        assertSwapGivenInReverts({ swaps, fromOther }, 'Caller is not an agent');
-                      });
+                      assertSwapGivenIn({ swaps }, { MKR: -1e18 });
                     });
                   });
 
@@ -343,7 +321,6 @@ describe('Vault - swaps', () => {
                       // The caller will receive profit in MKR, since it sold DAI for more MKR than it bought it for.
                       // The caller receives tokens and doesn't send any.
                       // Note the caller didn't even have any tokens to begin with.
-                      funds.sender = other.address;
                       funds.recipient = other.address;
                     });
 
@@ -532,53 +509,33 @@ describe('Vault - swaps', () => {
                     // Get 1e18 DAI by sending 0.5e18 MKR
                     const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
-                    context('when the sender is using his own tokens', () => {
-                      context('when using managed balance', () => {
-                        assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.5e18 });
+                    context('when using managed balance', () => {
+                      assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.5e18 });
+                    });
+
+                    context('when withdrawing from internal balance', () => {
+                      context.skip('when using less than available as internal balance', () => {
+                        // TODO: add tests where no token transfers are needed and internal balance remains
                       });
 
-                      context('when withdrawing from internal balance', () => {
-                        context.skip('when using less than available as internal balance', () => {
-                          // TODO: add tests where no token transfers are needed and internal balance remains
-                        });
-
-                        context('when using more than available as internal balance', () => {
-                          beforeEach('deposit to internal balance', async () => {
-                            funds.withdrawFromInternalBalance = true;
-                            await vault
-                              .connect(trader)
-                              .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
-                          });
-
-                          assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
-                        });
-                      });
-
-                      context('when depositing from internal balance', () => {
+                      context('when using more than available as internal balance', () => {
                         beforeEach('deposit to internal balance', async () => {
-                          funds.depositToInternalBalance = true;
+                          funds.withdrawFromInternalBalance = true;
+                          await vault
+                            .connect(trader)
+                            .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
                         });
 
-                        assertSwapGivenOut({ swaps }, { MKR: -0.5e18 });
+                        assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
                       });
                     });
 
-                    context('when the sender is using tokens from other user', () => {
-                      context('when the sender is allowed as an agent', async () => {
-                        beforeEach('add user agent', async () => {
-                          await vault.connect(trader).addUserAgent(other.address);
-                        });
-
-                        assertSwapGivenOut({ swaps, fromOther: true }, { DAI: 1e18, MKR: -0.5e18 });
+                    context('when depositing from internal balance', () => {
+                      beforeEach('deposit to internal balance', async () => {
+                        funds.depositToInternalBalance = true;
                       });
 
-                      context('when the sender is not allowed as an agent', async () => {
-                        beforeEach('remove user agent', async () => {
-                          await vault.connect(trader).removeUserAgent(other.address);
-                        });
-
-                        assertSwapGivenOutReverts({ swaps, fromOther: true }, 'Caller is not an agent');
-                      });
+                      assertSwapGivenOut({ swaps }, { MKR: -0.5e18 });
                     });
                   });
 
@@ -691,7 +648,6 @@ describe('Vault - swaps', () => {
                       // The caller will receive profit in MKR, since it sold DAI for more MKR than it bought it for.
                       // The caller receives tokens and doesn't send any.
                       // Note the caller didn't even have any tokens to begin with.
-                      funds.sender = other.address;
                       funds.recipient = other.address;
                     });
 

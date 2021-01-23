@@ -95,7 +95,6 @@ describe('OneToOneSwapValidator', () => {
     ];
 
     funds = {
-      sender: trader.address,
       recipient: trader.address,
       withdrawFromInternalBalance: false,
       depositToInternalBalance: false,
