@@ -32,8 +32,6 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
-    event UpdatedBalances(uint256[] balances);
-
     constructor(IVault vault, IVault.PoolSpecialization specialization) {
         _poolId = vault.registerPool(specialization);
         _vault = vault;
@@ -104,11 +102,6 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
             dueProtocolFeeAmounts[i] = _onJoinPoolDueProtocolFeeAmounts[i];
         }
-    }
-
-    function paySwapProtocolFees(IERC20[] memory tokens, uint256[] memory collectedFees) external {
-        uint256[] memory balances = _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
-        emit UpdatedBalances(balances);
     }
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it

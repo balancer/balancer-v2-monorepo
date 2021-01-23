@@ -578,53 +578,6 @@ abstract contract PoolRegistry is
         }
     }
 
-    function paySwapProtocolFees(
-        bytes32 poolId,
-        IERC20[] calldata tokens,
-        uint256[] calldata collectedFees
-    ) external override nonReentrant onlyPool(poolId) returns (uint256[] memory balances) {
-        require(tokens.length == collectedFees.length, "Tokens and total collected fees length mismatch");
-
-        uint128 swapFee = getProtocolSwapFee().toUint128();
-        PoolSpecialization specialization = _getPoolSpecialization(poolId);
-
-        if (specialization == PoolSpecialization.TWO_TOKEN) {
-            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
-
-            IERC20 tokenX = tokens[0];
-            IERC20 tokenY = tokens[1];
-            uint128 feeToCollectTokenX = _collectProtocolSwapFee(tokenX, collectedFees[0], swapFee).toUint128();
-            uint128 feeToCollectTokenY = _collectProtocolSwapFee(tokenY, collectedFees[1], swapFee).toUint128();
-
-            _decreaseTwoTokenPoolCash(poolId, tokenX, feeToCollectTokenX, tokenY, feeToCollectTokenY);
-        } else {
-            uint256[] memory feesToCollect = _collectProtocolSwapFees(tokens, collectedFees, swapFee);
-            if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-                _decreaseMinimalSwapInfoPoolCash(poolId, tokens, feesToCollect);
-            } else {
-                _decreaseGeneralPoolCash(poolId, tokens, feesToCollect);
-            }
-        }
-
-        balances = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            balances[i] = _getPoolTokenBalance(poolId, specialization, tokens[i]).totalBalance();
-        }
-
-        return balances;
-    }
-
-    function _collectProtocolSwapFees(
-        IERC20[] memory tokens,
-        uint256[] memory collectedFees,
-        uint256 swapFee
-    ) private returns (uint256[] memory feesToCollect) {
-        feesToCollect = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            feesToCollect[i] = _collectProtocolSwapFee(tokens[i], collectedFees[i], swapFee);
-        }
-    }
-
     function _ensurePoolIsSender(bytes32 poolId) internal view {
         _ensureExistingPool(poolId);
         address pool = _getPoolAddress(poolId);
@@ -654,15 +607,5 @@ abstract contract PoolRegistry is
         } else {
             return _isGeneralPoolTokenRegistered(poolId, token);
         }
-    }
-
-    function _collectProtocolSwapFee(
-        IERC20 token,
-        uint256 collectedFee,
-        uint256 swapFee
-    ) private returns (uint256) {
-        uint256 feeToCollect = collectedFee.mul(swapFee);
-        _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToCollect);
-        return feeToCollect;
     }
 }

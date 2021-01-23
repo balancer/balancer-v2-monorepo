@@ -450,21 +450,6 @@ interface IVault {
         FundManagement calldata funds
     ) external returns (int256[] memory);
 
-    // Protocol Fees
-
-    /**
-     * @dev Called by a Pool with an array of some of its registered tokens, and the amount of swap fees it has
-     * collected for each of them. The Vault will then apply the protocol swap fee to these amounts, substracting from
-     * the Pool's balance.
-     *
-     * Returns the updated Pool balance for each of `tokens`.
-     */
-    function paySwapProtocolFees(
-        bytes32 poolId,
-        IERC20[] calldata tokens,
-        uint256[] calldata collectedFees
-    ) external returns (uint256[] memory balances);
-
     // Flash Loan interface
 
     /**
