@@ -21,12 +21,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IPool.sol";
-import "../vault/interfaces/IPoolQuote.sol";
-import "../vault/interfaces/IPoolQuoteSimplified.sol";
+import "../vault/interfaces/IGeneralPoolQuote.sol";
+import "../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
 
 import "../math/FixedPoint.sol";
 
-contract MockPool is IPool, IPoolQuote, IPoolQuoteSimplified {
+contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -34,8 +34,8 @@ contract MockPool is IPool, IPoolQuote, IPoolQuoteSimplified {
 
     event UpdatedBalances(uint256[] balances);
 
-    constructor(IVault vault, IVault.PoolOptimization optimization) {
-        _poolId = vault.registerPool(optimization);
+    constructor(IVault vault, IVault.PoolSpecialization specialization) {
+        _poolId = vault.registerPool(specialization);
         _vault = vault;
     }
 
@@ -126,7 +126,7 @@ contract MockPool is IPool, IPoolQuote, IPoolQuoteSimplified {
         _multiplier = newMultiplier;
     }
 
-    // IPoolQuote
+    // IGeneralPoolQuote
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256[] calldata,
@@ -146,7 +146,7 @@ contract MockPool is IPool, IPoolQuote, IPoolQuoteSimplified {
         return amountIn;
     }
 
-    // IPoolQuoteSimplified
+    // IMinimalSwapInfoPoolQuote
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256,

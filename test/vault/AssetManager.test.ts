@@ -6,15 +6,14 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { bn } from '../helpers/numbers';
 import { deploy } from '../../scripts/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
+import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
-import { PoolOptimizationSetting, SimplifiedQuotePool, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
 
 describe('assetManager', function () {
   let tokens: TokenList, otherToken: Contract, vault: Contract;
   let pool: SignerWithAddress, assetManager: SignerWithAddress, other: SignerWithAddress;
-
 
   before('deploy base contracts', async () => {
     [, pool, assetManager, other] = await ethers.getSigners();
@@ -26,19 +25,19 @@ describe('assetManager', function () {
     otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
   });
 
-  context('with standard pool', () => {
-    itManagesAssetsCorrectly(StandardPool);
+  context('with general pool', () => {
+    itManagesAssetsCorrectly(GeneralPool);
   });
 
-  context('with simplified pool', () => {
-    itManagesAssetsCorrectly(SimplifiedQuotePool);
+  context('with minimal swap info pool', () => {
+    itManagesAssetsCorrectly(MinimalSwapInfoPool);
   });
 
   context('with two token pool', () => {
     itManagesAssetsCorrectly(TwoTokenPool);
   });
 
-  function itManagesAssetsCorrectly(poolType: PoolOptimizationSetting) {
+  function itManagesAssetsCorrectly(poolType: PoolSpecializationSetting) {
     let poolId: string;
     const tokenInitialBalance = bn(200e18);
 
