@@ -232,4 +232,9 @@ contract MinimalSwapInfoPoolsBalance {
         require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
         return _minimalSwapInfoPoolsBalances[poolId][token];
     }
+
+    function _isMinimalSwapInfoPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
+        return poolTokens.contains(address(token));
+    }
 }

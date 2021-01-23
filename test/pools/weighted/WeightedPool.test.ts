@@ -143,7 +143,7 @@ describe('WeightedPool', function () {
         it('sets the asset managers', async () => {
           const poolId = await pool.getPoolId();
 
-          for (const symbol in tokens) {
+          for (const symbol in poolSymbols) {
             expect(await vault.getPoolAssetManager(poolId, tokens[symbol].address)).to.equal(ZERO_ADDRESS);
           }
         });
@@ -185,7 +185,7 @@ describe('WeightedPool', function () {
           const pool = await deployPool();
           const poolId = await pool.getPoolId();
 
-          for (const symbol in tokens) {
+          for (const symbol in poolTokens) {
             expect(await vault.getPoolAssetManager(poolId, tokens[symbol].address)).to.equal(ZERO_ADDRESS);
           }
         });

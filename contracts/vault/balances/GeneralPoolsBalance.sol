@@ -231,4 +231,9 @@ contract GeneralPoolsBalance {
     {
         return poolBalances.get(token, "ERR_TOKEN_NOT_REGISTERED");
     }
+
+    function _isGeneralPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
+        return poolBalances.contains(token);
+    }
 }
