@@ -15,7 +15,6 @@ describe('assetManager', function () {
   let tokens: TokenList, otherToken: Contract, vault: Contract;
   let pool: SignerWithAddress, assetManager: SignerWithAddress, other: SignerWithAddress;
 
-
   before('deploy base contracts', async () => {
     [, pool, assetManager, other] = await ethers.getSigners();
   });
