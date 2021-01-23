@@ -30,7 +30,7 @@ contract MockVault {
         return _currentBalances;
     }
 
-    function registerPool(IVault.PoolOptimization) external view returns (bytes32) {
+    function registerPool(IVault.PoolSpecialization) external view returns (bytes32) {
         return bytes32(uint256(msg.sender) << 96); //poolId
     }
 

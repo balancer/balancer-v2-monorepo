@@ -24,7 +24,7 @@ import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
 
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPoolQuoteSimplified.sol";
+import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
 
 import "../BalancerPoolToken.sol";
 import "../IBPTPool.sol";
@@ -34,7 +34,7 @@ import "./WeightedMath.sol";
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, WeightedMath, ReentrancyGuard {
+contract WeightedPool is IBPTPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -109,11 +109,11 @@ contract WeightedPool is IBPTPool, IPoolQuoteSimplified, BalancerPoolToken, Weig
         require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LENGTH");
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
-        IVault.PoolOptimization optimization = tokens.length == 2
-            ? IVault.PoolOptimization.TWO_TOKEN
-            : IVault.PoolOptimization.SIMPLIFIED_QUOTE;
+        IVault.PoolSpecialization specialization = tokens.length == 2
+            ? IVault.PoolSpecialization.TWO_TOKEN
+            : IVault.PoolSpecialization.MINIMAL_SWAP_INFO;
 
-        bytes32 poolId = vault.registerPool(optimization);
+        bytes32 poolId = vault.registerPool(specialization);
         // Pass in zero addresses for Asset Managers
         vault.registerTokens(poolId, tokens, new address[](tokens.length));
         vault.addLiquidity(poolId, from, tokens, amounts, false);

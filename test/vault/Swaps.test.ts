@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
 import { BigNumberish } from '../helpers/numbers';
@@ -69,12 +69,12 @@ describe('Vault - swaps', () => {
   context('with two tokens', () => {
     const symbols = ['DAI', 'MKR'];
 
-    context('with a standard pool', () => {
-      itHandlesSwapsProperly(StandardPool, symbols);
+    context('with a general pool', () => {
+      itHandlesSwapsProperly(GeneralPool, symbols);
     });
 
-    context('with a simplified quote pool', () => {
-      itHandlesSwapsProperly(SimplifiedQuotePool, symbols);
+    context('with a minimal swap info pool', () => {
+      itHandlesSwapsProperly(MinimalSwapInfoPool, symbols);
     });
 
     context('with a two token pool', () => {
@@ -85,12 +85,12 @@ describe('Vault - swaps', () => {
   context('with three tokens', () => {
     const symbols = ['DAI', 'MKR', 'SNX'];
 
-    context('with a standard pool', () => {
-      itHandlesSwapsProperly(StandardPool, symbols);
+    context('with a general pool', () => {
+      itHandlesSwapsProperly(GeneralPool, symbols);
     });
 
-    context('with a simplified quote pool', () => {
-      itHandlesSwapsProperly(SimplifiedQuotePool, symbols);
+    context('with a minimal swap info pool', () => {
+      itHandlesSwapsProperly(MinimalSwapInfoPool, symbols);
     });
   });
 
@@ -104,7 +104,7 @@ describe('Vault - swaps', () => {
     }));
   }
 
-  async function deployPool(type: PoolOptimizationSetting, tokenSymbols: string[]): Promise<string> {
+  async function deployPool(type: PoolSpecializationSetting, tokenSymbols: string[]): Promise<string> {
     const pool = await deploy('MockPool', { args: [vault.address, type] });
     await pool.setMultiplier(toFixedPoint(2));
 
@@ -121,21 +121,21 @@ describe('Vault - swaps', () => {
     return pool.getPoolId();
   }
 
-  function deployMainPool(type: PoolOptimizationSetting, tokenSymbols: string[]) {
+  function deployMainPool(type: PoolSpecializationSetting, tokenSymbols: string[]) {
     beforeEach('deploy main pool', async () => {
       poolId = await deployPool(type, tokenSymbols);
       poolIds = [poolId];
     });
   }
 
-  function deployAnotherPool(type: PoolOptimizationSetting, tokenSymbols: string[]) {
+  function deployAnotherPool(type: PoolSpecializationSetting, tokenSymbols: string[]) {
     beforeEach('deploy secondary pool', async () => {
       anotherPoolId = await deployPool(type, tokenSymbols);
       poolIds.push(anotherPoolId);
     });
   }
 
-  function itHandlesSwapsProperly(type: PoolOptimizationSetting, tokenSymbols: string[]) {
+  function itHandlesSwapsProperly(type: PoolSpecializationSetting, tokenSymbols: string[]) {
     deployMainPool(type, tokenSymbols);
 
     describe('swap given in', () => {
@@ -298,7 +298,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -350,12 +350,12 @@ describe('Vault - swaps', () => {
                   });
                 });
               };
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(MinimalSwapInfoPool);
               });
 
               context('with a two token pool', () => {
@@ -366,7 +366,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -391,13 +391,13 @@ describe('Vault - swaps', () => {
                 });
               };
 
-              context('with a standard pool', () => {
-                const anotherPoolType = StandardPool;
+              context('with a general pool', () => {
+                const anotherPoolType = GeneralPool;
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
               });
 
-              context('with a simplified quote pool', () => {
-                const anotherPoolType = SimplifiedQuotePool;
+              context('with a minimal swap info pool', () => {
+                const anotherPoolType = MinimalSwapInfoPool;
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
               });
             });
@@ -433,7 +433,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -446,12 +446,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenIn({ swaps }, { MKR: 3e18 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
               });
 
               context('with a two token pool', () => {
@@ -462,7 +462,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -475,12 +475,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenIn({ swaps }, { SNX: 4e18, MKR: -1e18 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
               });
             });
           });
@@ -646,7 +646,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -699,12 +699,12 @@ describe('Vault - swaps', () => {
                 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(MinimalSwapInfoPool);
               });
               context('with a two token pool', () => {
                 itHandleMultiSwapsWithoutHopsProperly(TwoTokenPool);
@@ -714,7 +714,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -739,12 +739,12 @@ describe('Vault - swaps', () => {
                 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(MinimalSwapInfoPool);
               });
             });
           });
@@ -777,7 +777,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -790,12 +790,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenOut({ swaps }, { MKR: 0.75e18 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
               });
 
               context('with a two token pool', () => {
@@ -806,7 +806,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -819,12 +819,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenOut({ swaps }, { MKR: 1e18, SNX: -0.25e18 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
               });
             });
           });

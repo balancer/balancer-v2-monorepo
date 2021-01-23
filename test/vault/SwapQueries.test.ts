@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { SimplifiedQuotePool } from '../../scripts/helpers/pools';
+import { MinimalSwapInfoPool } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
 import { deployTokens, TokenList } from '../helpers/tokens';
@@ -36,7 +36,7 @@ describe('Vault - swap queries', () => {
     }
 
     for (let i = 0; i < MAX_POOLS; ++i) {
-      const pool = await deploy('MockPool', { args: [vault.address, SimplifiedQuotePool] });
+      const pool = await deploy('MockPool', { args: [vault.address, MinimalSwapInfoPool] });
       await pool.setMultiplier(toFixedPoint(2));
 
       await vault.connect(lp).addUserAgent(pool.address);
