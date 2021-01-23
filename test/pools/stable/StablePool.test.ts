@@ -11,7 +11,7 @@ import { FIXED_POINT_SCALING, toFixedPoint } from '../../../scripts/helpers/fixe
 import { calculateInvariant } from '../../helpers/math/stable';
 import { Decimal } from 'decimal.js';
 
-describe('StablePool', function () {
+describe.skip('StablePool', function () {
   let admin: SignerWithAddress;
   let creator: SignerWithAddress;
   let lp: SignerWithAddress;

@@ -19,7 +19,7 @@ import {
   calcTokenOutGivenExactBptIn,
 } from '../../helpers/math/weighted';
 
-describe('WeightedPool', function () {
+describe.skip('WeightedPool', function () {
   let authorizer: Contract, vault: Contract;
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
