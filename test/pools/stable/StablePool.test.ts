@@ -187,8 +187,8 @@ describe('StablePool', function () {
       const pool = await callDeployPool();
       const poolId = await pool.getPoolId();
 
-      for (const symbol in tokens) {
-        expect(await vault.getPoolAssetManager(poolId, tokens[symbol].address)).to.equal(ZERO_ADDRESS);
+      for (const token of poolTokens) {
+        expect(await vault.getPoolAssetManager(poolId, token)).to.equal(ZERO_ADDRESS);
       }
     });
   });
