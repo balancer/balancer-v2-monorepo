@@ -128,7 +128,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY
     ) internal {
         require(tokenX != tokenY, "ERR_TOKENS_ARE_THE_SAME");
-        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ERR_TOKEN_IS_ZERO");
+        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ERR_TOKEN_CANT_BE_ZERO");
 
         TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
         require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "ERR_TOKENS_ALREADY_SET");
@@ -370,6 +370,11 @@ contract TwoTokenPoolsBalance {
     ) internal view returns (bool) {
         TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
         return poolTokens.tokenA == tokenA && tokenB == poolTokens.tokenB;
+    }
+
+    function _isTwoTokenPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
+        return (token == poolTokens.tokenA || token == poolTokens.tokenB) && token != IERC20(0);
     }
 
     /**

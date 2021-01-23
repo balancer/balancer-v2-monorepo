@@ -83,7 +83,7 @@ contract SimplifiedQuotePoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "ERR_TOKEN_IS_ZERO");
+            require(token != IERC20(0), "ERR_TOKEN_CANT_BE_ZERO");
             bool added = poolTokens.add(address(token));
             require(added, "ERR_TOKEN_ALREADY_REGISTERED");
         }
@@ -231,5 +231,10 @@ contract SimplifiedQuotePoolsBalance {
     ) internal view returns (bytes32) {
         require(poolTokens.contains(address(token)), "ERR_TOKEN_NOT_REGISTERED");
         return _simplifiedQuotePoolsBalances[poolId][token];
+    }
+
+    function _isSimplifiedQuotePoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        EnumerableSet.AddressSet storage poolTokens = _simplifiedQuotePoolsTokens[poolId];
+        return poolTokens.contains(address(token));
     }
 }

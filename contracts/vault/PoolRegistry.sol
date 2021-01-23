@@ -478,10 +478,10 @@ abstract contract PoolRegistry is
         bool withdrawFromInternalBalance
     ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Not technically necessary since the transfer call would fail
+            // We are not checking for non-zero token addresses here for two reasons:
+            // 1. Not technically necessary since the transfer call would fail
+            // 2. Pools can't register the zero address as a token, it's already ensured at that point
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "Token is the zero address");
-
             uint256 toReceive = amounts[i];
             if (toReceive > 0) {
                 if (withdrawFromInternalBalance) {
@@ -526,10 +526,10 @@ abstract contract PoolRegistry is
         bool depositToInternalBalance
     ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Not technically necessary since the transfer call would fail
+            // We are not checking for non-zero token addresses here for two reasons:
+            // 1. Not technically necessary since the transfer call would fail
+            // 2. Pools can't register the zero address as a token, it's already ensured at that point
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "Token is the zero address");
-
             uint256 amount256 = amounts[i];
             uint128 amount128 = amount256.toUint128();
             if (amount256 > 0) {
@@ -549,7 +549,7 @@ abstract contract PoolRegistry is
     // Assets under management
 
     modifier onlyPoolAssetManager(bytes32 poolId, IERC20 token) {
-        require(_isPoolAssetManager(poolId, token, msg.sender), "SENDER_NOT_ASSET_MANAGER");
+        _ensurePoolAssetManagerIsSender(poolId, token);
         _;
     }
 
@@ -567,16 +567,15 @@ abstract contract PoolRegistry is
         }
     }
 
-    function getPoolAssetManager(bytes32 poolId, IERC20 token) external view override returns (address) {
+    function getPoolAssetManager(bytes32 poolId, IERC20 token)
+        external
+        view
+        override
+        withExistingPool(poolId)
+        returns (address)
+    {
+        _ensureTokenRegistered(poolId, token);
         return _poolAssetManagers[poolId][token];
-    }
-
-    function isPoolAssetManager(
-        bytes32 poolId,
-        IERC20 token,
-        address account
-    ) external view returns (bool) {
-        return _isPoolAssetManager(poolId, token, account);
     }
 
     function withdrawFromPoolBalance(
@@ -628,14 +627,6 @@ abstract contract PoolRegistry is
         }
     }
 
-    function _isPoolAssetManager(
-        bytes32 poolId,
-        IERC20 token,
-        address account
-    ) internal view returns (bool) {
-        return _poolAssetManagers[poolId][token] == account;
-    }
-
     function paySwapProtocolFees(
         bytes32 poolId,
         IERC20[] calldata tokens,
@@ -683,14 +674,35 @@ abstract contract PoolRegistry is
         }
     }
 
-    function _ensurePoolIsSender(bytes32 poolId) private view {
+    function _ensurePoolIsSender(bytes32 poolId) internal view {
         _ensureExistingPool(poolId);
         address pool = _getPoolAddress(poolId);
         require(pool == msg.sender, "Caller is not the pool");
     }
 
-    function _ensureExistingPool(bytes32 poolId) private view {
+    function _ensureExistingPool(bytes32 poolId) internal view {
         require(_pools.contains(poolId), "Nonexistent pool");
+    }
+
+    function _ensureTokenRegistered(bytes32 poolId, IERC20 token) internal view {
+        require(_isTokenRegistered(poolId, token), "ERR_TOKEN_NOT_REGISTERED");
+    }
+
+    function _ensurePoolAssetManagerIsSender(bytes32 poolId, IERC20 token) internal view {
+        _ensureExistingPool(poolId);
+        _ensureTokenRegistered(poolId, token);
+        require(_poolAssetManagers[poolId][token] == msg.sender, "SENDER_NOT_ASSET_MANAGER");
+    }
+
+    function _isTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        PoolOptimization optimization = _getPoolOptimization(poolId);
+        if (optimization == PoolOptimization.TWO_TOKEN) {
+            return _isTwoTokenPoolTokenRegistered(poolId, token);
+        } else if (optimization == PoolOptimization.SIMPLIFIED_QUOTE) {
+            return _isSimplifiedQuotePoolTokenRegistered(poolId, token);
+        } else {
+            return _isStandardPoolTokenRegistered(poolId, token);
+        }
     }
 
     function _collectProtocolSwapFee(

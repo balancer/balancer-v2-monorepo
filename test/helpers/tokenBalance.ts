@@ -1,13 +1,13 @@
-import { Contract, BigNumber } from 'ethers';
+import { expect } from 'chai';
 import { TokenList } from './tokens';
 import { Dictionary } from 'lodash';
-import { expect } from 'chai';
+import { BigNumberish } from './numbers';
+import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 // Ported from @openzeppelin/test-helpers to use with ERC20 tokens and Ethers
 
 type Account = string | SignerWithAddress | Contract;
-export type BigNumberish = string | number | BigNumber;
 type CompareFunction = 'equal' | 'eq' | 'above' | 'gt' | 'gte' | 'below' | 'lt' | 'lte' | 'least' | 'most' | 'near';
 export type Comparison = [CompareFunction, BigNumberish];
 

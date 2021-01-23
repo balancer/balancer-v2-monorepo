@@ -187,8 +187,8 @@ describe('StablePool', function () {
       const pool = await callDeployPool();
       const poolId = await pool.getPoolId();
 
-      for (const symbol in tokens) {
-        expect(await vault.getPoolAssetManager(poolId, tokens[symbol].address)).to.equal(ZERO_ADDRESS);
+      for (const token of poolTokens) {
+        expect(await vault.getPoolAssetManager(poolId, token)).to.equal(ZERO_ADDRESS);
       }
     });
   });
@@ -516,6 +516,22 @@ describe('StablePool', function () {
 
         expect(result).to.be.at.least((15.7e18).toString());
         expect(result).to.be.at.most((15.8e18).toString());
+      });
+
+      it('reverts when querying invalid indexes', async () => {
+        const balances = [(100e18).toString(), (200e18).toString(), (300e18).toString()];
+        const swap = {
+          poolId,
+          from: other.address,
+          to: other.address,
+          tokenIn: tokens.DAI.address,
+          tokenOut: tokens.MKR.address,
+          amountIn: (16.6e18).toString(), // ~15e18 + 10% fee
+          userData: '0x',
+        };
+
+        await expect(pool.quoteOutGivenIn(swap, balances, 10, 1)).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
+        await expect(pool.quoteOutGivenIn(swap, balances, 0, 10)).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
       });
 
       it('quotes amount in', async () => {
