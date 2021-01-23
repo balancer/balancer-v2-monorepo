@@ -27,7 +27,7 @@ export async function setupEnvironment(): Promise<{
 
   const symbols = Object.keys(tokens);
   const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
-  
+
   for (const symbol in tokens) {
     // creator tokens are used to add liquidity to pools, but minted when required
     await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
