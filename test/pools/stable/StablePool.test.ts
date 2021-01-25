@@ -26,7 +26,7 @@ const encodeExitExactBPTInForAllTokensOutUserData = (bptAmountIn: string): strin
   return ethers.utils.defaultAbiCoder.encode(['uint256'], [bptAmountIn]);
 };
 
-describe.only('StablePool', function () {
+describe('StablePool', function () {
   let authorizer: Contract, vault: Contract;
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -59,6 +59,17 @@ describe.only('StablePool', function () {
     }
   });
 
+  context('for a 1 token pool', () => {
+    it('reverts if there is a single token', async () => {
+      const poolTokens = tokens.map((token) => token.address).slice(0, 1);
+      await expect(
+        deploy('StablePool', {
+          args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, 0, 0],
+        })
+      ).to.be.revertedWith('ERR_MIN_TOKENS');
+    });
+  });
+
   context('for a 2 token pool', () => {
     itBehavesAsStablePool(2);
   });
@@ -67,30 +78,23 @@ describe.only('StablePool', function () {
     itBehavesAsStablePool(3);
   });
 
-  it('reverts if there is a single token', async () => {
-    const poolTokens = tokens.map((token) => token.address).slice(0, 1);
-    await expect(
-      deploy('StablePool', {
-        args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, 0, 0],
-      })
-    ).to.be.revertedWith('ERR_MIN_TOKENS');
-  });
+  context('for a too-many token pool', () => {
+    it('reverts if there are too many tokens', async () => {
+      // The maximum number of tokens is 16
+      const manyTokens = await deployTokens(
+        Array(17)
+          .fill('TK')
+          .map((v, i) => `${v}${i}`),
+        Array(17).fill(18)
+      );
+      const poolTokens = Object.values(manyTokens).map((token) => token.address);
 
-  it('reverts if there are too many tokens', async () => {
-    // The maximum number of tokens is 16
-    const manyTokens = await deployTokens(
-      Array(17)
-        .fill('TK')
-        .map((v, i) => `${v}${i}`),
-      Array(17).fill(18)
-    );
-    const poolTokens = Object.values(manyTokens).map((token) => token.address);
-
-    await expect(
-      deploy('StablePool', {
-        args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, 0, 0],
-      })
-    ).to.be.revertedWith('ERR_MAX_TOKENS');
+      await expect(
+        deploy('StablePool', {
+          args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, 0, 0],
+        })
+      ).to.be.revertedWith('ERR_MAX_TOKENS');
+    });
   });
 
   function itBehavesAsStablePool(numberOfTokens: number) {

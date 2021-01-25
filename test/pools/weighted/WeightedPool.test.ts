@@ -83,6 +83,18 @@ describe('WeightedPool', function () {
     }
   });
 
+  context('for a 1 token pool', () => {
+    it('reverts if there is a single token', async () => {
+      const poolTokens = tokens.map((token) => token.address).slice(0, 1);
+      const poolWeights = WEIGHTS.slice(0, 1);
+      await expect(
+        deploy('WeightedPool', {
+          args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE],
+        })
+      ).to.be.revertedWith('ERR_MIN_TOKENS');
+    });
+  });
+
   context('for a 2 token pool', () => {
     itBehavesAsWeightedPool(2);
   });
@@ -91,32 +103,24 @@ describe('WeightedPool', function () {
     itBehavesAsWeightedPool(3);
   });
 
-  it('reverts if there is a single token', async () => {
-    const poolTokens = tokens.map((token) => token.address).slice(0, 1);
-    const poolWeights = WEIGHTS.slice(0, 1);
-    await expect(
-      deploy('WeightedPool', {
-        args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE],
-      })
-    ).to.be.revertedWith('ERR_MIN_TOKENS');
-  });
+  context('for a too-many token pool', () => {
+    it('reverts if there are too many tokens', async () => {
+      // The maximum number of tokens is 16
+      const manyTokens = await deployTokens(
+        Array(17)
+          .fill('TK')
+          .map((v, i) => `${v}${i}`),
+        Array(17).fill(18)
+      );
+      const poolTokens = Object.values(manyTokens).map((token) => token.address);
+      const poolWeights = new Array(17).fill(toFixedPoint(1));
 
-  it('reverts if there are too many tokens', async () => {
-    // The maximum number of tokens is 16
-    const manyTokens = await deployTokens(
-      Array(17)
-        .fill('TK')
-        .map((v, i) => `${v}${i}`),
-      Array(17).fill(18)
-    );
-    const poolTokens = Object.values(manyTokens).map((token) => token.address);
-    const poolWeights = new Array(17).fill(toFixedPoint(1));
-
-    await expect(
-      deploy('WeightedPool', {
-        args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE],
-      })
-    ).to.be.revertedWith('ERR_MAX_TOKENS');
+      await expect(
+        deploy('WeightedPool', {
+          args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE],
+        })
+      ).to.be.revertedWith('ERR_MAX_TOKENS');
+    });
   });
 
   function itBehavesAsWeightedPool(numberOfTokens: number) {
