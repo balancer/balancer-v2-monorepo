@@ -91,6 +91,34 @@ describe('WeightedPool', function () {
     itBehavesAsWeightedPool(3);
   });
 
+  it('reverts if there is a single token', async () => {
+    const poolTokens = tokens.map((token) => token.address).slice(0, 1);
+    const poolWeights = WEIGHTS.slice(0, 1);
+    await expect(
+      deploy('WeightedPool', {
+        args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE],
+      })
+    ).to.be.revertedWith('ERR_MIN_TOKENS');
+  });
+
+  it('reverts if there are too many tokens', async () => {
+    // The maximum number of tokens is 16
+    const manyTokens = await deployTokens(
+      Array(17)
+        .fill('TK')
+        .map((v, i) => `${v}${i}`),
+      Array(17).fill(18)
+    );
+    const poolTokens = Object.values(manyTokens).map((token) => token.address);
+    const poolWeights = new Array(17).fill(toFixedPoint(1));
+
+    await expect(
+      deploy('WeightedPool', {
+        args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE],
+      })
+    ).to.be.revertedWith('ERR_MAX_TOKENS');
+  });
+
   function itBehavesAsWeightedPool(numberOfTokens: number) {
     let poolTokens: string[];
 
@@ -124,7 +152,7 @@ describe('WeightedPool', function () {
           pool = await deployPool();
         });
 
-        it('creates a pool in the vault', async () => {
+        it('sets the vault', async () => {
           expect(await pool.getVault()).to.equal(vault.address);
         });
 
@@ -193,34 +221,10 @@ describe('WeightedPool', function () {
           }
         });
 
-        it('reverts if there is a single token', async () => {
-          const tokens = poolTokens.slice(0, 1);
-          const weights = poolWeights.slice(0, 1);
-          const balances = poolInitialBalances.slice(0, 1);
-
-          await expect(deployPool({ tokens, balances, weights })).to.be.revertedWith('ERR_MIN_TOKENS');
-        });
-
         it('reverts if there are repeated tokens', async () => {
           const tokens = new Array(poolTokens.length).fill(poolTokens[0]);
 
           await expect(deployPool({ tokens })).to.be.revertedWith('ERR_TOKEN_ALREADY_REGISTERED');
-        });
-
-        it('reverts if there are too many tokens', async () => {
-          // The maximum number of tokens is 16
-          const manyTokens = await deployTokens(
-            Array(17)
-              .fill('TK')
-              .map((v, i) => `${v}${i}`),
-            Array(17).fill(18)
-          );
-
-          const tokens = Object.values(manyTokens).map((token) => token.address);
-          const balances = new Array(17).fill(100);
-          const weights = new Array(17).fill(toFixedPoint(1));
-
-          await expect(deployPool({ tokens, balances, weights })).to.be.revertedWith('ERR_MAX_TOKENS');
         });
 
         it('reverts if the swap fee is too high', async () => {
@@ -284,7 +288,7 @@ describe('WeightedPool', function () {
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
-      context('intialization', () => {
+      context('initialization', () => {
         let initialJoinUserData: string;
 
         beforeEach(async () => {
@@ -320,7 +324,7 @@ describe('WeightedPool', function () {
           // Amounts in should be the same as initial ones
           expect(amountsIn).to.deep.equal(poolInitialBalances);
 
-          // Protocol fees should be cero
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
           // Initial balances should equal invariant
@@ -328,7 +332,7 @@ describe('WeightedPool', function () {
           expectEqualWithError(bpt, invariant, 0.001);
         });
 
-        it('fails if already intialized', async () => {
+        it('fails if already initialized', async () => {
           await vault
             .connect(creator)
             .callJoinPool(
@@ -358,7 +362,7 @@ describe('WeightedPool', function () {
       });
 
       context('join exact tokens in for BPT out', () => {
-        it('fails if not intialized', async () => {
+        it('fails if not initialized', async () => {
           const joinUserData = encodeJoinExactTokensInForBPTOutUserData('0');
           await expect(
             vault
@@ -420,7 +424,7 @@ describe('WeightedPool', function () {
             // Amounts in should be the same as initial ones
             expect(amountsIn).to.deep.equal(maxAmountsIn);
 
-            // Protocol fees should be cero
+            // Protocol fees should be zero
             expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
             const newBPT = await pool.balanceOf(beneficiary.address);
@@ -547,7 +551,7 @@ describe('WeightedPool', function () {
           const amountsOut = event.args.amountsOut;
           const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
-          // Protocol fees should be cero
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
           for (let i = 0; i < poolTokens.length; ++i) {
@@ -587,7 +591,7 @@ describe('WeightedPool', function () {
           const amountsOut = event.args.amountsOut;
           const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
-          // Protocol fees should be cero
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
           //All balances are extracted
@@ -620,7 +624,7 @@ describe('WeightedPool', function () {
           const amountsOut = event.args.amountsOut;
           const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
-          // Protocol fees should be cero
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
           //All balances are extracted
@@ -655,7 +659,7 @@ describe('WeightedPool', function () {
           const amountsOut = event.args.amountsOut;
           const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
-          // Protocol fees should be cero
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
           expect(amountsOut).to.deep.equal(minAmountsOut);

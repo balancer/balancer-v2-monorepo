@@ -26,7 +26,7 @@ const encodeExitExactBPTInForAllTokensOutUserData = (bptAmountIn: string): strin
   return ethers.utils.defaultAbiCoder.encode(['uint256'], [bptAmountIn]);
 };
 
-describe('StablePool', function () {
+describe.only('StablePool', function () {
   let authorizer: Contract, vault: Contract;
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -35,7 +35,7 @@ describe('StablePool', function () {
   const POOL_SWAP_FEE = toFixedPoint(0.01);
 
   const SYMBOLS = ['DAI', 'MKR', 'SNX', 'BAT'];
-  const INITIAL_BALANCES = [bn(10e18), bn(10e18), bn(10e18), bn(10e18)];
+  const INITIAL_BALANCES = [bn(10e18), bn(11e18), bn(12e18), bn(13e18)];
 
   before('setup signers', async () => {
     [, admin, creator, lp, trader, beneficiary, feeSetter, other] = await ethers.getSigners();
@@ -65,6 +65,32 @@ describe('StablePool', function () {
 
   context('for a 3 token pool', () => {
     itBehavesAsStablePool(3);
+  });
+
+  it('reverts if there is a single token', async () => {
+    const poolTokens = tokens.map((token) => token.address).slice(0, 1);
+    await expect(
+      deploy('StablePool', {
+        args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, 0, 0],
+      })
+    ).to.be.revertedWith('ERR_MIN_TOKENS');
+  });
+
+  it('reverts if there are too many tokens', async () => {
+    // The maximum number of tokens is 16
+    const manyTokens = await deployTokens(
+      Array(17)
+        .fill('TK')
+        .map((v, i) => `${v}${i}`),
+      Array(17).fill(18)
+    );
+    const poolTokens = Object.values(manyTokens).map((token) => token.address);
+
+    await expect(
+      deploy('StablePool', {
+        args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, 0, 0],
+      })
+    ).to.be.revertedWith('ERR_MAX_TOKENS');
   });
 
   function itBehavesAsStablePool(numberOfTokens: number) {
@@ -103,7 +129,7 @@ describe('StablePool', function () {
           pool = await deployPool({ tokens: poolTokens });
         });
 
-        it('creates a pool in the vault', async () => {
+        it('sets the vault', async () => {
           expect(await pool.getVault()).to.equal(vault.address);
         });
 
@@ -155,32 +181,10 @@ describe('StablePool', function () {
       });
 
       context('when the creation fails', () => {
-        it('reverts if there is a single token', async () => {
-          const tokens = poolTokens.slice(0, 1);
-
-          await expect(
-            deployPool({ tokens, amplification: poolAmplification, swapFee: POOL_SWAP_FEE })
-          ).to.be.revertedWith('ERR_MIN_TOKENS');
-        });
-
         it('reverts if there are repeated tokens', async () => {
           const tokens = new Array(poolTokens.length).fill(poolTokens[0]);
 
           await expect(deployPool({ tokens })).to.be.revertedWith('ERR_TOKEN_ALREADY_REGISTERED');
-        });
-
-        it('reverts if there are too many tokens', async () => {
-          // The maximum number of tokens is 16
-          const manyTokens = await deployTokens(
-            Array(17)
-              .fill('TK')
-              .map((v, i) => `${v}${i}`),
-            Array(17).fill(18)
-          );
-
-          const tokens = Object.values(manyTokens).map((token) => token.address);
-
-          await expect(deployPool({ tokens })).to.be.revertedWith('ERR_MAX_TOKENS');
         });
 
         it('reverts if the swap fee is too high', async () => {
@@ -253,7 +257,7 @@ describe('StablePool', function () {
         //Same problem with `revertedWith` as before
       });
 
-      context('intialization', () => {
+      context('initialization', () => {
         let initialJoinUserData: string;
 
         beforeEach(async () => {
@@ -289,7 +293,7 @@ describe('StablePool', function () {
           // Amounts in should be the same as initial ones
           expect(amountsIn).to.deep.equal(poolInitialBalances);
 
-          // Protocol fees should be cero
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
           // Initial balances should equal invariant
@@ -297,7 +301,7 @@ describe('StablePool', function () {
           expectEqualWithError(bpt, invariant, 0.001);
         });
 
-        it('fails if already intialized', async () => {
+        it('fails if already initialized', async () => {
           await vault
             .connect(creator)
             .callJoinPool(
@@ -327,7 +331,7 @@ describe('StablePool', function () {
       });
 
       context('join exact tokens in for BPT out', () => {
-        it('fails if not intialized', async () => {
+        it('fails if not initialized', async () => {
           const joinUserData = encodeJoinAllTokensInForExactBPTOutUserData('0');
           await expect(
             vault
@@ -384,7 +388,7 @@ describe('StablePool', function () {
             const event = expectEvent.inReceipt(receipt, 'PoolJoined');
             const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
-            // Protocol fees should be cero
+            // Protocol fees should be zero
             expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
             const newBPT = await pool.balanceOf(beneficiary.address);
@@ -486,7 +490,7 @@ describe('StablePool', function () {
           const amountsOut = event.args.amountsOut;
           const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
-          // Protocol fees should be cero
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
           //All balances are extracted
@@ -520,7 +524,7 @@ describe('StablePool', function () {
           const amountsOut = event.args.amountsOut;
           const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
-          // Protocol fees should be cero
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
 
           //All balances are extracted
