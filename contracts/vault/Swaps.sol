@@ -61,7 +61,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes userData;
     }
 
-    event TokenSwap(
+    event Swap(
         bytes32 indexed poolId,
         IERC20 indexed tokenIn,
         IERC20 indexed tokenOut,
@@ -320,7 +320,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenDeltas[swap.tokenInIndex] = SignedSafeMath.add(tokenDeltas[swap.tokenInIndex], amountIn);
             tokenDeltas[swap.tokenOutIndex] = SignedSafeMath.sub(tokenDeltas[swap.tokenOutIndex], amountOut);
 
-            emit TokenSwap(swap.poolId, tokenIn, tokenOut, amountIn, amountOut);
+            emit Swap(swap.poolId, tokenIn, tokenOut, amountIn, amountOut);
         }
 
         return tokenDeltas;
