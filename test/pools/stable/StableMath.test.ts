@@ -70,7 +70,7 @@ async function compareInGivenOut(
   );
 }
 
-describe('StableMath', function () {
+describe.skip('StableMath', function () {
   let mock: Contract;
 
   beforeEach(async function () {

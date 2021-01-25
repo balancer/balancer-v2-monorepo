@@ -4,33 +4,39 @@ import { Decimal } from 'decimal.js';
 //to verify that it equals constant sum and constant product (weighted) invariants.
 
 export function calculateInvariant(amp: Decimal, balances: Decimal[]): Decimal {
-  const n = new Decimal(balances.length);
-  //Sum
-  const sum = balances.reduce((a: Decimal, b: Decimal) => a.add(b), new Decimal(0));
-  //Mul
-  const prod = balances.reduce((a: Decimal, b: Decimal) => a.times(b), new Decimal(1));
-  //Q
-  const q = amp
-    .mul(-1)
-    .mul(n.pow(n.times(2)))
-    .mul(sum)
-    .mul(prod);
-  //P
-  const p = amp
-    .minus(new Decimal(1).div(n.pow(n)))
-    .mul(n.pow(n.times(2)))
-    .mul(prod);
-  //C
-  const c = q
-    .pow(2)
-    .div(4)
-    .plus(p.pow(3).div(27))
-    .sqrt()
-    .minus(q.div(2))
-    .pow(1 / 3);
-  //Invariant
-  const invariant = c.minus(p.div(c.mul(3)));
-  return invariant;
+  let sum = new Decimal(0);
+  const totalCoins = balances.length;
+  for (let i = 0; i < totalCoins; i++) {
+    sum = sum.add(balances[i]);
+  }
+  if (sum.isZero()) {
+    return new Decimal(0);
+  }
+  let prevInv = new Decimal(0);
+  let inv = sum;
+  const ampTimesTotal = amp.times(totalCoins);
+  for (let i = 0; i < 255; i++) {
+    let P_D = new Decimal(totalCoins).times(balances[0]);
+    for (let j = 1; j < totalCoins; j++) {
+      P_D = P_D.times(balances[j]).times(totalCoins).div(inv);
+    }
+    prevInv = inv;
+    inv = new Decimal(totalCoins)
+      .times(inv)
+      .times(inv)
+      .add(ampTimesTotal.times(sum).times(P_D))
+      .div(new Decimal(totalCoins).add(1).times(inv).add(ampTimesTotal.sub(1).times(P_D)));
+    // Equality with the precision of 1
+
+    if (inv > prevInv) {
+      if (inv.sub(prevInv).lte(1)) {
+        break;
+      }
+    } else if (prevInv.sub(inv).lte(1)) {
+      break;
+    }
+  }
+  return inv;
 }
 
 function calcBalance(amp: Decimal, oldBalances: Decimal[], newBalances: Decimal[], balanceIndex: number): Decimal {
