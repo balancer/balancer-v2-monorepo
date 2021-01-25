@@ -10,8 +10,7 @@ export type TokenList = Dictionary<Contract>;
 export async function deployTokens(
   symbols: Array<string>,
   decimals: Array<number>,
-  from?: SignerWithAddress,
-  admin?: SignerWithAddress
+  from?: SignerWithAddress
 ): Promise<TokenList> {
   const tokenSymbols: TokenList = {};
   const Token = await ethers.getContractFactory('TestToken');
@@ -40,13 +39,7 @@ export async function deploySortedTokens(
   const [defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
   return fromPairs(
-    (
-      await Promise.all(
-        symbols.map((_, i) =>
-          deploy('TestToken', { from: deployer, args: [deployer.address, `T${i}`, `T${i}`, decimals[i]] })
-        )
-      )
-    )
+    (await Promise.all(symbols.map((_, i) => deployToken(`T${i}`, decimals[i], deployer))))
       .sort((tokenA, tokenB) => (tokenA.address.toLowerCase() > tokenB.address.toLowerCase() ? 1 : -1))
       .map((token, index) => [symbols[index], token])
   );
