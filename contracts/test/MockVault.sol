@@ -22,11 +22,15 @@ contract MockVault {
     event PoolJoined(uint256[] amountsIn, uint256[] dueProtocolFeeAmounts);
     event PoolExited(uint256[] amountsOut, uint256[] dueProtocolFeeAmounts);
 
-    function registerPool(IVault.PoolOptimization) external view returns (bytes32) {
+    function registerPool(IVault.PoolSpecialization) external view returns (bytes32) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function registerTokens(bytes32, IERC20[] calldata tokens) external {
+    function registerTokens(
+        bytes32,
+        IERC20[] calldata tokens,
+        address[] calldata
+    ) external {
         // solhint-disable-previous-line no-empty-blocks
     }
 

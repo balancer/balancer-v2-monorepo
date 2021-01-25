@@ -25,7 +25,7 @@ import "../../helpers/UnsafeRandom.sol";
 
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPool.sol";
-import "../../vault/interfaces/IPoolQuoteSimplified.sol";
+import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
 
 import "../BalancerPoolToken.sol";
 import "./WeightedMath.sol";
@@ -34,7 +34,7 @@ import "./WeightedMath.sol";
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract WeightedPool is IPool, IPoolQuoteSimplified, BalancerPoolToken, WeightedMath, ReentrancyGuard {
+contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 
@@ -105,12 +105,12 @@ contract WeightedPool is IPool, IPoolQuoteSimplified, BalancerPoolToken, Weighte
 
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
-        IVault.PoolOptimization optimization = tokens.length == 2
-            ? IVault.PoolOptimization.TWO_TOKEN
-            : IVault.PoolOptimization.SIMPLIFIED_QUOTE;
+        IVault.PoolSpecialization specialization = tokens.length == 2
+            ? IVault.PoolSpecialization.TWO_TOKEN
+            : IVault.PoolSpecialization.MINIMAL_SWAP_INFO;
 
-        bytes32 poolId = vault.registerPool(optimization);
-        vault.registerTokens(poolId, tokens);
+        bytes32 poolId = vault.registerPool(specialization);
+        vault.registerTokens(poolId, tokens, new address[](tokens.length));
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;

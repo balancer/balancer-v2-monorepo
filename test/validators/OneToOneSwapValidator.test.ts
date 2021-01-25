@@ -6,7 +6,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens } from '../helpers/tokens';
 import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { SimplifiedQuotePool, StandardPool } from '../../scripts/helpers/pools';
+import { MinimalSwapInfoPool, GeneralPool } from '../../scripts/helpers/pools';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
 
@@ -24,6 +24,7 @@ describe('OneToOneSwapValidator', () => {
   let poolIds: string[];
   let swaps: SwapIn[];
   let funds: FundManagement;
+  let assetManagers: string[];
 
   before('setup', async () => {
     [, lp, trader] = await ethers.getSigners();
@@ -34,6 +35,7 @@ describe('OneToOneSwapValidator', () => {
 
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
+    assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
 
     for (const symbol in tokens) {
       // Grant tokens to lp and trader, and approve the Vault to use them
@@ -46,7 +48,7 @@ describe('OneToOneSwapValidator', () => {
 
     poolIds = [];
     for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-      const poolType = poolIdIdx % 2 ? SimplifiedQuotePool : StandardPool;
+      const poolType = poolIdIdx % 2 ? MinimalSwapInfoPool : GeneralPool;
 
       // All pools have mock strategies with an in-out multiplier of 2
       const pool = await deploy('MockPool', {
@@ -55,7 +57,9 @@ describe('OneToOneSwapValidator', () => {
 
       await vault.connect(lp).addUserAgent(pool.address);
 
-      await pool.connect(lp).registerTokens([tokens.DAI.address, tokens.MKR.address, tokens.SNX.address]);
+      await pool
+        .connect(lp)
+        .registerTokens([tokens.DAI.address, tokens.MKR.address, tokens.SNX.address], assetManagers);
 
       await pool
         .connect(lp)

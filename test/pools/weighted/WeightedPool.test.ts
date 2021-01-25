@@ -8,7 +8,7 @@ import { expectEqualWithError, bn } from '../../helpers/numbers';
 import { deploy } from '../../../scripts/helpers/deploy';
 import * as expectEvent from '../../helpers/expectEvent';
 import { toFixedPoint } from '../../../scripts/helpers/fixedPoint';
-import { SimplifiedQuotePool, TwoTokenPool } from '../../../scripts/helpers/pools';
+import { MinimalSwapInfoPool, TwoTokenPool } from '../../../scripts/helpers/pools';
 import { deploySortedTokens, deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { expectBalanceChange } from '../../helpers/tokenBalance';
@@ -110,7 +110,7 @@ describe('WeightedPool', function () {
       });
     }
 
-    const itOnlySimplifiedQuotePool = (title: string, test: any) => (numberOfTokens == 2 ? it.skip : it)(title, test);
+    const itOnlyMinimalSwapInfoPool = (title: string, test: any) => (numberOfTokens == 2 ? it.skip : it)(title, test);
 
     beforeEach('define pool tokens', () => {
       poolTokens = tokens.map((token) => token.address).slice(0, numberOfTokens);
@@ -128,11 +128,11 @@ describe('WeightedPool', function () {
           expect(await pool.getVault()).to.equal(vault.address);
         });
 
-        it('uses the corresponding optimization', async () => {
+        it('uses the corresponding specialization', async () => {
           const poolId = await pool.getPoolId();
-          const expectedOptimization = numberOfTokens == 2 ? TwoTokenPool : SimplifiedQuotePool;
+          const expectedSpecialization = numberOfTokens == 2 ? TwoTokenPool : MinimalSwapInfoPool;
 
-          expect(await vault.getPool(poolId)).to.have.members([pool.address, expectedOptimization]);
+          expect(await vault.getPool(poolId)).to.have.members([pool.address, expectedSpecialization]);
         });
 
         it('registers tokens in the vault', async () => {
@@ -146,6 +146,14 @@ describe('WeightedPool', function () {
 
         it('starts with no BPT', async () => {
           expect(await pool.totalSupply()).to.deep.equal(0);
+        });
+
+        it('sets the asset managers', async () => {
+          const poolId = await pool.getPoolId();
+
+          for (const token of poolTokens) {
+            expect(await vault.getPoolAssetManager(poolId, token)).to.equal(ZERO_ADDRESS);
+          }
         });
 
         it('sets token weights', async () => {
@@ -174,6 +182,15 @@ describe('WeightedPool', function () {
           const weights = poolWeights.slice(1);
 
           await expect(deployPool({ weights })).to.be.revertedWith('ERR_TOKENS_WEIGHTS_LENGTH');
+        });
+
+        it('initializes the asset managers', async () => {
+          const pool = await deployPool();
+          const poolId = await pool.getPoolId();
+
+          for (const symbol in poolTokens) {
+            expect(await vault.getPoolAssetManager(poolId, tokens[symbol].address)).to.equal(ZERO_ADDRESS);
+          }
         });
 
         it('reverts if there is a single token', async () => {
@@ -701,8 +718,8 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          expect(result).to.be.at.least(bn(1.349e18));
-          expect(result).to.be.at.most(bn(1.35e18));
+          expect(result).to.be.at.least(bn(1.44e18));
+          expect(result).to.be.at.most(bn(1.45e18));
         });
 
         it('reverts if token in is not in the pool', async () => {
@@ -744,8 +761,8 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          expect(result).to.be.at.least(bn(0.9e18));
-          expect(result).to.be.at.most(bn(0.91e18));
+          expect(result).to.be.at.least(bn(0.73e18));
+          expect(result).to.be.at.most(bn(0.74e18));
         });
 
         it('reverts if token in is not in the pool when given out', async () => {
@@ -770,7 +787,7 @@ describe('WeightedPool', function () {
       });
     });
 
-    describe('protocol swap fees', () => {
+    describe.skip('protocol swap fees', () => {
       const SWAP_FEE = toFixedPoint(0.05); // 5 %
       const PROTOCOL_SWAP_FEE = toFixedPoint(0.1); // 10 %
 
@@ -872,7 +889,7 @@ describe('WeightedPool', function () {
           );
         });
 
-        itOnlySimplifiedQuotePool('pays swap protocol fees on join exact BPT out', async () => {
+        itOnlyMinimalSwapInfoPool('pays swap protocol fees on join exact BPT out', async () => {
           await assertProtocolSwapFeeIsCharged(() =>
             pool
               .connect(lp)
@@ -886,7 +903,7 @@ describe('WeightedPool', function () {
           );
         });
 
-        itOnlySimplifiedQuotePool('pays swap protocol fees on exit exact BPT in', async () => {
+        itOnlyMinimalSwapInfoPool('pays swap protocol fees on exit exact BPT in', async () => {
           await assertProtocolSwapFeeIsCharged(() =>
             pool.connect(lp).exitPoolExactBPTInForTokenOut(bn(1e18), tokenList.DAI.address, 0, true, lp.address)
           );

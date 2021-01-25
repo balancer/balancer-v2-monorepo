@@ -6,12 +6,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../scripts/helpers/deploy';
 import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { SimplifiedQuotePool, PoolOptimizationSetting, StandardPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
+import { BigNumberish } from '../helpers/numbers';
 import { deployTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
-import { BigNumberish, Comparison, expectBalanceChange } from '../helpers/tokenBalance';
+import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -68,12 +69,12 @@ describe('Vault - swaps', () => {
   context('with two tokens', () => {
     const symbols = ['DAI', 'MKR'];
 
-    context('with a standard pool', () => {
-      itHandlesSwapsProperly(StandardPool, symbols);
+    context('with a general pool', () => {
+      itHandlesSwapsProperly(GeneralPool, symbols);
     });
 
-    context('with a simplified quote pool', () => {
-      itHandlesSwapsProperly(SimplifiedQuotePool, symbols);
+    context('with a minimal swap info pool', () => {
+      itHandlesSwapsProperly(MinimalSwapInfoPool, symbols);
     });
 
     context('with a two token pool', () => {
@@ -84,12 +85,12 @@ describe('Vault - swaps', () => {
   context('with three tokens', () => {
     const symbols = ['DAI', 'MKR', 'SNX'];
 
-    context('with a standard pool', () => {
-      itHandlesSwapsProperly(StandardPool, symbols);
+    context('with a general pool', () => {
+      itHandlesSwapsProperly(GeneralPool, symbols);
     });
 
-    context('with a simplified quote pool', () => {
-      itHandlesSwapsProperly(SimplifiedQuotePool, symbols);
+    context('with a minimal swap info pool', () => {
+      itHandlesSwapsProperly(MinimalSwapInfoPool, symbols);
     });
   });
 
@@ -103,7 +104,7 @@ describe('Vault - swaps', () => {
     }));
   }
 
-  async function deployPool(type: PoolOptimizationSetting, tokenSymbols: string[]): Promise<string> {
+  async function deployPool(type: PoolSpecializationSetting, tokenSymbols: string[]): Promise<string> {
     const pool = await deploy('MockPool', { args: [vault.address, type] });
     await pool.setMultiplier(toFixedPoint(2));
 
@@ -111,29 +112,30 @@ describe('Vault - swaps', () => {
     await vault.connect(lp).addUserAgent(pool.address);
 
     const tokenAddresses = tokenSymbols.map((symbol) => tokens[symbol].address);
+    const assetManagers = tokenSymbols.map(() => ZERO_ADDRESS);
     const tokenAmounts = tokenSymbols.map(() => (100e18).toString());
 
-    await pool.connect(lp).registerTokens(tokenAddresses);
+    await pool.connect(lp).registerTokens(tokenAddresses, assetManagers);
     await pool.connect(lp).addLiquidity(tokenAddresses, tokenAmounts);
 
     return pool.getPoolId();
   }
 
-  function deployMainPool(type: PoolOptimizationSetting, tokenSymbols: string[]) {
+  function deployMainPool(type: PoolSpecializationSetting, tokenSymbols: string[]) {
     beforeEach('deploy main pool', async () => {
       poolId = await deployPool(type, tokenSymbols);
       poolIds = [poolId];
     });
   }
 
-  function deployAnotherPool(type: PoolOptimizationSetting, tokenSymbols: string[]) {
+  function deployAnotherPool(type: PoolSpecializationSetting, tokenSymbols: string[]) {
     beforeEach('deploy secondary pool', async () => {
       anotherPoolId = await deployPool(type, tokenSymbols);
       poolIds.push(anotherPoolId);
     });
   }
 
-  function itHandlesSwapsProperly(type: PoolOptimizationSetting, tokenSymbols: string[]) {
+  function itHandlesSwapsProperly(type: PoolSpecializationSetting, tokenSymbols: string[]) {
     deployMainPool(type, tokenSymbols);
 
     describe('swap given in', () => {
@@ -163,96 +165,112 @@ describe('Vault - swaps', () => {
 
       context('for a single swap', () => {
         context('when an amount is specified', () => {
-          context('when the given token is in the pool', () => {
-            context('when the requested token is in the pool', () => {
-              context('when requesting another token', () => {
-                context('when requesting a reasonable amount', () => {
-                  // Send 1 MKR, get 2 DAI back
-                  const swaps = [{ in: 1, out: 0, amount: 1e18 }];
+          context('when the given indexes are valid', () => {
+            context('when the given token is in the pool', () => {
+              context('when the requested token is in the pool', () => {
+                context('when requesting another token', () => {
+                  context('when requesting a reasonable amount', () => {
+                    // Send 1 MKR, get 2 DAI back
+                    const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
-                  context('when the sender is using his own tokens', () => {
-                    context('when using managed balance', () => {
-                      assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -1e18 });
-                    });
-
-                    context('when withdrawing from internal balance', () => {
-                      context.skip('when using less than available as internal balance', () => {
-                        // TODO: add tests where no token transfers are needed and internal balance remains
+                    context('when the sender is using his own tokens', () => {
+                      context('when using managed balance', () => {
+                        assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -1e18 });
                       });
 
-                      context('when using more than available as internal balance', () => {
-                        beforeEach('deposit to internal balance', async () => {
-                          funds.withdrawFromInternalBalance = true;
-                          await vault
-                            .connect(trader)
-                            .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                      context('when withdrawing from internal balance', () => {
+                        context.skip('when using less than available as internal balance', () => {
+                          // TODO: add tests where no token transfers are needed and internal balance remains
                         });
 
-                        assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
+                        context('when using more than available as internal balance', () => {
+                          beforeEach('deposit to internal balance', async () => {
+                            funds.withdrawFromInternalBalance = true;
+                            await vault
+                              .connect(trader)
+                              .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                          });
+
+                          assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
+                        });
+                      });
+
+                      context('when depositing from internal balance', () => {
+                        beforeEach('deposit to internal balance', async () => {
+                          funds.depositToInternalBalance = true;
+                        });
+
+                        assertSwapGivenIn({ swaps }, { MKR: -1e18 });
                       });
                     });
 
-                    context('when depositing from internal balance', () => {
-                      beforeEach('deposit to internal balance', async () => {
-                        funds.depositToInternalBalance = true;
+                    context('when the sender is using tokens from other user', () => {
+                      const fromOther = true;
+
+                      context('when the sender is allowed as an agent', async () => {
+                        beforeEach('add user agent', async () => {
+                          await vault.connect(trader).addUserAgent(other.address);
+                        });
+
+                        assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
                       });
 
-                      assertSwapGivenIn({ swaps }, { MKR: -1e18 });
+                      context('when the sender is not allowed as an agent', async () => {
+                        beforeEach('remove user agent', async () => {
+                          await vault.connect(trader).removeUserAgent(other.address);
+                        });
+
+                        assertSwapGivenInReverts({ swaps, fromOther }, 'Caller is not an agent');
+                      });
                     });
                   });
 
-                  context('when the sender is using tokens from other user', () => {
-                    const fromOther = true;
+                  context('when draining the pool', () => {
+                    const swaps = [{ in: 1, out: 0, amount: 50e18 }];
 
-                    context('when the sender is allowed as an agent', async () => {
-                      beforeEach('add user agent', async () => {
-                        await vault.connect(trader).addUserAgent(other.address);
-                      });
+                    assertSwapGivenIn({ swaps }, { DAI: 100e18, MKR: -50e18 });
+                  });
 
-                      assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
-                    });
+                  context('when requesting more than the available balance', () => {
+                    const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                    context('when the sender is not allowed as an agent', async () => {
-                      beforeEach('remove user agent', async () => {
-                        await vault.connect(trader).removeUserAgent(other.address);
-                      });
-
-                      assertSwapGivenInReverts({ swaps, fromOther }, 'Caller is not an agent');
-                    });
+                    assertSwapGivenInReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
                   });
                 });
 
-                context('when draining the pool', () => {
-                  const swaps = [{ in: 1, out: 0, amount: 50e18 }];
+                context('when the requesting the same token', () => {
+                  const swaps = [{ in: 1, out: 1, amount: 1e18 }];
 
-                  assertSwapGivenIn({ swaps }, { DAI: 100e18, MKR: -50e18 });
-                });
-
-                context('when requesting more than the available balance', () => {
-                  const swaps = [{ in: 1, out: 0, amount: 100e18 }];
-
-                  assertSwapGivenInReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
+                  assertSwapGivenInReverts({ swaps }, 'Swap for same token');
                 });
               });
 
-              context('when the requesting the same token', () => {
-                const swaps = [{ in: 1, out: 1, amount: 1e18 }];
+              context('when the requested token is not in the pool', () => {
+                const swaps = [{ in: 1, out: 3, amount: 1e18 }];
 
-                assertSwapGivenInReverts({ swaps }, 'Swap for same token');
+                assertSwapGivenInReverts({ swaps });
               });
             });
 
-            context('when the requested token is not in the pool', () => {
-              const swaps = [{ in: 1, out: 3, amount: 1e18 }];
+            context('when the given token is not in the pool', () => {
+              const swaps = [{ in: 3, out: 1, amount: 1e18 }];
 
               assertSwapGivenInReverts({ swaps });
             });
           });
 
-          context('when the given token is not in the pool', () => {
-            const swaps = [{ in: 3, out: 1, amount: 1e18 }];
+          context('when the given indexes are not valid', () => {
+            context('when the token index in is not valid', () => {
+              const swaps = [{ in: 30, out: 1, amount: 1e18 }];
 
-            assertSwapGivenInReverts({ swaps });
+              assertSwapGivenInReverts({ swaps }, 'ERR_INDEX_OUT_OF_BOUNDS');
+            });
+
+            context('when the token index out is not valid', () => {
+              const swaps = [{ in: 0, out: 10, amount: 1e18 }];
+
+              assertSwapGivenInReverts({ swaps }, 'ERR_INDEX_OUT_OF_BOUNDS');
+            });
           });
         });
 
@@ -280,7 +298,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -332,12 +350,12 @@ describe('Vault - swaps', () => {
                   });
                 });
               };
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(MinimalSwapInfoPool);
               });
 
               context('with a two token pool', () => {
@@ -348,7 +366,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -373,13 +391,13 @@ describe('Vault - swaps', () => {
                 });
               };
 
-              context('with a standard pool', () => {
-                const anotherPoolType = StandardPool;
+              context('with a general pool', () => {
+                const anotherPoolType = GeneralPool;
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
               });
 
-              context('with a simplified quote pool', () => {
-                const anotherPoolType = SimplifiedQuotePool;
+              context('with a minimal swap info pool', () => {
+                const anotherPoolType = MinimalSwapInfoPool;
                 itHandleMultiSwapsWithoutHopsProperly(anotherPoolType);
               });
             });
@@ -415,7 +433,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -428,12 +446,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenIn({ swaps }, { MKR: 3e18 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
               });
 
               context('with a two token pool', () => {
@@ -444,7 +462,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -457,12 +475,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenIn({ swaps }, { SNX: 4e18, MKR: -1e18 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
               });
             });
           });
@@ -497,94 +515,110 @@ describe('Vault - swaps', () => {
 
       context('for a single swap', () => {
         context('when an amount is specified', () => {
-          context('when the given token is in the pool', () => {
-            context('when the requested token is in the pool', () => {
-              context('when the requesting another token', () => {
-                context('when requesting a reasonable amount', () => {
-                  // Get 1e18 DAI by sending 0.5e18 MKR
-                  const swaps = [{ in: 1, out: 0, amount: 1e18 }];
+          context('when the given indexes are not valid', () => {
+            context('when the given token is in the pool', () => {
+              context('when the requested token is in the pool', () => {
+                context('when the requesting another token', () => {
+                  context('when requesting a reasonable amount', () => {
+                    // Get 1e18 DAI by sending 0.5e18 MKR
+                    const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
-                  context('when the sender is using his own tokens', () => {
-                    context('when using managed balance', () => {
-                      assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.5e18 });
-                    });
-
-                    context('when withdrawing from internal balance', () => {
-                      context.skip('when using less than available as internal balance', () => {
-                        // TODO: add tests where no token transfers are needed and internal balance remains
+                    context('when the sender is using his own tokens', () => {
+                      context('when using managed balance', () => {
+                        assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.5e18 });
                       });
 
-                      context('when using more than available as internal balance', () => {
-                        beforeEach('deposit to internal balance', async () => {
-                          funds.withdrawFromInternalBalance = true;
-                          await vault
-                            .connect(trader)
-                            .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                      context('when withdrawing from internal balance', () => {
+                        context.skip('when using less than available as internal balance', () => {
+                          // TODO: add tests where no token transfers are needed and internal balance remains
                         });
 
-                        assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
+                        context('when using more than available as internal balance', () => {
+                          beforeEach('deposit to internal balance', async () => {
+                            funds.withdrawFromInternalBalance = true;
+                            await vault
+                              .connect(trader)
+                              .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                          });
+
+                          assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
+                        });
+                      });
+
+                      context('when depositing from internal balance', () => {
+                        beforeEach('deposit to internal balance', async () => {
+                          funds.depositToInternalBalance = true;
+                        });
+
+                        assertSwapGivenOut({ swaps }, { MKR: -0.5e18 });
                       });
                     });
 
-                    context('when depositing from internal balance', () => {
-                      beforeEach('deposit to internal balance', async () => {
-                        funds.depositToInternalBalance = true;
+                    context('when the sender is using tokens from other user', () => {
+                      context('when the sender is allowed as an agent', async () => {
+                        beforeEach('add user agent', async () => {
+                          await vault.connect(trader).addUserAgent(other.address);
+                        });
+
+                        assertSwapGivenOut({ swaps, fromOther: true }, { DAI: 1e18, MKR: -0.5e18 });
                       });
 
-                      assertSwapGivenOut({ swaps }, { MKR: -0.5e18 });
+                      context('when the sender is not allowed as an agent', async () => {
+                        beforeEach('remove user agent', async () => {
+                          await vault.connect(trader).removeUserAgent(other.address);
+                        });
+
+                        assertSwapGivenOutReverts({ swaps, fromOther: true }, 'Caller is not an agent');
+                      });
                     });
                   });
 
-                  context('when the sender is using tokens from other user', () => {
-                    context('when the sender is allowed as an agent', async () => {
-                      beforeEach('add user agent', async () => {
-                        await vault.connect(trader).addUserAgent(other.address);
-                      });
+                  context('when draining the pool', () => {
+                    const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                      assertSwapGivenOut({ swaps, fromOther: true }, { DAI: 1e18, MKR: -0.5e18 });
-                    });
+                    assertSwapGivenOut({ swaps }, { DAI: 100e18, MKR: -50e18 });
+                  });
 
-                    context('when the sender is not allowed as an agent', async () => {
-                      beforeEach('remove user agent', async () => {
-                        await vault.connect(trader).removeUserAgent(other.address);
-                      });
+                  context('when requesting more than the available balance', () => {
+                    const swaps = [{ in: 1, out: 0, amount: 200e18 }];
 
-                      assertSwapGivenOutReverts({ swaps, fromOther: true }, 'Caller is not an agent');
-                    });
+                    assertSwapGivenOutReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
                   });
                 });
 
-                context('when draining the pool', () => {
-                  const swaps = [{ in: 1, out: 0, amount: 100e18 }];
+                context('when the requesting the same token', () => {
+                  const swaps = [{ in: 1, out: 1, amount: 1e18 }];
 
-                  assertSwapGivenOut({ swaps }, { DAI: 100e18, MKR: -50e18 });
-                });
-
-                context('when requesting more than the available balance', () => {
-                  const swaps = [{ in: 1, out: 0, amount: 200e18 }];
-
-                  assertSwapGivenOutReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
+                  assertSwapGivenOutReverts({ swaps }, 'Swap for same token');
                 });
               });
 
-              context('when the requesting the same token', () => {
-                const swaps = [{ in: 1, out: 1, amount: 1e18 }];
+              context('when the requested token is not in the pool', () => {
+                const swaps = [{ in: 1, out: 3, amount: 1e18 }];
 
-                assertSwapGivenOutReverts({ swaps }, 'Swap for same token');
+                assertSwapGivenOutReverts({ swaps });
               });
             });
 
-            context('when the requested token is not in the pool', () => {
-              const swaps = [{ in: 1, out: 3, amount: 1e18 }];
+            context('when the given token is not in the pool', () => {
+              const swaps = [{ in: 3, out: 1, amount: 1e18 }];
 
               assertSwapGivenOutReverts({ swaps });
             });
           });
 
-          context('when the given token is not in the pool', () => {
-            const swaps = [{ in: 3, out: 1, amount: 1e18 }];
+          context('when the given indexes are not valid', () => {
+            context('when the token index in is not valid', () => {
+              const swaps = [{ in: 30, out: 1, amount: 1e18 }];
 
-            assertSwapGivenOutReverts({ swaps });
+              assertSwapGivenOutReverts({ swaps }, 'ERR_INDEX_OUT_OF_BOUNDS');
+            });
+
+            context('when the token index out is not valid', () => {
+              const swaps = [{ in: 0, out: 10, amount: 1e18 }];
+
+              assertSwapGivenOutReverts({ swaps }, 'ERR_INDEX_OUT_OF_BOUNDS');
+            });
           });
         });
 
@@ -612,7 +646,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -665,12 +699,12 @@ describe('Vault - swaps', () => {
                 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(MinimalSwapInfoPool);
               });
               context('with a two token pool', () => {
                 itHandleMultiSwapsWithoutHopsProperly(TwoTokenPool);
@@ -680,7 +714,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -705,12 +739,12 @@ describe('Vault - swaps', () => {
                 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithoutHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithoutHopsProperly(MinimalSwapInfoPool);
               });
             });
           });
@@ -743,7 +777,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -756,12 +790,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenOut({ swaps }, { MKR: 0.75e18 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
               });
 
               context('with a two token pool', () => {
@@ -772,7 +806,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolOptimizationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolType: PoolSpecializationSetting) => {
                 deployAnotherPool(anotherPoolType, anotherPoolSymbols);
 
                 const swaps = [
@@ -785,12 +819,12 @@ describe('Vault - swaps', () => {
                 assertSwapGivenOut({ swaps }, { MKR: 1e18, SNX: -0.25e18 });
               };
 
-              context('with a standard pool', () => {
-                itHandleMultiSwapsWithHopsProperly(StandardPool);
+              context('with a general pool', () => {
+                itHandleMultiSwapsWithHopsProperly(GeneralPool);
               });
 
-              context('with a simplified quote pool', () => {
-                itHandleMultiSwapsWithHopsProperly(SimplifiedQuotePool);
+              context('with a minimal swap info pool', () => {
+                itHandleMultiSwapsWithHopsProperly(MinimalSwapInfoPool);
               });
             });
           });

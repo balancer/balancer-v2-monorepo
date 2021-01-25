@@ -5,7 +5,7 @@ import { expectEqualWithError, bn } from '../../helpers/numbers';
 import * as expectEvent from '../../helpers/expectEvent';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../../../scripts/helpers/deploy';
-import { StandardPool, TwoTokenPool } from '../../../scripts/helpers/pools';
+import { GeneralPool } from '../../../scripts/helpers/pools';
 import { deploySortedTokens, deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { FIXED_POINT_SCALING, toFixedPoint } from '../../../scripts/helpers/fixedPoint';
@@ -107,11 +107,9 @@ describe('StablePool', function () {
           expect(await pool.getVault()).to.equal(vault.address);
         });
 
-        it('uses the corresponding optimization', async () => {
+        it('uses general specialization', async () => {
           const poolId = await pool.getPoolId();
-          const expectedOptimization = numberOfTokens == 2 ? TwoTokenPool : StandardPool;
-
-          expect(await vault.getPool(poolId)).to.have.members([pool.address, expectedOptimization]);
+          expect(await vault.getPool(poolId)).to.have.members([pool.address, GeneralPool]);
         });
 
         it('registers tokens in the vault', async () => {
@@ -121,6 +119,14 @@ describe('StablePool', function () {
           expect(await vault.getPoolTokenBalances(poolId, poolTokens)).to.deep.equal(
             Array(poolTokens.length).fill(bn(0))
           );
+        });
+
+        it('initializes the asset managers', async () => {
+          const poolId = await pool.getPoolId();
+
+          for (const token of poolTokens) {
+            expect(await vault.getPoolAssetManager(poolId, token)).to.equal(ZERO_ADDRESS);
+          }
         });
 
         it('starts with no BPT', async () => {
@@ -568,6 +574,24 @@ describe('StablePool', function () {
           //TODO: check with math once defined if analytical or approximation is used
           expectEqualWithError(result, 1.01e18, 0.001);
         });
+      });
+
+      it('reverts when querying out given in invalid indexes', async () => {
+        await expect(
+          pool.quoteOutGivenIn({ ...quoteData, amountIn: bn(1e18) }, poolInitialBalances, 10, 1)
+        ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
+        await expect(
+          pool.quoteOutGivenIn({ ...quoteData, amountIn: bn(1e18) }, poolInitialBalances, 0, 10)
+        ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
+      });
+
+      it('reverts when querying in given out invalid indexes', async () => {
+        await expect(
+          pool.quoteInGivenOut({ ...quoteData, amountOut: bn(1e18) }, poolInitialBalances, 10, 1)
+        ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
+        await expect(
+          pool.quoteInGivenOut({ ...quoteData, amountOut: bn(1e18) }, poolInitialBalances, 0, 10)
+        ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
       });
     });
 

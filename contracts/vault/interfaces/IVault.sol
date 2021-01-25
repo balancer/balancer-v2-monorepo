@@ -56,6 +56,16 @@ interface IVault {
         address recipient
     ) external;
 
+    /**
+     * @dev Transfers tokens from the caller's Internal Balance, transferring them to `recipient`'s Internal Balance.
+     * This does not charge protocol withdrawal fees.
+     */
+    function transferInternalBalance(
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        address recipient
+    ) external;
+
     // Agents
 
     /**
@@ -127,27 +137,28 @@ interface IVault {
 
     // Pools
 
-    // There are three optimization levels for Pools, which allow for lower swap gas costs at the cost of reduced
+    // There are three specialization levels for Pools, which allow for lower swap gas costs at the cost of reduced
     // functionality:
     //
-    //  - standard: no special optimization, IPoolQuote is used to ask for quotes, passing the balance of all tokens in
+    //  - general: no specialization, IGeneralPoolQuote is used to ask for quotes, passing the balance of all tokens in
     // the Pool. Swaps cost more gas the more tokens the Pool has (because of the extra storage reads).
     //
-    //  - simplified quote: IPoolQuoteSimplified is used instead, which saves gas by only passes the balance of the two
-    // tokens involved in the swap. This is suitable for some pricing algorithms, like the weighted constant product one
-    // popularized by Balancer v1. Swap gas cost is independent of the number of tokens in the Pool.
+    //  - minimal swap info: IMinimalSwapInfoPoolQuote is used instead, which saves gas by only passes the balance of
+    // the two tokens involved in the swap. This is suitable for some pricing algorithms, like the weighted constant
+    // product one popularized by Balancer v1. Swap gas cost is independent of the number of tokens in the Pool.
     //
     //  - two tokens: this level achieves the lowest possible swap gas costs by restricting Pools to only having two
-    // tokens, which allows for a specialized balance packing format. Like simplified quote Pools, these are called via
-    // IPoolQuoteSimplified.
-    enum PoolOptimization { STANDARD, SIMPLIFIED_QUOTE, TWO_TOKEN }
+    // tokens, which allows for a specialized balance packing format. Like minimal swap info Pools, these are called via
+    // IMinimalSwapInfoPoolQuote.
+
+    enum PoolSpecialization { GENERAL, MINIMAL_SWAP_INFO, TWO_TOKEN }
 
     /**
-     * @dev Registers a the caller as a Pool, with selected optimization level.
+     * @dev Registers a the caller as a Pool, with selected specialization level.
      *
      * Returns the Pool's ID. Also emits a PoolCreated event.
      */
-    function registerPool(PoolOptimization optimization) external returns (bytes32);
+    function registerPool(PoolSpecialization specialization) external returns (bytes32);
 
     /**
      * @dev Emitted when a Pool is created by calling `registerPool`. Contains the Pool ID of the registered pool.
@@ -169,9 +180,9 @@ interface IVault {
     // These functions revert if querying a Pool that doesn't exist
 
     /**
-     * @dev Returns a Pool's address and optimization level.
+     * @dev Returns a Pool's address and specialization level.
      */
-    function getPool(bytes32 poolId) external view returns (address, PoolOptimization);
+    function getPool(bytes32 poolId) external view returns (address, PoolSpecialization);
 
     /**
      * @dev Returns all tokens registered by a Pool. The order of this list might change as tokens are registered and
@@ -194,9 +205,16 @@ interface IVault {
      * registered, and all swaps with a Pool must involve registered tokens.
      *
      * Each token in `tokens` must not be already registered before this call. For Pools with the Two Token
-     * optimization, `tokens` must have a length of two, that is, both tokens must be registered at the same time.
+     * specialization, `tokens` must have a length of two, that is, both tokens must be registered at the same time.
+     *
+     * Also define the asset manager for each token at registration time
+     * (can be the zero address, if a token is unmanaged)
      */
-    function registerTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+    function registerTokens(
+        bytes32 poolId,
+        IERC20[] calldata tokens,
+        address[] calldata assetManagers
+    ) external;
 
     event TokensRegistered(bytes32 poolId, IERC20[] tokens);
 
@@ -206,12 +224,27 @@ interface IVault {
      *
      *
      * Each token in `tokens` must be registered before this call, and have zero balance. For Pools with the Two Token
-     * optimization, `tokens` must have a length of two, that is, both tokens must be unregistered at the same time.
+     * specialization, `tokens` must have a length of two, that is, both tokens must be unregistered at the same time.
      */
     function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
 
     event TokensUnregistered(bytes32 poolId, IERC20[] tokens);
 
+    /**
+     * @dev Called by users to join a Pool, transferring tokens into its balance. The `IPool.onJoinPool` hook will be
+     * called on the Pool by the Vault, which will typically grant something to the user in return - often tokenized
+     * Pool shares.
+     *
+     * `maxAmountsIn` is the maximum amount of tokens the user is willing to provide to the Pool, for each token in the
+     * `tokens` array. This array must match the Pool's registered tokens, obtainable via `getPoolTokens`.
+     *
+     * Pools are free to implement any arbitrary logic in the `IPool.onJoinPool` hook, and may require additional
+     * information (such as the expected number of Pool shares to obtain). This can be encoded in the `userData`
+     * argument, which is ignored by the Vault and passed directly to the Pool, as is `recipient`.
+     *
+     * If `withdrawFromUserBalance` is true, the caller's Internal Balance will be preferred, performing an ERC20
+     * transfer for the difference between the requested amount and Internal Balance (if any).
+     */
     function joinPool(
         bytes32 poolId,
         address recipient,
@@ -221,6 +254,21 @@ interface IVault {
         bytes memory userData
     ) external;
 
+    /**
+     * @dev Called by users to exit a Pool, transferring tokens from its balance. The `IPool.onExitPool` hook will be
+     * called on the Pool by the Vault, which will typically take something to the user in return - often tokenized
+     * Pool shares.
+     *
+     * `minAmountsOut` is the minimum amount of tokens the user expects to get out of the Pool, for each token in the
+     * `tokens` array. This array must match the Pool's registered tokens, obtainable via `getPoolTokens`.
+     *
+     * Pools are free to implement any arbitrary logic in the `IPool.onExitPool` hook, and may require additional
+     * information (such as the number of Pool shares to provide). This can be encoded in the `userData` argument, which
+     * is ignored by the Vault and passed directly to the Pool.
+     *
+     * If `depositToUserBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
+     * an ERC20 transfer will be performed, and charged protocol withdraw fees accordingly.
+     */
     function exitPool(
         bytes32 poolId,
         address recipient,
@@ -231,6 +279,8 @@ interface IVault {
     ) external;
 
     /**
+     * Deprecated: use joinPool instead.
+     *
      * @dev Called by the Pool to add tokens to its balance. Only registered tokens can have liquidity added.
      *
      * The tokens will be withdrawn from the `from` account, which the Pool must be an agent for. If
@@ -247,6 +297,8 @@ interface IVault {
     ) external;
 
     /**
+     * Deprecated: use exitPool instead.
+     *
      * @dev Called by the Pool to remove tokens from its balance. Only registered tokens can have liquidity removed.
      *
      * The tokens will be sent to the `to` account. If `_depositToInternalBalance` is true, they will be added as
@@ -283,7 +335,7 @@ interface IVault {
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
      * The `tokenOut` amount is determined by the Pool's pricing algorithm by calling the `quoteOutGivenIn` function
-     * (from IPoolQuote or IPoolQuoteSimplified).
+     * (from IGeneralPoolQuote or IMinimalSwapInfoPoolQuote).
      *
      * Multihop swaps, where one token is exchanged for another one by passing through one or more intermediate tokens,
      * can be executed by passing an `amountIn` value of zero for a swap. This will cause the amount out of the previous
@@ -338,7 +390,7 @@ interface IVault {
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
      * The `tokenIn` amount is determined by the Pool's pricing algorithm by calling the `quoteInGivenOut` function
-     * (from IPoolQuote or IPoolQuoteSimplified).
+     * (from IGeneralPoolQuote or IMinimalSwapInfoPoolQuote).
      *
      * Multihop swaps, where one token is exchanged for another one by passing through one or more intermediate tokens,
      * can be executed by passing an `amountOut` value of zero for a swap. This will cause the amount in of the previous
@@ -464,15 +516,6 @@ interface IVault {
     ) external;
 
     // Asset management interface
-
-    /**
-     * @dev Called by a Pool to set its Asset Manager for one of its registered tokens.
-     */
-    function setPoolAssetManager(
-        bytes32 poolId,
-        IERC20 token,
-        address manager
-    ) external;
 
     /**
      * @dev Returns a Pool's Asset Manager for `token`. Asset Managers can manage a Pool's assets by taking

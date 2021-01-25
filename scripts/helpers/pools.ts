@@ -3,11 +3,11 @@ import { Contract, ContractReceipt, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import { deploy } from './deploy';
 
-export const StandardPool = 0;
-export const SimplifiedQuotePool = 1;
+export const GeneralPool = 0;
+export const MinimalSwapInfoPool = 1;
 export const TwoTokenPool = 2;
 
-export type PoolOptimizationSetting = typeof SimplifiedQuotePool | typeof StandardPool | typeof TwoTokenPool;
+export type PoolSpecializationSetting = typeof MinimalSwapInfoPool | typeof GeneralPool | typeof TwoTokenPool;
 export type PoolName = 'WeightedPool' | 'StablePool';
 
 /**
@@ -26,7 +26,7 @@ export async function deployPoolFromFactory(
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
   const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
-  // We could reuse this factory if we saved it accross tokenizer deployments
+  // We could reuse this factory if we saved it across tokenizer deployments
 
   const authorizer = await ethers.getContractAt('Authorizer', await vault.getAuthorizer());
   await authorizer.connect(admin).grantRole(await authorizer.ADD_UNIVERSAL_AGENT_ROLE(), factory.address);

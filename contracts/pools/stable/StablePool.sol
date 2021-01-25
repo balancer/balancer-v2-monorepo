@@ -25,13 +25,13 @@ import "../BalancerPoolToken.sol";
 
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPool.sol";
-import "../../vault/interfaces/IPoolQuote.sol";
+import "../../vault/interfaces/IGeneralPoolQuote.sol";
 import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
 
 import "./StableMath.sol";
 
-contract StablePool is IPool, IPoolQuote, StableMath, BalancerPoolToken, ReentrancyGuard {
+contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -62,12 +62,8 @@ contract StablePool is IPool, IPoolQuote, StableMath, BalancerPoolToken, Reentra
         require(tokens.length >= 2, "ERR_MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "ERR_MAX_TOKENS");
 
-        IVault.PoolOptimization optimization = tokens.length == 2
-            ? IVault.PoolOptimization.TWO_TOKEN
-            : IVault.PoolOptimization.STANDARD;
-
-        bytes32 poolId = vault.registerPool(optimization);
-        vault.registerTokens(poolId, tokens);
+        bytes32 poolId = vault.registerPool(IVault.PoolSpecialization.GENERAL);
+        vault.registerTokens(poolId, tokens, new address[](tokens.length));
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
@@ -282,6 +278,8 @@ contract StablePool is IPool, IPoolQuote, StableMath, BalancerPoolToken, Reentra
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint256) {
+        _validateIndexes(indexIn, indexOut, balances.length);
+
         uint256 adjustedIn = _subtractSwapFee(request.amountIn);
         uint256 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
         return maximumAmountOut;
@@ -293,6 +291,8 @@ contract StablePool is IPool, IPoolQuote, StableMath, BalancerPoolToken, Reentra
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint256) {
+        _validateIndexes(indexIn, indexOut, balances.length);
+
         uint256 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
         return _addSwapFee(minimumAmountIn);
     }
@@ -326,5 +326,13 @@ contract StablePool is IPool, IPoolQuote, StableMath, BalancerPoolToken, Reentra
         }
 
         require(someLiquidity, "ERR_ZERO_LIQUIDITY");
+    }
+
+    function _validateIndexes(
+        uint256 indexIn,
+        uint256 indexOut,
+        uint256 limit
+    ) internal pure {
+        require(indexIn < limit && indexOut < limit, "ERR_INDEX_OUT_OF_BOUNDS");
     }
 }

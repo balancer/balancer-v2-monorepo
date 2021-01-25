@@ -17,16 +17,18 @@ pragma experimental ABIEncoderV2;
 
 import "./IPoolQuoteStructs.sol";
 
-interface IPoolQuoteSimplified {
+interface IGeneralPoolQuote {
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
+        uint256[] calldata balances,
+        uint256 indexIn,
+        uint256 indexOut
     ) external returns (uint256 amountOut);
 
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
+        uint256[] calldata balances,
+        uint256 indexIn,
+        uint256 indexOut
     ) external returns (uint256 amountIn);
 }
