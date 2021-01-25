@@ -45,8 +45,8 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
   const funds: FundManagement = {
     sender: trader.address,
     recipient: trader.address,
-    withdrawFromInternalBalance: useInternalBalance,
-    depositToInternalBalance: useInternalBalance,
+    fromInternalBalance: useInternalBalance,
+    toInternalBalance: useInternalBalance,
   };
 
   const poolIds: Array<string> = [];

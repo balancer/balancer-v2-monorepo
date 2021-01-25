@@ -131,8 +131,8 @@ async function swapInPool(pool: Contract) {
   const funds: FundManagement = {
     sender: trader.address,
     recipient: trader.address,
-    withdrawFromInternalBalance: false,
-    depositToInternalBalance: false,
+    fromInternalBalance: false,
+    toInternalBalance: false,
   };
 
   await (
