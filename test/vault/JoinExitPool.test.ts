@@ -18,7 +18,7 @@ let symbols: string[];
 let tokens: TokenList = {};
 let tokenAddresses: string[];
 
-describe.only('Vault - join & exit pool', () => {
+describe('Vault - join & exit pool', () => {
   before(async () => {
     [, admin, lp, recipient] = await ethers.getSigners();
   });
