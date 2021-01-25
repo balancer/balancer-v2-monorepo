@@ -18,7 +18,7 @@ let symbols: string[];
 let tokens: TokenList = {};
 let tokenAddresses: string[];
 
-describe('Vault - join & exit pool', () => {
+describe.only('Vault - join & exit pool', () => {
   before(async () => {
     [, admin, lp, recipient] = await ethers.getSigners();
   });
@@ -442,12 +442,12 @@ describe('Vault - join & exit pool', () => {
       let dueProtocolFeeAmounts: BigNumber[];
 
       let minAmountsOut: BigNumber[];
-      let depositToInternalBalance: boolean;
+      let toInternalBalance: boolean;
 
       function callExitPool() {
         return vault
           .connect(lp)
-          .exitPool(poolId, recipient.address, tokenAddresses, minAmountsOut, depositToInternalBalance, '0x');
+          .exitPool(poolId, recipient.address, tokenAddresses, minAmountsOut, toInternalBalance, '0x');
       }
 
       // TODO: merge with assertJoinBalanceChanges
@@ -499,7 +499,7 @@ describe('Vault - join & exit pool', () => {
 
           context('without depositing to internal balance', () => {
             beforeEach(() => {
-              depositToInternalBalance = false;
+              toInternalBalance = false;
             });
 
             it('allows zero-token exits', async () => {
@@ -534,7 +534,7 @@ describe('Vault - join & exit pool', () => {
 
           context('depositing to internal balance', () => {
             beforeEach(async () => {
-              depositToInternalBalance = true;
+              toInternalBalance = true;
 
               exitAmounts = [];
               for (let i = 0; i < tokenAmount; ++i) {
@@ -582,12 +582,12 @@ describe('Vault - join & exit pool', () => {
             });
 
             it('reverts if not depositing to internal balance', async () => {
-              depositToInternalBalance = false;
+              toInternalBalance = false;
               await expect(callExitPool()).to.be.revertedWith('ERR_EXIT_BELOW_MIN');
             });
 
             it('reverts if depositing to internal balance and transferring no tokens', async () => {
-              depositToInternalBalance = true;
+              toInternalBalance = true;
               await expect(callExitPool()).to.be.revertedWith('ERR_EXIT_BELOW_MIN');
             });
           });
@@ -602,7 +602,7 @@ describe('Vault - join & exit pool', () => {
 
             // No point in testing checks related to minAmountsOut or internal balance - these are unrelated
             minAmountsOut = Array(tokenAddresses.length).fill(0);
-            depositToInternalBalance = false;
+            toInternalBalance = false;
           });
 
           it('decreases pool balance by the sum of exit amounts and fees ', async () => {

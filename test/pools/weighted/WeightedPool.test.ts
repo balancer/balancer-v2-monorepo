@@ -839,8 +839,8 @@ describe('WeightedPool', function () {
           const funds = {
             sender: trader.address,
             recipient: trader.address,
-            withdrawFromInternalBalance: false,
-            depositToInternalBalance: false,
+            fromInternalBalance: false,
+            toInternalBalance: false,
           };
 
           await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', [swap], poolTokens, funds);
