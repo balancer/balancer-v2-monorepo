@@ -7,7 +7,7 @@ import { bn } from '../helpers/numbers';
 import { deploy } from '../../scripts/helpers/deploy';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
+import { deploySortedTokens, mintTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
 
 describe('Vault - asset manager', function () {
@@ -20,7 +20,7 @@ describe('Vault - asset manager', function () {
 
   beforeEach('set up asset manager', async () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
-    tokens = await deployTokens(['DAI', 'USDT'], [18, 18]);
+    tokens = await deploySortedTokens(['DAI', 'USDT'], [18, 18]);
     otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
   });
 
@@ -55,14 +55,8 @@ describe('Vault - asset manager', function () {
         await tokens[symbol].connect(assetManager).approve(vault.address, MAX_UINT256);
       }
 
-      tokenAddresses.sort((tokenA, tokenB) => (tokenA.toLowerCase() > tokenB.toLowerCase() ? 1 : -1));
-
-      // Assign assetManager to the DAI token, and other to the other token. We need to do this this way because
-      // tokenAddresses is sorted
-      const assetManagers = [
-        tokenAddresses[0] == tokens.DAI.address ? assetManager.address : other.address,
-        tokenAddresses[1] == tokens.DAI.address ? assetManager.address : other.address,
-      ];
+      // Assign assetManager to the DAI token, and other to the other token
+      const assetManagers = [assetManager.address, other.address];
 
       await pool.registerTokens(tokenAddresses, assetManagers);
 

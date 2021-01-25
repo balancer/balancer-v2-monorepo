@@ -8,7 +8,7 @@ import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { MinimalSwapInfoPool } from '../../scripts/helpers/pools';
 import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
 
-import { deployTokens, TokenList } from '../helpers/tokens';
+import { deploySortedTokens, TokenList } from '../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
 import { bn } from '../helpers/numbers';
 
@@ -27,7 +27,7 @@ describe('Vault - swap queries', () => {
     // All of the tests in this suite have no side effects, so we deploy and initially contracts only one to save time
 
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
     assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
 
@@ -44,24 +44,18 @@ describe('Vault - swap queries', () => {
 
       await pool.setMultiplier(toFixedPoint(2));
 
-      // We sort the tokens when joining to avoid issues with two token pools - since this MockPool ignores Pool
-      // balances and we join with equal amounts, this doesn't cause any difference.
-      const sortedTokenAddresses = [...tokenAddresses].sort((tokenA, tokenB) =>
-        tokenA.toLowerCase() > tokenB.toLowerCase() ? 1 : -1
-      );
-
-      await pool.registerTokens(sortedTokenAddresses, assetManagers);
+      await pool.registerTokens(tokenAddresses, assetManagers);
 
       await pool.setOnJoinExitPoolReturnValues(
-        sortedTokenAddresses.map(() => bn(100e18)),
-        sortedTokenAddresses.map(() => 0)
+        tokenAddresses.map(() => bn(100e18)),
+        tokenAddresses.map(() => 0)
       );
 
       await vault.connect(lp).joinPool(
         poolId,
         lp.address,
-        sortedTokenAddresses,
-        sortedTokenAddresses.map(() => MAX_UINT256),
+        tokenAddresses,
+        tokenAddresses.map(() => MAX_UINT256),
         false,
         '0x'
       );
