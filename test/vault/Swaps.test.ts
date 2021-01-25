@@ -61,8 +61,8 @@ describe('Vault - swaps', () => {
     funds = {
       //sender: trader.address,
       recipient: trader.address,
-      withdrawFromInternalBalance: false,
-      depositToInternalBalance: false,
+      fromInternalBalance: false,
+      toInternalBalance: false,
     };
   });
 
@@ -193,7 +193,7 @@ describe('Vault - swaps', () => {
 
                       context('when using more than available as internal balance', () => {
                         beforeEach('deposit to internal balance', async () => {
-                          funds.withdrawFromInternalBalance = true;
+                          funds.fromInternalBalance = true;
                           await vault
                             .connect(trader)
                             .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
@@ -205,7 +205,7 @@ describe('Vault - swaps', () => {
 
                     context('when depositing from internal balance', () => {
                       beforeEach('deposit to internal balance', async () => {
-                        funds.depositToInternalBalance = true;
+                        funds.toInternalBalance = true;
                       });
 
                       assertSwapGivenIn({ swaps }, { MKR: -1e18 });
@@ -520,7 +520,7 @@ describe('Vault - swaps', () => {
 
                       context('when using more than available as internal balance', () => {
                         beforeEach('deposit to internal balance', async () => {
-                          funds.withdrawFromInternalBalance = true;
+                          funds.fromInternalBalance = true;
                           await vault
                             .connect(trader)
                             .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
@@ -532,7 +532,7 @@ describe('Vault - swaps', () => {
 
                     context('when depositing from internal balance', () => {
                       beforeEach('deposit to internal balance', async () => {
-                        funds.depositToInternalBalance = true;
+                        funds.toInternalBalance = true;
                       });
 
                       assertSwapGivenOut({ swaps }, { MKR: -0.5e18 });

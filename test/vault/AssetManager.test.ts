@@ -21,7 +21,7 @@ describe('Vault - asset manager', function () {
   beforeEach('set up asset manager', async () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
     tokens = await deploySortedTokens(['DAI', 'USDT'], [18, 18]);
-    otherToken = await deploy('TestToken', { args: ['OTHER', 'OTHER', 18] });
+    otherToken = await deploy('TestToken', { args: [other.address, 'OTHER', 'OTHER', 18] });
   });
 
   context('with general pool', () => {

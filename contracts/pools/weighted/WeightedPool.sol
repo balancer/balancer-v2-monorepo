@@ -62,7 +62,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     IERC20 private immutable _token15;
 
     uint256 private immutable _totalTokens;
-    uint256 private _sumWeights;
+    uint256 private immutable _sumWeights;
 
     uint256 private immutable _weight0;
     uint256 private immutable _weight1;
@@ -96,17 +96,13 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         IVault vault,
         string memory name,
         string memory symbol,
-        uint256 initialBPT,
         IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address from,
         uint256[] memory weights,
         uint256 swapFee
     ) BalancerPoolToken(name, symbol) {
-        require(tokens.length >= _MIN_TOKENS, "ERR__MIN_TOKENS");
-        require(tokens.length <= _MAX_TOKENS, "ERR__MAX_TOKENS");
+        require(tokens.length >= _MIN_TOKENS, "ERR_MIN_TOKENS");
+        require(tokens.length <= _MAX_TOKENS, "ERR_MAX_TOKENS");
 
-        require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LENGTH");
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
         IVault.PoolSpecialization specialization = tokens.length == 2
@@ -114,18 +110,26 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
             : IVault.PoolSpecialization.MINIMAL_SWAP_INFO;
 
         bytes32 poolId = vault.registerPool(specialization);
+
         // Pass in zero addresses for Asset Managers
         vault.registerTokens(poolId, tokens, new address[](tokens.length));
-
-        require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
-
-        _mintPoolTokens(from, initialBPT);
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
         _poolId = poolId;
 
         _totalTokens = tokens.length;
+
+        require(swapFee >= _MIN_SWAP_FEE, "ERR_MIN_SWAP_FEE");
+        require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_SWAP_FEE");
+        _swapFee = swapFee;
+
+        //Saves the sum of the weights
+        uint256 sumWeights = 0;
+        for (uint8 i = 0; i < weights.length; i++) {
+            sumWeights = sumWeights.add(weights[i]);
+        }
+        _sumWeights = sumWeights;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _token0 = tokens.length > 0 ? tokens[0] : IERC20(0);
@@ -161,156 +165,52 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         _weight13 = weights.length > 13 ? weights[13] : 0;
         _weight14 = weights.length > 14 ? weights[14] : 0;
         _weight15 = weights.length > 15 ? weights[15] : 0;
-
-        require(swapFee >= _MIN_SWAP_FEE, "ERR__MIN_SWAP_FEE");
-        require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_MAX_FEE");
-        _swapFee = swapFee;
-
-        //Saves the sum of the weights
-        uint256 sumWeights = 0;
-        for (uint8 i = 0; i < weights.length; i++) {
-            sumWeights = sumWeights.add(weights[i]);
-        }
-        _sumWeights = sumWeights;
-
-        //Reset Invariant
-        uint256[] memory normalizedWeights = new uint256[](tokens.length);
-        for (uint8 i = 0; i < tokens.length; i++) {
-            normalizedWeights[i] = weights[i].div(_sumWeights);
-        }
-        _lastInvariant = _invariant(normalizedWeights, amounts);
     }
 
     function _weight(IERC20 token) private view returns (uint256) {
-        if (token == _token0) {
-            return _weight0;
-        } else if (token == _token1) {
-            return _weight1;
-        } else if (token == _token2) {
-            return _weight2;
-        } else if (token == _token3) {
-            return _weight3;
-        } else if (token == _token4) {
-            return _weight4;
-        } else if (token == _token5) {
-            return _weight5;
-        } else if (token == _token6) {
-            return _weight6;
-        } else if (token == _token7) {
-            return _weight7;
-        } else if (token == _token8) {
-            return _weight8;
-        } else if (token == _token9) {
-            return _weight9;
-        } else if (token == _token10) {
-            return _weight10;
-        } else if (token == _token11) {
-            return _weight11;
-        } else if (token == _token12) {
-            return _weight12;
-        } else if (token == _token13) {
-            return _weight13;
-        } else if (token == _token14) {
-            return _weight14;
-        } else if (token == _token15) {
-            return _weight15;
-        } else {
+        // prettier-ignore
+        if (token == _token0) { return _weight0; }
+        else if (token == _token1) { return _weight1; }
+        else if (token == _token2) { return _weight2; }
+        else if (token == _token3) { return _weight3; }
+        else if (token == _token4) { return _weight4; }
+        else if (token == _token5) { return _weight5; }
+        else if (token == _token6) { return _weight6; }
+        else if (token == _token7) { return _weight7; }
+        else if (token == _token8) { return _weight8; }
+        else if (token == _token9) { return _weight9; }
+        else if (token == _token10) { return _weight10; }
+        else if (token == _token11) { return _weight11; }
+        else if (token == _token12) { return _weight12; }
+        else if (token == _token13) { return _weight13; }
+        else if (token == _token14) { return _weight14; }
+        else if (token == _token15) { return _weight15; }
+        else {
             revert("ERR_INVALID_TOKEN");
         }
     }
 
-    function _weights(IERC20[] memory tokens) internal view returns (uint256[] memory) {
-        uint256[] memory weights = new uint256[](tokens.length);
-
-        for (uint256 i = 0; i < weights.length; ++i) {
-            weights[i] = _weight(tokens[i]);
-        }
-
-        return weights;
-    }
-
-    function _getAllWeights() internal view returns (uint256[] memory) {
+    function _weights() private view returns (uint256[] memory) {
         uint256[] memory weights = new uint256[](_totalTokens);
 
-        if (_totalTokens > 0) {
-            weights[0] = _weight0;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 1) {
-            weights[1] = _weight1;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 2) {
-            weights[2] = _weight2;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 3) {
-            weights[3] = _weight3;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 4) {
-            weights[4] = _weight4;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 5) {
-            weights[5] = _weight5;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 6) {
-            weights[6] = _weight6;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 7) {
-            weights[7] = _weight7;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 8) {
-            weights[8] = _weight8;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 9) {
-            weights[9] = _weight9;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 10) {
-            weights[10] = _weight10;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 11) {
-            weights[11] = _weight11;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 12) {
-            weights[12] = _weight12;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 13) {
-            weights[13] = _weight13;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 14) {
-            weights[14] = _weight14;
-        } else {
-            return weights;
-        }
-        if (_totalTokens > 15) {
-            weights[15] = _weight15;
-        } else {
-            return weights;
+        // prettier-ignore
+        {
+            if (_totalTokens > 0) { weights[0] = _weight0; } else { return weights; }
+            if (_totalTokens > 1) { weights[1] = _weight1; } else { return weights; }
+            if (_totalTokens > 2) { weights[2] = _weight2; } else { return weights; }
+            if (_totalTokens > 3) { weights[3] = _weight3; } else { return weights; }
+            if (_totalTokens > 4) { weights[4] = _weight4; } else { return weights; }
+            if (_totalTokens > 5) { weights[5] = _weight5; } else { return weights; }
+            if (_totalTokens > 6) { weights[6] = _weight6; } else { return weights; }
+            if (_totalTokens > 7) { weights[7] = _weight7; } else { return weights; }
+            if (_totalTokens > 8) { weights[8] = _weight8; } else { return weights; }
+            if (_totalTokens > 9) { weights[9] = _weight9; } else { return weights; }
+            if (_totalTokens > 10) { weights[10] = _weight10; } else { return weights; }
+            if (_totalTokens > 11) { weights[11] = _weight11; } else { return weights; }
+            if (_totalTokens > 12) { weights[12] = _weight12; } else { return weights; }
+            if (_totalTokens > 13) { weights[13] = _weight13; } else { return weights; }
+            if (_totalTokens > 14) { weights[14] = _weight14; } else { return weights; }
+            if (_totalTokens > 15) { weights[15] = _weight15; } else { return weights; }
         }
 
         return weights;
@@ -339,8 +239,16 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     }
 
     function getInvariant() external view returns (uint256) {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        return _getInvariant(tokens, balances);
+        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
+        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+
+        uint256[] memory normalizedWeights = new uint256[](tokens.length);
+
+        for (uint8 i = 0; i < tokens.length; i++) {
+            normalizedWeights[i] = _normalizedWeight(tokens[i]);
+        }
+
+        return _invariant(normalizedWeights, balances);
     }
 
     function getWeights(IERC20[] memory tokens) external view returns (uint256[] memory weights) {
@@ -364,36 +272,6 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
 
     // Join / Exit Hooks
 
-    function _getAndApplyDueProtocolFeeAmounts(
-        uint256[] memory currentBalances,
-        uint256[] memory normalizedWeights,
-        uint256 protocolFeePercentage
-    ) private view returns (uint256[] memory) {
-        // Compute by how much a token balance increased to go from last invariant to current invariant
-
-        // balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))
-
-        uint256 chosenTokenIndex = 1; // UnsafeRandom.rand(_totalTokens);
-
-        uint256 exponent = FixedPoint.ONE.div(normalizedWeights[chosenTokenIndex]);
-
-        uint256 currentInvariant = _invariant(normalizedWeights, currentBalances);
-        uint256 invariantRatio = _lastInvariant.div(currentInvariant);
-
-        uint256 chosenTokenAccruedFees = currentBalances[chosenTokenIndex].mul(
-            FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent))
-        );
-        uint256 chosenTokenDueProtocolFeeAmount = chosenTokenAccruedFees.mul(protocolFeePercentage);
-
-        uint256[] memory dueProtocolFeeAmounts = new uint256[](currentBalances.length);
-        // All other values are initialized to zero
-        dueProtocolFeeAmounts[chosenTokenIndex] = chosenTokenDueProtocolFeeAmount;
-
-        currentBalances[chosenTokenIndex] = currentBalances[chosenTokenIndex].sub(chosenTokenDueProtocolFeeAmount);
-
-        return dueProtocolFeeAmounts;
-    }
-
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT }
 
     function onJoinPool(
@@ -408,7 +286,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
-        uint256[] memory normalizedWeights = _getAllWeights();
+        uint256[] memory normalizedWeights = _weights();
         for (uint8 i = 0; i < _totalTokens; i++) {
             normalizedWeights[i] = normalizedWeights[i].div(_sumWeights);
         }
@@ -510,7 +388,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
-        uint256[] memory normalizedWeights = _getAllWeights();
+        uint256[] memory normalizedWeights = _weights();
         for (uint8 i = 0; i < _totalTokens; i++) {
             normalizedWeights[i] = normalizedWeights[i].div(_sumWeights);
         }
@@ -617,6 +495,36 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         return (bptAmountIn, amountsOut);
     }
 
+    function _getAndApplyDueProtocolFeeAmounts(
+        uint256[] memory currentBalances,
+        uint256[] memory normalizedWeights,
+        uint256 protocolFeePercentage
+    ) private view returns (uint256[] memory) {
+        // Compute by how much a token balance increased to go from last invariant to current invariant
+
+        // balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))
+
+        uint256 chosenTokenIndex = 1; // UnsafeRandom.rand(_totalTokens);
+
+        uint256 exponent = FixedPoint.ONE.div(normalizedWeights[chosenTokenIndex]);
+
+        uint256 currentInvariant = _invariant(normalizedWeights, currentBalances);
+        uint256 invariantRatio = _lastInvariant.div(currentInvariant);
+
+        uint256 chosenTokenAccruedFees = currentBalances[chosenTokenIndex].mul(
+            FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent))
+        );
+        uint256 chosenTokenDueProtocolFeeAmount = chosenTokenAccruedFees.mul(protocolFeePercentage);
+
+        uint256[] memory dueProtocolFeeAmounts = new uint256[](currentBalances.length);
+        // All other values are initialized to zero
+        dueProtocolFeeAmounts[chosenTokenIndex] = chosenTokenDueProtocolFeeAmount;
+
+        currentBalances[chosenTokenIndex] = currentBalances[chosenTokenIndex].sub(chosenTokenDueProtocolFeeAmount);
+
+        return dueProtocolFeeAmounts;
+    }
+
     //Quote Swaps
 
     function quoteOutGivenIn(
@@ -655,16 +563,6 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         return _addSwapFee(minimumAmountIn);
     }
 
-    //Protocol Fees
-
-    function _getInvariant(IERC20[] memory tokens, uint256[] memory balances) private view returns (uint256) {
-        uint256[] memory normalizedWeights = new uint256[](tokens.length);
-        for (uint8 i = 0; i < tokens.length; i++) {
-            normalizedWeights[i] = _normalizedWeight(tokens[i]);
-        }
-        return _invariant(normalizedWeights, balances);
-    }
-
     // Potential helpers
 
     function _getSupplyRatio(uint256 amount) internal view returns (uint256) {
@@ -681,18 +579,5 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     function _subtractSwapFee(uint256 amount) private view returns (uint256) {
         uint256 fees = amount.mul(_swapFee);
         return amount.sub(fees);
-    }
-
-    function _getPoolTokenBalances() internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
-        tokens = _vault.getPoolTokens(_poolId);
-        // We trust the number of tokens returned from the Vault since these are registered in the constructor
-
-        balances = _vault.getPoolTokenBalances(_poolId, tokens);
-        bool someLiquidity = true;
-        for (uint256 i = 0; i < tokens.length && someLiquidity; i++) {
-            someLiquidity = balances[i] != 0;
-        }
-
-        require(someLiquidity, "ERR_ZERO_LIQUIDITY");
     }
 }

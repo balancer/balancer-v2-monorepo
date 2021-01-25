@@ -173,7 +173,7 @@ interface IVault {
      * information (such as the expected number of Pool shares to obtain). This can be encoded in the `userData`
      * argument, which is ignored by the Vault and passed directly to the Pool, as is `recipient`.
      *
-     * If `withdrawFromUserBalance` is true, the caller's Internal Balance will be preferred, performing an ERC20
+     * If `fromInternalBalance` is true, the caller's Internal Balance will be preferred, performing an ERC20
      * transfer for the difference between the requested amount and Internal Balance (if any).
      */
     function joinPool(
@@ -181,7 +181,7 @@ interface IVault {
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
-        bool withdrawFromUserBalance,
+        bool fromInternalBalance,
         bytes memory userData
     ) external;
 
@@ -197,7 +197,7 @@ interface IVault {
      * information (such as the number of Pool shares to provide). This can be encoded in the `userData` argument, which
      * is ignored by the Vault and passed directly to the Pool.
      *
-     * If `depositToUserBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
+     * If `tointernalBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
      * an ERC20 transfer will be performed, and charged protocol withdraw fees accordingly.
      */
     function exitPool(
@@ -205,7 +205,7 @@ interface IVault {
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
-        bool depositToUserBalance,
+        bool tointernalBalance,
         bytes memory userData
     ) external;
 
@@ -325,18 +325,17 @@ interface IVault {
     /**
      * @dev All tokens in a swap are sent to the Vault from the caller's account, and sent to `recipient`.
      *
-     * If `withdrawFromInternalBalance` is true, the caller's Internal Balance will be preferred, performing an ERC20
+     * If `fromInternalBalance` is true, the caller's Internal Balance will be preferred, performing an ERC20
      * transfer for the difference between the requested amount and the User's Internal Balance (if any). The caller
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
      * `joinPool`.
-     *
-     * If `depositToInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
+     *     * If `tointernalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
      * transferred. This matches the behavior of `exitPool`.
      */
     struct FundManagement {
         address recipient;
-        bool withdrawFromInternalBalance;
-        bool depositToInternalBalance;
+        bool fromInternalBalance;
+        bool toInternalBalance;
     }
 
     // Swap query methods

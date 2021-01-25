@@ -61,8 +61,17 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes userData;
     }
 
+    event Swap(
+        bytes32 indexed poolId,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 tokensIn,
+        uint256 tokensOut
+    );
+
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
     // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
+
     function batchSwapGivenIn(
         ISwapValidator validator,
         bytes calldata validatorData,
@@ -173,10 +182,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             if (tokenDeltas[i] > 0) {
                 uint128 toReceive = uint128(tokenDeltas[i]);
 
-                if (funds.withdrawFromInternalBalance) {
-                    uint128 toWithdraw = uint128(Math.min(_internalTokenBalance[msg.sender][token], toReceive));
+                if (funds.fromInternalBalance) {
+                    uint128 currentInternalBalance = _internalTokenBalance[msg.sender][token];
+                    uint128 toWithdraw = uint128(Math.min(currentInternalBalance, toReceive));
 
-                    _internalTokenBalance[msg.sender][token] -= toWithdraw;
+                    _internalTokenBalance[msg.sender][token] = currentInternalBalance - toWithdraw;
                     toReceive -= toWithdraw;
                 }
 
@@ -184,7 +194,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             } else {
                 uint128 toSend = tokenDeltas[i].abs().toUint128();
 
-                if (funds.depositToInternalBalance) {
+                if (funds.toInternalBalance) {
                     // Deposit tokens to the recipient's Internal Balance - the Vault's balance doesn't change
                     _internalTokenBalance[funds.recipient][token] = _internalTokenBalance[funds.recipient][token]
                         .add128(toSend);
@@ -306,6 +316,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             // Accumulate Vault deltas across swaps
             tokenDeltas[swap.tokenInIndex] = SignedSafeMath.add(tokenDeltas[swap.tokenInIndex], amountIn);
             tokenDeltas[swap.tokenOutIndex] = SignedSafeMath.sub(tokenDeltas[swap.tokenOutIndex], amountOut);
+
+            emit Swap(swap.poolId, tokenIn, tokenOut, amountIn, amountOut);
         }
 
         return tokenDeltas;

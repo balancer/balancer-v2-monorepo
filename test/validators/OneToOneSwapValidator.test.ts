@@ -90,8 +90,8 @@ describe('OneToOneSwapValidator', () => {
 
     funds = {
       recipient: trader.address,
-      withdrawFromInternalBalance: false,
-      depositToInternalBalance: false,
+      fromInternalBalance: false,
+      toInternalBalance: false,
     };
 
     validator = await deploy('OneToOneSwapValidator', { args: [] });

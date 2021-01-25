@@ -58,6 +58,7 @@ abstract contract PoolRegistry is
     mapping(bytes32 => mapping(IERC20 => address)) private _poolAssetManagers;
 
     event PoolAssetManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed manager);
+    event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     modifier onlyPool(bytes32 poolId) {
         _ensurePoolIsSender(poolId);
@@ -247,7 +248,7 @@ abstract contract PoolRegistry is
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
-        bool withdrawFromUserBalance,
+        bool fromInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
         require(tokens.length == maxAmountsIn.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
@@ -285,7 +286,7 @@ abstract contract PoolRegistry is
             {
                 uint128 tokensToReceive = amountIn;
                 if (tokensToReceive > 0) {
-                    if (withdrawFromUserBalance) {
+                    if (fromInternalBalance) {
                         uint128 toWithdraw = Math
                             .min(_internalTokenBalance[msg.sender][token], tokensToReceive)
                             .toUint128();
@@ -326,7 +327,7 @@ abstract contract PoolRegistry is
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
-        bool depositToInternalBalance,
+        bool toInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
         require(tokens.length == minAmountsOut.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
@@ -361,7 +362,7 @@ abstract contract PoolRegistry is
 
             // Send token
             if (amountOut > 0) {
-                if (depositToInternalBalance) {
+                if (toInternalBalance) {
                     // Deposit tokens to the recipient's Internal Balance - the Vault's balance doesn't change
                     _internalTokenBalance[recipient][token] = _internalTokenBalance[recipient][token].add128(amountOut);
                 } else {
@@ -446,57 +447,6 @@ abstract contract PoolRegistry is
             );
     }
 
-    function _receiveLiquidity(
-        address from,
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        bool withdrawFromInternalBalance
-    ) internal {
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            // We are not checking for non-zero token addresses here for two reasons:
-            // 1. Not technically necessary since the transfer call would fail
-            // 2. Pools can't register the zero address as a token, it's already ensured at that point
-            IERC20 token = tokens[i];
-            uint256 toReceive = amounts[i];
-            if (toReceive > 0) {
-                if (withdrawFromInternalBalance) {
-                    uint128 toWithdraw = uint128(Math.min(_internalTokenBalance[from][token], toReceive));
-                    _internalTokenBalance[from][token] -= toWithdraw;
-                    toReceive -= toWithdraw;
-                }
-
-                token.safeTransferFrom(from, address(this), toReceive);
-            }
-        }
-    }
-
-    function _withdrawLiquidity(
-        address to,
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        bool depositToInternalBalance
-    ) internal {
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            // We are not checking for non-zero token addresses here for two reasons:
-            // 1. Not technically necessary since the transfer call would fail
-            // 2. Pools can't register the zero address as a token, it's already ensured at that point
-            IERC20 token = tokens[i];
-            uint256 amount256 = amounts[i];
-            uint128 amount128 = amount256.toUint128();
-            if (amount256 > 0) {
-                if (depositToInternalBalance) {
-                    // Deposit tokens to the recipient User's Internal Balance - the Vault's balance doesn't change
-                    _internalTokenBalance[to][token] = _internalTokenBalance[to][token].add128(amount128);
-                } else {
-                    // Transfer the tokens to the recipient, charging the protocol exit fee
-                    uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount128);
-                    _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
-                    token.safeTransfer(to, amount256.sub(feeAmount));
-                }
-            }
-        }
-    }
-
     // Assets under management
 
     modifier onlyPoolAssetManager(bytes32 poolId, IERC20 token) {
@@ -544,6 +494,7 @@ abstract contract PoolRegistry is
         }
 
         token.safeTransfer(msg.sender, amount);
+        emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
     }
 
     function depositToPoolBalance(
@@ -561,6 +512,7 @@ abstract contract PoolRegistry is
         } else {
             _generalPoolManagedToCash(poolId, token, amount.toUint128());
         }
+        emit PoolBalanceChanged(poolId, msg.sender, token, -(amount.toInt256()));
     }
 
     function updateManagedBalance(

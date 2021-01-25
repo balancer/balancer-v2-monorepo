@@ -1,5 +1,4 @@
-import { BigNumber } from 'ethers';
-import { ethers } from 'hardhat';
+import { BigNumber, utils } from 'ethers';
 import { TokenList } from '../../test/helpers/tokens';
 
 export type Trade = {
@@ -35,8 +34,8 @@ export type SwapOut = {
 
 export type FundManagement = {
   recipient: string;
-  withdrawFromInternalBalance: boolean;
-  depositToInternalBalance: boolean;
+  fromInternalBalance: boolean;
+  toInternalBalance: boolean;
 };
 
 export type OneToOneValidatorData = {
@@ -79,7 +78,7 @@ export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<
 }
 
 export function encodeValidatorData(data: OneToOneValidatorData): string {
-  return ethers.utils.defaultAbiCoder.encode(
+  return utils.defaultAbiCoder.encode(
     ['address', 'address', 'uint128', 'uint128', 'uint256'],
     [data.overallTokenIn, data.overallTokenOut, data.maximumAmountIn, data.minimumAmountOut, data.deadline]
   );
