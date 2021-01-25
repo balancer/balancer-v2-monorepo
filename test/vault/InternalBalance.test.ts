@@ -72,7 +72,7 @@ describe('Vault - internal balance', () => {
             const tx = await vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address);
             const receipt = await tx.wait();
 
-            expectEvent.inReceipt(receipt, 'DepositedToInternalBalance', {
+            expectEvent.inReceipt(receipt, 'InternalBalanceDeposited', {
               depositor: sender.address,
               user: recipient.address,
               token: tokens.DAI.address,
@@ -159,7 +159,7 @@ describe('Vault - internal balance', () => {
             const tx = await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
             const receipt = await tx.wait();
 
-            expectEvent.inReceipt(receipt, 'WithdrawnFromInternalBalance', {
+            expectEvent.inReceipt(receipt, 'InternalBalanceWithdrawn', {
               user: sender.address,
               recipient: recipient.address,
               token: tokens.DAI.address,
@@ -311,14 +311,14 @@ describe('Vault - internal balance', () => {
       it('emits an event for each transfer', async () => {
         const receipt = await (await vault.transferInternalBalance(tokenAddresses, amounts, recipient.address)).wait();
 
-        expectEvent.inReceipt(receipt, 'TransferredInternalBalance', {
+        expectEvent.inReceipt(receipt, 'InternalBalanceTransferred', {
           from: sender.address,
           to: recipient.address,
           token: tokens.DAI.address,
           amount: transferredAmounts.DAI,
         });
 
-        expectEvent.inReceipt(receipt, 'TransferredInternalBalance', {
+        expectEvent.inReceipt(receipt, 'InternalBalanceTransferred', {
           from: sender.address,
           to: recipient.address,
           token: tokens.MKR.address,

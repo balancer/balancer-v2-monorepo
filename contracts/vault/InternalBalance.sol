@@ -37,21 +37,21 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
     // user -> token -> internal balance
     mapping(address => mapping(IERC20 => uint128)) internal _internalTokenBalance;
 
-    event DepositedToInternalBalance(
+    event InternalBalanceDeposited(
         address indexed depositor,
         address indexed user,
         IERC20 indexed token,
         uint256 amount
     );
 
-    event WithdrawnFromInternalBalance(
+    event InternalBalanceWithdrawn(
         address indexed user,
         address indexed recipient,
         IERC20 indexed token,
         uint256 amount
     );
 
-    event TransferredInternalBalance(address indexed from, address indexed to, IERC20 indexed token, uint256 amount);
+    event InternalBalanceTransferred(address indexed from, address indexed to, IERC20 indexed token, uint256 amount);
 
     function getInternalBalance(address user, IERC20[] memory tokens)
         external
@@ -80,11 +80,10 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
 
+            _internalTokenBalance[user][token] = _internalTokenBalance[user][token].add128(amount.toUint128());
             token.safeTransferFrom(msg.sender, address(this), amount);
 
-            _internalTokenBalance[user][token] = _internalTokenBalance[user][token].add128(amount.toUint128());
-
-            emit DepositedToInternalBalance(msg.sender, user, token, amount);
+            emit InternalBalanceDeposited(msg.sender, user, token, amount);
         }
     }
 
@@ -98,18 +97,19 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
         for (uint256 i = 0; i < tokens.length; i++) {
             // memoize to save gas
             IERC20 token = tokens[i];
-            uint256 amount = amounts[i];
+            uint128 amount = amounts[i].toUint128();
+            uint128 initialBalance = _internalTokenBalance[msg.sender][token];
 
-            require(_internalTokenBalance[msg.sender][token] >= amount, "Vault: withdraw amount exceeds balance");
+            require(initialBalance >= amount, "Vault: withdraw amount exceeds balance");
+ 
+            _internalTokenBalance[msg.sender][token] = initialBalance - amount;
 
-            _internalTokenBalance[msg.sender][token] -= amount.toUint128();
-
-            uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount.toUint128());
+            uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
 
             _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
             token.safeTransfer(recipient, amount.sub(feeAmount));
 
-            emit WithdrawnFromInternalBalance(msg.sender, recipient, token, amount);
+            emit InternalBalanceWithdrawn(msg.sender, recipient, token, amount);
         }
     }
 
@@ -130,7 +130,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
             _internalTokenBalance[msg.sender][token] = currentBalance - amount;
             _internalTokenBalance[recipient][token] = _internalTokenBalance[recipient][token].add128(amount);
 
-            emit TransferredInternalBalance(msg.sender, recipient, token, amount);
+            emit InternalBalanceTransferred(msg.sender, recipient, token, amount);
         }
     }
 }
