@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+
+// From https://github.com/makerdao/multicall
+
 pragma solidity >=0.5.0;
 pragma experimental ABIEncoderV2;
 
