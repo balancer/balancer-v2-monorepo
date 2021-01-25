@@ -58,7 +58,12 @@ abstract contract PoolRegistry is
     mapping(bytes32 => mapping(IERC20 => address)) private _poolAssetManagers;
 
     event PoolAssetManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
-    event PoolInvested(bytes32 indexed poolId, address indexed investmentManager, IERC20 indexed token, uint256 amount);
+    event PoolBalanceChanged(
+        bytes32 indexed poolId,
+        address indexed investmentManager,
+        IERC20 indexed token,
+        int256 amount
+    );
 
     modifier onlyPool(bytes32 poolId) {
         _ensurePoolIsSender(poolId);
@@ -594,7 +599,7 @@ abstract contract PoolRegistry is
         }
 
         token.safeTransfer(msg.sender, amount);
-        emit PoolInvested(poolId, msg.sender, token, amount);
+        emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
     }
 
     function depositToPoolBalance(
@@ -612,7 +617,7 @@ abstract contract PoolRegistry is
         } else {
             _generalPoolManagedToCash(poolId, token, amount.toUint128());
         }
-        emit PoolInvested(poolId, msg.sender, token, -amount);
+        emit PoolBalanceChanged(poolId, msg.sender, token, -(amount.toInt256()));
     }
 
     function updateManagedBalance(
