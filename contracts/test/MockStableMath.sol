@@ -37,7 +37,7 @@ contract MockStableMath is StableMath {
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenAmountOut
-    ) external pure returns (uint256) {
+    ) external view returns (uint256) {
         return _inGivenOut(amp.toUint128(), balances, tokenIndexIn, tokenIndexOut, tokenAmountOut.toUint128());
     }
 }

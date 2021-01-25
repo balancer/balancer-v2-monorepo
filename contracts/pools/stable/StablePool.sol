@@ -22,16 +22,16 @@ import "../../vendor/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../BalancerPoolToken.sol";
-import "../IBPTPool.sol";
 
 import "../../vault/interfaces/IVault.sol";
+import "../../vault/interfaces/IPool.sol";
 import "../../vault/interfaces/IPoolQuote.sol";
 import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
 
 import "./StableMath.sol";
 
-contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, ReentrancyGuard {
+contract StablePool is IPool, IPoolQuote, StableMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -45,6 +45,8 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
     uint256 private constant _MIN_SWAP_FEE = 0;
     uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
 
+    uint8 private constant _MAX_TOKENS = 16;
+
     /**
      * @dev This contract cannot be deployed directly because it must be an Universal Agent during construction. Use
      * `StablePoolFactory` to create new instances of it instead.
@@ -53,45 +55,38 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
         IVault vault,
         string memory name,
         string memory symbol,
-        uint256 initialBPT,
         IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address from,
         uint256 amp,
         uint256 swapFee
     ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= 2, "ERR_MIN_TOKENS");
+        require(tokens.length <= _MAX_TOKENS, "ERR_MAX_TOKENS");
 
-        bytes32 poolId = vault.registerPool(IVault.PoolOptimization.STANDARD);
+        IVault.PoolOptimization optimization = tokens.length == 2
+            ? IVault.PoolOptimization.TWO_TOKEN
+            : IVault.PoolOptimization.STANDARD;
 
+        bytes32 poolId = vault.registerPool(optimization);
         vault.registerTokens(poolId, tokens);
-        vault.addLiquidity(poolId, from, tokens, amounts, false);
-
-        require(vault.getPoolTokens(poolId).length == tokens.length, "ERR_REPEATED_TOKENS");
-
-        _mintPoolTokens(from, initialBPT);
 
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
         _poolId = poolId;
 
         require(swapFee >= _MIN_SWAP_FEE, "ERR__MIN_SWAP_FEE");
-        require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_MAX_FEE");
+        require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_SWAP_FEE");
         _swapFee = swapFee;
 
         _amp = amp;
-
-        //Reset Invariant
-        _resetAccumulatedSwapFees(amp, amounts);
     }
 
     //Getters
 
-    function getVault() external view override returns (IVault) {
+    function getVault() external view returns (IVault) {
         return _vault;
     }
 
-    function getPoolId() external view override returns (bytes32) {
+    function getPoolId() external view returns (bytes32) {
         return _poolId;
     }
 
@@ -101,56 +96,6 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
 
     function getSwapFee() external view returns (uint256) {
         return _swapFee;
-    }
-
-    //Quote Swaps
-
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
-        uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) external view override returns (uint256) {
-        uint256 adjustedIn = _subtractSwapFee(request.amountIn);
-        uint256 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
-        return maximumAmountOut;
-    }
-
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
-        uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) external view override returns (uint256) {
-        uint256 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
-        return _addSwapFee(minimumAmountIn);
-    }
-
-    //Protocol Fees
-
-    function _payProtocolFees(IERC20[] memory tokens, uint256[] memory balances) internal returns (uint256[] memory) {
-        uint256[] memory swapFeesCollected = _getAccumulatedSwapFees(balances);
-        return _vault.paySwapProtocolFees(_poolId, tokens, swapFeesCollected);
-    }
-
-    function _getAccumulatedSwapFees(uint256[] memory balances) internal view returns (uint256[] memory) {
-        uint256[] memory swapFeesCollected = new uint256[](balances.length);
-
-        uint256 index = UnsafeRandom.rand(balances.length);
-        swapFeesCollected[index] = _calculateOneTokenSwapFee(_amp, balances, _lastInvariant, index);
-
-        return swapFeesCollected;
-    }
-
-    function _resetAccumulatedSwapFees(uint256 amp, uint256[] memory balances) internal {
-        _lastInvariant = _invariant(amp, balances);
-    }
-
-    // Pays protocol swap fees
-    function payProtocolFees() external nonReentrant {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        balances = _payProtocolFees(tokens, balances);
-        _resetAccumulatedSwapFees(_amp, balances);
     }
 
     // Join / Exit Hooks
@@ -186,13 +131,13 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
 
     function onJoinPool(
         bytes32 poolId,
-        uint256[] memory currentBalances,
         address, // sender - potential whitelisting
         address recipient,
+        uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory, uint256[] memory) {
+    ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
@@ -204,6 +149,7 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
             return _joinInitial(currentBalances.length, recipient, maxAmountsIn);
         } else {
             // JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT
+            (, uint256 bptAmountOut) = abi.decode(userData, (JoinKind, uint256));
             return
                 _joinAllTokensInForExactBPTOut(
                     currentBalances.length,
@@ -211,7 +157,7 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
                     recipient,
                     maxAmountsIn,
                     protocolFeePercentage,
-                    userData
+                    bptAmountOut
                 );
         }
     }
@@ -239,9 +185,9 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
         uint256 totalTokens,
         uint256[] memory currentBalances,
         address recipient,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory,
         uint256 protocolFeePercentage,
-        bytes memory userData
+        uint256 bptAmountOut
     ) private returns (uint256[] memory, uint256[] memory) {
         require(totalSupply() > 0, "ERR_UNINITIALIZED");
 
@@ -252,15 +198,11 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
             protocolFeePercentage
         );
 
-        (, uint256 bptAmountOut) = abi.decode(userData, (JoinKind, uint256));
         uint256 bptRatio = _getSupplyRatio(bptAmountOut);
 
         uint256[] memory amountsIn = new uint256[](totalTokens);
         for (uint256 i = 0; i < totalTokens; i++) {
-            uint256 amountIn = currentBalances[i].mul(bptRatio);
-            require(amountIn <= maxAmountsIn[i], "ERR_LIMIT_IN");
-
-            amountsIn[i] = amountIn;
+            amountsIn[i] = currentBalances[i].mul(bptRatio);
         }
 
         _mintPoolTokens(recipient, bptAmountOut);
@@ -277,13 +219,13 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
 
     function onExitPool(
         bytes32 poolId,
-        uint256[] memory currentBalances,
         address sender,
         address, //recipient -  potential whitelisting
+        uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external returns (uint256[] memory, uint256[] memory) {
+    ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
@@ -294,13 +236,14 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
             protocolFeePercentage
         );
 
+        uint256 bptAmountIn = abi.decode(userData, (uint256));
         uint256 totalTokens = currentBalances.length;
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _exitExactBPTInForAllTokensOut(
+        uint256[] memory amountsOut = _exitExactBPTInForAllTokensOut(
             totalTokens,
             currentBalances,
             minAmountsOut,
-            userData
+            bptAmountIn
         );
 
         _burnPoolTokens(sender, bptAmountIn);
@@ -318,9 +261,8 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
         uint256 totalTokens,
         uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
-        bytes memory userData
-    ) private view returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        bptAmountIn = abi.decode(userData, (uint256));
+        uint256 bptAmountIn
+    ) private view returns (uint256[] memory amountsOut) {
         uint256 bptRatio = _getSupplyRatio(bptAmountIn);
 
         amountsOut = new uint256[](totalTokens);
@@ -332,87 +274,48 @@ contract StablePool is IPoolQuote, IBPTPool, StableMath, BalancerPoolToken, Reen
         }
     }
 
-    //Join / Exit
+    //Quote Swaps
 
-    function joinPool(
-        uint256 poolAmountOut,
-        uint256[] calldata maxAmountsIn,
-        bool transferTokens,
-        address beneficiary
-    ) external override nonReentrant {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        require(maxAmountsIn.length == tokens.length, "Tokens and amounts length mismatch");
-
-        //Pay protocol fees to have balances up to date
-        balances = _payProtocolFees(tokens, balances);
-
-        uint256 ratio = _getSupplyRatio(poolAmountOut);
-        uint256[] memory amountsIn = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 amount = balances[i].mul(ratio);
-            require(amount <= maxAmountsIn[i], "ERR_LIMIT_IN");
-
-            amountsIn[i] = amount;
-            balances[i] = balances[i].add(amount);
-        }
-
-        _vault.addLiquidity(_poolId, msg.sender, tokens, amountsIn, !transferTokens);
-
-        //Reset swap fees counter
-        _resetAccumulatedSwapFees(_amp, balances);
-
-        _mintPoolTokens(beneficiary, poolAmountOut);
+    function quoteOutGivenIn(
+        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) external view override returns (uint256) {
+        uint256 adjustedIn = _subtractSwapFee(request.amountIn);
+        uint256 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
+        return maximumAmountOut;
     }
 
-    function exitPool(
-        uint256 poolAmountIn,
-        uint256[] calldata minAmountsOut,
-        bool withdrawTokens,
-        address beneficiary
-    ) external override nonReentrant {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokenBalances();
-        require(minAmountsOut.length == tokens.length, "Tokens and amounts length mismatch");
-
-        //Pay protocol fees to have balances up to date
-        balances = _payProtocolFees(tokens, balances);
-
-        uint256 ratio = _getSupplyRatio(poolAmountIn);
-        uint256[] memory amountsOut = new uint256[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 amount = balances[i].mul(ratio);
-            require(amount >= minAmountsOut[i], "NOT EXITING ENOUGH");
-
-            amountsOut[i] = amount;
-            balances[i] = balances[i].sub(amount);
-        }
-
-        _vault.removeLiquidity(_poolId, beneficiary, tokens, amountsOut, !withdrawTokens);
-
-        //Reset swap fees counter
-        _resetAccumulatedSwapFees(_amp, balances);
-
-        _burnPoolTokens(msg.sender, poolAmountIn);
+    function quoteInGivenOut(
+        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) external view override returns (uint256) {
+        uint256 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
+        return _addSwapFee(minimumAmountIn);
     }
 
-    function _getSupplyRatio(uint256 amount) internal view returns (uint256) {
+    // Potential helpers
+
+    function _getSupplyRatio(uint256 amount) private view returns (uint256) {
         uint256 poolTotal = totalSupply();
         uint256 ratio = amount.div(poolTotal);
         require(ratio != 0, "ERR_MATH_APPROX");
         return ratio;
     }
 
-    // potential helpers
-
-    function _addSwapFee(uint256 amount) internal view returns (uint256) {
+    function _addSwapFee(uint256 amount) private view returns (uint256) {
         return amount.div(uint256(FixedPoint.ONE).sub(_swapFee));
     }
 
-    function _subtractSwapFee(uint256 amount) internal view returns (uint256) {
+    function _subtractSwapFee(uint256 amount) private view returns (uint256) {
         uint256 fees = amount.mul(_swapFee);
         return amount.sub(fees);
     }
 
-    function _getPoolTokenBalances() internal view returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function _getPoolTokenBalances() private view returns (IERC20[] memory tokens, uint256[] memory balances) {
         tokens = _vault.getPoolTokens(_poolId);
         // We trust the number of tokens returned from the Vault since these are registered in the constructor
 

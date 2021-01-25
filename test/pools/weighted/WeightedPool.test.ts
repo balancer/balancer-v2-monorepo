@@ -49,7 +49,7 @@ const encodeExitBPTInForExactTokensOutUserData = (maxBPTAmountIn: string): strin
   return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [BPT_IN_FOR_EXACT_TOKENS_OUT, maxBPTAmountIn]);
 };
 
-describe.only('WeightedPool', function () {
+describe('WeightedPool', function () {
   let authorizer: Contract, vault: Contract;
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
