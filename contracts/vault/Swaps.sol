@@ -186,7 +186,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             if (tokenDeltas[i] > 0) {
                 uint128 toReceive = uint128(tokenDeltas[i]);
 
-                if (funds.withdrawFromInternalBalance) {
+                if (funds.fromInternalBalance) {
                     uint128 toWithdraw = uint128(Math.min(_internalTokenBalance[funds.sender][token], toReceive));
 
                     _internalTokenBalance[funds.sender][token] -= toWithdraw;
@@ -197,7 +197,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             } else {
                 uint128 toSend = tokenDeltas[i].abs().toUint128();
 
-                if (funds.depositToInternalBalance) {
+                if (funds.toInternalBalance) {
                     // Deposit tokens to the recipient's Internal Balance - the Vault's balance doesn't change
                     _internalTokenBalance[funds.recipient][token] = _internalTokenBalance[funds.recipient][token]
                         .add128(toSend);
