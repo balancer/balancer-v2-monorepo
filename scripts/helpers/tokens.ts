@@ -48,26 +48,14 @@ export async function deployTokensFromFactory(
   from?: SignerWithAddress
 ): Promise<TokenList> {
   const tokenSymbols: TokenList = {};
-  // Get artifact for TestToken
-  //const Token = await ethers.getContractFactory('TestToken');
-  // Get deployed Token Factory
-  //const tokenFactory = await ethers.getContract('TokenFactory');
-  // Find list of tokens already deployed by factory
   const totalTokens = await tokenFactory.getTotalTokens();
-  //const deployedTokens = await tokenFactory.getTokens(0, totalTokens);
-  // For each token deploy if not already deployed
   for (let i = 0; i < symbols.length; i++) {
     if (symbols[i] === 'WETH') {
       const weth = await ethers.getContract('WETH9');
       tokenSymbols[symbols[i]] = weth;
       continue;
     }
-    //const address = await tokenFactory.callStatic.create(from.address, symbols[i], symbols[i], decimals[i]);
-    //if (!deployedTokens.includes(address)) {
     const addr = await deployToken(ethers, symbols[i], decimals[i], from);
-    //if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
-    //}
-    // Get token contract
     const tokenContract = await Token.attach(addr);
     tokenSymbols[symbols[i]] = tokenContract;
   }
@@ -83,8 +71,6 @@ export async function deployTokens(
   from?: SignerWithAddress
 ): Promise<TokenList> {
   const tokenSymbols: TokenList = {};
-  //const Token = await ethers.getContractFactory('TestToken');
-
   // For each token deploy if not already deployed
   for (let i = 0; i < symbols.length; i++) {
     if (symbols[i] === 'WETH') {
