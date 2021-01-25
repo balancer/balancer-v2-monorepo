@@ -63,6 +63,8 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         require(tokens.length <= _MAX_TOKENS, "ERR_MAX_TOKENS");
 
         bytes32 poolId = vault.registerPool(IVault.PoolSpecialization.GENERAL);
+
+        // Pass in zero addresses for Asset Managers
         vault.registerTokens(poolId, tokens, new address[](tokens.length));
 
         // Set immutable state variables - these cannot be read from during construction

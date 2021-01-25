@@ -110,6 +110,8 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
             : IVault.PoolSpecialization.MINIMAL_SWAP_INFO;
 
         bytes32 poolId = vault.registerPool(specialization);
+
+        // Pass in zero addresses for Asset Managers
         vault.registerTokens(poolId, tokens, new address[](tokens.length));
 
         // Set immutable state variables - these cannot be read from during construction
