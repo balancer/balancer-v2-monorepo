@@ -11,14 +11,7 @@ import { toFixedPoint } from '../../../scripts/helpers/fixedPoint';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../scripts/helpers/pools';
 import { deploySortedTokens, deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
-import { expectBalanceChange } from '../../helpers/tokenBalance';
-import {
-  calculateInvariant,
-  calcBptInGivenExactTokensOut,
-  calcBptOutGivenExactTokensIn,
-  calcTokenInGivenExactBptOut,
-  calcTokenOutGivenExactBptIn,
-} from '../../helpers/math/weighted';
+import { calculateInvariant } from '../../helpers/math/weighted';
 
 const INIT = 0;
 const EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
@@ -54,7 +47,6 @@ describe('WeightedPool', function () {
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
-  let tokenAddresses: string[];
 
   const POOL_SWAP_FEE = toFixedPoint(0.01);
 
@@ -71,7 +63,6 @@ describe('WeightedPool', function () {
     vault = await deploy('Vault', { args: [authorizer.address] });
     tokenList = await deploySortedTokens(SYMBOLS, [18, 18, 18, 18]);
     tokens = Object.values(tokenList);
-    tokenAddresses = Object.values(tokens).map((token) => token.address);
 
     for (const token of tokens) {
       await token.mint(creator.address, bn(100e18));
