@@ -58,12 +58,7 @@ abstract contract PoolRegistry is
     mapping(bytes32 => mapping(IERC20 => address)) private _poolAssetManagers;
 
     event PoolAssetManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed agent);
-    event PoolBalanceChanged(
-        bytes32 indexed poolId,
-        address indexed investmentManager,
-        IERC20 indexed token,
-        int256 amount
-    );
+    event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     modifier onlyPool(bytes32 poolId) {
         _ensurePoolIsSender(poolId);
