@@ -1,10 +1,10 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { deploy } from '../../scripts/helpers/deploy';
+import { deploy } from '../../lib/helpers/deploy';
 import { BigNumber, Contract, Wallet } from 'ethers';
 import { EIP712Domain, domainSeparator } from './helpers/EIP712';
-import { MAX_UINT256 } from '../helpers/constants';
+import { MAX_UINT256 } from '../../lib/helpers/constants';
 
 const Permit = [
   { name: 'owner', type: 'address' },
