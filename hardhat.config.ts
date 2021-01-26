@@ -87,8 +87,8 @@ const config: HardhatUserConfig = {
     project: 'v2',
   },
   paths: {
-    deploy: 'lib/scripts/deploy',
-    deployments: 'deployments',
+    deploy: 'deployments/migrations',
+    deployments: 'deployments/artifacts',
   },
 };
 
