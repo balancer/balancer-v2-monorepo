@@ -79,10 +79,10 @@ workflows:
       - test:
           requires:
             - build
-      - coverage:
-          requires:
-            - build
-            - test # only run if tests pass, redundantly runs tests
+      #- coverage:
+          #requires:
+            #- build
+            #- test # only run if tests pass, redundantly runs tests
       - benchmark:
           requires:
             - build
