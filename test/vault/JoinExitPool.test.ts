@@ -150,14 +150,14 @@ describe('Vault - join & exit pool', () => {
               withdrawFromInternalBalance = false;
             });
 
-            it('allows zero-token joins', async () => {
+            it('allows zero-token exits', async () => {
               joinAmounts = Array(tokenAddresses.length).fill(0);
               await pool.setOnJoinExitPoolReturnValues(joinAmounts, dueProtocolFeeAmounts);
 
               await assertJoinBalanceChanges(Array(tokenAmount).fill(0), Array(tokenAmount).fill(0));
             });
 
-            context('with non-zero join amounts', () => {
+            context('with non-zero exit amounts', () => {
               beforeEach(async () => {
                 joinAmounts = [];
                 for (let i = 0; i < tokenAmount; ++i) {
@@ -318,6 +318,14 @@ describe('Vault - join & exit pool', () => {
           maxAmountsIn = Array(tokenAddresses.length).fill(MAX_UINT256);
           joinAmounts = Array(tokenAddresses.length).fill(0);
           dueProtocolFeeAmounts = Array(tokenAddresses.length).fill(0);
+        });
+
+        it('reverts if the pool does not exist', async () => {
+          await expect(
+            vault
+              .connect(lp)
+              .joinPool(ethers.utils.id('foo'), recipient.address, tokenAddresses, maxAmountsIn.slice(1), false, '0x')
+          ).to.be.revertedWith('Nonexistent pool');
         });
 
         it('reverts if the length of the tokens and amount arrays is not the same', async () => {

@@ -27,30 +27,21 @@ contract WeightedPoolFactory is BasePoolFactory {
     }
 
     /**
-     * @dev Deploys a new `WeightedPool`. This must be done via a factory contract because the Pool must be an
-     * Universal Agent during construction.
-     *
-     * For the deployment to succeed, this contract must be allowed to add Universal Agents
-     * (`IAuthorizer.canAddUniversalAgent`).
+     * @dev Deploys a new `WeightedPool`.
      */
     function create(
         string memory name,
         string memory symbol,
-        uint256 initialBPT,
         IERC20[] memory tokens,
-        uint256[] memory amounts,
         uint256[] memory weights,
-        uint256 swapFee,
-        bytes32 salt
+        uint256 swapFee
     ) external returns (address) {
         return
             _create(
                 abi.encodePacked(
                     type(WeightedPool).creationCode,
-                    // Make the sender the `from` address
-                    abi.encode(vault, name, symbol, initialBPT, tokens, amounts, msg.sender, weights, swapFee)
-                ),
-                salt
+                    abi.encode(_vault, name, symbol, tokens, weights, swapFee)
+                )
             );
     }
 }

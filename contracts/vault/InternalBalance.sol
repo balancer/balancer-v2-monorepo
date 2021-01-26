@@ -24,11 +24,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "./Fees.sol";
-import "./Agents.sol";
 
 import "../math/FixedPoint.sol";
 
-abstract contract InternalBalance is ReentrancyGuard, Fees, Agents {
+abstract contract InternalBalance is ReentrancyGuard, Fees {
     using SafeERC20 for IERC20;
     using FixedPoint for uint128;
     using FixedPoint for uint256;

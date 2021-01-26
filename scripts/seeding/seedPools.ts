@@ -1,6 +1,6 @@
 import { MAX_UINT256, MAX_UINT128 } from '../../test/helpers/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { Trade, encodeValidatorData, SwapIn, FundManagement } from '../helpers/trading';
+import { encodeValidatorData, SwapIn, FundManagement } from '../helpers/trading';
 import { BigNumber } from 'ethers';
 import { Dictionary } from 'lodash';
 import { Contract, Event } from 'ethers';
@@ -77,7 +77,7 @@ async function action(hre: HardhatRuntimeEnvironment) {
     const depositBalance = tradingBalance.div(BigNumber.from('2'));
     await vault
       .connect(trader)
-      .depositToInternalBalance(tokenContracts[symbols[i]].address, depositBalance, trader.address);
+      .depositToInternalBalance([tokenContracts[symbols[i]].address], [depositBalance], trader.address);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
@@ -129,7 +129,6 @@ async function swapInPool(pool: Contract) {
   const swaps: SwapIn[] = [swap];
 
   const funds: FundManagement = {
-    sender: trader.address,
     recipient: trader.address,
     fromInternalBalance: false,
     toInternalBalance: false,
