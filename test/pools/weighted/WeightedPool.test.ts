@@ -1,4 +1,3 @@
-import Decimal from 'decimal.js';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, BigNumberish, Contract, ContractFunction } from 'ethers';
@@ -7,8 +6,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import * as expectEvent from '../../helpers/expectEvent';
 import { deploy } from '../../../lib/helpers/deploy';
 import { calculateInvariant } from '../../helpers/math/weighted';
-import { expectEqualWithError, bn, fp } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
+import { expectEqualWithError, bn, fp, decimal } from '../../../lib/helpers/numbers';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';
@@ -859,16 +858,16 @@ describe('WeightedPool', function () {
           const paidTokenIndex = bn(previousBlockHash).mod(numberOfTokens).toNumber();
           const paidFeeToken = poolTokens[paidTokenIndex];
 
-          const lastInvariant = new Decimal((await pool.getLastInvariant()).toString());
-          const currentInvariant = new Decimal((await pool.getInvariant()).toString());
+          const lastInvariant = decimal(await pool.getLastInvariant());
+          const currentInvariant = decimal(await pool.getInvariant());
           const ratio = lastInvariant.div(currentInvariant);
-          const normalizedWeight = new Decimal((await pool.getNormalizedWeight(paidFeeToken)).toString());
-          const exponent = new Decimal(1e18).div(normalizedWeight);
+          const normalizedWeight = decimal(await pool.getNormalizedWeight(paidFeeToken));
+          const exponent = decimal(1e18).div(normalizedWeight);
           const tokenBalances = await vault.getPoolTokenBalances(poolId, [paidFeeToken]);
-          const paidTokenBalance = new Decimal(tokenBalances[0].toString());
-          const collectedSwapFees = new Decimal(1).minus(ratio.pow(exponent)).times(paidTokenBalance);
-          const protocolSwapFee = new Decimal(PROTOCOL_SWAP_FEE.toString()).div(1e18);
-          const expectedPaidFees = bn(parseInt(collectedSwapFees.times(protocolSwapFee).toString()));
+          const paidTokenBalance = decimal(tokenBalances[0]);
+          const collectedSwapFees = decimal(1).sub(ratio.pow(exponent)).mul(paidTokenBalance);
+          const protocolSwapFee = decimal(PROTOCOL_SWAP_FEE.toString()).div(1e18);
+          const expectedPaidFees = bn(collectedSwapFees.mul(protocolSwapFee));
 
           await payFeesAction();
 

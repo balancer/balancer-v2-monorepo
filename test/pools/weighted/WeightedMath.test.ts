@@ -1,7 +1,7 @@
 import { Contract } from 'ethers';
-import { Decimal } from 'decimal.js';
 
 import { deploy } from '../../../lib/helpers/deploy';
+import { decimal } from '../../../lib/helpers/numbers';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/weighted';
 import { expectRelativeError } from '../../helpers/relativeError';
 
@@ -31,7 +31,7 @@ async function compareOutGivenIn(
   // ).to.be.true;
 
   //Relative error must be less that the max accepted
-  expectRelativeError(outAmountMath, new Decimal(outAmountPool.toString()), new Decimal(MAX_RELATIVE_ERROR));
+  expectRelativeError(outAmountMath, decimal(outAmountPool), decimal(MAX_RELATIVE_ERROR));
 }
 
 async function compareInGivenOut(
@@ -59,7 +59,7 @@ async function compareInGivenOut(
   // ).to.be.true;
 
   //Relative error must be less that the max accepted
-  expectRelativeError(inAmountMath, new Decimal(inAmountPool.toString()), new Decimal(MAX_RELATIVE_ERROR));
+  expectRelativeError(inAmountMath, decimal(inAmountPool), decimal(MAX_RELATIVE_ERROR));
 }
 
 describe('WeightedMath', function () {
@@ -147,6 +147,7 @@ describe('WeightedMath', function () {
         (15e18).toString() //tokenAmountIn
       );
     });
+
     it('outGivenIn - max weights relation', async () => {
       //Weight relation = 0.00769
       await compareOutGivenIn(

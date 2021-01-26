@@ -1,9 +1,9 @@
 import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
-import { bn } from '../../../lib/helpers/numbers';
+import { bn, decimal } from '../../../lib/helpers/numbers';
 
-const ONE = new Decimal(1e18);
+const ONE = decimal(1e18);
 
 export function calcOutGivenIn(
   tokenBalanceIn: string | number,
@@ -12,11 +12,11 @@ export function calcOutGivenIn(
   tokenWeightOut: string | number,
   tokenAmountIn: string | number
 ): Decimal {
-  const weightRatio = new Decimal(tokenWeightIn).div(tokenWeightOut);
-  const y = new Decimal(tokenBalanceIn).div(new Decimal(tokenBalanceIn).plus(tokenAmountIn));
+  const weightRatio = decimal(tokenWeightIn).div(tokenWeightOut);
+  const y = decimal(tokenBalanceIn).div(decimal(tokenBalanceIn).add(tokenAmountIn));
   const foo = y.pow(weightRatio);
-  const bar = new Decimal(1).minus(foo);
-  const tokenAmountOut = new Decimal(tokenBalanceOut).times(bar);
+  const bar = decimal(1).sub(foo);
+  const tokenAmountOut = decimal(tokenBalanceOut).mul(bar);
   return tokenAmountOut;
 }
 
@@ -27,21 +27,21 @@ export function calcInGivenOut(
   tokenWeightOut: string | number,
   tokenAmountOut: string | number
 ): Decimal {
-  const weightRatio = new Decimal(tokenWeightOut).div(tokenWeightIn);
-  const diff = new Decimal(tokenBalanceOut).minus(tokenAmountOut);
-  const y = new Decimal(tokenBalanceOut).div(diff);
-  const foo = y.pow(weightRatio).minus(1);
-  const tokenAmountIn = new Decimal(tokenBalanceIn).times(foo);
+  const weightRatio = decimal(tokenWeightOut).div(tokenWeightIn);
+  const diff = decimal(tokenBalanceOut).sub(tokenAmountOut);
+  const y = decimal(tokenBalanceOut).div(diff);
+  const foo = y.pow(weightRatio).sub(1);
+  const tokenAmountIn = decimal(tokenBalanceIn).mul(foo);
   return tokenAmountIn;
 }
 
 export function calculateInvariant(balances: string[], weights: string[]): Decimal {
   const sumWeights = weights.reduce((acc: Decimal, b: string) => {
     return acc.add(b);
-  }, new Decimal(0));
-  let invariant = new Decimal(1);
+  }, decimal(0));
+  let invariant = decimal(1);
   for (let index = 0; index < balances.length; index++) {
-    invariant = invariant.mul(new Decimal(balances[index]).pow(new Decimal(weights[index]).div(sumWeights)));
+    invariant = invariant.mul(decimal(balances[index]).pow(decimal(weights[index]).div(sumWeights)));
   }
   return invariant;
 }
@@ -53,33 +53,33 @@ export function calcBptOutGivenExactTokensIn(
   rawBptTotalSupply: BigNumber,
   rawSwapFee: BigNumber
 ): BigNumber {
-  const swapFee = new Decimal(rawSwapFee.toString()).div(ONE);
-  const weights = toNormalizedWeights(rawWeights).map((w) => new Decimal(w.toString()).div(ONE));
-  const balances = rawBalances.map((b) => new Decimal(b.toString()).div(ONE));
-  const amountsIn = rawAmountsIn.map((a) => new Decimal(a.toString()).div(ONE));
+  const swapFee = decimal(rawSwapFee.toString()).div(ONE);
+  const weights = toNormalizedWeights(rawWeights).map((w) => decimal(w).div(ONE));
+  const balances = rawBalances.map((b) => decimal(b).div(ONE));
+  const amountsIn = rawAmountsIn.map((a) => decimal(a).div(ONE));
 
   const balanceRatiosWithoutFee = [];
-  let weightedBalanceRatio = new Decimal(0);
+  let weightedBalanceRatio = decimal(0);
   for (let i = 0; i < balances.length; i++) {
     const balanceRatioWithoutFee = balances[i].add(amountsIn[i]).div(balances[i]);
     balanceRatiosWithoutFee.push(balanceRatioWithoutFee);
     weightedBalanceRatio = weightedBalanceRatio.add(balanceRatioWithoutFee.mul(weights[i]));
   }
 
-  let invariantRatio = new Decimal(1);
+  let invariantRatio = decimal(1);
   for (let i = 0; i < rawBalances.length; i++) {
     const tokenBalancePercentageExcess =
       weightedBalanceRatio >= balanceRatiosWithoutFee[i]
-        ? new Decimal(0)
+        ? decimal(0)
         : balanceRatiosWithoutFee[i].sub(weightedBalanceRatio).div(balanceRatiosWithoutFee[i].sub(1));
 
-    const amountInAfterFee = amountsIn[i].mul(new Decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+    const amountInAfterFee = amountsIn[i].mul(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
     const tokenBalanceRatio = amountInAfterFee.div(balances[i]).add(1);
     invariantRatio = invariantRatio.mul(tokenBalanceRatio.pow(weights[i]));
   }
 
-  const bptOut = new Decimal(rawBptTotalSupply.toString()).mul(invariantRatio.sub(1));
-  return bn(parseInt(bptOut.toString()));
+  const bptOut = decimal(rawBptTotalSupply).mul(invariantRatio.sub(1));
+  return bn(bptOut);
 }
 
 export function calcBptInGivenExactTokensOut(
@@ -89,32 +89,32 @@ export function calcBptInGivenExactTokensOut(
   rawBptTotalSupply: BigNumber,
   rawSwapFee: BigNumber
 ): BigNumber {
-  const swapFee = new Decimal(rawSwapFee.toString()).div(ONE);
-  const weights = toNormalizedWeights(rawWeights).map((w) => new Decimal(w.toString()).div(ONE));
-  const balances = rawBalances.map((b) => new Decimal(b.toString()).div(ONE));
-  const amountsOut = rawAmountsOut.map((a) => new Decimal(a.toString()).div(ONE));
+  const swapFee = decimal(rawSwapFee.toString()).div(ONE);
+  const weights = toNormalizedWeights(rawWeights).map((w) => decimal(w).div(ONE));
+  const balances = rawBalances.map((b) => decimal(b).div(ONE));
+  const amountsOut = rawAmountsOut.map((a) => decimal(a).div(ONE));
 
   const balanceRatiosWithoutFee = [];
-  let weightedBalanceRatio = new Decimal(0);
+  let weightedBalanceRatio = decimal(0);
   for (let i = 0; i < balances.length; i++) {
     const balanceRatioWithoutFee = balances[i].sub(amountsOut[i]).div(balances[i]);
     balanceRatiosWithoutFee.push(balanceRatioWithoutFee);
     weightedBalanceRatio = weightedBalanceRatio.add(balanceRatioWithoutFee.mul(weights[i]));
   }
 
-  let invariantRatio = new Decimal(1);
+  let invariantRatio = decimal(1);
   for (let i = 0; i < balances.length; i++) {
     const tokenBalancePercentageExcess =
       weightedBalanceRatio <= balanceRatiosWithoutFee[i]
         ? 0
-        : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(new Decimal(1).sub(balanceRatiosWithoutFee[i]));
+        : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
 
-    const amountOutBeforeFee = amountsOut[i].div(new Decimal(1).sub(swapFee.mul(tokenBalancePercentageExcess)));
-    const tokenBalanceRatio = new Decimal(1).sub(amountOutBeforeFee.div(balances[i]));
+    const amountOutBeforeFee = amountsOut[i].div(decimal(1).sub(swapFee.mul(tokenBalancePercentageExcess)));
+    const tokenBalanceRatio = decimal(1).sub(amountOutBeforeFee.div(balances[i]));
     invariantRatio = invariantRatio.mul(tokenBalanceRatio.pow(weights[i]));
   }
 
-  const bptIn = new Decimal(rawBptTotalSupply.toString()).mul(new Decimal(1).sub(invariantRatio));
+  const bptIn = decimal(rawBptTotalSupply).mul(decimal(1).sub(invariantRatio));
   return bn(parseInt(bptIn.toString()));
 }
 
@@ -126,19 +126,19 @@ export function calcTokenInGivenExactBptOut(
   rawBptTotalSupply: BigNumber,
   rawSwapFee: BigNumber
 ): BigNumber {
-  const bptAmountOut = new Decimal(rawBptAmountOut.toString());
-  const bptTotalSupply = new Decimal(rawBptTotalSupply.toString());
-  const swapFee = new Decimal(rawSwapFee.toString()).div(ONE);
-  const weights = toNormalizedWeights(rawWeights).map((w) => new Decimal(w.toString()).div(ONE));
-  const balances = rawBalances.map((b) => new Decimal(b.toString()).div(ONE));
+  const bptAmountOut = decimal(rawBptAmountOut);
+  const bptTotalSupply = decimal(rawBptTotalSupply);
+  const swapFee = decimal(rawSwapFee).div(ONE);
+  const weights = toNormalizedWeights(rawWeights).map((w) => decimal(w).div(ONE));
+  const balances = rawBalances.map((b) => decimal(b).div(ONE));
 
   const invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
-  const tokenBalanceRatio = invariantRatio.pow(new Decimal(1).div(weights[tokenIndex]));
-  const tokenBalancePercentageExcess = new Decimal(1).sub(weights[tokenIndex]);
+  const tokenBalanceRatio = invariantRatio.pow(decimal(1).div(weights[tokenIndex]));
+  const tokenBalancePercentageExcess = decimal(1).sub(weights[tokenIndex]);
   const amountInAfterFee = balances[tokenIndex].mul(tokenBalanceRatio.sub(1));
 
-  const tokenIn = amountInAfterFee.div(new Decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
-  return bn(parseInt(tokenIn.toString()));
+  const tokenIn = amountInAfterFee.div(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+  return bn(tokenIn);
 }
 
 export function calcTokenOutGivenExactBptIn(
@@ -149,18 +149,18 @@ export function calcTokenOutGivenExactBptIn(
   rawBptTotalSupply: BigNumber,
   rawSwapFee: BigNumber
 ): BigNumber {
-  const bptAmountIn = new Decimal(rawBptAmountIn.toString());
-  const bptTotalSupply = new Decimal(rawBptTotalSupply.toString());
-  const swapFee = new Decimal(rawSwapFee.toString()).div(ONE);
-  const weights = toNormalizedWeights(rawWeights).map((w) => new Decimal(w.toString()).div(ONE));
-  const balances = rawBalances.map((b) => new Decimal(b.toString()).div(ONE));
+  const bptAmountIn = decimal(rawBptAmountIn);
+  const bptTotalSupply = decimal(rawBptTotalSupply);
+  const swapFee = decimal(rawSwapFee).div(ONE);
+  const weights = toNormalizedWeights(rawWeights).map((w) => decimal(w).div(ONE));
+  const balances = rawBalances.map((b) => decimal(b).div(ONE));
 
   const invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
-  const tokenBalanceRatio = invariantRatio.pow(new Decimal(1).div(weights[tokenIndex]));
-  const tokenBalancePercentageExcess = new Decimal(1).sub(weights[tokenIndex]);
-  const amountOutBeforeFee = balances[tokenIndex].mul(new Decimal(1).sub(tokenBalanceRatio));
+  const tokenBalanceRatio = invariantRatio.pow(decimal(1).div(weights[tokenIndex]));
+  const tokenBalancePercentageExcess = decimal(1).sub(weights[tokenIndex]);
+  const amountOutBeforeFee = balances[tokenIndex].mul(decimal(1).sub(tokenBalanceRatio));
 
-  const amountOut = amountOutBeforeFee.mul(new Decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+  const amountOut = amountOutBeforeFee.mul(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
   return bn(parseInt(amountOut.toString()));
 }
 

@@ -1,7 +1,7 @@
 import { Contract } from 'ethers';
-import { Decimal } from 'decimal.js';
 
 import { deploy } from '../../../lib/helpers/deploy';
+import { decimal } from '../../../lib/helpers/numbers';
 import { expectRelativeError } from '../../helpers/relativeError';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/stable';
 
@@ -16,11 +16,11 @@ async function compareOutGivenIn(
   tokenAmountIn: string
 ) {
   const outAmountMath = calcOutGivenIn(
-    new Decimal(amp).div((1e18).toString()),
-    balances.map((v) => new Decimal(v).div((1e18).toString())),
+    decimal(amp).div(1e18),
+    balances.map((v) => decimal(v).div(1e18)),
     tokenIndexIn,
     tokenIndexOut,
-    new Decimal(tokenAmountIn).div((1e18).toString())
+    decimal(tokenAmountIn).div(1e18)
   );
   const outAmountPool = await mock.outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
 
@@ -32,11 +32,7 @@ async function compareOutGivenIn(
   // ).to.be.true;
 
   //Relative error must be less that the max accepted
-  expectRelativeError(
-    outAmountMath.times((1e18).toString()),
-    new Decimal(outAmountPool.toString()),
-    new Decimal(MAX_RELATIVE_ERROR)
-  );
+  expectRelativeError(outAmountMath.mul(1e18), decimal(outAmountPool.toString()), decimal(MAX_RELATIVE_ERROR));
 }
 
 async function compareInGivenOut(
@@ -48,11 +44,11 @@ async function compareInGivenOut(
   tokenAmountOut: string
 ) {
   const inAmountMath = calcInGivenOut(
-    new Decimal(amp).div((1e18).toString()),
-    balances.map((v) => new Decimal(v).div((1e18).toString())),
+    decimal(amp).div(1e18),
+    balances.map((v) => decimal(v).div(1e18)),
     tokenIndexIn,
     tokenIndexOut,
-    new Decimal(tokenAmountOut).div((1e18).toString())
+    decimal(tokenAmountOut).div(1e18)
   );
   const inAmountPool = await mock.inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
 
@@ -64,11 +60,7 @@ async function compareInGivenOut(
   // ).to.be.true;
 
   //Relative error must be less that the max accepted
-  expectRelativeError(
-    inAmountMath.times((1e18).toString()),
-    new Decimal(inAmountPool.toString()),
-    new Decimal(MAX_RELATIVE_ERROR)
-  );
+  expectRelativeError(inAmountMath.mul(1e18), decimal(inAmountPool.toString()), decimal(MAX_RELATIVE_ERROR));
 }
 
 describe.skip('StableMath', function () {

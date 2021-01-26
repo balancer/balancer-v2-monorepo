@@ -1,6 +1,5 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Decimal } from 'decimal.js';
 import { BigNumber, Contract, ContractFunction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -11,7 +10,7 @@ import { calculateInvariant } from '../../helpers/math/stable';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
-import { expectEqualWithError, bn, fp, FP_SCALING_FACTOR } from '../../../lib/helpers/numbers';
+import { expectEqualWithError, bn, fp, FP_SCALING_FACTOR, decimal } from '../../../lib/helpers/numbers';
 
 describe('StablePool', function () {
   let authorizer: Contract, vault: Contract, factory: Contract;
@@ -272,10 +271,7 @@ describe('StablePool', function () {
 
         it('grants the invariant amount of BPT', async () => {
           const invariant = bn(
-            calculateInvariant(
-              new Decimal(poolAmplification.toString()),
-              poolInitialBalances.map((value) => new Decimal(value.toString()))
-            ).toFixed(0)
+            calculateInvariant(decimal(poolAmplification), poolInitialBalances.map(decimal)).toFixed(0)
           );
 
           const receipt = await (
@@ -621,19 +617,19 @@ describe('StablePool', function () {
         poolId = await pool.getPoolId();
 
         // Grant some initial BPT to the LP
-        await pool.connect(lp).joinPool((1e18).toString(), [MAX_UINT128, MAX_UINT128], true, lp.address);
+        await pool.connect(lp).joinPool(bn(1e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
       });
 
       it('joins and exits do not accumulate fees', async () => {
-        await pool.connect(lp).joinPool((1e18).toString(), [MAX_UINT128, MAX_UINT128], true, lp.address);
-        await pool.connect(lp).joinPool((4e18).toString(), [MAX_UINT128, MAX_UINT128], true, lp.address);
+        await pool.connect(lp).joinPool(bn(1e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
+        await pool.connect(lp).joinPool(bn(4e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
 
         await pool.connect(lp).exitPool((0.5e18).toString(), [0, 0], true, lp.address);
         await pool.connect(lp).exitPool((2.5e18).toString(), [0, 0], true, lp.address);
 
-        await pool.connect(lp).joinPool((7e18).toString(), [MAX_UINT128, MAX_UINT128], true, lp.address);
+        await pool.connect(lp).joinPool(bn(7e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
 
-        await pool.connect(lp).exitPool((5e18).toString(), [0, 0], true, lp.address);
+        await pool.connect(lp).exitPool(bn(5e18), [0, 0], true, lp.address);
 
         expect(await vault.getCollectedFeesByToken(tokenList.DAI.address)).to.equal(0);
         expect(await vault.getCollectedFeesByToken(tokenList.MKR.address)).to.equal(0);

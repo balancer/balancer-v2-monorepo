@@ -43,7 +43,7 @@ export async function setupEnvironment(): Promise<{
   // deposit internal balance for trader to make it non-zero
   await vault
     .connect(trader)
-    .depositToInternalBalance(tokenAddresses, Array(tokenAddresses.length).fill((1e18).toString()), trader.address);
+    .depositToInternalBalance(tokenAddresses, Array(tokenAddresses.length).fill(bn(1e18)), trader.address);
 
   return { vault, validator, tokens, trader };
 }
