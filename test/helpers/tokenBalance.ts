@@ -1,9 +1,10 @@
 import { expect } from 'chai';
-import { TokenList } from './tokens';
 import { Dictionary } from 'lodash';
-import { BigNumberish } from './numbers';
 import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import { TokenList } from '../../lib/helpers/tokens';
+import { BigNumberish } from '../../lib/helpers/numbers';
 
 // Ported from @openzeppelin/test-helpers to use with ERC20 tokens and Ethers
 

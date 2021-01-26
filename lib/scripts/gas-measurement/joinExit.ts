@@ -1,12 +1,13 @@
-import { printGas, setupEnvironment, getWeightedPool, getStablePool } from './misc';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256 } from '../../test/helpers/constants';
-import { TokenList } from '../../test/helpers/tokens';
-import { BigNumber, Contract } from 'ethers';
 import { assert } from 'console';
 import { ethers } from 'hardhat';
+import { BigNumber, Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-// setupEnvironmnt
+import { TokenList } from '../../helpers/tokens';
+import { MAX_UINT256 } from '../../helpers/constants';
+import { printGas, setupEnvironment, getWeightedPool, getStablePool } from './misc';
+
+// setup environment
 const BPTAmount = BigNumber.from((10e18).toString());
 const numberJoinsExits = 3;
 

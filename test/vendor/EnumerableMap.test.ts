@@ -1,5 +1,5 @@
 import { BigNumber, Contract } from 'ethers';
-import { deploy } from '../../scripts/helpers/deploy';
+import { deploy } from '../../lib/helpers/deploy';
 import { shouldBehaveLikeMap } from './EnumerableMap.behavior';
 
 describe('EnumerableMap', () => {

@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
-import { BigNumberish } from '../../test/helpers/numbers';
+
+import { BigNumberish } from './numbers';
 
 const JOIN_WEIGHTED_POOL_INIT_TAG = 0;
 const JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT_TAG = 1;

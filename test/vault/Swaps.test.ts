@@ -4,15 +4,13 @@ import { Contract } from 'ethers';
 import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../scripts/helpers/deploy';
-import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
-import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
-
-import { BigNumberish } from '../helpers/numbers';
-import { deployTokens, TokenList } from '../helpers/tokens';
-import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
+import { deploy } from '../../lib/helpers/deploy';
+import { BigNumberish, fp } from '../../lib/helpers/numbers';
+import { deployTokens, TokenList } from '../../lib/helpers/tokens';
+import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
+import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
+import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -106,7 +104,7 @@ describe('Vault - swaps', () => {
 
   async function deployPool(specialization: PoolSpecializationSetting, tokenSymbols: string[]): Promise<string> {
     const pool = await deploy('MockPool', { args: [vault.address, specialization] });
-    await pool.setMultiplier(toFixedPoint(2));
+    await pool.setMultiplier(fp(2));
 
     // Register tokens
     const tokenAddresses = tokenSymbols
@@ -314,7 +312,7 @@ describe('Vault - swaps', () => {
                     beforeEach('tweak the main pool to give back as much as it receives', async () => {
                       const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
                       const pool = await ethers.getContractAt('MockPool', poolAddress);
-                      await pool.setMultiplier(toFixedPoint(1));
+                      await pool.setMultiplier(fp(1));
                     });
 
                     beforeEach('tweak sender and recipient to be other address', async () => {
@@ -641,7 +639,7 @@ describe('Vault - swaps', () => {
                     beforeEach('tweak the main pool to give back as much as it receives', async () => {
                       const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
                       const pool = await ethers.getContractAt('MockPool', poolAddress);
-                      await pool.setMultiplier(toFixedPoint(1));
+                      await pool.setMultiplier(fp(1));
                     });
 
                     beforeEach('tweak sender and recipient to be other address', async () => {

@@ -1,12 +1,13 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256 } from '../helpers/constants';
+
+import { deploy } from '../../lib/helpers/deploy';
+import { bn } from '../../lib/helpers/numbers';
+import { MAX_UINT256 } from '../../lib/helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { bn } from '../helpers/numbers';
+import { TokenList, deployTokens, mintTokens } from '../../lib/helpers/tokens';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;

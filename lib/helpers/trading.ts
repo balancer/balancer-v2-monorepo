@@ -1,5 +1,5 @@
 import { BigNumber, utils } from 'ethers';
-import { TokenList } from '../../test/helpers/tokens';
+import { TokenList } from './tokens';
 
 export type Trade = {
   poolId: string;

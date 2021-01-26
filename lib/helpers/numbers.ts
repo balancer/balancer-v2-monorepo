@@ -11,8 +11,6 @@ export const bn = (x: BigNumberish): BigNumber => BigNumber.from(x.toString());
 
 export const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
 
-export const bigExp = (x: BigNumberish, y: BigNumberish): BigNumber => bn(x).mul(bn(10).pow(bn(y)));
-
 export const maxUint = (e: number): BigNumber => bn(2).pow(e).sub(1);
 
 export const maxInt = (e: number): BigNumber => bn(2).pow(bn(e).sub(1)).sub(1);

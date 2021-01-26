@@ -1,7 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { DeployFunction } from 'hardhat-deploy/types';
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -13,5 +12,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
     deterministicDeployment: true,
   });
-};
-export default func;
+}
