@@ -9,39 +9,12 @@ import { deploy } from '../../../scripts/helpers/deploy';
 import * as expectEvent from '../../helpers/expectEvent';
 import { toFixedPoint } from '../../../scripts/helpers/fixedPoint';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../scripts/helpers/pools';
+
 import { deploySortedTokens, deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 
 import { calculateInvariant } from '../../helpers/math/weighted';
-
-const INIT = 0;
-const EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
-
-const encodeInitialJoinUserData = (): string => {
-  return ethers.utils.defaultAbiCoder.encode(['uint256'], [INIT]);
-};
-const encodeJoinExactTokensInForBPTOutUserData = (minimumBPT: string): string => {
-  return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_TOKENS_IN_FOR_BPT_OUT, minimumBPT]);
-};
-
-const EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
-const EXACT_BPT_IN_FOR_ALL_TOKENS_OUT = 1;
-const BPT_IN_FOR_EXACT_TOKENS_OUT = 2;
-
-const encodeExitExactBPTInForOneTokenOutUserData = (bptAmountIn: string, tokenIndex: number): string => {
-  return ethers.utils.defaultAbiCoder.encode(
-    ['uint256', 'uint256', 'uint256'],
-    [EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex]
-  );
-};
-
-const encodeExitExactBPTInForAllTokensOutUserData = (bptAmountIn: string): string => {
-  return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, bptAmountIn]);
-};
-
-const encodeExitBPTInForExactTokensOutUserData = (maxBPTAmountIn: string): string => {
-  return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [BPT_IN_FOR_EXACT_TOKENS_OUT, maxBPTAmountIn]);
-};
+import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../scripts/helpers/weightedPoolEncoding';
 
 describe('WeightedPool', function () {
   let authorizer: Contract, vault: Contract, factory: Contract;
@@ -308,7 +281,7 @@ describe('WeightedPool', function () {
         let initialJoinUserData: string;
 
         beforeEach(async () => {
-          initialJoinUserData = encodeInitialJoinUserData();
+          initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init' });
         });
 
         it('grants the invariant amount of BPT', async () => {
@@ -379,7 +352,7 @@ describe('WeightedPool', function () {
 
       context('join exact tokens in for BPT out', () => {
         it('fails if not initialized', async () => {
-          const joinUserData = encodeJoinExactTokensInForBPTOutUserData('0');
+          const joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT: 0 });
           await expect(
             vault
               .connect(creator)
@@ -397,7 +370,7 @@ describe('WeightedPool', function () {
 
         context('once initialized', () => {
           beforeEach(async () => {
-            const initialJoinUserData = encodeInitialJoinUserData();
+            const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init' });
             await vault
               .connect(creator)
               .callJoinPool(
@@ -415,7 +388,7 @@ describe('WeightedPool', function () {
             const previousBPT = await pool.balanceOf(beneficiary.address);
 
             const minimumBPT = (0.01e18).toString();
-            const joinUserData = encodeJoinExactTokensInForBPTOutUserData(minimumBPT);
+            const joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT });
             const maxAmountsIn = Array(poolTokens.length).fill(bn(0));
             maxAmountsIn[1] = bn(0.1e18);
 
@@ -449,7 +422,7 @@ describe('WeightedPool', function () {
 
           it('fails if not enough BPT', async () => {
             const minimumBPT = (1e18).toString();
-            const joinUserData = encodeJoinExactTokensInForBPTOutUserData(minimumBPT);
+            const joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT });
             const maxAmountsIn = Array(poolTokens.length).fill(bn(0));
             maxAmountsIn[1] = bn(0.1e18);
 
@@ -482,7 +455,7 @@ describe('WeightedPool', function () {
         poolId = await pool.getPoolId();
 
         // Initialize from creator
-        const initialJoinUserData = encodeInitialJoinUserData();
+        const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init' });
         await vault
           .connect(creator)
           .callJoinPool(
@@ -544,8 +517,11 @@ describe('WeightedPool', function () {
 
           // Fully exit
           const prevBPT = await pool.balanceOf(lp.address);
-          const exitUserData = encodeExitExactBPTInForOneTokenOutUserData(prevBPT, exitTokenIndex);
-
+          const exitUserData = encodeExitWeightedPool({
+            kind: 'ExactBPTInForOneTokenOut',
+            bptAmountIn: prevBPT,
+            exitTokenIndex,
+          });
           const minAmountsOut = Array(poolTokens.length).fill(bn(0));
           minAmountsOut[exitTokenIndex] = bn(0.01e18);
 
@@ -586,7 +562,10 @@ describe('WeightedPool', function () {
         it('grants all tokens for exact bpt', async () => {
           // Exit with half of BPT
           const prevBPT = await pool.balanceOf(lp.address);
-          const exitUserData = encodeExitExactBPTInForAllTokensOutUserData(prevBPT.div(2));
+          const exitUserData = encodeExitWeightedPool({
+            kind: 'ExactBPTInForAllTokensOut',
+            bptAmountIn: prevBPT.div(2),
+          });
           const minAmountsOut = Array(poolTokens.length).fill(bn(0.01e18));
 
           const receipt = await (
@@ -617,9 +596,10 @@ describe('WeightedPool', function () {
 
           expectEqualWithError(await pool.balanceOf(lp.address), prevBPT.div(2), 0.001);
         });
+
         it('fully exit', async () => {
           const prevBPT = await pool.balanceOf(lp.address);
-          const exitUserData = encodeExitExactBPTInForAllTokensOutUserData(prevBPT);
+          const exitUserData = encodeExitWeightedPool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: prevBPT });
           const minAmountsOut = Array(poolTokens.length).fill(bn(0.01e18));
 
           const receipt = await (
@@ -654,7 +634,7 @@ describe('WeightedPool', function () {
         it('grants exact tokens for bpt', async () => {
           const prevBPT = await pool.balanceOf(lp.address);
           const maxBPTAmountIn = await pool.balanceOf(lp.address);
-          const exitUserData = encodeExitBPTInForExactTokensOutUserData(maxBPTAmountIn);
+          const exitUserData = encodeExitWeightedPool({ kind: 'BPTInForExactTokensOut', maxBPTAmountIn });
 
           const minAmountsOut = poolInitialBalances.map((amount: BigNumber) => amount.div(2));
           const receipt = await (
@@ -684,9 +664,12 @@ describe('WeightedPool', function () {
         });
 
         it('fails if more BTP needed', async () => {
-          const maxBPTAmountIn = await pool.balanceOf(lp.address);
+          const maxBPTAmountIn = (await pool.balanceOf(lp.address)).div(2);
 
-          const exitUserData = encodeExitBPTInForExactTokensOutUserData(maxBPTAmountIn.div(2));
+          const exitUserData = encodeExitWeightedPool({
+            kind: 'BPTInForExactTokensOut',
+            maxBPTAmountIn,
+          });
           const minAmountsOut = poolInitialBalances.map((amount: BigNumber) => amount);
 
           await expect(
