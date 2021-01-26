@@ -68,24 +68,28 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         }
     }
 
-    function onJoinPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256[] memory,
-        uint256,
-        bytes memory
-    ) external view override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
-        amountsIn = new uint256[](_onJoinExitPoolAmounts.length);
-        for (uint256 i = 0; i < amountsIn.length; ++i) {
-            amountsIn[i] = _onJoinExitPoolAmounts[i];
-        }
+    event OnJoinPoolCalled(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] currentBalances,
+        uint256[] maxAmountsIn,
+        uint256 protocolSwapFee,
+        bytes userData
+    );
 
-        dueProtocolFeeAmounts = new uint256[](_onJoinPoolDueProtocolFeeAmounts.length);
-        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
-            dueProtocolFeeAmounts[i] = _onJoinPoolDueProtocolFeeAmounts[i];
-        }
+    function onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory currentBalances,
+        uint256[] memory maxAmountsIn,
+        uint256 protocolSwapFee,
+        bytes memory userData
+    ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
+        emit OnJoinPoolCalled(poolId, sender, recipient, currentBalances, maxAmountsIn, protocolSwapFee, userData);
+
+        (amountsIn, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
     function onExitPool(

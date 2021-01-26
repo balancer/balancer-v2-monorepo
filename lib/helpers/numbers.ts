@@ -19,6 +19,20 @@ export const minInt = (e: number): BigNumber => bn(2).pow(bn(e).sub(1)).mul(-1);
 
 export const pct = (n: BigNumber, pct: number): BigNumber => n.div(bn(1 / pct));
 
+export const bnMax = (a: BigNumberish, b: BigNumberish): BigNumber => {
+  a = bn(a);
+  b = bn(b);
+
+  return a.gt(b) ? a : b;
+};
+
+export const bnMin = (a: BigNumberish, b: BigNumberish): BigNumber => {
+  a = bn(a);
+  b = bn(b);
+
+  return a.lt(b) ? a : b;
+};
+
 export function expectEqualWithError(actualValue: BigNumberish, expectedValue: BigNumberish, error = 0.001): void {
   actualValue = bn(actualValue);
   expectedValue = bn(expectedValue);

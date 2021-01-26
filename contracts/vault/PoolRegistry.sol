@@ -251,8 +251,6 @@ abstract contract PoolRegistry is
         bool fromInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
-        require(tokens.length == maxAmountsIn.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
-
         {
             // require tokens are the same as the pool tokens, in the same order and complete
             IERC20[] memory poolTokens = getPoolTokens(poolId);
@@ -261,6 +259,8 @@ abstract contract PoolRegistry is
                 require(poolTokens[i] == tokens[i], "ERR_TOKENS_MISMATCH");
             }
         }
+
+        require(tokens.length == maxAmountsIn.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
 
         (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _callOnJoinPool(
             poolId,
