@@ -59,7 +59,7 @@ describe('Vault - join & exit pool', () => {
     throw new Error(`Symbol for token ${tokenAddress} not found`);
   }
 
-  describe.only('joinPool', async () => {
+  describe('joinPool', async () => {
     describe('with general pool', () => {
       itJoinsSpecializedPoolCorrectly(GeneralPool, 4);
     });
