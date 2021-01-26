@@ -1,20 +1,20 @@
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 
 import { expectRelativeError } from '../../helpers/relativeError';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/stable';
 
 import { deploy } from '../../../lib/helpers/deploy';
-import { decimal } from '../../../lib/helpers/numbers';
+import { bn, decimal } from '../../../lib/helpers/numbers';
 
 const MAX_RELATIVE_ERROR = 0.1; //Max relative error
 
 async function compareOutGivenIn(
   mock: Contract,
-  amp: string,
-  balances: string[],
+  amp: BigNumber,
+  balances: BigNumber[],
   tokenIndexIn: number,
   tokenIndexOut: number,
-  tokenAmountIn: string
+  tokenAmountIn: BigNumber
 ) {
   const outAmountMath = calcOutGivenIn(
     decimal(amp).div(1e18),
@@ -38,11 +38,11 @@ async function compareOutGivenIn(
 
 async function compareInGivenOut(
   mock: Contract,
-  amp: string,
-  balances: string[],
+  amp: BigNumber,
+  balances: BigNumber[],
   tokenIndexIn: number,
   tokenIndexOut: number,
-  tokenAmountOut: string
+  tokenAmountOut: BigNumber
 ) {
   const inAmountMath = calcInGivenOut(
     decimal(amp).div(1e18),
@@ -102,7 +102,7 @@ describe.skip('StableMath', function () {
         [bn(108.6e18), bn(42.482e18)], //balances
         0, //tokenIndexIn
         1, //tokenIndexOut
-        (10e9).toString() //tokenAmountIn (MIN AMOUNT = 0.00000001)
+        bn(10e9) //tokenAmountIn (MIN AMOUNT = 0.00000001)
       );
     });
     it('inGivenOut - min amount out', async () => {
@@ -112,7 +112,7 @@ describe.skip('StableMath', function () {
         [bn(108.6e18), bn(42.482e18)], //balances
         0, //tokenIndexIn
         1, //tokenIndexOut
-        (10e9).toString() //tokenAmountIn (MIN AMOUNT = 0.00000001)
+        bn(10e9) //tokenAmountIn (MIN AMOUNT = 0.00000001)
       );
     });
   });
