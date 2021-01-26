@@ -4,10 +4,12 @@ import { BigNumber, BigNumberish, Contract, ContractFunction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../helpers/expectEvent';
-import { deploy } from '../../../lib/helpers/deploy';
 import { calculateInvariant } from '../../helpers/math/weighted';
+import { expectEqualWithError } from '../../helpers/relativeError';
+
+import { deploy } from '../../../lib/helpers/deploy';
+import { bn, fp, decimal } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
-import { expectEqualWithError, bn, fp, decimal } from '../../../lib/helpers/numbers';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';

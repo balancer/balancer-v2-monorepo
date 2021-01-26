@@ -1,9 +1,10 @@
 import { Contract } from 'ethers';
 
-import { deploy } from '../../../lib/helpers/deploy';
-import { decimal } from '../../../lib/helpers/numbers';
 import { expectRelativeError } from '../../helpers/relativeError';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/stable';
+
+import { deploy } from '../../../lib/helpers/deploy';
+import { decimal } from '../../../lib/helpers/numbers';
 
 const MAX_RELATIVE_ERROR = 0.1; //Max relative error
 

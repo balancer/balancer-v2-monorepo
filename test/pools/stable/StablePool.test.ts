@@ -4,13 +4,15 @@ import { BigNumber, Contract, ContractFunction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../helpers/expectEvent';
+import { calculateInvariant } from '../../helpers/math/stable';
+import { expectEqualWithError } from '../../helpers/relativeError';
+
 import { deploy } from '../../../lib/helpers/deploy';
 import { GeneralPool } from '../../../lib/helpers/pools';
-import { calculateInvariant } from '../../helpers/math/stable';
+import { bn, fp, FP_SCALING_FACTOR, decimal } from '../../../lib/helpers/numbers';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
-import { expectEqualWithError, bn, fp, FP_SCALING_FACTOR, decimal } from '../../../lib/helpers/numbers';
 
 describe('StablePool', function () {
   let authorizer: Contract, vault: Contract, factory: Contract;
