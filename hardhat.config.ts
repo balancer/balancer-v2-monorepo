@@ -18,6 +18,7 @@ task('seed', 'Add seed data').setAction(async (args, hre) => {
 const CHAIN_IDS = {
   hardhat: 31337,
   kovan: 42,
+  goerli: 5,
   mainnet: 1,
   rinkeby: 4,
   ropsten: 3,
