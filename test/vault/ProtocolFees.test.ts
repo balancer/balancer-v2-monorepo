@@ -1,12 +1,13 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256 } from '../helpers/constants';
+
+import { deploy } from '../../lib/helpers/deploy';
+import { bn } from '../../lib/helpers/numbers';
+import { MAX_UINT256 } from '../../lib/helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { bn } from '../helpers/numbers';
+import { TokenList, deployTokens, mintTokens } from '../../lib/helpers/tokens';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
@@ -44,12 +45,12 @@ describe('Vault - protocol fees', () => {
       await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), feeSetter.address);
       await vault.connect(feeSetter).setProtocolWithdrawFee((0.01e18).toString());
 
-      await vault.connect(user).depositToInternalBalance(tokens.DAI.address, bn(20e18), user.address);
-      await vault.connect(user).depositToInternalBalance(tokens.MKR.address, bn(20e18), user.address);
+      await vault.connect(user).depositToInternalBalance([tokens.DAI.address], [bn(20e18)], user.address);
+      await vault.connect(user).depositToInternalBalance([tokens.MKR.address], [bn(20e18)], user.address);
 
       // Withdraw internal balance - this will cause withdraw fees to be charged
-      await vault.connect(user).withdrawFromInternalBalance(tokens.DAI.address, bn(5e18), user.address);
-      await vault.connect(user).withdrawFromInternalBalance(tokens.MKR.address, bn(10e18), user.address);
+      await vault.connect(user).withdrawFromInternalBalance([tokens.DAI.address], [bn(5e18)], user.address);
+      await vault.connect(user).withdrawFromInternalBalance([tokens.MKR.address], [bn(10e18)], user.address);
     });
 
     it('reports collected fee', async () => {

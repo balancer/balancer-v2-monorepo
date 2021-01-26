@@ -1,7 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { DeployFunction } from 'hardhat-deploy/types';
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
   const { deployments, getNamedAccounts, tenderly } = hre;
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -21,5 +20,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       address: vault.address,
     });
   }
-};
-export default func;
+}

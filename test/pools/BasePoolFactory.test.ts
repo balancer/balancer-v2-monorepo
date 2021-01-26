@@ -1,9 +1,10 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
-import * as expectEvent from '../helpers/expectEvent';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import * as expectEvent from '../helpers/expectEvent';
+import { deploy } from '../../lib/helpers/deploy';
 
 describe('BasePoolFactory', function () {
   let admin: SignerWithAddress;

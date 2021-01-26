@@ -1,6 +1,7 @@
 import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
-import { bn } from '../numbers';
+
+import { bn } from '../../../lib/helpers/numbers';
 
 const ONE = new Decimal(1e18);
 

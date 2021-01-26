@@ -1,11 +1,12 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { TokenList, deployTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { FIXED_POINT_SCALING, toFixedPoint } from '../../scripts/helpers/fixedPoint';
+
+import { deploy } from '../../lib/helpers/deploy';
 import { expectBalanceChange } from '../helpers/tokenBalance';
+import { fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
+import { TokenList, deployTokens } from '../../lib/helpers/tokens';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress;
@@ -75,14 +76,14 @@ describe('Vault - flash loans', () => {
   });
 
   context('with protocol fees', () => {
-    const feePercentage = toFixedPoint(0.005); // 0.5%
+    const feePercentage = fp(0.005); // 0.5%
 
     beforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFlashLoanFee(feePercentage);
     });
 
     it('the Vault receives protocol fees', async () => {
-      const feeAmount = BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING);
+      const feeAmount = BigNumber.from((1e18).toString()).mul(feePercentage).div(FP_SCALING_FACTOR);
 
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
@@ -97,7 +98,7 @@ describe('Vault - flash loans', () => {
       await receiver.setRepayInExcess(true);
 
       // The receiver pays one extra token
-      const feeAmount = BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING).add(1);
+      const feeAmount = BigNumber.from((1e18).toString()).mul(feePercentage).div(FP_SCALING_FACTOR).add(1);
 
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
@@ -131,7 +132,7 @@ describe('Vault - flash loans', () => {
     describe('multi asset loan', () => {
       it('the Vault receives protocol fees proportial to each loan', async () => {
         const amounts = [1e18, 2e18].map((value) => BigNumber.from(value.toString()));
-        const feeAmounts = amounts.map((amount) => amount.mul(feePercentage).div(FIXED_POINT_SCALING));
+        const feeAmounts = amounts.map((amount) => amount.mul(feePercentage).div(FP_SCALING_FACTOR));
 
         await expectBalanceChange(
           () =>
