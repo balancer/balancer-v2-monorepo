@@ -36,9 +36,7 @@ contract WeightedPoolFactory is BasePoolFactory {
     function create(
         string memory name,
         string memory symbol,
-        uint256 initialBPT,
         IERC20[] memory tokens,
-        uint256[] memory amounts,
         uint256[] memory weights,
         uint256 swapFee,
         bytes32 salt
@@ -48,7 +46,7 @@ contract WeightedPoolFactory is BasePoolFactory {
                 abi.encodePacked(
                     type(WeightedPool).creationCode,
                     // Make the sender the `from` address
-                    abi.encode(vault, name, symbol, initialBPT, tokens, amounts, msg.sender, weights, swapFee)
+                    abi.encode(vault, name, symbol, tokens, weights, swapFee)
                 ),
                 salt
             );
