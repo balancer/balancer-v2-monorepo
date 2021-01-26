@@ -1,12 +1,13 @@
-import { deploy } from '../helpers/deploy';
+import { pick } from 'lodash';
 import { ethers } from 'hardhat';
-import { deployTokens, mintTokens, TokenList } from '../../test/helpers/tokens';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256 } from '../../test/helpers/constants';
-import { deployPoolFromFactory, PoolName } from '../helpers/pools';
-import { toFixedPoint } from '../helpers/fixedPoint';
-import { pick } from 'lodash';
+
+import { deploy } from '../../helpers/deploy';
+import { MAX_UINT256 } from '../../helpers/constants';
+import { deployPoolFromFactory, PoolName } from '../../helpers/pools';
+import { deployTokens, mintTokens, TokenList } from '../../helpers/tokens';
+import { fp } from '../../helpers/numbers';
 
 export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH'];
 
@@ -54,12 +55,12 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
   const initialBalances = symbols.map(() => tokenBalance);
 
-  const swapFee = toFixedPoint(0.02); // 2%
+  const swapFee = fp(0.02); // 2%
 
   let pool: Contract;
 
   if (poolName == 'WeightedPool') {
-    const weights = symbols.map(() => toFixedPoint(1)); // Equal weights for all tokens
+    const weights = symbols.map(() => fp(1)); // Equal weights for all tokens
 
     pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
       from: creator,

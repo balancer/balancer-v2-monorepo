@@ -1,9 +1,10 @@
-import { encodeValidatorData, FundManagement, getTokensSwaps, toSwapIn } from '../helpers/trading';
-import { TokenList } from '../../test/helpers/tokens';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import { TokenList } from '../../helpers/tokens';
+import { MAX_UINT128, MAX_UINT256 } from '../../helpers/constants';
+import { encodeValidatorData, FundManagement, getTokensSwaps, toSwapIn } from '../../helpers/trading';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
-import { MAX_UINT128, MAX_UINT256 } from '../../test/helpers/constants';
 
 let vault: Contract;
 let validator: Contract;

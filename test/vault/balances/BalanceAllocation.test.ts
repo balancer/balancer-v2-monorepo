@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { MAX_UINT128 } from '../../helpers/constants';
-import { deploy } from '../../../scripts/helpers/deploy';
+import { MAX_UINT128 } from '../../../lib/helpers/constants';
+import { deploy } from '../../../lib/helpers/deploy';
 
 describe('Vault - cash/managed balance', () => {
   let library: Contract;

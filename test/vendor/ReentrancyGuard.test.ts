@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
-import { deploy } from '../../scripts/helpers/deploy';
+import { deploy } from '../../lib/helpers/deploy';
 
 describe('ReentrancyGuard', () => {
   let reentrancyMock: Contract;

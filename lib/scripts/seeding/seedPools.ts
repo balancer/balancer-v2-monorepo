@@ -1,14 +1,13 @@
-import { MAX_UINT256, MAX_UINT128 } from '../../test/helpers/constants';
+import { BigNumber, Contract, Event } from 'ethers';
+import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { Trade, encodeValidatorData, SwapIn, FundManagement } from '../helpers/trading';
-import { BigNumber } from 'ethers';
-import { Dictionary } from 'lodash';
-import { Contract, Event } from 'ethers';
 
 import * as allPools from './allPools.json';
-import { task } from 'hardhat/config';
-import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import { TokenList, deployTokens } from '../../helpers/tokens';
+import { MAX_UINT128, MAX_UINT256 } from '../../helpers/constants';
+import { encodeValidatorData, FundManagement, SwapIn } from '../../helpers/trading';
 
+let ethers: any;
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
@@ -35,14 +34,8 @@ interface Token {
   denormWeight: BigNumber;
 }
 
-type ContractList = Dictionary<Contract>;
-
-task('seed', 'Add seed data').setAction(async (args, hre) => action(hre));
-
-let ethers: any;
-
 // % npx hardhat run scripts/seeding/seedPools.ts --network localhost
-async function action(hre: HardhatRuntimeEnvironment) {
+export default async function action(args: any, hre: HardhatRuntimeEnvironment) {
   ethers = hre.ethers;
   [deployer, controller, trader, investmentManager] = await ethers.getSigners();
 
@@ -60,30 +53,28 @@ async function action(hre: HardhatRuntimeEnvironment) {
 
   console.log(`\nDeploying tokens...`);
   // Will deploy tokens if not already deployed
-  const tokenContracts: ContractList = await deployTokens(deployer, symbols, decimals);
+  const tokens = await deployTokens(symbols, decimals, deployer);
 
   console.log(`Minting & Approving tokens...`);
-  for (let i = 0; i < symbols.length; i++) {
-    console.log(`${symbols[i]}: ${tokenContracts[symbols[i]].address}`);
-    await tokenContracts[symbols[i]].connect(controller).approve(vault.address, MAX_UINT256);
-    await tokenContracts[symbols[i]].connect(deployer).mint(controller.address, balances[i]);
-    //const tradingBalance = balances[i].div(BigNumber.from('10'))
-    const tradingBalance = balances[i]; //.div(BigNumber.from('10'))
-    await tokenContracts[symbols[i]].connect(deployer).mint(trader.address, tradingBalance);
-    await tokenContracts[symbols[i]].connect(trader).approve(vault.address, MAX_UINT256);
-    await tokenContracts[symbols[i]].connect(investmentManager).approve(vault.address, MAX_UINT256);
+  for (const symbol in tokens) {
+    const token = tokens[symbol];
+    const index = symbols.indexOf(symbol);
+    const tradingBalance = balances[index];
+    console.log(`${symbol}: ${token.address}`);
+
+    await token.connect(controller).approve(vault.address, MAX_UINT256);
+    await token.connect(deployer).mint(controller.address, tradingBalance);
+    await token.connect(deployer).mint(trader.address, tradingBalance);
+    await token.connect(trader).approve(vault.address, MAX_UINT256);
+    await token.connect(investmentManager).approve(vault.address, MAX_UINT256);
 
     // deposit half into user balance
     const depositBalance = tradingBalance.div(BigNumber.from('2'));
-    await vault
-      .connect(trader)
-      .depositToInternalBalance(tokenContracts[symbols[i]].address, depositBalance, trader.address);
+    await vault.connect(trader).depositToInternalBalance(token.address, depositBalance, trader.address);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
-  const pools: Contract[] = (await deployPools(filteredPools, tokenContracts)).filter(
-    (x): x is Contract => x !== undefined
-  );
+  const pools: Contract[] = (await deployPools(filteredPools, tokens)).filter((x): x is Contract => x !== undefined);
 
   console.log(`\nSwapping a few tokens...`);
   validator = await ethers.getContract('OneToOneSwapValidator');
@@ -96,18 +87,6 @@ async function action(hre: HardhatRuntimeEnvironment) {
   return;
 }
 
-async function investPool(pool: Contract) {
-  const poolId = await pool.getPoolId();
-
-  const vault = await ethers.getContract('Vault');
-  const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
-
-  const token = tokenAddresses[0];
-
-  await pool.authorizeAssetManager(token, investmentManager.address);
-  return vault.connect(investmentManager).withdrawFromPoolBalance(poolId, token, 123);
-}
-
 async function swapInPool(pool: Contract) {
   const poolId = await pool.getPoolId();
 
@@ -115,9 +94,6 @@ async function swapInPool(pool: Contract) {
   const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
 
   const [overallTokenIn, overallTokenOut] = tokenAddresses;
-
-  //const Token = await ethers.getContractFactory('TestToken');
-  //const token = await Token.attach(overallTokenIn);
 
   const swap: SwapIn = {
     poolId,
@@ -152,7 +128,7 @@ async function swapInPool(pool: Contract) {
   ).wait();
 }
 
-async function deployPools(filteredPools: Pool[], tokens: ContractList): Promise<(Contract | undefined)[]> {
+async function deployPools(filteredPools: Pool[], tokens: TokenList): Promise<(Contract | undefined)[]> {
   const promises = [];
   for (let i = 0; i < filteredPools.length; i++) {
     const tokensList: Array<string> = [];
@@ -287,57 +263,4 @@ function getTokenInfoForDeploy(pools: Pool[]): [Array<string>, Array<number>, Ar
   }
 
   return [symbols, decimals, balanceArray];
-}
-
-// Deploys a vanilla ERC20 token that can be minted by any account
-async function deployToken(admin: SignerWithAddress, symbol: string, decimals?: number): Promise<string> {
-  // Get deployed Token Factory
-  const tokenFactory = await ethers.getContract('TokenFactory');
-
-  const parameters = [admin.address, symbol, symbol, decimals ?? 18];
-
-  const tx = await tokenFactory.connect(admin).create(...parameters);
-  const receipt = await tx.wait();
-  const event = receipt.events?.find((e: any) => e.event == 'TokenCreated');
-  if (event == undefined) {
-    throw new Error('Could not find TokenCreated event');
-  }
-
-  return event.args.token;
-}
-
-// Deploys multiple tokens and returns a symbol -> token dictionary
-async function deployTokens(
-  admin: SignerWithAddress,
-  symbols: Array<string>,
-  decimals: Array<number>
-): Promise<ContractList> {
-  const tokenContracts: ContractList = {};
-
-  // Get artifact for TestToken
-  const Token = await ethers.getContractFactory('TestToken');
-  // Get deployed Token Factory
-  const tokenFactory = await ethers.getContract('TokenFactory');
-  // Find list of tokens already deployed by factory
-  const totalTokens = await tokenFactory.getTotalTokens();
-  const deployedTokens = await tokenFactory.getTokens(0, totalTokens);
-  // For each token deploy if not already deployed
-  for (let i = 0; i < symbols.length; i++) {
-    if (symbols[i] === 'WETH') {
-      const wethFactory = await ethers.getContract('WETH9');
-      tokenContracts[symbols[i]] = wethFactory;
-      continue;
-    }
-    //const address = await tokenFactory.callStatic.create(admin, symbols[i], symbols[i], decimals[i]);
-    //if (!deployedTokens.includes(address)) {
-    const addr = await deployToken(admin, symbols[i], decimals[i]);
-    //if (addr !== address) console.log(`TOKEN DEPLOY ERROR`);
-    //}
-    const address = addr;
-    // Get token contract
-    const tokenContract = await Token.attach(address);
-    tokenContracts[symbols[i]] = tokenContract;
-  }
-
-  return tokenContracts;
 }

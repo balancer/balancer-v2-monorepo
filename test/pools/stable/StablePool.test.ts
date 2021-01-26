@@ -1,16 +1,16 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract, ContractFunction } from 'ethers';
-import { expectEqualWithError, bn } from '../../helpers/numbers';
-import * as expectEvent from '../../helpers/expectEvent';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { deploy } from '../../../scripts/helpers/deploy';
-import { GeneralPool } from '../../../scripts/helpers/pools';
-import { deploySortedTokens, deployTokens, TokenList } from '../../helpers/tokens';
-import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
-import { FIXED_POINT_SCALING, toFixedPoint } from '../../../scripts/helpers/fixedPoint';
 import { Decimal } from 'decimal.js';
+import { BigNumber, Contract, ContractFunction } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import * as expectEvent from '../../helpers/expectEvent';
+import { deploy } from '../../../lib/helpers/deploy';
+import { GeneralPool } from '../../../lib/helpers/pools';
 import { calculateInvariant } from '../../helpers/math/stable';
+import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
+import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
+import { expectEqualWithError, bn, fp, FP_SCALING_FACTOR } from '../../../lib/helpers/numbers';
 
 const INIT = 0;
 const ALL_TOKENS_IN_FOR_EXACT_BPT_OUT = 1;
@@ -32,7 +32,7 @@ describe('StablePool', function () {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
 
-  const POOL_SWAP_FEE = toFixedPoint(0.01);
+  const POOL_SWAP_FEE = fp(0.01);
 
   const SYMBOLS = ['DAI', 'MKR', 'SNX', 'BAT'];
   const INITIAL_BALANCES = [bn(10e18), bn(11e18), bn(12e18), bn(13e18)];
@@ -192,7 +192,7 @@ describe('StablePool', function () {
         });
 
         it('reverts if the swap fee is too high', async () => {
-          const swapFee = toFixedPoint(0.1).add(1);
+          const swapFee = fp(0.1).add(1);
 
           await expect(deployPool({ tokens: poolTokens, swapFee })).to.be.revertedWith('ERR_MAX_SWAP_FEE');
         });
@@ -607,8 +607,8 @@ describe('StablePool', function () {
       let pool: Contract;
       let poolId: string;
 
-      const swapFee = toFixedPoint(0.05); // 5 %
-      const protocolSwapFee = toFixedPoint(0.1); // 10 %
+      const swapFee = fp(0.05); // 5 %
+      const protocolSwapFee = fp(0.1); // 10 %
 
       beforeEach(async () => {
         //Set protocol swap fee in Vault
@@ -666,8 +666,8 @@ describe('StablePool', function () {
 
           await payFeesAction();
 
-          const poolSwapFeeAmount = BigNumber.from(inAmount).mul(swapFee).div(FIXED_POINT_SCALING);
-          const protocolSwapFeeAmount = poolSwapFeeAmount.mul(protocolSwapFee).div(FIXED_POINT_SCALING);
+          const poolSwapFeeAmount = BigNumber.from(inAmount).mul(swapFee).div(FP_SCALING_FACTOR);
+          const protocolSwapFeeAmount = poolSwapFeeAmount.mul(protocolSwapFee).div(FP_SCALING_FACTOR);
 
           let expectedPaidFees, error;
           if (paidTokenIndex == 0) {

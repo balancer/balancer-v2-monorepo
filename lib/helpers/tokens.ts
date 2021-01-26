@@ -1,8 +1,9 @@
 import { ethers } from 'hardhat';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber, Contract } from 'ethers';
-import { fromPairs, Dictionary } from 'lodash';
-import { deploy } from '../../scripts/helpers/deploy';
+import { Dictionary, fromPairs } from 'lodash';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import { deploy } from './deploy';
 
 export type TokenList = Dictionary<Contract>;
 
@@ -13,20 +14,12 @@ export async function deployTokens(
   from?: SignerWithAddress
 ): Promise<TokenList> {
   const tokenSymbols: TokenList = {};
-  const Token = await ethers.getContractFactory('TestToken');
-
-  // Deploy each token
   for (let i = 0; i < symbols.length; i++) {
     if (symbols[i] === 'WETH') {
-      const weth = await deploy('WETH9', { from, args: [from] });
-      tokenSymbols[symbols[i]] = weth;
-      continue;
+      tokenSymbols[symbols[i]] = await deploy('WETH9', { from, args: [from] });
+    } else {
+      tokenSymbols[symbols[i]] = await deployToken(symbols[i], decimals[i], from);
     }
-    const token = await deployToken(symbols[i], decimals[i], from);
-
-    // Get token contract
-    const tokenContract = await Token.attach(token.address);
-    tokenSymbols[symbols[i]] = tokenContract;
   }
   return tokenSymbols;
 }
@@ -48,8 +41,9 @@ export async function deploySortedTokens(
 export async function deployToken(symbol: string, decimals?: number, from?: SignerWithAddress): Promise<Contract> {
   const [defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
-  const testToken = await deploy('TestToken', { from: deployer, args: [deployer.address, symbol, symbol, decimals] });
-  return testToken;
+  const token = await deploy('TestToken', { from: deployer, args: [deployer.address, symbol, symbol, decimals] });
+  const Token = await ethers.getContractFactory('TestToken');
+  return Token.attach(token.address);
 }
 
 export async function mintTokens(

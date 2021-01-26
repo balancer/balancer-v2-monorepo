@@ -1,11 +1,11 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, BigNumberish, Contract } from 'ethers';
-import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
+import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
+import { deploy } from '../../lib/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
-import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 let admin: SignerWithAddress;

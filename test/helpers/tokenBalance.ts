@@ -1,7 +1,7 @@
 import { expect } from 'chai';
-import { TokenList } from './tokens';
+import { TokenList } from '../../lib/helpers/tokens';
 import { Dictionary } from 'lodash';
-import { BigNumberish } from './numbers';
+import { BigNumberish } from '../../lib/helpers/numbers';
 import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 

@@ -3,13 +3,13 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn } from '../helpers/numbers';
-import { deploy } from '../../scripts/helpers/deploy';
+import { bn } from '../../lib/helpers/numbers';
+import { deploy } from '../../lib/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
-import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
-import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
+import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
+import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 
 describe('assetManager', function () {
   let tokens: TokenList, otherToken: Contract, vault: Contract;

@@ -3,13 +3,12 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../scripts/helpers/deploy';
-import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { MinimalSwapInfoPool } from '../../scripts/helpers/pools';
-import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
-
-import { deployTokens, TokenList } from '../helpers/tokens';
-import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
+import { deploy } from '../../lib/helpers/deploy';
+import { fp } from '../../lib/helpers/numbers';
+import { MinimalSwapInfoPool } from '../../lib/helpers/pools';
+import { deployTokens, TokenList } from '../../lib/helpers/tokens';
+import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 
 describe('Vault - swap queries', () => {
   let vault: Contract, funds: FundManagement;
@@ -37,7 +36,7 @@ describe('Vault - swap queries', () => {
 
     for (let i = 0; i < MAX_POOLS; ++i) {
       const pool = await deploy('MockPool', { args: [vault.address, MinimalSwapInfoPool] });
-      await pool.setMultiplier(toFixedPoint(2));
+      await pool.setMultiplier(fp(2));
 
       await vault.connect(lp).addUserAgent(pool.address);
 

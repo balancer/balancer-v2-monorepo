@@ -4,21 +4,13 @@ import { expect } from 'chai';
 import { BigNumber, Contract, ContractFunction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { expectEqualWithError, bn } from '../../helpers/numbers';
-import { deploy } from '../../../scripts/helpers/deploy';
 import * as expectEvent from '../../helpers/expectEvent';
-import { toFixedPoint } from '../../../scripts/helpers/fixedPoint';
-import { MinimalSwapInfoPool, TwoTokenPool } from '../../../scripts/helpers/pools';
-import { deploySortedTokens, deployTokens, TokenList } from '../../helpers/tokens';
-import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
-import { expectBalanceChange } from '../../helpers/tokenBalance';
-import {
-  calculateInvariant,
-  calcBptInGivenExactTokensOut,
-  calcBptOutGivenExactTokensIn,
-  calcTokenInGivenExactBptOut,
-  calcTokenOutGivenExactBptIn,
-} from '../../helpers/math/weighted';
+import { calculateInvariant } from '../../helpers/math/weighted';
+import { deploy } from '../../../lib/helpers/deploy';
+import { expectEqualWithError, bn, fp } from '../../../lib/helpers/numbers';
+import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
+import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
+import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 
 const INIT = 0;
 const EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
@@ -55,7 +47,7 @@ describe('WeightedPool', function () {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
 
-  const POOL_SWAP_FEE = toFixedPoint(0.01);
+  const POOL_SWAP_FEE = fp(0.01);
 
   const SYMBOLS = ['DAI', 'MKR', 'SNX', 'BAT'];
   const WEIGHTS = [bn(70), bn(30), bn(5), bn(5)];
@@ -113,7 +105,7 @@ describe('WeightedPool', function () {
         Array(17).fill(18)
       );
       const poolTokens = Object.values(manyTokens).map((token) => token.address);
-      const poolWeights = new Array(17).fill(toFixedPoint(1));
+      const poolWeights = new Array(17).fill(fp(1));
 
       await expect(
         deploy('WeightedPool', {
@@ -232,7 +224,7 @@ describe('WeightedPool', function () {
         });
 
         it('reverts if the swap fee is too high', async () => {
-          const swapFee = toFixedPoint(0.1).add(1);
+          const swapFee = fp(0.1).add(1);
 
           await expect(deployPool({ swapFee })).to.be.revertedWith('ERR_MAX_SWAP_FEE');
         });
@@ -796,8 +788,8 @@ describe('WeightedPool', function () {
     });
 
     describe.skip('protocol swap fees', () => {
-      const SWAP_FEE = toFixedPoint(0.05); // 5 %
-      const PROTOCOL_SWAP_FEE = toFixedPoint(0.1); // 10 %
+      const SWAP_FEE = fp(0.05); // 5 %
+      const PROTOCOL_SWAP_FEE = fp(0.1); // 10 %
 
       const ZEROS = Array(numberOfTokens).fill(0);
       const MAX_UINT128S = Array(numberOfTokens).fill(MAX_UINT128);

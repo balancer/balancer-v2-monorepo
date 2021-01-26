@@ -1,14 +1,15 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
-import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
-import { expectBalanceChange } from '../helpers/tokenBalance';
-import { TokenList, deployTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MinimalSwapInfoPool, GeneralPool } from '../../scripts/helpers/pools';
-import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { encodeValidatorData, FundManagement, SwapIn } from '../../scripts/helpers/trading';
+
+import { deploy } from '../../lib/helpers/deploy';
+import { fp } from '../../lib/helpers/numbers';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+import { TokenList, deployTokens } from '../../lib/helpers/tokens';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { MinimalSwapInfoPool, GeneralPool } from '../../lib/helpers/pools';
+import { encodeValidatorData, FundManagement, SwapIn } from '../../lib/helpers/trading';
 
 describe('OneToOneSwapValidator', () => {
   let lp: SignerWithAddress;
@@ -68,7 +69,7 @@ describe('OneToOneSwapValidator', () => {
           [(100e18).toString(), (100e18).toString(), (100e18).toString()]
         );
 
-      await pool.setMultiplier(toFixedPoint(2));
+      await pool.setMultiplier(fp(2));
 
       poolIds.push(await pool.getPoolId());
     }

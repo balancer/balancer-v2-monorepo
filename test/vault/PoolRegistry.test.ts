@@ -1,15 +1,15 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../helpers/expectEvent';
-import { deploy } from '../../scripts/helpers/deploy';
-import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../helpers/constants';
-import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
+import { fp } from '../../lib/helpers/numbers';
+import { deploy } from '../../lib/helpers/deploy';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
+import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
+import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
+import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 
 let admin: SignerWithAddress;
 let pool: SignerWithAddress;
@@ -722,7 +722,7 @@ describe('Vault - pool registry', () => {
 
     beforeEach('deploy pool', async () => {
       await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), feeSetter.address);
-      await vault.connect(feeSetter).setProtocolSwapFee(toFixedPoint(0.01)); // 1%
+      await vault.connect(feeSetter).setProtocolSwapFee(fp(0.01)); // 1%
 
       pool = await deploy('MockPool', {
         args: [vault.address, MinimalSwapInfoPool],
@@ -776,7 +776,7 @@ describe('Vault - pool registry', () => {
     });
 
     it('the vault charges nothing if the protocol fee is 0', async () => {
-      await vault.connect(feeSetter).setProtocolSwapFee(toFixedPoint(0));
+      await vault.connect(feeSetter).setProtocolSwapFee(fp(0));
       await assertFeesArePaid([{ symbol: 'DAI', reported: 500, expectedPaid: 0 }]);
     });
 

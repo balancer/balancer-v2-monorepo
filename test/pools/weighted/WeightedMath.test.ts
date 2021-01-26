@@ -1,8 +1,9 @@
-import { deploy } from '../../../scripts/helpers/deploy';
-import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/weighted';
-import { expectRelativeError } from '../../helpers/relativeError';
 import { Contract } from 'ethers';
 import { Decimal } from 'decimal.js';
+
+import { deploy } from '../../../lib/helpers/deploy';
+import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/weighted';
+import { expectRelativeError } from '../../helpers/relativeError';
 
 const MAX_RELATIVE_ERROR = 0.0001; //Max relative error
 

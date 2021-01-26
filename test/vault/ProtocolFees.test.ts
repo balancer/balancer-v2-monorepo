@@ -1,11 +1,11 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { TokenList, deployTokens, mintTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
+import { TokenList, deployTokens, mintTokens } from '../../lib/helpers/tokens';
+import { deploy } from '../../lib/helpers/deploy';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MinimalSwapInfoPool } from '../../scripts/helpers/pools';
-import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
+import { MinimalSwapInfoPool } from '../../lib/helpers/pools';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 describe('Vault - protocol fees', () => {
