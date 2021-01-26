@@ -41,9 +41,7 @@ export async function deploySortedTokens(
 export async function deployToken(symbol: string, decimals?: number, from?: SignerWithAddress): Promise<Contract> {
   const [defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
-  const token = await deploy('TestToken', { from: deployer, args: [deployer.address, symbol, symbol, decimals] });
-  const Token = await ethers.getContractFactory('TestToken');
-  return Token.attach(token.address);
+  return deploy('TestToken', { from: deployer, args: [deployer.address, symbol, symbol, decimals] });
 }
 
 export async function mintTokens(
