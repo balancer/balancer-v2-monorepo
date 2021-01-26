@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-// From https://github.com/makerdao/multicall
-
-// solhint-disable
-
-pragma solidity >=0.5.0;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+// From https://github.com/makerdao/multicall
 /// @title Multicall - Aggregate results from multiple read-only function calls
 /// @author Michael Elliot <mike@makerdao.com>
 /// @author Joshua Levine <joshua@makerdao.com>
@@ -22,7 +19,6 @@ contract Multicall {
         blockNumber = block.number;
         returnData = new bytes[](calls.length);
         for (uint256 i = 0; i < calls.length; i++) {
-            // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory ret) = calls[i].target.call(calls[i].callData);
             require(success, "Each call must succeed");
             returnData[i] = ret;
@@ -43,7 +39,6 @@ contract Multicall {
     }
 
     function getCurrentBlockTimestamp() public view returns (uint256 timestamp) {
-        // solhint-disable-next-line not-rely-on-time
         timestamp = block.timestamp;
     }
 

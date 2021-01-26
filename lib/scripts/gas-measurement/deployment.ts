@@ -1,7 +1,8 @@
 import { ethers } from 'hardhat';
-import { deploy } from '../helpers/deploy';
 import { printGas } from './misc';
 import { Contract } from 'ethers';
+
+import { deploy } from '../../helpers/deploy';
 
 async function main() {
   const [, admin] = await ethers.getSigners();

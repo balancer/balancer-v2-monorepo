@@ -4,12 +4,12 @@ import { Dictionary } from 'lodash';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp, pct } from '../helpers/numbers';
-import { deploy } from '../../scripts/helpers/deploy';
+import { bn, fp, pct } from '../../lib/helpers/numbers';
+import { deploy } from '../../lib/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
-import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
+import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 
 describe('Vault - internal balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
@@ -76,7 +76,7 @@ describe('Vault - internal balance', () => {
               depositor: sender.address,
               user: recipient.address,
               token: tokens.DAI.address,
-              amount: amount,
+              amount,
             });
           });
         });
@@ -163,7 +163,7 @@ describe('Vault - internal balance', () => {
               user: sender.address,
               recipient: recipient.address,
               token: tokens.DAI.address,
-              amount: amount,
+              amount,
             });
           });
         });
@@ -202,7 +202,6 @@ describe('Vault - internal balance', () => {
             await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
 
             const currentCollectedFees = await vault.getCollectedFeesByToken(tokens.DAI.address);
-
             expect(currentCollectedFees.sub(previousCollectedFees)).to.equal(pct(amount, protocolWithdrawFee));
           });
         });

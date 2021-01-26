@@ -9,13 +9,13 @@ export async function deploy(
   { from, args }: { from?: Signer; args: Array<unknown> }
 ): Promise<Contract> {
   let factory = await getFactory(contractName);
+
   if (from) {
     factory = factory.connect(from);
   }
 
-  const contract = await (await factory.deploy(...args)).deployed();
-
-  return contract;
+  const instance = await factory.deploy(...args);
+  return instance.deployed();
 }
 
 // Cache factory creation to avoid processing the compiled artifacts multiple times

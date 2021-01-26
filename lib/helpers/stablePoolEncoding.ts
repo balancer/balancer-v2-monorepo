@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
-import { BigNumberish } from '../../test/helpers/numbers';
+
+import { BigNumberish } from './numbers';
 
 const JOIN_STABLE_POOL_INIT_TAG = 0;
 const JOIN_STABLE_POOL_ALL_TOKENS_IN_FOR_EXACT_BPT_OUT_TAG = 1;
