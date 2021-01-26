@@ -4,6 +4,7 @@ import { Dictionary, fromPairs } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from './deploy';
+import { ZERO_ADDRESS } from './constants';
 
 export type TokenList = Dictionary<Contract>;
 
@@ -16,7 +17,7 @@ export async function deployTokens(
   const tokenSymbols: TokenList = {};
   for (let i = 0; i < symbols.length; i++) {
     if (symbols[i] === 'WETH') {
-      tokenSymbols[symbols[i]] = await deploy('WETH9', { from, args: [from] });
+      tokenSymbols[symbols[i]] = await deploy('WETH9', { from, args: [from ? from.address : ZERO_ADDRESS] });
     } else {
       tokenSymbols[symbols[i]] = await deployToken(symbols[i], decimals[i], from);
     }
