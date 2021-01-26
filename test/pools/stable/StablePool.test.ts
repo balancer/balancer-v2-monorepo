@@ -218,7 +218,7 @@ describe('StablePool', function () {
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
 
-      it.skip('fails if no user data', async () => {
+      it('fails if no user data', async () => {
         await expect(
           vault
             .connect(lp)
@@ -231,7 +231,7 @@ describe('StablePool', function () {
               0,
               '0x'
             )
-        ).to.be.revertedWith('Transaction reverted without a reason');
+        ).to.be.reverted;
 
         //NOTE
         //If use `to.be.be.revertedWith('Transaction reverted without a reason'), hardhat throws:
@@ -240,7 +240,7 @@ describe('StablePool', function () {
         //and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat.`
       });
 
-      it.skip('fails if wrong user data', async () => {
+      it('fails if wrong user data', async () => {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
         await expect(
@@ -255,7 +255,7 @@ describe('StablePool', function () {
               0,
               wrongUserData
             )
-        ).to.be.revertedWith('Transaction reverted without a reason');
+        ).to.be.reverted;
 
         //NOTE
         //Same problem with `revertedWith` as before
@@ -435,7 +435,7 @@ describe('StablePool', function () {
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
 
-      it.skip('fails if no user data', async () => {
+      it('fails if no user data', async () => {
         await expect(
           vault
             .connect(lp)
@@ -448,10 +448,10 @@ describe('StablePool', function () {
               0,
               '0x'
             )
-        ).to.be.be.revertedWith('Transaction reverted without a reason');
+        ).to.be.be.reverted;
       });
 
-      it.skip('fails if wrong user data', async () => {
+      it('fails if wrong user data', async () => {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
         await expect(
@@ -466,7 +466,7 @@ describe('StablePool', function () {
               0,
               wrongUserData
             )
-        ).to.be.be.revertedWith('Transaction reverted without a reason');
+        ).to.be.be.reverted;
       });
 
       context('exit exact BPT in for all tokens out', () => {
