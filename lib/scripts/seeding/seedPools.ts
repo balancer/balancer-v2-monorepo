@@ -171,7 +171,7 @@ async function deployStrategyPool(
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
   tokens.forEach((token, i) => console.log(`${token} - ${balances[i].toString()}`));
 
-  const initialBPT = (100e18).toString();
+  const initialBPT = bn(100e18);
   const salt = ethers.utils.id(Math.random().toString());
 
   const name = tokens.length + ' token pool';

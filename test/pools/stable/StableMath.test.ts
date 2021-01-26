@@ -75,21 +75,21 @@ describe.skip('StableMath', function () {
     it('outGivenIn', async () => {
       await compareOutGivenIn(
         mock,
-        (7.6e18).toString(), //amp
-        [(108.6e18).toString(), (42.482e18).toString()], //balances
+        bn(7.6e18), //amp
+        [bn(108.6e18), bn(42.482e18)], //balances
         0, //tokenIndexIn
         1, //tokenIndexOut
-        (4.14e18).toString() //tokenAmountIn
+        bn(4.14e18) //tokenAmountIn
       );
     });
     it('inGivenOut', async () => {
       await compareInGivenOut(
         mock,
-        (7.6e18).toString(), //amp
-        [(108.6e18).toString(), (42.482e18).toString()], //balances
+        bn(7.6e18), //amp
+        [bn(108.6e18), bn(42.482e18)], //balances
         0, //tokenIndexIn
         1, //tokenIndexOut
-        (3.7928e18).toString() //tokenAmountOut
+        bn(3.7928e18) //tokenAmountOut
       );
     });
   });
@@ -98,8 +98,8 @@ describe.skip('StableMath', function () {
     it('outGivenIn - min amount in', async () => {
       await compareOutGivenIn(
         mock,
-        (7.6e18).toString(), //amp
-        [(108.6e18).toString(), (42.482e18).toString()], //balances
+        bn(7.6e18), //amp
+        [bn(108.6e18), bn(42.482e18)], //balances
         0, //tokenIndexIn
         1, //tokenIndexOut
         (10e9).toString() //tokenAmountIn (MIN AMOUNT = 0.00000001)
@@ -108,8 +108,8 @@ describe.skip('StableMath', function () {
     it('inGivenOut - min amount out', async () => {
       await compareInGivenOut(
         mock,
-        (7.6e18).toString(), //amp
-        [(108.6e18).toString(), (42.482e18).toString()], //balances
+        bn(7.6e18), //amp
+        [bn(108.6e18), bn(42.482e18)], //balances
         0, //tokenIndexIn
         1, //tokenIndexOut
         (10e9).toString() //tokenAmountIn (MIN AMOUNT = 0.00000001)
@@ -122,36 +122,22 @@ describe.skip('StableMath', function () {
     it('outGivenIn', async () => {
       await compareOutGivenIn(
         mock,
-        (7.6e18).toString(), //amp
-        [
-          (108.6e18).toString(),
-          (42.482e18).toString(),
-          (50e18).toString(),
-          (60e18).toString(),
-          (70e18).toString(),
-          (80e18).toString(),
-        ], //balances
+        bn(7.6e18), //amp
+        [bn(108.6e18), bn(42.482e18), bn(50e18), bn(60e18), bn(70e18), bn(80e18)], //balances
         0, //tokenIndexIn
         1, //tokenIndexOut
-        (4.14e18).toString() //tokenAmountIn
+        bn(4.14e18) //tokenAmountIn
       );
     });
     //NOTE: the more tokens, the more the invariant error
     it('inGivenOut', async () => {
       await compareInGivenOut(
         mock,
-        (7.6e18).toString(), //amp
-        [
-          (108.6e18).toString(),
-          (42.482e18).toString(),
-          (50e18).toString(),
-          (60e18).toString(),
-          (70e18).toString(),
-          (80e18).toString(),
-        ], //balances
+        bn(7.6e18), //amp
+        [bn(108.6e18), bn(42.482e18), bn(50e18), bn(60e18), bn(70e18), bn(80e18)], //balances
         0, //tokenIndexIn
         1, //tokenIndexOut
-        (6.108e18).toString() //tokenAmountOut
+        bn(6.108e18) //tokenAmountOut
       );
     });
   });

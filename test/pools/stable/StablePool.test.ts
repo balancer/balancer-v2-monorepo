@@ -371,7 +371,7 @@ describe('StablePool', function () {
           it('grants exact BPT', async () => {
             const previousBPT = await pool.balanceOf(beneficiary.address);
 
-            const bptAmountOut = (10e18).toString();
+            const bptAmountOut = bn(10e18);
             const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut });
             const maxAmountsIn = Array(poolTokens.length).fill(bn(20e18));
 
@@ -626,8 +626,8 @@ describe('StablePool', function () {
         await pool.connect(lp).joinPool(bn(1e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
         await pool.connect(lp).joinPool(bn(4e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
 
-        await pool.connect(lp).exitPool((0.5e18).toString(), [0, 0], true, lp.address);
-        await pool.connect(lp).exitPool((2.5e18).toString(), [0, 0], true, lp.address);
+        await pool.connect(lp).exitPool(bn(0.5e18), [0, 0], true, lp.address);
+        await pool.connect(lp).exitPool(bn(2.5e18), [0, 0], true, lp.address);
 
         await pool.connect(lp).joinPool(bn(7e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
 
@@ -638,7 +638,7 @@ describe('StablePool', function () {
       });
 
       context('with swap', () => {
-        const inAmount = (10e18).toString();
+        const inAmount = bn(10e18);
 
         beforeEach(async () => {
           const swap = {
@@ -707,14 +707,12 @@ describe('StablePool', function () {
 
         it('pays swap protocol fees on join', async () => {
           await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).joinPool((1e18).toString(), [MAX_UINT128, MAX_UINT128], true, lp.address)
+            pool.connect(lp).joinPool(bn(1e18), [MAX_UINT128, MAX_UINT128], true, lp.address)
           );
         });
 
         it('pays swap protocol fees on exit', async () => {
-          await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).exitPool((1e18).toString(), [0, 0], true, lp.address)
-          );
+          await assertProtocolSwapFeeIsCharged(() => pool.connect(lp).exitPool(bn(1e18), [0, 0], true, lp.address));
         });
       });
     });

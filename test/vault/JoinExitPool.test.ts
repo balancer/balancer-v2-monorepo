@@ -33,7 +33,7 @@ describe('Vault - join & exit pool', () => {
 
     for (const symbol in tokens) {
       // Mint tokens for the lp to deposit in the Vault
-      await mintTokens(tokens, symbol, lp, (100e18).toString());
+      await mintTokens(tokens, symbol, lp, bn(100e18));
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
     }
 
@@ -82,10 +82,7 @@ describe('Vault - join & exit pool', () => {
         await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
         // Perform an initial join so that the pool has balance that can be charged as fees
-        await pool.setOnJoinExitPoolReturnValues(
-          Array(tokenAmount).fill((50e18).toString()),
-          Array(tokenAmount).fill(0)
-        );
+        await pool.setOnJoinExitPoolReturnValues(Array(tokenAmount).fill(bn(50e18)), Array(tokenAmount).fill(0));
 
         await vault
           .connect(lp)
@@ -436,10 +433,7 @@ describe('Vault - join & exit pool', () => {
         await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
         // Perform an initial join so that the pool has balance that can be exited and charged as fees
-        await pool.setOnJoinExitPoolReturnValues(
-          Array(tokenAmount).fill((50e18).toString()),
-          Array(tokenAmount).fill(0)
-        );
+        await pool.setOnJoinExitPoolReturnValues(Array(tokenAmount).fill(bn(50e18)), Array(tokenAmount).fill(0));
 
         await vault
           .connect(lp)

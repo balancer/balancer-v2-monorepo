@@ -73,21 +73,21 @@ describe('WeightedMath', function () {
     it('outGivenIn', async () => {
       await compareOutGivenIn(
         mock,
-        (100e18).toString(), //tokenBalanceIn
-        (50e18).toString(), //tokenWeightIn
-        (100e18).toString(), //tokenBalanceOut
-        (40e18).toString(), //tokenWeightOut
-        (15e18).toString() //tokenAmountIn
+        bn(100e18), //tokenBalanceIn
+        bn(50e18), //tokenWeightIn
+        bn(100e18), //tokenBalanceOut
+        bn(40e18), //tokenWeightOut
+        bn(15e18) //tokenAmountIn
       );
     });
     it('inGivenOut', async () => {
       await compareInGivenOut(
         mock,
-        (100e18).toString(), //tokenBalanceIn
-        (50e18).toString(), //tokenWeightIn
-        (100e18).toString(), //tokenBalanceOut
-        (40e18).toString(), //tokenWeightOut
-        (15e18).toString() //tokenAmountOut
+        bn(100e18), //tokenBalanceIn
+        bn(50e18), //tokenWeightIn
+        bn(100e18), //tokenBalanceOut
+        bn(40e18), //tokenWeightOut
+        bn(15e18) //tokenAmountOut
       );
     });
   });
@@ -96,20 +96,20 @@ describe('WeightedMath', function () {
     it('outGivenIn - min amount in', async () => {
       await compareOutGivenIn(
         mock,
-        (100e18).toString(), //tokenBalanceIn
-        (50e18).toString(), //tokenWeightIn
-        (100e18).toString(), //tokenBalanceOut
-        (40e18).toString(), //tokenWeightOut
+        bn(100e18), //tokenBalanceIn
+        bn(50e18), //tokenWeightIn
+        bn(100e18), //tokenBalanceOut
+        bn(40e18), //tokenWeightOut
         (10e6).toString() //tokenAmountIn (MIN AMOUNT = 0.00000000001)
       );
     });
     it('inGivenOut - min amount out', async () => {
       await compareInGivenOut(
         mock,
-        (100e18).toString(), //tokenBalanceIn
-        (50e18).toString(), //tokenWeightIn
-        (100e18).toString(), //tokenBalanceOut
-        (40e18).toString(), //tokenWeightOut
+        bn(100e18), //tokenBalanceIn
+        bn(50e18), //tokenWeightIn
+        bn(100e18), //tokenBalanceOut
+        bn(40e18), //tokenWeightOut
         (10e6).toString() //tokenAmountOut (MIN AMOUNT = 0.00000000001)
       );
     });
@@ -117,9 +117,9 @@ describe('WeightedMath', function () {
       await compareOutGivenIn(
         mock,
         '340282366920938463463374607431768211455', //tokenBalanceIn (max uint128)
-        (50e18).toString(), //tokenWeightIn
+        bn(50e18), //tokenWeightIn
         '340282366920938463463374607431768211455', //tokenBalanceOut (max uint128)
-        (40e18).toString(), //tokenWeightOut
+        bn(40e18), //tokenWeightOut
         '170141183460469231731687303715884105727' //tokenAmountIn (50% of Balance)
       );
     });
@@ -127,9 +127,9 @@ describe('WeightedMath', function () {
       await compareInGivenOut(
         mock,
         '340282366920938463463374607431768211455', //tokenBalanceIn (max uint128)
-        (50e18).toString(), //tokenWeightIn
+        bn(50e18), //tokenWeightIn
         '340282366920938463463374607431768211455', //tokenBalanceOut (max uint128)
-        (40e18).toString(), //tokenWeightOut
+        bn(40e18), //tokenWeightOut
         '170141183460469231731687303715884105727' //tokenAmountOut (50% of Balance)
       );
     });
@@ -140,11 +140,11 @@ describe('WeightedMath', function () {
       //Weight relation = 130.07
       await compareOutGivenIn(
         mock,
-        (100e18).toString(), //tokenBalanceIn
-        (130.7e18).toString(), //tokenWeightIn
-        (100e18).toString(), //tokenBalanceOut
-        (1e18).toString(), //tokenWeightOut
-        (15e18).toString() //tokenAmountIn
+        bn(100e18), //tokenBalanceIn
+        bn(130.7e18), //tokenWeightIn
+        bn(100e18), //tokenBalanceOut
+        bn(1e18), //tokenWeightOut
+        bn(15e18) //tokenAmountIn
       );
     });
 
@@ -152,11 +152,11 @@ describe('WeightedMath', function () {
       //Weight relation = 0.00769
       await compareOutGivenIn(
         mock,
-        (100e18).toString(), //tokenBalanceIn
-        (0.00769e18).toString(), //tokenWeightIn
-        (100e18).toString(), //tokenBalanceOut
-        (1e18).toString(), //tokenWeightOut
-        (50e18).toString() //tokenAmountIn
+        bn(100e18), //tokenBalanceIn
+        bn(0.00769e18), //tokenWeightIn
+        bn(100e18), //tokenBalanceOut
+        bn(1e18), //tokenWeightOut
+        bn(50e18) //tokenAmountIn
       );
     });
   });
