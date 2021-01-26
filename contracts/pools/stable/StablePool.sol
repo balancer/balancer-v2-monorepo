@@ -80,11 +80,11 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
 
     //Getters
 
-    function getVault() external view returns (IVault) {
+    function getVault() external view override returns (IVault) {
         return _vault;
     }
 
-    function getPoolId() external view returns (bytes32) {
+    function getPoolId() external view override returns (bytes32) {
         return _poolId;
     }
 
@@ -215,6 +215,8 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         return (amountsIn, dueProtocolFeeAmounts);
     }
 
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT }
+
     function onExitPool(
         bytes32 poolId,
         address sender,
@@ -234,7 +236,8 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
             protocolFeePercentage
         );
 
-        uint256 bptAmountIn = abi.decode(userData, (uint256));
+        // There is only one Exit Kind
+        (, uint256 bptAmountIn) = abi.decode(userData, (ExitKind, uint256));
         uint256 totalTokens = currentBalances.length;
 
         uint256[] memory amountsOut = _exitExactBPTInForAllTokensOut(
@@ -315,19 +318,6 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
     function _subtractSwapFee(uint256 amount) private view returns (uint256) {
         uint256 fees = amount.mul(_swapFee);
         return amount.sub(fees);
-    }
-
-    function _getPoolTokenBalances() private view returns (IERC20[] memory tokens, uint256[] memory balances) {
-        tokens = _vault.getPoolTokens(_poolId);
-        // We trust the number of tokens returned from the Vault since these are registered in the constructor
-
-        balances = _vault.getPoolTokenBalances(_poolId, tokens);
-        bool someLiquidity = true;
-        for (uint256 i = 0; i < tokens.length && someLiquidity; i++) {
-            someLiquidity = balances[i] != 0;
-        }
-
-        require(someLiquidity, "ERR_ZERO_LIQUIDITY");
     }
 
     function _validateIndexes(

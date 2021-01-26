@@ -2,6 +2,8 @@
 
 // From https://github.com/makerdao/multicall
 
+// solhint-disable
+
 pragma solidity >=0.5.0;
 pragma experimental ABIEncoderV2;
 

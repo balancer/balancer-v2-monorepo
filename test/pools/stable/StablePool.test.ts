@@ -9,25 +9,12 @@ import { deploy } from '../../../lib/helpers/deploy';
 import { GeneralPool } from '../../../lib/helpers/pools';
 import { calculateInvariant } from '../../helpers/math/stable';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
+import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 import { expectEqualWithError, bn, fp, FP_SCALING_FACTOR } from '../../../lib/helpers/numbers';
 
-const INIT = 0;
-const ALL_TOKENS_IN_FOR_EXACT_BPT_OUT = 1;
-
-const encodeInitialJoinUserData = (): string => {
-  return ethers.utils.defaultAbiCoder.encode(['uint256'], [INIT]);
-};
-const encodeJoinAllTokensInForExactBPTOutUserData = (bptAmountOut: string): string => {
-  return ethers.utils.defaultAbiCoder.encode(['uint256', 'uint256'], [ALL_TOKENS_IN_FOR_EXACT_BPT_OUT, bptAmountOut]);
-};
-
-const encodeExitExactBPTInForAllTokensOutUserData = (bptAmountIn: string): string => {
-  return ethers.utils.defaultAbiCoder.encode(['uint256'], [bptAmountIn]);
-};
-
 describe('StablePool', function () {
-  let authorizer: Contract, vault: Contract;
+  let authorizer: Contract, vault: Contract, factory: Contract;
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
@@ -44,6 +31,8 @@ describe('StablePool', function () {
 
   beforeEach('deploy tokens', async () => {
     vault = await deploy('Vault', { args: [authorizer.address] });
+    factory = await deploy('StablePoolFactory', { args: [vault.address] });
+
     tokenList = await deploySortedTokens(SYMBOLS, [18, 18, 18, 18]);
     tokens = Object.values(tokenList);
 
@@ -107,18 +96,30 @@ describe('StablePool', function () {
       tokens,
       amplification,
       swapFee,
+      fromFactory,
     }: {
       tokens?: string[];
       amplification?: BigNumber;
       swapFee?: BigNumber;
+      fromFactory?: boolean;
     }) {
-      tokens = tokens ? tokens : [];
-      amplification = amplification ? amplification : poolAmplification;
-      swapFee = swapFee ? swapFee : POOL_SWAP_FEE;
+      tokens = tokens ?? [];
+      amplification = amplification ?? poolAmplification;
+      swapFee = swapFee ?? POOL_SWAP_FEE;
+      fromFactory = fromFactory ?? false;
 
-      return deploy('StablePool', {
-        args: [vault.address, 'Balancer Pool Token', 'BPT', tokens, amplification, swapFee],
-      });
+      if (fromFactory) {
+        const receipt = await (
+          await factory.create('Balancer Pool Token', 'BPT', tokens, amplification, swapFee)
+        ).wait();
+
+        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        return ethers.getContractAt('StablePool', event.args.pool);
+      } else {
+        return deploy('StablePool', {
+          args: [vault.address, 'Balancer Pool Token', 'BPT', tokens, amplification, swapFee],
+        });
+      }
     }
 
     beforeEach('define pool tokens', () => {
@@ -129,8 +130,9 @@ describe('StablePool', function () {
       context('when the creation succeeds', () => {
         let pool: Contract;
 
-        beforeEach('deploy pool', async () => {
-          pool = await deployPool({ tokens: poolTokens });
+        beforeEach('deploy pool from factory', async () => {
+          // Deploy from the Pool factory to test that it works properly
+          pool = await deployPool({ tokens: poolTokens, fromFactory: true });
         });
 
         it('sets the vault', async () => {
@@ -218,7 +220,7 @@ describe('StablePool', function () {
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
 
-      it.skip('fails if no user data', async () => {
+      it('fails if no user data', async () => {
         await expect(
           vault
             .connect(lp)
@@ -231,7 +233,7 @@ describe('StablePool', function () {
               0,
               '0x'
             )
-        ).to.be.revertedWith('Transaction reverted without a reason');
+        ).to.be.reverted;
 
         //NOTE
         //If use `to.be.be.revertedWith('Transaction reverted without a reason'), hardhat throws:
@@ -240,7 +242,7 @@ describe('StablePool', function () {
         //and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat.`
       });
 
-      it.skip('fails if wrong user data', async () => {
+      it('fails if wrong user data', async () => {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
         await expect(
@@ -255,7 +257,7 @@ describe('StablePool', function () {
               0,
               wrongUserData
             )
-        ).to.be.revertedWith('Transaction reverted without a reason');
+        ).to.be.reverted;
 
         //NOTE
         //Same problem with `revertedWith` as before
@@ -265,7 +267,7 @@ describe('StablePool', function () {
         let initialJoinUserData: string;
 
         beforeEach(async () => {
-          initialJoinUserData = encodeInitialJoinUserData();
+          initialJoinUserData = encodeJoinStablePool({ kind: 'Init' });
         });
 
         it('grants the invariant amount of BPT', async () => {
@@ -336,7 +338,7 @@ describe('StablePool', function () {
 
       context('join exact tokens in for BPT out', () => {
         it('fails if not initialized', async () => {
-          const joinUserData = encodeJoinAllTokensInForExactBPTOutUserData('0');
+          const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut: 0 });
           await expect(
             vault
               .connect(creator)
@@ -354,7 +356,7 @@ describe('StablePool', function () {
 
         context('once initialized', () => {
           beforeEach(async () => {
-            const initialJoinUserData = encodeInitialJoinUserData();
+            const initialJoinUserData = encodeJoinStablePool({ kind: 'Init' });
             await vault
               .connect(creator)
               .callJoinPool(
@@ -372,7 +374,7 @@ describe('StablePool', function () {
             const previousBPT = await pool.balanceOf(beneficiary.address);
 
             const bptAmountOut = (10e18).toString();
-            const joinUserData = encodeJoinAllTokensInForExactBPTOutUserData(bptAmountOut);
+            const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut });
             const maxAmountsIn = Array(poolTokens.length).fill(bn(20e18));
 
             const receipt = await (
@@ -413,7 +415,7 @@ describe('StablePool', function () {
         poolId = await pool.getPoolId();
 
         // Initialize from creator
-        const initialJoinUserData = encodeInitialJoinUserData();
+        const initialJoinUserData = encodeJoinStablePool({ kind: 'Init' });
         await vault
           .connect(creator)
           .callJoinPool(
@@ -435,7 +437,7 @@ describe('StablePool', function () {
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
 
-      it.skip('fails if no user data', async () => {
+      it('fails if no user data', async () => {
         await expect(
           vault
             .connect(lp)
@@ -448,10 +450,10 @@ describe('StablePool', function () {
               0,
               '0x'
             )
-        ).to.be.be.revertedWith('Transaction reverted without a reason');
+        ).to.be.be.reverted;
       });
 
-      it.skip('fails if wrong user data', async () => {
+      it('fails if wrong user data', async () => {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
         await expect(
@@ -466,14 +468,14 @@ describe('StablePool', function () {
               0,
               wrongUserData
             )
-        ).to.be.be.revertedWith('Transaction reverted without a reason');
+        ).to.be.be.reverted;
       });
 
       context('exit exact BPT in for all tokens out', () => {
         it('grants all tokens for exact bpt', async () => {
           // Exit with half of BPT
           const prevBPT = await pool.balanceOf(lp.address);
-          const exitUserData = encodeExitExactBPTInForAllTokensOutUserData(prevBPT.div(2));
+          const exitUserData = encodeExitStablePool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: prevBPT.div(2) });
           const minAmountsOut = Array(poolTokens.length).fill(bn(0.01e18));
 
           const receipt = await (
@@ -507,7 +509,7 @@ describe('StablePool', function () {
 
         it('fully exit', async () => {
           const prevBPT = await pool.balanceOf(lp.address);
-          const exitUserData = encodeExitExactBPTInForAllTokensOutUserData(prevBPT);
+          const exitUserData = encodeExitStablePool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: prevBPT });
           const minAmountsOut = Array(poolTokens.length).fill(bn(0.01e18));
 
           const receipt = await (

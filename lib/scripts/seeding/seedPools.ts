@@ -105,7 +105,6 @@ async function swapInPool(pool: Contract) {
   const swaps: SwapIn[] = [swap];
 
   const funds: FundManagement = {
-    sender: trader.address,
     recipient: trader.address,
     fromInternalBalance: false,
     toInternalBalance: false,

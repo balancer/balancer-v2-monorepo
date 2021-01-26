@@ -2,8 +2,8 @@ import { Contract } from 'ethers';
 import { Decimal } from 'decimal.js';
 
 import { deploy } from '../../../lib/helpers/deploy';
-import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/stable';
 import { expectRelativeError } from '../../helpers/relativeError';
+import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/stable';
 
 const MAX_RELATIVE_ERROR = 0.1; //Max relative error
 

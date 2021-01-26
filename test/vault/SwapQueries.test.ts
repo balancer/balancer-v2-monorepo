@@ -3,11 +3,11 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { fp, bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
-import { fp } from '../../lib/helpers/numbers';
 import { MinimalSwapInfoPool } from '../../lib/helpers/pools';
-import { deployTokens, TokenList } from '../../lib/helpers/tokens';
-import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { deploySortedTokens, TokenList } from '../../lib/helpers/tokens';
+import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 
 describe('Vault - swap queries', () => {
@@ -25,7 +25,7 @@ describe('Vault - swap queries', () => {
     // All of the tests in this suite have no side effects, so we deploy and initially contracts only one to save time
 
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
     assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
 
@@ -38,20 +38,30 @@ describe('Vault - swap queries', () => {
       const pool = await deploy('MockPool', { args: [vault.address, MinimalSwapInfoPool] });
       await pool.setMultiplier(fp(2));
 
-      await vault.connect(lp).addUserAgent(pool.address);
+      const poolId = await pool.getPoolId();
 
-      await pool.connect(lp).registerTokens(tokenAddresses, assetManagers);
+      await pool.setMultiplier(fp(2));
 
-      await pool.connect(lp).addLiquidity(
-        tokenAddresses,
-        tokenAddresses.map(() => (100e18).toString())
+      await pool.registerTokens(tokenAddresses, assetManagers);
+
+      await pool.setOnJoinExitPoolReturnValues(
+        tokenAddresses.map(() => bn(100e18)),
+        tokenAddresses.map(() => 0)
       );
 
-      poolIds.push(await pool.getPoolId());
+      await vault.connect(lp).joinPool(
+        poolId,
+        lp.address,
+        tokenAddresses,
+        tokenAddresses.map(() => MAX_UINT256),
+        false,
+        '0x'
+      );
+
+      poolIds.push(poolId);
     }
 
     funds = {
-      sender: ZERO_ADDRESS,
       recipient: ZERO_ADDRESS,
       fromInternalBalance: false,
       toInternalBalance: false,

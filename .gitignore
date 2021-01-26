@@ -118,3 +118,6 @@ artifacts/
 # Ignore local evm network deployments
 deployments/localhost
 deployments/hardhat
+
+# Coverage report
+coverage.json

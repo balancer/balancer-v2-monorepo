@@ -4,9 +4,9 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../lib/helpers/deploy';
-import { fp } from '../../lib/helpers/numbers';
+import { fp, bn } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { TokenList, deployTokens } from '../../lib/helpers/tokens';
+import { TokenList, deploySortedTokens } from '../../lib/helpers/tokens';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { MinimalSwapInfoPool, GeneralPool } from '../../lib/helpers/pools';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../lib/helpers/trading';
@@ -34,7 +34,7 @@ describe('OneToOneSwapValidator', () => {
   beforeEach('deploy vault & tokens', async () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
 
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
     assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
 
@@ -49,43 +49,46 @@ describe('OneToOneSwapValidator', () => {
 
     poolIds = [];
     for (let poolIdIdx = 0; poolIdIdx < totalPools; ++poolIdIdx) {
-      const poolType = poolIdIdx % 2 ? MinimalSwapInfoPool : GeneralPool;
+      const specialization = poolIdIdx % 2 ? MinimalSwapInfoPool : GeneralPool;
 
-      // All pools have mock strategies with an in-out multiplier of 2
+      // All pools have an in-out multiplier of 2
       const pool = await deploy('MockPool', {
-        args: [vault.address, poolType],
+        args: [vault.address, specialization],
       });
-
-      await vault.connect(lp).addUserAgent(pool.address);
-
-      await pool
-        .connect(lp)
-        .registerTokens([tokens.DAI.address, tokens.MKR.address, tokens.SNX.address], assetManagers);
-
-      await pool
-        .connect(lp)
-        .addLiquidity(
-          [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address],
-          [(100e18).toString(), (100e18).toString(), (100e18).toString()]
-        );
+      const poolId = await pool.getPoolId();
 
       await pool.setMultiplier(fp(2));
 
-      poolIds.push(await pool.getPoolId());
+      await pool.registerTokens(tokenAddresses, assetManagers);
+
+      await pool.setOnJoinExitPoolReturnValues(
+        tokenAddresses.map(() => bn(100e18)),
+        tokenAddresses.map(() => 0)
+      );
+
+      await vault.connect(lp).joinPool(
+        poolId,
+        lp.address,
+        tokenAddresses,
+        tokenAddresses.map(() => MAX_UINT256),
+        false,
+        '0x'
+      );
+
+      poolIds.push(poolId);
     }
 
     swaps = [
       {
         poolId: poolIds[0],
-        tokenInIndex: 1,
-        tokenOutIndex: 0,
+        tokenInIndex: 1, // MKR
+        tokenOutIndex: 0, // DAI
         amountIn: (1e18).toString(),
         userData: '0x',
       },
     ];
 
     funds = {
-      sender: trader.address,
       recipient: trader.address,
       fromInternalBalance: false,
       toInternalBalance: false,
@@ -124,7 +127,7 @@ describe('OneToOneSwapValidator', () => {
     ).to.be.revertedWith('Excessive amount in');
   });
 
-  it('reverts if too little tokens out received', async () => {
+  it('reverts if too few tokens out received', async () => {
     const validatorData = encodeValidatorData({
       overallTokenIn: tokens.MKR.address,
       overallTokenOut: tokens.DAI.address,

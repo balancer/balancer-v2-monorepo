@@ -3,11 +3,13 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { fp } from '../../helpers/numbers';
 import { deploy } from '../../helpers/deploy';
 import { MAX_UINT256 } from '../../helpers/constants';
+import { encodeJoinStablePool } from '../../helpers/stablePoolEncoding';
+import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
 import { deployPoolFromFactory, PoolName } from '../../helpers/pools';
-import { deployTokens, mintTokens, TokenList } from '../../helpers/tokens';
-import { fp } from '../../helpers/numbers';
+import { deploySortedTokens, mintTokens, TokenList } from '../../helpers/tokens';
 
 export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH'];
 
@@ -17,17 +19,17 @@ export async function setupEnvironment(): Promise<{
   tokens: TokenList;
   trader: SignerWithAddress;
 }> {
-  const { admin, trader, creator } = await getSigners();
+  const { admin, creator, trader } = await getSigners();
 
   const authorizer = await deploy('Authorizer', { args: [admin.address] });
   const vault = await deploy('Vault', { args: [authorizer.address] });
 
   const validator = await deploy('OneToOneSwapValidator', { args: [] });
 
-  const tokens = await deployTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
+  const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 
   for (const symbol in tokens) {
-    // creator tokens are used to add liquidity to pools, but minted when required
+    // creator tokens are used to initialize pools, but tokens are only minted when required
     await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
 
     // trader tokens are used to trade and not have non-zero balances
@@ -46,38 +48,51 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   const symbols = Object.keys(tokens);
 
-  const tokenBalance = (100e18).toString();
+  const initialPoolBalance = (100e18).toString();
   for (const symbol of symbols) {
-    await mintTokens(tokens, symbol, creator, tokenBalance);
+    await mintTokens(tokens, symbol, creator, initialPoolBalance);
   }
 
-  const initialBPT = (100e18).toString();
   const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
-  const initialBalances = symbols.map(() => tokenBalance);
-
   const swapFee = fp(0.02); // 2%
 
   let pool: Contract;
+  let joinUserData: string;
 
   if (poolName == 'WeightedPool') {
     const weights = symbols.map(() => fp(1)); // Equal weights for all tokens
 
     pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
       from: creator,
-      parameters: [initialBPT, tokenAddresses, initialBalances, weights, swapFee],
+      parameters: [tokenAddresses, weights, swapFee],
     });
+
+    joinUserData = encodeJoinWeightedPool({ kind: 'Init' });
   } else if (poolName == 'StablePool') {
     const amp = (30e18).toString();
 
     pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
       from: creator,
-      parameters: [initialBPT, tokenAddresses, initialBalances, amp, swapFee],
+      parameters: [tokenAddresses, amp, swapFee],
     });
+
+    joinUserData = encodeJoinStablePool({ kind: 'Init' });
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);
   }
 
-  return pool.getPoolId();
+  const poolId = await pool.getPoolId();
+
+  await vault.connect(creator).joinPool(
+    poolId,
+    creator.address,
+    tokenAddresses,
+    tokenAddresses.map(() => initialPoolBalance), // These end up being the actual join amounts
+    false,
+    joinUserData
+  );
+
+  return poolId;
 }
 
 export async function getWeightedPool(
@@ -104,12 +119,12 @@ function pickTokens(tokens: TokenList, size: number, offset?: number): TokenList
 
 export async function getSigners(): Promise<{
   admin: SignerWithAddress;
-  trader: SignerWithAddress;
   creator: SignerWithAddress;
+  trader: SignerWithAddress;
 }> {
-  const [, admin, trader, creator] = await ethers.getSigners();
+  const [, admin, creator, trader] = await ethers.getSigners();
 
-  return { admin, trader, creator };
+  return { admin, creator, trader };
 }
 
 export function printGas(gas: number | BigNumber): string {
