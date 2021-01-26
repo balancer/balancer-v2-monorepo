@@ -28,6 +28,9 @@ export async function setupEnvironment(): Promise<{
 
   const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 
+  const symbols = Object.keys(tokens);
+  const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
+
   for (const symbol in tokens) {
     // creator tokens are used to initialize pools, but tokens are only minted when required
     await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
@@ -35,10 +38,12 @@ export async function setupEnvironment(): Promise<{
     // trader tokens are used to trade and not have non-zero balances
     await mintTokens(tokens, symbol, trader, 200e18);
     await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
-
-    // deposit internal balance for trader to make it non-zero
-    await vault.connect(trader).depositToInternalBalance(tokens[symbol].address, (1e18).toString(), trader.address);
   }
+
+  // deposit internal balance for trader to make it non-zero
+  await vault
+    .connect(trader)
+    .depositToInternalBalance(tokenAddresses, Array(tokenAddresses.length).fill((1e18).toString()), trader.address);
 
   return { vault, validator, tokens, trader };
 }

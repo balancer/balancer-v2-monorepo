@@ -34,15 +34,15 @@ interface IVault {
     /**
      * @dev Returns `user`'s Internal Balance for a specific token.
      */
-    function getInternalBalance(address user, IERC20 token) external view returns (uint256);
+    function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
      * @dev Deposits tokens from the caller into `user`'s Internal Balance. The caller must have allowed the Vault
      * to use their tokens via `IERC20.approve()`.
      */
     function depositToInternalBalance(
-        IERC20 token,
-        uint256 amount,
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
         address user
     ) external;
 
@@ -51,8 +51,8 @@ interface IVault {
      * This charges protocol withdrawal fees.
      */
     function withdrawFromInternalBalance(
-        IERC20 token,
-        uint256 amount,
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
         address recipient
     ) external;
 

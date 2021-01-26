@@ -194,7 +194,7 @@ describe('Vault - swaps', () => {
                           funds.fromInternalBalance = true;
                           await vault
                             .connect(trader)
-                            .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                            .depositToInternalBalance([tokens.MKR.address], [(0.3e18).toString()], trader.address);
                         });
 
                         assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
@@ -521,7 +521,7 @@ describe('Vault - swaps', () => {
                           funds.fromInternalBalance = true;
                           await vault
                             .connect(trader)
-                            .depositToInternalBalance(tokens.MKR.address, (0.3e18).toString(), trader.address);
+                            .depositToInternalBalance([tokens.MKR.address], [(0.3e18).toString()], trader.address);
                         });
 
                         assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
