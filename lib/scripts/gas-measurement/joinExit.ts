@@ -1,14 +1,15 @@
 import { assert } from 'console';
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { bn } from '../../helpers/numbers';
 import { TokenList } from '../../helpers/tokens';
 import { MAX_UINT256 } from '../../helpers/constants';
 import { printGas, setupEnvironment, getWeightedPool, getStablePool } from './misc';
 
 // setup environment
-const BPTAmount = BigNumber.from((10e18).toString());
+const BPTAmount = bn(10e18);
 const numberJoinsExits = 3;
 
 let vault: Contract;

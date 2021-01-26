@@ -1,5 +1,6 @@
-import { BigNumber, utils } from 'ethers';
+import { utils } from 'ethers';
 import { TokenList } from './tokens';
+import { BigNumberish } from './numbers';
 
 export type Trade = {
   poolId: string;
@@ -12,7 +13,7 @@ export type Swap = {
   poolId: string;
   tokenInIndex: number;
   tokenOutIndex: number;
-  amount: number | string;
+  amount: BigNumberish;
   userData: string;
 };
 
@@ -20,7 +21,7 @@ export type SwapIn = {
   poolId: string;
   tokenInIndex: number;
   tokenOutIndex: number;
-  amountIn: number | string;
+  amountIn: BigNumberish;
   userData: string;
 };
 
@@ -28,7 +29,7 @@ export type SwapOut = {
   poolId: string;
   tokenInIndex: number;
   tokenOutIndex: number;
-  amountOut: number | string;
+  amountOut: BigNumberish;
   userData: string;
 };
 
@@ -41,9 +42,9 @@ export type FundManagement = {
 export type OneToOneValidatorData = {
   overallTokenIn: string;
   overallTokenOut: string;
-  maximumAmountIn: number | string | BigNumber;
-  minimumAmountOut: number | string | BigNumber;
-  deadline: number | string | BigNumber;
+  maximumAmountIn: BigNumberish;
+  minimumAmountOut: BigNumberish;
+  deadline: BigNumberish;
 };
 
 export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<Swap>] {

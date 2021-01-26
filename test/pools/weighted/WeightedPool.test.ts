@@ -1,13 +1,14 @@
-import Decimal from 'decimal.js';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, BigNumberish, Contract, ContractFunction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../helpers/expectEvent';
-import { deploy } from '../../../lib/helpers/deploy';
 import { calculateInvariant } from '../../helpers/math/weighted';
-import { expectEqualWithError, bn, fp } from '../../../lib/helpers/numbers';
+import { expectEqualWithError } from '../../helpers/relativeError';
+
+import { deploy } from '../../../lib/helpers/deploy';
+import { bn, fp, decimal } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
@@ -384,7 +385,7 @@ describe('WeightedPool', function () {
           it('grants BPT for exact tokens', async () => {
             const previousBPT = await pool.balanceOf(beneficiary.address);
 
-            const minimumBPT = (0.01e18).toString();
+            const minimumBPT = bn(0.01e18);
             const joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT });
             const maxAmountsIn = Array(poolTokens.length).fill(bn(0));
             maxAmountsIn[1] = bn(0.1e18);
@@ -418,7 +419,7 @@ describe('WeightedPool', function () {
           });
 
           it('fails if not enough BPT', async () => {
-            const minimumBPT = (1e18).toString();
+            const minimumBPT = bn(1e18);
             const joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT });
             const maxAmountsIn = Array(poolTokens.length).fill(bn(0));
             maxAmountsIn[1] = bn(0.1e18);
@@ -551,7 +552,7 @@ describe('WeightedPool', function () {
             }
           }
 
-          expect(await pool.balanceOf(lp.address)).to.equal((0).toString());
+          expect(await pool.balanceOf(lp.address)).to.equal(bn(0));
         });
       });
 
@@ -812,7 +813,7 @@ describe('WeightedPool', function () {
 
         pool = await deployPool({ swapFee: SWAP_FEE });
         poolId = await pool.getPoolId();
-        await pool.connect(lp).callJoinPool((1e18).toString(), MAX_UINT128S, true, lp.address);
+        await pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT128S, true, lp.address);
       });
 
       it('joins and exits do not accumulate fees', async () => {
@@ -859,16 +860,16 @@ describe('WeightedPool', function () {
           const paidTokenIndex = bn(previousBlockHash).mod(numberOfTokens).toNumber();
           const paidFeeToken = poolTokens[paidTokenIndex];
 
-          const lastInvariant = new Decimal((await pool.getLastInvariant()).toString());
-          const currentInvariant = new Decimal((await pool.getInvariant()).toString());
+          const lastInvariant = decimal(await pool.getLastInvariant());
+          const currentInvariant = decimal(await pool.getInvariant());
           const ratio = lastInvariant.div(currentInvariant);
-          const normalizedWeight = new Decimal((await pool.getNormalizedWeight(paidFeeToken)).toString());
-          const exponent = new Decimal(1e18).div(normalizedWeight);
+          const normalizedWeight = decimal(await pool.getNormalizedWeight(paidFeeToken));
+          const exponent = decimal(1e18).div(normalizedWeight);
           const tokenBalances = await vault.getPoolTokenBalances(poolId, [paidFeeToken]);
-          const paidTokenBalance = new Decimal(tokenBalances[0].toString());
-          const collectedSwapFees = new Decimal(1).minus(ratio.pow(exponent)).times(paidTokenBalance);
-          const protocolSwapFee = new Decimal(PROTOCOL_SWAP_FEE.toString()).div(1e18);
-          const expectedPaidFees = bn(parseInt(collectedSwapFees.times(protocolSwapFee).toString()));
+          const paidTokenBalance = decimal(tokenBalances[0]);
+          const collectedSwapFees = decimal(1).sub(ratio.pow(exponent)).mul(paidTokenBalance);
+          const protocolSwapFee = decimal(PROTOCOL_SWAP_FEE.toString()).div(1e18);
+          const expectedPaidFees = bn(collectedSwapFees.mul(protocolSwapFee));
 
           await payFeesAction();
 
@@ -888,7 +889,7 @@ describe('WeightedPool', function () {
 
         it('pays swap protocol fees on join', async () => {
           await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).callJoinPool((1e18).toString(), MAX_UINT128S, true, lp.address)
+            pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT128S, true, lp.address)
           );
         });
 
@@ -902,14 +903,12 @@ describe('WeightedPool', function () {
           await assertProtocolSwapFeeIsCharged(() =>
             pool
               .connect(lp)
-              .joinPoolTokenInForExactBPTOut((1e18).toString(), tokenList.DAI.address, MAX_UINT128, true, lp.address)
+              .joinPoolTokenInForExactBPTOut(bn(1e18), tokenList.DAI.address, MAX_UINT128, true, lp.address)
           );
         });
 
         it('pays swap protocol fees on exit', async () => {
-          await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).callExitPool((1e18).toString(), ZEROS, true, lp.address)
-          );
+          await assertProtocolSwapFeeIsCharged(() => pool.connect(lp).callExitPool(bn(1e18), ZEROS, true, lp.address));
         });
 
         itOnlyMinimalSwapInfoPool('pays swap protocol fees on exit exact BPT in', async () => {

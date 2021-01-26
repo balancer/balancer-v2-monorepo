@@ -43,7 +43,7 @@ export async function setupEnvironment(): Promise<{
   // deposit internal balance for trader to make it non-zero
   await vault
     .connect(trader)
-    .depositToInternalBalance(tokenAddresses, Array(tokenAddresses.length).fill((1e18).toString()), trader.address);
+    .depositToInternalBalance(tokenAddresses, Array(tokenAddresses.length).fill(bn(1e18)), trader.address);
 
   return { vault, validator, tokens, trader };
 }
@@ -53,7 +53,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   const symbols = Object.keys(tokens);
 
-  const initialPoolBalance = (100e18).toString();
+  const initialPoolBalance = bn(100e18);
   for (const symbol of symbols) {
     await mintTokens(tokens, symbol, creator, initialPoolBalance);
   }
@@ -74,7 +74,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     joinUserData = encodeJoinWeightedPool({ kind: 'Init' });
   } else if (poolName == 'StablePool') {
-    const amp = (30e18).toString();
+    const amp = bn(30e18);
 
     pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
       from: creator,

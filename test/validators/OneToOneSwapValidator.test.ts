@@ -40,10 +40,10 @@ describe('OneToOneSwapValidator', () => {
 
     for (const symbol in tokens) {
       // Grant tokens to lp and trader, and approve the Vault to use them
-      await tokens[symbol].mint(lp.address, (200e18).toString());
+      await tokens[symbol].mint(lp.address, bn(200e18));
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
 
-      await tokens[symbol].mint(trader.address, (200e18).toString());
+      await tokens[symbol].mint(trader.address, bn(200e18));
       await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
     }
 
@@ -83,7 +83,7 @@ describe('OneToOneSwapValidator', () => {
         poolId: poolIds[0],
         tokenInIndex: 1, // MKR
         tokenOutIndex: 0, // DAI
-        amountIn: (1e18).toString(),
+        amountIn: bn(1e18),
         userData: '0x',
       },
     ];
@@ -101,8 +101,8 @@ describe('OneToOneSwapValidator', () => {
     const validatorData = encodeValidatorData({
       overallTokenIn: tokens.MKR.address,
       overallTokenOut: tokens.DAI.address,
-      maximumAmountIn: (1e18).toString(),
-      minimumAmountOut: (2e18).toString(),
+      maximumAmountIn: bn(1e18),
+      minimumAmountOut: bn(2e18),
       deadline: MAX_UINT256,
     });
 
@@ -117,8 +117,8 @@ describe('OneToOneSwapValidator', () => {
     const validatorData = encodeValidatorData({
       overallTokenIn: tokens.MKR.address,
       overallTokenOut: tokens.DAI.address,
-      maximumAmountIn: (0.2e18).toString(),
-      minimumAmountOut: (1e18).toString(),
+      maximumAmountIn: bn(0.2e18),
+      minimumAmountOut: bn(1e18),
       deadline: MAX_UINT256,
     });
 
@@ -131,8 +131,8 @@ describe('OneToOneSwapValidator', () => {
     const validatorData = encodeValidatorData({
       overallTokenIn: tokens.MKR.address,
       overallTokenOut: tokens.DAI.address,
-      maximumAmountIn: (1e18).toString(),
-      minimumAmountOut: (3e18).toString(),
+      maximumAmountIn: bn(1e18),
+      minimumAmountOut: bn(3e18),
       deadline: MAX_UINT256,
     });
     await expect(
@@ -144,8 +144,8 @@ describe('OneToOneSwapValidator', () => {
     const validatorData = encodeValidatorData({
       overallTokenIn: tokens.MKR.address,
       overallTokenOut: tokens.DAI.address,
-      maximumAmountIn: (2e18).toString(),
-      minimumAmountOut: (2e18).toString(),
+      maximumAmountIn: bn(2e18),
+      minimumAmountOut: bn(2e18),
       deadline: MAX_UINT256,
     });
 
@@ -154,14 +154,14 @@ describe('OneToOneSwapValidator', () => {
         poolId: poolIds[0],
         tokenInIndex: 1,
         tokenOutIndex: 0,
-        amountIn: (1e18).toString(),
+        amountIn: bn(1e18),
         userData: '0x',
       },
       {
         poolId: poolIds[0],
         tokenInIndex: 1,
         tokenOutIndex: 2,
-        amountIn: (1e18).toString(),
+        amountIn: bn(1e18),
         userData: '0x',
       },
     ];
@@ -175,8 +175,8 @@ describe('OneToOneSwapValidator', () => {
     const validatorData = encodeValidatorData({
       overallTokenIn: tokens.MKR.address,
       overallTokenOut: tokens.DAI.address,
-      maximumAmountIn: (1e18).toString(),
-      minimumAmountOut: (3e18).toString(),
+      maximumAmountIn: bn(1e18),
+      minimumAmountOut: bn(3e18),
       deadline: (await ethers.provider.getBlock('latest')).timestamp - 10,
     });
     await expect(
