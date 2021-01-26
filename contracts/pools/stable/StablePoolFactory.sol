@@ -27,30 +27,18 @@ contract StablePoolFactory is BasePoolFactory {
     }
 
     /**
-     * @dev Deploys a new `StablePool`. This must be done via a factory contract because the Pool must be an
-     * Universal Agent during construction.
-     *
-     * For the deployment to succeed, this contract must be allowed to add Universal Agents
-     * (`IAuthorizer.canAddUniversalAgent`).
+     * @dev Deploys a new `StablePool`.
      */
     function create(
         string memory name,
         string memory symbol,
-        uint256 initialBPT,
         IERC20[] memory tokens,
-        uint256[] memory amounts,
         uint256 amp,
-        uint256 swapFee,
-        bytes32 salt
+        uint256 swapFee
     ) external returns (address) {
         return
             _create(
-                abi.encodePacked(
-                    type(StablePool).creationCode,
-                    // Make the sender the `from` address
-                    abi.encode(vault, name, symbol, initialBPT, tokens, amounts, msg.sender, amp, swapFee)
-                ),
-                salt
+                abi.encodePacked(type(StablePool).creationCode, abi.encode(_vault, name, symbol, tokens, amp, swapFee))
             );
     }
 }

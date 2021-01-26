@@ -26,16 +26,12 @@ export async function deployPoolFromFactory(
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
   const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
-  // We could reuse this factory if we saved it across tokenizer deployments
+  // We could reuse this factory if we saved it across pool deployments
 
-  const authorizer = await ethers.getContractAt('Authorizer', await vault.getAuthorizer());
-  await authorizer.connect(admin).grantRole(await authorizer.ADD_UNIVERSAL_AGENT_ROLE(), factory.address);
-
-  const salt = ethers.utils.id(Math.random().toString());
   const name = 'Balancer Pool Token';
   const symbol = 'BPT';
   const receipt: ContractReceipt = await (
-    await factory.connect(args.from).create(name, symbol, ...args.parameters, salt)
+    await factory.connect(args.from).create(name, symbol, ...args.parameters)
   ).wait();
 
   const event = receipt.events?.find((e) => e.event == 'PoolCreated');
