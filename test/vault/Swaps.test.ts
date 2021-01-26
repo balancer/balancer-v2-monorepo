@@ -5,7 +5,7 @@ import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../lib/helpers/deploy';
-import { BigNumberish, fp } from '../../lib/helpers/numbers';
+import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
 import { deployTokens, TokenList } from '../../lib/helpers/tokens';
 import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
