@@ -34,8 +34,7 @@ interface Token {
   denormWeight: BigNumber;
 }
 
-// % npx hardhat run scripts/seeding/seedPools.ts --network localhost
-export default async function action(args: any, hre: HardhatRuntimeEnvironment) {
+module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment) {
   ethers = hre.ethers;
   [deployer, controller, trader, investmentManager] = await ethers.getSigners();
 
@@ -70,9 +69,7 @@ export default async function action(args: any, hre: HardhatRuntimeEnvironment) 
 
     // deposit half into user balance
     const depositBalance = tradingBalance.div(BigNumber.from('2'));
-    await vault
-      .connect(trader)
-      .depositToInternalBalance([tokenContracts[symbols[i]].address], [depositBalance], trader.address);
+    await vault.connect(trader).depositToInternalBalance([token.address], [depositBalance], trader.address);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
@@ -87,7 +84,7 @@ export default async function action(args: any, hre: HardhatRuntimeEnvironment) 
   // TODO add pool type which supports investment
   //await Promise.all(pools.map((p) => investPool(p)));
   return;
-}
+};
 
 async function swapInPool(pool: Contract) {
   const poolId = await pool.getPoolId();
@@ -170,12 +167,9 @@ async function deployStrategyPool(
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
   tokens.forEach((token, i) => console.log(`${token} - ${balances[i].toString()}`));
 
-  const initialBPT = (100e18).toString();
-  const salt = ethers.utils.id(Math.random().toString());
-
   const name = tokens.length + ' token pool';
   const sym = 'TESTPOOL';
-  const parameters = [name, sym, initialBPT, tokens, balances, weights, swapFee, salt];
+  const parameters = [name, sym, tokens, weights, swapFee];
 
   const tx = await wpFactoryContract.connect(controller).create(...parameters);
   const receipt = await tx.wait();

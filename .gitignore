@@ -116,8 +116,9 @@ artifacts/
 !.eslintrc.js
 
 # Ignore local evm network deployments
-deployments/localhost
-deployments/hardhat
+deployments/artifacts/localhost
+deployments/artifacts/dockerParity
+deployments/artifacts/hardhat
 
 # Coverage report
 coverage.json
