@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn } from '../../lib/helpers/numbers';
@@ -98,7 +98,7 @@ describe('Vault - asset manager', function () {
     describe('transfer to manager', () => {
       context('when the sender the manager', () => {
         context('when trying to transfer less than the vault balance', () => {
-          const amount = BigNumber.from((10e18).toString());
+          const amount = bn(10e18);
 
           it('transfers only the requested token from the vault to the manager', async () => {
             await expectBalanceChange(
@@ -140,7 +140,7 @@ describe('Vault - asset manager', function () {
     describe('divest', () => {
       context('when the sender is an allowed manager', () => {
         context('when trying to move less than the managed balance', () => {
-          const externalAmount = BigNumber.from((75e18).toString());
+          const externalAmount = bn(75e18);
           const amount = externalAmount.div(2);
 
           beforeEach('put under management', async () => {
@@ -194,7 +194,7 @@ describe('Vault - asset manager', function () {
 
     describe('update', () => {
       context('when the sender is an allowed manager', () => {
-        const externalAmount = BigNumber.from((10e18).toString());
+        const externalAmount = bn(10e18);
 
         beforeEach('transfer to manager', async () => {
           await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, externalAmount);

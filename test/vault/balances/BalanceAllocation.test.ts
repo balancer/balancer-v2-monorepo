@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
+import { bn } from '../../../lib/helpers/numbers';
 import { deploy } from '../../../lib/helpers/deploy';
 import { MAX_UINT128 } from '../../../lib/helpers/constants';
 
@@ -13,8 +14,8 @@ describe('Vault - cash/managed balance', () => {
 
   describe('cash, managed & total', () => {
     async function testBalanceAllocation(cashBalance: number | BigNumber, managedBalance: number | BigNumber) {
-      cashBalance = BigNumber.from(cashBalance);
-      managedBalance = BigNumber.from(managedBalance);
+      cashBalance = bn(cashBalance);
+      managedBalance = bn(managedBalance);
 
       const balance = await library.toBalance(cashBalance, managedBalance);
 
@@ -67,8 +68,8 @@ describe('Vault - cash/managed balance', () => {
       _managedBalance: number | BigNumber,
       newManagedBalance: number | BigNumber
     ) {
-      _cashBalance = BigNumber.from(_cashBalance);
-      _managedBalance = BigNumber.from(_managedBalance);
+      _cashBalance = bn(_cashBalance);
+      _managedBalance = bn(_managedBalance);
 
       const balance = await library.setManagedBalance(
         await library.toBalance(_cashBalance, _managedBalance),
@@ -126,9 +127,9 @@ describe('Vault - cash/managed balance', () => {
         managedBalance: number | BigNumber,
         increase: number | BigNumber
       ) {
-        cash = BigNumber.from(cash);
-        managedBalance = BigNumber.from(managedBalance);
-        increase = BigNumber.from(increase);
+        cash = bn(cash);
+        managedBalance = bn(managedBalance);
+        increase = bn(increase);
 
         const balance = await library.toBalance(cash, managedBalance);
         const increased = await library.increaseCash(balance, increase);
@@ -198,9 +199,9 @@ describe('Vault - cash/managed balance', () => {
         managedBalance: number | BigNumber,
         decrease: number | BigNumber
       ) {
-        cash = BigNumber.from(cash);
-        managedBalance = BigNumber.from(managedBalance);
-        decrease = BigNumber.from(decrease);
+        cash = bn(cash);
+        managedBalance = bn(managedBalance);
+        decrease = bn(decrease);
 
         const balance = await library.toBalance(cash, managedBalance);
         const decreased = await library.decreaseCash(balance, decrease);
@@ -265,9 +266,9 @@ describe('Vault - cash/managed balance', () => {
         managedBalance: number | BigNumber,
         newManagedBalance: number | BigNumber
       ) {
-        cash = BigNumber.from(cash);
-        managedBalance = BigNumber.from(managedBalance);
-        newManagedBalance = BigNumber.from(newManagedBalance);
+        cash = bn(cash);
+        managedBalance = bn(managedBalance);
+        newManagedBalance = bn(newManagedBalance);
 
         const balance = await library.toBalance(cash, managedBalance);
         const after = await library.cashToManaged(balance, newManagedBalance);
@@ -315,9 +316,9 @@ describe('Vault - cash/managed balance', () => {
         managedBalance: number | BigNumber,
         newCash: number | BigNumber
       ) {
-        cash = BigNumber.from(cash);
-        managedBalance = BigNumber.from(managedBalance);
-        newCash = BigNumber.from(newCash);
+        cash = bn(cash);
+        managedBalance = bn(managedBalance);
+        newCash = bn(newCash);
 
         const balance = await library.toBalance(cash, managedBalance);
         const after = await library.managedToCash(balance, newCash);
@@ -362,8 +363,8 @@ describe('Vault - cash/managed balance', () => {
 
   describe('has managed balance', () => {
     async function testIsManaged(cash: number | BigNumber, managedBalance: number | BigNumber, expected: boolean) {
-      cash = BigNumber.from(cash);
-      managedBalance = BigNumber.from(managedBalance);
+      cash = bn(cash);
+      managedBalance = bn(managedBalance);
 
       const balance = await library.toBalance(cash, managedBalance);
       expect(await library.isManaged(balance)).to.equal(expected);
@@ -390,8 +391,8 @@ describe('Vault - cash/managed balance', () => {
       cashB: number | BigNumber,
       externalB: number | BigNumber
     ) {
-      const balanceA = await library.toBalance(BigNumber.from(cashA), BigNumber.from(externalA));
-      const balanceB = await library.toBalance(BigNumber.from(cashB), BigNumber.from(externalB));
+      const balanceA = await library.toBalance(bn(cashA), bn(externalA));
+      const balanceB = await library.toBalance(bn(cashB), bn(externalB));
 
       const sharedCash = await library.toSharedCash(balanceA, balanceB);
       const sharedManaged = await library.toSharedManaged(balanceA, balanceB);

@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../lib/helpers/deploy';
@@ -86,9 +86,7 @@ describe('Vault - protocol fees', () => {
         .grantRole(await authorizer.WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
 
       await expect(
-        vault
-          .connect(feeCollector)
-          .withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((0.05e18).toString()).add(1)], other.address)
+        vault.connect(feeCollector).withdrawProtocolFees([tokens.DAI.address], [bn(0.05e18).add(1)], other.address)
       ).to.be.revertedWith('Insufficient protocol fees');
     });
 

@@ -661,12 +661,12 @@ describe('StablePool', function () {
 
         async function assertProtocolSwapFeeIsCharged(payFeesAction: ContractFunction) {
           const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
-          const paidTokenIndex = BigNumber.from(previousBlockHash).mod(tokens.length).toNumber();
+          const paidTokenIndex = bn(previousBlockHash).mod(tokens.length).toNumber();
           const notPaidTokenIndex = paidTokenIndex == 0 ? 1 : 0;
 
           await payFeesAction();
 
-          const poolSwapFeeAmount = BigNumber.from(inAmount).mul(swapFee).div(FP_SCALING_FACTOR);
+          const poolSwapFeeAmount = bn(inAmount).mul(swapFee).div(FP_SCALING_FACTOR);
           const protocolSwapFeeAmount = poolSwapFeeAmount.mul(protocolSwapFee).div(FP_SCALING_FACTOR);
 
           let expectedPaidFees, error;
