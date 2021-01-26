@@ -82,6 +82,7 @@ describe.skip('StableMath', function () {
         bn(4.14e18) //tokenAmountIn
       );
     });
+
     it('inGivenOut', async () => {
       await compareInGivenOut(
         mock,
@@ -105,6 +106,7 @@ describe.skip('StableMath', function () {
         bn(10e9) //tokenAmountIn (MIN AMOUNT = 0.00000001)
       );
     });
+
     it('inGivenOut - min amount out', async () => {
       await compareInGivenOut(
         mock,
@@ -129,6 +131,7 @@ describe.skip('StableMath', function () {
         bn(4.14e18) //tokenAmountIn
       );
     });
+
     //NOTE: the more tokens, the more the invariant error
     it('inGivenOut', async () => {
       await compareInGivenOut(
