@@ -124,7 +124,7 @@ describe('WeightedMath', function () {
         bn(50e18), //tokenWeightIn
         MAX_UINT128, //tokenBalanceOut
         bn(40e18), //tokenWeightOut
-        bn('170141183460469231731687303715884105727') //tokenAmountIn (50% of Balance)
+        MAX_UINT128.div(2) //tokenAmountIn (50% of Balance)
       );
     });
 
@@ -135,7 +135,7 @@ describe('WeightedMath', function () {
         bn(50e18), //tokenWeightIn
         MAX_UINT128, //tokenBalanceOut
         bn(40e18), //tokenWeightOut
-        bn('170141183460469231731687303715884105727') //tokenAmountOut (50% of Balance)
+        MAX_UINT128.div(2) //tokenAmountOut (50% of Balance)
       );
     });
   });

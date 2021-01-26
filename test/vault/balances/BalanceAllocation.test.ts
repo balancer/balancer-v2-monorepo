@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
-import { bn } from '../../../lib/helpers/numbers';
+import { BigNumberish, bn } from '../../../lib/helpers/numbers';
 import { deploy } from '../../../lib/helpers/deploy';
 import { MAX_UINT128 } from '../../../lib/helpers/constants';
 
@@ -13,7 +13,7 @@ describe('Vault - cash/managed balance', () => {
   });
 
   describe('cash, managed & total', () => {
-    async function testBalanceAllocation(cashBalance: number | BigNumber, managedBalance: number | BigNumber) {
+    async function testBalanceAllocation(cashBalance: BigNumberish, managedBalance: BigNumberish) {
       cashBalance = bn(cashBalance);
       managedBalance = bn(managedBalance);
 
@@ -64,9 +64,9 @@ describe('Vault - cash/managed balance', () => {
 
   describe('set managed balance', () => {
     async function testSetManagedBalance(
-      _cashBalance: number | BigNumber,
-      _managedBalance: number | BigNumber,
-      newManagedBalance: number | BigNumber
+      _cashBalance: BigNumberish,
+      _managedBalance: BigNumberish,
+      newManagedBalance: BigNumberish
     ) {
       _cashBalance = bn(_cashBalance);
       _managedBalance = bn(_managedBalance);
@@ -122,11 +122,7 @@ describe('Vault - cash/managed balance', () => {
 
   describe('cash', () => {
     describe('increase', () => {
-      async function testIncreaseCash(
-        cash: number | BigNumber,
-        managedBalance: number | BigNumber,
-        increase: number | BigNumber
-      ) {
+      async function testIncreaseCash(cash: BigNumberish, managedBalance: BigNumberish, increase: BigNumberish) {
         cash = bn(cash);
         managedBalance = bn(managedBalance);
         increase = bn(increase);
@@ -194,11 +190,7 @@ describe('Vault - cash/managed balance', () => {
     });
 
     describe('decrease', () => {
-      async function testDecreaseCash(
-        cash: number | BigNumber,
-        managedBalance: number | BigNumber,
-        decrease: number | BigNumber
-      ) {
+      async function testDecreaseCash(cash: BigNumberish, managedBalance: BigNumberish, decrease: BigNumberish) {
         cash = bn(cash);
         managedBalance = bn(managedBalance);
         decrease = bn(decrease);
@@ -262,9 +254,9 @@ describe('Vault - cash/managed balance', () => {
   describe('managed', () => {
     describe('cash to managed', () => {
       async function testCashToManaged(
-        cash: number | BigNumber,
-        managedBalance: number | BigNumber,
-        newManagedBalance: number | BigNumber
+        cash: BigNumberish,
+        managedBalance: BigNumberish,
+        newManagedBalance: BigNumberish
       ) {
         cash = bn(cash);
         managedBalance = bn(managedBalance);
@@ -311,11 +303,7 @@ describe('Vault - cash/managed balance', () => {
     });
 
     describe('external to cash', () => {
-      async function testManagedToCash(
-        cash: number | BigNumber,
-        managedBalance: number | BigNumber,
-        newCash: number | BigNumber
-      ) {
+      async function testManagedToCash(cash: BigNumberish, managedBalance: BigNumberish, newCash: number | BigNumber) {
         cash = bn(cash);
         managedBalance = bn(managedBalance);
         newCash = bn(newCash);
@@ -362,7 +350,7 @@ describe('Vault - cash/managed balance', () => {
   });
 
   describe('has managed balance', () => {
-    async function testIsManaged(cash: number | BigNumber, managedBalance: number | BigNumber, expected: boolean) {
+    async function testIsManaged(cash: BigNumberish, managedBalance: BigNumberish, expected: boolean) {
       cash = bn(cash);
       managedBalance = bn(managedBalance);
 
@@ -386,10 +374,10 @@ describe('Vault - cash/managed balance', () => {
 
   describe('shared balances', () => {
     async function testPackUnpack(
-      cashA: number | BigNumber,
-      externalA: number | BigNumber,
-      cashB: number | BigNumber,
-      externalB: number | BigNumber
+      cashA: BigNumberish,
+      externalA: BigNumberish,
+      cashB: BigNumberish,
+      externalB: BigNumberish
     ) {
       const balanceA = await library.toBalance(bn(cashA), bn(externalA));
       const balanceB = await library.toBalance(bn(cashB), bn(externalB));
