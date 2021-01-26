@@ -86,6 +86,10 @@ const config: HardhatUserConfig = {
     username: 'balancer',
     project: 'v2',
   },
+  paths: {
+    deploy: 'lib/scripts/deploy',
+    deployments: 'deployments',
+  },
 };
 
 export default config;
