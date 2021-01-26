@@ -34,15 +34,11 @@ export function calcInGivenOut(
   return decimal(tokenBalanceIn).mul(foo);
 }
 
-export function calculateInvariant(balances: string[], weights: string[]): Decimal {
-  const sumWeights = weights.reduce((acc: Decimal, b: string) => {
-    return acc.add(b);
-  }, decimal(0));
-  let invariant = decimal(1);
-  for (let index = 0; index < balances.length; index++) {
-    invariant = invariant.mul(decimal(balances[index]).pow(decimal(weights[index]).div(sumWeights)));
-  }
-  return invariant;
+export function calculateInvariant(rawBalances: BigNumber[], rawWeights: BigNumber[]): BigNumber {
+  const normalizedWeights = toNormalizedWeights(rawWeights);
+  const balances = rawBalances.map(decimal);
+  const invariant = balances.reduce((inv, balance, i) => inv.mul(balance.pow(normalizedWeights[i])), decimal(1));
+  return bn(invariant);
 }
 
 export function calcBptOutGivenExactTokensIn(
