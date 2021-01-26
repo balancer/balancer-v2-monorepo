@@ -215,6 +215,8 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         return (amountsIn, dueProtocolFeeAmounts);
     }
 
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT }
+
     function onExitPool(
         bytes32 poolId,
         address sender,
@@ -234,7 +236,8 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
             protocolFeePercentage
         );
 
-        uint256 bptAmountIn = abi.decode(userData, (uint256));
+        // There is only one Exit Kind
+        (, uint256 bptAmountIn) = abi.decode(userData, (ExitKind, uint256));
         uint256 totalTokens = currentBalances.length;
 
         uint256[] memory amountsOut = _exitExactBPTInForAllTokensOut(
