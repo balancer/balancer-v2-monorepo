@@ -1,7 +1,7 @@
 import Decimal from 'decimal.js';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract, ContractFunction } from 'ethers';
+import { BigNumber, BigNumberish, Contract, ContractFunction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { expectEqualWithError, bn } from '../../helpers/numbers';
@@ -11,14 +11,8 @@ import { toFixedPoint } from '../../../scripts/helpers/fixedPoint';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../scripts/helpers/pools';
 import { deploySortedTokens, deployTokens, TokenList } from '../../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
-import { expectBalanceChange } from '../../helpers/tokenBalance';
-import {
-  calculateInvariant,
-  calcBptInGivenExactTokensOut,
-  calcBptOutGivenExactTokensIn,
-  calcTokenInGivenExactBptOut,
-  calcTokenOutGivenExactBptIn,
-} from '../../helpers/math/weighted';
+
+import { calculateInvariant } from '../../helpers/math/weighted';
 
 const INIT = 0;
 const EXACT_TOKENS_IN_FOR_BPT_OUT = 1;
@@ -158,7 +152,8 @@ describe('WeightedPool', function () {
       }
     }
 
-    const itOnlyMinimalSwapInfoPool = (title: string, test: any) => (numberOfTokens == 2 ? it.skip : it)(title, test);
+    const itOnlyMinimalSwapInfoPool = (title: string, test: Mocha.AsyncFunc) =>
+      (numberOfTokens == 2 ? it.skip : it)(title, test);
 
     beforeEach('define pool tokens', () => {
       poolTokens = tokens.map((token) => token.address).slice(0, numberOfTokens);
@@ -715,7 +710,16 @@ describe('WeightedPool', function () {
       let pool: Contract;
       let poolId: string;
 
-      let quoteData: any;
+      let quoteData: {
+        tokenIn: string;
+        tokenOut: string;
+        amountIn?: BigNumberish;
+        amountOut?: BigNumberish;
+        poolId: string;
+        from: string;
+        to: string;
+        userData: string;
+      };
 
       beforeEach('set default quote data', async () => {
         pool = await deployPool();

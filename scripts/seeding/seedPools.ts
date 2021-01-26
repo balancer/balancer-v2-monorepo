@@ -1,6 +1,6 @@
 import { MAX_UINT256, MAX_UINT128 } from '../../test/helpers/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { Trade, encodeValidatorData, SwapIn, FundManagement } from '../helpers/trading';
+import { encodeValidatorData, SwapIn, FundManagement } from '../helpers/trading';
 import { BigNumber } from 'ethers';
 import { Dictionary } from 'lodash';
 import { Contract, Event } from 'ethers';
