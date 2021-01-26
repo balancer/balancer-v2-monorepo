@@ -15,7 +15,13 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "./IVault.sol";
+
 interface IPool {
+    function getVault() external view returns (IVault);
+
+    function getPoolId() external view returns (bytes32);
+
     /**
      * @dev Called by the Vault when a user calls `IVault.joinPool`. The Pool must return how many tokens the user
      * should provide for each registered token, as well as how many protocol fees the Pool owes to the Vault. After
