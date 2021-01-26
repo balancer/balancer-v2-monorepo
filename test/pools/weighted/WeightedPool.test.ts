@@ -50,7 +50,7 @@ const encodeExitBPTInForExactTokensOutUserData = (maxBPTAmountIn: string): strin
 };
 
 describe('WeightedPool', function () {
-  let authorizer: Contract, vault: Contract;
+  let authorizer: Contract, vault: Contract, factory: Contract;
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
@@ -68,6 +68,7 @@ describe('WeightedPool', function () {
 
   beforeEach('deploy tokens', async () => {
     vault = await deploy('Vault', { args: [authorizer.address] });
+    factory = await deploy('WeightedPoolFactory', { args: [vault.address] });
     tokenList = await deploySortedTokens(SYMBOLS, [18, 18, 18, 18]);
     tokens = Object.values(tokenList);
 
@@ -130,16 +131,18 @@ describe('WeightedPool', function () {
     const poolInitialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
     async function deployPool({ tokens, weights, swapFee }: any = {}) {
-      return deploy('WeightedPool', {
-        args: [
-          vault.address,
+      const receipt = await (
+        await factory.create(
           'Balancer Pool Token',
           'BPT',
           tokens || poolTokens,
           weights || poolWeights,
-          swapFee || POOL_SWAP_FEE,
-        ],
-      });
+          swapFee || POOL_SWAP_FEE
+        )
+      ).wait();
+
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      return ethers.getContractAt('WeightedPool', event.args.pool);
     }
 
     const itOnlyMinimalSwapInfoPool = (title: string, test: any) => (numberOfTokens == 2 ? it.skip : it)(title, test);

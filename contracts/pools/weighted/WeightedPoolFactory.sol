@@ -32,9 +32,7 @@ contract WeightedPoolFactory is BasePoolFactory {
     function create(
         string memory name,
         string memory symbol,
-        uint256 initialBPT,
         IERC20[] memory tokens,
-        uint256[] memory amounts,
         uint256[] memory weights,
         uint256 swapFee
     ) external returns (address) {
@@ -42,8 +40,7 @@ contract WeightedPoolFactory is BasePoolFactory {
             _create(
                 abi.encodePacked(
                     type(WeightedPool).creationCode,
-                    // Make the sender the `from` address
-                    abi.encode(_vault, name, symbol, initialBPT, tokens, amounts, msg.sender, weights, swapFee)
+                    abi.encode(_vault, name, symbol, tokens, weights, swapFee)
                 )
             );
     }

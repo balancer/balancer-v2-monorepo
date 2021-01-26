@@ -27,7 +27,7 @@ const encodeExitExactBPTInForAllTokensOutUserData = (bptAmountIn: string): strin
 };
 
 describe('StablePool', function () {
-  let authorizer: Contract, vault: Contract;
+  let authorizer: Contract, vault: Contract, factory: Contract;
   let tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
@@ -44,6 +44,8 @@ describe('StablePool', function () {
 
   beforeEach('deploy tokens', async () => {
     vault = await deploy('Vault', { args: [authorizer.address] });
+    factory = await deploy('StablePoolFactory', { args: [vault.address] });
+
     tokenList = await deploySortedTokens(SYMBOLS, [18, 18, 18, 18]);
     tokens = Object.values(tokenList);
 
@@ -116,9 +118,10 @@ describe('StablePool', function () {
       amplification = amplification ? amplification : poolAmplification;
       swapFee = swapFee ? swapFee : POOL_SWAP_FEE;
 
-      return deploy('StablePool', {
-        args: [vault.address, 'Balancer Pool Token', 'BPT', tokens, amplification, swapFee],
-      });
+      const receipt = await (await factory.create('Balancer Pool Token', 'BPT', tokens, amplification, swapFee)).wait();
+
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      return ethers.getContractAt('StablePool', event.args.pool);
     }
 
     beforeEach('define pool tokens', () => {
