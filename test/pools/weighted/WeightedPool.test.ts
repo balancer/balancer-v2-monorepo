@@ -130,19 +130,32 @@ describe('WeightedPool', function () {
     const poolWeights = WEIGHTS.slice(0, numberOfTokens);
     const poolInitialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
-    async function deployPool({ tokens, weights, swapFee }: any = {}) {
-      const receipt = await (
-        await factory.create(
-          'Balancer Pool Token',
-          'BPT',
-          tokens || poolTokens,
-          weights || poolWeights,
-          swapFee || POOL_SWAP_FEE
-        )
-      ).wait();
+    async function deployPool({
+      tokens,
+      weights,
+      swapFee,
+      fromFactory,
+    }: {
+      tokens?: string[];
+      weights?: BigNumber[];
+      swapFee?: BigNumber;
+      fromFactory?: boolean;
+    } = {}) {
+      tokens = tokens ?? poolTokens;
+      weights = weights ?? poolWeights;
+      swapFee = swapFee ?? POOL_SWAP_FEE;
+      fromFactory = fromFactory ?? false;
 
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-      return ethers.getContractAt('WeightedPool', event.args.pool);
+      if (fromFactory) {
+        const receipt = await (await factory.create('Balancer Pool Token', 'BPT', tokens, weights, swapFee)).wait();
+
+        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        return ethers.getContractAt('WeightedPool', event.args.pool);
+      } else {
+        return deploy('WeightedPool', {
+          args: [vault.address, 'Balancer Pool Token', 'BPT', tokens, weights, swapFee],
+        });
+      }
     }
 
     const itOnlyMinimalSwapInfoPool = (title: string, test: any) => (numberOfTokens == 2 ? it.skip : it)(title, test);
@@ -155,8 +168,9 @@ describe('WeightedPool', function () {
       context('when the creation succeeds', () => {
         let pool: Contract;
 
-        beforeEach('deploy pool', async () => {
-          pool = await deployPool();
+        beforeEach('deploy pool from factory', async () => {
+          // Deploy from the Pool factory to test that it works properly
+          pool = await deployPool({ fromFactory: true });
         });
 
         it('sets the vault', async () => {

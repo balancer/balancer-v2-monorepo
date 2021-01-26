@@ -109,19 +109,30 @@ describe('StablePool', function () {
       tokens,
       amplification,
       swapFee,
+      fromFactory,
     }: {
       tokens?: string[];
       amplification?: BigNumber;
       swapFee?: BigNumber;
+      fromFactory?: boolean;
     }) {
-      tokens = tokens ? tokens : [];
-      amplification = amplification ? amplification : poolAmplification;
-      swapFee = swapFee ? swapFee : POOL_SWAP_FEE;
+      tokens = tokens ?? [];
+      amplification = amplification ?? poolAmplification;
+      swapFee = swapFee ?? POOL_SWAP_FEE;
+      fromFactory = fromFactory ?? false;
 
-      const receipt = await (await factory.create('Balancer Pool Token', 'BPT', tokens, amplification, swapFee)).wait();
+      if (fromFactory) {
+        const receipt = await (
+          await factory.create('Balancer Pool Token', 'BPT', tokens, amplification, swapFee)
+        ).wait();
 
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-      return ethers.getContractAt('StablePool', event.args.pool);
+        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        return ethers.getContractAt('StablePool', event.args.pool);
+      } else {
+        return deploy('StablePool', {
+          args: [vault.address, 'Balancer Pool Token', 'BPT', tokens, amplification, swapFee],
+        });
+      }
     }
 
     beforeEach('define pool tokens', () => {
@@ -132,8 +143,9 @@ describe('StablePool', function () {
       context('when the creation succeeds', () => {
         let pool: Contract;
 
-        beforeEach('deploy pool', async () => {
-          pool = await deployPool({ tokens: poolTokens });
+        beforeEach('deploy pool from factory', async () => {
+          // Deploy from the Pool factory to test that it works properly
+          pool = await deployPool({ tokens: poolTokens, fromFactory: true });
         });
 
         it('sets the vault', async () => {
