@@ -5,7 +5,7 @@ import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../lib/helpers/deploy';
-import { BigNumberish, fp } from '../../lib/helpers/numbers';
+import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
 import { deployTokens, TokenList } from '../../lib/helpers/tokens';
 import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
@@ -116,7 +116,7 @@ describe('Vault - swaps', () => {
     await pool.connect(lp).registerTokens(tokenAddresses, assetManagers);
 
     // Join the pool - the actual amount is not relevant since the MockPool relies on the multiplier to quote prices
-    const tokenAmounts = tokenAddresses.map(() => (100e18).toString());
+    const tokenAmounts = tokenAddresses.map(() => bn(100e18));
     await pool.setOnJoinExitPoolReturnValues(
       tokenAmounts,
       tokenAddresses.map(() => 0)
@@ -194,7 +194,7 @@ describe('Vault - swaps', () => {
                           funds.fromInternalBalance = true;
                           await vault
                             .connect(trader)
-                            .depositToInternalBalance([tokens.MKR.address], [(0.3e18).toString()], trader.address);
+                            .depositToInternalBalance([tokens.MKR.address], [bn(0.3e18)], trader.address);
                         });
 
                         assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
@@ -521,7 +521,7 @@ describe('Vault - swaps', () => {
                           funds.fromInternalBalance = true;
                           await vault
                             .connect(trader)
-                            .depositToInternalBalance([tokens.MKR.address], [(0.3e18).toString()], trader.address);
+                            .depositToInternalBalance([tokens.MKR.address], [bn(0.3e18)], trader.address);
                         });
 
                         assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });

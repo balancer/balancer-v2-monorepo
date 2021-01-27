@@ -12,7 +12,7 @@ import { HardhatUserConfig } from 'hardhat/config';
 task('seed', 'Add seed data').setAction(async (args, hre) => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const action = require('./lib/scripts/seeding/seedPools');
-  action(args, hre);
+  await action(args, hre);
 });
 
 const CHAIN_IDS = {
@@ -85,6 +85,10 @@ const config: HardhatUserConfig = {
   tenderly: {
     username: 'balancer',
     project: 'v2',
+  },
+  paths: {
+    deploy: 'deployments/migrations',
+    deployments: 'deployments/artifacts',
   },
 };
 

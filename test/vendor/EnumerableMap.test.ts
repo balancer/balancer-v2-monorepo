@@ -1,10 +1,12 @@
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
+
+import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { shouldBehaveLikeMap } from './EnumerableMap.behavior';
 
 describe('EnumerableMap', () => {
   describe('EnumerableUintToAddressMap', () => {
-    const keys = [BigNumber.from('7891'), BigNumber.from('451'), BigNumber.from('9592328')];
+    const keys = [bn(7891), bn(451), bn(9592328)];
 
     const values = [
       '0x8B40ECf815AC8d53aB4AD2a00248DE77296344Db',

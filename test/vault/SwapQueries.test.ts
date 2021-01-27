@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { fp, bn } from '../../lib/helpers/numbers';
@@ -88,12 +88,12 @@ describe('Vault - swap queries', () => {
   }
 
   describe('given in', () => {
-    function assertQueryBatchSwapGivenIn(swapsData: SwapData[], expectedDeltas: BigNumber[]) {
+    function assertQueryBatchSwapGivenIn(swapsData: SwapData[], expectedDeltas: number[]) {
       it('returns the expected amounts', async () => {
         const swaps: SwapIn[] = toSwapIn(swapsDataToSwaps(swapsData));
 
         const deltas = await vault.callStatic.queryBatchSwapGivenIn(swaps, tokenAddresses, funds);
-        expect(deltas).to.deep.equal(expectedDeltas);
+        expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
 
@@ -107,7 +107,7 @@ describe('Vault - swap queries', () => {
             amount: 5,
           },
         ],
-        toBigNumberArray([5, -10, 0])
+        [5, -10, 0]
       );
     });
 
@@ -127,7 +127,7 @@ describe('Vault - swap queries', () => {
             amount: 5,
           },
         ],
-        toBigNumberArray([10, -20, 0])
+        [10, -20, 0]
       );
     });
 
@@ -147,18 +147,18 @@ describe('Vault - swap queries', () => {
             amount: 0,
           },
         ],
-        toBigNumberArray([5, 0, -20])
+        [5, 0, -20]
       );
     });
   });
 
   describe('given out', () => {
-    function assertQueryBatchSwapGivenOut(swapsData: SwapData[], expectedDeltas: BigNumber[]) {
+    function assertQueryBatchSwapGivenOut(swapsData: SwapData[], expectedDeltas: number[]) {
       it('returns the expected amounts', async () => {
         const swaps: SwapOut[] = toSwapOut(swapsDataToSwaps(swapsData));
 
         const deltas = await vault.callStatic.queryBatchSwapGivenOut(swaps, tokenAddresses, funds);
-        expect(deltas).to.deep.equal(expectedDeltas);
+        expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
 
@@ -172,7 +172,7 @@ describe('Vault - swap queries', () => {
             amount: 10,
           },
         ],
-        toBigNumberArray([5, -10, 0])
+        [5, -10, 0]
       );
     });
 
@@ -192,7 +192,7 @@ describe('Vault - swap queries', () => {
             amount: 10,
           },
         ],
-        toBigNumberArray([10, -20, 0])
+        [10, -20, 0]
       );
     });
 
@@ -212,7 +212,7 @@ describe('Vault - swap queries', () => {
             amount: 0,
           },
         ],
-        toBigNumberArray([0, -20, 5])
+        [0, -20, 5]
       );
     });
   });
@@ -235,11 +235,3 @@ describe('Vault - swap queries', () => {
     });
   });
 });
-
-function toBigNumberArray(values: (number | string)[]): BigNumber[] {
-  const bigNumbers = [];
-  for (const value of values) {
-    bigNumbers.push(BigNumber.from(value.toString()));
-  }
-  return bigNumbers;
-}
