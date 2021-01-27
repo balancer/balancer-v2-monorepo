@@ -112,12 +112,11 @@ describe('Vault - asset manager', function () {
           });
 
           it('does not affect the balance of the pools', async () => {
-            const tokenAddresses = [tokens.DAI.address, tokens.USDT.address];
-            const [previousBalanceDAI, previousBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+            const [previousBalanceDAI, previousBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
 
             await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount);
 
-            const [currentBalanceDAI, currentBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+            const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
           });
@@ -159,12 +158,11 @@ describe('Vault - asset manager', function () {
           });
 
           it('does not affect the balance of the pools', async () => {
-            const tokenAddresses = [tokens.DAI.address, tokens.USDT.address];
-            const [previousBalanceDAI, previousBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+            const [previousBalanceDAI, previousBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
 
             await vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount);
 
-            const [currentBalanceDAI, currentBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+            const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
           });
@@ -212,12 +210,11 @@ describe('Vault - asset manager', function () {
           });
 
           it('updates the balance of the pool', async () => {
-            const tokenAddresses = [tokens.DAI.address, tokens.USDT.address];
-            const [previousBalanceDAI, previousBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+            const [previousBalanceDAI, previousBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
 
             await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
 
-            const [currentBalanceDAI, currentBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+            const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI.add(1));
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
           });
@@ -235,12 +232,11 @@ describe('Vault - asset manager', function () {
           });
 
           it('updates the balance of the pool', async () => {
-            const tokenAddresses = [tokens.DAI.address, tokens.USDT.address];
-            const [previousBalanceDAI, previousBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+            const [previousBalanceDAI, previousBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
 
             await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
 
-            const [currentBalanceDAI, currentBalanceUSDT] = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+            const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI.sub(1));
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
           });
@@ -261,23 +257,12 @@ describe('Vault - asset manager', function () {
         const [poolAddress] = await vault.getPool(poolId);
         const pool = await ethers.getContractAt('MockPool', poolAddress);
 
-        const poolTokens = await vault.getPoolTokens(poolId);
-        const poolBalances = await vault.getPoolTokenBalances(poolId, poolTokens);
+        const { tokens: poolTokens, balances } = await vault.getPoolTokens(poolId);
 
         // Balances must be zero to unregister, so we do a full exit
-        await pool.setOnJoinExitPoolReturnValues(
-          poolBalances,
-          poolTokens.map(() => 0)
-        );
+        await pool.setOnJoinExitPoolReturnValues(balances, Array(poolTokens.length).fill(0));
 
-        await vault.connect(lp).exitPool(
-          poolId,
-          lp.address,
-          poolTokens,
-          poolTokens.map(() => 0),
-          false,
-          '0x'
-        );
+        await vault.connect(lp).exitPool(poolId, lp.address, poolTokens, Array(poolTokens.length).fill(0), false, '0x');
 
         // Unregistering tokens should remove the asset managers
         await pool.unregisterTokens([tokens.DAI.address, tokens.USDT.address]);

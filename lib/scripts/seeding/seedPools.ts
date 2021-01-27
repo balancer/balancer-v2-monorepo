@@ -91,7 +91,7 @@ async function swapInPool(pool: Contract) {
   const poolId = await pool.getPoolId();
 
   const vault = await ethers.getContract('Vault');
-  const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
+  const tokenAddresses: string[] = (await vault.getPoolTokens(poolId)).tokens;
 
   const [overallTokenIn, overallTokenOut] = tokenAddresses;
 

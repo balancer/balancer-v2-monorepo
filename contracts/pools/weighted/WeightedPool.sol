@@ -239,11 +239,9 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     }
 
     function getInvariant() external view returns (uint256) {
-        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
+        (IERC20[] memory tokens, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
 
         uint256[] memory normalizedWeights = new uint256[](tokens.length);
-
         for (uint8 i = 0; i < tokens.length; i++) {
             normalizedWeights[i] = _normalizedWeight(tokens[i]);
         }
