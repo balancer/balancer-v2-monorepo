@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../lib/helpers/deploy';
@@ -43,7 +43,7 @@ describe('Vault - protocol fees', () => {
     beforeEach(async () => {
       // Set a non-zero withdraw fee
       await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), feeSetter.address);
-      await vault.connect(feeSetter).setProtocolWithdrawFee((0.01e18).toString());
+      await vault.connect(feeSetter).setProtocolWithdrawFee(bn(0.01e18));
 
       await vault.connect(user).depositToInternalBalance([tokens.DAI.address], [bn(20e18)], user.address);
       await vault.connect(user).depositToInternalBalance([tokens.MKR.address], [bn(20e18)], user.address);
@@ -54,8 +54,8 @@ describe('Vault - protocol fees', () => {
     });
 
     it('reports collected fee', async () => {
-      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal((0.05e18).toString());
-      expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal((0.1e18).toString());
+      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(bn(0.05e18));
+      expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal(bn(0.1e18));
     });
 
     it('authorized accounts can withdraw protocol fees to any recipient', async () => {
@@ -67,17 +67,13 @@ describe('Vault - protocol fees', () => {
         () =>
           vault
             .connect(feeCollector)
-            .withdrawProtocolFees(
-              [tokens.DAI.address, tokens.MKR.address],
-              [(0.02e18).toString(), (0.04e18).toString()],
-              other.address
-            ),
+            .withdrawProtocolFees([tokens.DAI.address, tokens.MKR.address], [bn(0.02e18), bn(0.04e18)], other.address),
         tokens,
-        { account: other, changes: { DAI: (0.02e18).toString(), MKR: (0.04e18).toString() } }
+        { account: other, changes: { DAI: bn(0.02e18), MKR: bn(0.04e18) } }
       );
 
-      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal((0.03e18).toString());
-      expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal((0.06e18).toString());
+      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(bn(0.03e18));
+      expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal(bn(0.06e18));
     });
 
     it('protocol fees cannot be over-withdrawn', async () => {
@@ -86,9 +82,7 @@ describe('Vault - protocol fees', () => {
         .grantRole(await authorizer.WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
 
       await expect(
-        vault
-          .connect(feeCollector)
-          .withdrawProtocolFees([tokens.DAI.address], [BigNumber.from((0.05e18).toString()).add(1)], other.address)
+        vault.connect(feeCollector).withdrawProtocolFees([tokens.DAI.address], [bn(0.05e18).add(1)], other.address)
       ).to.be.revertedWith('Insufficient protocol fees');
     });
 

@@ -3,6 +3,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as allPools from './allPools.json';
+import { bn } from '../../helpers/numbers';
 import { TokenList, deployTokens } from '../../helpers/tokens';
 import { MAX_UINT128, MAX_UINT256 } from '../../helpers/constants';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../helpers/trading';
@@ -68,7 +69,7 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     await token.connect(investmentManager).approve(vault.address, MAX_UINT256);
 
     // deposit half into user balance
-    const depositBalance = tradingBalance.div(BigNumber.from('2'));
+    const depositBalance = tradingBalance.div(bn(2));
     await vault.connect(trader).depositToInternalBalance([token.address], [depositBalance], trader.address);
   }
 
