@@ -41,6 +41,11 @@ export function arraySub(arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[
   return arrA.map((a, i) => bn(a).sub(bn(arrB[i])));
 }
 
+export function divCeil(x: BigNumber, y: BigNumber): BigNumber {
+  // ceil(x/y) == (x + y - 1) / y
+  return x.add(y).sub(1).div(y);
+}
+
 export function expectEqualWithError(actualValue: BigNumberish, expectedValue: BigNumberish, error = 0.001): void {
   actualValue = bn(actualValue);
   expectedValue = bn(expectedValue);

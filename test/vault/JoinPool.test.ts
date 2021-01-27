@@ -7,10 +7,9 @@ import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { bn, BigNumberish, bnMin, fp } from '../../lib/helpers/numbers';
+import { arraySub, bn, BigNumberish, bnMin, fp } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
-import { arraySub } from './lib/helpers/numbers';
 
 let admin: SignerWithAddress;
 let creator: SignerWithAddress;
@@ -22,7 +21,7 @@ let tokens: TokenList = {};
 
 let TOKEN_ADDRESSES: string[];
 
-describe('Vault - join & exit pool', () => {
+describe('Vault - join pool', () => {
   before(async () => {
     [, admin, creator, lp] = await ethers.getSigners();
   });

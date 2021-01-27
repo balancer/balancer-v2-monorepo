@@ -7,7 +7,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { bn, BigNumberish, fp, arraySub, arrayAdd } from '../../lib/helpers/numbers';
+import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
 
@@ -96,7 +96,12 @@ describe('Vault - exit pool', () => {
       tokenAddresses = TOKEN_ADDRESSES.slice(0, tokenAmount);
       await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
-      exitAmounts = tokenAddresses.map((_, i) => bn(1e18).mul(i + 1));
+      exitAmounts = tokenAddresses.map(
+        (_, i) =>
+          bn(1e18)
+            .mul(i + 1)
+            .add(1) // Cannot be evenly divided when calculating protocol fees, exposing the rounding behavior
+      );
       dueProtocolFeeAmounts = array(0);
 
       // Join the Pool from the creator so that it has some tokens to exit and pay protocol fees with
@@ -197,15 +202,31 @@ describe('Vault - exit pool', () => {
       });
 
       context('with correct pool return values', () => {
-        context('with no due protocol fees', () => {
-          itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts: array(0) });
+        context('with no protocol withdraw fee', () => {
+          itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance();
         });
 
-        context('with due protocol fees', () => {
-          itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts: array(1e18) });
+        // TODO: enable these tests once protocol withdraw fees properly round up
+        context.skip('with protocol withdraw fee', () => {
+          beforeEach('set protocol withdraw fee', async () => {
+            await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), admin.address);
+            await vault.connect(admin).setProtocolWithdrawFee(fp(0.02));
+          });
+
+          itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance();
         });
       });
     });
+
+    function itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance() {
+      context('with no due protocol fees', () => {
+        itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts: array(0) });
+      });
+
+      context('with due protocol fees', () => {
+        itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts: array(1e18) });
+      });
+    }
 
     function itExitsCorrectlyWithAndWithoutInternalBalance({
       dueProtocolFeeAmounts,
@@ -248,8 +269,20 @@ describe('Vault - exit pool', () => {
       toInternalBalance: boolean;
       dueProtocolFeeAmounts: BigNumberish[];
     }) {
+      let expectedProtocolWithdrawFeesToCollect: BigNumber[];
+
+      beforeEach('calculate intermediate values', async () => {
+        const procotolWithdrawFee = await vault.getProtocolWithdrawFee();
+        expectedProtocolWithdrawFeesToCollect = exitAmounts.map((amount) =>
+          // Fixed point division rounding up, since the protocol withdraw fee is a fixed point number
+          divCeil(amount.mul(procotolWithdrawFee), FP_SCALING_FACTOR)
+        );
+      });
+
       it('sends tokens from the vault to the recipient', async () => {
-        const expectedTransferAmounts = toInternalBalance ? array(0) : exitAmounts;
+        const expectedTransferAmounts = toInternalBalance
+          ? array(0)
+          : arraySub(exitAmounts, expectedProtocolWithdrawFeesToCollect);
 
         // Tokens are sent to the recipient, so the expected change is positive
         const recipientChanges = Object.assign(
@@ -263,7 +296,7 @@ describe('Vault - exit pool', () => {
         const vaultChanges = Object.assign(
           {},
           ...tokenAddresses.map((token, i) => {
-            return { [symbol(token)]: -expectedTransferAmounts[i] };
+            return { [symbol(token)]: expectedTransferAmounts[i].mul(-1) };
           })
         );
 
@@ -278,7 +311,8 @@ describe('Vault - exit pool', () => {
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
         const internalBalancesAfter = await vault.getInternalBalance(recipient.address, tokenAddresses);
 
-        // Internal balance is expected to increase: after - before should equal expected.
+        // Internal balance is expected to increase: after - before should equal expected. Protocol withdraw fees are
+        // not charged.
         const expectedInternalBalanceIncrease = toInternalBalance ? exitAmounts : array(0);
         expect(arraySub(internalBalancesAfter, internalBalancesBefore)).to.deep.equal(expectedInternalBalanceIncrease);
       });
@@ -319,7 +353,10 @@ describe('Vault - exit pool', () => {
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
 
-        expect(arraySub(collectedFeesAfter, collectedFeesBefore)).to.deep.equal(dueProtocolFeeAmounts);
+        // Fees from both sources are lumped together.
+        expect(arraySub(collectedFeesAfter, collectedFeesBefore)).to.deep.equal(
+          arrayAdd(dueProtocolFeeAmounts, expectedProtocolWithdrawFeesToCollect)
+        );
       });
 
       it('exits multiple times', async () => {
