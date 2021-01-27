@@ -320,6 +320,7 @@ abstract contract PoolRegistry is
         } else {
             _alterGeneralPoolCash(poolId, tokens, poolBalanceDeltas);
         }
+        emit PoolJoined(poolId, msg.sender, amountsIn, dueProtocolFeeAmounts);
     }
 
     function exitPool(
@@ -399,6 +400,8 @@ abstract contract PoolRegistry is
         } else {
             _decreaseGeneralPoolCash(poolId, tokens, poolBalanceDeltas);
         }
+
+        emit PoolExited(poolId, msg.sender, amountsOut, dueProtocolFeeAmounts);
     }
 
     // Needed to avoid stack too deep issues

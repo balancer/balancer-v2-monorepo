@@ -325,6 +325,16 @@ describe('Vault - join pool', () => {
         });
       });
 
+      it('emits PoolJoined from the vault', async () => {
+        const receipt = await (await joinPool({ fromInternalBalance, dueProtocolFeeAmounts })).wait();
+
+        expectEvent.inReceipt(receipt, 'PoolJoined', {
+          poolId,
+          liquidityProvider: lp.address,
+          amountsIn: joinAmounts,
+        });
+      });
+
       it('collects protocol fees', async () => {
         const collectedFeesBefore = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
