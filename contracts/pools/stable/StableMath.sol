@@ -19,6 +19,7 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../../math/FixedPoint.sol";
+import "../../helpers/Enumerable.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
@@ -27,6 +28,8 @@ import "../../math/FixedPoint.sol";
 // solhint-disable var-name-mixedcase
 
 contract StableMath {
+    using Enumerable for uint256[];
+
     /**********************************************************************************************
     // inGivenOut token x for y - polynomial equation to solve                                   //
     // ax = amount in to calculate                                                               //
@@ -118,16 +121,14 @@ contract StableMath {
     // n = number of tokens                                                                      //
     **********************************************************************************************/
     function _invariant(uint256 amp, uint256[] memory balances) internal pure returns (uint256) {
-        uint256 sum = 0;
-        uint256 totalCoins = balances.length;
-        for (uint256 i = 0; i < totalCoins; i++) {
-            sum = sum + balances[i];
-        }
+        uint256 sum = balances.sum();
         if (sum == 0) {
             return 0;
         }
+
         uint256 prevInv = 0;
         uint256 inv = sum;
+        uint256 totalCoins = balances.length;
         uint256 ampTimesTotal = amp * totalCoins;
 
         for (uint256 i = 0; i < 255; i++) {

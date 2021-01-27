@@ -18,21 +18,21 @@ pragma experimental ABIEncoderV2;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../vendor/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-
-import "../BalancerPoolToken.sol";
 
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPool.sol";
 import "../../vault/interfaces/IGeneralPoolQuote.sol";
-import "../../math/FixedPoint.sol";
-import "../../helpers/UnsafeRandom.sol";
 
 import "./StableMath.sol";
+import "../BalancerPoolToken.sol";
+import "../../math/FixedPoint.sol";
+import "../../vendor/ReentrancyGuard.sol";
+import "../../helpers/UnsafeRandom.sol";
 
 contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, ReentrancyGuard {
     using FixedPoint for uint256;
+    using Enumerable for uint256[];
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -197,19 +197,12 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         );
 
         uint256 bptRatio = _getSupplyRatio(bptAmountOut);
-
-        uint256[] memory amountsIn = new uint256[](totalTokens);
-        for (uint256 i = 0; i < totalTokens; i++) {
-            amountsIn[i] = currentBalances[i].mul(bptRatio);
-        }
+        uint256[] memory amountsIn = currentBalances.mul(bptRatio);
 
         _mintPoolTokens(recipient, bptAmountOut);
 
-        for (uint8 i = 0; i < totalTokens; i++) {
-            currentBalances[i] = currentBalances[i].add(amountsIn[i]);
-        }
-
         // Reset swap fee accumulation
+        currentBalances = currentBalances.add(amountsIn);
         _lastInvariant = _invariant(_amp, currentBalances);
 
         return (amountsIn, dueProtocolFeeAmounts);
@@ -250,9 +243,7 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         _burnPoolTokens(sender, bptAmountIn);
 
         // Reset swap fee accumulation
-        for (uint256 i = 0; i < totalTokens; ++i) {
-            currentBalances[i] = currentBalances[i].sub(amountsOut[i]);
-        }
+        currentBalances = currentBalances.sub(amountsOut);
         _lastInvariant = _invariant(_amp, currentBalances);
 
         return (amountsOut, dueProtocolFeeAmounts);
@@ -270,7 +261,6 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         for (uint256 i = 0; i < totalTokens; i++) {
             uint256 amountOut = currentBalances[i].mul(bptRatio);
             require(amountOut >= minAmountsOut[i], "ERR_EXIT_BELOW_REQUESTED_MINIMUM");
-
             amountsOut[i] = amountOut;
         }
     }

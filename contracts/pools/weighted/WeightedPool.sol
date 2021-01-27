@@ -28,6 +28,7 @@ import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
 
 import "./WeightedMath.sol";
 import "../BalancerPoolToken.sol";
+import "../../helpers/Enumerable.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
@@ -36,6 +37,8 @@ import "../BalancerPoolToken.sol";
 contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using FixedPoint for uint256;
     using FixedPoint for uint128;
+    using Enumerable for uint256[];
+    using Enumerable for IERC20[];
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -138,15 +141,8 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         _token14 = tokens.length > 14 ? tokens[14] : IERC20(0);
         _token15 = tokens.length > 15 ? tokens[15] : IERC20(0);
 
-        // Compute normalized weights
-        uint256 sumWeights = 0;
-        for (uint8 i = 0; i < weights.length; i++) {
-            sumWeights = sumWeights.add(weights[i]);
-        }
-        uint256[] memory normalizedWeights = new uint256[](weights.length);
-        for (uint8 i = 0; i < normalizedWeights.length; i++) {
-            normalizedWeights[i] = weights[i].div(sumWeights);
-        }
+        uint256 sumWeights = weights.sum();
+        uint256[] memory normalizedWeights = weights.div(sumWeights);
 
         _normalizedWeight0 = weights.length > 0 ? normalizedWeights[0] : 0;
         _normalizedWeight1 = weights.length > 1 ? normalizedWeights[1] : 0;
@@ -235,11 +231,8 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         return _invariant(normalizedWeights, balances);
     }
 
-    function getNormalizedWeights(IERC20[] memory tokens) public view returns (uint256[] memory normalizedWeights) {
-        normalizedWeights = new uint256[](tokens.length);
-        for (uint256 i = 0; i < normalizedWeights.length; ++i) {
-            normalizedWeights[i] = _normalizedWeight(tokens[i]);
-        }
+    function getNormalizedWeights(IERC20[] memory tokens) public view returns (uint256[] memory) {
+        return tokens.map(WeightedPool._normalizedWeight);
     }
 
     function getSwapFee() external view returns (uint256) {
@@ -336,11 +329,8 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
 
         _mintPoolTokens(recipient, bptAmountOut);
 
-        for (uint8 i = 0; i < _totalTokens; i++) {
-            currentBalances[i] = currentBalances[i].add(amountsIn[i]);
-        }
-
         // Reset swap fee accumulation
+        currentBalances = currentBalances.add(amountsIn);
         _lastInvariant = _invariant(normalizedWeights, currentBalances);
 
         return (amountsIn, dueProtocolFeeAmounts);
@@ -403,11 +393,8 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
 
         _burnPoolTokens(sender, bptAmountIn);
 
-        for (uint256 i = 0; i < _totalTokens; ++i) {
-            currentBalances[i] = currentBalances[i].sub(amountsOut[i]);
-        }
-
         // Reset swap fee accumulation
+        currentBalances = currentBalances.sub(amountsOut);
         _lastInvariant = _invariant(normalizedWeights, currentBalances);
 
         return (amountsOut, dueProtocolFeeAmounts);
@@ -439,10 +426,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     {
         uint256 bptRatio = _getSupplyRatio(bptAmountIn);
 
-        uint256[] memory amountsOut = new uint256[](_totalTokens);
-        for (uint256 i = 0; i < _totalTokens; i++) {
-            amountsOut[i] = currentBalances[i].mul(bptRatio);
-        }
+        uint256[] memory amountsOut = currentBalances.mul(bptRatio);
         return (bptAmountIn, amountsOut);
     }
 
