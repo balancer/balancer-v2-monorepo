@@ -53,27 +53,22 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         _vault.unregisterTokens(_poolId, tokens);
     }
 
-    uint256[] private _onJoinExitPoolAmounts;
-    uint256[] private _onJoinPoolDueProtocolFeeAmounts;
-
-    function setOnJoinExitPoolReturnValues(uint256[] memory amounts, uint256[] memory dueProtocolFeeAmounts) external {
-        delete _onJoinExitPoolAmounts;
-        for (uint256 i = 0; i < amounts.length; ++i) {
-            _onJoinExitPoolAmounts.push(amounts[i]);
-        }
-
-        delete _onJoinPoolDueProtocolFeeAmounts;
-        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
-            _onJoinPoolDueProtocolFeeAmounts.push(dueProtocolFeeAmounts[i]);
-        }
-    }
-
     event OnJoinPoolCalled(
         bytes32 poolId,
         address sender,
         address recipient,
         uint256[] currentBalances,
         uint256[] maxAmountsIn,
+        uint256 protocolSwapFee,
+        bytes userData
+    );
+
+    event OnExitPoolCalled(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] currentBalances,
+        uint256[] minAmountsOut,
         uint256 protocolSwapFee,
         bytes userData
     );
@@ -93,23 +88,17 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
     }
 
     function onExitPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256[] memory,
-        uint256,
-        bytes memory
-    ) external view override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
-        amountsOut = new uint256[](_onJoinExitPoolAmounts.length);
-        for (uint256 i = 0; i < amountsOut.length; ++i) {
-            amountsOut[i] = _onJoinExitPoolAmounts[i];
-        }
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory currentBalances,
+        uint256[] memory minAmountsOut,
+        uint256 protocolSwapFee,
+        bytes memory userData
+    ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
+        emit OnExitPoolCalled(poolId, sender, recipient, currentBalances, minAmountsOut, protocolSwapFee, userData);
 
-        dueProtocolFeeAmounts = new uint256[](_onJoinPoolDueProtocolFeeAmounts.length);
-        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
-            dueProtocolFeeAmounts[i] = _onJoinPoolDueProtocolFeeAmounts[i];
-        }
+        (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it

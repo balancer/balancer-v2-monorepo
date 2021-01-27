@@ -33,6 +33,14 @@ export const bnMin = (a: BigNumberish, b: BigNumberish): BigNumber => {
   return a.lt(b) ? a : b;
 };
 
+export function arrayAdd(arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] {
+  return arrA.map((a, i) => bn(a).add(bn(arrB[i])));
+}
+
+export function arraySub(arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] {
+  return arrA.map((a, i) => bn(a).sub(bn(arrB[i])));
+}
+
 export function expectEqualWithError(actualValue: BigNumberish, expectedValue: BigNumberish, error = 0.001): void {
   actualValue = bn(actualValue);
   expectedValue = bn(expectedValue);
