@@ -111,7 +111,7 @@ describe('Vault - exit pool', () => {
 
     type ExitPoolData = {
       poolId?: string;
-      tokenAddreses?: string[];
+      tokenAddresses?: string[];
       minAmountsOut?: BigNumberish[];
       toInternalBalance?: boolean;
       exitAmounts?: BigNumberish[];
@@ -124,7 +124,7 @@ describe('Vault - exit pool', () => {
         .exitPool(
           data.poolId ?? poolId,
           recipient.address,
-          data.tokenAddreses ?? tokenAddresses,
+          data.tokenAddresses ?? tokenAddresses,
           data.minAmountsOut ?? array(0),
           data.toInternalBalance ?? false,
           encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts)
@@ -138,16 +138,16 @@ describe('Vault - exit pool', () => {
 
       it('reverts if token array is incorrect', async () => {
         // Missing
-        await expect(exitPool({ tokenAddreses: tokenAddresses.slice(1) })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        await expect(exitPool({ tokenAddresses: tokenAddresses.slice(1) })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
 
         // Extra
-        await expect(exitPool({ tokenAddreses: [...tokenAddresses, tokenAddresses[0]] })).to.be.revertedWith(
+        await expect(exitPool({ tokenAddresses: [...tokenAddresses, tokenAddresses[0]] })).to.be.revertedWith(
           'ERR_TOKENS_MISMATCH'
         );
 
         // Unordered
         await expect(
-          exitPool({ tokenAddreses: [tokenAddresses[1], tokenAddresses[0], ...tokenAddresses.slice(2)] })
+          exitPool({ tokenAddresses: [tokenAddresses[1], tokenAddresses[0], ...tokenAddresses.slice(2)] })
         ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
       });
 

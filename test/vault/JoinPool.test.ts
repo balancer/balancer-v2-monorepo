@@ -102,7 +102,7 @@ describe('Vault - join pool', () => {
 
     type JoinPoolData = {
       poolId?: string;
-      tokenAddreses?: string[];
+      tokenAddresses?: string[];
       maxAmountsIn?: BigNumberish[];
       fromInternalBalance?: boolean;
       joinAmounts?: BigNumberish[];
@@ -115,7 +115,7 @@ describe('Vault - join pool', () => {
         .joinPool(
           data.poolId ?? poolId,
           ZERO_ADDRESS,
-          data.tokenAddreses ?? tokenAddresses,
+          data.tokenAddresses ?? tokenAddresses,
           data.maxAmountsIn ?? array(MAX_UINT256),
           data.fromInternalBalance ?? false,
           encodeJoin(data.joinAmounts ?? joinAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts)
@@ -129,16 +129,16 @@ describe('Vault - join pool', () => {
 
       it('reverts if token array is incorrect', async () => {
         // Missing
-        await expect(joinPool({ tokenAddreses: tokenAddresses.slice(1) })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        await expect(joinPool({ tokenAddresses: tokenAddresses.slice(1) })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
 
         // Extra
-        await expect(joinPool({ tokenAddreses: [...tokenAddresses, tokenAddresses[0]] })).to.be.revertedWith(
+        await expect(joinPool({ tokenAddresses: [...tokenAddresses, tokenAddresses[0]] })).to.be.revertedWith(
           'ERR_TOKENS_MISMATCH'
         );
 
         // Unordered
         await expect(
-          joinPool({ tokenAddreses: [tokenAddresses[1], tokenAddresses[0], ...tokenAddresses.slice(2)] })
+          joinPool({ tokenAddresses: [tokenAddresses[1], tokenAddresses[0], ...tokenAddresses.slice(2)] })
         ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
       });
 
