@@ -20,14 +20,14 @@ export const minInt = (e: number): BN => bn(2).pow(bn(e).sub(1)).mul(-1);
 
 export const pct = (n: BN, pct: number): BN => n.div(bn(1 / pct));
 
-export const bnMax = (a: BigNumberish, b: BigNumberish): BN => {
+export const max = (a: BigNumberish, b: BigNumberish): BN => {
   a = bn(a);
   b = bn(b);
 
   return a.gt(b) ? a : b;
 };
 
-export const bnMin = (a: BigNumberish, b: BigNumberish): BN => {
+export const min = (a: BigNumberish, b: BigNumberish): BN => {
   a = bn(a);
   b = bn(b);
 

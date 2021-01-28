@@ -7,7 +7,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { arraySub, bn, BigNumberish, bnMin, fp } from '../../lib/helpers/numbers';
+import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
 
@@ -259,7 +259,7 @@ describe('Vault - join pool', () => {
         expectedInternalBalanceToUse = currentInternalBalances.map((balance, i) =>
           // If withdrawing from internal balance, the amount to withdraw is limited by the lower of the current
           // balance and the actual join amount.
-          fromInternalBalance ? bnMin(balance, joinAmounts[i]) : bn(0)
+          fromInternalBalance ? min(balance, joinAmounts[i]) : bn(0)
         );
       });
 
