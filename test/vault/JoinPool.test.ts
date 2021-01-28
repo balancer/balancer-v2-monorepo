@@ -142,7 +142,7 @@ describe('Vault - join pool', () => {
 
         // Unordered
         await expect(
-          joinPool({ tokenAddreses: [tokenAddresses[1], tokenAddresses[0], ...tokenAddresses.slice(2)] })
+          joinPool({ tokenAddreses: tokenAddresses.reverse() })
         ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
       });
 
@@ -150,7 +150,7 @@ describe('Vault - join pool', () => {
         await expect(joinPool({ maxAmountsIn: array(0).slice(1) })).to.be.revertedWith(
           'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
         );
-        await expect(joinPool({ maxAmountsIn: [...array(0), 0] })).to.be.revertedWith(
+        await expect(joinPool({ maxAmountsIn: array(0).concat(0) })).to.be.revertedWith(
           'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
         );
       });
@@ -163,7 +163,7 @@ describe('Vault - join pool', () => {
           await expect(joinPool({ joinAmounts: array(0).slice(1) })).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
 
           // Extra
-          await expect(joinPool({ joinAmounts: [...array(0), 0] })).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
+          await expect(joinPool({ joinAmounts: array(0).concat(0) })).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
         });
 
         it('reverts if due protocol fees length does not match token length', async () => {
@@ -173,7 +173,7 @@ describe('Vault - join pool', () => {
           );
 
           // Extra
-          await expect(joinPool({ dueProtocolFeeAmounts: [...array(0), 0] })).to.be.revertedWith(
+          await expect(joinPool({ dueProtocolFeeAmounts: array(0).concat(0) })).to.be.revertedWith(
             'ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH'
           );
         });
@@ -186,7 +186,7 @@ describe('Vault - join pool', () => {
 
           // Extra
           await expect(
-            joinPool({ joinAmounts: [...array(0), 0], dueProtocolFeeAmounts: [...array(0), 0] })
+            joinPool({ joinAmounts: array(0).concat(0), dueProtocolFeeAmounts: array(0).concat(0) })
           ).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
         });
       });
