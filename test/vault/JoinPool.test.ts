@@ -285,28 +285,28 @@ describe('Vault - join pool', () => {
       });
 
       it('deducts internal balance from the caller', async () => {
-        const internalBalancesBefore = await vault.getInternalBalance(lp.address, tokenAddresses);
+        const previousInternalBalances = await vault.getInternalBalance(lp.address, tokenAddresses);
         await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
-        const internalBalancesAfter = await vault.getInternalBalance(lp.address, tokenAddresses);
+        const currentInternalBalances = await vault.getInternalBalance(lp.address, tokenAddresses);
 
-        // Internal balance is expected to decrease: before - after should equal expected.
-        expect(arraySub(internalBalancesBefore, internalBalancesAfter)).to.deep.equal(expectedInternalBalanceToUse);
+        // Internal balance is expected to decrease: previous - current should equal expected.
+        expect(arraySub(previousInternalBalances, currentInternalBalances)).to.deep.equal(expectedInternalBalanceToUse);
       });
 
       it('assigns tokens to the pool', async () => {
-        const poolBalancesBefore = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const previousPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
         await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
-        const poolBalancesAfter = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const currentPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
 
         // The Pool balance is expected to increase by join amounts minus due protocol fees. Note that the deltas are
         // not necessarily positive, if the fees due are larger than the join amounts.
-        expect(arraySub(poolBalancesAfter, poolBalancesBefore)).to.deep.equal(
+        expect(arraySub(currentPoolBalances, previousPoolBalances)).to.deep.equal(
           arraySub(joinAmounts, dueProtocolFeeAmounts)
         );
       });
 
       it('calls the pool with the join data', async () => {
-        const poolBalancesBefore = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const previousPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
 
         const receipt = await (await joinPool({ fromInternalBalance, dueProtocolFeeAmounts })).wait();
 
@@ -314,7 +314,7 @@ describe('Vault - join pool', () => {
           poolId,
           sender: lp.address,
           recipient: ZERO_ADDRESS,
-          currentBalances: poolBalancesBefore,
+          currentBalances: previousPoolBalances,
           maxAmountsIn: array(MAX_UINT256),
           protocolSwapFee: await vault.getProtocolSwapFee(),
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
@@ -322,15 +322,15 @@ describe('Vault - join pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const collectedFeesBefore = await Promise.all(
+        const previousCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
         await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
-        const collectedFeesAfter = await Promise.all(
+        const currentCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
 
-        expect(arraySub(collectedFeesAfter, collectedFeesBefore)).to.deep.equal(dueProtocolFeeAmounts);
+        expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(dueProtocolFeeAmounts);
       });
 
       it('joins multiple times', async () => {

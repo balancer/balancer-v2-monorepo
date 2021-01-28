@@ -302,29 +302,31 @@ describe('Vault - exit pool', () => {
       });
 
       it('assigns internal balance to the caller', async () => {
-        const internalBalancesBefore = await vault.getInternalBalance(recipient.address, tokenAddresses);
+        const previousInternalBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        const internalBalancesAfter = await vault.getInternalBalance(recipient.address, tokenAddresses);
+        const currentInternalBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
 
-        // Internal balance is expected to increase: after - before should equal expected. Protocol withdraw fees are
-        // not charged.
+        // Internal balance is expected to increase: current - previous should equal expected. Protocol withdraw fees
+        // are not charged.
         const expectedInternalBalanceIncrease = toInternalBalance ? exitAmounts : array(0);
-        expect(arraySub(internalBalancesAfter, internalBalancesBefore)).to.deep.equal(expectedInternalBalanceIncrease);
+        expect(arraySub(currentInternalBalances, previousInternalBalances)).to.deep.equal(
+          expectedInternalBalanceIncrease
+        );
       });
 
       it('deducts tokens from the pool', async () => {
-        const poolBalancesBefore = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const previousPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        const poolBalancesAfter = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const currentPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
 
         // The Pool balance is expected to decrease by exit amounts plus due protocol fees.
-        expect(arraySub(poolBalancesBefore, poolBalancesAfter)).to.deep.equal(
+        expect(arraySub(previousPoolBalances, currentPoolBalances)).to.deep.equal(
           arrayAdd(exitAmounts, dueProtocolFeeAmounts)
         );
       });
 
       it('calls the pool with the exit data', async () => {
-        const poolBalancesBefore = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const previousPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
 
         const receipt = await (await exitPool({ toInternalBalance, dueProtocolFeeAmounts })).wait();
 
@@ -332,7 +334,7 @@ describe('Vault - exit pool', () => {
           poolId,
           sender: lp.address,
           recipient: recipient.address,
-          currentBalances: poolBalancesBefore,
+          currentBalances: previousPoolBalances,
           minAmountsOut: array(0),
           protocolSwapFee: await vault.getProtocolSwapFee(),
           userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
@@ -340,16 +342,16 @@ describe('Vault - exit pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const collectedFeesBefore = await Promise.all(
+        const previousCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        const collectedFeesAfter = await Promise.all(
+        const currentCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
 
         // Fees from both sources are lumped together.
-        expect(arraySub(collectedFeesAfter, collectedFeesBefore)).to.deep.equal(
+        expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(
           arrayAdd(dueProtocolFeeAmounts, expectedProtocolWithdrawFeesToCollect)
         );
       });
