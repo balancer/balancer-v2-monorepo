@@ -280,19 +280,15 @@ describe('Vault - exit pool', () => {
           : arraySub(exitAmounts, expectedProtocolWithdrawFeesToCollect);
 
         // Tokens are sent to the recipient, so the expected change is positive
-        const recipientChanges = Object.assign(
-          {},
-          ...tokenAddresses.map((token, i) => {
-            return { [symbol(token)]: expectedTransferAmounts[i] };
-          })
+        const recipientChanges = tokenAddresses.reduce(
+          (changes, token, i) => ({ ...changes, [symbol(token)]: expectedTransferAmounts[i] }),
+          {}
         );
 
         // Tokens are sent from the Vault, so the expected change is negative
-        const vaultChanges = Object.assign(
-          {},
-          ...tokenAddresses.map((token, i) => {
-            return { [symbol(token)]: expectedTransferAmounts[i].mul(-1) };
-          })
+        const vaultChanges = tokenAddresses.reduce(
+          (changes, token, i) => ({ ...changes, [symbol(token)]: expectedTransferAmounts[i].mul(-1) }),
+          {}
         );
 
         await expectBalanceChange(() => exitPool({ toInternalBalance, dueProtocolFeeAmounts }), tokens, [

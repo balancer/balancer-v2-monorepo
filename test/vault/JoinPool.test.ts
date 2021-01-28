@@ -263,19 +263,15 @@ describe('Vault - join pool', () => {
         const expectedTransferAmounts = arraySub(joinAmounts, expectedInternalBalanceToUse);
 
         // Tokens are sent from the LP, so the expected change is negative
-        const lpChanges = Object.assign(
-          {},
-          ...tokenAddresses.map((token, i) => {
-            return { [symbol(token)]: -expectedTransferAmounts[i] };
-          })
+        const lpChanges = tokenAddresses.reduce(
+          (changes, token, i) => ({ ...changes, [symbol(token)]: expectedTransferAmounts[i].mul(-1) }),
+          {}
         );
 
         // Tokens are sent to the Vault, so the expected change is positive
-        const vaultChanges = Object.assign(
-          {},
-          ...tokenAddresses.map((token, i) => {
-            return { [symbol(token)]: expectedTransferAmounts[i] };
-          })
+        const vaultChanges = tokenAddresses.reduce(
+          (changes, token, i) => ({ ...changes, [symbol(token)]: expectedTransferAmounts[i] }),
+          {}
         );
 
         await expectBalanceChange(() => joinPool({ fromInternalBalance, dueProtocolFeeAmounts }), tokens, [
