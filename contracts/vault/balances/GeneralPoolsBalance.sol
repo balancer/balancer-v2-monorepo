@@ -18,8 +18,8 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BalanceAllocation.sol";
-import "../../math/SignedMath.sol";
-import "../../vendor/EnumerableMap.sol";
+import "../../lib/math/SignedMath.sol";
+import "../../lib/helpers/EnumerableMap.sol";
 
 contract GeneralPoolsBalance {
     using SafeCast for uint256;

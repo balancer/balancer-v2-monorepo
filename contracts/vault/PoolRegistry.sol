@@ -19,10 +19,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-
-import "../math/Math.sol";
-import "../math/SignedMath.sol";
-import "../vendor/ReentrancyGuard.sol";
+import "../lib/math/Math.sol";
+import "../lib/math/SignedMath.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IPool.sol";
 import "./InternalBalance.sol";

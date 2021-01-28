@@ -17,7 +17,7 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "../math/Math.sol";
+import "../lib/math/Math.sol";
 
 import "../vault/interfaces/IFlashLoanReceiver.sol";
 import "../vault/interfaces/IVault.sol";

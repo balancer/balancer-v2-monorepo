@@ -18,17 +18,16 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "../../math/Math.sol";
-import "../../math/FixedPoint.sol";
-import "../../helpers/UnsafeRandom.sol";
-import "../../vendor/ReentrancyGuard.sol";
-
-import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPool.sol";
-import "../../vault/interfaces/IGeneralPoolQuote.sol";
+import "../../lib/math/Math.sol";
+import "../../lib/math/FixedPoint.sol";
+import "../../lib/helpers/UnsafeRandom.sol";
+import "../../lib/helpers/ReentrancyGuard.sol";
 
 import "./StableMath.sol";
 import "../BalancerPoolToken.sol";
+import "../../vault/interfaces/IVault.sol";
+import "../../vault/interfaces/IPool.sol";
+import "../../vault/interfaces/IGeneralPoolQuote.sol";
 
 contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, ReentrancyGuard {
     using Math for uint256;

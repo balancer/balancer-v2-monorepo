@@ -20,18 +20,17 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
+import "../lib/math/Math.sol";
+import "../lib/math/SignedMath.sol";
+import "../lib/helpers/EnumerableMap.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
+
+import "./PoolRegistry.sol";
 import "./interfaces/IPoolQuoteStructs.sol";
 import "./interfaces/IGeneralPoolQuote.sol";
 import "./interfaces/IMinimalSwapInfoPoolQuote.sol";
 import "./interfaces/ISwapValidator.sol";
 import "./balances/BalanceAllocation.sol";
-
-import "../math/Math.sol";
-import "../math/SignedMath.sol";
-import "../vendor/EnumerableMap.sol";
-import "../vendor/ReentrancyGuard.sol";
-
-import "./PoolRegistry.sol";
 
 abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeERC20 for IERC20;

@@ -16,7 +16,7 @@ pragma experimental ABIEncoderV2;
 
 pragma solidity ^0.7.1;
 
-import "../math/SignedMath.sol";
+import "../lib/math/SignedMath.sol";
 
 import "../vault/interfaces/ISwapValidator.sol";
 

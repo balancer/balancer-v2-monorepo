@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "../../math/Math.sol";
+import "../../lib/math/Math.sol";
 
 // This library is used to create a data structure that represents a token's balance for a Pool. 'cash' is how many
 // tokens the Pool has sitting inside of the Vault. 'managed' is how many tokens were withdrawn from the Vault by the

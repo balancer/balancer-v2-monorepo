@@ -16,7 +16,7 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../math/Math.sol";
+import "../lib/math/Math.sol";
 
 /**
  * @title Highly opinionated token implementation
@@ -158,7 +158,6 @@ contract BalancerPoolToken is IERC20 {
         address recipient,
         uint256 amount
     ) internal {
-
         uint256 currentBalance = _balance[sender];
         require(currentBalance >= amount, "ERR_INSUFFICIENT_BAL");
 

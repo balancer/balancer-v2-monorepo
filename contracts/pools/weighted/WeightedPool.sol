@@ -17,17 +17,16 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../../math/Math.sol";
-import "../../math/FixedPoint.sol";
-import "../../helpers/UnsafeRandom.sol";
-import "../../vendor/ReentrancyGuard.sol";
-
-import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPool.sol";
-import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
+import "../../lib/math/Math.sol";
+import "../../lib/math/FixedPoint.sol";
+import "../../lib/helpers/UnsafeRandom.sol";
+import "../../lib/helpers/ReentrancyGuard.sol";
 
 import "./WeightedMath.sol";
 import "../BalancerPoolToken.sol";
+import "../../vault/interfaces/IVault.sol";
+import "../../vault/interfaces/IPool.sol";
+import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.

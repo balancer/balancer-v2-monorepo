@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BalanceAllocation.sol";
-import "../../math/SignedMath.sol";
+import "../../lib/math/SignedMath.sol";
 
 contract TwoTokenPoolsBalance {
     using SafeCast for uint256;

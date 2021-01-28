@@ -20,8 +20,8 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "../math/Math.sol";
-import "../vendor/ReentrancyGuard.sol";
+import "../lib/math/Math.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./Fees.sol";
 

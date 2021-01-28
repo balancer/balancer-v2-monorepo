@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "./BalanceAllocation.sol";
-import "../../math/SignedMath.sol";
+import "../../lib/math/SignedMath.sol";
 
 contract MinimalSwapInfoPoolsBalance {
     using SafeCast for uint256;
