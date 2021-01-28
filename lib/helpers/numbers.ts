@@ -34,17 +34,14 @@ export const min = (a: BigNumberish, b: BigNumberish): BN => {
   return a.lt(b) ? a : b;
 };
 
-export function arrayAdd(arrA: BigNumberish[], arrB: BigNumberish[]): BN[] {
-  return arrA.map((a, i) => bn(a).add(bn(arrB[i])));
-}
+export const arrayAdd = (arrA: BigNumberish[], arrB: BigNumberish[]): BN[] =>
+  arrA.map((a, i) => bn(a).add(bn(arrB[i])));
 
-export function arraySub(arrA: BigNumberish[], arrB: BigNumberish[]): BN[] {
-  return arrA.map((a, i) => bn(a).sub(bn(arrB[i])));
-}
+export const arraySub = (arrA: BigNumberish[], arrB: BigNumberish[]): BN[] =>
+  arrA.map((a, i) => bn(a).sub(bn(arrB[i])));
 
-export function divCeil(x: BN, y: BN): BN {
+export const divCeil = (x: BN, y: BN): BN =>
   // ceil(x/y) == (x + y - 1) / y
-  return x.add(y).sub(1).div(y);
-}
+  x.add(y).sub(1).div(y);
 
 export const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
