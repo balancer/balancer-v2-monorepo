@@ -161,11 +161,6 @@ contract MinimalSwapInfoPoolsBalance {
         _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
 
-    function _minimalSwapInfoPoolIsManaged(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        bytes32 currentBalance = _getMinimalSwapInfoPoolBalance(poolId, token);
-        return currentBalance.isManaged();
-    }
-
     function _updateMinimalSwapInfoPoolBalance(
         bytes32 poolId,
         IERC20 token,

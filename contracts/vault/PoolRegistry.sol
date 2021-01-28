@@ -427,20 +427,6 @@ abstract contract PoolRegistry is
         _;
     }
 
-    function _poolIsManaged(
-        bytes32 poolId,
-        PoolSpecialization specialization,
-        IERC20 token
-    ) internal view returns (bool) {
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            return _minimalSwapInfoPoolIsManaged(poolId, token);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            return _twoTokenPoolIsManaged(poolId, token);
-        } else {
-            return _generalPoolIsManaged(poolId, token);
-        }
-    }
-
     function getPoolAssetManager(bytes32 poolId, IERC20 token)
         external
         view
