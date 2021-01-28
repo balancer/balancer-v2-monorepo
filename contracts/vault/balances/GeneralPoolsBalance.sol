@@ -14,18 +14,16 @@
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BalanceAllocation.sol";
-import "../../math/FixedPoint.sol";
+import "../../math/SignedMath.sol";
 import "../../vendor/EnumerableMap.sol";
 
 contract GeneralPoolsBalance {
     using SafeCast for uint256;
-    using FixedPoint for int256;
+    using SignedMath for int256;
     using BalanceAllocation for bytes32;
 
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;

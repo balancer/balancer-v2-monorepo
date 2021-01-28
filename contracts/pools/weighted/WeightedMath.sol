@@ -14,8 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
-
+import "../../math/Math.sol";
 import "../../math/FixedPoint.sol";
 import "../../math/LogExpMath.sol";
 
@@ -25,6 +24,8 @@ import "../../math/LogExpMath.sol";
 /* solhint-disable private-vars-leading-underscore */
 
 contract WeightedMath {
+    using Math for uint256;
+    using Math for uint128;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 

@@ -15,23 +15,21 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
-import "../vendor/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
+import "../math/Math.sol";
+import "../vendor/ReentrancyGuard.sol";
+
 import "./Fees.sol";
 
-import "../math/FixedPoint.sol";
-
 abstract contract InternalBalance is ReentrancyGuard, Fees {
-    using SafeERC20 for IERC20;
-    using FixedPoint for uint128;
-    using FixedPoint for uint256;
+    using Math for uint128;
+    using Math for uint256;
     using SafeCast for uint256;
+    using SafeERC20 for IERC20;
 
     // user -> token -> internal balance
     mapping(address => mapping(IERC20 => uint128)) internal _internalTokenBalance;

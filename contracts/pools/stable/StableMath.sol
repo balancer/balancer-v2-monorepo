@@ -14,8 +14,6 @@
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../../math/FixedPoint.sol";

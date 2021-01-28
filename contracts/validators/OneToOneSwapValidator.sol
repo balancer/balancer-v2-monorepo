@@ -16,18 +16,14 @@ pragma experimental ABIEncoderV2;
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
+import "../math/SignedMath.sol";
 
 import "../vault/interfaces/ISwapValidator.sol";
-
-import "../math/FixedPoint.sol";
 
 contract OneToOneSwapValidator is ISwapValidator {
     using SafeCast for uint256;
     using SafeCast for int256;
-    using FixedPoint for uint256;
-    using FixedPoint for int256;
-    using FixedPoint for uint128;
+    using SignedMath for int256;
 
     function validate(
         IERC20[] calldata tokens,

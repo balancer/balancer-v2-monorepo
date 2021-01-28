@@ -15,9 +15,9 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "../../math/Math.sol";
 import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
 import "../../vendor/ReentrancyGuard.sol";
@@ -34,6 +34,8 @@ import "../BalancerPoolToken.sol";
 // solhint-disable max-states-count
 
 contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, WeightedMath, ReentrancyGuard {
+    using Math for uint256;
+    using Math for uint128;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 

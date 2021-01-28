@@ -15,23 +15,23 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../vendor/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "../BalancerPoolToken.sol";
+import "../../math/Math.sol";
+import "../../math/FixedPoint.sol";
+import "../../helpers/UnsafeRandom.sol";
+import "../../vendor/ReentrancyGuard.sol";
 
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPool.sol";
 import "../../vault/interfaces/IGeneralPoolQuote.sol";
-import "../../math/FixedPoint.sol";
-import "../../helpers/UnsafeRandom.sol";
 
 import "./StableMath.sol";
+import "../BalancerPoolToken.sol";
 
 contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, ReentrancyGuard {
+    using Math for uint256;
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
