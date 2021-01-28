@@ -11,17 +11,13 @@ import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
 
-let admin: SignerWithAddress;
-let creator: SignerWithAddress;
-let lp: SignerWithAddress;
-
-let authorizer: Contract;
-let vault: Contract;
-let tokens: TokenList = {};
-
-let TOKEN_ADDRESSES: string[];
-
 describe('Vault - join pool', () => {
+  let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
+  let authorizer: Contract, vault: Contract;
+  let tokens: TokenList = {};
+
+  let TOKEN_ADDRESSES: string[];
+
   before(async () => {
     [, admin, creator, lp] = await ethers.getSigners();
   });

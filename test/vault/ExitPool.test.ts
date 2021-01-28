@@ -11,18 +11,13 @@ import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } 
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
 
-let admin: SignerWithAddress;
-let creator: SignerWithAddress;
-let lp: SignerWithAddress;
-let recipient: SignerWithAddress;
-
-let authorizer: Contract;
-let vault: Contract;
-let tokens: TokenList = {};
-
-let TOKEN_ADDRESSES: string[];
-
 describe('Vault - exit pool', () => {
+  let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, recipient: SignerWithAddress;
+  let authorizer: Contract, vault: Contract;
+  let tokens: TokenList = {};
+
+  let TOKEN_ADDRESSES: string[];
+
   before(async () => {
     [, admin, creator, lp, recipient] = await ethers.getSigners();
   });
