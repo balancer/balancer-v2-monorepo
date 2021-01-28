@@ -184,7 +184,6 @@ contract GeneralPoolsBalance {
         uint128 amount
     ) internal {
         bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
-
         poolBalances.set(token, mutation(currentBalance, amount));
     }
 
@@ -208,6 +207,11 @@ contract GeneralPoolsBalance {
             tokens[i] = token;
             balances[i] = balance.totalBalance();
         }
+    }
+
+    function _getGeneralPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
+        return _getGeneralPoolBalance(poolBalances, token);
     }
 
     function _getGeneralPoolBalance(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)

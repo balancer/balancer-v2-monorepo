@@ -121,6 +121,14 @@ interface IVault {
      */
     function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
+    /**
+     * @dev Returns the Pool's token cash and managed balances.
+     */
+    function getPoolTokenBalanceInfo(bytes32 poolId, IERC20 token)
+        external
+        view
+        returns (uint256 cash, uint256 managed);
+
     // Pool Management
 
     /**

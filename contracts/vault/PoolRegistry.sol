@@ -147,6 +147,28 @@ abstract contract PoolRegistry is
         }
     }
 
+    function getPoolTokenBalanceInfo(bytes32 poolId, IERC20 token)
+        external
+        view
+        override
+        withExistingPool(poolId)
+        returns (uint256 cash, uint256 managed)
+    {
+        bytes32 balance;
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
+            balance = _getTwoTokenPoolBalance(poolId, token);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            balance = _getMinimalSwapInfoPoolBalance(poolId, token);
+        } else {
+            balance = _getGeneralPoolBalance(poolId, token);
+        }
+
+        cash = balance.cashBalance();
+        managed = balance.managedBalance();
+    }
+
     function getPool(bytes32 poolId)
         external
         view
