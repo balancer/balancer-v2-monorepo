@@ -34,15 +34,11 @@ export function calcInGivenOut(
   return decimal(tokenBalanceIn).mul(foo);
 }
 
-export function calculateInvariant(balances: string[], weights: string[]): Decimal {
-  const sumWeights = weights.reduce((acc: Decimal, b: string) => {
-    return acc.add(b);
-  }, decimal(0));
-  let invariant = decimal(1);
-  for (let index = 0; index < balances.length; index++) {
-    invariant = invariant.mul(decimal(balances[index]).pow(decimal(weights[index]).div(sumWeights)));
-  }
-  return invariant;
+export function calculateInvariant(rawBalances: BigNumber[], rawWeights: BigNumber[]): BigNumber {
+  const normalizedWeights = toNormalizedWeights(rawWeights);
+  const balances = rawBalances.map(decimal);
+  const invariant = balances.reduce((inv, balance, i) => inv.mul(balance.pow(normalizedWeights[i])), decimal(1));
+  return bn(invariant);
 }
 
 export function calcBptOutGivenExactTokensIn(
@@ -52,7 +48,7 @@ export function calcBptOutGivenExactTokensIn(
   rawBptTotalSupply: BigNumber,
   rawSwapFee: BigNumber
 ): BigNumber {
-  const swapFee = decimal(rawSwapFee.toString()).div(ONE);
+  const swapFee = decimal(rawSwapFee).div(ONE);
   const weights = toNormalizedWeights(rawWeights);
   const balances = rawBalances.map((b) => decimal(b).div(ONE));
   const amountsIn = rawAmountsIn.map((a) => decimal(a).div(ONE));
@@ -114,7 +110,7 @@ export function calcBptInGivenExactTokensOut(
   }
 
   const bptIn = decimal(rawBptTotalSupply).mul(decimal(1).sub(invariantRatio));
-  return bn(parseInt(bptIn.toString()));
+  return bn(bptIn);
 }
 
 export function calcTokenOutGivenExactBptIn(
@@ -136,7 +132,7 @@ export function calcTokenOutGivenExactBptIn(
   const tokenBalancePercentageExcess = decimal(1).sub(weights[tokenIndex]);
   const amountOutBeforeFee = balances[tokenIndex].mul(decimal(1).sub(tokenBalanceRatio));
 
-  const amountOut = amountOutBeforeFee.mul(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+  const amountOut = amountOutBeforeFee.mul(ONE).mul(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
   return bn(amountOut);
 }
 

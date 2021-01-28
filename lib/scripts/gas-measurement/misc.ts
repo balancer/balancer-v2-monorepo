@@ -8,6 +8,7 @@ import { deploy } from '../../helpers/deploy';
 import { MAX_UINT256 } from '../../helpers/constants';
 import { encodeJoinStablePool } from '../../helpers/stablePoolEncoding';
 import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
+import { bn } from '../../helpers/numbers';
 import { deployPoolFromFactory, PoolName } from '../../helpers/pools';
 import { deploySortedTokens, mintTokens, TokenList } from '../../helpers/tokens';
 
