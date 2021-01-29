@@ -336,16 +336,16 @@ describe('Vault - join pool', () => {
 
       it('reverts if any of the max amounts in is not enough', async () => {
         await Promise.all(
-          joinAmounts.map((amount, i) => {
-            if (amount.gt(0)) {
+          joinAmounts
+            .filter((amount) => amount.gt(0))
+            .map((amount, i) => {
               const maxAmountsIn = array(MAX_UINT256);
               maxAmountsIn[i] = amount.sub(1);
 
               return expect(joinPool({ fromInternalBalance, dueProtocolFeeAmounts, maxAmountsIn })).to.be.revertedWith(
                 'ERR_JOIN_ABOVE_MAX'
               );
-            }
-          })
+            })
         );
       });
 
@@ -353,8 +353,9 @@ describe('Vault - join pool', () => {
         const expectedTokensToTransfer = arraySub(joinAmounts, expectedInternalBalanceToUse);
 
         await Promise.all(
-          expectedTokensToTransfer.map(async (amount, i) => {
-            if (amount.gt(0)) {
+          expectedTokensToTransfer
+            .filter((amount) => amount.gt(0))
+            .map(async (amount, i) => {
               const token = tokens[symbol(tokenAddresses[i])];
 
               // Burn excess balance so that the LP is missing one token to join
@@ -364,8 +365,7 @@ describe('Vault - join pool', () => {
               return expect(joinPool({ fromInternalBalance, dueProtocolFeeAmounts })).to.be.revertedWith(
                 'ERC20: transfer amount exceeds balance'
               );
-            }
-          })
+            })
         );
       });
     }
