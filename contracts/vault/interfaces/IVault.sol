@@ -116,18 +116,18 @@ interface IVault {
     function getPool(bytes32 poolId) external view returns (address, PoolSpecialization);
 
     /**
-     * @dev Returns all tokens registered by a Pool. The order of this list might change as tokens are registered and
-     * unregistered.
+     * @dev Returns the Pool's tokens and total balances. This means it will refer also to the assets held by the Pool's
+     * Asset Manager and not currently held by the Vault.
      */
-    function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory);
+    function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory tokens, uint256[] memory balances);
 
     /**
-     * @dev Returns the Pool's balance of `tokens`. This is the total balance, including assets held by the Pool's
-     * Asset Manager and not currently held by the Vault.
-     *
-     * Each token in `tokens` must have been registered by the Pool.
+     * @dev Returns the Pool's token cash and managed balances.
      */
-    function getPoolTokenBalances(bytes32 poolId, IERC20[] calldata tokens) external view returns (uint256[] memory);
+    function getPoolTokenBalanceInfo(bytes32 poolId, IERC20 token)
+        external
+        view
+        returns (uint256 cash, uint256 managed);
 
     // Pool Management
 
@@ -167,7 +167,7 @@ interface IVault {
      * Pool shares.
      *
      * `maxAmountsIn` is the maximum amount of tokens the user is willing to provide to the Pool, for each token in the
-     * `tokens` array. This array must match the Pool's registered tokens, obtainable via `getPoolTokens`.
+     * `tokens` array. This array must match the Pool's registered tokens.
      *
      * Pools are free to implement any arbitrary logic in the `IPool.onJoinPool` hook, and may require additional
      * information (such as the expected number of Pool shares to obtain). This can be encoded in the `userData`
@@ -191,13 +191,13 @@ interface IVault {
      * Pool shares.
      *
      * `minAmountsOut` is the minimum amount of tokens the user expects to get out of the Pool, for each token in the
-     * `tokens` array. This array must match the Pool's registered tokens, obtainable via `getPoolTokens`.
+     * `tokens` array. This array must match the Pool's registered tokens.
      *
      * Pools are free to implement any arbitrary logic in the `IPool.onExitPool` hook, and may require additional
      * information (such as the number of Pool shares to provide). This can be encoded in the `userData` argument, which
      * is ignored by the Vault and passed directly to the Pool.
      *
-     * If `tointernalBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
+     * If `toInternalBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
      * an ERC20 transfer will be performed, and charged protocol withdraw fees accordingly.
      */
     function exitPool(

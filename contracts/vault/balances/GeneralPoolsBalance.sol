@@ -38,38 +38,8 @@ contract GeneralPoolsBalance {
     // Instead, we use our customized EnumerableMap, which lets us read the N balances in N+1 storage accesses (one for
     // the number of tokens in the Pool), as well as access the index of any token in a single read (required for the
     // IGeneralPoolQuote call) and update an entry's value given its index.
-    // This map is also what we use to list all tokens in the Pool (for getPoolTokens). However, tokens in the map
-    // always have a non-zero balance, so we don't need to check the map for token existence during a swap: the non-zero
-    // balance check achieves this for less gas.
 
     mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _generalPoolsBalances;
-
-    /**
-     * @dev Returns an array with all the tokens in a General Pool. This order may change when tokens are added to or
-     * removed from the Pool.
-     */
-    function _getGeneralPoolTokens(bytes32 poolId) internal view returns (IERC20[] memory) {
-        IERC20[] memory tokens = new IERC20[](_generalPoolsBalances[poolId].length());
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            (IERC20 token, ) = _generalPoolsBalances[poolId].at(i);
-            tokens[i] = token;
-        }
-
-        return tokens;
-    }
-
-    /**
-     * @dev Returns the balance for a token in a General Pool.
-     *
-     * Requirements:
-     *
-     * - `token` must be in the Pool.
-     */
-    function _getGeneralPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-        return _getGeneralPoolTokenBalance(poolBalances, token);
-    }
 
     /**
      * @dev Registers a list of tokens in a General Pool.
@@ -104,7 +74,7 @@ contract GeneralPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            bytes32 currentBalance = _getGeneralPoolTokenBalance(poolBalances, token);
+            bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
             require(currentBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
             poolBalances.remove(token);
         }
@@ -197,12 +167,6 @@ contract GeneralPoolsBalance {
         _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
 
-    function _generalPoolIsManaged(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-        bytes32 currentBalance = _getGeneralPoolTokenBalance(poolBalances, token);
-        return currentBalance.isManaged();
-    }
-
     function _updateGeneralPoolBalance(
         bytes32 poolId,
         IERC20 token,
@@ -219,12 +183,38 @@ contract GeneralPoolsBalance {
         function(bytes32, uint128) pure returns (bytes32) mutation,
         uint128 amount
     ) internal {
-        bytes32 currentBalance = _getGeneralPoolTokenBalance(poolBalances, token);
-
+        bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
         poolBalances.set(token, mutation(currentBalance, amount));
     }
 
-    function _getGeneralPoolTokenBalance(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)
+    /**
+     * @dev Returns an array with all the tokens and balances in a General Pool.
+     * This order may change when tokens are added to or removed from the Pool.
+     */
+    function _getGeneralPoolTokens(bytes32 poolId)
+        internal
+        view
+        returns (IERC20[] memory tokens, uint256[] memory balances)
+    {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
+        tokens = new IERC20[](poolBalances.length());
+        balances = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // Because the iteration is bounded by `tokens.length` already fetched from the enumerable map,
+            // we can use `unchecked_at` as we know `i` is a valid token index, saving storage reads.
+            (IERC20 token, bytes32 balance) = poolBalances.unchecked_at(i);
+            tokens[i] = token;
+            balances[i] = balance.totalBalance();
+        }
+    }
+
+    function _getGeneralPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
+        return _getGeneralPoolBalance(poolBalances, token);
+    }
+
+    function _getGeneralPoolBalance(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)
         internal
         view
         returns (bytes32)

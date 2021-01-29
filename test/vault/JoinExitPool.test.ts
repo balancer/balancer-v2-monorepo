@@ -102,7 +102,7 @@ describe('Vault - join & exit pool', () => {
       }
 
       async function assertJoinBalanceChanges(expectedLPDeltas: BigNumberish[], expectedPoolDeltas: BigNumberish[]) {
-        const prePoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const prePoolBalances = (await vault.getPoolTokens(poolId)).balances;
         const preCollectedFees = await Promise.all(tokenAddresses.map((token) => vault.getCollectedFeesByToken(token)));
 
         const changes = Object.assign(
@@ -111,9 +111,10 @@ describe('Vault - join & exit pool', () => {
             return { [symbol(tokenAddresses[i])]: delta };
           })
         );
+
         await expectBalanceChange(callJoinPool, tokens, [{ account: lp, changes }, { account: recipient }]);
 
-        const postPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const postPoolBalances = (await vault.getPoolTokens(poolId)).balances;
         const postCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
@@ -457,7 +458,7 @@ describe('Vault - join & exit pool', () => {
         expectedRecipientDeltas: BigNumberish[],
         expectedPoolDeltas: BigNumberish[]
       ) {
-        const prePoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const prePoolBalances = (await vault.getPoolTokens(poolId)).balances;
         const preCollectedFees = await Promise.all(tokenAddresses.map((token) => vault.getCollectedFeesByToken(token)));
 
         const changes = Object.assign(
@@ -468,7 +469,7 @@ describe('Vault - join & exit pool', () => {
         );
         await expectBalanceChange(callExitPool, tokens, [{ account: lp }, { account: recipient, changes }]);
 
-        const postPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const postPoolBalances = (await vault.getPoolTokens(poolId)).balances;
         const postCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );

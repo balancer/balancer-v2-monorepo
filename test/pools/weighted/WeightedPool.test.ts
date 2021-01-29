@@ -11,6 +11,7 @@ import {
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
   calcOutGivenIn,
+  toNormalizedWeights,
 } from '../../helpers/math/weighted';
 
 import { deploy } from '../../../lib/helpers/deploy';
@@ -147,8 +148,10 @@ describe('WeightedPool', function () {
         });
 
         it('registers tokens in the vault', async () => {
-          expect(await vault.getPoolTokens(poolId)).to.have.members(poolTokens);
-          expect(await vault.getPoolTokenBalances(poolId, poolTokens)).to.deep.equal(ZEROS);
+          const { tokens, balances } = await vault.getPoolTokens(poolId);
+
+          expect(tokens).to.have.members(poolTokens);
+          expect(balances).to.deep.equal(ZEROS);
         });
 
         it('starts with no BPT', async () => {
@@ -162,7 +165,12 @@ describe('WeightedPool', function () {
         });
 
         it('sets token weights', async () => {
-          expect(await pool.getWeights(poolTokens)).to.deep.equal(poolWeights);
+          const normalizedWeights = await pool.getNormalizedWeights(poolTokens);
+          const expectedNormalizedWeights = toNormalizedWeights(poolWeights).map((w) => bn(w.mul(1e18)));
+
+          normalizedWeights.map((weight: BigNumber, i: number) => {
+            expectEqualWithError(weight, expectedNormalizedWeights[i], 0.0000001);
+          });
         });
 
         it('sets swap fee', async () => {
@@ -798,7 +806,7 @@ describe('WeightedPool', function () {
           const ratio = lastInvariant.div(currentInvariant);
           const normalizedWeight = decimal(await pool.getNormalizedWeight(paidFeeToken));
           const exponent = decimal(1e18).div(normalizedWeight);
-          const tokenBalances = await vault.getPoolTokenBalances(poolId, [paidFeeToken]);
+          const tokenBalances = (await vault.getPoolTokens(poolId)).balances[paidFeeToken];
           const paidTokenBalance = decimal(tokenBalances[0]);
           const collectedSwapFees = decimal(1).sub(ratio.pow(exponent)).mul(paidTokenBalance);
           const protocolSwapFee = decimal(PROTOCOL_SWAP_FEE.toString()).div(1e18);

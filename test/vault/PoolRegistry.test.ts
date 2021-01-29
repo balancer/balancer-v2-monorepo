@@ -73,7 +73,9 @@ describe('Vault - pool registry', () => {
     });
 
     it('starts with no tokens', async () => {
-      expect(await vault.getPoolTokens(poolId)).to.have.members([]);
+      const { tokens, balances } = await vault.getPoolTokens(poolId);
+      expect(tokens).to.be.empty;
+      expect(balances).to.be.empty;
     });
 
     it('gets a new id', async () => {
@@ -103,16 +105,8 @@ describe('Vault - pool registry', () => {
         await vault.connect(other).registerTokens(poolId, [tokens.DAI.address, tokens.MKR.address], assetManagers);
       });
 
-      it('reverts when querying token balances of unregistered tokens', async () => {
-        const error = 'ERR_TOKEN_NOT_REGISTERED';
-        await expect(vault.getPoolTokenBalances(poolId, [ZERO_ADDRESS])).to.be.revertedWith(error);
-        await expect(vault.getPoolTokenBalances(poolId, [tokens.SNX.address])).to.be.revertedWith(error);
-      });
-
       it('reverts when querying token balances of unexisting pools', async () => {
-        const error = 'Nonexistent pool';
-        await expect(vault.getPoolTokenBalances(ZERO_BYTES32, [ZERO_ADDRESS])).to.be.revertedWith(error);
-        await expect(vault.getPoolTokenBalances(ZERO_BYTES32, [tokens.SNX.address])).to.be.revertedWith(error);
+        await expect(vault.getPoolTokens(ZERO_BYTES32)).to.be.revertedWith('Nonexistent pool');
       });
     }
 
@@ -175,11 +169,9 @@ describe('Vault - pool registry', () => {
                   it('registers the requested tokens', async () => {
                     await pool.registerTokens(tokenAddresses, assetManagers);
 
-                    const poolTokens = await vault.getPoolTokens(poolId);
-                    expect(poolTokens).to.have.members(tokenAddresses);
-
-                    const poolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
-                    expect(poolBalances).to.deep.equal(Array(tokenAddresses.length).fill(bn(0)));
+                    const { tokens, balances } = await vault.getPoolTokens(poolId);
+                    expect(tokens).to.have.members(tokenAddresses);
+                    expect(balances).to.deep.equal(Array(tokenAddresses.length).fill(bn(0)));
                   });
 
                   it('emits an event', async () => {
@@ -204,11 +196,9 @@ describe('Vault - pool registry', () => {
                         await pool.registerTokens([tokenAddress], [ZERO_ADDRESS]);
                       }
 
-                      const poolTokens = await vault.getPoolTokens(poolId);
-                      expect(poolTokens).to.have.members(tokenAddresses);
-
-                      const poolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
-                      expect(poolBalances).to.deep.equal(Array(tokenAddresses.length).fill(bn(0)));
+                      const { tokens, balances } = await vault.getPoolTokens(poolId);
+                      expect(tokens).to.have.members(tokenAddresses);
+                      expect(balances).to.deep.equal(Array(tokenAddresses.length).fill(bn(0)));
                     });
                   }
                 };
@@ -341,7 +331,7 @@ describe('Vault - pool registry', () => {
 
                         await pool.unregisterTokens([tokenAddresses[0]]);
 
-                        const poolTokens = await vault.getPoolTokens(poolId);
+                        const { tokens: poolTokens } = await vault.getPoolTokens(poolId);
                         expect(poolTokens).not.to.have.members([tokenAddresses[0]]);
                       });
                     }
@@ -359,15 +349,17 @@ describe('Vault - pool registry', () => {
                   it('unregisters the requested tokens', async () => {
                     await pool.unregisterTokens(tokenAddresses);
 
-                    const poolTokens = await vault.getPoolTokens(poolId);
+                    const { tokens: poolTokens, balances } = await vault.getPoolTokens(poolId);
                     expect(poolTokens).to.be.empty;
+                    expect(balances).to.be.empty;
                   });
 
                   it('cannot query balances any more', async () => {
                     await pool.unregisterTokens(tokenAddresses);
 
-                    const error = 'ERR_TOKEN_NOT_REGISTERED';
-                    await expect(vault.getPoolTokenBalances(poolId, tokenAddresses)).to.be.revertedWith(error);
+                    const { tokens, balances } = await vault.getPoolTokens(poolId);
+                    expect(tokens).to.be.empty;
+                    expect(balances).to.be.empty;
                   });
 
                   it('emits an event', async () => {

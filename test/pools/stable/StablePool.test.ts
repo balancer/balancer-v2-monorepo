@@ -148,10 +148,9 @@ describe('StablePool', function () {
         it('registers tokens in the vault', async () => {
           const poolId = await pool.getPoolId();
 
-          expect(await vault.getPoolTokens(poolId)).to.have.members(poolTokens);
-          expect(await vault.getPoolTokenBalances(poolId, poolTokens)).to.deep.equal(
-            Array(poolTokens.length).fill(bn(0))
-          );
+          const { balances, tokens } = await vault.getPoolTokens(poolId);
+          expect(tokens).to.have.members(poolTokens);
+          expect(balances).to.deep.equal(Array(poolTokens.length).fill(bn(0)));
         });
 
         it('initializes the asset managers', async () => {
@@ -675,7 +674,7 @@ describe('StablePool', function () {
             error = protocolSwapFeeAmount.div(1000);
           } else {
             // We approximate the fee amount paid in token out based on the price after the swap
-            const finalBalances = await vault.getPoolTokenBalances(poolId, tokens);
+            const finalBalances = (await vault.getPoolTokens(poolId)).balances;
             expectedPaidFees = await pool.quoteOutGivenIn(
               {
                 poolId,
