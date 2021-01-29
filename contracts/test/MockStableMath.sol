@@ -21,6 +21,10 @@ import "../pools/stable/StableMath.sol";
 contract MockStableMath is StableMath {
     using SafeCast for uint256;
 
+    function invariant(uint256 amp, uint256[] calldata balances) external pure returns (uint256) {
+        return _invariant(amp, balances);
+    }
+
     function outGivenIn(
         uint256 amp,
         uint256[] memory balances,
@@ -39,5 +43,14 @@ contract MockStableMath is StableMath {
         uint256 tokenAmountOut
     ) external pure returns (uint256) {
         return _inGivenOut(amp.toUint128(), balances, tokenIndexIn, tokenIndexOut, tokenAmountOut.toUint128());
+    }
+
+    function calculateOneTokenSwapFee(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 lastInvariant,
+        uint256 tokenIndex
+    ) external pure returns (uint256) {
+        return _calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
     }
 }

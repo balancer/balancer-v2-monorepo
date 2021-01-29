@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
 const SCALING_FACTOR = 1e18;
@@ -7,7 +8,7 @@ export type BigNumberish = string | number | BigNumber;
 
 export const fp = (x: number): BigNumber => bn(x * SCALING_FACTOR);
 
-export const bn = (x: BigNumberish): BigNumber => BigNumber.from(x.toString());
+export const bn = (x: BigNumberish | Decimal): BigNumber => BigNumber.from(x.toString());
 
 export const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
 

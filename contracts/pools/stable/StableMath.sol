@@ -28,88 +28,6 @@ import "../../math/FixedPoint.sol";
 
 contract StableMath {
     /**********************************************************************************************
-    // inGivenOut token x for y - polynomial equation to solve                                   //
-    // ax = amount in to calculate                                                               //
-    // bx = balance token in                                                                     //
-    // x = bx + ax                                                                               //
-    // D = invariant                               D                     D^(n+1)                 //
-    // A = amplifier               x^2 + ( S - ----------  - 1) * x -  ------------- = 0         //
-    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
-    // S = sum of final balances but x                                                           //
-    // P = product of final balances but x                                                       //
-    **********************************************************************************************/
-    function _inGivenOut(
-        uint256 amp,
-        uint256[] memory balances,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint256 tokenAmountOut
-    ) internal pure returns (uint256) {
-        uint256 inv = _invariant(amp, balances);
-        uint256 p = inv;
-        uint256 sum = 0;
-        uint256 totalCoins = balances.length;
-        uint256 ampTimesTotal = amp * totalCoins;
-        uint256 x = 0;
-        for (uint256 i = 0; i < totalCoins; i++) {
-            if (i == tokenIndexOut) {
-                x = balances[i] - tokenAmountOut;
-            } else if (i != tokenIndexIn) {
-                x = balances[i];
-            } else {
-                continue;
-            }
-            sum += x;
-            p = (p * inv) / (x * totalCoins);
-        }
-        p = (p * inv) / (ampTimesTotal * totalCoins);
-        uint256 b = sum + inv / ampTimesTotal;
-        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
-        return (y - balances[tokenIndexIn] + 1);
-    }
-
-    /**********************************************************************************************
-    // outGivenIn token x for y - polynomial equation to solve                                   //
-    // ay = amount out to calculate                                                              //
-    // by = balance token out                                                                    //
-    // y = by - ay                                                                               //
-    // D = invariant                               D                     D^(n+1)                 //
-    // A = amplifier               y^2 + ( S - ----------  - 1) * y -  ------------- = 0         //
-    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
-    // S = sum of final balances but y                                                           //
-    // P = product of final balances but y                                                       //
-    **********************************************************************************************/
-    function _outGivenIn(
-        uint256 amp,
-        uint256[] memory balances,
-        uint256 tokenIndexIn,
-        uint256 tokenIndexOut,
-        uint256 tokenAmountIn
-    ) internal pure returns (uint256) {
-        uint256 inv = _invariant(amp, balances);
-        uint256 p = inv;
-        uint256 sum = 0;
-        uint256 totalCoins = balances.length;
-        uint256 ampTimesTotal = amp * totalCoins;
-        uint256 x = 0;
-        for (uint256 i = 0; i < totalCoins; i++) {
-            if (i == tokenIndexIn) {
-                x = balances[i] + tokenAmountIn;
-            } else if (i != tokenIndexOut) {
-                x = balances[i];
-            } else {
-                continue;
-            }
-            sum += x;
-            p = (p * inv) / (x * totalCoins);
-        }
-        p = (p * inv) / (ampTimesTotal * totalCoins);
-        uint256 b = sum + inv / ampTimesTotal;
-        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
-        return (balances[tokenIndexOut] - y - 1);
-    }
-
-    /**********************************************************************************************
     // invariant                                                                                 //
     // D = invariant to compute                                                                  //
     // A = amplifier                n * D^2 + A * n^n * S * (n^n * P / D^(n−1))                  //
@@ -153,6 +71,90 @@ contract StableMath {
     }
 
     /**********************************************************************************************
+    // inGivenOut token x for y - polynomial equation to solve                                   //
+    // ax = amount in to calculate                                                               //
+    // bx = balance token in                                                                     //
+    // x = bx + ax                                                                               //
+    // D = invariant                               D                     D^(n+1)                 //
+    // A = amplifier               x^2 + ( S - ----------  - 1) * x -  ------------- = 0         //
+    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
+    // S = sum of final balances but x                                                           //
+    // P = product of final balances but x                                                       //
+    **********************************************************************************************/
+    function _inGivenOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountOut
+    ) internal pure returns (uint256) {
+        uint256 inv = _invariant(amp, balances);
+        uint256 p = inv;
+        uint256 sum = 0;
+        uint256 totalCoins = balances.length;
+        uint256 nn = 1;
+        uint256 x = 0;
+        for (uint256 i = 0; i < totalCoins; i++) {
+            if (i == tokenIndexOut) {
+                x = balances[i] - tokenAmountOut;
+            } else if (i != tokenIndexIn) {
+                x = balances[i];
+            } else {
+                continue;
+            }
+            sum += x;
+            nn = totalCoins * totalCoins;
+            p = (p * inv) / x;
+        }
+        p = (p * inv) / (amp * nn * nn);
+        uint256 b = sum + inv / (amp * nn);
+        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
+        return (y - balances[tokenIndexIn] + 1);
+    }
+
+    /**********************************************************************************************
+    // outGivenIn token x for y - polynomial equation to solve                                   //
+    // ay = amount out to calculate                                                              //
+    // by = balance token out                                                                    //
+    // y = by - ay                                                                               //
+    // D = invariant                               D                     D^(n+1)                 //
+    // A = amplifier               y^2 + ( S - ----------  - 1) * y -  ------------- = 0         //
+    // n = number of tokens                    (A * n^n)               A * n^2n * P              //
+    // S = sum of final balances but y                                                           //
+    // P = product of final balances but y                                                       //
+    **********************************************************************************************/
+    function _outGivenIn(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountIn
+    ) internal pure returns (uint256) {
+        uint256 inv = _invariant(amp, balances);
+        uint256 p = inv;
+        uint256 sum = 0;
+        uint256 totalCoins = balances.length;
+        uint256 nn = 1;
+        uint256 x = 0;
+        for (uint256 i = 0; i < totalCoins; i++) {
+            if (i == tokenIndexIn) {
+                x = balances[i] + tokenAmountIn;
+            } else if (i != tokenIndexOut) {
+                x = balances[i];
+            } else {
+                continue;
+            }
+            sum += x;
+            nn = totalCoins * totalCoins;
+            p = (p * inv) / x;
+        }
+        p = (p * inv) / (amp * nn * nn);
+        uint256 b = sum + inv / (amp * nn);
+        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
+        return (balances[tokenIndexOut] - y - 1);
+    }
+
+    /**********************************************************************************************
     // oneTokenSwapFee - polynomial equation to solve                                            //
     // af = fee amount to calculate in one token                                                 //
     // bf = balance of token                                                                     //
@@ -173,7 +175,7 @@ contract StableMath {
         uint256 p = inv;
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
-        uint256 ampTimesTotal = amp * totalCoins;
+        uint256 nn = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
             if (i != tokenIndex) {
@@ -182,10 +184,11 @@ contract StableMath {
                 continue;
             }
             sum += x;
-            p = (p * inv) / (x * totalCoins);
+            nn = totalCoins * totalCoins;
+            p = (p * inv) / x;
         }
-        p = (p * inv) / (ampTimesTotal * totalCoins);
-        uint256 b = sum + inv / ampTimesTotal;
+        p = (p * inv) / (amp * nn * nn);
+        uint256 b = sum + inv / (amp * nn);
         uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
         return (balances[tokenIndex] - y - 1);
     }
