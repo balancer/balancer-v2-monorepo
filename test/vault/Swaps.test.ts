@@ -11,6 +11,7 @@ import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import { encodeJoin } from '../helpers/mockPool';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -117,13 +118,19 @@ describe('Vault - swaps', () => {
 
     // Join the pool - the actual amount is not relevant since the MockPool relies on the multiplier to quote prices
     const tokenAmounts = tokenAddresses.map(() => bn(100e18));
-    await pool.setOnJoinExitPoolReturnValues(
-      tokenAmounts,
-      tokenAddresses.map(() => 0)
-    );
 
     const poolId = pool.getPoolId();
-    await vault.connect(lp).joinPool(poolId, other.address, tokenAddresses, tokenAmounts, false, '0x');
+    await vault.connect(lp).joinPool(
+      poolId,
+      other.address,
+      tokenAddresses,
+      tokenAmounts,
+      false,
+      encodeJoin(
+        tokenAmounts,
+        tokenAddresses.map(() => 0)
+      )
+    );
 
     return poolId;
   }
