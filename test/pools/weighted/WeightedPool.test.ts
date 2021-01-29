@@ -208,6 +208,18 @@ describe('WeightedPool', function () {
 
           await expect(deployPool({ swapFee })).to.be.revertedWith('ERR_MAX_SWAP_FEE');
         });
+
+        it('reverts if at least one weight is too high', async () => {
+          poolWeights[0] = bn(50000).mul((10e18).toString());
+
+          await expect(deployPool({ weights: poolWeights })).to.be.revertedWith('ERR_MAX_WEIGHT');
+        });
+
+        it('reverts if at least one weight is too low', async () => {
+          poolWeights[0] = bn(10);
+
+          await expect(deployPool({ weights: poolWeights })).to.be.revertedWith('ERR_MIN_WEIGHT');
+        });
       });
     });
 
