@@ -69,7 +69,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10')
-      ).to.be.revertedWith('ERR_SUB_OVERFLOW');
+      ).to.be.revertedWith('ERR_INVALID_POST_LOAN_BALANCE');
     });
   });
 
