@@ -198,6 +198,18 @@ describe('StablePool', function () {
 
           await expect(deployPool({ tokens: poolTokens, swapFee })).to.be.revertedWith('ERR_MAX_SWAP_FEE');
         });
+
+        it('reverts if amplification coefficient is too high', async () => {
+          const highAmp = bn(5000).mul((10e18).toString());
+
+          await expect(deployPool({ tokens: poolTokens, amplification: highAmp })).to.be.revertedWith('ERR_MAX_AMP');
+        });
+
+        it('reverts if amplification coefficient is too low', async () => {
+          const lowAmp = bn(10);
+
+          await expect(deployPool({ tokens: poolTokens, amplification: lowAmp })).to.be.revertedWith('ERR_MIN_AMP');
+        });
       });
     });
 
