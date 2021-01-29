@@ -7,15 +7,12 @@ pragma solidity ^0.7.0;
  * Adapted from OpenZeppelin's SafeMath and SignedSafeMath
  */
 library SignedMath {
-    string private constant _ERROR_ADD_OVERFLOW = "ERR_ADD_OVERFLOW";
-    string private constant _ERROR_SUB_OVERFLOW = "ERR_SUB_OVERFLOW";
-
     /**
      * @dev Returns the addition of two signed integers, reverting on overflow.
      */
     function add(int256 a, int256 b) internal pure returns (int256) {
         int256 c = a + b;
-        require((b >= 0 && c >= a) || (b < 0 && c < a), _ERROR_ADD_OVERFLOW);
+        require((b >= 0 && c >= a) || (b < 0 && c < a), "ERR_ADD_OVERFLOW");
         return c;
     }
 
@@ -24,7 +21,7 @@ library SignedMath {
      */
     function sub(int256 a, int256 b) internal pure returns (int256) {
         int256 c = a - b;
-        require((b >= 0 && c <= a) || (b < 0 && c > a), _ERROR_SUB_OVERFLOW);
+        require((b >= 0 && c <= a) || (b < 0 && c > a), "ERR_SUB_OVERFLOW");
         return c;
     }
 
