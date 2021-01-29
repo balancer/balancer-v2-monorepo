@@ -1,6 +1,4 @@
 import 'dotenv/config';
-import { HardhatUserConfig } from 'hardhat/config';
-import { NetworkUserConfig } from 'hardhat/types';
 import '@tenderly/hardhat-tenderly';
 import 'hardhat-deploy';
 import 'hardhat-abi-exporter';
@@ -8,59 +6,36 @@ import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
 import 'solidity-coverage';
 
-import './scripts/seeding/seedPools';
+import { task } from 'hardhat/config';
+import { HardhatUserConfig } from 'hardhat/config';
 
-const chainIds = {
-  ganache: 1337,
-  goerli: 5,
+task('seed', 'Add seed data').setAction(async (args, hre) => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const action = require('./lib/scripts/seeding/seedPools');
+  await action(args, hre);
+});
+
+const CHAIN_IDS = {
   hardhat: 31337,
   kovan: 42,
+  goerli: 5,
   mainnet: 1,
   rinkeby: 4,
   ropsten: 3,
   dockerParity: 17,
 };
 
-// Ensure that we have all the environment variables we need.
-let mnemonic: string;
-if (!process.env.MNEMONIC) {
-  mnemonic = 'test test test test test test test test test test test junk';
-} else {
-  mnemonic = process.env.MNEMONIC;
-}
-
-let infuraApiKey: string;
-if (!process.env.INFURA_API_KEY) {
-  throw new Error('Please set your INFURA_API_KEY in a .env file');
-} else {
-  infuraApiKey = process.env.INFURA_API_KEY;
-}
-
-function createTestnetConfig(network: keyof typeof chainIds): NetworkUserConfig {
-  const url: string = 'https://' + network + '.infura.io/v3/' + infuraApiKey;
-  return {
-    accounts: {
-      count: 10,
-      initialIndex: 0,
-      mnemonic,
-      path: "m/44'/60'/0'/0",
-    },
-    chainId: chainIds[network],
-    url,
-  };
-}
-
 const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
-      chainId: chainIds.hardhat,
+      chainId: CHAIN_IDS.hardhat,
       saveDeployments: true,
     },
     dockerParity: {
       gas: 10000000,
       live: false,
-      chainId: chainIds.dockerParity,
+      chainId: CHAIN_IDS.dockerParity,
       url: 'http://localhost:8545',
       allowUnlimitedContractSize: true,
       saveDeployments: true,
@@ -69,24 +44,20 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       saveDeployments: true,
     },
-    goerli: createTestnetConfig('goerli'),
-    kovan: createTestnetConfig('kovan'),
-    rinkeby: createTestnetConfig('rinkeby'),
-    ropsten: createTestnetConfig('ropsten'),
   },
   namedAccounts: {
     deployer: {
       default: 0,
-      1: 0, // mainnet
-      4: 0, // rinkeby
-      17: 0, // dockerParity
+      [CHAIN_IDS.mainnet]: 0,
+      [CHAIN_IDS.rinkeby]: 0,
+      [CHAIN_IDS.dockerParity]: 0,
     },
     admin: {
       default: 1, // here this will by default take the first account as deployer
       // We use explicit chain IDs so that export-all works correctly: https://github.com/wighawag/hardhat-deploy#options-2
-      1: 1, // mainnet
-      4: 1, // rinkeby
-      17: 1, // dockerParity
+      [CHAIN_IDS.mainnet]: 1,
+      [CHAIN_IDS.rinkeby]: 1,
+      [CHAIN_IDS.dockerParity]: 1,
     },
   },
   solidity: {
@@ -114,6 +85,10 @@ const config: HardhatUserConfig = {
   tenderly: {
     username: 'balancer',
     project: 'v2',
+  },
+  paths: {
+    deploy: 'deployments/migrations',
+    deployments: 'deployments/artifacts',
   },
 };
 

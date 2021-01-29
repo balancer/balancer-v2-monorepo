@@ -1,12 +1,14 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, BigNumberish, Contract } from 'ethers';
-import { deployTokens, mintTokens, TokenList } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
+import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { MAX_UINT256, ZERO_ADDRESS } from '../helpers/constants';
-import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../scripts/helpers/pools';
+
+import { deploy } from '../../lib/helpers/deploy';
+import { bn, BigNumberish } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
+import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 
 let admin: SignerWithAddress;
 let lp: SignerWithAddress;
@@ -31,7 +33,7 @@ describe('Vault - join & exit pool', () => {
 
     for (const symbol in tokens) {
       // Mint tokens for the lp to deposit in the Vault
-      await mintTokens(tokens, symbol, lp, (100e18).toString());
+      await mintTokens(tokens, symbol, lp, bn(100e18));
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
     }
 
@@ -80,10 +82,7 @@ describe('Vault - join & exit pool', () => {
         await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
         // Perform an initial join so that the pool has balance that can be charged as fees
-        await pool.setOnJoinExitPoolReturnValues(
-          Array(tokenAmount).fill((50e18).toString()),
-          Array(tokenAmount).fill(0)
-        );
+        await pool.setOnJoinExitPoolReturnValues(Array(tokenAmount).fill(bn(50e18)), Array(tokenAmount).fill(0));
 
         await vault
           .connect(lp)
@@ -103,7 +102,7 @@ describe('Vault - join & exit pool', () => {
       }
 
       async function assertJoinBalanceChanges(expectedLPDeltas: BigNumberish[], expectedPoolDeltas: BigNumberish[]) {
-        const prePoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const prePoolBalances = (await vault.getPoolTokens(poolId)).balances;
         const preCollectedFees = await Promise.all(tokenAddresses.map((token) => vault.getCollectedFeesByToken(token)));
 
         const changes = Object.assign(
@@ -112,9 +111,10 @@ describe('Vault - join & exit pool', () => {
             return { [symbol(tokenAddresses[i])]: delta };
           })
         );
+
         await expectBalanceChange(callJoinPool, tokens, [{ account: lp, changes }, { account: recipient }]);
 
-        const postPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const postPoolBalances = (await vault.getPoolTokens(poolId)).balances;
         const postCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
@@ -129,10 +129,8 @@ describe('Vault - join & exit pool', () => {
           collectedFeeDeltas.push(postCollectedFees[i].sub(preCollectedFees[i]));
         }
 
-        expect(poolDeltas).to.deep.equal(expectedPoolDeltas.map((delta) => BigNumber.from(delta.toString())));
-        expect(collectedFeeDeltas).to.deep.equal(
-          dueProtocolFeeAmounts.map((amount) => BigNumber.from(amount.toString()))
-        );
+        expect(poolDeltas).to.deep.equal(expectedPoolDeltas.map(bn));
+        expect(collectedFeeDeltas).to.deep.equal(dueProtocolFeeAmounts.map(bn));
       }
 
       context('with no due protocol fees', () => {
@@ -150,18 +148,18 @@ describe('Vault - join & exit pool', () => {
               withdrawFromInternalBalance = false;
             });
 
-            it('allows zero-token joins', async () => {
+            it('allows zero-token exits', async () => {
               joinAmounts = Array(tokenAddresses.length).fill(0);
               await pool.setOnJoinExitPoolReturnValues(joinAmounts, dueProtocolFeeAmounts);
 
               await assertJoinBalanceChanges(Array(tokenAmount).fill(0), Array(tokenAmount).fill(0));
             });
 
-            context('with non-zero join amounts', () => {
+            context('with non-zero exit amounts', () => {
               beforeEach(async () => {
                 joinAmounts = [];
                 for (let i = 0; i < tokenAmount; ++i) {
-                  joinAmounts.push(BigNumber.from(((i + 1) * 1e18).toString()));
+                  joinAmounts.push(bn((i + 1) * 1e18));
                 }
 
                 await pool.setOnJoinExitPoolReturnValues(joinAmounts, dueProtocolFeeAmounts);
@@ -185,7 +183,7 @@ describe('Vault - join & exit pool', () => {
               // No point in testing zero join amounts here
               joinAmounts = [];
               for (let i = 0; i < tokenAmount; ++i) {
-                joinAmounts.push(BigNumber.from(((i + 1) * 1e18).toString()));
+                joinAmounts.push(bn((i + 1) * 1e18));
               }
 
               await pool.setOnJoinExitPoolReturnValues(joinAmounts, dueProtocolFeeAmounts);
@@ -200,7 +198,9 @@ describe('Vault - join & exit pool', () => {
 
             it('uses both token transfers and internal balance if it is not enough', async () => {
               // Deposit the required amount, minus one
-              await vault.connect(lp).depositToInternalBalance(tokenAddresses[1], joinAmounts[1].sub(1), lp.address);
+              await vault
+                .connect(lp)
+                .depositToInternalBalance([tokenAddresses[1]], [joinAmounts[1].sub(1)], lp.address);
 
               // Expect a minus one delta for the deposited token (since the deposit was not enough)
               await assertJoinBalanceChanges(
@@ -209,12 +209,16 @@ describe('Vault - join & exit pool', () => {
               );
 
               // All internal balance was used up
-              expect(await vault.connect(lp).getInternalBalance(lp.address, tokenAddresses[1])).to.equal(0);
+              expect(await vault.connect(lp).getInternalBalance(lp.address, [tokenAddresses[1]])).to.deep.equal([
+                bn(0),
+              ]);
             });
 
             it('uses internal balance exclusively if it suffices', async () => {
               // Deposit the required amount, plus one
-              await vault.connect(lp).depositToInternalBalance(tokenAddresses[1], joinAmounts[1].add(1), lp.address);
+              await vault
+                .connect(lp)
+                .depositToInternalBalance([tokenAddresses[1]], [joinAmounts[1].add(1)], lp.address);
 
               // Expect no delta for the deposited token (since the deposit is large enough)
               await assertJoinBalanceChanges(
@@ -223,7 +227,9 @@ describe('Vault - join & exit pool', () => {
               );
 
               // The excess internal balance remains
-              expect(await vault.connect(lp).getInternalBalance(lp.address, tokenAddresses[1])).to.equal(1);
+              expect(await vault.connect(lp).getInternalBalance(lp.address, [tokenAddresses[1]])).to.deep.equal([
+                bn(1),
+              ]);
             });
           });
         });
@@ -232,7 +238,7 @@ describe('Vault - join & exit pool', () => {
           beforeEach(async () => {
             joinAmounts = [];
             for (let i = 0; i < tokenAmount; ++i) {
-              joinAmounts.push(BigNumber.from(((i + 1) * 1e18).toString()));
+              joinAmounts.push(bn((i + 1) * 1e18));
             }
 
             maxAmountsIn = joinAmounts.map((amount, index) => (index == 1 ? amount.sub(1) : amount));
@@ -249,7 +255,7 @@ describe('Vault - join & exit pool', () => {
             // Deposit sufficient internal balance for all tokens
             await Promise.all(
               tokenAddresses.map((token, i) =>
-                vault.connect(lp).depositToInternalBalance(token, joinAmounts[i], lp.address)
+                vault.connect(lp).depositToInternalBalance([token], [joinAmounts[i]], lp.address)
               )
             );
 
@@ -264,7 +270,7 @@ describe('Vault - join & exit pool', () => {
         beforeEach(async () => {
           dueProtocolFeeAmounts = [];
           for (let i = 0; i < tokenAmount; ++i) {
-            dueProtocolFeeAmounts.push(BigNumber.from(((i + 1) * 1e18).toString()));
+            dueProtocolFeeAmounts.push(bn((i + 1) * 1e18));
           }
 
           // No point in testing checks related to maxAmountsIn or internal balance - these are unrelated
@@ -310,6 +316,14 @@ describe('Vault - join & exit pool', () => {
           maxAmountsIn = Array(tokenAddresses.length).fill(MAX_UINT256);
           joinAmounts = Array(tokenAddresses.length).fill(0);
           dueProtocolFeeAmounts = Array(tokenAddresses.length).fill(0);
+        });
+
+        it('reverts if the pool does not exist', async () => {
+          await expect(
+            vault
+              .connect(lp)
+              .joinPool(ethers.utils.id('foo'), recipient.address, tokenAddresses, maxAmountsIn.slice(1), false, '0x')
+          ).to.be.revertedWith('Nonexistent pool');
         });
 
         it('reverts if the length of the tokens and amount arrays is not the same', async () => {
@@ -420,10 +434,7 @@ describe('Vault - join & exit pool', () => {
         await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
         // Perform an initial join so that the pool has balance that can be exited and charged as fees
-        await pool.setOnJoinExitPoolReturnValues(
-          Array(tokenAmount).fill((50e18).toString()),
-          Array(tokenAmount).fill(0)
-        );
+        await pool.setOnJoinExitPoolReturnValues(Array(tokenAmount).fill(bn(50e18)), Array(tokenAmount).fill(0));
 
         await vault
           .connect(lp)
@@ -447,7 +458,7 @@ describe('Vault - join & exit pool', () => {
         expectedRecipientDeltas: BigNumberish[],
         expectedPoolDeltas: BigNumberish[]
       ) {
-        const prePoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const prePoolBalances = (await vault.getPoolTokens(poolId)).balances;
         const preCollectedFees = await Promise.all(tokenAddresses.map((token) => vault.getCollectedFeesByToken(token)));
 
         const changes = Object.assign(
@@ -458,7 +469,7 @@ describe('Vault - join & exit pool', () => {
         );
         await expectBalanceChange(callExitPool, tokens, [{ account: lp }, { account: recipient, changes }]);
 
-        const postPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const postPoolBalances = (await vault.getPoolTokens(poolId)).balances;
         const postCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
@@ -473,10 +484,8 @@ describe('Vault - join & exit pool', () => {
           collectedFeeDeltas.push(postCollectedFees[i].sub(preCollectedFees[i]));
         }
 
-        expect(poolDeltas).to.deep.equal(expectedPoolDeltas.map((delta) => BigNumber.from(delta.toString())));
-        expect(collectedFeeDeltas).to.deep.equal(
-          dueProtocolFeeAmounts.map((amount) => BigNumber.from(amount.toString()))
-        );
+        expect(poolDeltas).to.deep.equal(expectedPoolDeltas.map(bn));
+        expect(collectedFeeDeltas).to.deep.equal(dueProtocolFeeAmounts.map(bn));
       }
 
       context('with no due protocol fees', () => {
@@ -505,7 +514,7 @@ describe('Vault - join & exit pool', () => {
               beforeEach(async () => {
                 exitAmounts = [];
                 for (let i = 0; i < tokenAmount; ++i) {
-                  exitAmounts.push(BigNumber.from(((i + 1) * 1e18).toString()));
+                  exitAmounts.push(bn((i + 1) * 1e18));
                 }
 
                 await pool.setOnJoinExitPoolReturnValues(exitAmounts, dueProtocolFeeAmounts);
@@ -530,7 +539,7 @@ describe('Vault - join & exit pool', () => {
 
               exitAmounts = [];
               for (let i = 0; i < tokenAmount; ++i) {
-                exitAmounts.push(BigNumber.from(((i + 1) * 1e18).toString()));
+                exitAmounts.push(bn((i + 1) * 1e18));
               }
 
               await pool.setOnJoinExitPoolReturnValues(exitAmounts, dueProtocolFeeAmounts);
@@ -538,7 +547,7 @@ describe('Vault - join & exit pool', () => {
 
             it('deposits tokens to for the recipient', async () => {
               const preInternalBalance = await Promise.all(
-                tokenAddresses.map((token) => vault.getInternalBalance(recipient.address, token))
+                tokenAddresses.map((token) => vault.getInternalBalance(recipient.address, [token]))
               );
 
               await assertExitBalanceChanges(
@@ -547,12 +556,12 @@ describe('Vault - join & exit pool', () => {
               );
 
               const postInternalBalance = await Promise.all(
-                tokenAddresses.map((token) => vault.getInternalBalance(recipient.address, token))
+                tokenAddresses.map((token) => vault.getInternalBalance(recipient.address, [token]))
               );
 
               const internalBalanceDeltas = [];
               for (let i = 0; i < tokenAmount; ++i) {
-                internalBalanceDeltas.push(postInternalBalance[i].sub(preInternalBalance[i]));
+                internalBalanceDeltas.push(postInternalBalance[i][0].sub(preInternalBalance[i][0]));
               }
 
               expect(internalBalanceDeltas).to.deep.equal(exitAmounts);
@@ -565,7 +574,7 @@ describe('Vault - join & exit pool', () => {
             beforeEach(async () => {
               exitAmounts = [];
               for (let i = 0; i < tokenAmount; ++i) {
-                exitAmounts.push(BigNumber.from(((i + 1) * 1e18).toString()));
+                exitAmounts.push(bn((i + 1) * 1e18));
               }
 
               minAmountsOut = exitAmounts.map((amount, index) => (index == 1 ? amount.add(1) : amount));
@@ -589,7 +598,7 @@ describe('Vault - join & exit pool', () => {
           beforeEach(async () => {
             dueProtocolFeeAmounts = [];
             for (let i = 0; i < tokenAmount; ++i) {
-              dueProtocolFeeAmounts.push(BigNumber.from(((i + 1) * 1e18).toString()));
+              dueProtocolFeeAmounts.push(bn((i + 1) * 1e18));
             }
 
             // No point in testing checks related to minAmountsOut or internal balance - these are unrelated

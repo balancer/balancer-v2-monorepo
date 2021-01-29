@@ -16,19 +16,18 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../vendor/ReentrancyGuard.sol";
 
 import "../../math/FixedPoint.sol";
 import "../../helpers/UnsafeRandom.sol";
+import "../../vendor/ReentrancyGuard.sol";
 
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPool.sol";
 import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
 
-import "../BalancerPoolToken.sol";
 import "./WeightedMath.sol";
+import "../BalancerPoolToken.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
@@ -62,24 +61,23 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     IERC20 private immutable _token15;
 
     uint256 private immutable _totalTokens;
-    uint256 private immutable _sumWeights;
 
-    uint256 private immutable _weight0;
-    uint256 private immutable _weight1;
-    uint256 private immutable _weight2;
-    uint256 private immutable _weight3;
-    uint256 private immutable _weight4;
-    uint256 private immutable _weight5;
-    uint256 private immutable _weight6;
-    uint256 private immutable _weight7;
-    uint256 private immutable _weight8;
-    uint256 private immutable _weight9;
-    uint256 private immutable _weight10;
-    uint256 private immutable _weight11;
-    uint256 private immutable _weight12;
-    uint256 private immutable _weight13;
-    uint256 private immutable _weight14;
-    uint256 private immutable _weight15;
+    uint256 private immutable _normalizedWeight0;
+    uint256 private immutable _normalizedWeight1;
+    uint256 private immutable _normalizedWeight2;
+    uint256 private immutable _normalizedWeight3;
+    uint256 private immutable _normalizedWeight4;
+    uint256 private immutable _normalizedWeight5;
+    uint256 private immutable _normalizedWeight6;
+    uint256 private immutable _normalizedWeight7;
+    uint256 private immutable _normalizedWeight8;
+    uint256 private immutable _normalizedWeight9;
+    uint256 private immutable _normalizedWeight10;
+    uint256 private immutable _normalizedWeight11;
+    uint256 private immutable _normalizedWeight12;
+    uint256 private immutable _normalizedWeight13;
+    uint256 private immutable _normalizedWeight14;
+    uint256 private immutable _normalizedWeight15;
 
     uint256 private immutable _swapFee;
 
@@ -102,7 +100,6 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= _MIN_TOKENS, "ERR_MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "ERR_MAX_TOKENS");
-
         require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
 
         IVault.PoolSpecialization specialization = tokens.length == 2
@@ -117,19 +114,11 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         // Set immutable state variables - these cannot be read from during construction
         _vault = vault;
         _poolId = poolId;
-
         _totalTokens = tokens.length;
 
         require(swapFee >= _MIN_SWAP_FEE, "ERR_MIN_SWAP_FEE");
         require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_SWAP_FEE");
         _swapFee = swapFee;
-
-        //Saves the sum of the weights
-        uint256 sumWeights = 0;
-        for (uint8 i = 0; i < weights.length; i++) {
-            sumWeights = sumWeights.add(weights[i]);
-        }
-        _sumWeights = sumWeights;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _token0 = tokens.length > 0 ? tokens[0] : IERC20(0);
@@ -149,88 +138,90 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         _token14 = tokens.length > 14 ? tokens[14] : IERC20(0);
         _token15 = tokens.length > 15 ? tokens[15] : IERC20(0);
 
-        _weight0 = weights.length > 0 ? weights[0] : 0;
-        _weight1 = weights.length > 1 ? weights[1] : 0;
-        _weight2 = weights.length > 2 ? weights[2] : 0;
-        _weight3 = weights.length > 3 ? weights[3] : 0;
-        _weight4 = weights.length > 4 ? weights[4] : 0;
-        _weight5 = weights.length > 5 ? weights[5] : 0;
-        _weight6 = weights.length > 6 ? weights[6] : 0;
-        _weight7 = weights.length > 7 ? weights[7] : 0;
-        _weight8 = weights.length > 8 ? weights[8] : 0;
-        _weight9 = weights.length > 9 ? weights[9] : 0;
-        _weight10 = weights.length > 10 ? weights[10] : 0;
-        _weight11 = weights.length > 11 ? weights[11] : 0;
-        _weight12 = weights.length > 12 ? weights[12] : 0;
-        _weight13 = weights.length > 13 ? weights[13] : 0;
-        _weight14 = weights.length > 14 ? weights[14] : 0;
-        _weight15 = weights.length > 15 ? weights[15] : 0;
+        // Compute normalized weights
+        uint256 sumWeights = 0;
+        for (uint8 i = 0; i < weights.length; i++) {
+            sumWeights = sumWeights.add(weights[i]);
+        }
+        uint256[] memory normalizedWeights = new uint256[](weights.length);
+        for (uint8 i = 0; i < normalizedWeights.length; i++) {
+            normalizedWeights[i] = weights[i].div(sumWeights);
+        }
+
+        _normalizedWeight0 = weights.length > 0 ? normalizedWeights[0] : 0;
+        _normalizedWeight1 = weights.length > 1 ? normalizedWeights[1] : 0;
+        _normalizedWeight2 = weights.length > 2 ? normalizedWeights[2] : 0;
+        _normalizedWeight3 = weights.length > 3 ? normalizedWeights[3] : 0;
+        _normalizedWeight4 = weights.length > 4 ? normalizedWeights[4] : 0;
+        _normalizedWeight5 = weights.length > 5 ? normalizedWeights[5] : 0;
+        _normalizedWeight6 = weights.length > 6 ? normalizedWeights[6] : 0;
+        _normalizedWeight7 = weights.length > 7 ? normalizedWeights[7] : 0;
+        _normalizedWeight8 = weights.length > 8 ? normalizedWeights[8] : 0;
+        _normalizedWeight9 = weights.length > 9 ? normalizedWeights[9] : 0;
+        _normalizedWeight10 = weights.length > 10 ? normalizedWeights[10] : 0;
+        _normalizedWeight11 = weights.length > 11 ? normalizedWeights[11] : 0;
+        _normalizedWeight12 = weights.length > 12 ? normalizedWeights[12] : 0;
+        _normalizedWeight13 = weights.length > 13 ? normalizedWeights[13] : 0;
+        _normalizedWeight14 = weights.length > 14 ? normalizedWeights[14] : 0;
+        _normalizedWeight15 = weights.length > 15 ? normalizedWeights[15] : 0;
     }
 
-    function _weight(IERC20 token) private view returns (uint256) {
+    function _normalizedWeight(IERC20 token) internal view returns (uint256) {
         // prettier-ignore
-        if (token == _token0) { return _weight0; }
-        else if (token == _token1) { return _weight1; }
-        else if (token == _token2) { return _weight2; }
-        else if (token == _token3) { return _weight3; }
-        else if (token == _token4) { return _weight4; }
-        else if (token == _token5) { return _weight5; }
-        else if (token == _token6) { return _weight6; }
-        else if (token == _token7) { return _weight7; }
-        else if (token == _token8) { return _weight8; }
-        else if (token == _token9) { return _weight9; }
-        else if (token == _token10) { return _weight10; }
-        else if (token == _token11) { return _weight11; }
-        else if (token == _token12) { return _weight12; }
-        else if (token == _token13) { return _weight13; }
-        else if (token == _token14) { return _weight14; }
-        else if (token == _token15) { return _weight15; }
+        if (token == _token0) { return _normalizedWeight0; }
+        else if (token == _token1) { return _normalizedWeight1; }
+        else if (token == _token2) { return _normalizedWeight2; }
+        else if (token == _token3) { return _normalizedWeight3; }
+        else if (token == _token4) { return _normalizedWeight4; }
+        else if (token == _token5) { return _normalizedWeight5; }
+        else if (token == _token6) { return _normalizedWeight6; }
+        else if (token == _token7) { return _normalizedWeight7; }
+        else if (token == _token8) { return _normalizedWeight8; }
+        else if (token == _token9) { return _normalizedWeight9; }
+        else if (token == _token10) { return _normalizedWeight10; }
+        else if (token == _token11) { return _normalizedWeight11; }
+        else if (token == _token12) { return _normalizedWeight12; }
+        else if (token == _token13) { return _normalizedWeight13; }
+        else if (token == _token14) { return _normalizedWeight14; }
+        else if (token == _token15) { return _normalizedWeight15; }
         else {
             revert("ERR_INVALID_TOKEN");
         }
     }
 
-    function _weights() private view returns (uint256[] memory) {
-        uint256[] memory weights = new uint256[](_totalTokens);
+    function _normalizedWeights() internal view returns (uint256[] memory) {
+        uint256[] memory normalizedWeights = new uint256[](_totalTokens);
 
         // prettier-ignore
         {
-            if (_totalTokens > 0) { weights[0] = _weight0; } else { return weights; }
-            if (_totalTokens > 1) { weights[1] = _weight1; } else { return weights; }
-            if (_totalTokens > 2) { weights[2] = _weight2; } else { return weights; }
-            if (_totalTokens > 3) { weights[3] = _weight3; } else { return weights; }
-            if (_totalTokens > 4) { weights[4] = _weight4; } else { return weights; }
-            if (_totalTokens > 5) { weights[5] = _weight5; } else { return weights; }
-            if (_totalTokens > 6) { weights[6] = _weight6; } else { return weights; }
-            if (_totalTokens > 7) { weights[7] = _weight7; } else { return weights; }
-            if (_totalTokens > 8) { weights[8] = _weight8; } else { return weights; }
-            if (_totalTokens > 9) { weights[9] = _weight9; } else { return weights; }
-            if (_totalTokens > 10) { weights[10] = _weight10; } else { return weights; }
-            if (_totalTokens > 11) { weights[11] = _weight11; } else { return weights; }
-            if (_totalTokens > 12) { weights[12] = _weight12; } else { return weights; }
-            if (_totalTokens > 13) { weights[13] = _weight13; } else { return weights; }
-            if (_totalTokens > 14) { weights[14] = _weight14; } else { return weights; }
-            if (_totalTokens > 15) { weights[15] = _weight15; } else { return weights; }
+            if (_totalTokens > 0) { normalizedWeights[0] = _normalizedWeight0; } else { return normalizedWeights; }
+            if (_totalTokens > 1) { normalizedWeights[1] = _normalizedWeight1; } else { return normalizedWeights; }
+            if (_totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
+            if (_totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
+            if (_totalTokens > 4) { normalizedWeights[4] = _normalizedWeight4; } else { return normalizedWeights; }
+            if (_totalTokens > 5) { normalizedWeights[5] = _normalizedWeight5; } else { return normalizedWeights; }
+            if (_totalTokens > 6) { normalizedWeights[6] = _normalizedWeight6; } else { return normalizedWeights; }
+            if (_totalTokens > 7) { normalizedWeights[7] = _normalizedWeight7; } else { return normalizedWeights; }
+            if (_totalTokens > 8) { normalizedWeights[8] = _normalizedWeight8; } else { return normalizedWeights; }
+            if (_totalTokens > 9) { normalizedWeights[9] = _normalizedWeight9; } else { return normalizedWeights; }
+            if (_totalTokens > 10) { normalizedWeights[10] = _normalizedWeight10; } else { return normalizedWeights; }
+            if (_totalTokens > 11) { normalizedWeights[11] = _normalizedWeight11; } else { return normalizedWeights; }
+            if (_totalTokens > 12) { normalizedWeights[12] = _normalizedWeight12; } else { return normalizedWeights; }
+            if (_totalTokens > 13) { normalizedWeights[13] = _normalizedWeight13; } else { return normalizedWeights; }
+            if (_totalTokens > 14) { normalizedWeights[14] = _normalizedWeight14; } else { return normalizedWeights; }
+            if (_totalTokens > 15) { normalizedWeights[15] = _normalizedWeight15; } else { return normalizedWeights; }
         }
 
-        return weights;
-    }
-
-    /**
-     * @dev Internal function to tell the normalized weight associated to a token
-     * @param token Address of the token querying the normalized weight of
-     */
-    function _normalizedWeight(IERC20 token) internal view returns (uint256) {
-        return _weight(token).div(_sumWeights);
+        return normalizedWeights;
     }
 
     //Getters
 
-    function getVault() external view returns (IVault) {
+    function getVault() external view override returns (IVault) {
         return _vault;
     }
 
-    function getPoolId() external view returns (bytes32) {
+    function getPoolId() external view override returns (bytes32) {
         return _poolId;
     }
 
@@ -239,31 +230,16 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     }
 
     function getInvariant() external view returns (uint256) {
-        IERC20[] memory tokens = _vault.getPoolTokens(_poolId);
-        uint256[] memory balances = _vault.getPoolTokenBalances(_poolId, tokens);
-
-        uint256[] memory normalizedWeights = new uint256[](tokens.length);
-
-        for (uint8 i = 0; i < tokens.length; i++) {
-            normalizedWeights[i] = _normalizedWeight(tokens[i]);
-        }
-
+        (IERC20[] memory tokens, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
+        uint256[] memory normalizedWeights = getNormalizedWeights(tokens);
         return _invariant(normalizedWeights, balances);
     }
 
-    function getWeights(IERC20[] memory tokens) external view returns (uint256[] memory weights) {
-        weights = new uint256[](tokens.length);
-        for (uint256 i = 0; i < weights.length; ++i) {
-            weights[i] = _weight(tokens[i]);
+    function getNormalizedWeights(IERC20[] memory tokens) public view returns (uint256[] memory normalizedWeights) {
+        normalizedWeights = new uint256[](tokens.length);
+        for (uint256 i = 0; i < normalizedWeights.length; ++i) {
+            normalizedWeights[i] = _normalizedWeight(tokens[i]);
         }
-    }
-
-    /**
-     * @dev Returns the normalized weight associated to a token
-     * @param token Address of the token querying the normalized weight of
-     */
-    function getNormalizedWeight(IERC20 token) external view returns (uint256) {
-        return _normalizedWeight(token);
     }
 
     function getSwapFee() external view returns (uint256) {
@@ -285,14 +261,10 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
-
-        uint256[] memory normalizedWeights = _weights();
-        for (uint8 i = 0; i < _totalTokens; i++) {
-            normalizedWeights[i] = normalizedWeights[i].div(_sumWeights);
-        }
-
         // The Vault guarantees currentBalances and maxAmountsIn have the same length
 
+        // TODO: This seems inconsistent w/ `getInvariant` for example. We assume the weights and balances order match
+        uint256[] memory normalizedWeights = _normalizedWeights();
         JoinKind kind = abi.decode(userData, (JoinKind));
 
         if (kind == JoinKind.INIT) {
@@ -387,14 +359,9 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
-
-        uint256[] memory normalizedWeights = _weights();
-        for (uint8 i = 0; i < _totalTokens; i++) {
-            normalizedWeights[i] = normalizedWeights[i].div(_sumWeights);
-        }
-
         // The Vault guarantees currentBalances and minAmountsOut have the same length
 
+        uint256[] memory normalizedWeights = _normalizedWeights();
         // This updates currentBalances by deducting protocol fees to pay, which the Vault will charge the Pool once
         // this function returns.
         uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
@@ -436,10 +403,11 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
 
         _burnPoolTokens(sender, bptAmountIn);
 
-        // Reset swap fee accumulation
         for (uint256 i = 0; i < _totalTokens; ++i) {
             currentBalances[i] = currentBalances[i].sub(amountsOut[i]);
         }
+
+        // Reset swap fee accumulation
         _lastInvariant = _invariant(normalizedWeights, currentBalances);
 
         return (amountsOut, dueProtocolFeeAmounts);
@@ -537,9 +505,9 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         // Calculate the maximum amount that can be taken out of the pool
         uint256 maximumAmountOut = _outGivenIn(
             currentBalanceTokenIn,
-            _weight(request.tokenIn),
+            _normalizedWeight(request.tokenIn),
             currentBalanceTokenOut,
-            _weight(request.tokenOut),
+            _normalizedWeight(request.tokenOut),
             adjustedIn
         );
 
@@ -554,9 +522,9 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         // Calculate the minimum amount that must be put into the pool
         uint256 minimumAmountIn = _inGivenOut(
             currentBalanceTokenIn,
-            _weight(request.tokenIn),
+            _normalizedWeight(request.tokenIn),
             currentBalanceTokenOut,
-            _weight(request.tokenOut),
+            _normalizedWeight(request.tokenOut),
             request.amountOut
         );
 

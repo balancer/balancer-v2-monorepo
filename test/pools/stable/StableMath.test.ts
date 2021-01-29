@@ -1,4 +1,4 @@
-import { deploy } from '../../../scripts/helpers/deploy';
+import { deploy } from '../../../lib/helpers/deploy';
 import {
   calculateAnalyticalInvariantForTwoTokens,
   calculateInvariant,
@@ -6,7 +6,8 @@ import {
   calcOutGivenIn,
   calculateOneTokenSwapFee,
 } from '../../helpers/math/stable';
-import { expectEqualWithError, bn } from '../../helpers/numbers';
+import { expectEqualWithError } from '../../helpers/relativeError';
+import { bn } from '../../../lib/helpers/numbers';
 import { Contract } from 'ethers';
 
 const MAX_RELATIVE_ERROR = 0.001; //Max relative error

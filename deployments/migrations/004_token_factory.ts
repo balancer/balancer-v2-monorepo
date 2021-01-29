@@ -1,0 +1,31 @@
+import { HardhatRuntimeEnvironment } from 'hardhat/types';
+
+export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
+  const { deployments, getChainId, getNamedAccounts } = hre;
+  const { deploy } = deployments;
+
+  const { deployer } = await getNamedAccounts();
+
+  const chainId = await getChainId();
+
+  if (chainId != '1') {
+    await deploy('TokenFactory', {
+      from: deployer,
+      log: true,
+      deterministicDeployment: true,
+    });
+
+    await deploy('WETH9', {
+      from: deployer,
+      args: [deployer],
+      log: true,
+      deterministicDeployment: true,
+    });
+
+    await deploy('Multicall', {
+      from: deployer,
+      log: true,
+      deterministicDeployment: true,
+    });
+  }
+}

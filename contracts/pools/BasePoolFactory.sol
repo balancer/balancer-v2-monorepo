@@ -17,49 +17,65 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../vault/interfaces/IVault.sol";
+import "../vault/interfaces/IPool.sol";
 
 abstract contract BasePoolFactory {
+    using EnumerableSet for EnumerableSet.Bytes32Set;
     using Address for address;
 
-    IVault public immutable vault;
+    IVault internal immutable _vault;
+
+    // Set with Pools created by this factory
+    EnumerableSet.Bytes32Set internal _createdPools;
 
     event PoolCreated(address indexed pool);
 
-    constructor(IVault _vault) {
-        vault = _vault;
+    constructor(IVault vault) {
+        _vault = vault;
+    }
+
+    function getVault() external view returns (IVault) {
+        return _vault;
+    }
+
+    function getNumberOfCreatedPools() external view returns (uint256) {
+        return _createdPools.length();
+    }
+
+    function getCreatedPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory) {
+        require((end >= start) && (end - start) <= _createdPools.length(), "ERR_BAD_INDICES");
+
+        bytes32[] memory poolIds = new bytes32[](end - start);
+        for (uint256 i = 0; i < poolIds.length; ++i) {
+            poolIds[i] = _createdPools.at(i + start);
+        }
+
+        return poolIds;
     }
 
     /**
-     * @dev Deploys a pool contract defined by `creationCode`. The `salt` value is only used in determining the
-     * resulting pool address. Any value can be passed, but reusing `salt` for a given `creationCode` results in
-     * a revert.
-     *
-     * Before the constructor of the created contract is executed, the factory will register it in the Vault as a
-     * Universal Agent. This means the contract will be able to pull funds from both Internal Balance and tokens
-     * that have been granted allowance. As is always the case when dealing with Universal Agents, the contract should
-     * be careful to authenticate any addresses they use this way.
+     * @dev Deploys a pool contract defined by `creationCode`.
      *
      * The creation code for a Solidity contract can be constructed by concatenating the `creationCode` property of the
      * contract type with the ABI-encoded constructor arguments. Note that the compiler doesn't perform any type
      * checking here: all factory-created contracts should be subject to at least basic testing.
      *
      * Sample usage using abi.encodePacked to concatenate the `bytes` arrays:
-     *   _create(abi.encodePacked(type(ERC20).creationCode, abi.encode("My Token", "TKN", 18)), salt);
+     *   _create(abi.encodePacked(type(ERC20).creationCode, abi.encode("My Token", "TKN", 18)));
      *
      * Emits a `PoolCreated` event.
      *
      * Returns the address of the created contract.
      */
-    function _create(bytes memory creationCode, bytes32 salt) internal returns (address) {
-        address expectedPool = Create2.computeAddress(salt, keccak256(creationCode));
-        require(!expectedPool.isContract(), "Salt cannot be reused");
+    function _create(bytes memory creationCode) internal returns (address) {
+        address pool = Create2.deploy(0, bytes32(_createdPools.length()), creationCode);
+        bytes32 poolId = IPool(pool).getPoolId();
 
-        vault.addUniversalAgent(expectedPool);
-
-        address pool = Create2.deploy(0, salt, creationCode);
-        assert(pool == expectedPool);
+        bool added = _createdPools.add(poolId);
+        require(added, "Repeated Pool ID"); // This should never happen, as the Vault assigns unique IDs
 
         emit PoolCreated(pool);
 

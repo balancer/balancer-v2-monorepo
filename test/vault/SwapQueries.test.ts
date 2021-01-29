@@ -1,15 +1,14 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../scripts/helpers/deploy';
-import { toFixedPoint } from '../../scripts/helpers/fixedPoint';
-import { MinimalSwapInfoPool } from '../../scripts/helpers/pools';
-import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../scripts/helpers/trading';
-
-import { deployTokens, TokenList } from '../helpers/tokens';
-import { MAX_UINT128, ZERO_ADDRESS } from '../helpers/constants';
+import { fp, bn } from '../../lib/helpers/numbers';
+import { deploy } from '../../lib/helpers/deploy';
+import { MinimalSwapInfoPool } from '../../lib/helpers/pools';
+import { deploySortedTokens, TokenList } from '../../lib/helpers/tokens';
+import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 
 describe('Vault - swap queries', () => {
   let vault: Contract, funds: FundManagement;
@@ -26,7 +25,7 @@ describe('Vault - swap queries', () => {
     // All of the tests in this suite have no side effects, so we deploy and initially contracts only one to save time
 
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
-    tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
+    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
     assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
 
@@ -37,22 +36,32 @@ describe('Vault - swap queries', () => {
 
     for (let i = 0; i < MAX_POOLS; ++i) {
       const pool = await deploy('MockPool', { args: [vault.address, MinimalSwapInfoPool] });
-      await pool.setMultiplier(toFixedPoint(2));
+      await pool.setMultiplier(fp(2));
 
-      await vault.connect(lp).addUserAgent(pool.address);
+      const poolId = await pool.getPoolId();
 
-      await pool.connect(lp).registerTokens(tokenAddresses, assetManagers);
+      await pool.setMultiplier(fp(2));
 
-      await pool.connect(lp).addLiquidity(
-        tokenAddresses,
-        tokenAddresses.map(() => (100e18).toString())
+      await pool.registerTokens(tokenAddresses, assetManagers);
+
+      await pool.setOnJoinExitPoolReturnValues(
+        tokenAddresses.map(() => bn(100e18)),
+        tokenAddresses.map(() => 0)
       );
 
-      poolIds.push(await pool.getPoolId());
+      await vault.connect(lp).joinPool(
+        poolId,
+        lp.address,
+        tokenAddresses,
+        tokenAddresses.map(() => MAX_UINT256),
+        false,
+        '0x'
+      );
+
+      poolIds.push(poolId);
     }
 
     funds = {
-      sender: ZERO_ADDRESS,
       recipient: ZERO_ADDRESS,
       fromInternalBalance: false,
       toInternalBalance: false,
@@ -79,12 +88,12 @@ describe('Vault - swap queries', () => {
   }
 
   describe('given in', () => {
-    function assertQueryBatchSwapGivenIn(swapsData: SwapData[], expectedDeltas: BigNumber[]) {
+    function assertQueryBatchSwapGivenIn(swapsData: SwapData[], expectedDeltas: number[]) {
       it('returns the expected amounts', async () => {
         const swaps: SwapIn[] = toSwapIn(swapsDataToSwaps(swapsData));
 
         const deltas = await vault.callStatic.queryBatchSwapGivenIn(swaps, tokenAddresses, funds);
-        expect(deltas).to.deep.equal(expectedDeltas);
+        expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
 
@@ -98,7 +107,7 @@ describe('Vault - swap queries', () => {
             amount: 5,
           },
         ],
-        toBigNumberArray([5, -10, 0])
+        [5, -10, 0]
       );
     });
 
@@ -118,7 +127,7 @@ describe('Vault - swap queries', () => {
             amount: 5,
           },
         ],
-        toBigNumberArray([10, -20, 0])
+        [10, -20, 0]
       );
     });
 
@@ -138,18 +147,18 @@ describe('Vault - swap queries', () => {
             amount: 0,
           },
         ],
-        toBigNumberArray([5, 0, -20])
+        [5, 0, -20]
       );
     });
   });
 
   describe('given out', () => {
-    function assertQueryBatchSwapGivenOut(swapsData: SwapData[], expectedDeltas: BigNumber[]) {
+    function assertQueryBatchSwapGivenOut(swapsData: SwapData[], expectedDeltas: number[]) {
       it('returns the expected amounts', async () => {
         const swaps: SwapOut[] = toSwapOut(swapsDataToSwaps(swapsData));
 
         const deltas = await vault.callStatic.queryBatchSwapGivenOut(swaps, tokenAddresses, funds);
-        expect(deltas).to.deep.equal(expectedDeltas);
+        expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
 
@@ -163,7 +172,7 @@ describe('Vault - swap queries', () => {
             amount: 10,
           },
         ],
-        toBigNumberArray([5, -10, 0])
+        [5, -10, 0]
       );
     });
 
@@ -183,7 +192,7 @@ describe('Vault - swap queries', () => {
             amount: 10,
           },
         ],
-        toBigNumberArray([10, -20, 0])
+        [10, -20, 0]
       );
     });
 
@@ -203,7 +212,7 @@ describe('Vault - swap queries', () => {
             amount: 0,
           },
         ],
-        toBigNumberArray([0, -20, 5])
+        [0, -20, 5]
       );
     });
   });
@@ -226,11 +235,3 @@ describe('Vault - swap queries', () => {
     });
   });
 });
-
-function toBigNumberArray(values: (number | string)[]): BigNumber[] {
-  const bigNumbers = [];
-  for (const value of values) {
-    bigNumbers.push(BigNumber.from(value.toString()));
-  }
-  return bigNumbers;
-}

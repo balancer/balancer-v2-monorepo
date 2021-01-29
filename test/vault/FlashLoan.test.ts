@@ -1,11 +1,12 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
-import { TokenList, deployTokens } from '../helpers/tokens';
-import { deploy } from '../../scripts/helpers/deploy';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { FIXED_POINT_SCALING, toFixedPoint } from '../../scripts/helpers/fixedPoint';
+
+import { deploy } from '../../lib/helpers/deploy';
 import { expectBalanceChange } from '../helpers/tokenBalance';
+import { bn, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
+import { TokenList, deployTokens } from '../../lib/helpers/tokens';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress;
@@ -33,7 +34,7 @@ describe('Vault - flash loans', () => {
 
     for (const symbol in tokens) {
       // Grant token balance to the Vault - typically this would happen by the pool controllers adding liquidity
-      await tokens[symbol].connect(minter).mint(vault.address, (100e18).toString());
+      await tokens[symbol].connect(minter).mint(vault.address, bn(100e18));
 
       // The receiver will mint the fees it
       await tokens[symbol].connect(minter).grantRole(ethers.utils.id('MINTER_ROLE'), receiver.address);
@@ -47,21 +48,19 @@ describe('Vault - flash loans', () => {
 
     it('causes no net balance change on the Vault', async () => {
       await expectBalanceChange(
-        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
         tokens,
         { account: vault }
       );
     });
 
     it('all balance can be loaned', async () => {
-      await vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(100e18).toString()], '0x10');
+      await vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(100e18)], '0x10');
     });
 
     it('reverts if the loan is larger than available balance', async () => {
       await expect(
-        vault
-          .connect(other)
-          .flashLoan(receiver.address, [tokens.DAI.address], [BigNumber.from((100e18).toString()).add(1)], '0x10')
+        vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(100e18).add(1)], '0x10')
       ).to.be.revertedWith('Insufficient balance to borrow');
     });
 
@@ -69,23 +68,23 @@ describe('Vault - flash loans', () => {
       await receiver.setRepayLoan(false);
 
       await expect(
-        vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10')
+        vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10')
       ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
     });
   });
 
   context('with protocol fees', () => {
-    const feePercentage = toFixedPoint(0.005); // 0.5%
+    const feePercentage = fp(0.005); // 0.5%
 
     beforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFlashLoanFee(feePercentage);
     });
 
     it('the Vault receives protocol fees', async () => {
-      const feeAmount = BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING);
+      const feeAmount = bn(1e18).mul(feePercentage).div(FP_SCALING_FACTOR);
 
       await expectBalanceChange(
-        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
         tokens,
         { account: vault, changes: { DAI: feeAmount } }
       );
@@ -97,10 +96,10 @@ describe('Vault - flash loans', () => {
       await receiver.setRepayInExcess(true);
 
       // The receiver pays one extra token
-      const feeAmount = BigNumber.from((1e18).toString()).mul(feePercentage).div(FIXED_POINT_SCALING).add(1);
+      const feeAmount = bn(1e18).mul(feePercentage).div(FP_SCALING_FACTOR).add(1);
 
       await expectBalanceChange(
-        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10'),
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
         tokens,
         { account: vault.address, changes: { DAI: feeAmount } }
       );
@@ -109,14 +108,14 @@ describe('Vault - flash loans', () => {
     });
 
     it('all balance can be loaned', async () => {
-      await vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(100e18).toString()], '0x10');
+      await vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(100e18)], '0x10');
     });
 
     it('reverts if the borrower does not repay the loan', async () => {
       await receiver.setRepayLoan(false);
 
       await expect(
-        vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10')
+        vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10')
       ).to.be.revertedWith('Insufficient protocol fees');
     });
 
@@ -124,14 +123,14 @@ describe('Vault - flash loans', () => {
       await receiver.setReenter(true);
 
       await expect(
-        vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [(1e18).toString()], '0x10')
+        vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10')
       ).to.be.revertedWith('ReentrancyGuard: reentrant call');
     });
 
     describe('multi asset loan', () => {
       it('the Vault receives protocol fees proportial to each loan', async () => {
-        const amounts = [1e18, 2e18].map((value) => BigNumber.from(value.toString()));
-        const feeAmounts = amounts.map((amount) => amount.mul(feePercentage).div(FIXED_POINT_SCALING));
+        const amounts = [1e18, 2e18].map(bn);
+        const feeAmounts = amounts.map((amount) => amount.mul(feePercentage).div(FP_SCALING_FACTOR));
 
         await expectBalanceChange(
           () =>
@@ -147,12 +146,7 @@ describe('Vault - flash loans', () => {
       it('all balance can be loaned', async () => {
         await vault
           .connect(other)
-          .flashLoan(
-            receiver.address,
-            [tokens.DAI.address, tokens.MKR.address],
-            [(100e18).toString(), (100e18).toString()],
-            '0x10'
-          );
+          .flashLoan(receiver.address, [tokens.DAI.address, tokens.MKR.address], [bn(100e18), bn(100e18)], '0x10');
       });
     });
   });

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-// From https://github.com/makerdao/multicall
-
-pragma solidity >=0.5.0;
+pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+// From https://github.com/makerdao/multicall
 /// @title Multicall - Aggregate results from multiple read-only function calls
 /// @author Michael Elliot <mike@makerdao.com>
 /// @author Joshua Levine <joshua@makerdao.com>
