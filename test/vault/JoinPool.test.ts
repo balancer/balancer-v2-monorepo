@@ -36,11 +36,11 @@ describe('Vault - join pool', () => {
 
     for (const symbol in tokens) {
       // Mint tokens for the creator to create the Pool
-      await mintTokens(tokens, symbol, creator, (100e18).toString());
+      await mintTokens(tokens, symbol, creator, bn(100e18));
       await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
 
       // Mint tokens for the lp to join the Pool
-      await mintTokens(tokens, symbol, lp, (100e18).toString());
+      await mintTokens(tokens, symbol, lp, bn(100e18));
       await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
 
       TOKEN_ADDRESSES.push(tokens[symbol].address);
