@@ -351,6 +351,7 @@ describe('Vault - exit pool', () => {
           poolId,
           liquidityProvider: lp.address,
           amountsOut: exitAmounts,
+          protocolFees: dueProtocolFeeAmounts
         });
       });
 
