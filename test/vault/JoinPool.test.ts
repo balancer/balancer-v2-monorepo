@@ -10,6 +10,7 @@ import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPo
 import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
+import { times } from 'lodash';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -330,8 +331,12 @@ describe('Vault - join pool', () => {
       });
 
       it('joins multiple times', async () => {
-        await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
-        await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
+        await Promise.all(
+          times(3, () => async () => {
+            const receipt = await (await joinPool({ fromInternalBalance, dueProtocolFeeAmounts })).wait();
+            expectEvent.inIndirectReceipt(receipt, pool.interface, 'OnJoinPoolCalled');
+          })
+        );
       });
 
       it('reverts if any of the max amounts in is not enough', async () => {

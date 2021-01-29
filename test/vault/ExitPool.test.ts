@@ -10,6 +10,7 @@ import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPo
 import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
+import { times } from 'lodash';
 
 describe('Vault - exit pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, recipient: SignerWithAddress;
@@ -353,8 +354,12 @@ describe('Vault - exit pool', () => {
       });
 
       it('exits multiple times', async () => {
-        await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
+        await Promise.all(
+          times(3, () => async () => {
+            const receipt = await (await exitPool({ toInternalBalance, dueProtocolFeeAmounts })).wait();
+            expectEvent.inIndirectReceipt(receipt, pool.interface, 'OnExitPoolCalled');
+          })
+        );
       });
 
       it('exits the pool fully', async () => {
