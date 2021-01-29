@@ -174,10 +174,9 @@ describe('Vault - cash/managed balance', () => {
       });
 
       it('reverts on cash overflow', async () => {
-        await expect(testIncreaseCash(MAX_UINT128, 0, 1)).to.be.revertedWith('BALANCE_TOTAL_OVERFLOW');
-        await expect(testIncreaseCash(MAX_UINT128.div(2), 0, MAX_UINT128.div(2).add(2))).to.be.revertedWith(
-          'BALANCE_TOTAL_OVERFLOW'
-        );
+        const error = 'BALANCE_TOTAL_OVERFLOW';
+        await expect(testIncreaseCash(MAX_UINT128, 0, 1)).to.be.revertedWith(error);
+        await expect(testIncreaseCash(MAX_UINT128.div(2), 0, MAX_UINT128.div(2).add(2))).to.be.revertedWith(error);
       });
 
       it('reverts on total overflow', async () => {
