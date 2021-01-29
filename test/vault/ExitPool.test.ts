@@ -211,12 +211,16 @@ describe('Vault - exit pool', () => {
     });
 
     function itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance() {
+      const dueProtocolFeeAmounts = array(0);
+
       context('with no due protocol fees', () => {
-        itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts: array(0) });
+        itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
       });
 
       context('with due protocol fees', () => {
-        itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts: array(1e18) });
+        const dueProtocolFeeAmounts = array(1e18);
+
+        itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
       });
     }
 
@@ -226,8 +230,10 @@ describe('Vault - exit pool', () => {
       dueProtocolFeeAmounts: BigNumberish[];
     }) {
       context('not using internal balance', () => {
+        const toInternalBalance = false;
+
         context('without internal balance', () => {
-          itExitsCorrectly({ toInternalBalance: false, dueProtocolFeeAmounts });
+          itExitsCorrectly({ toInternalBalance, dueProtocolFeeAmounts });
         });
 
         context('with some internal balance', () => {
@@ -235,13 +241,15 @@ describe('Vault - exit pool', () => {
             await vault.connect(recipient).depositToInternalBalance(tokenAddresses, array(1.5e18), recipient.address);
           });
 
-          itExitsCorrectly({ toInternalBalance: false, dueProtocolFeeAmounts });
+          itExitsCorrectly({ toInternalBalance, dueProtocolFeeAmounts });
         });
       });
 
       context('using internal balance', () => {
+        const toInternalBalance = true;
+
         context('with no internal balance', () => {
-          itExitsCorrectly({ toInternalBalance: true, dueProtocolFeeAmounts });
+          itExitsCorrectly({ toInternalBalance, dueProtocolFeeAmounts });
         });
 
         context('with some internal balance', () => {
@@ -249,7 +257,7 @@ describe('Vault - exit pool', () => {
             await vault.connect(recipient).depositToInternalBalance(tokenAddresses, array(1.5e18), recipient.address);
           });
 
-          itExitsCorrectly({ toInternalBalance: true, dueProtocolFeeAmounts });
+          itExitsCorrectly({ toInternalBalance, dueProtocolFeeAmounts });
         });
       });
     }

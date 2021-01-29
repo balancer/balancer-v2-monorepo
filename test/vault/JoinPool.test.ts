@@ -185,11 +185,15 @@ describe('Vault - join pool', () => {
 
       context('with correct pool return values', () => {
         context('with no due protocol fees', () => {
-          itJoinsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts: array(0) });
+          const dueProtocolFeeAmounts = array(0);
+
+          itJoinsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
         });
 
         context('with due protocol fees', () => {
-          itJoinsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts: array(1e18) });
+          const dueProtocolFeeAmounts = array(1e18);
+
+          itJoinsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
         });
       });
     });
@@ -200,8 +204,10 @@ describe('Vault - join pool', () => {
       dueProtocolFeeAmounts: BigNumberish[];
     }) {
       context('not using internal balance', () => {
+        const fromInternalBalance = false;
+
         context('with no internal balance', () => {
-          itJoinsCorrectly({ fromInternalBalance: false, dueProtocolFeeAmounts });
+          itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });
         });
 
         context('with some internal balance', () => {
@@ -209,13 +215,15 @@ describe('Vault - join pool', () => {
             await vault.connect(lp).depositToInternalBalance(tokenAddresses, array(1.5e18), lp.address);
           });
 
-          itJoinsCorrectly({ fromInternalBalance: false, dueProtocolFeeAmounts });
+          itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });
         });
       });
 
       context('using internal balance', () => {
+        const fromInternalBalance = true;
+
         context('with no internal balance', () => {
-          itJoinsCorrectly({ fromInternalBalance: true, dueProtocolFeeAmounts });
+          itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });
         });
 
         context('with some internal balance', () => {
@@ -223,7 +231,7 @@ describe('Vault - join pool', () => {
             await vault.connect(lp).depositToInternalBalance(tokenAddresses, array(1.5e18), lp.address);
           });
 
-          itJoinsCorrectly({ fromInternalBalance: true, dueProtocolFeeAmounts });
+          itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });
         });
 
         context('with enough internal balance', () => {
@@ -231,7 +239,7 @@ describe('Vault - join pool', () => {
             await vault.connect(lp).depositToInternalBalance(tokenAddresses, array(100e18), lp.address);
           });
 
-          itJoinsCorrectly({ fromInternalBalance: true, dueProtocolFeeAmounts });
+          itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });
         });
       });
     }
