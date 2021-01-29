@@ -349,29 +349,6 @@ describe('Vault - cash/managed balance', () => {
     });
   });
 
-  describe('has managed balance', () => {
-    async function testIsManaged(cash: BigNumberish, managedBalance: BigNumberish, expected: boolean) {
-      cash = bn(cash);
-      managedBalance = bn(managedBalance);
-
-      const balance = await library.toBalance(cash, managedBalance);
-      expect(await library.isManaged(balance)).to.equal(expected);
-    }
-
-    it('returns false if there is no managed balance', async () => {
-      await testIsManaged(0, 0, false);
-      await testIsManaged(1, 0, false);
-      await testIsManaged(MAX_UINT128, 0, false);
-    });
-
-    it('returns true if there is an managed balance', async () => {
-      await testIsManaged(0, 1, true);
-      await testIsManaged(1, 1, true);
-      await testIsManaged(MAX_UINT128.sub(1), 1, true);
-      await testIsManaged(1, MAX_UINT128.sub(1), true);
-    });
-  });
-
   describe('shared balances', () => {
     async function testPackUnpack(
       cashA: BigNumberish,

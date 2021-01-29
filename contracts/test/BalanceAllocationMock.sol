@@ -55,10 +55,6 @@ contract BalanceAllocationMock {
         return balance.setManagedBalance(newManagedBalance);
     }
 
-    function isManaged(bytes32 balance) public pure returns (bool) {
-        return balance.isManaged();
-    }
-
     function fromSharedToBalanceA(bytes32 cashACashB, bytes32 externalAexternalB) public pure returns (bytes32) {
         return BalanceAllocation.fromSharedToBalanceA(cashACashB, externalAexternalB);
     }

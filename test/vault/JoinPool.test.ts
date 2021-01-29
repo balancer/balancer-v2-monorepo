@@ -126,13 +126,15 @@ describe('Vault - join pool', () => {
       });
 
       it('reverts if token array is incorrect', async () => {
-        // Missing
-        await expect(joinPool({ tokenAddresses: tokenAddresses.slice(1) })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        // Missing - token addresses and max amounts min length must match
+        await expect(
+          joinPool({ tokenAddresses: tokenAddresses.slice(1), maxAmountsIn: array(0).slice(1) })
+        ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
 
-        // Extra
-        await expect(joinPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]) })).to.be.revertedWith(
-          'ERR_TOKENS_MISMATCH'
-        );
+        // Extra  - token addresses and max amounts min length must match
+        await expect(
+          joinPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]), maxAmountsIn: array(0).concat(bn(0)) })
+        ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
 
         // Unordered
         await expect(joinPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
@@ -294,9 +296,9 @@ describe('Vault - join pool', () => {
       });
 
       it('assigns tokens to the pool', async () => {
-        const previousPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const previousPoolBalances = (await vault.getPoolTokens(poolId)).balances;
         await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
-        const currentPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const currentPoolBalances = (await vault.getPoolTokens(poolId)).balances;
 
         // The Pool balance is expected to increase by join amounts minus due protocol fees. Note that the deltas are
         // not necessarily positive, if the fees due are larger than the join amounts.
@@ -306,7 +308,7 @@ describe('Vault - join pool', () => {
       });
 
       it('calls the pool with the join data', async () => {
-        const previousPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const previousPoolBalances = (await vault.getPoolTokens(poolId)).balances;
 
         const receipt = await (await joinPool({ fromInternalBalance, dueProtocolFeeAmounts })).wait();
 

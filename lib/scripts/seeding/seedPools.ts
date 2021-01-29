@@ -3,9 +3,9 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as allPools from './allPools.json';
-import { bn } from '../../helpers/numbers';
+import { bn, BigNumberish } from '../../helpers/numbers';
 import { TokenList, deployTokens } from '../../helpers/tokens';
-import { MAX_UINT128, MAX_UINT256 } from '../../helpers/constants';
+import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../helpers/trading';
 
 let ethers: any;
@@ -13,7 +13,9 @@ let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
 let validator: Contract;
-let investmentManager: SignerWithAddress; // This would normally be a contract
+let assetManager: SignerWithAddress; // This would normally be a contract
+
+const INVESTMENT_AMOUNT = 123;
 
 interface Pool {
   id: string;
@@ -35,9 +37,33 @@ interface Token {
   denormWeight: BigNumber;
 }
 
+interface TokenJSON {
+  address: string;
+  balance: string;
+  decimals: number;
+  denormWeight: string;
+  name: string;
+  symbol: string;
+}
+
+interface PoolJSON {
+  id: string;
+  finalized: boolean;
+  publicSwap: boolean;
+  liquidity: string;
+  swapFee: string;
+  totalWeight: string;
+  tokens: TokenJSON[];
+  tokensList: string[];
+}
+
+interface allPoolsJSON {
+  pools: PoolJSON[];
+}
+
 module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment) {
   ethers = hre.ethers;
-  [deployer, controller, trader, investmentManager] = await ethers.getSigners();
+  [deployer, controller, trader, assetManager] = await ethers.getSigners();
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
@@ -66,7 +92,7 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     await token.connect(deployer).mint(controller.address, tradingBalance);
     await token.connect(deployer).mint(trader.address, tradingBalance);
     await token.connect(trader).approve(vault.address, MAX_UINT256);
-    await token.connect(investmentManager).approve(vault.address, MAX_UINT256);
+    await token.connect(assetManager).approve(vault.address, MAX_UINT256);
 
     // deposit half into user balance
     const depositBalance = tradingBalance.div(bn(2));
@@ -80,10 +106,12 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
   validator = await ethers.getContract('OneToOneSwapValidator');
   await Promise.all(pools.map((p) => swapInPool(p)));
 
-  console.log('Making a few investments...');
-  //investmentManager = await ethers.getContract('MockInvestmentManager');
-  // TODO add pool type which supports investment
-  //await Promise.all(pools.map((p) => investPool(p)));
+  // TODO add pool type which supports asset withdrawals
+  const supportsAssetWithdrawals = false;
+  if (supportsAssetWithdrawals) {
+    console.log('Making a few investments...');
+    await Promise.all(pools.map(investPool));
+  }
   return;
 };
 
@@ -91,7 +119,7 @@ async function swapInPool(pool: Contract) {
   const poolId = await pool.getPoolId();
 
   const vault = await ethers.getContract('Vault');
-  const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
+  const tokenAddresses: string[] = (await vault.getPoolTokens(poolId)).tokens;
 
   const [overallTokenIn, overallTokenOut] = tokenAddresses;
 
@@ -110,7 +138,7 @@ async function swapInPool(pool: Contract) {
     toInternalBalance: false,
   };
 
-  await (
+  const receipt = await (
     await vault.connect(trader).batchSwapGivenIn(
       validator.address,
       encodeValidatorData({
@@ -125,6 +153,23 @@ async function swapInPool(pool: Contract) {
       funds
     )
   ).wait();
+  const event = receipt.events?.find((e: Event) => e.event == 'Swap');
+  if (event == undefined) {
+    throw new Error('Could not find Swap event');
+  }
+  return event;
+}
+
+async function investPool(pool: Contract) {
+  const poolId = await pool.getPoolId();
+
+  const vault = await ethers.getContract('Vault');
+  const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
+
+  const token = tokenAddresses[0];
+
+  await pool.authorizeAssetManager(token, assetManager.address);
+  return vault.connect(assetManager).withdrawFromPoolBalance(poolId, token, INVESTMENT_AMOUNT);
 }
 
 async function deployPools(filteredPools: Pool[], tokens: TokenList): Promise<(Contract | undefined)[]> {
@@ -145,6 +190,10 @@ async function deployPools(filteredPools: Pool[], tokens: TokenList): Promise<(C
     promises.push(deployStrategyPool(tokensList, weights, balances, swapFee));
   }
   return await Promise.all(promises);
+}
+
+function encodeJoin(joinAmounts: BigNumberish[], dueProtocolFeeAmounts: BigNumberish[]): string {
+  return ethers.utils.defaultAbiCoder.encode(['uint256[]', 'uint256[]'], [joinAmounts, dueProtocolFeeAmounts]);
 }
 
 // Deploy strategy then newPool with that strategy
@@ -179,13 +228,21 @@ async function deployStrategyPool(
     throw new Error('Could not find PoolCreated event');
   }
   const poolAddress = event.args.pool;
+  const pool = await wpFactory.attach(poolAddress);
+  const poolId = await pool.getPoolId();
+
+  const maxAmountsIn = Array(tokens.length).fill(MAX_UINT256);
+  const protocolFeeDue = Array(tokens.length).fill(bn(0));
+
+  const initialJoinUserData = encodeJoin(balances, protocolFeeDue);
+
+  await vault.connect(controller).joinPool(poolId, ZERO_ADDRESS, tokens, maxAmountsIn, false, initialJoinUserData);
 
   console.log(`New Pool Address: ${poolAddress}`);
-  return await wpFactory.attach(poolAddress);
+  return pool;
 }
-
 // Convert all pools to BigNumber/scaled format
-function formatPools(allPools: any): Pool[] {
+function formatPools(allPools: allPoolsJSON): Pool[] {
   const formattedPools: Pool[] = [];
   for (let i = 0; i < allPools.pools.length; i++) {
     if (allPools.pools[i].tokens.length < 2) {
