@@ -151,9 +151,7 @@ describe('Vault - exit pool', () => {
         );
 
         // Unordered
-        await expect(
-          exitPool({ tokenAddreses: tokenAddresses.reverse() })
-        ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        await expect(exitPool({ tokenAddreses: tokenAddresses.reverse() })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
@@ -161,7 +159,7 @@ describe('Vault - exit pool', () => {
           'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
         );
 
-        await expect(exitPool({ minAmountsOut: array(0).concat(0) })).to.be.revertedWith(
+        await expect(exitPool({ minAmountsOut: array(0).concat(bn(0)) })).to.be.revertedWith(
           'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
         );
       });
@@ -174,7 +172,7 @@ describe('Vault - exit pool', () => {
           await expect(exitPool({ exitAmounts: array(0).slice(1) })).to.be.revertedWith('ERR_AMOUNTS_OUT_LENGTH');
 
           // Extra
-          await expect(exitPool({ exitAmounts: array(0).concat(0) })).to.be.revertedWith('ERR_AMOUNTS_OUT_LENGTH');
+          await expect(exitPool({ exitAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('ERR_AMOUNTS_OUT_LENGTH');
         });
 
         it('reverts if due protocol fees length does not match token length', async () => {
@@ -184,7 +182,7 @@ describe('Vault - exit pool', () => {
           );
 
           // Extra
-          await expect(exitPool({ dueProtocolFeeAmounts: array(0).concat(0) })).to.be.revertedWith(
+          await expect(exitPool({ dueProtocolFeeAmounts: array(0).concat(bn(0)) })).to.be.revertedWith(
             'ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH'
           );
         });
@@ -197,7 +195,7 @@ describe('Vault - exit pool', () => {
 
           // Extra
           await expect(
-            exitPool({ exitAmounts: array(0).concat(0), dueProtocolFeeAmounts: array(0).concat(0) })
+            exitPool({ exitAmounts: array(0).concat(bn(0)), dueProtocolFeeAmounts: array(0).concat(bn(0)) })
           ).to.be.revertedWith('ERR_AMOUNTS_OUT_LENGTH');
         });
       });
