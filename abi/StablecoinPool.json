@@ -17,14 +17,29 @@
         "type": "string"
       },
       {
+        "internalType": "uint256",
+        "name": "initialBPT",
+        "type": "uint256"
+      },
+      {
         "internalType": "contract IERC20[]",
         "name": "tokens",
         "type": "address[]"
       },
       {
         "internalType": "uint256[]",
-        "name": "weights",
+        "name": "amounts",
         "type": "uint256[]"
+      },
+      {
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amp",
+        "type": "uint256"
       },
       {
         "internalType": "uint256",
@@ -190,45 +205,41 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getInvariant",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getLastInvariant",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      }
-    ],
-    "name": "getNormalizedWeights",
-    "outputs": [
+        "internalType": "uint256",
+        "name": "poolAmountIn",
+        "type": "uint256"
+      },
       {
         "internalType": "uint256[]",
-        "name": "normalizedWeights",
+        "name": "minAmountsOut",
         "type": "uint256[]"
+      },
+      {
+        "internalType": "bool",
+        "name": "withdrawTokens",
+        "type": "bool"
+      },
+      {
+        "internalType": "address",
+        "name": "beneficiary",
+        "type": "address"
+      }
+    ],
+    "name": "exitPool",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAmplification",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -298,6 +309,34 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolAmountOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "maxAmountsIn",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "bool",
+        "name": "transferTokens",
+        "type": "bool"
+      },
+      {
+        "internalType": "address",
+        "name": "beneficiary",
+        "type": "address"
+      }
+    ],
+    "name": "joinPool",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "name",
     "outputs": [
@@ -311,110 +350,9 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "sender",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "currentBalances",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "minAmountsOut",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "protocolFeePercentage",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes",
-        "name": "userData",
-        "type": "bytes"
-      }
-    ],
-    "name": "onExitPool",
-    "outputs": [
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "recipient",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "currentBalances",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "maxAmountsIn",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "protocolFeePercentage",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes",
-        "name": "userData",
-        "type": "bytes"
-      }
-    ],
-    "name": "onJoinPool",
-    "outputs": [
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      }
-    ],
+    "inputs": [],
+    "name": "payProtocolFees",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -463,13 +401,18 @@
         "type": "tuple"
       },
       {
+        "internalType": "uint256[]",
+        "name": "balances",
+        "type": "uint256[]"
+      },
+      {
         "internalType": "uint256",
-        "name": "currentBalanceTokenIn",
+        "name": "indexIn",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "currentBalanceTokenOut",
+        "name": "indexOut",
         "type": "uint256"
       }
     ],
@@ -529,13 +472,18 @@
         "type": "tuple"
       },
       {
+        "internalType": "uint256[]",
+        "name": "balances",
+        "type": "uint256[]"
+      },
+      {
         "internalType": "uint256",
-        "name": "currentBalanceTokenIn",
+        "name": "indexIn",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "currentBalanceTokenOut",
+        "name": "indexOut",
         "type": "uint256"
       }
     ],

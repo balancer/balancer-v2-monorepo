@@ -9,6 +9,7 @@ import { MinimalSwapInfoPool } from '../../lib/helpers/pools';
 import { deploySortedTokens, TokenList } from '../../lib/helpers/tokens';
 import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
+import { encodeJoin } from '../helpers/mockPool';
 
 describe('Vault - swap queries', () => {
   let vault: Contract, funds: FundManagement;
@@ -44,18 +45,16 @@ describe('Vault - swap queries', () => {
 
       await pool.registerTokens(tokenAddresses, assetManagers);
 
-      await pool.setOnJoinExitPoolReturnValues(
-        tokenAddresses.map(() => bn(100e18)),
-        tokenAddresses.map(() => 0)
-      );
-
       await vault.connect(lp).joinPool(
         poolId,
         lp.address,
         tokenAddresses,
         tokenAddresses.map(() => MAX_UINT256),
         false,
-        '0x'
+        encodeJoin(
+          tokenAddresses.map(() => bn(100e18)),
+          tokenAddresses.map(() => 0)
+        )
       );
 
       poolIds.push(poolId);

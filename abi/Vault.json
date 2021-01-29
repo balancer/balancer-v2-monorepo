@@ -687,17 +687,22 @@
         "type": "bytes32"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
       }
     ],
-    "name": "getPoolTokenBalances",
+    "name": "getPoolTokenBalanceInfo",
     "outputs": [
       {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
+        "internalType": "uint256",
+        "name": "cash",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "managed",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -715,8 +720,13 @@
     "outputs": [
       {
         "internalType": "contract IERC20[]",
-        "name": "",
+        "name": "tokens",
         "type": "address[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "balances",
+        "type": "uint256[]"
       }
     ],
     "stateMutability": "view",
