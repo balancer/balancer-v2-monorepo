@@ -139,7 +139,7 @@ describe('Vault - exit pool', () => {
         await expect(exitPool({ tokenAddresses: tokenAddresses.slice(1) })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
 
         // Extra
-        await expect(exitPool({ tokenAddresses: [...tokenAddresses, tokenAddresses[0]] })).to.be.revertedWith(
+        await expect(exitPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]) })).to.be.revertedWith(
           'ERR_TOKENS_MISMATCH'
         );
 

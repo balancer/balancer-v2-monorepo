@@ -130,7 +130,7 @@ describe('Vault - join pool', () => {
         await expect(joinPool({ tokenAddresses: tokenAddresses.slice(1) })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
 
         // Extra
-        await expect(joinPool({ tokenAddresses: [...tokenAddresses, tokenAddresses[0]] })).to.be.revertedWith(
+        await expect(joinPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]) })).to.be.revertedWith(
           'ERR_TOKENS_MISMATCH'
         );
 
