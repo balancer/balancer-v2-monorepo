@@ -11,6 +11,7 @@ import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } 
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
 import { times } from 'lodash';
+import { encodeExit } from '../helpers/mockPool';
 
 describe('Vault - exit pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, recipient: SignerWithAddress;
@@ -79,10 +80,6 @@ describe('Vault - exit pool', () => {
 
     function array(value: BigNumberish): BigNumber[] {
       return Array(tokenAmount).fill(bn(value));
-    }
-
-    function encodeExit(exitAmounts: BigNumberish[], dueProtocolFeeAmounts: BigNumberish[]): string {
-      return ethers.utils.defaultAbiCoder.encode(['uint256[]', 'uint256[]'], [exitAmounts, dueProtocolFeeAmounts]);
     }
 
     beforeEach('deploy & register pool', async () => {

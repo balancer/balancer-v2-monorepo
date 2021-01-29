@@ -11,6 +11,7 @@ import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
 import { times } from 'lodash';
+import { encodeJoin } from '../helpers/mockPool';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -79,10 +80,6 @@ describe('Vault - join pool', () => {
 
     function array(value: BigNumberish): BigNumber[] {
       return Array(tokenAmount).fill(bn(value));
-    }
-
-    function encodeJoin(joinAmounts: BigNumberish[], dueProtocolFeeAmounts: BigNumberish[]): string {
-      return ethers.utils.defaultAbiCoder.encode(['uint256[]', 'uint256[]'], [joinAmounts, dueProtocolFeeAmounts]);
     }
 
     beforeEach('deploy & register pool', async () => {
