@@ -10,19 +10,15 @@ import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPo
 import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } from '../../lib/helpers/numbers';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
-
-let admin: SignerWithAddress;
-let creator: SignerWithAddress;
-let lp: SignerWithAddress;
-let recipient: SignerWithAddress;
-
-let authorizer: Contract;
-let vault: Contract;
-let tokens: TokenList = {};
-
-let TOKEN_ADDRESSES: string[];
+import { times } from 'lodash';
 
 describe('Vault - exit pool', () => {
+  let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, recipient: SignerWithAddress;
+  let authorizer: Contract, vault: Contract;
+  let tokens: TokenList = {};
+
+  let TOKEN_ADDRESSES: string[];
+
   before(async () => {
     [, admin, creator, lp, recipient] = await ethers.getSigners();
   });
@@ -116,7 +112,7 @@ describe('Vault - exit pool', () => {
 
     type ExitPoolData = {
       poolId?: string;
-      tokenAddreses?: string[];
+      tokenAddresses?: string[];
       minAmountsOut?: BigNumberish[];
       toInternalBalance?: boolean;
       exitAmounts?: BigNumberish[];
@@ -129,7 +125,7 @@ describe('Vault - exit pool', () => {
         .exitPool(
           data.poolId ?? poolId,
           recipient.address,
-          data.tokenAddreses ?? tokenAddresses,
+          data.tokenAddresses ?? tokenAddresses,
           data.minAmountsOut ?? array(0),
           data.toInternalBalance ?? false,
           encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts)
@@ -143,15 +139,15 @@ describe('Vault - exit pool', () => {
 
       it('reverts if token array is incorrect', async () => {
         // Missing
-        await expect(exitPool({ tokenAddreses: tokenAddresses.slice(1) })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        await expect(exitPool({ tokenAddresses: tokenAddresses.slice(1) })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
 
         // Extra
-        await expect(exitPool({ tokenAddreses: [...tokenAddresses, tokenAddresses[0]] })).to.be.revertedWith(
+        await expect(exitPool({ tokenAddresses: [...tokenAddresses, tokenAddresses[0]] })).to.be.revertedWith(
           'ERR_TOKENS_MISMATCH'
         );
 
         // Unordered
-        await expect(exitPool({ tokenAddreses: tokenAddresses.reverse() })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        await expect(exitPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
@@ -284,19 +280,15 @@ describe('Vault - exit pool', () => {
           : arraySub(exitAmounts, expectedProtocolWithdrawFeesToCollect);
 
         // Tokens are sent to the recipient, so the expected change is positive
-        const recipientChanges = Object.assign(
-          {},
-          ...tokenAddresses.map((token, i) => {
-            return { [symbol(token)]: expectedTransferAmounts[i] };
-          })
+        const recipientChanges = tokenAddresses.reduce(
+          (changes, token, i) => ({ ...changes, [symbol(token)]: expectedTransferAmounts[i] }),
+          {}
         );
 
         // Tokens are sent from the Vault, so the expected change is negative
-        const vaultChanges = Object.assign(
-          {},
-          ...tokenAddresses.map((token, i) => {
-            return { [symbol(token)]: expectedTransferAmounts[i].mul(-1) };
-          })
+        const vaultChanges = tokenAddresses.reduce(
+          (changes, token, i) => ({ ...changes, [symbol(token)]: expectedTransferAmounts[i].mul(-1) }),
+          {}
         );
 
         await expectBalanceChange(() => exitPool({ toInternalBalance, dueProtocolFeeAmounts }), tokens, [
@@ -306,29 +298,31 @@ describe('Vault - exit pool', () => {
       });
 
       it('assigns internal balance to the caller', async () => {
-        const internalBalancesBefore = await vault.getInternalBalance(recipient.address, tokenAddresses);
+        const previousInternalBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        const internalBalancesAfter = await vault.getInternalBalance(recipient.address, tokenAddresses);
+        const currentInternalBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
 
-        // Internal balance is expected to increase: after - before should equal expected. Protocol withdraw fees are
-        // not charged.
+        // Internal balance is expected to increase: current - previous should equal expected. Protocol withdraw fees
+        // are not charged.
         const expectedInternalBalanceIncrease = toInternalBalance ? exitAmounts : array(0);
-        expect(arraySub(internalBalancesAfter, internalBalancesBefore)).to.deep.equal(expectedInternalBalanceIncrease);
+        expect(arraySub(currentInternalBalances, previousInternalBalances)).to.deep.equal(
+          expectedInternalBalanceIncrease
+        );
       });
 
       it('deducts tokens from the pool', async () => {
-        const poolBalancesBefore = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const previousPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        const poolBalancesAfter = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const currentPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
 
         // The Pool balance is expected to decrease by exit amounts plus due protocol fees.
-        expect(arraySub(poolBalancesBefore, poolBalancesAfter)).to.deep.equal(
+        expect(arraySub(previousPoolBalances, currentPoolBalances)).to.deep.equal(
           arrayAdd(exitAmounts, dueProtocolFeeAmounts)
         );
       });
 
       it('calls the pool with the exit data', async () => {
-        const poolBalancesBefore = await vault.getPoolTokenBalances(poolId, tokenAddresses);
+        const previousPoolBalances = await vault.getPoolTokenBalances(poolId, tokenAddresses);
 
         const receipt = await (await exitPool({ toInternalBalance, dueProtocolFeeAmounts })).wait();
 
@@ -336,7 +330,7 @@ describe('Vault - exit pool', () => {
           poolId,
           sender: lp.address,
           recipient: recipient.address,
-          currentBalances: poolBalancesBefore,
+          currentBalances: previousPoolBalances,
           minAmountsOut: array(0),
           protocolSwapFee: await vault.getProtocolSwapFee(),
           userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
@@ -344,23 +338,27 @@ describe('Vault - exit pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const collectedFeesBefore = await Promise.all(
+        const previousCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        const collectedFeesAfter = await Promise.all(
+        const currentCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
         );
 
         // Fees from both sources are lumped together.
-        expect(arraySub(collectedFeesAfter, collectedFeesBefore)).to.deep.equal(
+        expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(
           arrayAdd(dueProtocolFeeAmounts, expectedProtocolWithdrawFeesToCollect)
         );
       });
 
       it('exits multiple times', async () => {
-        await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
+        await Promise.all(
+          times(3, () => async () => {
+            const receipt = await (await exitPool({ toInternalBalance, dueProtocolFeeAmounts })).wait();
+            expectEvent.inIndirectReceipt(receipt, pool.interface, 'OnExitPoolCalled');
+          })
+        );
       });
 
       it('exits the pool fully', async () => {

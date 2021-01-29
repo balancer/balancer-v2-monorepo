@@ -20,31 +20,28 @@ export const minInt = (e: number): BN => bn(2).pow(bn(e).sub(1)).mul(-1);
 
 export const pct = (n: BN, pct: number): BN => n.div(bn(1 / pct));
 
-export const bnMax = (a: BigNumberish, b: BigNumberish): BN => {
+export const max = (a: BigNumberish, b: BigNumberish): BN => {
   a = bn(a);
   b = bn(b);
 
   return a.gt(b) ? a : b;
 };
 
-export const bnMin = (a: BigNumberish, b: BigNumberish): BN => {
+export const min = (a: BigNumberish, b: BigNumberish): BN => {
   a = bn(a);
   b = bn(b);
 
   return a.lt(b) ? a : b;
 };
 
-export function arrayAdd(arrA: BigNumberish[], arrB: BigNumberish[]): BN[] {
-  return arrA.map((a, i) => bn(a).add(bn(arrB[i])));
-}
+export const arrayAdd = (arrA: BigNumberish[], arrB: BigNumberish[]): BN[] =>
+  arrA.map((a, i) => bn(a).add(bn(arrB[i])));
 
-export function arraySub(arrA: BigNumberish[], arrB: BigNumberish[]): BN[] {
-  return arrA.map((a, i) => bn(a).sub(bn(arrB[i])));
-}
+export const arraySub = (arrA: BigNumberish[], arrB: BigNumberish[]): BN[] =>
+  arrA.map((a, i) => bn(a).sub(bn(arrB[i])));
 
-export function divCeil(x: BN, y: BN): BN {
+export const divCeil = (x: BN, y: BN): BN =>
   // ceil(x/y) == (x + y - 1) / y
-  return x.add(y).sub(1).div(y);
-}
+  x.add(y).sub(1).div(y);
 
 export const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
