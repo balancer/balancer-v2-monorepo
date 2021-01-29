@@ -344,6 +344,17 @@ describe('Vault - exit pool', () => {
         });
       });
 
+      it('emits PoolExited from the vault', async () => {
+        const receipt = await (await exitPool({ toInternalBalance, dueProtocolFeeAmounts })).wait();
+
+        expectEvent.inReceipt(receipt, 'PoolExited', {
+          poolId,
+          liquidityProvider: lp.address,
+          amountsOut: exitAmounts,
+          protocolFees: dueProtocolFeeAmounts
+        });
+      });
+
       it('collects protocol fees', async () => {
         const previousCollectedFees = await Promise.all(
           tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
