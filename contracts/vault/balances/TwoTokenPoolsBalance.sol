@@ -125,7 +125,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, BalanceAllocation.increaseCash);
+        _updateTwoTokenPoolCashBalance(poolId, tokenX, amountX, tokenY, amountY, BalanceAllocation.increaseCash);
     }
 
     function _alterTwoTokenPoolCash(
@@ -135,7 +135,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         int256 amountY
     ) internal {
-        _updateTwoTokenPoolCashTokenBalance(
+        _updateTwoTokenPoolCashBalance(
             poolId,
             tokenX,
             amountX.abs().toUint128(),
@@ -161,7 +161,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY,
         uint128 amountY
     ) internal {
-        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, BalanceAllocation.decreaseCash);
+        _updateTwoTokenPoolCashBalance(poolId, tokenX, amountX, tokenY, amountY, BalanceAllocation.decreaseCash);
     }
 
     function _twoTokenPoolCashToManaged(
@@ -169,7 +169,7 @@ contract TwoTokenPoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateTwoTokenPoolSharedTokenBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
+        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
     function _twoTokenPoolManagedToCash(
@@ -177,7 +177,7 @@ contract TwoTokenPoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateTwoTokenPoolSharedTokenBalance(poolId, token, BalanceAllocation.managedToCash, amount);
+        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
     function _setTwoTokenPoolManagedBalance(
@@ -185,10 +185,10 @@ contract TwoTokenPoolsBalance {
         IERC20 token,
         uint128 amount
     ) internal {
-        _updateTwoTokenPoolSharedTokenBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
+        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
 
-    function _updateTwoTokenPoolCashTokenBalance(
+    function _updateTwoTokenPoolCashBalance(
         bytes32 poolId,
         IERC20 tokenX,
         uint128 amountX,
@@ -216,7 +216,7 @@ contract TwoTokenPoolsBalance {
         // We don't need to write to the sharedManaged entry
     }
 
-    function _updateTwoTokenPoolCashTokenBalance(
+    function _updateTwoTokenPoolCashBalance(
         bytes32 poolId,
         IERC20 tokenX,
         uint128 amountX,
@@ -245,7 +245,7 @@ contract TwoTokenPoolsBalance {
         // We don't need to write to the sharedManaged entry
     }
 
-    function _updateTwoTokenPoolSharedTokenBalance(
+    function _updateTwoTokenPoolSharedBalance(
         bytes32 poolId,
         IERC20 token,
         function(bytes32, uint128) pure returns (bytes32) mutation,
@@ -271,11 +271,6 @@ contract TwoTokenPoolsBalance {
 
         poolSharedBalances.sharedCash = BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
         poolSharedBalances.sharedManaged = BalanceAllocation.toSharedManaged(tokenABalance, tokenBBalance);
-    }
-
-    function _twoTokenPoolIsManaged(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        bytes32 currentBalance = _getTwoTokenPoolBalance(poolId, token);
-        return currentBalance.isManaged();
     }
 
     /**

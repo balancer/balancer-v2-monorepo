@@ -150,13 +150,6 @@ library BalanceAllocation {
         return toBalance(newCashBalance, newManagedBalance);
     }
 
-    /**
-     * @dev Returns true if the balance has a managed component, or in other words, if it is not fully liquid.
-     */
-    function isManaged(bytes32 balance) internal pure returns (bool) {
-        return managedBalance(balance) > 0;
-    }
-
     // Alternative mode for two token pools
 
     // Instead of storing cash and external for each token in a single storage slot, two token pools store the cash for

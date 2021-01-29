@@ -74,7 +74,7 @@ contract GeneralPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            bytes32 currentBalance = _getGeneralPoolTokenBalance(poolBalances, token);
+            bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
             require(currentBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
             poolBalances.remove(token);
         }
@@ -167,12 +167,6 @@ contract GeneralPoolsBalance {
         _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
 
-    function _generalPoolIsManaged(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-        bytes32 currentBalance = _getGeneralPoolTokenBalance(poolBalances, token);
-        return currentBalance.isManaged();
-    }
-
     function _updateGeneralPoolBalance(
         bytes32 poolId,
         IERC20 token,
@@ -189,8 +183,7 @@ contract GeneralPoolsBalance {
         function(bytes32, uint128) pure returns (bytes32) mutation,
         uint128 amount
     ) internal {
-        bytes32 currentBalance = _getGeneralPoolTokenBalance(poolBalances, token);
-
+        bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
         poolBalances.set(token, mutation(currentBalance, amount));
     }
 
@@ -216,7 +209,12 @@ contract GeneralPoolsBalance {
         }
     }
 
-    function _getGeneralPoolTokenBalance(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)
+    function _getGeneralPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
+        return _getGeneralPoolBalance(poolBalances, token);
+    }
+
+    function _getGeneralPoolBalance(EnumerableMap.IERC20ToBytes32Map storage poolBalances, IERC20 token)
         internal
         view
         returns (bytes32)

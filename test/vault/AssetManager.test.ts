@@ -120,6 +120,16 @@ describe('Vault - asset manager', function () {
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
           });
+
+          it('moves the balance from cash to managed', async () => {
+            const previousBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
+
+            await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount);
+
+            const currentBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
+            expect(currentBalance.cash).to.equal(previousBalance.cash.sub(amount));
+            expect(currentBalance.managed).to.equal(previousBalance.managed.add(amount));
+          });
         });
 
         it('reverts when sending more than the pool balance', async () => {
@@ -136,7 +146,7 @@ describe('Vault - asset manager', function () {
       });
     });
 
-    describe('divest', () => {
+    describe('deposit to pool', () => {
       context('when the sender is an allowed manager', () => {
         context('when trying to move less than the managed balance', () => {
           const externalAmount = bn(75e18);
@@ -165,6 +175,16 @@ describe('Vault - asset manager', function () {
             const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
+          });
+
+          it('moves the balance from managed to cash', async () => {
+            const previousBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
+
+            await vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount);
+
+            const currentBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
+            expect(currentBalance.cash).to.equal(previousBalance.cash.add(amount));
+            expect(currentBalance.managed).to.equal(previousBalance.managed.sub(amount));
           });
         });
 
@@ -218,6 +238,16 @@ describe('Vault - asset manager', function () {
             expect(currentBalanceDAI).to.equal(previousBalanceDAI.add(1));
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
           });
+
+          it('sets the managed balance', async () => {
+            const previousBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
+
+            await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
+
+            const currentBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
+            expect(currentBalance.cash).to.equal(previousBalance.cash);
+            expect(currentBalance.managed).to.equal(amount);
+          });
         });
 
         context('with losses', () => {
@@ -239,6 +269,16 @@ describe('Vault - asset manager', function () {
             const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI.sub(1));
             expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
+          });
+
+          it('sets the managed balance', async () => {
+            const previousBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
+
+            await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
+
+            const currentBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
+            expect(currentBalance.cash).to.equal(previousBalance.cash);
+            expect(currentBalance.managed).to.equal(amount);
           });
         });
       });
