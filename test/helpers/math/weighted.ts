@@ -136,7 +136,7 @@ export function calcTokenOutGivenExactBptIn(
   return bn(amountOut);
 }
 
-function toNormalizedWeights(rawWeights: BigNumber[]): Decimal[] {
+export function toNormalizedWeights(rawWeights: BigNumber[]): Decimal[] {
   const weights = rawWeights.map(decimal);
   const sum = weights.reduce((total, weight) => total.add(weight), decimal(0));
   return weights.map((weight) => weight.div(sum));

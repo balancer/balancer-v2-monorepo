@@ -11,6 +11,7 @@ import {
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
   calcOutGivenIn,
+  toNormalizedWeights,
 } from '../../helpers/math/weighted';
 
 import { deploy } from '../../../lib/helpers/deploy';
@@ -164,7 +165,12 @@ describe('WeightedPool', function () {
         });
 
         it('sets token weights', async () => {
-          expect(await pool.getWeights(poolTokens)).to.deep.equal(poolWeights);
+          const normalizedWeights = await pool.getNormalizedWeights(poolTokens);
+          const expectedNormalizedWeights = toNormalizedWeights(poolWeights).map((w) => bn(w.mul(1e18)));
+
+          normalizedWeights.map((weight: BigNumber, i: number) => {
+            expectEqualWithError(weight, expectedNormalizedWeights[i], 0.0000001);
+          });
         });
 
         it('sets swap fee', async () => {
