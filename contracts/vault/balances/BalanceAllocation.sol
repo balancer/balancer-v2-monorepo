@@ -48,6 +48,7 @@ library BalanceAllocation {
     // The 'cash' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the
     // 'managed' part uses the most significant 128 bits.
 
+    // TODO: measure gas inlining constant
     // Mask used to encode/decode pool balances into 'cash' and 'managed' balances
     uint256 private constant _MASK = 2**(128) - 1;
 
@@ -55,14 +56,14 @@ library BalanceAllocation {
      * @dev The amount of Pool tokens currently in the Vault.
      */
     function cashBalance(bytes32 balance) internal pure returns (uint256) {
-        return uint256(balance) & _MASK;
+        return _leastSignificant(balance);
     }
 
     /**
      * @dev The amount of Pool tokens that have been withdrawn by its Asset Manager.
      */
     function managedBalance(bytes32 balance) internal pure returns (uint256) {
-        return (uint256(balance) >> 128) & _MASK;
+        return _mostSignificant(balance);
     }
 
     /**
@@ -106,7 +107,7 @@ library BalanceAllocation {
         uint256 total = _cashBalance + _managedBalance;
         require(total >= _cashBalance && total < 2**128, "BALANCE_TOTAL_OVERFLOW");
 
-        return bytes32((_managedBalance << 128) | _cashBalance);
+        return _pack(_cashBalance, _managedBalance);
     }
 
     /**
@@ -171,8 +172,8 @@ library BalanceAllocation {
     // balances is more cumbersome, as both tokens need to be read/written at the same time.
     // The field with both cash balances packed is called sharedCash, and the one with external amounts is called
     // sharedManaged. These two are collectively called the 'shared' balance fields. In both of these, the portion
-    // that corresponds to token A is stored in the most significant 128 bits of a 256 bit word, while token B's part
-    // uses the least significant 128 bits.
+    // that corresponds to token A is stored in the least significant 128 bits of a 256 bit word, while token B's part
+    // uses the most significant 128 bits.
 
     /**
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token A.
@@ -192,14 +193,14 @@ library BalanceAllocation {
      * @dev Returns the sharedCash shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
-        return bytes32((uint256(cashBalance(tokenABalance)) << 128) + cashBalance(tokenBBalance));
+        return _pack(cashBalance(tokenABalance), cashBalance(tokenBBalance));
     }
 
     /**
      * @dev Returns the sharedManaged shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
-        return bytes32((uint256(managedBalance(tokenABalance)) << 128) + managedBalance(tokenBBalance));
+        return _pack(managedBalance(tokenABalance), managedBalance(tokenBBalance));
     }
 
     /**
@@ -207,7 +208,7 @@ library BalanceAllocation {
      * Note that this function can be used to decode both cash and managed balances.
      */
     function _decodeBalanceA(bytes32 sharedBalance) private pure returns (uint256) {
-        return uint256(sharedBalance >> 128) & _MASK;
+        return _leastSignificant(sharedBalance);
     }
 
     /**
@@ -215,6 +216,54 @@ library BalanceAllocation {
      * Note that this function can be used to decode both cash and managed balances.
      */
     function _decodeBalanceB(bytes32 sharedBalance) private pure returns (uint256) {
-        return uint256(sharedBalance) & _MASK;
+        return _mostSignificant(sharedBalance);
+    }
+
+    // Shared functions
+
+    /**
+     * @dev Packs together two uint128 into a bytes32
+     */
+    function _pack(uint256 _leastSignificant, uint256 _mostSignificant) internal pure returns (bytes32) {
+        return bytes32((_mostSignificant << 128) | _leastSignificant);
+    }
+
+    /**
+     * @dev Tells the 128 most significant bits of a word.
+     * Used to decode the 'managed' balance for regular wrapping or the token B balance for the two tokens special case.
+     */
+    function _mostSignificant(bytes32 value) private pure returns (uint256) {
+        return _mostSignificant(uint256(value));
+    }
+
+    /**
+     * @dev Tells the 128 most significant bits of a word.
+     * Used to decode the 'managed' balance for regular wrapping or the token B balance for the two tokens special case.
+     */
+    function _mostSignificant(uint256 value) private pure returns (uint256) {
+        return _masked(value >> 128);
+    }
+
+    /**
+     * @dev Tells the 128 least significant bits of a word.
+     * Used to decode the 'cash' balance for regular wrapping or the token A balance for the two tokens special case.
+     */
+    function _leastSignificant(bytes32 value) private pure returns (uint256) {
+        return _leastSignificant(uint256(value));
+    }
+
+    /**
+     * @dev Tells the 128 least significant bits of a word.
+     * Used to decode the 'cash' balance for regular wrapping or the token A balance for the two tokens special case.
+     */
+    function _leastSignificant(uint256 value) private pure returns (uint256) {
+        return _masked(value);
+    }
+
+    /**
+     * @dev Masks a uint256 to uint128
+     */
+    function _masked(uint256 value) private pure returns (uint256) {
+        return value & _MASK;
     }
 }
