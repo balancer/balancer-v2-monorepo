@@ -80,66 +80,14 @@ contract GeneralPoolsBalance {
         }
     }
 
-    /**
-     * @dev Adds cash to a General Pool for a list of tokens. This function doesn't check that the lengths of
-     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
-     *
-     * Requirements:
-     *
-     * - Each token must be registered in the pool
-     * - Amounts can be zero
-     */
-    function _increaseGeneralPoolCash(
+    function _updateGeneralPoolBalances(
         bytes32 poolId,
         IERC20[] memory tokens,
-        uint256[] memory amounts
+        bytes32[] memory balances
     ) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint128 amount = amounts[i].toUint128();
-            _updateGeneralPoolBalance(poolBalances, tokens[i], BalanceAllocation.increaseCash, amount);
-        }
-    }
-
-    function _alterGeneralPoolCash(
-        bytes32 poolId,
-        IERC20[] memory tokens,
-        int256[] memory amounts
-    ) internal {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            int256 amount = amounts[i];
-
-            _updateGeneralPoolBalance(
-                poolBalances,
-                tokens[i],
-                amount > 0 ? BalanceAllocation.increaseCash : BalanceAllocation.decreaseCash,
-                amount.abs().toUint128()
-            );
-        }
-    }
-
-    /**
-     * @dev Removes cash from a General Pool for a list of tokens. This function doesn't check that the lengths of
-     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
-     *
-     * Requirements:
-     *
-     * - Each token must be registered in the Pool.
-     * - Each amount must be less or equal than the Pool's cash for that token.
-     */
-    function _decreaseGeneralPoolCash(
-        bytes32 poolId,
-        IERC20[] memory tokens,
-        uint256[] memory amounts
-    ) internal {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint128 amount = amounts[i].toUint128();
-            _updateGeneralPoolBalance(poolBalances, tokens[i], BalanceAllocation.decreaseCash, amount);
+            poolBalances.set(tokens[i], balances[i]);
         }
     }
 
@@ -174,15 +122,6 @@ contract GeneralPoolsBalance {
         uint128 amount
     ) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-        _updateGeneralPoolBalance(poolBalances, token, mutation, amount);
-    }
-
-    function _updateGeneralPoolBalance(
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances,
-        IERC20 token,
-        function(bytes32, uint128) pure returns (bytes32) mutation,
-        uint128 amount
-    ) internal {
         bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
         poolBalances.set(token, mutation(currentBalance, amount));
     }
@@ -194,18 +133,18 @@ contract GeneralPoolsBalance {
     function _getGeneralPoolTokens(bytes32 poolId)
         internal
         view
-        returns (IERC20[] memory tokens, uint256[] memory balances)
+        returns (IERC20[] memory tokens, bytes32[] memory balances)
     {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         tokens = new IERC20[](poolBalances.length());
-        balances = new uint256[](tokens.length);
+        balances = new bytes32[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Because the iteration is bounded by `tokens.length` already fetched from the enumerable map,
             // we can use `unchecked_at` as we know `i` is a valid token index, saving storage reads.
             (IERC20 token, bytes32 balance) = poolBalances.unchecked_at(i);
             tokens[i] = token;
-            balances[i] = balance.totalBalance();
+            balances[i] = balance;
         }
     }
 
