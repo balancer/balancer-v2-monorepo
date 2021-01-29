@@ -219,7 +219,7 @@ describe('Vault - swaps', () => {
                   context('when requesting more than the available balance', () => {
                     const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                    assertSwapGivenInReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
+                    assertSwapGivenInReverts({ swaps }, 'ERR_SUB_OVERFLOW');
                   });
                 });
 
@@ -546,7 +546,7 @@ describe('Vault - swaps', () => {
                   context('when requesting more than the available balance', () => {
                     const swaps = [{ in: 1, out: 0, amount: 200e18 }];
 
-                    assertSwapGivenOutReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
+                    assertSwapGivenOutReverts({ swaps }, 'ERR_SUB_OVERFLOW');
                   });
                 });
 
