@@ -1,5 +1,5 @@
-import { ethers } from 'hardhat';
-import { expect } from 'chai';
+const { ethers } = require('hardhat');
+const { expect } = require('chai');
 import { Contract } from 'ethers';
 import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -506,7 +506,7 @@ describe('Vault - swaps', () => {
 
       context('for a single swap', () => {
         context('when an amount is specified', () => {
-          context('when the given indexes are not valid', () => {
+          context('when the given indexes are valid', () => {
             context('when the given token is in the pool', () => {
               context('when the requested token is in the pool', () => {
                 context('when the requesting another token', () => {
