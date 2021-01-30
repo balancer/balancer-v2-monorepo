@@ -9,6 +9,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import { encodeExit, encodeJoin } from '../helpers/mockPool';
 
 describe('Vault - asset manager', function () {
   let tokens: TokenList, otherToken: Contract, vault: Contract;
@@ -60,18 +61,16 @@ describe('Vault - asset manager', function () {
 
       await pool.registerTokens(tokenAddresses, assetManagers);
 
-      await pool.setOnJoinExitPoolReturnValues(
-        tokenAddresses.map(() => tokenInitialBalance),
-        tokenAddresses.map(() => 0)
-      );
-
       await vault.connect(lp).joinPool(
         poolId,
         other.address,
         tokenAddresses,
         tokenAddresses.map(() => MAX_UINT256),
         false,
-        '0x'
+        encodeJoin(
+          tokenAddresses.map(() => tokenInitialBalance),
+          tokenAddresses.map(() => 0)
+        )
       );
     });
 
@@ -300,9 +299,16 @@ describe('Vault - asset manager', function () {
         const { tokens: poolTokens, balances } = await vault.getPoolTokens(poolId);
 
         // Balances must be zero to unregister, so we do a full exit
-        await pool.setOnJoinExitPoolReturnValues(balances, Array(poolTokens.length).fill(0));
-
-        await vault.connect(lp).exitPool(poolId, lp.address, poolTokens, Array(poolTokens.length).fill(0), false, '0x');
+        await vault
+          .connect(lp)
+          .exitPool(
+            poolId,
+            lp.address,
+            poolTokens,
+            Array(poolTokens.length).fill(0),
+            false,
+            encodeExit(balances, Array(poolTokens.length).fill(0))
+          );
 
         // Unregistering tokens should remove the asset managers
         await pool.unregisterTokens([tokens.DAI.address, tokens.USDT.address]);

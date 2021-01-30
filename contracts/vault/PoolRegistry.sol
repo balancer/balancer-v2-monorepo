@@ -241,8 +241,8 @@ abstract contract PoolRegistry is
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
         require(tokens.length == maxAmountsIn.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
-
         uint256[] memory balances = _validateTokensAndGetBalances(poolId, tokens);
+
         (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _callOnJoinPool(
             poolId,
             tokens,
@@ -277,6 +277,7 @@ abstract contract PoolRegistry is
         } else {
             _alterGeneralPoolCash(poolId, tokens, poolBalanceDeltas);
         }
+        emit PoolJoined(poolId, msg.sender, amountsIn, dueProtocolFeeAmounts);
     }
 
     function exitPool(
@@ -329,6 +330,8 @@ abstract contract PoolRegistry is
         } else {
             _decreaseGeneralPoolCash(poolId, tokens, poolBalanceDeltas);
         }
+
+        emit PoolExited(poolId, msg.sender, amountsOut, dueProtocolFeeAmounts);
     }
 
     function _receiveTokens(

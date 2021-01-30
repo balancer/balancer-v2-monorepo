@@ -9,6 +9,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import { encodeExit, encodeJoin } from '../helpers/mockPool';
 
 let admin: SignerWithAddress;
 let lp: SignerWithAddress;
@@ -290,20 +291,16 @@ describe('Vault - pool registry', () => {
 
                 context('when some tokens still have some balance', () => {
                   beforeEach('add some balance', async () => {
-                    const balances = tokenAddresses.map(() => 5);
-
-                    await pool.setOnJoinExitPoolReturnValues(
-                      balances,
-                      tokenAddresses.map(() => 0)
-                    );
-
                     await vault.connect(lp).joinPool(
                       poolId,
                       other.address,
                       tokenAddresses,
                       tokenAddresses.map(() => MAX_UINT256),
                       false,
-                      '0x'
+                      encodeJoin(
+                        tokenAddresses.map(() => 5),
+                        tokenAddresses.map(() => 0)
+                      )
                     );
                   });
 
@@ -315,18 +312,16 @@ describe('Vault - pool registry', () => {
                       });
                     } else {
                       it('can unregister the tokens without balance', async () => {
-                        await pool.setOnJoinExitPoolReturnValues(
-                          tokenAddresses.map((_, index) => (index == 0 ? 5 : 0)), // Fully exit on token 0
-                          tokenAddresses.map(() => 0)
-                        );
-
                         await vault.connect(lp).exitPool(
                           poolId,
                           other.address,
                           tokenAddresses,
                           tokenAddresses.map(() => 0),
                           false,
-                          '0x'
+                          encodeExit(
+                            tokenAddresses.map((_, index) => (index == 0 ? 5 : 0)), // Fully exit on token 0
+                            tokenAddresses.map(() => 0)
+                          )
                         );
 
                         await pool.unregisterTokens([tokenAddresses[0]]);
