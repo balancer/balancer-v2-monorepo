@@ -46,6 +46,7 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
 
     uint8 private constant _MAX_TOKENS = 16;
 
+    //TODO: document this limit
     uint256 private constant _MIN_AMP = 50 * (10**18);
     uint256 private constant _MAX_AMP = 2000 * (10**18);
 
