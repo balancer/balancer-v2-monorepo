@@ -14,10 +14,9 @@
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
-
-import "../../math/FixedPoint.sol";
-import "../../math/LogExpMath.sol";
+import "../../lib/math/Math.sol";
+import "../../lib/math/FixedPoint.sol";
+import "../../lib/math/LogExpMath.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
@@ -25,6 +24,8 @@ import "../../math/LogExpMath.sol";
 /* solhint-disable private-vars-leading-underscore */
 
 contract WeightedMath {
+    using Math for uint256;
+    using Math for uint128;
     using FixedPoint for uint256;
     using FixedPoint for uint128;
 

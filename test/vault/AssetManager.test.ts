@@ -134,7 +134,7 @@ describe('Vault - asset manager', function () {
         it('reverts when sending more than the pool balance', async () => {
           await expect(
             vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, tokenInitialBalance.add(1))
-          ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+          ).to.be.revertedWith('ERR_SUB_OVERFLOW');
         });
       });
 

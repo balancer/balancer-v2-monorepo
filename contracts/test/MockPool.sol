@@ -15,16 +15,13 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "../lib/math/FixedPoint.sol";
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IPool.sol";
 import "../vault/interfaces/IGeneralPoolQuote.sol";
 import "../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
-
-import "../math/FixedPoint.sol";
 
 contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
     using FixedPoint for uint256;
