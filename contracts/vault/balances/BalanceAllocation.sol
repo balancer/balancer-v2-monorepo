@@ -70,6 +70,16 @@ library BalanceAllocation {
     }
 
     /**
+     * @dev Computes the total balance of the Pool tokens.
+     */
+    function totalBalances(bytes32[] memory balances) internal pure returns (uint256[] memory totals) {
+        totals = new uint256[](balances.length);
+        for (uint256 i = 0; i < totals.length; i++) {
+            totals[i] = totalBalance(balances[i]);
+        }
+    }
+
+    /**
      * @dev Tell whether the total amount is not zero
      */
     function isNotZero(bytes32 balance) internal pure returns (bool) {

@@ -351,7 +351,7 @@ describe('Vault - exit pool', () => {
           poolId,
           liquidityProvider: lp.address,
           amountsOut: exitAmounts,
-          protocolFees: dueProtocolFeeAmounts
+          protocolFees: dueProtocolFeeAmounts,
         });
       });
 
@@ -411,7 +411,7 @@ describe('Vault - exit pool', () => {
 
             return expect(
               exitPool({ toInternalBalance, dueProtocolFeeAmounts, exitAmounts: excessiveExitAmounts })
-            ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+            ).to.be.revertedWith('ERR_SUB_OVERFLOW');
           })
         );
       });

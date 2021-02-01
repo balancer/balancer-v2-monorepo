@@ -98,7 +98,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
             uint128 initialBalance = _internalTokenBalance[msg.sender][token];
 
             require(initialBalance >= amount, "Vault: withdraw amount exceeds balance");
-
             _internalTokenBalance[msg.sender][token] = initialBalance - amount;
 
             uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);

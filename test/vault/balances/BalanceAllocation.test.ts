@@ -411,4 +411,38 @@ describe('Vault - cash/managed balance', () => {
       await testPackUnpack(amount, amount, amount, 0);
     });
   });
+
+  describe('total balances', () => {
+    async function testTotalBalances(cashBalances: BigNumberish[], managedBalances: BigNumberish[]) {
+      const balances = await Promise.all(
+        cashBalances.map((cash, i) => library.toBalance(bn(cash), bn(managedBalances[i])))
+      );
+
+      const expectedTotals = cashBalances.map((cash, i) => bn(cash).add(bn(managedBalances[i])));
+      expect(await library.totalBalances(balances)).to.deep.equal(expectedTotals);
+    }
+
+    it('handles zero balances', async () => {
+      await testTotalBalances([0, 0], [0, 0]);
+    });
+
+    it('handles normal values', async () => {
+      await testTotalBalances([10e18, 9e18], [5e18, 6e17]);
+    });
+
+    it('handles extreme cash values', async () => {
+      await testTotalBalances([MAX_UINT128.sub(23), MAX_UINT128.sub(4)], [23, 4]);
+    });
+
+    it('handles extreme managed values', async () => {
+      await testTotalBalances([42, 10], [MAX_UINT128.sub(42), MAX_UINT128.sub(10)]);
+    });
+
+    it('handles extreme values', async () => {
+      await testTotalBalances(
+        [MAX_UINT128.div(2), MAX_UINT128.div(2).add(1)],
+        [MAX_UINT128.div(2).add(1), MAX_UINT128.div(2)]
+      );
+    });
+  });
 });
