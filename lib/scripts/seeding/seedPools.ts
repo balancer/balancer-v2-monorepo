@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import * as allPools from './allPools.json';
 import { bn, BigNumberish } from '../../helpers/numbers';
 import { TokenList, deployTokens } from '../../helpers/tokens';
-import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
+import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../helpers/trading';
 
 let ethers: any;
@@ -145,7 +145,7 @@ async function swapInPool(pool: Contract) {
         overallTokenIn,
         overallTokenOut,
         minimumAmountOut: 0,
-        maximumAmountIn: MAX_UINT128,
+        maximumAmountIn: MAX_UINT112,
         deadline: MAX_UINT256,
       }),
       swaps,
