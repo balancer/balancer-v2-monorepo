@@ -200,7 +200,7 @@ describe('StablePool', function () {
         });
 
         it('reverts if amplification coefficient is too high', async () => {
-          const highAmp = bn(5000).mul((10e18).toString());
+          const highAmp = bn(5000).mul(bn(10e18));
 
           await expect(deployPool({ tokens: poolTokens, amplification: highAmp })).to.be.revertedWith('ERR_MAX_AMP');
         });
