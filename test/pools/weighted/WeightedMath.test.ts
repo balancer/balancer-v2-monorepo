@@ -2,7 +2,7 @@ import { BigNumber, Contract } from 'ethers';
 
 import { deploy } from '../../../lib/helpers/deploy';
 import { bn, decimal } from '../../../lib/helpers/numbers';
-import { MAX_UINT128 } from '../../../lib/helpers/constants';
+import { MAX_UINT112 } from '../../../lib/helpers/constants';
 import { expectRelativeError } from '../../helpers/relativeError';
 import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/weighted';
 
@@ -120,22 +120,22 @@ describe('WeightedMath', function () {
     it('outGivenIn - max amount in', async () => {
       await compareOutGivenIn(
         mock,
-        MAX_UINT128, //tokenBalanceIn
+        MAX_UINT112, //tokenBalanceIn
         bn(50e18), //tokenWeightIn
-        MAX_UINT128, //tokenBalanceOut
+        MAX_UINT112, //tokenBalanceOut
         bn(40e18), //tokenWeightOut
-        MAX_UINT128.div(2) //tokenAmountIn (50% of Balance)
+        MAX_UINT112.div(2) //tokenAmountIn (50% of Balance)
       );
     });
 
     it('inGivenOut - max amount out', async () => {
       await compareInGivenOut(
         mock,
-        MAX_UINT128, //tokenBalanceIn
+        MAX_UINT112, //tokenBalanceIn
         bn(50e18), //tokenWeightIn
-        MAX_UINT128, //tokenBalanceOut
+        MAX_UINT112, //tokenBalanceOut
         bn(40e18), //tokenWeightOut
-        MAX_UINT128.div(2) //tokenAmountOut (50% of Balance)
+        MAX_UINT112.div(2) //tokenAmountOut (50% of Balance)
       );
     });
   });

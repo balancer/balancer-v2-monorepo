@@ -374,7 +374,7 @@ describe('Vault - join pool', () => {
         const expectedTokensToTransfer = arraySub(joinAmounts, expectedInternalBalanceToUse);
 
         await Promise.all(
-          expectedTokensToTransfer.map(async (amount, i) => {
+          expectedTokensToTransfer.map(async (amount: BigNumber, i: number) => {
             if (amount.gt(0)) {
               const token = tokens[symbol(tokenAddresses[i])];
 

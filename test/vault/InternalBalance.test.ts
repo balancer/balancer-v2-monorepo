@@ -8,7 +8,7 @@ import { bn, fp, pct } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { MAX_UINT112, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 
 describe('Vault - internal balance', () => {
@@ -350,14 +350,14 @@ describe('Vault - internal balance', () => {
 
         context('when the recipient cannot hold any more tokens', () => {
           beforeEach('deposit huge amount to recipient', async () => {
-            await mintTokens(tokens, 'DAI', recipient, MAX_UINT128);
-            await tokens.DAI.connect(recipient).approve(vault.address, MAX_UINT128);
+            await mintTokens(tokens, 'DAI', recipient, MAX_UINT112);
+            await tokens.DAI.connect(recipient).approve(vault.address, MAX_UINT112);
             await vault
               .connect(recipient)
-              .depositToInternalBalance([tokens.DAI.address], [MAX_UINT128], recipient.address);
+              .depositToInternalBalance([tokens.DAI.address], [MAX_UINT112], recipient.address);
           });
 
-          itReverts(transferredAmounts, 'ERR_CANNOT_CAST_TO_UINT128');
+          itReverts(transferredAmounts, 'ERR_CANNOT_CAST_TO_UINT112');
         });
       });
 

@@ -4,7 +4,7 @@ pragma solidity ^0.7.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow checks.
- * Adapted from OpenZeppelin's SafeMath and SignedSafeMath
+ * Adapted from OpenZeppelin's SafeMath library
  */
 library Math {
     /**

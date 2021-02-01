@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../lib/math/Math.sol";
 import "../lib/helpers/EnumerableMap.sol";
@@ -29,7 +28,7 @@ import "./interfaces/IPoolQuoteStructs.sol";
 import "./interfaces/IGeneralPoolQuote.sol";
 import "./interfaces/IMinimalSwapInfoPoolQuote.sol";
 import "./interfaces/ISwapValidator.sol";
-import "./balances/BalanceAllocation.sol";
+import "./balances/BalanceAllocation112.sol";
 
 abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeERC20 for IERC20;
@@ -38,7 +37,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     using Math for int256;
     using SafeCast for uint256;
-    using BalanceAllocation for bytes32;
+    using BalanceAllocation112 for bytes32;
 
     // Despite the external API having two separate functions for given in and given out, internally their are handled
     // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
@@ -398,8 +397,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenInBalance = tokenBBalance;
         }
 
-        uint256 tokenInTotalBalance = tokenInBalance.totalBalance();
-        uint256 tokenOutTotalBalance = tokenOutBalance.totalBalance();
+        uint256 tokenInTotalBalance = tokenInBalance.total();
+        uint256 tokenOutTotalBalance = tokenOutBalance.total();
 
         // Perform the quote request and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
@@ -420,8 +419,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         // We check the token ordering again to create the new shared cash packed struct
         poolSharedBalances.sharedCash = request.tokenIn < request.tokenOut
-            ? BalanceAllocation.toSharedCash(tokenInBalance, tokenOutBalance) // in is A, out is B
-            : BalanceAllocation.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
+            ? BalanceAllocation112.toSharedCash(tokenInBalance, tokenOutBalance) // in is A, out is B
+            : BalanceAllocation112.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
     }
 
     function _processMinimalSwapInfoPoolQuoteRequest(
@@ -432,8 +431,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenInBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenIn);
         bytes32 tokenOutBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenOut);
 
-        uint256 tokenInTotalBalance = tokenInBalance.totalBalance();
-        uint256 tokenOutTotalBalance = tokenOutBalance.totalBalance();
+        uint256 tokenInTotalBalance = tokenInBalance.total();
+        uint256 tokenOutTotalBalance = tokenOutBalance.total();
 
         // Perform the quote request and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
@@ -476,7 +475,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
-            currentBalances[i] = balance.totalBalance();
+            currentBalances[i] = balance.total();
 
             if (i == indexIn) {
                 tokenInBalance = balance;

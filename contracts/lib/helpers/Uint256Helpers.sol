@@ -12,27 +12,28 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma experimental ABIEncoderV2;
-
 pragma solidity ^0.7.1;
 
-import "../vault/interfaces/ISwapValidator.sol";
+library Uint256Helpers {
+    /**
+     * @dev Tells if a uint256 can be downcasted to uint32.
+     */
+    function canCastToUint32(uint256 value) internal pure returns (bool) {
+        return value < 2**32;
+    }
 
-contract MockSwapValidator is ISwapValidator {
-    event ValidationData(IERC20 overallTokenIn, IERC20 overallTokenOut, uint112 maxAmountIn, uint112 minAmountOut);
+    /**
+     * @dev Tells if a uint256 can be downcasted to uint112.
+     */
+    function canCastToUint112(uint256 value) internal pure returns (bool) {
+        return value < 2**112;
+    }
 
-    function validate(
-        IERC20[] calldata,
-        int256[] calldata,
-        bytes calldata data
-    ) external override {
-        //Decode data
-        (IERC20 overallTokenIn, IERC20 overallTokenOut, uint112 maxAmountIn, uint112 minAmountOut) = abi.decode(
-            (data),
-            (IERC20, IERC20, uint112, uint112)
-        );
-
-        //Validate
-        emit ValidationData(overallTokenIn, overallTokenOut, maxAmountIn, minAmountOut);
+    /**
+     * @dev Converts an unsigned uint256 into a signed int256.
+     */
+    function toInt256(uint256 value) internal pure returns (int256) {
+        require(value < 2**255, "ERR_CANNOT_CAST_TO_INT256");
+        return int256(value);
     }
 }

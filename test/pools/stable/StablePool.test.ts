@@ -10,7 +10,7 @@ import { expectEqualWithError } from '../../helpers/relativeError';
 import { deploy } from '../../../lib/helpers/deploy';
 import { GeneralPool } from '../../../lib/helpers/pools';
 import { bn, fp, FP_SCALING_FACTOR, decimal } from '../../../lib/helpers/numbers';
-import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
+import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 
@@ -630,17 +630,17 @@ describe('StablePool', function () {
         poolId = await pool.getPoolId();
 
         // Grant some initial BPT to the LP
-        await pool.connect(lp).joinPool(bn(1e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
+        await pool.connect(lp).joinPool(bn(1e18), [MAX_UINT112, MAX_UINT112], true, lp.address);
       });
 
       it('joins and exits do not accumulate fees', async () => {
-        await pool.connect(lp).joinPool(bn(1e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
-        await pool.connect(lp).joinPool(bn(4e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
+        await pool.connect(lp).joinPool(bn(1e18), [MAX_UINT112, MAX_UINT112], true, lp.address);
+        await pool.connect(lp).joinPool(bn(4e18), [MAX_UINT112, MAX_UINT112], true, lp.address);
 
         await pool.connect(lp).exitPool(bn(0.5e18), [0, 0], true, lp.address);
         await pool.connect(lp).exitPool(bn(2.5e18), [0, 0], true, lp.address);
 
-        await pool.connect(lp).joinPool(bn(7e18), [MAX_UINT128, MAX_UINT128], true, lp.address);
+        await pool.connect(lp).joinPool(bn(7e18), [MAX_UINT112, MAX_UINT112], true, lp.address);
 
         await pool.connect(lp).exitPool(bn(5e18), [0, 0], true, lp.address);
 
@@ -718,7 +718,7 @@ describe('StablePool', function () {
 
         it('pays swap protocol fees on join', async () => {
           await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).joinPool(bn(1e18), [MAX_UINT128, MAX_UINT128], true, lp.address)
+            pool.connect(lp).joinPool(bn(1e18), [MAX_UINT112, MAX_UINT112], true, lp.address)
           );
         });
 

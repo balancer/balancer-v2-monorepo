@@ -540,7 +540,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     }
 
     function _addSwapFee(uint256 amount) private view returns (uint256) {
-        return amount.div(uint256(FixedPoint.ONE).sub(_swapFee));
+        return amount.div(FixedPoint.ONE.sub(_swapFee));
     }
 
     function _subtractSwapFee(uint256 amount) private view returns (uint256) {

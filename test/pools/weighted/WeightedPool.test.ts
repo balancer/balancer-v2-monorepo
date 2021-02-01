@@ -17,7 +17,7 @@ import {
 import { deploy } from '../../../lib/helpers/deploy';
 import { bn, fp, decimal, pct } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
-import { MAX_UINT128, ZERO_ADDRESS } from '../../../lib/helpers/constants';
+import { MAX_UINT112, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';
 
@@ -747,24 +747,24 @@ describe('WeightedPool', function () {
     describe.skip('protocol swap fees', () => {
       const SWAP_FEE = fp(0.05); // 5 %
       const PROTOCOL_SWAP_FEE = fp(0.1); // 10 %
-      const MAX_UINT128S = Array(numberOfTokens).fill(MAX_UINT128);
+      const MAX_UINT112S = Array(numberOfTokens).fill(MAX_UINT112);
 
       beforeEach(async () => {
         await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), feeSetter.address);
         await vault.connect(feeSetter).setProtocolSwapFee(PROTOCOL_SWAP_FEE);
 
         ({ pool, poolId } = await deployPool({ swapFee: SWAP_FEE }));
-        await pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT128S, true, lp.address);
+        await pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT112S, true, lp.address);
       });
 
       it('joins and exits do not accumulate fees', async () => {
-        await pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT128S, true, lp.address);
-        await pool.connect(lp).callJoinPool(bn(4e18), MAX_UINT128S, true, lp.address);
+        await pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT112S, true, lp.address);
+        await pool.connect(lp).callJoinPool(bn(4e18), MAX_UINT112S, true, lp.address);
 
         await pool.connect(lp).callExitPool(bn(0.5e18), ZEROS, true, lp.address);
         await pool.connect(lp).callExitPool(bn(2.5e18), ZEROS, true, lp.address);
 
-        await pool.connect(lp).callJoinPool(bn(7e18), MAX_UINT128S, true, lp.address);
+        await pool.connect(lp).callJoinPool(bn(7e18), MAX_UINT112S, true, lp.address);
 
         await pool.connect(lp).callExitPool(bn(5e18), ZEROS, true, lp.address);
 
@@ -830,7 +830,7 @@ describe('WeightedPool', function () {
 
         it('pays swap protocol fees on join', async () => {
           await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT128S, true, lp.address)
+            pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT112S, true, lp.address)
           );
         });
 
@@ -844,7 +844,7 @@ describe('WeightedPool', function () {
           await assertProtocolSwapFeeIsCharged(() =>
             pool
               .connect(lp)
-              .joinPoolTokenInForExactBPTOut(bn(1e18), tokenList.DAI.address, MAX_UINT128, true, lp.address)
+              .joinPoolTokenInForExactBPTOut(bn(1e18), tokenList.DAI.address, MAX_UINT112, true, lp.address)
           );
         });
 
@@ -860,7 +860,7 @@ describe('WeightedPool', function () {
 
         it('pays swap protocol fees on exit exact tokens out', async () => {
           await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).exitPoolBPTInForExactTokensOut(MAX_UINT128, ZEROS, true, lp.address)
+            pool.connect(lp).exitPoolBPTInForExactTokensOut(MAX_UINT112, ZEROS, true, lp.address)
           );
         });
       });

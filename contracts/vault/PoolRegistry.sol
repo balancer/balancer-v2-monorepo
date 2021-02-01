@@ -20,11 +20,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/Uint256Helpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IPool.sol";
 import "./InternalBalance.sol";
-import "./balances/BalanceAllocation.sol";
+import "./balances/BalanceAllocation112.sol";
 import "./balances/GeneralPoolsBalance.sol";
 import "./balances/MinimalSwapInfoPoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
@@ -39,8 +40,8 @@ abstract contract PoolRegistry is
     using Math for uint256;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
-    using BalanceAllocation for bytes32;
-    using BalanceAllocation for bytes32[];
+    using BalanceAllocation112 for bytes32;
+    using BalanceAllocation112 for bytes32[];
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // Set with all Pools in the system
@@ -135,7 +136,7 @@ abstract contract PoolRegistry is
     {
         bytes32[] memory rawBalances;
         (tokens, rawBalances) = _getPoolTokens(poolId);
-        balances = rawBalances.totalBalances();
+        balances = rawBalances.totals();
     }
 
     function getPoolTokenBalanceInfo(bytes32 poolId, IERC20 token)
@@ -156,8 +157,8 @@ abstract contract PoolRegistry is
             balance = _getGeneralPoolBalance(poolId, token);
         }
 
-        cash = balance.cashBalance();
-        managed = balance.managedBalance();
+        cash = balance.cash();
+        managed = balance.managed();
     }
 
     function getPool(bytes32 poolId)
@@ -239,7 +240,7 @@ abstract contract PoolRegistry is
         (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _callOnJoinPool(
             poolId,
             tokens,
-            balances.totalBalances(),
+            balances.totals(),
             recipient,
             maxAmountsIn,
             userData
@@ -291,7 +292,7 @@ abstract contract PoolRegistry is
         (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _callOnExitPool(
             poolId,
             tokens,
-            balances.totalBalances(),
+            balances.totals(),
             recipient,
             minAmountsOut,
             userData
@@ -479,7 +480,6 @@ abstract contract PoolRegistry is
 
         token.safeTransfer(msg.sender, amount);
 
-        // Given amount was already cast to uint128 to be stored, thus we can ensure it fits in an int256
         emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
     }
 

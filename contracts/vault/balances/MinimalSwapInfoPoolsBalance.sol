@@ -17,10 +17,10 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import "./BalanceAllocation.sol";
+import "./BalanceAllocation112.sol";
 
 contract MinimalSwapInfoPoolsBalance {
-    using BalanceAllocation for bytes32;
+    using BalanceAllocation112 for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Data for Pools with Minimal Swap Info Specialization setting
@@ -89,7 +89,7 @@ contract MinimalSwapInfoPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
+        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation112.cashToManaged, amount);
     }
 
     function _minimalSwapInfoPoolManagedToCash(
@@ -97,7 +97,7 @@ contract MinimalSwapInfoPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
+        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation112.managedToCash, amount);
     }
 
     function _setMinimalSwapInfoPoolManagedBalance(
@@ -105,7 +105,7 @@ contract MinimalSwapInfoPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
+        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation112.setManaged, amount);
     }
 
     function _updateMinimalSwapInfoPoolBalance(
