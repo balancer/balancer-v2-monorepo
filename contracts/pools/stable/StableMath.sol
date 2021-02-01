@@ -14,8 +14,6 @@
 
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-
 import "../../lib/math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library

@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 interface ISwapValidator {
     function validate(

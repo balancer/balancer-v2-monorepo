@@ -34,9 +34,7 @@ import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
 
 contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using Math for uint256;
-    using Math for uint128;
     using FixedPoint for uint256;
-    using FixedPoint for uint128;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;

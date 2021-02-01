@@ -14,7 +14,6 @@
 
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BalanceAllocation.sol";
@@ -22,7 +21,6 @@ import "../../lib/math/SignedMath.sol";
 import "../../lib/helpers/EnumerableMap.sol";
 
 contract GeneralPoolsBalance {
-    using SafeCast for uint256;
     using SignedMath for int256;
     using BalanceAllocation for bytes32;
 
@@ -90,7 +88,7 @@ contract GeneralPoolsBalance {
     function _generalPoolCashToManaged(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateGeneralPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
@@ -98,7 +96,7 @@ contract GeneralPoolsBalance {
     function _generalPoolManagedToCash(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateGeneralPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
@@ -106,7 +104,7 @@ contract GeneralPoolsBalance {
     function _setGeneralPoolManagedBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
@@ -114,8 +112,8 @@ contract GeneralPoolsBalance {
     function _updateGeneralPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        function(bytes32, uint128) pure returns (bytes32) mutation,
-        uint128 amount
+        function(bytes32, uint256) pure returns (bytes32) mutation,
+        uint256 amount
     ) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);

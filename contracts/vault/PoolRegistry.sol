@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../lib/math/Math.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
@@ -36,14 +35,11 @@ abstract contract PoolRegistry is
     MinimalSwapInfoPoolsBalance,
     TwoTokenPoolsBalance
 {
-    using EnumerableSet for EnumerableSet.Bytes32Set;
+    using Math for uint256;
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
-    using SafeCast for uint256;
-    using SafeCast for uint128;
-    using Math for uint256;
-    using Math for uint128;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // Set with all Pools in the system
     EnumerableSet.Bytes32Set internal _pools;
@@ -249,15 +245,15 @@ abstract contract PoolRegistry is
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             require(amountsIn[i] <= maxAmountsIn[i], "ERR_JOIN_ABOVE_MAX");
-            uint128 amountIn = amountsIn[i].toUint128();
+            uint256 amountIn = amountsIn[i];
 
             // Receive tokens
             IERC20 token = tokens[i];
             _receiveTokens(token, amountIn, msg.sender, fromInternalBalance);
 
             // Charge swap protocol fees to pool
-            uint128 feeToPay = dueProtocolFeeAmounts[i].toUint128();
-            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToPay);
+            uint256 feeToPay = dueProtocolFeeAmounts[i];
+            _increaseCollectedFees(token, feeToPay);
 
             // First increase cash. Fees could be larger than the amounts in for a token and end up being a subtraction.
             balances[i] = balances[i].increaseCash(amountIn).decreaseCash(feeToPay);
@@ -299,18 +295,18 @@ abstract contract PoolRegistry is
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             require(amountsOut[i] >= minAmountsOut[i], "ERR_EXIT_BELOW_MIN");
-            uint128 amountOut = amountsOut[i].toUint128();
+            uint256 amountOut = amountsOut[i];
 
             // Send tokens
             IERC20 token = tokens[i];
-            uint128 withdrawFee = _sendTokens(token, amountOut, recipient, toInternalBalance);
+            uint256 withdrawFee = _sendTokens(token, amountOut, recipient, toInternalBalance);
 
             // Charge swap protocol fees to pool
-            uint128 feeToPay = dueProtocolFeeAmounts[i].toUint128();
-            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToPay).add(withdrawFee);
+            uint256 feeToPay = dueProtocolFeeAmounts[i];
+            _increaseCollectedFees(token, feeToPay.add(withdrawFee));
 
             // Compute new balance
-            uint128 delta = amountOut.add128(feeToPay);
+            uint256 delta = amountOut.add(feeToPay);
             balances[i] = balances[i].decreaseCash(delta);
         }
 
@@ -334,7 +330,7 @@ abstract contract PoolRegistry is
      */
     function _receiveTokens(
         IERC20 token,
-        uint128 amount,
+        uint256 amount,
         address sender,
         bool fromInternalBalance
     ) internal {
@@ -342,19 +338,16 @@ abstract contract PoolRegistry is
             return;
         }
 
-        uint128 tokensToReceive = amount;
+        uint256 toReceive = amount;
         if (fromInternalBalance) {
-            uint128 currentInternalBalance = _internalTokenBalance[sender][token];
-            uint128 toWithdraw = Math.min128(currentInternalBalance, tokensToReceive);
-
-            // toWithdraw is guaranteed to be less or equal than both of these two amounts because it equals
-            // the smallest of the two, which means the subtraction cannot overflow.
-            _internalTokenBalance[sender][token] = currentInternalBalance - toWithdraw;
-            tokensToReceive -= toWithdraw;
+            uint256 currentInternalBalance = _getInternalBalance(sender, token);
+            uint256 toWithdraw = Math.min(currentInternalBalance, amount);
+            _decreaseInternalBalance(sender, token, toWithdraw);
+            toReceive -= toWithdraw;
         }
 
-        if (tokensToReceive > 0) {
-            token.safeTransferFrom(sender, address(this), tokensToReceive);
+        if (toReceive > 0) {
+            token.safeTransferFrom(sender, address(this), toReceive);
         }
     }
 
@@ -364,21 +357,21 @@ abstract contract PoolRegistry is
      */
     function _sendTokens(
         IERC20 token,
-        uint128 amount,
+        uint256 amount,
         address recipient,
         bool toInternalBalance
-    ) internal returns (uint128) {
+    ) internal returns (uint256) {
         if (amount == 0) {
             return 0;
         }
 
         if (toInternalBalance) {
             // Deposit tokens to the recipient's Internal Balance - the Vault's balance doesn't change
-            _internalTokenBalance[recipient][token] = _internalTokenBalance[recipient][token].add128(amount);
+            _increaseInternalBalance(recipient, token, amount);
             return 0;
         } else {
             // Transfer the tokens to the recipient, charging the protocol exit fee
-            uint128 withdrawFee = _calculateProtocolWithdrawFeeAmount(amount);
+            uint256 withdrawFee = _calculateProtocolWithdrawFeeAmount(amount);
             token.safeTransfer(recipient, amount.sub(withdrawFee));
             return withdrawFee;
         }
@@ -473,15 +466,17 @@ abstract contract PoolRegistry is
     ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolCashToManaged(poolId, token, amount.toUint128());
+            _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _twoTokenPoolCashToManaged(poolId, token, amount.toUint128());
+            _twoTokenPoolCashToManaged(poolId, token, amount);
         } else {
-            _generalPoolCashToManaged(poolId, token, amount.toUint128());
+            _generalPoolCashToManaged(poolId, token, amount);
         }
 
         token.safeTransfer(msg.sender, amount);
-        emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
+
+        // Given amount was already cast to uint128 to be stored, thus we can ensure it fits in an int256
+        emit PoolBalanceChanged(poolId, msg.sender, token, int256(amount));
     }
 
     function depositToPoolBalance(
@@ -489,17 +484,19 @@ abstract contract PoolRegistry is
         IERC20 token,
         uint256 amount
     ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
-        token.safeTransferFrom(msg.sender, address(this), amount);
-
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolManagedToCash(poolId, token, amount.toUint128());
+            _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _twoTokenPoolManagedToCash(poolId, token, amount.toUint128());
+            _twoTokenPoolManagedToCash(poolId, token, amount);
         } else {
-            _generalPoolManagedToCash(poolId, token, amount.toUint128());
+            _generalPoolManagedToCash(poolId, token, amount);
         }
-        emit PoolBalanceChanged(poolId, msg.sender, token, -(amount.toInt256()));
+
+        token.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Given amount was already cast to uint128 to be stored, thus we can ensure it fits in an int256
+        emit PoolBalanceChanged(poolId, msg.sender, token, -int256(amount));
     }
 
     function updateManagedBalance(
@@ -509,11 +506,11 @@ abstract contract PoolRegistry is
     ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount.toUint128());
+            _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _setTwoTokenPoolManagedBalance(poolId, token, amount.toUint128());
+            _setTwoTokenPoolManagedBalance(poolId, token, amount);
         } else {
-            _setGeneralPoolManagedBalance(poolId, token, amount.toUint128());
+            _setGeneralPoolManagedBalance(poolId, token, amount);
         }
     }
 

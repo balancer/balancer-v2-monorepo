@@ -17,12 +17,9 @@ pragma experimental ABIEncoderV2;
 pragma solidity ^0.7.1;
 
 import "../lib/math/SignedMath.sol";
-
 import "../vault/interfaces/ISwapValidator.sol";
 
 contract OneToOneSwapValidator is ISwapValidator {
-    using SafeCast for uint256;
-    using SafeCast for int256;
     using SignedMath for int256;
 
     function validate(

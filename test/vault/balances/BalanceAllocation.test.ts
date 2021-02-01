@@ -174,9 +174,9 @@ describe('Vault - cash/managed balance', () => {
       });
 
       it('reverts on cash overflow', async () => {
-        await expect(testIncreaseCash(MAX_UINT128, 0, 1)).to.be.revertedWith('ERR_ADD_OVERFLOW');
+        await expect(testIncreaseCash(MAX_UINT128, 0, 1)).to.be.revertedWith("SafeCast: value doesn't fit in 128 bits");
         await expect(testIncreaseCash(MAX_UINT128.div(2), 0, MAX_UINT128.div(2).add(2))).to.be.revertedWith(
-          'ERR_ADD_OVERFLOW'
+          "SafeCast: value doesn't fit in 128 bits"
         );
       });
 

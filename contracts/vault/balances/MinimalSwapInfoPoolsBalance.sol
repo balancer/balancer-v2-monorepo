@@ -14,7 +14,6 @@
 
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
@@ -22,10 +21,8 @@ import "./BalanceAllocation.sol";
 import "../../lib/math/SignedMath.sol";
 
 contract MinimalSwapInfoPoolsBalance {
-    using SafeCast for uint256;
     using SignedMath for int256;
     using BalanceAllocation for bytes32;
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Data for Pools with Minimal Swap Info Specialization setting
@@ -92,7 +89,7 @@ contract MinimalSwapInfoPoolsBalance {
     function _minimalSwapInfoPoolCashToManaged(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
@@ -100,7 +97,7 @@ contract MinimalSwapInfoPoolsBalance {
     function _minimalSwapInfoPoolManagedToCash(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
@@ -108,7 +105,7 @@ contract MinimalSwapInfoPoolsBalance {
     function _setMinimalSwapInfoPoolManagedBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
@@ -116,8 +113,8 @@ contract MinimalSwapInfoPoolsBalance {
     function _updateMinimalSwapInfoPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        function(bytes32, uint128) pure returns (bytes32) mutation,
-        uint128 amount
+        function(bytes32, uint256) pure returns (bytes32) mutation,
+        uint256 amount
     ) internal {
         bytes32 currentBalance = _getMinimalSwapInfoPoolBalance(poolId, token);
         _minimalSwapInfoPoolsBalances[poolId][token] = mutation(currentBalance, amount);
