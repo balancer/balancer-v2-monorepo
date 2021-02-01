@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: master
+  pull_request:
+    branches: '*'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Lint
+        run: yarn lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Test
+        run: yarn test
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Coverage
+        run: yarn compile && yarn coverage
+        continue-on-error: true
+      - name: codecov
+        uses: codecov/codecov-action@v1
+
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Hardhat Deploy
+        run: yarn compile && yarn deploy:hardhat
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Benchmark
+        run: yarn benchmark
+
+env:
+  CI: true

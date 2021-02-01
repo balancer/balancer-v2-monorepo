@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "../../math/FixedPoint.sol";
+import "../../lib/math/Math.sol";
 
 // This library is used to create a data structure that represents a token's balance for a Pool. 'cash' is how many
 // tokens the Pool has sitting inside of the Vault. 'managed' is how many tokens were withdrawn from the Vault by the
@@ -40,7 +40,7 @@ import "../../math/FixedPoint.sol";
 // type we use to represent these values is bytes32, as it doesn't have any arithmetic operations and therefore reduces
 // the chance of misuse.
 library BalanceAllocation {
-    using FixedPoint for uint128;
+    using Math for uint128;
 
     // The 'cash' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the
     // 'managed' part uses the most significant 128 bits.

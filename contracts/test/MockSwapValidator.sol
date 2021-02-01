@@ -16,8 +16,6 @@ pragma experimental ABIEncoderV2;
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
-
 import "../vault/interfaces/ISwapValidator.sol";
 
 contract MockSwapValidator is ISwapValidator {

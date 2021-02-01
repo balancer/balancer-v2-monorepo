@@ -55,6 +55,7 @@
     "hardhat-local-networks-config-plugin": "0.0.2",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
+    "lodash.times": "^4.3.2",
     "lodash.zip": "^4.2.0",
     "mocha": "^8.1.1",
     "nodemon": "^2.0.4",

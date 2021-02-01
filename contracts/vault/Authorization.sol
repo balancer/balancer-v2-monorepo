@@ -15,7 +15,7 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../vendor/ReentrancyGuard.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";

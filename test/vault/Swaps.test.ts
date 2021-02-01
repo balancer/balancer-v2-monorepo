@@ -1,5 +1,5 @@
-import { ethers } from 'hardhat';
 import { expect } from 'chai';
+import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -11,6 +11,7 @@ import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import { encodeJoin } from '../helpers/mockPool';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -117,13 +118,19 @@ describe('Vault - swaps', () => {
 
     // Join the pool - the actual amount is not relevant since the MockPool relies on the multiplier to quote prices
     const tokenAmounts = tokenAddresses.map(() => bn(100e18));
-    await pool.setOnJoinExitPoolReturnValues(
-      tokenAmounts,
-      tokenAddresses.map(() => 0)
-    );
 
     const poolId = pool.getPoolId();
-    await vault.connect(lp).joinPool(poolId, other.address, tokenAddresses, tokenAmounts, false, '0x');
+    await vault.connect(lp).joinPool(
+      poolId,
+      other.address,
+      tokenAddresses,
+      tokenAmounts,
+      false,
+      encodeJoin(
+        tokenAmounts,
+        tokenAddresses.map(() => 0)
+      )
+    );
 
     return poolId;
   }
@@ -219,7 +226,7 @@ describe('Vault - swaps', () => {
                   context('when requesting more than the available balance', () => {
                     const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                    assertSwapGivenInReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
+                    assertSwapGivenInReverts({ swaps }, 'ERR_SUB_OVERFLOW');
                   });
                 });
 
@@ -499,7 +506,7 @@ describe('Vault - swaps', () => {
 
       context('for a single swap', () => {
         context('when an amount is specified', () => {
-          context('when the given indexes are not valid', () => {
+          context('when the given indexes are valid', () => {
             context('when the given token is in the pool', () => {
               context('when the requested token is in the pool', () => {
                 context('when the requesting another token', () => {
@@ -546,7 +553,7 @@ describe('Vault - swaps', () => {
                   context('when requesting more than the available balance', () => {
                     const swaps = [{ in: 1, out: 0, amount: 200e18 }];
 
-                    assertSwapGivenOutReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
+                    assertSwapGivenOutReverts({ swaps }, 'ERR_SUB_OVERFLOW');
                   });
                 });
 

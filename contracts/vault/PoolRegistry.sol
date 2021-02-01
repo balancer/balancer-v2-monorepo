@@ -17,15 +17,13 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-import "../vendor/ReentrancyGuard.sol";
 
-import "./InternalBalance.sol";
+import "../lib/math/Math.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IPool.sol";
-
+import "./InternalBalance.sol";
 import "./balances/BalanceAllocation.sol";
 import "./balances/GeneralPoolsBalance.sol";
 import "./balances/MinimalSwapInfoPoolsBalance.sol";
@@ -42,11 +40,10 @@ abstract contract PoolRegistry is
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
-    using FixedPoint for uint128;
-    using FixedPoint for uint256;
-    using FixedPoint for int256;
     using SafeCast for uint256;
     using SafeCast for uint128;
+    using Math for uint256;
+    using Math for uint128;
 
     // Set with all Pools in the system
     EnumerableSet.Bytes32Set internal _pools;
@@ -275,6 +272,7 @@ abstract contract PoolRegistry is
         } else {
             _updateGeneralPoolBalances(poolId, balances);
         }
+        emit PoolJoined(poolId, msg.sender, amountsIn, dueProtocolFeeAmounts);
     }
 
     function exitPool(
@@ -325,6 +323,8 @@ abstract contract PoolRegistry is
         } else {
             _updateGeneralPoolBalances(poolId, balances);
         }
+
+        emit PoolExited(poolId, msg.sender, amountsOut, dueProtocolFeeAmounts);
     }
 
     /**
@@ -345,7 +345,7 @@ abstract contract PoolRegistry is
         uint128 tokensToReceive = amount;
         if (fromInternalBalance) {
             uint128 currentInternalBalance = _internalTokenBalance[sender][token];
-            uint128 toWithdraw = Math.min(currentInternalBalance, tokensToReceive).toUint128();
+            uint128 toWithdraw = Math.min128(currentInternalBalance, tokensToReceive);
 
             // toWithdraw is guaranteed to be less or equal than both of these two amounts because it equals
             // the smallest of the two, which means the subtraction cannot overflow.

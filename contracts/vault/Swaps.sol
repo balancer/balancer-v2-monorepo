@@ -15,38 +15,33 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
-import "@openzeppelin/contracts/math/SignedSafeMath.sol";
-import "../vendor/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-import "../vendor/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/math/Math.sol";
 
+import "../lib/math/Math.sol";
+import "../lib/math/SignedMath.sol";
+import "../lib/helpers/EnumerableMap.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
+
+import "./PoolRegistry.sol";
 import "./interfaces/IPoolQuoteStructs.sol";
 import "./interfaces/IGeneralPoolQuote.sol";
 import "./interfaces/IMinimalSwapInfoPoolQuote.sol";
 import "./interfaces/ISwapValidator.sol";
 import "./balances/BalanceAllocation.sol";
 
-import "../math/FixedPoint.sol";
-
-import "./PoolRegistry.sol";
-
 abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
-    using BalanceAllocation for bytes32;
-    using FixedPoint for int256;
-    using FixedPoint for uint256;
-    using FixedPoint for uint128;
+    using Math for uint128;
     using SafeCast for uint256;
     using SafeCast for uint128;
+    using SignedMath for int256;
+    using BalanceAllocation for bytes32;
 
     // Despite the external API having two separate functions for given in and given out, internally their are handled
     // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
@@ -184,7 +179,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
                 if (funds.fromInternalBalance) {
                     uint128 currentInternalBalance = _internalTokenBalance[msg.sender][token];
-                    uint128 toWithdraw = uint128(Math.min(currentInternalBalance, toReceive));
+                    uint128 toWithdraw = Math.min128(currentInternalBalance, toReceive);
 
                     _internalTokenBalance[msg.sender][token] = currentInternalBalance - toWithdraw;
                     toReceive -= toWithdraw;
@@ -196,8 +191,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
                 if (funds.toInternalBalance) {
                     // Deposit tokens to the recipient's Internal Balance - the Vault's balance doesn't change
-                    _internalTokenBalance[funds.recipient][token] = _internalTokenBalance[funds.recipient][token]
-                        .add128(toSend);
+                    uint128 currentRecipientBalance = _internalTokenBalance[funds.recipient][token];
+                    _internalTokenBalance[funds.recipient][token] = currentRecipientBalance.add128(toSend);
                 } else {
                     // Actually transfer the tokens to the recipient - note protocol withdraw fees are not charged by
                     // this
@@ -314,8 +309,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             );
 
             // Accumulate Vault deltas across swaps
-            tokenDeltas[swap.tokenInIndex] = SignedSafeMath.add(tokenDeltas[swap.tokenInIndex], amountIn);
-            tokenDeltas[swap.tokenOutIndex] = SignedSafeMath.sub(tokenDeltas[swap.tokenOutIndex], amountOut);
+            tokenDeltas[swap.tokenInIndex] = SignedMath.add(tokenDeltas[swap.tokenInIndex], amountIn);
+            tokenDeltas[swap.tokenOutIndex] = SignedMath.sub(tokenDeltas[swap.tokenOutIndex], amountOut);
 
             emit Swap(swap.poolId, tokenIn, tokenOut, amountIn, amountOut);
         }
