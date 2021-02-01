@@ -80,14 +80,12 @@ contract GeneralPoolsBalance {
         }
     }
 
-    function _updateGeneralPoolBalances(
-        bytes32 poolId,
-        IERC20[] memory tokens,
-        bytes32[] memory balances
-    ) internal {
+    function _updateGeneralPoolBalances(bytes32 poolId, bytes32[] memory balances) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            poolBalances.set(tokens[i], balances[i]);
+        for (uint256 i = 0; i < balances.length; ++i) {
+            // Note we assume all balances are properly ordered.
+            // Thus, we can use `unchecked_setAt` to avoid one less storage read per call.
+            poolBalances.unchecked_setAt(i, balances[i]);
         }
     }
 

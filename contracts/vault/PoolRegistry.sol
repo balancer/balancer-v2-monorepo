@@ -262,11 +262,8 @@ abstract contract PoolRegistry is
             uint128 feeToPay = dueProtocolFeeAmounts[i].toUint128();
             _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeToPay);
 
-            // Compute new balance. Signed because the fees might be larger than the amounts in for a token.
-            int256 delta = SignedSafeMath.sub(int256(amountIn), int256(feeToPay));
-            balances[i] = delta > 0
-                ? balances[i].increaseCash(uint256(delta).toUint128())
-                : balances[i].decreaseCash(uint256(-delta).toUint128());
+            // First increase cash. Fees could be larger than the amounts in for a token and end up being a subtraction.
+            balances[i] = balances[i].increaseCash(amountIn).decreaseCash(feeToPay);
         }
 
         // Grant tokens to pools - how this is done depends on the Pool specialization setting
@@ -276,7 +273,7 @@ abstract contract PoolRegistry is
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
-            _updateGeneralPoolBalances(poolId, tokens, balances);
+            _updateGeneralPoolBalances(poolId, balances);
         }
     }
 
@@ -326,10 +323,15 @@ abstract contract PoolRegistry is
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
-            _updateGeneralPoolBalances(poolId, tokens, balances);
+            _updateGeneralPoolBalances(poolId, balances);
         }
     }
 
+    /**
+     * @dev Pulls a specific amount of tokens from a sender address.
+     * It allows pulling them from the sender's internal balance if specified. In case the internal balance is not
+     * enough it will pull the rest from the sender's token balance.
+     */
     function _receiveTokens(
         IERC20 token,
         uint128 amount,
@@ -356,6 +358,10 @@ abstract contract PoolRegistry is
         }
     }
 
+    /**
+     * @dev Send a specific amount of tokens to a recipient address charging the corresponding withdraw fees.
+     * It allows transferring them to the internal balance of the recipient if specified (no fees charged).
+     */
     function _sendTokens(
         IERC20 token,
         uint128 amount,

@@ -31,6 +31,10 @@ contract BalanceAllocationMock {
         return balance.totalBalance();
     }
 
+    function totalBalances(bytes32[] memory balances) public pure returns (uint256[] memory) {
+        return BalanceAllocation.totalBalances(balances);
+    }
+
     function toBalance(uint128 _cashBalance, uint128 _managedBalance) public pure returns (bytes32) {
         return BalanceAllocation.toBalance(_cashBalance, _managedBalance);
     }
