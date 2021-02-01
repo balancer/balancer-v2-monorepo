@@ -14,17 +14,17 @@
 
 pragma solidity ^0.7.1;
 
-import "../vault/balances/BalanceAllocation112.sol";
+import "../vault/balances/BalanceAllocation.sol";
 
-contract BalanceAllocation112Mock {
-    using BalanceAllocation112 for bytes32;
+contract BalanceAllocationMock {
+    using BalanceAllocation for bytes32;
 
     function total(bytes32 balance) public pure returns (uint256) {
         return balance.total();
     }
 
     function totals(bytes32[] memory balances) public pure returns (uint256[] memory) {
-        return BalanceAllocation112.totals(balances);
+        return BalanceAllocation.totals(balances);
     }
 
     function cash(bytes32 balance) public pure returns (uint256) {
@@ -40,7 +40,7 @@ contract BalanceAllocation112Mock {
     }
 
     function toBalance(uint256 _cash, uint256 _managed, uint256 _blockNumber) public pure returns (bytes32) {
-        return BalanceAllocation112.toBalance(_cash, _managed, _blockNumber);
+        return BalanceAllocation.toBalance(_cash, _managed, _blockNumber);
     }
 
     function increaseCash(bytes32 balance, uint256 amount) public pure returns (bytes32) {
@@ -64,18 +64,18 @@ contract BalanceAllocation112Mock {
     }
 
     function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedManaged) public pure returns (bytes32) {
-        return BalanceAllocation112.fromSharedToBalanceA(sharedCash, sharedManaged);
+        return BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
     }
 
     function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedManaged) public pure returns (bytes32) {
-        return BalanceAllocation112.fromSharedToBalanceB(sharedCash, sharedManaged);
+        return BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
     }
 
     function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) public pure returns (bytes32) {
-        return BalanceAllocation112.toSharedCash(tokenABalance, tokenBBalance);
+        return BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
     }
 
     function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance) public pure returns (bytes32) {
-        return BalanceAllocation112.toSharedManaged(tokenABalance, tokenBBalance);
+        return BalanceAllocation.toSharedManaged(tokenABalance, tokenBBalance);
     }
 }

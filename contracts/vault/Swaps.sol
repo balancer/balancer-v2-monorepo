@@ -28,7 +28,7 @@ import "./interfaces/IPoolQuoteStructs.sol";
 import "./interfaces/IGeneralPoolQuote.sol";
 import "./interfaces/IMinimalSwapInfoPoolQuote.sol";
 import "./interfaces/ISwapValidator.sol";
-import "./balances/BalanceAllocation112.sol";
+import "./balances/BalanceAllocation.sol";
 
 abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeERC20 for IERC20;
@@ -37,7 +37,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     using Math for int256;
     using SafeCast for uint256;
-    using BalanceAllocation112 for bytes32;
+    using BalanceAllocation for bytes32;
 
     // Despite the external API having two separate functions for given in and given out, internally their are handled
     // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
@@ -419,8 +419,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         // We check the token ordering again to create the new shared cash packed struct
         poolSharedBalances.sharedCash = request.tokenIn < request.tokenOut
-            ? BalanceAllocation112.toSharedCash(tokenInBalance, tokenOutBalance) // in is A, out is B
-            : BalanceAllocation112.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
+            ? BalanceAllocation.toSharedCash(tokenInBalance, tokenOutBalance) // in is A, out is B
+            : BalanceAllocation.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
     }
 
     function _processMinimalSwapInfoPoolQuoteRequest(

@@ -16,11 +16,11 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./BalanceAllocation112.sol";
+import "./BalanceAllocation.sol";
 import "../../lib/helpers/EnumerableMap.sol";
 
 contract GeneralPoolsBalance {
-    using BalanceAllocation112 for bytes32;
+    using BalanceAllocation for bytes32;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     // Data for Pools with General Pool Specialization setting
@@ -87,7 +87,7 @@ contract GeneralPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateGeneralPoolBalance(poolId, token, BalanceAllocation112.cashToManaged, amount);
+        _updateGeneralPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
 
     function _generalPoolManagedToCash(
@@ -95,7 +95,7 @@ contract GeneralPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateGeneralPoolBalance(poolId, token, BalanceAllocation112.managedToCash, amount);
+        _updateGeneralPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
 
     function _setGeneralPoolManagedBalance(
@@ -103,7 +103,7 @@ contract GeneralPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateGeneralPoolBalance(poolId, token, BalanceAllocation112.setManaged, amount);
+        _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateGeneralPoolBalance(

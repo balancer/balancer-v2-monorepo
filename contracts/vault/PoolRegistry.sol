@@ -25,7 +25,7 @@ import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IPool.sol";
 import "./InternalBalance.sol";
-import "./balances/BalanceAllocation112.sol";
+import "./balances/BalanceAllocation.sol";
 import "./balances/GeneralPoolsBalance.sol";
 import "./balances/MinimalSwapInfoPoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
@@ -40,8 +40,8 @@ abstract contract PoolRegistry is
     using Math for uint256;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
-    using BalanceAllocation112 for bytes32;
-    using BalanceAllocation112 for bytes32[];
+    using BalanceAllocation for bytes32;
+    using BalanceAllocation for bytes32[];
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // Set with all Pools in the system

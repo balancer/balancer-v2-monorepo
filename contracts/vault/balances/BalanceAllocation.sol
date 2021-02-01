@@ -40,7 +40,7 @@ import "../../lib/helpers/Uint256Helpers.sol";
 // 112 bit values), using memory is strictly less gas performant. Therefore, we do manual packing and unpacking. The
 // type we use to represent these values is bytes32, as it doesn't have any arithmetic operations and therefore reduces
 // the chance of misuse.
-library BalanceAllocation112 {
+library BalanceAllocation {
     using Math for uint256;
     using Uint256Helpers for uint256;
 
