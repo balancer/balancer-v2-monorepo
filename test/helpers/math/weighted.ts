@@ -5,6 +5,13 @@ import { bn, decimal, BigNumberish } from '../../../lib/helpers/numbers';
 
 const ONE = decimal(1e18);
 
+export function calculateInvariant(rawBalances: BigNumber[], rawWeights: BigNumber[]): BigNumber {
+  const normalizedWeights = toNormalizedWeights(rawWeights);
+  const balances = rawBalances.map(decimal);
+  const invariant = balances.reduce((inv, balance, i) => inv.mul(balance.pow(normalizedWeights[i])), decimal(1));
+  return bn(invariant);
+}
+
 export function calcOutGivenIn(
   tokenBalanceIn: BigNumberish,
   tokenWeightIn: BigNumberish,
@@ -32,13 +39,6 @@ export function calcInGivenOut(
   const y = decimal(tokenBalanceOut).div(diff);
   const foo = y.pow(weightRatio).sub(1);
   return decimal(tokenBalanceIn).mul(foo);
-}
-
-export function calculateInvariant(rawBalances: BigNumber[], rawWeights: BigNumber[]): BigNumber {
-  const normalizedWeights = toNormalizedWeights(rawWeights);
-  const balances = rawBalances.map(decimal);
-  const invariant = balances.reduce((inv, balance, i) => inv.mul(balance.pow(normalizedWeights[i])), decimal(1));
-  return bn(invariant);
 }
 
 export function calcBptOutGivenExactTokensIn(
@@ -140,4 +140,22 @@ export function toNormalizedWeights(rawWeights: BigNumber[]): Decimal[] {
   const weights = rawWeights.map(decimal);
   const sum = weights.reduce((total, weight) => total.add(weight), decimal(0));
   return weights.map((weight) => weight.div(sum));
+}
+
+export function calculateOneTokenSwapFee(
+  rawBalances: BigNumber[],
+  rawWeights: BigNumber[],
+  lastInvariant: BigNumberish,
+  tokenIndex: number
+): Decimal {
+  const normalizedWeights = toNormalizedWeights(rawWeights);
+
+  const exponent = decimal(1).div(normalizedWeights[tokenIndex]);
+
+  const currentInvariant = calculateInvariant(rawBalances, rawWeights);
+  const invariantRatio = decimal(lastInvariant).div(decimal(currentInvariant));
+
+  return decimal(rawBalances[tokenIndex])
+    .div(ONE)
+    .mul(ONE.sub(invariantRatio.pow(exponent).mul(ONE)));
 }

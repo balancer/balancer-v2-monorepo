@@ -218,17 +218,17 @@
   {
     "inputs": [
       {
-        "internalType": "contract IERC20",
-        "name": "token",
-        "type": "address"
+        "internalType": "contract IERC20[]",
+        "name": "tokens",
+        "type": "address[]"
       }
     ],
-    "name": "getNormalizedWeight",
+    "name": "getNormalizedWeights",
     "outputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        "internalType": "uint256[]",
+        "name": "normalizedWeights",
+        "type": "uint256[]"
       }
     ],
     "stateMutability": "view",
@@ -268,25 +268,6 @@
         "internalType": "contract IVault",
         "name": "",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      }
-    ],
-    "name": "getWeights",
-    "outputs": [
-      {
-        "internalType": "uint256[]",
-        "name": "weights",
-        "type": "uint256[]"
       }
     ],
     "stateMutability": "view",
