@@ -26,6 +26,7 @@
     "lint:solidity": "solhint 'contracts/**/*.sol'",
     "lint:typescript": "eslint . --ext .ts",
     "test": "hardhat test",
+    "test:fast": "yarn compile && mocha --extension ts --require hardhat/register --recursive --parallel --exit",
     "test:watch": "nodemon --ext js,ts --watch test --watch lib --watch cache/solidity-files-cache.json --exec 'clear && yarn test'",
     "coverage": "hardhat coverage --solcoverjs ./.solcover.ts"
   },
@@ -57,7 +58,7 @@
     "lodash.pick": "^4.4.0",
     "lodash.times": "^4.3.2",
     "lodash.zip": "^4.2.0",
-    "mocha": "^8.1.1",
+    "mocha": "^8.2.1",
     "nodemon": "^2.0.4",
     "prettier": "^2.1.2",
     "prettier-plugin-solidity": "v1.0.0-alpha.59",
