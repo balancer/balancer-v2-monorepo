@@ -700,7 +700,7 @@ describe('StablePool', function () {
           expectEqualWithError(dueProtocolFeeAmounts[index], expectedDueProtocolFeeAmounts[index], 0.1);
         }
 
-        return initialBalances.map((balance: BigNumber, index: number) => balance.sub(amountsOut[index]));
+        return initialBalances.map((balance: BigNumber, index: number) => balance.sub(amountsOut[index]).sub(dueProtocolFeeAmounts[index]));
       };
 
       it('joins and exits do not accumulate fees', async () => {
