@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, BigNumberish, Contract, ContractFunction } from 'ethers';
+import { BigNumber, BigNumberish, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../helpers/expectEvent';
@@ -12,19 +12,20 @@ import {
   calculateInvariant,
   calcOutGivenIn,
   toNormalizedWeights,
+  calculateOneTokenSwapFee,
 } from '../../helpers/math/weighted';
 
 import { deploy } from '../../../lib/helpers/deploy';
 import { bn, fp, decimal, pct } from '../../../lib/helpers/numbers';
+import { ZERO_ADDRESS, MAX_UINT112 } from '../../../lib/helpers/constants';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
-import { MAX_UINT112, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';
 
 describe('WeightedPool', function () {
   let authorizer: Contract, tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
-  let trader: SignerWithAddress, beneficiary: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
+  let trader: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
   const POOL_SWAP_FEE = fp(0.01);
   const SYMBOLS = ['DAI', 'MKR', 'SNX', 'BAT'];
@@ -32,7 +33,7 @@ describe('WeightedPool', function () {
   const INITIAL_BALANCES = [bn(0.9e18), bn(1.8e18), bn(2.7e18), bn(3.6e18)];
 
   before('setup signers', async () => {
-    [, admin, creator, lp, trader, beneficiary, feeSetter, other] = await ethers.getSigners();
+    [, admin, creator, lp, trader, beneficiary, other] = await ethers.getSigners();
     authorizer = await deploy('Authorizer', { args: [admin.address] });
   });
 
@@ -743,124 +744,195 @@ describe('WeightedPool', function () {
       });
     });
 
-    // TODO: fix
-    describe.skip('protocol swap fees', () => {
-      const SWAP_FEE = fp(0.05); // 5 %
-      const PROTOCOL_SWAP_FEE = fp(0.1); // 10 %
-      const MAX_UINT112S = Array(numberOfTokens).fill(MAX_UINT112);
+    describe('protocol swap fees', () => {
+      let pool: Contract;
+      let poolId: string;
+
+      const protocolSwapFee = fp(0.1); // 10 %
 
       beforeEach(async () => {
-        await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), feeSetter.address);
-        await vault.connect(feeSetter).setProtocolSwapFee(PROTOCOL_SWAP_FEE);
+        //Use a mock vault
+        ({ vault, pool, poolId } = await deployPool());
 
-        ({ pool, poolId } = await deployPool({ swapFee: SWAP_FEE }));
-        await pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT112S, true, lp.address);
+        // Initialize from creator
+        const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init' });
+        await vault
+          .connect(creator)
+          .callJoinPool(
+            pool.address,
+            poolId,
+            lp.address,
+            ZEROS,
+            poolInitialBalances,
+            protocolSwapFee,
+            initialJoinUserData
+          );
       });
 
-      it('joins and exits do not accumulate fees', async () => {
-        await pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT112S, true, lp.address);
-        await pool.connect(lp).callJoinPool(bn(4e18), MAX_UINT112S, true, lp.address);
+      const expectJoinProtocolSwapFeeEqualWithError = async (
+        initialBalances: BigNumber[],
+        maxAmounts: BigNumber[],
+        expectedDueProtocolFeeAmounts: BigNumber[],
+        joinUserData: string
+      ): Promise<BigNumber[]> => {
+        const receipt = await (
+          await vault
+            .connect(lp)
+            .callJoinPool(pool.address, poolId, lp.address, initialBalances, maxAmounts, protocolSwapFee, joinUserData)
+        ).wait();
+        const event = expectEvent.inReceipt(receipt, 'PoolJoined');
+        const amountsIn = event.args.amountsIn;
+        const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
-        await pool.connect(lp).callExitPool(bn(0.5e18), ZEROS, true, lp.address);
-        await pool.connect(lp).callExitPool(bn(2.5e18), ZEROS, true, lp.address);
-
-        await pool.connect(lp).callJoinPool(bn(7e18), MAX_UINT112S, true, lp.address);
-
-        await pool.connect(lp).callExitPool(bn(5e18), ZEROS, true, lp.address);
-
-        for (const token of poolTokens) {
-          const collectedFees = await vault.getCollectedFeesByToken(token);
-          expect(collectedFees).to.equal(0);
+        for (let index = 0; index < dueProtocolFeeAmounts.length; index++) {
+          expectEqualWithError(dueProtocolFeeAmounts[index], expectedDueProtocolFeeAmounts[index], 0.1);
         }
+
+        return initialBalances.map((balance: BigNumber, index: number) => balance.add(amountsIn[index]));
+      };
+
+      const expectExitProtocolSwapFeeEqualWithError = async (
+        initialBalances: BigNumber[],
+        minAmounts: BigNumber[],
+        expectedDueProtocolFeeAmounts: BigNumber[],
+        exitUserData: string
+      ): Promise<BigNumber[]> => {
+        const receipt = await (
+          await vault
+            .connect(lp)
+            .callExitPool(pool.address, poolId, lp.address, initialBalances, minAmounts, protocolSwapFee, exitUserData)
+        ).wait();
+        const event = expectEvent.inReceipt(receipt, 'PoolExited');
+        const amountsOut = event.args.amountsOut;
+        const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
+
+        for (let index = 0; index < dueProtocolFeeAmounts.length; index++) {
+          expectEqualWithError(dueProtocolFeeAmounts[index], expectedDueProtocolFeeAmounts[index], 0.1);
+        }
+
+        return initialBalances.map((balance: BigNumber, index: number) => balance.sub(amountsOut[index]));
+      };
+
+      it('joins and exits do not accumulate fees', async () => {
+        let joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT: 0 });
+        let newBalances = await expectJoinProtocolSwapFeeEqualWithError(
+          poolInitialBalances,
+          Array(poolTokens.length).fill(bn(100e18)),
+          Array(poolTokens.length).fill(bn(0)),
+          joinUserData
+        );
+
+        joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT: 0 });
+        newBalances = await expectJoinProtocolSwapFeeEqualWithError(
+          newBalances,
+          Array(poolTokens.length).fill(bn(100e18)),
+          Array(poolTokens.length).fill(bn(0)),
+          joinUserData
+        );
+
+        let exitUserData = encodeExitWeightedPool({
+          kind: 'ExactBPTInForOneTokenOut',
+          bptAmountIn: bn((10e18).toString()),
+          exitTokenIndex: 0,
+        });
+        newBalances = await expectExitProtocolSwapFeeEqualWithError(
+          newBalances,
+          Array(poolTokens.length).fill(bn(0)),
+          Array(poolTokens.length).fill(bn(0)),
+          exitUserData
+        );
+
+        exitUserData = encodeExitWeightedPool({
+          kind: 'ExactBPTInForAllTokensOut',
+          bptAmountIn: bn((10e18).toString()),
+        });
+        newBalances = await expectExitProtocolSwapFeeEqualWithError(
+          newBalances,
+          Array(poolTokens.length).fill(bn(0)),
+          Array(poolTokens.length).fill(bn(0)),
+          exitUserData
+        );
+
+        joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT: 0 });
+        newBalances = await expectJoinProtocolSwapFeeEqualWithError(
+          newBalances,
+          Array(poolTokens.length).fill(bn(10e18)),
+          Array(poolTokens.length).fill(bn(0)),
+          joinUserData
+        );
+
+        exitUserData = encodeExitWeightedPool({ kind: 'BPTInForExactTokensOut', maxBPTAmountIn: MAX_UINT112 });
+        await expectExitProtocolSwapFeeEqualWithError(
+          newBalances,
+          Array(poolTokens.length).fill(bn(10e18)),
+          Array(poolTokens.length).fill(bn(0)),
+          exitUserData
+        );
       });
 
       context('with swap', () => {
-        const AMOUNT_IN = bn(10e18);
+        let currentBalances: BigNumber[];
+        let expectedDueProtocolFeeAmounts: BigNumber[];
 
-        beforeEach('swap given in', async () => {
-          const swap = {
-            poolId,
-            amountIn: AMOUNT_IN,
-            tokenInIndex: 0, // send DAI, get MKR
-            tokenOutIndex: 1,
-            userData: '0x',
-          };
-
-          const funds = {
-            sender: trader.address,
-            recipient: trader.address,
-            fromInternalBalance: false,
-            toInternalBalance: false,
-          };
-
-          await vault.connect(trader).batchSwapGivenIn(ZERO_ADDRESS, '0x', [swap], poolTokens, funds);
-        });
-
-        async function assertProtocolSwapFeeIsCharged(payFeesAction: ContractFunction) {
+        beforeEach(async () => {
           const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
-          const paidTokenIndex = bn(previousBlockHash).mod(numberOfTokens).toNumber();
-          const paidFeeToken = poolTokens[paidTokenIndex];
+          const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
 
-          const lastInvariant = decimal(await pool.getLastInvariant());
-          const currentInvariant = decimal(await pool.getInvariant());
-          const ratio = lastInvariant.div(currentInvariant);
-          const normalizedWeight = decimal(await pool.getNormalizedWeight(paidFeeToken));
-          const exponent = decimal(1e18).div(normalizedWeight);
-          const { balances: tokenBalances } = await vault.getPoolTokens(poolId);
-          const paidTokenBalance = decimal(tokenBalances[paidFeeToken]);
-          const collectedSwapFees = decimal(1).sub(ratio.pow(exponent)).mul(paidTokenBalance);
-          const protocolSwapFee = decimal(PROTOCOL_SWAP_FEE.toString()).div(1e18);
-          const expectedPaidFees = bn(collectedSwapFees.mul(protocolSwapFee));
+          const lastInvariant = calculateInvariant(poolInitialBalances, poolWeights);
+          currentBalances = poolInitialBalances.map((balance) => balance.mul(2)); //twice the initial balances
 
-          await payFeesAction();
+          const feeAmount = calculateOneTokenSwapFee(currentBalances, poolWeights, lastInvariant, paidTokenIndex);
 
-          const paidTokenFees = await vault.getCollectedFeesByToken(poolTokens[paidTokenIndex]);
-          expectEqualWithError(paidTokenFees, expectedPaidFees, 0.001);
+          const protocolFeeAmount = bn(feeAmount.toString()).mul(protocolSwapFee).div((1e18).toString());
 
-          const nonPaidTokens = poolTokens.filter((token) => token != paidFeeToken);
-          for (const token of nonPaidTokens) {
-            const notPaidTokenFees = await vault.getCollectedFeesByToken(token);
-            expect(notPaidTokenFees).to.equal(0);
-          }
-        }
-
-        it('pays swap protocol fees if requested', async () => {
-          await assertProtocolSwapFeeIsCharged(() => pool.payProtocolFees());
+          expectedDueProtocolFeeAmounts = Array(poolTokens.length).fill(bn(0));
+          expectedDueProtocolFeeAmounts[paidTokenIndex] = protocolFeeAmount;
         });
 
-        it('pays swap protocol fees on join', async () => {
-          await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).callJoinPool(bn(1e18), MAX_UINT112S, true, lp.address)
+        it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
+          const joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT: 0 });
+          await expectJoinProtocolSwapFeeEqualWithError(
+            currentBalances,
+            Array(poolTokens.length).fill(bn(1e18)),
+            expectedDueProtocolFeeAmounts,
+            joinUserData
           );
         });
 
-        it('pays swap protocol fees on join-swap exact tokens in', async () => {
-          await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).joinPoolExactTokensInForBPTOut(0, Array(numberOfTokens).fill(bn(1e18)), true, lp.address)
+        it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
+          const exitUserData = encodeExitWeightedPool({
+            kind: 'ExactBPTInForOneTokenOut',
+            bptAmountIn: bn((1e18).toString()),
+            exitTokenIndex: 0,
+          });
+          await expectExitProtocolSwapFeeEqualWithError(
+            currentBalances,
+            Array(poolTokens.length).fill(bn(0)),
+            expectedDueProtocolFeeAmounts,
+            exitUserData
           );
         });
 
-        it('pays swap protocol fees on join exact BPT out', async () => {
-          await assertProtocolSwapFeeIsCharged(() =>
-            pool
-              .connect(lp)
-              .joinPoolTokenInForExactBPTOut(bn(1e18), tokenList.DAI.address, MAX_UINT112, true, lp.address)
+        it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
+          const exitUserData = encodeExitWeightedPool({
+            kind: 'ExactBPTInForAllTokensOut',
+            bptAmountIn: bn((1e18).toString()),
+          });
+          await expectExitProtocolSwapFeeEqualWithError(
+            currentBalances,
+            Array(poolTokens.length).fill(bn(0)),
+            expectedDueProtocolFeeAmounts,
+            exitUserData
           );
         });
 
-        it('pays swap protocol fees on exit', async () => {
-          await assertProtocolSwapFeeIsCharged(() => pool.connect(lp).callExitPool(bn(1e18), ZEROS, true, lp.address));
-        });
-
-        it('pays swap protocol fees on exit exact BPT in', async () => {
-          await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).exitPoolExactBPTInForTokenOut(bn(1e18), tokenList.DAI.address, 0, true, lp.address)
-          );
-        });
-
-        it('pays swap protocol fees on exit exact tokens out', async () => {
-          await assertProtocolSwapFeeIsCharged(() =>
-            pool.connect(lp).exitPoolBPTInForExactTokensOut(MAX_UINT112, ZEROS, true, lp.address)
+        it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
+          const exitUserData = encodeExitWeightedPool({ kind: 'BPTInForExactTokensOut', maxBPTAmountIn: MAX_UINT112 });
+          await expectExitProtocolSwapFeeEqualWithError(
+            currentBalances,
+            Array(poolTokens.length).fill(bn(1e18)),
+            expectedDueProtocolFeeAmounts,
+            exitUserData
           );
         });
       });

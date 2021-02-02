@@ -471,17 +471,13 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     ) private view returns (uint256[] memory) {
         // Compute by how much a token balance increased to go from last invariant to current invariant
 
-        // balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))
+        uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
 
-        uint256 chosenTokenIndex = 1; // UnsafeRandom.rand(_totalTokens);
-
-        uint256 exponent = FixedPoint.ONE.div(normalizedWeights[chosenTokenIndex]);
-
-        uint256 currentInvariant = _invariant(normalizedWeights, currentBalances);
-        uint256 invariantRatio = _lastInvariant.div(currentInvariant);
-
-        uint256 chosenTokenAccruedFees = currentBalances[chosenTokenIndex].mul(
-            FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent))
+        uint256 chosenTokenAccruedFees = _calculateOneTokenSwapFee(
+            currentBalances,
+            normalizedWeights,
+            _lastInvariant,
+            chosenTokenIndex
         );
         uint256 chosenTokenDueProtocolFeeAmount = chosenTokenAccruedFees.mul(protocolFeePercentage);
 
