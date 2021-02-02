@@ -17,10 +17,8 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BalanceAllocation.sol";
-import "../../lib/math/SignedMath.sol";
 
 contract TwoTokenPoolsBalance {
-    using SignedMath for int256;
     using BalanceAllocation for bytes32;
 
     // Data for Pools with Two Tokens

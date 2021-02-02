@@ -18,10 +18,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "./BalanceAllocation.sol";
-import "../../lib/math/SignedMath.sol";
 
 contract MinimalSwapInfoPoolsBalance {
-    using SignedMath for int256;
     using BalanceAllocation for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
 

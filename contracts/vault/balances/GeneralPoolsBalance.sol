@@ -17,11 +17,9 @@ pragma solidity ^0.7.1;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BalanceAllocation.sol";
-import "../../lib/math/SignedMath.sol";
 import "../../lib/helpers/EnumerableMap.sol";
 
 contract GeneralPoolsBalance {
-    using SignedMath for int256;
     using BalanceAllocation for bytes32;
 
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;

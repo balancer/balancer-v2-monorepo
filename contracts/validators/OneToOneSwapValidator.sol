@@ -16,12 +16,9 @@ pragma experimental ABIEncoderV2;
 
 pragma solidity ^0.7.1;
 
-import "../lib/math/SignedMath.sol";
 import "../vault/interfaces/ISwapValidator.sol";
 
 contract OneToOneSwapValidator is ISwapValidator {
-    using SignedMath for int256;
-
     function validate(
         IERC20[] calldata tokens,
         int256[] calldata vaultDeltas,
@@ -43,12 +40,17 @@ contract OneToOneSwapValidator is ISwapValidator {
 
         //Validate
         for (uint256 i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == overallTokenIn) {
-                require(vaultDeltas[i] <= maxAmountIn, "Excessive amount in");
-            } else if (tokens[i] == overallTokenOut) {
-                require(vaultDeltas[i].abs() >= minAmountOut, "Not enough tokens out");
+            IERC20 token = tokens[i];
+            int256 delta = vaultDeltas[i];
+
+            if (token == overallTokenIn) {
+                require(delta <= maxAmountIn, "Excessive amount in");
+            } else if (token == overallTokenOut) {
+                // An int256 will always fit in an uint256, no need to safe cast
+                uint256 deltaAbs = uint256(delta > 0 ? delta : -delta);
+                require(deltaAbs >= minAmountOut, "Not enough tokens out");
             } else {
-                require(vaultDeltas[i] == 0, "Intermediate non-zero balance");
+                require(delta == 0, "Intermediate non-zero balance");
             }
         }
     }

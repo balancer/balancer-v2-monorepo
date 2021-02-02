@@ -15,6 +15,7 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
@@ -36,6 +37,7 @@ abstract contract PoolRegistry is
     TwoTokenPoolsBalance
 {
     using Math for uint256;
+    using SafeCast for uint256;
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
@@ -255,8 +257,10 @@ abstract contract PoolRegistry is
             uint256 feeToPay = dueProtocolFeeAmounts[i];
             _increaseCollectedFees(token, feeToPay);
 
-            // First increase cash. Fees could be larger than the amounts in for a token and end up being a subtraction.
-            balances[i] = balances[i].increaseCash(amountIn).decreaseCash(feeToPay);
+            // Fees could be larger than the amounts in for a token and end up being a subtraction.
+            balances[i] = amountIn >= feeToPay
+                ? balances[i].increaseCash(amountIn - feeToPay) // Don't need SafeMath
+                : balances[i].decreaseCash(feeToPay - amountIn); // Same as -(int256(amountIn) - int256(feeToPay))
         }
 
         // Grant tokens to pools - how this is done depends on the Pool specialization setting
@@ -342,7 +346,7 @@ abstract contract PoolRegistry is
         if (fromInternalBalance) {
             uint256 currentInternalBalance = _getInternalBalance(sender, token);
             uint256 toWithdraw = Math.min(currentInternalBalance, amount);
-            _decreaseInternalBalance(sender, token, toWithdraw);
+            _setInternalBalance(sender, token, currentInternalBalance - toWithdraw);
             toReceive -= toWithdraw;
         }
 
@@ -476,7 +480,7 @@ abstract contract PoolRegistry is
         token.safeTransfer(msg.sender, amount);
 
         // Given amount was already cast to uint128 to be stored, thus we can ensure it fits in an int256
-        emit PoolBalanceChanged(poolId, msg.sender, token, int256(amount));
+        emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
     }
 
     function depositToPoolBalance(
@@ -495,8 +499,7 @@ abstract contract PoolRegistry is
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Given amount was already cast to uint128 to be stored, thus we can ensure it fits in an int256
-        emit PoolBalanceChanged(poolId, msg.sender, token, -int256(amount));
+        emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
     }
 
     function updateManagedBalance(

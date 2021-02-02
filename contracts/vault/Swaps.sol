@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
-import "../lib/math/SignedMath.sol";
+import "../lib/math/Math.sol";
 import "../lib/helpers/EnumerableMap.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
@@ -36,8 +36,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
+    using Math for int256;
     using SafeCast for uint256;
-    using SignedMath for int256;
     using BalanceAllocation for bytes32;
 
     // Despite the external API having two separate functions for given in and given out, internally their are handled
@@ -173,28 +173,26 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             int256 delta = tokenDeltas[i];
 
             // Ignore zeroed deltas
-            if (delta != 0) {
-                if (delta > 0) {
-                    uint256 toReceive = uint256(delta);
-                    if (funds.fromInternalBalance) {
-                        uint256 currentInternalBalance = _getInternalBalance(msg.sender, token);
-                        uint256 toWithdraw = Math.min(currentInternalBalance, toReceive);
-                        _decreaseInternalBalance(msg.sender, token, toWithdraw);
-                        toReceive -= toWithdraw;
-                    }
-                    if (toReceive > 0) {
-                        token.safeTransferFrom(msg.sender, address(this), toReceive);
-                    }
-                } else {
-                    uint256 toSend = uint256(-delta);
+            if (delta > 0) {
+                uint256 toReceive = uint256(delta);
+                if (funds.fromInternalBalance) {
+                    uint256 currentInternalBalance = _getInternalBalance(msg.sender, token);
+                    uint256 toWithdraw = Math.min(currentInternalBalance, toReceive);
+                    _setInternalBalance(msg.sender, token, currentInternalBalance - toWithdraw);
+                    toReceive -= toWithdraw;
+                }
+                if (toReceive > 0) {
+                    token.safeTransferFrom(msg.sender, address(this), toReceive);
+                }
+            } else if (delta < 0) {
+                uint256 toSend = uint256(-delta);
 
-                    if (funds.toInternalBalance) {
-                        // Deposit tokens to the recipient's Internal Balance - the Vault's balance doesn't change
-                        _increaseInternalBalance(funds.recipient, token, toSend);
-                    } else {
-                        // Transfer the tokens to the recipient - note protocol withdraw fees are not charged by this
-                        token.safeTransfer(funds.recipient, toSend);
-                    }
+                if (funds.toInternalBalance) {
+                    // Deposit tokens to the recipient's Internal Balance - the Vault's balance doesn't change
+                    _increaseInternalBalance(funds.recipient, token, toSend);
+                } else {
+                    // Transfer the tokens to the recipient - note protocol withdraw fees are not charged by this
+                    token.safeTransfer(funds.recipient, toSend);
                 }
             }
         }

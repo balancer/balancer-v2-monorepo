@@ -103,8 +103,8 @@ library BalanceAllocation {
      * computed.
      */
     function toBalance(uint256 _cashBalance, uint256 _managedBalance) internal pure returns (bytes32) {
-        uint128 total = _cashBalance.toUint128() + _managedBalance.toUint128();
-        require(total >= _cashBalance, "BALANCE_TOTAL_OVERFLOW");
+        uint256 total = _cashBalance + _managedBalance;
+        require(total >= _cashBalance && total < 2**128, "BALANCE_TOTAL_OVERFLOW");
 
         return bytes32((_managedBalance << 128) | _cashBalance);
     }

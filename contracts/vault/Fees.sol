@@ -31,7 +31,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     using FixedPoint for uint256;
 
     // Stores the fee collected per each token that is only withdrawable by the admin.
-    mapping(IERC20 => uint256) internal _collectedProtocolFees;
+    mapping(IERC20 => uint256) private _collectedProtocolFees;
 
     // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
     // percentage of the tokens exiting
