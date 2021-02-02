@@ -226,7 +226,7 @@ describe('StablePool', function () {
 
       it('fails if caller is not the vault', async () => {
         await expect(
-          pool.connect(lp).onJoinPool(poolId, lp.address, other.address, [0], [0], 0, '0x')
+          pool.connect(lp).onJoinPool(poolId, lp.address, other.address, [0], [0], 0, 0, '0x')
         ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
       });
 
@@ -267,6 +267,7 @@ describe('StablePool', function () {
               Array(poolTokens.length).fill(0),
               Array(poolTokens.length).fill(0),
               0,
+              0,
               wrongUserData
             )
         ).to.be.reverted;
@@ -297,6 +298,7 @@ describe('StablePool', function () {
                 Array(poolTokens.length).fill(0),
                 poolInitialBalances,
                 0,
+                0,
                 initialJoinUserData
               )
           ).wait();
@@ -326,6 +328,7 @@ describe('StablePool', function () {
               Array(poolTokens.length).fill(0),
               poolInitialBalances,
               0,
+              0,
               initialJoinUserData
             );
 
@@ -338,6 +341,7 @@ describe('StablePool', function () {
                 beneficiary.address,
                 Array(poolTokens.length).fill(0),
                 poolInitialBalances,
+                0,
                 0,
                 initialJoinUserData
               )
@@ -358,6 +362,7 @@ describe('StablePool', function () {
                 Array(poolTokens.length).fill(0),
                 poolInitialBalances,
                 0,
+                0,
                 joinUserData
               )
           ).to.be.be.revertedWith('ERR_UNINITIALIZED');
@@ -374,6 +379,7 @@ describe('StablePool', function () {
                 beneficiary.address,
                 Array(poolTokens.length).fill(0),
                 poolInitialBalances,
+                0,
                 0,
                 initialJoinUserData
               );
@@ -395,6 +401,7 @@ describe('StablePool', function () {
                   beneficiary.address,
                   poolInitialBalances,
                   maxAmountsIn,
+                  0,
                   0,
                   joinUserData
                 )
@@ -434,13 +441,14 @@ describe('StablePool', function () {
             Array(poolTokens.length).fill(0),
             poolInitialBalances,
             0,
+            0,
             initialJoinUserData
           );
       });
 
       it('fails if caller is not the vault', async () => {
         await expect(
-          pool.connect(lp).onExitPool(poolId, beneficiary.address, other.address, [0], [0], 0, '0x')
+          pool.connect(lp).onExitPool(poolId, beneficiary.address, other.address, [0], [0], 0, 0, '0x')
         ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
       });
 
@@ -456,6 +464,7 @@ describe('StablePool', function () {
               beneficiary.address,
               poolInitialBalances,
               Array(poolTokens.length).fill(0),
+              0,
               0,
               '0x'
             )
@@ -474,6 +483,7 @@ describe('StablePool', function () {
               beneficiary.address,
               poolInitialBalances,
               Array(poolTokens.length).fill(0),
+              0,
               0,
               wrongUserData
             )
@@ -496,6 +506,7 @@ describe('StablePool', function () {
                 beneficiary.address,
                 poolInitialBalances,
                 minAmountsOut,
+                0,
                 0,
                 exitUserData
               )
@@ -530,6 +541,7 @@ describe('StablePool', function () {
                 beneficiary.address,
                 poolInitialBalances,
                 minAmountsOut,
+                0,
                 0,
                 exitUserData
               )

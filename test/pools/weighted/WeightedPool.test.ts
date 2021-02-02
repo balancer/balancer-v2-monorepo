@@ -219,7 +219,7 @@ describe('WeightedPool', function () {
 
       it('fails if caller is not the vault', async () => {
         await expect(
-          pool.connect(lp).onJoinPool(poolId, lp.address, other.address, [0], [0], 0, '0x')
+          pool.connect(lp).onJoinPool(poolId, lp.address, other.address, [0], [0], 0, 0, '0x')
         ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
       });
 
@@ -227,7 +227,7 @@ describe('WeightedPool', function () {
 
       it('fails if no user data', async () => {
         await expect(
-          vault.connect(lp).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, ZEROS, 0, '0x')
+          vault.connect(lp).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, ZEROS, 0, 0, '0x')
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -235,7 +235,7 @@ describe('WeightedPool', function () {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
         await expect(
-          vault.connect(lp).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, ZEROS, 0, wrongUserData)
+          vault.connect(lp).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, ZEROS, 0, 0, wrongUserData)
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -258,6 +258,7 @@ describe('WeightedPool', function () {
                 beneficiary.address,
                 ZEROS,
                 poolInitialBalances,
+                0,
                 0,
                 initialJoinUserData
               )
@@ -286,6 +287,7 @@ describe('WeightedPool', function () {
               ZEROS,
               poolInitialBalances,
               0,
+              0,
               initialJoinUserData
             );
 
@@ -299,6 +301,7 @@ describe('WeightedPool', function () {
                 ZEROS,
                 poolInitialBalances,
                 0,
+                0,
                 initialJoinUserData
               )
           ).to.be.be.revertedWith('ERR_ALREADY_INITIALIZED');
@@ -311,7 +314,7 @@ describe('WeightedPool', function () {
           await expect(
             vault
               .connect(creator)
-              .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, poolInitialBalances, 0, joinUserData)
+              .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, poolInitialBalances, 0, 0, joinUserData)
           ).to.be.be.revertedWith('ERR_UNINITIALIZED');
         });
 
@@ -328,6 +331,7 @@ describe('WeightedPool', function () {
                 beneficiary.address,
                 ZEROS,
                 poolInitialBalances,
+                0,
                 0,
                 initialJoinUserData
               );
@@ -364,6 +368,7 @@ describe('WeightedPool', function () {
                   poolInitialBalances,
                   maxAmountsIn,
                   0,
+                  0,
                   joinUserData
                 )
             ).wait();
@@ -396,6 +401,7 @@ describe('WeightedPool', function () {
                   poolInitialBalances,
                   maxAmountsIn,
                   0,
+                  0,
                   joinUserData
                 )
             ).to.be.be.revertedWith('ERR_BPT_OUT_MIN_AMOUNT');
@@ -414,7 +420,7 @@ describe('WeightedPool', function () {
         const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init' });
         await vault
           .connect(creator)
-          .callJoinPool(pool.address, poolId, lp.address, ZEROS, poolInitialBalances, 0, initialJoinUserData);
+          .callJoinPool(pool.address, poolId, lp.address, ZEROS, poolInitialBalances, 0, 0, initialJoinUserData);
 
         previousBptSupply = await pool.totalSupply();
         previousBptBalance = await pool.balanceOf(lp.address);
@@ -422,7 +428,7 @@ describe('WeightedPool', function () {
 
       it('fails if caller is not the vault', async () => {
         await expect(
-          pool.connect(lp).onExitPool(poolId, beneficiary.address, other.address, [0], [0], 0, '0x')
+          pool.connect(lp).onExitPool(poolId, beneficiary.address, other.address, [0], [0], 0, 0, '0x')
         ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
       });
 
@@ -430,7 +436,9 @@ describe('WeightedPool', function () {
 
       it('fails if no user data', async () => {
         await expect(
-          vault.connect(lp).callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, ZEROS, 0, '0x')
+          vault
+            .connect(lp)
+            .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, ZEROS, 0, 0, '0x')
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -440,7 +448,7 @@ describe('WeightedPool', function () {
         await expect(
           vault
             .connect(lp)
-            .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, ZEROS, 0, wrongUserData)
+            .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, ZEROS, 0, 0, wrongUserData)
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -477,6 +485,7 @@ describe('WeightedPool', function () {
                 beneficiary.address,
                 poolInitialBalances,
                 minAmountsOut,
+                0,
                 0,
                 exitUserData
               )
@@ -516,6 +525,7 @@ describe('WeightedPool', function () {
                 poolInitialBalances,
                 minAmountsOut,
                 0,
+                0,
                 exitUserData
               )
           ).wait();
@@ -548,6 +558,7 @@ describe('WeightedPool', function () {
                 beneficiary.address,
                 poolInitialBalances,
                 minAmountsOut,
+                0,
                 0,
                 exitUserData
               )
@@ -584,6 +595,7 @@ describe('WeightedPool', function () {
                 poolInitialBalances,
                 exactTokensOut,
                 0,
+                0,
                 exitUserData
               )
           ).wait();
@@ -616,6 +628,7 @@ describe('WeightedPool', function () {
                 beneficiary.address,
                 poolInitialBalances,
                 exactTokensOut,
+                0,
                 0,
                 exitUserData
               )
@@ -765,6 +778,7 @@ describe('WeightedPool', function () {
             ZEROS,
             poolInitialBalances,
             protocolSwapFee,
+            0,
             initialJoinUserData
           );
       });
@@ -778,7 +792,16 @@ describe('WeightedPool', function () {
         const receipt = await (
           await vault
             .connect(lp)
-            .callJoinPool(pool.address, poolId, lp.address, initialBalances, maxAmounts, protocolSwapFee, joinUserData)
+            .callJoinPool(
+              pool.address,
+              poolId,
+              lp.address,
+              initialBalances,
+              maxAmounts,
+              protocolSwapFee,
+              0,
+              joinUserData
+            )
         ).wait();
         const event = expectEvent.inReceipt(receipt, 'PoolJoined');
         const amountsIn = event.args.amountsIn;
@@ -800,7 +823,16 @@ describe('WeightedPool', function () {
         const receipt = await (
           await vault
             .connect(lp)
-            .callExitPool(pool.address, poolId, lp.address, initialBalances, minAmounts, protocolSwapFee, exitUserData)
+            .callExitPool(
+              pool.address,
+              poolId,
+              lp.address,
+              initialBalances,
+              minAmounts,
+              protocolSwapFee,
+              0,
+              exitUserData
+            )
         ).wait();
         const event = expectEvent.inReceipt(receipt, 'PoolExited');
         const amountsOut = event.args.amountsOut;
