@@ -39,15 +39,23 @@ contract BalanceAllocationMock {
         return balance.blockNumber();
     }
 
+    function isNotZero(bytes32 balance) public pure returns (bool) {
+        return balance.isNotZero();
+    }
+
+    function isZero(bytes32 balance) public pure returns (bool) {
+        return balance.isZero();
+    }
+
     function toBalance(uint256 _cash, uint256 _managed, uint256 _blockNumber) public pure returns (bytes32) {
         return BalanceAllocation.toBalance(_cash, _managed, _blockNumber);
     }
 
-    function increaseCash(bytes32 balance, uint256 amount) public pure returns (bytes32) {
+    function increaseCash(bytes32 balance, uint256 amount) public view returns (bytes32) {
         return balance.increaseCash(amount);
     }
 
-    function decreaseCash(bytes32 balance, uint256 amount) public pure returns (bytes32) {
+    function decreaseCash(bytes32 balance, uint256 amount) public view returns (bytes32) {
         return balance.decreaseCash(amount);
     }
 

@@ -14,6 +14,7 @@
 
 pragma solidity ^0.7.1;
 
+import "hardhat/console.sol";
 import "../../lib/math/Math.sol";
 import "../../lib/helpers/Uint256Helpers.sol";
 
@@ -96,14 +97,9 @@ library BalanceAllocation {
      * @dev Tell whether the total amount is zero
      */
     function isZero(bytes32 balance) internal pure returns (bool) {
-        return balance == bytes32(0);
-    }
-
-    /**
-     * @dev Packs together cash and managed amounts without a block number to create a balance value.
-     */
-    function toBalance(uint256 _cash, uint256 _managed) internal pure returns (bytes32) {
-        return toBalance(_cash, _managed, 0);
+        // We simply need to compare the least significant 224 bytes of the word, the block number does not affect
+        uint256 mask = 2**(224) - 1;
+        return (uint256(balance) & mask) == 0;
     }
 
     /**
@@ -117,11 +113,9 @@ library BalanceAllocation {
         uint256 _managed,
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
-        require(_blockNumber.canCastToUint32(), "BLOCK_NUM_DOESNT_FIT_IN_32_BITS");
-
         uint256 balance = _cash + _managed;
         require(balance >= _cash && balance.canCastToUint112(), "BALANCE_TOTAL_OVERFLOW");
-
+        // We assume the block number will always fit in an uint32
         return _pack(_cash, _managed, _blockNumber);
     }
 
@@ -129,24 +123,24 @@ library BalanceAllocation {
      * @dev Increases a Pool's 'cash' (and therefore its 'total'). Called when Pool tokens are sent to the Vault (except
      * when an Asset Manager action decreases the managed balance).
      */
-    function increaseCash(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
+    function increaseCash(bytes32 balance, uint256 amount) internal view returns (bytes32) {
         uint256 newCash = cash(balance).add(amount);
         uint256 currentManaged = managed(balance);
-        uint256 currentBlockNumber = blockNumber(balance);
+        uint256 newBlockNumber = block.number;
 
-        return toBalance(newCash, currentManaged, currentBlockNumber);
+        return toBalance(newCash, currentManaged, newBlockNumber);
     }
 
     /**
      * @dev Decreases a Pool's 'cash' (and therefore its 'total'). Called when Pool tokens are sent from the Vault
      * (except as an Asset Manager action that increases the managed balance).
      */
-    function decreaseCash(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
+    function decreaseCash(bytes32 balance, uint256 amount) internal view returns (bytes32) {
         uint256 newCash = cash(balance).sub(amount);
         uint256 currentManaged = managed(balance);
-        uint256 currentBlockNumber = blockNumber(balance);
+        uint256 newBlockNumber = block.number;
 
-        return toBalance(newCash, currentManaged, currentBlockNumber);
+        return toBalance(newCash, currentManaged, newBlockNumber);
     }
 
     /**

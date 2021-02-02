@@ -127,7 +127,7 @@ describe('StablePool', function () {
       poolTokens = tokens.map((token) => token.address).slice(0, numberOfTokens);
     });
 
-    describe('creation', async () => {
+    describe('creation', () => {
       context('when the creation succeeds', () => {
         let pool: Contract;
 
