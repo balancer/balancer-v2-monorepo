@@ -69,7 +69,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10')
-      ).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+      ).to.be.revertedWith('ERR_INVALID_POST_LOAN_BALANCE');
     });
   });
 
@@ -116,7 +116,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10')
-      ).to.be.revertedWith('Insufficient protocol fees');
+      ).to.be.revertedWith('ERR_NOT_ENOUGH_COLLECTED_FEES');
     });
 
     it('reverts if the borrower reenters the Vault', async () => {

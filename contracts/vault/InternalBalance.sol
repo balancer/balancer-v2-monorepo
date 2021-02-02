@@ -15,26 +15,20 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
-import "../vendor/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
+import "../lib/math/Math.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
+
 import "./Fees.sol";
 
-import "../math/FixedPoint.sol";
-
 abstract contract InternalBalance is ReentrancyGuard, Fees {
+    using Math for uint256;
     using SafeERC20 for IERC20;
-    using FixedPoint for uint128;
-    using FixedPoint for uint256;
-    using SafeCast for uint256;
 
     // user -> token -> internal balance
-    mapping(address => mapping(IERC20 => uint128)) internal _internalTokenBalance;
+    mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
     event InternalBalanceDeposited(
         address indexed depositor,
@@ -61,7 +55,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            balances[i] = _internalTokenBalance[user][tokens[i]];
+            balances[i] = _getInternalBalance(user, tokens[i]);
         }
 
         return balances;
@@ -72,16 +66,14 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         address user
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "Vault: tokens and amounts length mismatch");
+        require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LEN_MISMATCH");
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            // memoize to save gas
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
 
-            _internalTokenBalance[user][token] = _internalTokenBalance[user][token].add128(amount.toUint128());
+            _increaseInternalBalance(user, token, amount);
             token.safeTransferFrom(msg.sender, address(this), amount);
-
             emit InternalBalanceDeposited(msg.sender, user, token, amount);
         }
     }
@@ -91,23 +83,17 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         address recipient
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "Vault: tokens and amounts length mismatch");
+        require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LEN_MISMATCH");
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            // memoize to save gas
             IERC20 token = tokens[i];
-            uint128 amount = amounts[i].toUint128();
-            uint128 initialBalance = _internalTokenBalance[msg.sender][token];
+            uint256 amount = amounts[i];
 
-            require(initialBalance >= amount, "Vault: withdraw amount exceeds balance");
+            uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
+            _increaseCollectedFees(token, feeAmount);
 
-            _internalTokenBalance[msg.sender][token] = initialBalance - amount;
-
-            uint128 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
-
-            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(feeAmount);
+            _decreaseInternalBalance(msg.sender, token, amount);
             token.safeTransfer(recipient, amount.sub(feeAmount));
-
             emit InternalBalanceWithdrawn(msg.sender, recipient, token, amount);
         }
     }
@@ -117,19 +103,50 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         address recipient
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "Vault: tokens and amounts length mismatch");
+        require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LEN_MISMATCH");
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
-            uint128 currentBalance = _internalTokenBalance[msg.sender][token];
-            uint128 amount = amounts[i].toUint128();
+            uint256 amount = amounts[i];
 
-            require(amount <= currentBalance, "ERR_NOT_ENOUGH_INTERNAL_BALANCE");
-
-            _internalTokenBalance[msg.sender][token] = currentBalance - amount;
-            _internalTokenBalance[recipient][token] = _internalTokenBalance[recipient][token].add128(amount);
-
+            _decreaseInternalBalance(msg.sender, token, amount);
+            _increaseInternalBalance(recipient, token, amount);
             emit InternalBalanceTransferred(msg.sender, recipient, token, amount);
         }
+    }
+
+    function _increaseInternalBalance(
+        address account,
+        IERC20 token,
+        uint256 amount
+    ) internal {
+        uint256 currentInternalBalance = _getInternalBalance(account, token);
+        uint256 newBalance = currentInternalBalance.add(amount);
+        _setInternalBalance(account, token, newBalance);
+    }
+
+    function _decreaseInternalBalance(
+        address account,
+        IERC20 token,
+        uint256 amount
+    ) internal {
+        uint256 currentInternalBalance = _getInternalBalance(account, token);
+        require(currentInternalBalance >= amount, "ERR_NOT_ENOUGH_INTERNAL_BALANCE");
+        uint256 newBalance = currentInternalBalance - amount;
+        _setInternalBalance(account, token, newBalance);
+    }
+
+    function _setInternalBalance(
+        address account,
+        IERC20 token,
+        uint256 balance
+    ) internal {
+        // We store internal balances
+        require(balance < 2**128, "ERR_CANNOT_CAST_TO_UINT128");
+        _internalTokenBalance[account][token] = balance;
+    }
+
+    function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
+        return _internalTokenBalance[account][token];
     }
 }

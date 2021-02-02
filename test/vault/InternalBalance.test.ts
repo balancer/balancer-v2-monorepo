@@ -44,51 +44,53 @@ describe('Vault - internal balance', () => {
             await tokens.DAI.connect(sender).approve(vault.address, amount);
           });
 
-          it('transfers the tokens from the sender to the vault', async () => {
-            await expectBalanceChange(
-              () => vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address),
-              tokens,
-              [
-                { account: sender.address, changes: { DAI: -amount } },
-                { account: vault.address, changes: { DAI: amount } },
-              ]
-            );
-          });
+          context('when tokens and balances match', () => {
+            it('transfers the tokens from the sender to the vault', async () => {
+              await expectBalanceChange(
+                () => vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address),
+                tokens,
+                [
+                  { account: sender.address, changes: { DAI: -amount } },
+                  { account: vault.address, changes: { DAI: amount } },
+                ]
+              );
+            });
 
-          it('deposits the internal balance into the recipient account', async () => {
-            const previousSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
-            const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
+            it('deposits the internal balance into the recipient account', async () => {
+              const previousSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
+              const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
 
-            await vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address);
+              await vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address);
 
-            const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
-            expect(currentSenderBalance[0]).to.be.equal(previousSenderBalance[0]);
+              const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
+              expect(currentSenderBalance[0]).to.be.equal(previousSenderBalance[0]);
 
-            const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
-            expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0].add(amount));
-          });
+              const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
+              expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0].add(amount));
+            });
 
-          it('emits an event', async () => {
-            const tx = await vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address);
-            const receipt = await tx.wait();
+            it('emits an event', async () => {
+              const tx = await vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address);
+              const receipt = await tx.wait();
 
-            expectEvent.inReceipt(receipt, 'InternalBalanceDeposited', {
-              depositor: sender.address,
-              user: recipient.address,
-              token: tokens.DAI.address,
-              amount,
+              expectEvent.inReceipt(receipt, 'InternalBalanceDeposited', {
+                depositor: sender.address,
+                user: recipient.address,
+                token: tokens.DAI.address,
+                amount,
+              });
             });
           });
-        });
 
-        context('when tokens and balances are mismatched', () => {
-          it('reverts', async () => {
-            const badDeposit = vault.depositToInternalBalance(
-              [tokens.DAI.address, tokens.MKR.address],
-              [amount],
-              recipient.address
-            );
-            await expect(badDeposit).to.be.revertedWith('Vault: tokens and amounts length mismatch');
+          context('when tokens and balances are mismatched', () => {
+            it('reverts', async () => {
+              const badDeposit = vault.depositToInternalBalance(
+                [tokens.DAI.address, tokens.MKR.address],
+                [amount],
+                recipient.address
+              );
+              await expect(badDeposit).to.be.revertedWith('ERR_TOKENS_AMOUNTS_LEN_MISMATCH');
+            });
           });
         });
 
@@ -133,37 +135,66 @@ describe('Vault - internal balance', () => {
       });
 
       const itHandlesWithdrawalsProperly = (amount: BigNumber) => {
-        context('without protocol withdraw fees', () => {
-          it('transfers the tokens from the vault to recipient', async () => {
-            await expectBalanceChange(
-              () => vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address),
-              tokens,
-              { account: recipient, changes: { DAI: amount } }
-            );
+        context('when tokens and balances match', () => {
+          context('without protocol withdraw fees', () => {
+            it('transfers the tokens from the vault to recipient', async () => {
+              await expectBalanceChange(
+                () => vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address),
+                tokens,
+                { account: recipient, changes: { DAI: amount } }
+              );
+            });
+
+            it('withdraws the internal balance from the sender account', async () => {
+              const previousSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
+              const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
+
+              await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
+
+              const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
+              expect(currentSenderBalance[0]).to.be.equal(previousSenderBalance[0].sub(amount));
+
+              const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
+              expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0]);
+            });
+
+            it('emits an event', async () => {
+              const tx = await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
+              const receipt = await tx.wait();
+
+              expectEvent.inReceipt(receipt, 'InternalBalanceWithdrawn', {
+                user: sender.address,
+                recipient: recipient.address,
+                token: tokens.DAI.address,
+                amount,
+              });
+            });
           });
 
-          it('withdraws the internal balance from the sender account', async () => {
-            const previousSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
-            const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
+          context('with protocol withdraw fees', () => {
+            const protocolWithdrawFee = 0.01;
 
-            await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
+            beforeEach('set fee', async () => {
+              const role = await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE();
+              await authorizer.connect(admin).grantRole(role, admin.address);
+              await vault.connect(admin).setProtocolWithdrawFee(fp(protocolWithdrawFee));
+            });
 
-            const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
-            expect(currentSenderBalance[0]).to.be.equal(previousSenderBalance[0].sub(amount));
+            it('tokens minus fee are pushed', async () => {
+              await expectBalanceChange(
+                () => vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address),
+                tokens,
+                { account: recipient, changes: { DAI: amount.sub(pct(amount, protocolWithdrawFee)) } }
+              );
+            });
 
-            const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
-            expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0]);
-          });
+            it('protocol fees are collected', async () => {
+              const previousCollectedFees = await vault.getCollectedFeesByToken(tokens.DAI.address);
 
-          it('emits an event', async () => {
-            const tx = await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
-            const receipt = await tx.wait();
+              await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
 
-            expectEvent.inReceipt(receipt, 'InternalBalanceWithdrawn', {
-              user: sender.address,
-              recipient: recipient.address,
-              token: tokens.DAI.address,
-              amount,
+              const currentCollectedFees = await vault.getCollectedFeesByToken(tokens.DAI.address);
+              expect(currentCollectedFees.sub(previousCollectedFees)).to.equal(pct(amount, protocolWithdrawFee));
             });
           });
         });
@@ -175,34 +206,7 @@ describe('Vault - internal balance', () => {
               [amount],
               recipient.address
             );
-            await expect(badWithdrawal).to.be.revertedWith('Vault: tokens and amounts length mismatch');
-          });
-        });
-
-        context('with protocol withdraw fees', () => {
-          const protocolWithdrawFee = 0.01;
-
-          beforeEach('set fee', async () => {
-            const role = await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE();
-            await authorizer.connect(admin).grantRole(role, admin.address);
-            await vault.connect(admin).setProtocolWithdrawFee(fp(protocolWithdrawFee));
-          });
-
-          it('tokens minus fee are pushed', async () => {
-            await expectBalanceChange(
-              () => vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address),
-              tokens,
-              { account: recipient, changes: { DAI: amount.sub(pct(amount, protocolWithdrawFee)) } }
-            );
-          });
-
-          it('protocol fees are collected', async () => {
-            const previousCollectedFees = await vault.getCollectedFeesByToken(tokens.DAI.address);
-
-            await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
-
-            const currentCollectedFees = await vault.getCollectedFeesByToken(tokens.DAI.address);
-            expect(currentCollectedFees.sub(previousCollectedFees)).to.equal(pct(amount, protocolWithdrawFee));
+            await expect(badWithdrawal).to.be.revertedWith('ERR_TOKENS_AMOUNTS_LEN_MISMATCH');
           });
         });
       };
@@ -230,7 +234,7 @@ describe('Vault - internal balance', () => {
 
         it('reverts', async () => {
           const withdraw = vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
-          await expect(withdraw).to.be.revertedWith('Vault: withdraw amount exceeds balance');
+          await expect(withdraw).to.be.revertedWith('ERR_NOT_ENOUGH_INTERNAL_BALANCE');
         });
       });
     });
@@ -240,7 +244,7 @@ describe('Vault - internal balance', () => {
 
       it('reverts', async () => {
         const withdraw = vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
-        await expect(withdraw).to.be.revertedWith('Vault: withdraw amount exceeds balance');
+        await expect(withdraw).to.be.revertedWith('ERR_NOT_ENOUGH_INTERNAL_BALANCE');
       });
     });
   });
@@ -353,7 +357,7 @@ describe('Vault - internal balance', () => {
               .depositToInternalBalance([tokens.DAI.address], [MAX_UINT128], recipient.address);
           });
 
-          itReverts(transferredAmounts, 'ERR_ADD_OVERFLOW');
+          itReverts(transferredAmounts, 'ERR_CANNOT_CAST_TO_UINT128');
         });
       });
 

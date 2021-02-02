@@ -14,11 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
-
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-
-import "../../math/FixedPoint.sol";
+import "../../lib/math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.

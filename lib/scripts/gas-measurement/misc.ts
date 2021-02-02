@@ -75,7 +75,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     joinUserData = encodeJoinWeightedPool({ kind: 'Init' });
   } else if (poolName == 'StablePool') {
-    const amp = bn(30e18);
+    const amp = bn(50e18);
 
     pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
       from: creator,

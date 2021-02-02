@@ -10,6 +10,7 @@ import { TokenList, deploySortedTokens } from '../../lib/helpers/tokens';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { MinimalSwapInfoPool, GeneralPool } from '../../lib/helpers/pools';
 import { encodeValidatorData, FundManagement, SwapIn } from '../../lib/helpers/trading';
+import { encodeJoin } from '../helpers/mockPool';
 
 describe('OneToOneSwapValidator', () => {
   let lp: SignerWithAddress;
@@ -61,18 +62,16 @@ describe('OneToOneSwapValidator', () => {
 
       await pool.registerTokens(tokenAddresses, assetManagers);
 
-      await pool.setOnJoinExitPoolReturnValues(
-        tokenAddresses.map(() => bn(100e18)),
-        tokenAddresses.map(() => 0)
-      );
-
       await vault.connect(lp).joinPool(
         poolId,
         lp.address,
         tokenAddresses,
         tokenAddresses.map(() => MAX_UINT256),
         false,
-        '0x'
+        encodeJoin(
+          tokenAddresses.map(() => bn(100e18)),
+          tokenAddresses.map(() => 0)
+        )
       );
 
       poolIds.push(poolId);
