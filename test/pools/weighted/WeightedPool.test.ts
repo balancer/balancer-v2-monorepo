@@ -210,7 +210,7 @@ describe('WeightedPool', function () {
         });
 
         it('reverts if at least one weight is too high', async () => {
-          poolWeights[0] = bn(50000).mul((10e18).toString());
+          poolWeights[0] = bn(50000).mul(bn(10e18));
 
           await expect(deployPool({ weights: poolWeights })).to.be.revertedWith('ERR_MAX_WEIGHT');
         });
