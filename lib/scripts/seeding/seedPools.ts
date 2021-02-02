@@ -26,6 +26,7 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
+  const authorizer = await ethers.getContract('Authorizer');
 
   // Format pools to BigNumber/scaled format
   const formattedPools: Pool[] = formatPools(allPools);
@@ -70,6 +71,11 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     console.log('Making a few investments...');
     await Promise.all(pools.map(investPool));
   }
+
+  console.log('\nSetting the protocol swap fee...');
+  await authorizer.connect(deployer).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), deployer.address);
+  await vault.connect(deployer).setProtocolSwapFee(fp(0.1));
+
   return;
 };
 
@@ -82,8 +88,6 @@ async function swapInPool(pool: Contract) {
   const amountInDecimals = 2;
   const amountIn = bn(100).mul(bn(10).pow(amountInDecimals));
 
-  const amountInDecimals = 2;
-  const amountIn = BigNumber.from('100').mul(BigNumber.from('10').pow(amountInDecimals));
   const swap: SwapIn = {
     poolId,
     tokenInIndex: 0,
