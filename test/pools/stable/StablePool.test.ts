@@ -663,10 +663,12 @@ describe('StablePool', function () {
         const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
         for (let index = 0; index < dueProtocolFeeAmounts.length; index++) {
-          expectEqualWithError(dueProtocolFeeAmounts[index], expectedDueProtocolFeeAmounts[index], 0.1);
+          expectEqualWithError(dueProtocolFeeAmounts[index], expectedDueProtocolFeeAmounts[index], 0.001);
         }
 
-        return initialBalances.map((balance: BigNumber, index: number) => balance.add(amountsIn[index]));
+        return initialBalances.map((balance: BigNumber, index: number) =>
+          balance.add(amountsIn[index]).sub(dueProtocolFeeAmounts[index])
+        );
       };
 
       const expectExitProtocolSwapFeeEqualWithError = async (
@@ -697,10 +699,12 @@ describe('StablePool', function () {
         const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
 
         for (let index = 0; index < dueProtocolFeeAmounts.length; index++) {
-          expectEqualWithError(dueProtocolFeeAmounts[index], expectedDueProtocolFeeAmounts[index], 0.1);
+          expectEqualWithError(dueProtocolFeeAmounts[index], expectedDueProtocolFeeAmounts[index], 0.001);
         }
 
-        return initialBalances.map((balance: BigNumber, index: number) => balance.sub(amountsOut[index]).sub(dueProtocolFeeAmounts[index]));
+        return initialBalances.map((balance: BigNumber, index: number) =>
+          balance.sub(amountsOut[index]).sub(dueProtocolFeeAmounts[index])
+        );
       };
 
       it('joins and exits do not accumulate fees', async () => {
