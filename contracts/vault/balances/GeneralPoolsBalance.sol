@@ -14,18 +14,16 @@
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BalanceAllocation.sol";
-import "../../math/FixedPoint.sol";
-import "../../vendor/EnumerableMap.sol";
+import "../../lib/math/SignedMath.sol";
+import "../../lib/helpers/EnumerableMap.sol";
 
 contract GeneralPoolsBalance {
     using SafeCast for uint256;
-    using FixedPoint for int256;
+    using SignedMath for int256;
     using BalanceAllocation for bytes32;
 
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -80,66 +78,12 @@ contract GeneralPoolsBalance {
         }
     }
 
-    /**
-     * @dev Adds cash to a General Pool for a list of tokens. This function doesn't check that the lengths of
-     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
-     *
-     * Requirements:
-     *
-     * - Each token must be registered in the pool
-     * - Amounts can be zero
-     */
-    function _increaseGeneralPoolCash(
-        bytes32 poolId,
-        IERC20[] memory tokens,
-        uint256[] memory amounts
-    ) internal {
+    function _updateGeneralPoolBalances(bytes32 poolId, bytes32[] memory balances) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint128 amount = amounts[i].toUint128();
-            _updateGeneralPoolBalance(poolBalances, tokens[i], BalanceAllocation.increaseCash, amount);
-        }
-    }
-
-    function _alterGeneralPoolCash(
-        bytes32 poolId,
-        IERC20[] memory tokens,
-        int256[] memory amounts
-    ) internal {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            int256 amount = amounts[i];
-
-            _updateGeneralPoolBalance(
-                poolBalances,
-                tokens[i],
-                amount > 0 ? BalanceAllocation.increaseCash : BalanceAllocation.decreaseCash,
-                amount.abs().toUint128()
-            );
-        }
-    }
-
-    /**
-     * @dev Removes cash from a General Pool for a list of tokens. This function doesn't check that the lengths of
-     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
-     *
-     * Requirements:
-     *
-     * - Each token must be registered in the Pool.
-     * - Each amount must be less or equal than the Pool's cash for that token.
-     */
-    function _decreaseGeneralPoolCash(
-        bytes32 poolId,
-        IERC20[] memory tokens,
-        uint256[] memory amounts
-    ) internal {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint128 amount = amounts[i].toUint128();
-            _updateGeneralPoolBalance(poolBalances, tokens[i], BalanceAllocation.decreaseCash, amount);
+        for (uint256 i = 0; i < balances.length; ++i) {
+            // Note we assume all balances are properly ordered.
+            // Thus, we can use `unchecked_setAt` to avoid one less storage read per call.
+            poolBalances.unchecked_setAt(i, balances[i]);
         }
     }
 
@@ -174,15 +118,6 @@ contract GeneralPoolsBalance {
         uint128 amount
     ) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
-        _updateGeneralPoolBalance(poolBalances, token, mutation, amount);
-    }
-
-    function _updateGeneralPoolBalance(
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances,
-        IERC20 token,
-        function(bytes32, uint128) pure returns (bytes32) mutation,
-        uint128 amount
-    ) internal {
         bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
         poolBalances.set(token, mutation(currentBalance, amount));
     }
@@ -194,18 +129,18 @@ contract GeneralPoolsBalance {
     function _getGeneralPoolTokens(bytes32 poolId)
         internal
         view
-        returns (IERC20[] memory tokens, uint256[] memory balances)
+        returns (IERC20[] memory tokens, bytes32[] memory balances)
     {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         tokens = new IERC20[](poolBalances.length());
-        balances = new uint256[](tokens.length);
+        balances = new bytes32[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             // Because the iteration is bounded by `tokens.length` already fetched from the enumerable map,
             // we can use `unchecked_at` as we know `i` is a valid token index, saving storage reads.
             (IERC20 token, bytes32 balance) = poolBalances.unchecked_at(i);
             tokens[i] = token;
-            balances[i] = balance.totalBalance();
+            balances[i] = balance;
         }
     }
 

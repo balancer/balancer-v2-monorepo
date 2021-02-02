@@ -21,15 +21,14 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../vendor/ReentrancyGuard.sol";
 
-import "./interfaces/IFlashLoanReceiver.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
+
 import "./Fees.sol";
-
-import "../math/FixedPoint.sol";
+import "./interfaces/IFlashLoanReceiver.sol";
 
 abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
-    using FixedPoint for uint256;
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     function flashLoan(
@@ -44,23 +43,30 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
         uint256[] memory preLoanBalances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            preLoanBalances[i] = tokens[i].balanceOf(address(this));
-            require(preLoanBalances[i] >= amounts[i], "Insufficient balance to borrow");
+            IERC20 token = tokens[i];
+            uint256 amount = amounts[i];
 
-            feeAmounts[i] = _calculateProtocolFlashLoanFeeAmount(amounts[i]);
+            preLoanBalances[i] = token.balanceOf(address(this));
+            require(preLoanBalances[i] >= amount, "Insufficient balance to borrow");
 
-            tokens[i].safeTransfer(address(receiver), amounts[i]);
+            feeAmounts[i] = _calculateProtocolFlashLoanFeeAmount(amount);
+
+            token.safeTransfer(address(receiver), amount);
         }
 
         receiver.receiveFlashLoan(tokens, amounts, feeAmounts, receiverData);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 postLoanBalance = tokens[i].balanceOf(address(this));
+            IERC20 token = tokens[i];
+            uint256 preLoanBalance = preLoanBalances[i];
 
-            uint256 receivedFees = postLoanBalance.sub(preLoanBalances[i]);
+            uint256 postLoanBalance = token.balanceOf(address(this));
+            require(postLoanBalance >= preLoanBalance, "ERR_INVALID_POST_LOAN_BALANCE");
+
+            uint256 receivedFees = postLoanBalance - preLoanBalance;
             require(receivedFees >= feeAmounts[i], "Insufficient protocol fees");
 
-            _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(receivedFees);
+            _collectedProtocolFees[token] = _collectedProtocolFees[token].add(receivedFees);
         }
     }
 }

@@ -1,5 +1,5 @@
-const { ethers } = require('hardhat');
-const { expect } = require('chai');
+import { expect } from 'chai';
+import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -226,7 +226,7 @@ describe('Vault - swaps', () => {
                   context('when requesting more than the available balance', () => {
                     const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                    assertSwapGivenInReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
+                    assertSwapGivenInReverts({ swaps }, 'ERR_SUB_OVERFLOW');
                   });
                 });
 
@@ -553,7 +553,7 @@ describe('Vault - swaps', () => {
                   context('when requesting more than the available balance', () => {
                     const swaps = [{ in: 1, out: 0, amount: 200e18 }];
 
-                    assertSwapGivenOutReverts({ swaps }, 'ERR_SUB_UNDERFLOW');
+                    assertSwapGivenOutReverts({ swaps }, 'ERR_SUB_OVERFLOW');
                   });
                 });
 

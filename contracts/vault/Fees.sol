@@ -18,9 +18,9 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-import "../vendor/ReentrancyGuard.sol";
 
-import "../math/FixedPoint.sol";
+import "../lib/math/FixedPoint.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
 import "./Authorization.sol";
