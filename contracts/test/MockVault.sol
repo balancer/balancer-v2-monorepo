@@ -50,6 +50,7 @@ contract MockVault {
         address recipient,
         uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
+        uint256 latestBlockNumberUsed,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
@@ -59,6 +60,7 @@ contract MockVault {
             recipient,
             currentBalances,
             maxAmountsIn,
+            latestBlockNumberUsed,
             protocolFeePercentage,
             userData
         );
@@ -71,6 +73,7 @@ contract MockVault {
         address recipient,
         uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
+        uint256 latestBlockNumberUsed,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
@@ -80,6 +83,7 @@ contract MockVault {
             recipient,
             currentBalances,
             minAmountsOut,
+            latestBlockNumberUsed,
             protocolFeePercentage,
             userData
         );

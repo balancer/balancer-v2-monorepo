@@ -144,7 +144,11 @@ abstract contract PoolRegistry is
         view
         override
         withExistingPool(poolId)
-        returns (uint256 cash, uint256 managed)
+        returns (
+            uint256 cash,
+            uint256 managed,
+            uint256 blockNumber
+        )
     {
         bytes32 balance;
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -159,6 +163,7 @@ abstract contract PoolRegistry is
 
         cash = balance.cash();
         managed = balance.managed();
+        blockNumber = balance.blockNumber();
     }
 
     function getPool(bytes32 poolId)
@@ -240,7 +245,7 @@ abstract contract PoolRegistry is
         (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _callOnJoinPool(
             poolId,
             tokens,
-            balances.totals(),
+            balances,
             recipient,
             maxAmountsIn,
             userData
@@ -292,7 +297,7 @@ abstract contract PoolRegistry is
         (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _callOnExitPool(
             poolId,
             tokens,
-            balances.totals(),
+            balances,
             recipient,
             minAmountsOut,
             userData
@@ -385,18 +390,21 @@ abstract contract PoolRegistry is
     function _callOnJoinPool(
         bytes32 poolId,
         IERC20[] memory tokens,
-        uint256[] memory balances,
+        bytes32[] memory balances,
         address recipient,
         uint256[] memory maxAmountsIn,
         bytes memory userData
     ) private returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
+        (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
+
         address pool = _getPoolAddress(poolId);
         (amountsIn, dueProtocolFeeAmounts) = IPool(pool).onJoinPool(
             poolId,
             msg.sender,
             recipient,
-            balances,
+            totalBalances,
             maxAmountsIn,
+            latestBlockNumberUsed,
             getProtocolSwapFee(),
             userData
         );
@@ -408,18 +416,21 @@ abstract contract PoolRegistry is
     function _callOnExitPool(
         bytes32 poolId,
         IERC20[] memory tokens,
-        uint256[] memory balances,
+        bytes32[] memory balances,
         address recipient,
         uint256[] memory minAmountsOut,
         bytes memory userData
     ) private returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
+        (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
+
         address pool = _getPoolAddress(poolId);
         (amountsOut, dueProtocolFeeAmounts) = IPool(pool).onExitPool(
             poolId,
             msg.sender,
             recipient,
-            balances,
+            totalBalances,
             minAmountsOut,
+            latestBlockNumberUsed,
             getProtocolSwapFee(),
             userData
         );

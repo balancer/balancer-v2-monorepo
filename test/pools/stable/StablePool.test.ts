@@ -686,7 +686,7 @@ describe('StablePool', function () {
             error = protocolSwapFeeAmount.div(1000);
           } else {
             // We approximate the fee amount paid in token out based on the price after the swap
-            const finalBalances = (await vault.getPoolTokens(poolId)).balances;
+            const { balances: finalBalances } = await vault.getPoolTokens(poolId);
             expectedPaidFees = await pool.quoteOutGivenIn(
               {
                 poolId,

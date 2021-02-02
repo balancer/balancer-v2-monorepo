@@ -59,6 +59,24 @@ library BalanceAllocation {
     }
 
     /**
+     * @dev Computes the total balance and max block number of the Pool tokens.
+     */
+    function totalsAndMaxBlockNumber(bytes32[] memory balances)
+        internal
+        pure
+        returns (uint256[] memory results, uint256 maxBlockNumber)
+    {
+        maxBlockNumber = 0;
+        results = new uint256[](balances.length);
+
+        for (uint256 i = 0; i < results.length; i++) {
+            bytes32 balance = balances[i];
+            results[i] = total(balance);
+            maxBlockNumber = Math.max(maxBlockNumber, blockNumber(balance));
+        }
+    }
+
+    /**
      * @dev The total amount of Pool tokens, including those that are not currently in the Vault ('managed').
      */
     function total(bytes32 balance) internal pure returns (uint256) {

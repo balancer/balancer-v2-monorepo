@@ -296,9 +296,9 @@ describe('Vault - join pool', () => {
       });
 
       it('assigns tokens to the pool', async () => {
-        const previousPoolBalances = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
         await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
-        const currentPoolBalances = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: currentPoolBalances } = await vault.getPoolTokens(poolId);
 
         // The Pool balance is expected to increase by join amounts minus due protocol fees. Note that the deltas are
         // not necessarily positive, if the fees due are larger than the join amounts.
@@ -308,7 +308,8 @@ describe('Vault - join pool', () => {
       });
 
       it('calls the pool with the join data', async () => {
-        const previousPoolBalances = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
+        const { blockNumber: previousBlockNumber } = await vault.getPoolTokenBalanceInfo(poolId, tokenAddresses[0]);
 
         const receipt = await (await joinPool({ fromInternalBalance, dueProtocolFeeAmounts })).wait();
 
@@ -318,9 +319,21 @@ describe('Vault - join pool', () => {
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
           maxAmountsIn: array(MAX_UINT256),
+          latestBlockNumberUsed: previousBlockNumber,
           protocolSwapFee: await vault.getProtocolSwapFee(),
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
+      });
+
+      it('updates the latest block number used for all tokens', async () => {
+        const currentBlockNumber = await ethers.provider.getBlockNumber();
+
+        await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
+
+        for (const token of tokenAddresses) {
+          const { blockNumber: newBlockNumber } = await vault.getPoolTokenBalanceInfo(poolId, token);
+          expect(newBlockNumber).to.equal(currentBlockNumber + 1);
+        }
       });
 
       it('emits PoolJoined from the vault', async () => {

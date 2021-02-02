@@ -22,13 +22,15 @@ interface IGeneralPoolQuote {
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256[] calldata balances,
         uint256 indexIn,
-        uint256 indexOut
+        uint256 indexOut,
+        uint256 latestBlockNumberUsed
     ) external returns (uint256 amountOut);
 
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256[] calldata balances,
         uint256 indexIn,
-        uint256 indexOut
+        uint256 indexOut,
+        uint256 latestBlockNumberUsed
     ) external returns (uint256 amountIn);
 }

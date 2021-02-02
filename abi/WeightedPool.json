@@ -339,6 +339,11 @@
       },
       {
         "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
         "name": "protocolFeePercentage",
         "type": "uint256"
       },
@@ -390,6 +395,11 @@
         "internalType": "uint256[]",
         "name": "maxAmountsIn",
         "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       },
       {
         "internalType": "uint256",
@@ -471,6 +481,11 @@
         "internalType": "uint256",
         "name": "currentBalanceTokenOut",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "name": "quoteInGivenOut",
@@ -536,6 +551,11 @@
       {
         "internalType": "uint256",
         "name": "currentBalanceTokenOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
         "type": "uint256"
       }
     ],

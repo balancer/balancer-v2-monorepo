@@ -135,6 +135,7 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         address recipient,
         uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
+        uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
@@ -225,6 +226,7 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         address, //recipient -  potential whitelisting
         uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
+        uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
@@ -283,7 +285,8 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256[] memory balances,
         uint256 indexIn,
-        uint256 indexOut
+        uint256 indexOut,
+        uint256
     ) external view override returns (uint256) {
         _validateIndexes(indexIn, indexOut, balances.length);
 
@@ -296,7 +299,8 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256[] memory balances,
         uint256 indexIn,
-        uint256 indexOut
+        uint256 indexOut,
+        uint256
     ) external view override returns (uint256) {
         _validateIndexes(indexIn, indexOut, balances.length);
 

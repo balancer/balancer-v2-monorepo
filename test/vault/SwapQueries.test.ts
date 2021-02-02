@@ -37,12 +37,9 @@ describe('Vault - swap queries', () => {
 
     for (let i = 0; i < MAX_POOLS; ++i) {
       const pool = await deploy('MockPool', { args: [vault.address, MinimalSwapInfoPool] });
-      await pool.setMultiplier(fp(2));
-
       const poolId = await pool.getPoolId();
 
       await pool.setMultiplier(fp(2));
-
       await pool.registerTokens(tokenAddresses, assetManagers);
 
       await vault.connect(lp).joinPool(

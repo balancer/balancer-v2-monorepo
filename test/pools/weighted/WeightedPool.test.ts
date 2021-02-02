@@ -806,8 +806,8 @@ describe('WeightedPool', function () {
           const ratio = lastInvariant.div(currentInvariant);
           const normalizedWeight = decimal(await pool.getNormalizedWeight(paidFeeToken));
           const exponent = decimal(1e18).div(normalizedWeight);
-          const tokenBalances = (await vault.getPoolTokens(poolId)).balances[paidFeeToken];
-          const paidTokenBalance = decimal(tokenBalances[0]);
+          const { balances: tokenBalances } = await vault.getPoolTokens(poolId);
+          const paidTokenBalance = decimal(tokenBalances[paidFeeToken]);
           const collectedSwapFees = decimal(1).sub(ratio.pow(exponent)).mul(paidTokenBalance);
           const protocolSwapFee = decimal(PROTOCOL_SWAP_FEE.toString()).div(1e18);
           const expectedPaidFees = bn(collectedSwapFees.mul(protocolSwapFee));
