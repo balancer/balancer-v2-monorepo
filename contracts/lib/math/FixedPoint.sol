@@ -17,7 +17,7 @@ pragma solidity ^0.7.1;
 /* solhint-disable private-vars-leading-underscore */
 
 library FixedPoint {
-    uint128 internal constant ONE = 10**18; // 18 decimal places
+    uint256 internal constant ONE = 10**18; // 18 decimal places
     uint256 internal constant MIN_POW_BASE = 1 wei;
     uint256 internal constant MAX_POW_BASE = (2 * ONE) - 1 wei;
     uint256 internal constant POW_PRECISION = ONE / 10**10;
@@ -31,15 +31,6 @@ library FixedPoint {
         return c2;
     }
 
-    function mul128(uint128 a, uint128 b) internal pure returns (uint128) {
-        uint128 c0 = a * b;
-        require(a == 0 || c0 / a == b, "ERR_MUL_OVERFLOW");
-        uint128 c1 = c0 + (ONE / 2);
-        require(c1 >= c0, "ERR_MUL_OVERFLOW");
-        uint128 c2 = c1 / ONE;
-        return c2;
-    }
-
     function div(uint256 a, uint256 b) internal pure returns (uint256) {
         require(b != 0, "ERR_ZERO_DIVISION");
         uint256 c0 = a * ONE;
@@ -47,16 +38,6 @@ library FixedPoint {
         uint256 c1 = c0 + (b / 2);
         require(c1 >= c0, "ERR_DIV_INTERNAL"); // add require
         uint256 c2 = c1 / b;
-        return c2;
-    }
-
-    function div128(uint128 a, uint128 b) internal pure returns (uint128) {
-        require(b != 0, "ERR_ZERO_DIVISION");
-        uint128 c0 = a * ONE;
-        require(a == 0 || c0 / a == ONE, "ERR_DIV_INTERNAL"); // mul overflow
-        uint128 c1 = c0 + (b / 2);
-        require(c1 >= c0, "ERR_DIV_INTERNAL"); // add require
-        uint128 c2 = c1 / b;
         return c2;
     }
 

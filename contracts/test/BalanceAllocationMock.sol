@@ -19,15 +19,15 @@ import "../vault/balances/BalanceAllocation.sol";
 contract BalanceAllocationMock {
     using BalanceAllocation for bytes32;
 
-    function cashBalance(bytes32 balance) public pure returns (uint128) {
+    function cashBalance(bytes32 balance) public pure returns (uint256) {
         return balance.cashBalance();
     }
 
-    function managedBalance(bytes32 balance) public pure returns (uint128) {
+    function managedBalance(bytes32 balance) public pure returns (uint256) {
         return balance.managedBalance();
     }
 
-    function totalBalance(bytes32 balance) public pure returns (uint128) {
+    function totalBalance(bytes32 balance) public pure returns (uint256) {
         return balance.totalBalance();
     }
 
@@ -35,27 +35,27 @@ contract BalanceAllocationMock {
         return BalanceAllocation.totalBalances(balances);
     }
 
-    function toBalance(uint128 _cashBalance, uint128 _managedBalance) public pure returns (bytes32) {
+    function toBalance(uint256 _cashBalance, uint256 _managedBalance) public pure returns (bytes32) {
         return BalanceAllocation.toBalance(_cashBalance, _managedBalance);
     }
 
-    function increaseCash(bytes32 balance, uint128 amount) public pure returns (bytes32) {
+    function increaseCash(bytes32 balance, uint256 amount) public pure returns (bytes32) {
         return balance.increaseCash(amount);
     }
 
-    function decreaseCash(bytes32 balance, uint128 amount) public pure returns (bytes32) {
+    function decreaseCash(bytes32 balance, uint256 amount) public pure returns (bytes32) {
         return balance.decreaseCash(amount);
     }
 
-    function cashToManaged(bytes32 balance, uint128 amount) public pure returns (bytes32) {
+    function cashToManaged(bytes32 balance, uint256 amount) public pure returns (bytes32) {
         return balance.cashToManaged(amount);
     }
 
-    function managedToCash(bytes32 balance, uint128 amount) public pure returns (bytes32) {
+    function managedToCash(bytes32 balance, uint256 amount) public pure returns (bytes32) {
         return balance.managedToCash(amount);
     }
 
-    function setManagedBalance(bytes32 balance, uint128 newManagedBalance) public pure returns (bytes32) {
+    function setManagedBalance(bytes32 balance, uint256 newManagedBalance) public pure returns (bytes32) {
         return balance.setManagedBalance(newManagedBalance);
     }
 

@@ -25,9 +25,7 @@ import "../../lib/math/LogExpMath.sol";
 
 contract WeightedMath {
     using Math for uint256;
-    using Math for uint128;
     using FixedPoint for uint256;
-    using FixedPoint for uint128;
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances and weights.
@@ -194,7 +192,7 @@ contract WeightedMath {
         uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsOut.length);
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            tokenBalanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).div(balances[i]); //128
+            tokenBalanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).div(balances[i]);
             weightedBalanceRatio = weightedBalanceRatio.add(tokenBalanceRatiosWithoutFee[i].mul(normalizedWeights[i]));
         }
 

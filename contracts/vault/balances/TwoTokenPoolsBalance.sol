@@ -14,15 +14,11 @@
 
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BalanceAllocation.sol";
-import "../../lib/math/SignedMath.sol";
 
 contract TwoTokenPoolsBalance {
-    using SafeCast for uint256;
-    using SignedMath for int256;
     using BalanceAllocation for bytes32;
 
     // Data for Pools with Two Tokens
@@ -127,7 +123,7 @@ contract TwoTokenPoolsBalance {
     function _twoTokenPoolCashToManaged(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
@@ -135,7 +131,7 @@ contract TwoTokenPoolsBalance {
     function _twoTokenPoolManagedToCash(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
@@ -143,7 +139,7 @@ contract TwoTokenPoolsBalance {
     function _setTwoTokenPoolManagedBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
@@ -151,8 +147,8 @@ contract TwoTokenPoolsBalance {
     function _updateTwoTokenPoolSharedBalance(
         bytes32 poolId,
         IERC20 token,
-        function(bytes32, uint128) pure returns (bytes32) mutation,
-        uint128 amount
+        function(bytes32, uint256) pure returns (bytes32) mutation,
+        uint256 amount
     ) private {
         TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
         bytes32 pairHash = _getTwoTokenPairHash(poolTokens.tokenA, poolTokens.tokenB);
