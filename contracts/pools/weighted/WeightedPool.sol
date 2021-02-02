@@ -43,6 +43,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     uint8 private constant _MIN_TOKENS = 2;
     uint8 private constant _MAX_TOKENS = 16;
 
+    //TODO: link info about these limits once they are studied and documented
     uint256 private constant _MIN_WEIGHT = 100;
     uint256 private constant _MAX_WEIGHT = 5000 * (10**18);
 
