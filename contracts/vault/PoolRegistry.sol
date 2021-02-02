@@ -499,7 +499,7 @@ abstract contract PoolRegistry is
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
+        emit PoolBalanceChanged(poolId, msg.sender, token, -(amount.toInt256()));
     }
 
     function updateManagedBalance(
