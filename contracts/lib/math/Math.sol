@@ -17,11 +17,11 @@ library Math {
     }
 
     /**
-     * @dev Returns the addition of two unsigned integers of 128 bits, reverting on overflow.
+     * @dev Returns the addition of two signed integers, reverting on overflow.
      */
-    function add128(uint128 a, uint128 b) internal pure returns (uint128) {
-        uint128 c = a + b;
-        require(c >= a, "ERR_ADD_OVERFLOW");
+    function add(int256 a, int256 b) internal pure returns (int256) {
+        int256 c = a + b;
+        require((b >= 0 && c >= a) || (b < 0 && c < a), "ERR_ADD_OVERFLOW");
         return c;
     }
 
@@ -35,18 +35,18 @@ library Math {
     }
 
     /**
-     * @dev Returns the subtraction of two unsigned integers of 128 bits, reverting on overflow.
+     * @dev Returns the subtraction of two signed integers, reverting on overflow.
      */
-    function sub128(uint128 a, uint128 b) internal pure returns (uint128) {
-        require(b <= a, "ERR_SUB_OVERFLOW");
-        uint128 c = a - b;
+    function sub(int256 a, int256 b) internal pure returns (int256) {
+        int256 c = a - b;
+        require((b >= 0 && c <= a) || (b < 0 && c > a), "ERR_SUB_OVERFLOW");
         return c;
     }
 
     /**
-     * @dev Returns the smallest of two numbers of 128 bits.
+     * @dev Returns the smallest of two numbers of 256 bits.
      */
-    function min128(uint128 a, uint128 b) internal pure returns (uint128) {
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
 }

@@ -198,7 +198,7 @@ describe('Vault - asset manager', function () {
         it('reverts when cashing out more than the managed balance', async () => {
           await expect(
             vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, 1)
-          ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+          ).to.be.revertedWith('ERR_SUB_OVERFLOW');
         });
       });
 

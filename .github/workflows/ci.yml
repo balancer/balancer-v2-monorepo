@@ -4,7 +4,7 @@ on:
   push:
     branches: master
   pull_request:
-    branches: '*'
+    branches: "*"
 
 jobs:
   lint:
@@ -31,7 +31,7 @@ jobs:
       - name: Install
         run: yarn --frozen-lockfile
       - name: Test
-        run: yarn test
+        run: yarn test:fast
 
   coverage:
     runs-on: ubuntu-latest
