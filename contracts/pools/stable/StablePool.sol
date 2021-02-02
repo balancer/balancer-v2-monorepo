@@ -41,10 +41,13 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
 
     uint256 private _lastInvariant;
 
-    uint256 private constant _MIN_SWAP_FEE = 0;
     uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
 
     uint8 private constant _MAX_TOKENS = 16;
+
+    //TODO: document this limit
+    uint256 private constant _MIN_AMP = 50 * (10**18);
+    uint256 private constant _MAX_AMP = 2000 * (10**18);
 
     /**
      * @dev This contract cannot be deployed directly because it must be an Universal Agent during construction. Use
@@ -70,10 +73,11 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         _vault = vault;
         _poolId = poolId;
 
-        require(swapFee >= _MIN_SWAP_FEE, "ERR__MIN_SWAP_FEE");
         require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_SWAP_FEE");
         _swapFee = swapFee;
 
+        require(amp >= _MIN_AMP, "ERR_MIN_AMP");
+        require(amp <= _MAX_AMP, "ERR_MAX_AMP");
         _amp = amp;
     }
 
