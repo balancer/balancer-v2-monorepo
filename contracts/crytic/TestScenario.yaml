@@ -1,0 +1,6 @@
+coverage: true
+cryticArgs: ['--ignore-compile']
+checkAsserts: true
+testLimit: 1000000
+timeout: 14400
+corpusDir: "corpus"

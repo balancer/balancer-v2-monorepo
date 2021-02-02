@@ -40,6 +40,16 @@ contract MockPool is IPoolQuote, IPoolQuoteSimplified {
         return _poolId;
     }
 
+    function getNumberOfPools() external view returns (uint256) {
+        _vault.getNumberOfPools();
+    }
+    function addUserAgent(address agent) external {
+        _vault.addUserAgent(agent);
+    }
+    function setPoolInvestmentManager(bytes32 poolId, IERC20 token, address manager) external {
+        _vault.setPoolInvestmentManager(poolId, token, manager);
+    }
+
     function registerTokens(IERC20[] memory tokens) external {
         _vault.registerTokens(_poolId, tokens);
     }

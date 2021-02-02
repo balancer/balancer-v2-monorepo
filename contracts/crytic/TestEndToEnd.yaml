@@ -1,0 +1,9 @@
+seqLen: 250
+# testLimit: 1000000
+sender: ['0x111']
+coverage: true
+corpusDir: 'corpus'
+sender: ['0x5409ED021D9299bf6814279A6A1411A7e866A631', '0x78dc5D2D739606d31509C31d654056A45185ECb6', '0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48', '0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb','0xE834EC434DABA538cd1b9Fe1582052B880BD7e63']
+initialize: contracts/crytic/Vault.json
+multi-abi: true
+cryticArgs: ['--ignore-compile']

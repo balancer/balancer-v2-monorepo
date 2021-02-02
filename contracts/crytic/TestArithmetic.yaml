@@ -1,0 +1,4 @@
+testLimit: 1000000
+coverage: true
+quiet: true
+corpusDir: "corpus"
