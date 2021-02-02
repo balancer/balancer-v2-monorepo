@@ -4,7 +4,7 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../EnumerableMap.sol";
+import "../../../lib/helpers/EnumerableMap.sol";
 
 // solhint-disable func-name-mixedcase
 

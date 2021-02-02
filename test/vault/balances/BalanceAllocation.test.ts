@@ -174,9 +174,9 @@ describe('Vault - cash/managed balance', () => {
       });
 
       it('reverts on cash overflow', async () => {
-        await expect(testIncreaseCash(MAX_UINT128, 0, 1)).to.be.revertedWith('ERR_ADD_OVERFLOW');
+        await expect(testIncreaseCash(MAX_UINT128, 0, 1)).to.be.revertedWith('BALANCE_TOTAL_OVERFLOW');
         await expect(testIncreaseCash(MAX_UINT128.div(2), 0, MAX_UINT128.div(2).add(2))).to.be.revertedWith(
-          'ERR_ADD_OVERFLOW'
+          'BALANCE_TOTAL_OVERFLOW'
         );
       });
 
@@ -238,14 +238,14 @@ describe('Vault - cash/managed balance', () => {
       });
 
       it('reverts on negative cash', async () => {
-        await expect(testDecreaseCash(0, 0, 1)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
-        await expect(testDecreaseCash(1, 0, 2)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+        await expect(testDecreaseCash(0, 0, 1)).to.be.revertedWith('ERR_SUB_OVERFLOW');
+        await expect(testDecreaseCash(1, 0, 2)).to.be.revertedWith('ERR_SUB_OVERFLOW');
 
         await expect(testDecreaseCash(MAX_UINT128.div(2), 0, MAX_UINT128.div(2).add(1))).to.be.revertedWith(
-          'ERR_SUB_UNDERFLOW'
+          'ERR_SUB_OVERFLOW'
         );
         await expect(testDecreaseCash(MAX_UINT128.div(2), 0, MAX_UINT128.div(2).add(1))).to.be.revertedWith(
-          'ERR_SUB_UNDERFLOW'
+          'ERR_SUB_OVERFLOW'
         );
       });
     });
@@ -293,11 +293,11 @@ describe('Vault - cash/managed balance', () => {
       });
 
       it('reverts when transferring more cash than available', async () => {
-        await expect(testCashToManaged(0, 0, 1)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
-        await expect(testCashToManaged(5, 0, 6)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+        await expect(testCashToManaged(0, 0, 1)).to.be.revertedWith('ERR_SUB_OVERFLOW');
+        await expect(testCashToManaged(5, 0, 6)).to.be.revertedWith('ERR_SUB_OVERFLOW');
 
         await expect(testCashToManaged(MAX_UINT128.div(5), 23, MAX_UINT128.div(5).add(1))).to.be.revertedWith(
-          'ERR_SUB_UNDERFLOW'
+          'ERR_SUB_OVERFLOW'
         );
       });
     });
@@ -339,11 +339,11 @@ describe('Vault - cash/managed balance', () => {
       });
 
       it('reverts when cashing out more managed balance than available', async () => {
-        await expect(testManagedToCash(0, 0, 1)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
-        await expect(testManagedToCash(0, 5, 6)).to.be.revertedWith('ERR_SUB_UNDERFLOW');
+        await expect(testManagedToCash(0, 0, 1)).to.be.revertedWith('ERR_SUB_OVERFLOW');
+        await expect(testManagedToCash(0, 5, 6)).to.be.revertedWith('ERR_SUB_OVERFLOW');
 
         await expect(testManagedToCash(42, MAX_UINT128.div(5), MAX_UINT128.div(5).add(1))).to.be.revertedWith(
-          'ERR_SUB_UNDERFLOW'
+          'ERR_SUB_OVERFLOW'
         );
       });
     });
@@ -409,6 +409,40 @@ describe('Vault - cash/managed balance', () => {
       await testPackUnpack(amount, amount, 0, 0);
       await testPackUnpack(amount, amount, 0, amount);
       await testPackUnpack(amount, amount, amount, 0);
+    });
+  });
+
+  describe('total balances', () => {
+    async function testTotalBalances(cashBalances: BigNumberish[], managedBalances: BigNumberish[]) {
+      const balances = await Promise.all(
+        cashBalances.map((cash, i) => library.toBalance(bn(cash), bn(managedBalances[i])))
+      );
+
+      const expectedTotals = cashBalances.map((cash, i) => bn(cash).add(bn(managedBalances[i])));
+      expect(await library.totalBalances(balances)).to.deep.equal(expectedTotals);
+    }
+
+    it('handles zero balances', async () => {
+      await testTotalBalances([0, 0], [0, 0]);
+    });
+
+    it('handles normal values', async () => {
+      await testTotalBalances([10e18, 9e18], [5e18, 6e17]);
+    });
+
+    it('handles extreme cash values', async () => {
+      await testTotalBalances([MAX_UINT128.sub(23), MAX_UINT128.sub(4)], [23, 4]);
+    });
+
+    it('handles extreme managed values', async () => {
+      await testTotalBalances([42, 10], [MAX_UINT128.sub(42), MAX_UINT128.sub(10)]);
+    });
+
+    it('handles extreme values', async () => {
+      await testTotalBalances(
+        [MAX_UINT128.div(2), MAX_UINT128.div(2).add(1)],
+        [MAX_UINT128.div(2).add(1), MAX_UINT128.div(2)]
+      );
     });
   });
 });

@@ -14,10 +14,9 @@
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
-
-import "../../math/FixedPoint.sol";
-import "../../math/LogExpMath.sol";
+import "../../lib/math/Math.sol";
+import "../../lib/math/FixedPoint.sol";
+import "../../lib/math/LogExpMath.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
@@ -25,8 +24,8 @@ import "../../math/LogExpMath.sol";
 /* solhint-disable private-vars-leading-underscore */
 
 contract WeightedMath {
+    using Math for uint256;
     using FixedPoint for uint256;
-    using FixedPoint for uint128;
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances and weights.
@@ -193,7 +192,7 @@ contract WeightedMath {
         uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsOut.length);
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            tokenBalanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).div(balances[i]); //128
+            tokenBalanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).div(balances[i]);
             weightedBalanceRatio = weightedBalanceRatio.add(tokenBalanceRatiosWithoutFee[i].mul(normalizedWeights[i]));
         }
 
@@ -222,5 +221,23 @@ contract WeightedMath {
         }
 
         return bptTotalSupply.mul(FixedPoint.ONE.sub(invariantRatio));
+    }
+
+    function _calculateOneTokenSwapFee(
+        uint256[] memory balances,
+        uint256[] memory normalizedWeights,
+        uint256 lastInvariant,
+        uint256 tokenIndex
+    ) internal pure returns (uint256 chosenTokenAccruedFees) {
+        /*********************************************************************************
+        /*  balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))  
+        *********************************************************************************/
+
+        uint256 exponent = FixedPoint.ONE.div(normalizedWeights[tokenIndex]);
+
+        uint256 currentInvariant = _invariant(normalizedWeights, balances);
+        uint256 invariantRatio = lastInvariant.div(currentInvariant);
+
+        chosenTokenAccruedFees = balances[tokenIndex].mul(FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent)));
     }
 }

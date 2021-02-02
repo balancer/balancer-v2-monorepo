@@ -15,27 +15,26 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../../math/FixedPoint.sol";
-import "../../helpers/UnsafeRandom.sol";
-import "../../vendor/ReentrancyGuard.sol";
-
-import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPool.sol";
-import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
+import "../../lib/math/Math.sol";
+import "../../lib/math/FixedPoint.sol";
+import "../../lib/helpers/UnsafeRandom.sol";
+import "../../lib/helpers/ReentrancyGuard.sol";
 
 import "./WeightedMath.sol";
 import "../BalancerPoolToken.sol";
+import "../../vault/interfaces/IVault.sol";
+import "../../vault/interfaces/IPool.sol";
+import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
 contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, WeightedMath, ReentrancyGuard {
+    using Math for uint256;
     using FixedPoint for uint256;
-    using FixedPoint for uint128;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -470,17 +469,13 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     ) private view returns (uint256[] memory) {
         // Compute by how much a token balance increased to go from last invariant to current invariant
 
-        // balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))
+        uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
 
-        uint256 chosenTokenIndex = 1; // UnsafeRandom.rand(_totalTokens);
-
-        uint256 exponent = FixedPoint.ONE.div(normalizedWeights[chosenTokenIndex]);
-
-        uint256 currentInvariant = _invariant(normalizedWeights, currentBalances);
-        uint256 invariantRatio = _lastInvariant.div(currentInvariant);
-
-        uint256 chosenTokenAccruedFees = currentBalances[chosenTokenIndex].mul(
-            FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent))
+        uint256 chosenTokenAccruedFees = _calculateOneTokenSwapFee(
+            currentBalances,
+            normalizedWeights,
+            _lastInvariant,
+            chosenTokenIndex
         );
         uint256 chosenTokenDueProtocolFeeAmount = chosenTokenAccruedFees.mul(protocolFeePercentage);
 

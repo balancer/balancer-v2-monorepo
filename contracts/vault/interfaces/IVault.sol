@@ -185,6 +185,13 @@ interface IVault {
         bytes memory userData
     ) external;
 
+    event PoolJoined(
+        bytes32 indexed poolId,
+        address indexed liquidityProvider,
+        uint256[] amountsIn,
+        uint256[] protocolFees
+    );
+
     /**
      * @dev Called by users to exit a Pool, transferring tokens from its balance. The `IPool.onExitPool` hook will be
      * called on the Pool by the Vault, which will typically take something to the user in return - often tokenized
@@ -208,6 +215,13 @@ interface IVault {
         bool tointernalBalance,
         bytes memory userData
     ) external;
+
+    event PoolExited(
+        bytes32 indexed poolId,
+        address indexed liquidityProvider,
+        uint256[] amountsOut,
+        uint256[] protocolFees
+    );
 
     // Swap interface
 

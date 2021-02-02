@@ -14,7 +14,9 @@
 
 pragma solidity ^0.7.1;
 
-import "../../math/FixedPoint.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
+import "../../lib/math/Math.sol";
 
 // This library is used to create a data structure that represents a token's balance for a Pool. 'cash' is how many
 // tokens the Pool has sitting inside of the Vault. 'managed' is how many tokens were withdrawn from the Vault by the
@@ -40,33 +42,44 @@ import "../../math/FixedPoint.sol";
 // type we use to represent these values is bytes32, as it doesn't have any arithmetic operations and therefore reduces
 // the chance of misuse.
 library BalanceAllocation {
-    using FixedPoint for uint128;
+    using Math for uint256;
+    using SafeCast for uint256;
 
     // The 'cash' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the
     // 'managed' part uses the most significant 128 bits.
 
     // Mask used to encode/decode pool balances into 'cash' and 'managed' balances
-    uint128 private constant _MASK = 2**(128) - 1;
+    uint256 private constant _MASK = 2**(128) - 1;
 
     /**
      * @dev The amount of Pool tokens currently in the Vault.
      */
-    function cashBalance(bytes32 balance) internal pure returns (uint128) {
-        return uint128(uint256(balance)) & _MASK;
+    function cashBalance(bytes32 balance) internal pure returns (uint256) {
+        return uint256(balance) & _MASK;
     }
 
     /**
      * @dev The amount of Pool tokens that have been withdrawn by its Asset Manager.
      */
-    function managedBalance(bytes32 balance) internal pure returns (uint128) {
-        return uint128((uint256(balance) >> 128) & _MASK);
+    function managedBalance(bytes32 balance) internal pure returns (uint256) {
+        return (uint256(balance) >> 128) & _MASK;
     }
 
     /**
      * @dev The total amount of Pool tokens, including those that are not currently in the Vault ('managed').
      */
-    function totalBalance(bytes32 balance) internal pure returns (uint128) {
-        return cashBalance(balance).add128(managedBalance(balance));
+    function totalBalance(bytes32 balance) internal pure returns (uint256) {
+        return cashBalance(balance).add(managedBalance(balance));
+    }
+
+    /**
+     * @dev Computes the total balance of the Pool tokens.
+     */
+    function totalBalances(bytes32[] memory balances) internal pure returns (uint256[] memory totals) {
+        totals = new uint256[](balances.length);
+        for (uint256 i = 0; i < totals.length; i++) {
+            totals[i] = totalBalance(balances[i]);
+        }
     }
 
     /**
@@ -89,20 +102,20 @@ library BalanceAllocation {
      * Critically, this also checks the sum of cash and external doesn't overflow, that is, that `total()` can be
      * computed.
      */
-    function toBalance(uint128 _cashBalance, uint128 _managedBalance) internal pure returns (bytes32) {
-        uint128 total = _cashBalance + _managedBalance;
-        require(total >= _cashBalance, "BALANCE_TOTAL_OVERFLOW");
+    function toBalance(uint256 _cashBalance, uint256 _managedBalance) internal pure returns (bytes32) {
+        uint256 total = _cashBalance + _managedBalance;
+        require(total >= _cashBalance && total < 2**128, "BALANCE_TOTAL_OVERFLOW");
 
-        return bytes32((uint256(_managedBalance) << 128) | _cashBalance);
+        return bytes32((_managedBalance << 128) | _cashBalance);
     }
 
     /**
      * @dev Increases a Pool's 'cash' (and therefore its 'total'). Called when Pool tokens are sent to the Vault (except
      * when an Asset Manager action decreases the managed balance).
      */
-    function increaseCash(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
-        uint128 newCashBalance = cashBalance(balance).add128(amount);
-        uint128 newManagedBalance = managedBalance(balance);
+    function increaseCash(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
+        uint256 newCashBalance = cashBalance(balance).add(amount);
+        uint256 newManagedBalance = managedBalance(balance);
 
         return toBalance(newCashBalance, newManagedBalance);
     }
@@ -111,9 +124,9 @@ library BalanceAllocation {
      * @dev Decreases a Pool's 'cash' (and therefore its 'total'). Called when Pool tokens are sent from the Vault
      * (except as an Asset Manager action that increases the managed balance).
      */
-    function decreaseCash(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
-        uint128 newCashBalance = cashBalance(balance).sub128(amount);
-        uint128 newManagedBalance = managedBalance(balance);
+    function decreaseCash(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
+        uint256 newCashBalance = cashBalance(balance).sub(amount);
+        uint256 newManagedBalance = managedBalance(balance);
 
         return toBalance(newCashBalance, newManagedBalance);
     }
@@ -122,9 +135,9 @@ library BalanceAllocation {
      * @dev Moves 'cash' into 'managed', leaving 'total' unchanged. Called when Pool tokens are sent from the Vault
      * when an Asset Manager action increases the managed balance.
      */
-    function cashToManaged(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
-        uint128 newCashBalance = cashBalance(balance).sub128(amount);
-        uint128 newManagedBalance = managedBalance(balance).add128(amount);
+    function cashToManaged(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
+        uint256 newCashBalance = cashBalance(balance).sub(amount);
+        uint256 newManagedBalance = managedBalance(balance).add(amount);
 
         return toBalance(newCashBalance, newManagedBalance);
     }
@@ -133,9 +146,9 @@ library BalanceAllocation {
      * @dev Moves 'managed' into 'cash', leaving 'total' unchanged. Called when Pool tokens are sent to the Vault when
      * an Asset Manager action decreases the managed balance.
      */
-    function managedToCash(bytes32 balance, uint128 amount) internal pure returns (bytes32) {
-        uint128 newCashBalance = cashBalance(balance).add128(amount);
-        uint128 newManagedBalance = managedBalance(balance).sub128(amount);
+    function managedToCash(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
+        uint256 newCashBalance = cashBalance(balance).add(amount);
+        uint256 newManagedBalance = managedBalance(balance).sub(amount);
 
         return toBalance(newCashBalance, newManagedBalance);
     }
@@ -144,8 +157,8 @@ library BalanceAllocation {
      * @dev Sets 'managed' balance to an arbitrary value, changing 'total'. Called when the Asset Manager reports
      * profits or losses. It's the Manager's responsibility to provide a meaningful value.
      */
-    function setManagedBalance(bytes32 balance, uint128 newManagedBalance) internal pure returns (bytes32) {
-        uint128 newCashBalance = cashBalance(balance);
+    function setManagedBalance(bytes32 balance, uint256 newManagedBalance) internal pure returns (bytes32) {
+        uint256 newCashBalance = cashBalance(balance);
 
         return toBalance(newCashBalance, newManagedBalance);
     }
@@ -193,15 +206,15 @@ library BalanceAllocation {
      * @dev Unpacks the balance corresponding to token A for a shared balance
      * Note that this function can be used to decode both cash and managed balances.
      */
-    function _decodeBalanceA(bytes32 sharedBalance) private pure returns (uint128) {
-        return uint128(uint256(sharedBalance >> 128) & _MASK);
+    function _decodeBalanceA(bytes32 sharedBalance) private pure returns (uint256) {
+        return uint256(sharedBalance >> 128) & _MASK;
     }
 
     /**
      * @dev Unpacks the balance corresponding to token B for a shared balance
      * Note that this function can be used to decode both cash and managed balances.
      */
-    function _decodeBalanceB(bytes32 sharedBalance) private pure returns (uint128) {
-        return uint128(uint256(sharedBalance) & _MASK);
+    function _decodeBalanceB(bytes32 sharedBalance) private pure returns (uint256) {
+        return uint256(sharedBalance) & _MASK;
     }
 }

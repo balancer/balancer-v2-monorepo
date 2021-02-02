@@ -15,16 +15,13 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "../lib/math/FixedPoint.sol";
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IPool.sol";
 import "../vault/interfaces/IGeneralPoolQuote.sol";
 import "../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
-
-import "../math/FixedPoint.sol";
 
 contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
     using FixedPoint for uint256;
@@ -53,59 +50,52 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         _vault.unregisterTokens(_poolId, tokens);
     }
 
-    uint256[] private _onJoinExitPoolAmounts;
-    uint256[] private _onJoinPoolDueProtocolFeeAmounts;
+    event OnJoinPoolCalled(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] currentBalances,
+        uint256[] maxAmountsIn,
+        uint256 protocolSwapFee,
+        bytes userData
+    );
 
-    function setOnJoinExitPoolReturnValues(uint256[] memory amounts, uint256[] memory dueProtocolFeeAmounts) external {
-        delete _onJoinExitPoolAmounts;
-        for (uint256 i = 0; i < amounts.length; ++i) {
-            _onJoinExitPoolAmounts.push(amounts[i]);
-        }
-
-        delete _onJoinPoolDueProtocolFeeAmounts;
-        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
-            _onJoinPoolDueProtocolFeeAmounts.push(dueProtocolFeeAmounts[i]);
-        }
-    }
+    event OnExitPoolCalled(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] currentBalances,
+        uint256[] minAmountsOut,
+        uint256 protocolSwapFee,
+        bytes userData
+    );
 
     function onJoinPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256[] memory,
-        uint256,
-        bytes memory
-    ) external view override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
-        amountsIn = new uint256[](_onJoinExitPoolAmounts.length);
-        for (uint256 i = 0; i < amountsIn.length; ++i) {
-            amountsIn[i] = _onJoinExitPoolAmounts[i];
-        }
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory currentBalances,
+        uint256[] memory maxAmountsIn,
+        uint256 protocolSwapFee,
+        bytes memory userData
+    ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
+        emit OnJoinPoolCalled(poolId, sender, recipient, currentBalances, maxAmountsIn, protocolSwapFee, userData);
 
-        dueProtocolFeeAmounts = new uint256[](_onJoinPoolDueProtocolFeeAmounts.length);
-        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
-            dueProtocolFeeAmounts[i] = _onJoinPoolDueProtocolFeeAmounts[i];
-        }
+        (amountsIn, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
     function onExitPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256[] memory,
-        uint256,
-        bytes memory
-    ) external view override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
-        amountsOut = new uint256[](_onJoinExitPoolAmounts.length);
-        for (uint256 i = 0; i < amountsOut.length; ++i) {
-            amountsOut[i] = _onJoinExitPoolAmounts[i];
-        }
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory currentBalances,
+        uint256[] memory minAmountsOut,
+        uint256 protocolSwapFee,
+        bytes memory userData
+    ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
+        emit OnExitPoolCalled(poolId, sender, recipient, currentBalances, minAmountsOut, protocolSwapFee, userData);
 
-        dueProtocolFeeAmounts = new uint256[](_onJoinPoolDueProtocolFeeAmounts.length);
-        for (uint256 i = 0; i < dueProtocolFeeAmounts.length; ++i) {
-            dueProtocolFeeAmounts[i] = _onJoinPoolDueProtocolFeeAmounts[i];
-        }
+        (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it

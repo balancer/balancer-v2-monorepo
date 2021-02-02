@@ -14,13 +14,9 @@
 
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
-
 import "../pools/stable/StableMath.sol";
 
 contract MockStableMath is StableMath {
-    using SafeCast for uint256;
-
     function invariant(uint256 amp, uint256[] calldata balances) external pure returns (uint256) {
         return _invariant(amp, balances);
     }
@@ -32,7 +28,7 @@ contract MockStableMath is StableMath {
         uint256 tokenIndexOut,
         uint256 tokenAmountIn
     ) external pure returns (uint256) {
-        return _outGivenIn(amp.toUint128(), balances, tokenIndexIn, tokenIndexOut, tokenAmountIn.toUint128());
+        return _outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
     }
 
     function inGivenOut(
@@ -42,7 +38,7 @@ contract MockStableMath is StableMath {
         uint256 tokenIndexOut,
         uint256 tokenAmountOut
     ) external pure returns (uint256) {
-        return _inGivenOut(amp.toUint128(), balances, tokenIndexIn, tokenIndexOut, tokenAmountOut.toUint128());
+        return _inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
     }
 
     function calculateOneTokenSwapFee(

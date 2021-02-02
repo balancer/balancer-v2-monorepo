@@ -14,20 +14,13 @@
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
-
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "./BalanceAllocation.sol";
-import "../../math/FixedPoint.sol";
 
 contract MinimalSwapInfoPoolsBalance {
-    using SafeCast for uint256;
-    using FixedPoint for int256;
     using BalanceAllocation for bytes32;
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Data for Pools with Minimal Swap Info Specialization setting
@@ -81,66 +74,20 @@ contract MinimalSwapInfoPoolsBalance {
         }
     }
 
-    /**
-     * @dev Adds cash to a Minimal Swap Info Pool for a list of tokens. This function doesn't check that the lengths of
-     * `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
-     *
-     * Requirements:
-     *
-     * - Each token must be registered in the pool
-     * - Amounts can be zero
-     */
-    function _increaseMinimalSwapInfoPoolCash(
+    function _updateMinimalSwapInfoPoolBalances(
         bytes32 poolId,
         IERC20[] memory tokens,
-        uint256[] memory amounts
+        bytes32[] memory balances
     ) internal {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint128 amount = amounts[i].toUint128();
-            _updateMinimalSwapInfoPoolBalance(poolId, tokens[i], BalanceAllocation.increaseCash, amount);
-        }
-    }
-
-    function _alterMinimalSwapInfoPoolCash(
-        bytes32 poolId,
-        IERC20[] memory tokens,
-        int256[] memory amounts
-    ) internal {
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            int256 amount = amounts[i];
-            _updateMinimalSwapInfoPoolBalance(
-                poolId,
-                tokens[i],
-                amount > 0 ? BalanceAllocation.increaseCash : BalanceAllocation.decreaseCash,
-                amount.abs().toUint128()
-            );
-        }
-    }
-
-    /**
-     * @dev Removes cash from a  Minimal Swap Info Pool for a list of tokens. This function doesn't check that the
-     * lengths of `tokens` and `amounts` match, it is responsibility of the caller to ensure that.
-     *
-     * Requirements:
-     *
-     * - Each token must be registered in the Pool.
-     * - Each amount must be less or equal than the Pool's cash for that token.
-     */
-    function _decreaseMinimalSwapInfoPoolCash(
-        bytes32 poolId,
-        IERC20[] memory tokens,
-        uint256[] memory amounts
-    ) internal {
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint128 amount = amounts[i].toUint128();
-            _updateMinimalSwapInfoPoolBalance(poolId, tokens[i], BalanceAllocation.decreaseCash, amount);
+            _minimalSwapInfoPoolsBalances[poolId][tokens[i]] = balances[i];
         }
     }
 
     function _minimalSwapInfoPoolCashToManaged(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
     }
@@ -148,7 +95,7 @@ contract MinimalSwapInfoPoolsBalance {
     function _minimalSwapInfoPoolManagedToCash(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.managedToCash, amount);
     }
@@ -156,7 +103,7 @@ contract MinimalSwapInfoPoolsBalance {
     function _setMinimalSwapInfoPoolManagedBalance(
         bytes32 poolId,
         IERC20 token,
-        uint128 amount
+        uint256 amount
     ) internal {
         _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
     }
@@ -164,8 +111,8 @@ contract MinimalSwapInfoPoolsBalance {
     function _updateMinimalSwapInfoPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        function(bytes32, uint128) pure returns (bytes32) mutation,
-        uint128 amount
+        function(bytes32, uint256) pure returns (bytes32) mutation,
+        uint256 amount
     ) internal {
         bytes32 currentBalance = _getMinimalSwapInfoPoolBalance(poolId, token);
         _minimalSwapInfoPoolsBalances[poolId][token] = mutation(currentBalance, amount);
@@ -178,16 +125,16 @@ contract MinimalSwapInfoPoolsBalance {
     function _getMinimalSwapInfoPoolTokens(bytes32 poolId)
         internal
         view
-        returns (IERC20[] memory tokens, uint256[] memory balances)
+        returns (IERC20[] memory tokens, bytes32[] memory balances)
     {
         EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
         tokens = new IERC20[](poolTokens.length());
-        balances = new uint256[](tokens.length);
+        balances = new bytes32[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = IERC20(poolTokens.at(i));
             tokens[i] = token;
-            balances[i] = _minimalSwapInfoPoolsBalances[poolId][token].totalBalance();
+            balances[i] = _minimalSwapInfoPoolsBalances[poolId][token];
         }
     }
 
