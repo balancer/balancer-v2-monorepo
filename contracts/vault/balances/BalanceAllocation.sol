@@ -87,21 +87,24 @@ library BalanceAllocation {
      * @dev The amount of Pool tokens currently in the Vault.
      */
     function cash(bytes32 balance) internal pure returns (uint256) {
-        return _leastSignificant(balance);
+        uint256 mask = 2**(112) - 1;
+        return uint256(balance) & mask;
     }
 
     /**
      * @dev The amount of Pool tokens that have been withdrawn by its Asset Manager.
      */
     function managed(bytes32 balance) internal pure returns (uint256) {
-        return _midSignificant(balance);
+        uint256 mask = 2**(112) - 1;
+        return uint256(balance >> 112) & mask;
     }
 
     /**
      * @dev Last block number when given balance was updated
      */
     function blockNumber(bytes32 balance) internal pure returns (uint256) {
-        return _mostSignificant(balance);
+        uint256 mask = 2**(32) - 1;
+        return uint256(balance >> 224) & mask;
     }
 
     /**
@@ -233,7 +236,7 @@ library BalanceAllocation {
      * @dev Returns the sharedManaged shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
-        return _pack(managed(tokenABalance), managed(tokenBBalance), uint32(0));
+        return _pack(managed(tokenABalance), managed(tokenBBalance), 0);
     }
 
     /**
@@ -241,7 +244,8 @@ library BalanceAllocation {
      * Note that this function can be used to decode both cash and managed balances.
      */
     function _decodeBalanceA(bytes32 sharedBalance) private pure returns (uint256) {
-        return _leastSignificant(sharedBalance);
+        uint256 mask = 2**(112) - 1;
+        return uint256(sharedBalance) & mask;
     }
 
     /**
@@ -249,7 +253,8 @@ library BalanceAllocation {
      * Note that this function can be used to decode both cash and managed balances.
      */
     function _decodeBalanceB(bytes32 sharedBalance) private pure returns (uint256) {
-        return _midSignificant(sharedBalance);
+        uint256 mask = 2**(112) - 1;
+        return uint256(sharedBalance >> 112) & mask;
     }
 
     // Shared functions
@@ -262,70 +267,6 @@ library BalanceAllocation {
         uint256 _midSignificant,
         uint256 _mostSignificant
     ) private pure returns (bytes32) {
-        return bytes32((_mostSignificant << 224) | (_midSignificant << 112) | _leastSignificant);
-    }
-
-    /**
-     * @dev Tells the 32 most significant bits of a word.
-     * Used to decode the block number.
-     */
-    function _mostSignificant(bytes32 value) private pure returns (uint256) {
-        return _mostSignificant(uint256(value));
-    }
-
-    /**
-     * @dev Tells the 32 most significant bits of a word.
-     * Used to decode the block number.
-     */
-    function _mostSignificant(uint256 value) private pure returns (uint256) {
-        return _masked32(value >> 224);
-    }
-
-    /**
-     * @dev Tells the 112 mid significant bits of a word.
-     * Used to decode the 'managed' balance for regular wrapping or the token B balance for the two tokens special case.
-     */
-    function _midSignificant(bytes32 value) private pure returns (uint256) {
-        return _midSignificant(uint256(value));
-    }
-
-    /**
-     * @dev Tells the 112 mid significant bits of a word.
-     * Used to decode the 'managed' balance for regular wrapping or the token B balance for the two tokens special case.
-     */
-    function _midSignificant(uint256 value) private pure returns (uint256) {
-        return _masked112(value >> 112);
-    }
-
-    /**
-     * @dev Tells the 112 least significant bits of a word.
-     * Used to decode the 'cash' balance for regular wrapping or the token A balance for the two tokens special case.
-     */
-    function _leastSignificant(bytes32 value) private pure returns (uint256) {
-        return _leastSignificant(uint256(value));
-    }
-
-    /**
-     * @dev Tells the 112 least significant bits of a word.
-     * Used to decode the 'cash' balance for regular wrapping or the token A balance for the two tokens special case.
-     */
-    function _leastSignificant(uint256 value) private pure returns (uint256) {
-        return _masked112(value);
-    }
-
-    /**
-     * @dev Masks a uint256 to uint112
-     */
-    function _masked112(uint256 value) private pure returns (uint256) {
-        uint256 mask = 2**(112) - 1;
-        return value & mask;
-    }
-
-    /**
-     * @dev Masks a uint256 to uint32
-     */
-    function _masked32(uint256 value) private pure returns (uint256) {
-        uint256 mask = 2**(32) - 1;
-        return value & mask;
+        return bytes32((_mostSignificant << 224) + (_midSignificant << 112) + _leastSignificant);
     }
 }
