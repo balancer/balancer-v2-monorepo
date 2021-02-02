@@ -222,4 +222,22 @@ contract WeightedMath {
 
         return bptTotalSupply.mul(FixedPoint.ONE.sub(invariantRatio));
     }
+
+    function _calculateOneTokenSwapFee(
+        uint256[] memory balances,
+        uint256[] memory normalizedWeights,
+        uint256 lastInvariant,
+        uint256 tokenIndex
+    ) internal pure returns (uint256 chosenTokenAccruedFees) {
+        /*********************************************************************************
+        /*  balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))  
+        *********************************************************************************/
+
+        uint256 exponent = FixedPoint.ONE.div(normalizedWeights[tokenIndex]);
+
+        uint256 currentInvariant = _invariant(normalizedWeights, balances);
+        uint256 invariantRatio = lastInvariant.div(currentInvariant);
+
+        chosenTokenAccruedFees = balances[tokenIndex].mul(FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent)));
+    }
 }
