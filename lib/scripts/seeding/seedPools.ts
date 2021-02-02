@@ -82,6 +82,8 @@ async function swapInPool(pool: Contract) {
   const amountInDecimals = 2;
   const amountIn = bn(100).mul(bn(10).pow(amountInDecimals));
 
+  const amountInDecimals = 2;
+  const amountIn = BigNumber.from('100').mul(BigNumber.from('10').pow(amountInDecimals));
   const swap: SwapIn = {
     poolId,
     tokenInIndex: 0,
