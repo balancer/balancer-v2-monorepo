@@ -28,7 +28,7 @@ describe('WeightedPool', function () {
 
   const POOL_SWAP_FEE = fp(0.01);
   const SYMBOLS = ['DAI', 'MKR', 'SNX', 'BAT'];
-  const WEIGHTS = [bn(70), bn(30), bn(5), bn(5)];
+  const WEIGHTS = [bn(70e18), bn(30e18), bn(5e18), bn(5e18)];
   const INITIAL_BALANCES = [bn(0.9e18), bn(1.8e18), bn(2.7e18), bn(3.6e18)];
 
   before('setup signers', async () => {
@@ -210,15 +210,17 @@ describe('WeightedPool', function () {
         });
 
         it('reverts if at least one weight is too high', async () => {
-          poolWeights[0] = bn(50000).mul(bn(10e18));
+          const weights = WEIGHTS.slice(0, numberOfTokens);
+          weights[0] = bn(50000).mul(bn(10e18));
 
-          await expect(deployPool({ weights: poolWeights })).to.be.revertedWith('ERR_MAX_WEIGHT');
+          await expect(deployPool({ weights: weights })).to.be.revertedWith('ERR_MAX_WEIGHT');
         });
 
         it('reverts if at least one weight is too low', async () => {
-          poolWeights[0] = bn(10);
+          const weights = WEIGHTS.slice(0, numberOfTokens);
+          weights[0] = bn(10);
 
-          await expect(deployPool({ weights: poolWeights })).to.be.revertedWith('ERR_MIN_WEIGHT');
+          await expect(deployPool({ weights: weights })).to.be.revertedWith('ERR_MIN_WEIGHT');
         });
       });
     });
