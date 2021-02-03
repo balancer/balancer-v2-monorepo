@@ -42,6 +42,10 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     uint8 private constant _MIN_TOKENS = 2;
     uint8 private constant _MAX_TOKENS = 16;
 
+    //TODO: link info about these limits once they are studied and documented
+    uint256 private constant _MIN_WEIGHT = 100;
+    uint256 private constant _MAX_WEIGHT = 5000 * (10**18);
+
     IERC20 private immutable _token0;
     IERC20 private immutable _token1;
     IERC20 private immutable _token2;
@@ -82,7 +86,6 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
 
     uint256 private _lastInvariant;
 
-    uint256 private constant _MIN_SWAP_FEE = 0;
     uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
 
     constructor(
@@ -111,7 +114,6 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         _poolId = poolId;
         _totalTokens = tokens.length;
 
-        require(swapFee >= _MIN_SWAP_FEE, "ERR_MIN_SWAP_FEE");
         require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_SWAP_FEE");
         _swapFee = swapFee;
 
@@ -133,9 +135,12 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         _token14 = tokens.length > 14 ? tokens[14] : IERC20(0);
         _token15 = tokens.length > 15 ? tokens[15] : IERC20(0);
 
-        // Compute normalized weights
+        // Check valid weights and compute normalized weights
         uint256 sumWeights = 0;
         for (uint8 i = 0; i < weights.length; i++) {
+            require(weights[i] >= _MIN_WEIGHT, "ERR_MIN_WEIGHT");
+            require(weights[i] <= _MAX_WEIGHT, "ERR_MAX_WEIGHT");
+
             sumWeights = sumWeights.add(weights[i]);
         }
         uint256[] memory normalizedWeights = new uint256[](weights.length);
