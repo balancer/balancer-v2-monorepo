@@ -194,7 +194,7 @@ describe('StablePool', function () {
 
       context('when the creation fails', () => {
         it('reverts if there are repeated tokens', async () => {
-          const tokens = new Array(poolTokens.length).fill(poolTokens[0]);
+          const tokens = new Array(numberOfTokens).fill(poolTokens[0]);
 
           await expect(deployPool({ tokens })).to.be.revertedWith('ERR_TOKEN_ALREADY_REGISTERED');
         });
@@ -361,7 +361,7 @@ describe('StablePool', function () {
 
             const bptAmountOut = bn(10e18);
             const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut });
-            const maxAmountsIn = Array(poolTokens.length).fill(bn(20e18));
+            const maxAmountsIn = Array(numberOfTokens).fill(bn(20e18));
 
             const receipt = await (
               await vault
@@ -438,7 +438,7 @@ describe('StablePool', function () {
           // Exit with half of BPT
           const prevBPT = await pool.balanceOf(lp.address);
           const exitUserData = encodeExitStablePool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: prevBPT.div(2) });
-          const minAmountsOut = Array(poolTokens.length).fill(bn(0.01e18));
+          const minAmountsOut = Array(numberOfTokens).fill(bn(0.01e18));
 
           const receipt = await (
             await vault
@@ -471,7 +471,7 @@ describe('StablePool', function () {
         it('fully exit', async () => {
           const prevBPT = await pool.balanceOf(lp.address);
           const exitUserData = encodeExitStablePool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: prevBPT });
-          const minAmountsOut = Array(poolTokens.length).fill(bn(0.01e18));
+          const minAmountsOut = Array(numberOfTokens).fill(bn(0.01e18));
 
           const receipt = await (
             await vault
@@ -614,7 +614,7 @@ describe('StablePool', function () {
               poolId,
               lp.address,
               initialBalances,
-              Array(poolTokens.length).fill(bn(100e18)),
+              Array(numberOfTokens).fill(bn(100e18)),
               0,
               protocolSwapFee,
               joinUserData
