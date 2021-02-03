@@ -21,6 +21,7 @@
     "seed:local": "hardhat --network localhost seed",
     "seed:docker": "hardhat --network dockerParity seed",
     "seed:hardhat": "hardhat --network hardhat seed",
+    "redeploy:docker": "yarn hardhat clean && yarn deploy:docker --reset && yarn seed:docker",
     "export": "hardhat export --export-all deployments/addresses.json",
     "lint": "yarn lint:solidity && yarn lint:typescript",
     "lint:solidity": "solhint 'contracts/**/*.sol'",
