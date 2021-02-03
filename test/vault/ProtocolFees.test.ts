@@ -67,7 +67,7 @@ describe('Vault - protocol fees', () => {
         () =>
           vault
             .connect(feeCollector)
-            .withdrawProtocolFees([tokens.DAI.address, tokens.MKR.address], [bn(0.02e18), bn(0.04e18)], other.address),
+            .withdrawCollectedFees([tokens.DAI.address, tokens.MKR.address], [bn(0.02e18), bn(0.04e18)], other.address),
         tokens,
         { account: other, changes: { DAI: bn(0.02e18), MKR: bn(0.04e18) } }
       );
@@ -82,14 +82,14 @@ describe('Vault - protocol fees', () => {
         .grantRole(await authorizer.WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
 
       await expect(
-        vault.connect(feeCollector).withdrawProtocolFees([tokens.DAI.address], [bn(0.05e18).add(1)], other.address)
+        vault.connect(feeCollector).withdrawCollectedFees([tokens.DAI.address], [bn(0.05e18).add(1)], other.address)
       ).to.be.revertedWith('ERR_NOT_ENOUGH_COLLECTED_FEES');
     });
 
-    it('unauthorized accounts cannot withdraw protocol fees', async () => {
+    it('unauthorized accounts cannot withdraw collected fees', async () => {
       await expect(
-        vault.connect(other).withdrawProtocolFees([tokens.DAI.address], [0], other.address)
-      ).to.be.revertedWith('Caller cannot withdraw protocol fees');
+        vault.connect(other).withdrawCollectedFees([tokens.DAI.address], [0], other.address)
+      ).to.be.revertedWith('Caller cannot withdraw collected fees');
     });
   });
 });

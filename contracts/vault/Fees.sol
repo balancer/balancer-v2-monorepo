@@ -95,10 +95,14 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     }
 
     function getCollectedFeesByToken(IERC20 token) external view override returns (uint256) {
-        return _getCollectedFees(token);
+        return _getCollectedFeesByToken(token);
     }
 
-    function withdrawProtocolFees(
+    function getCollectedFees(IERC20[] memory tokens) external view override returns (uint256[] memory fees) {
+        return _getCollectedFees(tokens);
+    }
+
+    function withdrawCollectedFees(
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
@@ -108,7 +112,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         IAuthorizer authorizer = getAuthorizer();
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(authorizer.canWithdrawProtocolFees(msg.sender, token), "Caller cannot withdraw protocol fees");
+            require(authorizer.canWithdrawCollectedFees(msg.sender, token), "Caller cannot withdraw collected fees");
 
             uint256 amount = amounts[i];
             _decreaseCollectedFees(token, amount);
@@ -117,13 +121,13 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     }
 
     function _increaseCollectedFees(IERC20 token, uint256 amount) internal {
-        uint256 currentCollectedFees = _getCollectedFees(token);
+        uint256 currentCollectedFees = _getCollectedFeesByToken(token);
         uint256 newTotal = currentCollectedFees.add(amount);
         _setCollectedFees(token, newTotal);
     }
 
     function _decreaseCollectedFees(IERC20 token, uint256 amount) internal {
-        uint256 currentCollectedFees = _getCollectedFees(token);
+        uint256 currentCollectedFees = _getCollectedFeesByToken(token);
         require(currentCollectedFees >= amount, "ERR_NOT_ENOUGH_COLLECTED_FEES");
         uint256 newTotal = currentCollectedFees - amount;
         _setCollectedFees(token, newTotal);
@@ -133,7 +137,15 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         _collectedProtocolFees[token] = newTotal;
     }
 
-    function _getCollectedFees(IERC20 token) internal view returns (uint256) {
+    function _getCollectedFeesByToken(IERC20 token) internal view returns (uint256) {
         return _collectedProtocolFees[token];
+    }
+
+    function _getCollectedFees(IERC20[] memory tokens) internal view returns (uint256[] memory fees) {
+        fees = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            fees[i] = _collectedProtocolFees[tokens[i]];
+        }
     }
 }

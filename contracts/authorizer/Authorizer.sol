@@ -57,7 +57,7 @@ contract Authorizer is IAuthorizer, AccessControl {
         return hasRole(SET_PROTOCOL_FLASH_LOAN_FEE_ROLE, account);
     }
 
-    function canWithdrawProtocolFees(address account, IERC20 token) external view override returns (bool) {
+    function canWithdrawCollectedFees(address account, IERC20 token) external view override returns (bool) {
         return
             hasRole(WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE, account) ||
             hasRole(WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(token), account);
