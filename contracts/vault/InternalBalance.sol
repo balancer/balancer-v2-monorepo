@@ -101,13 +101,15 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     function transferInternalBalance(
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        address recipient
+        address[] memory recipients
     ) external override nonReentrant {
         require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LEN_MISMATCH");
+        require(amounts.length == recipients.length, "ERR_TOKENS_RECIPIENTS_LEN_MISMATCH");
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
+            address recipient = recipients[i];
 
             _decreaseInternalBalance(msg.sender, token, amount);
             _increaseInternalBalance(recipient, token, amount);

@@ -58,12 +58,13 @@ interface IVault {
 
     /**
      * @dev Transfers tokens from the caller's Internal Balance, transferring them to `recipient`'s Internal Balance.
-     * This does not charge protocol withdrawal fees.
+     * This does not charge protocol withdrawal fees. Allow a different recipient for each token, as support for
+     * aggregators wanting to settle multiple trades in a single transaction.
      */
     function transferInternalBalance(
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        address recipient
+        address[] memory recipients
     ) external;
 
     // Pools
