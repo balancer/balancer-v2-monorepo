@@ -7,7 +7,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
 import { deployTokens, TokenList } from '../../lib/helpers/tokens';
-import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { MAX_UINT112, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
@@ -48,11 +48,11 @@ describe('Vault - swaps', () => {
 
     for (const symbol in tokens) {
       // lp tokens are used to seed pools
-      await tokens[symbol].mint(lp.address, MAX_UINT128.div(2));
-      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT128);
+      await tokens[symbol].mint(lp.address, MAX_UINT112.div(2));
+      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT112);
 
-      await tokens[symbol].mint(trader.address, MAX_UINT128.div(2));
-      await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT128);
+      await tokens[symbol].mint(trader.address, MAX_UINT112.div(2));
+      await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT112);
     }
   });
 
