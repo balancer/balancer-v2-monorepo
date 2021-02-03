@@ -36,7 +36,7 @@ describe('Vault - protocol fees', () => {
   });
 
   it('fees are initially zero', async () => {
-    expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([0]);
+    expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([bn(0)]);
   });
 
   context('with collected protocol fees', () => {
