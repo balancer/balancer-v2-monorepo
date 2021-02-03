@@ -469,7 +469,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     {
         uint256 tokenInTotal = tokenInBalance.total();
         uint256 tokenOutTotal = tokenOutBalance.total();
-        internalSwapRequest.latestBlockNumberUsed = Math.max(tokenInBalance.blockNumber(), tokenOutBalance.blockNumber());
+        internalSwapRequest.latestBlockNumberUsed = Math.max(
+            tokenInBalance.blockNumber(),
+            tokenOutBalance.blockNumber()
+        );
 
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
@@ -510,7 +513,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
-            internalSwapRequest.latestBlockNumberUsed = Math.max(internalSwapRequest.latestBlockNumberUsed, balance.blockNumber());
+            internalSwapRequest.latestBlockNumberUsed = Math.max(
+                internalSwapRequest.latestBlockNumberUsed,
+                balance.blockNumber()
+            );
 
             if (i == indexIn) {
                 tokenInBalance = balance;
