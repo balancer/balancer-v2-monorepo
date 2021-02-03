@@ -48,10 +48,6 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
     uint256 private constant _MIN_AMP = 50 * (10**18);
     uint256 private constant _MAX_AMP = 2000 * (10**18);
 
-    /**
-     * @dev This contract cannot be deployed directly because it must be an Universal Agent during construction. Use
-     * `StablePoolFactory` to create new instances of it instead.
-     */
     constructor(
         IVault vault,
         string memory name,
