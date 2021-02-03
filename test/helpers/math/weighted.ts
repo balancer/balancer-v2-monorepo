@@ -149,9 +149,7 @@ export function calculateOneTokenSwapFee(
   tokenIndex: number
 ): Decimal {
   const normalizedWeights = toNormalizedWeights(rawWeights);
-
   const exponent = decimal(1).div(normalizedWeights[tokenIndex]);
-
   const currentInvariant = calculateInvariant(rawBalances, rawWeights);
   const invariantRatio = decimal(lastInvariant).div(decimal(currentInvariant));
 

@@ -316,9 +316,9 @@ describe('Vault - exit pool', () => {
       });
 
       it('deducts tokens from the pool', async () => {
-        const previousPoolBalances = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        const currentPoolBalances = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: currentPoolBalances } = await vault.getPoolTokens(poolId);
 
         // The Pool balance is expected to decrease by exit amounts plus due protocol fees.
         expect(arraySub(previousPoolBalances, currentPoolBalances)).to.deep.equal(
@@ -327,7 +327,8 @@ describe('Vault - exit pool', () => {
       });
 
       it('calls the pool with the exit data', async () => {
-        const previousPoolBalances = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
+        const { blockNumber: previousBlockNumber } = await vault.getPoolTokenBalanceInfo(poolId, tokenAddresses[0]);
 
         const receipt = await (await exitPool({ toInternalBalance, dueProtocolFeeAmounts })).wait();
 
@@ -338,8 +339,20 @@ describe('Vault - exit pool', () => {
           currentBalances: previousPoolBalances,
           minAmountsOut: array(0),
           protocolSwapFee: await vault.getProtocolSwapFee(),
+          latestBlockNumberUsed: previousBlockNumber,
           userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
         });
+      });
+
+      it('updates the latest block number used for all tokens', async () => {
+        const currentBlockNumber = await ethers.provider.getBlockNumber();
+
+        await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
+
+        for (const token of tokenAddresses) {
+          const { blockNumber: newBlockNumber } = await vault.getPoolTokenBalanceInfo(poolId, token);
+          expect(newBlockNumber).to.equal(currentBlockNumber + 1);
+        }
       });
 
       it('emits PoolExited from the vault', async () => {
@@ -378,12 +391,13 @@ describe('Vault - exit pool', () => {
       });
 
       it('exits the pool fully', async () => {
-        const poolBalances: BigNumber[] = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: poolBalances } = await vault.getPoolTokens(poolId);
         const fullExitAmounts = arraySub(poolBalances, dueProtocolFeeAmounts);
 
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts, exitAmounts: fullExitAmounts });
 
-        expect((await vault.getPoolTokens(poolId)).balances).to.deep.equal(array(0));
+        const { balances: currentBalances } = await vault.getPoolTokens(poolId);
+        expect(currentBalances).to.deep.equal(array(0));
       });
 
       it('reverts if any of the min amounts out is not enough', async () => {
@@ -400,10 +414,10 @@ describe('Vault - exit pool', () => {
       });
 
       it('reverts if any of the amounts to exit plus fees is larger than the pool balance', async () => {
-        const poolBalances: BigNumber[] = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: poolBalances } = await vault.getPoolTokens(poolId);
 
         await Promise.all(
-          poolBalances.map((balance, i) => {
+          poolBalances.map((balance: BigNumber, i: number) => {
             const excessiveExitAmounts = [...exitAmounts];
             excessiveExitAmounts[i] = balance.sub(dueProtocolFeeAmounts[i]).add(1);
 

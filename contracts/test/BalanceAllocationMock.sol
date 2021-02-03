@@ -19,31 +19,43 @@ import "../vault/balances/BalanceAllocation.sol";
 contract BalanceAllocationMock {
     using BalanceAllocation for bytes32;
 
-    function cashBalance(bytes32 balance) public pure returns (uint256) {
-        return balance.cashBalance();
+    function total(bytes32 balance) public pure returns (uint256) {
+        return balance.total();
     }
 
-    function managedBalance(bytes32 balance) public pure returns (uint256) {
-        return balance.managedBalance();
+    function totals(bytes32[] memory balances) public pure returns (uint256[] memory) {
+        return BalanceAllocation.totals(balances);
     }
 
-    function totalBalance(bytes32 balance) public pure returns (uint256) {
-        return balance.totalBalance();
+    function cash(bytes32 balance) public pure returns (uint256) {
+        return balance.cash();
     }
 
-    function totalBalances(bytes32[] memory balances) public pure returns (uint256[] memory) {
-        return BalanceAllocation.totalBalances(balances);
+    function managed(bytes32 balance) public pure returns (uint256) {
+        return balance.managed();
     }
 
-    function toBalance(uint256 _cashBalance, uint256 _managedBalance) public pure returns (bytes32) {
-        return BalanceAllocation.toBalance(_cashBalance, _managedBalance);
+    function blockNumber(bytes32 balance) public pure returns (uint256) {
+        return balance.blockNumber();
     }
 
-    function increaseCash(bytes32 balance, uint256 amount) public pure returns (bytes32) {
+    function isNotZero(bytes32 balance) public pure returns (bool) {
+        return balance.isNotZero();
+    }
+
+    function isZero(bytes32 balance) public pure returns (bool) {
+        return balance.isZero();
+    }
+
+    function toBalance(uint256 _cash, uint256 _managed, uint256 _blockNumber) public pure returns (bytes32) {
+        return BalanceAllocation.toBalance(_cash, _managed, _blockNumber);
+    }
+
+    function increaseCash(bytes32 balance, uint256 amount) public view returns (bytes32) {
         return balance.increaseCash(amount);
     }
 
-    function decreaseCash(bytes32 balance, uint256 amount) public pure returns (bytes32) {
+    function decreaseCash(bytes32 balance, uint256 amount) public view returns (bytes32) {
         return balance.decreaseCash(amount);
     }
 
@@ -55,16 +67,16 @@ contract BalanceAllocationMock {
         return balance.managedToCash(amount);
     }
 
-    function setManagedBalance(bytes32 balance, uint256 newManagedBalance) public pure returns (bytes32) {
-        return balance.setManagedBalance(newManagedBalance);
+    function setManagedBalance(bytes32 balance, uint256 newManaged) public pure returns (bytes32) {
+        return balance.setManaged(newManaged);
     }
 
-    function fromSharedToBalanceA(bytes32 cashACashB, bytes32 externalAexternalB) public pure returns (bytes32) {
-        return BalanceAllocation.fromSharedToBalanceA(cashACashB, externalAexternalB);
+    function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedManaged) public pure returns (bytes32) {
+        return BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
     }
 
-    function fromSharedToBalanceB(bytes32 cashACashB, bytes32 externalAexternalB) public pure returns (bytes32) {
-        return BalanceAllocation.fromSharedToBalanceB(cashACashB, externalAexternalB);
+    function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedManaged) public pure returns (bytes32) {
+        return BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
     }
 
     function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) public pure returns (bytes32) {

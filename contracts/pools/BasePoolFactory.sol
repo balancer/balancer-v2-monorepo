@@ -23,8 +23,8 @@ import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IPool.sol";
 
 abstract contract BasePoolFactory {
-    using EnumerableSet for EnumerableSet.Bytes32Set;
     using Address for address;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     IVault internal immutable _vault;
 
