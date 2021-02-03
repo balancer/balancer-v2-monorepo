@@ -41,7 +41,6 @@ abstract contract PoolRegistry is
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
-    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     uint256 private _totalPools;
     mapping(bytes32 => bool) private _isPoolRegistered;
