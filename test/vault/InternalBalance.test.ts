@@ -12,7 +12,10 @@ import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 
 describe('Vault - internal balance', () => {
-  let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress, otherRecipient: SignerWithAddress;
+  let admin: SignerWithAddress,
+    sender: SignerWithAddress,
+    recipient: SignerWithAddress,
+    otherRecipient: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList = {};
 
@@ -346,11 +349,7 @@ describe('Vault - internal balance', () => {
 
       context('when tokens and recipients are mismatched', () => {
         it('reverts', async () => {
-          const badWithdrawal = vault.transferInternalBalance(
-            tokenAddresses,
-            amounts,
-            [recipient.address]
-          );
+          const badWithdrawal = vault.transferInternalBalance(tokenAddresses, amounts, [recipient.address]);
           await expect(badWithdrawal).to.be.revertedWith('ERR_TOKENS_RECIPIENTS_LEN_MISMATCH');
         });
       });
@@ -367,7 +366,9 @@ describe('Vault - internal balance', () => {
       });
 
       it('emits an event for each transfer', async () => {
-        const receipt = await (await vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address))).wait();
+        const receipt = await (
+          await vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address))
+        ).wait();
 
         expectEvent.inReceipt(receipt, 'InternalBalanceTransferred', {
           from: sender.address,
@@ -388,7 +389,11 @@ describe('Vault - internal balance', () => {
     function itReverts(transferredAmounts: Dictionary<BigNumber>, errorReason = 'ERR_NOT_ENOUGH_INTERNAL_BALANCE') {
       it('reverts', async () => {
         const amounts = Object.values(transferredAmounts);
-        const transfer = vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address));
+        const transfer = vault.transferInternalBalance(
+          tokenAddresses,
+          amounts,
+          Array(amounts.length).fill(recipient.address)
+        );
         await expect(transfer).to.be.revertedWith(errorReason);
       });
     }
