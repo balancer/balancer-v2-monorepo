@@ -1,147 +1,149 @@
-import { BigNumber, Contract } from 'ethers';
-
-import { expectRelativeError } from '../../helpers/relativeError';
-import { calcInGivenOut, calcOutGivenIn } from '../../helpers/math/stable';
-
 import { deploy } from '../../../lib/helpers/deploy';
-import { bn, decimal } from '../../../lib/helpers/numbers';
+import {
+  calculateAnalyticalInvariantForTwoTokens,
+  calculateInvariant,
+  calcInGivenOut,
+  calcOutGivenIn,
+  calculateOneTokenSwapFee,
+} from '../../helpers/math/stable';
+import { expectEqualWithError } from '../../helpers/relativeError';
+import { bn } from '../../../lib/helpers/numbers';
+import { Contract } from 'ethers';
 
-const MAX_RELATIVE_ERROR = 0.1; //Max relative error
+const MAX_RELATIVE_ERROR = 0.001; //Max relative error
 
-async function compareOutGivenIn(
-  mock: Contract,
-  amp: BigNumber,
-  balances: BigNumber[],
-  tokenIndexIn: number,
-  tokenIndexOut: number,
-  tokenAmountIn: BigNumber
-) {
-  const outAmountMath = calcOutGivenIn(
-    decimal(amp).div(1e18),
-    balances.map((v) => decimal(v).div(1e18)),
-    tokenIndexIn,
-    tokenIndexOut,
-    decimal(tokenAmountIn).div(1e18)
-  );
-  const outAmountPool = await mock.outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
+//TODO: Test this math by checking  extremes values for the amplification field (0 and infinite)
+//to verify that it equals constant sum and constant product (weighted) invariants.
 
-  //TODO: work math for this to always happen?
-  //Amount out calcuated by Pool  must be never greater than exact math
-  // expect(
-  //   outAmountMath.greaterThanOrEqualTo(outAmountPool.toString()),
-  //   'Calculated amount out must be less or equal than exact'
-  // ).to.be.true;
-
-  //Relative error must be less that the max accepted
-  expectRelativeError(outAmountMath.mul(1e18), decimal(outAmountPool.toString()), decimal(MAX_RELATIVE_ERROR));
-}
-
-async function compareInGivenOut(
-  mock: Contract,
-  amp: BigNumber,
-  balances: BigNumber[],
-  tokenIndexIn: number,
-  tokenIndexOut: number,
-  tokenAmountOut: BigNumber
-) {
-  const inAmountMath = calcInGivenOut(
-    decimal(amp).div(1e18),
-    balances.map((v) => decimal(v).div(1e18)),
-    tokenIndexIn,
-    tokenIndexOut,
-    decimal(tokenAmountOut).div(1e18)
-  );
-  const inAmountPool = await mock.inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
-
-  //TODO: work math for this to always happen?
-  //Amount in calcuated by Pool must be never lower than exact math
-  // expect(
-  //   inAmountMath.lessThanOrEqualTo(inAmountPool.toString()),
-  //  'Calculated amount in must be greater or equal than exact'
-  // ).to.be.true;
-
-  //Relative error must be less that the max accepted
-  expectRelativeError(inAmountMath.mul(1e18), decimal(inAmountPool.toString()), decimal(MAX_RELATIVE_ERROR));
-}
-
-describe.skip('StableMath', function () {
+describe('StableMath', function () {
   let mock: Contract;
 
   beforeEach(async function () {
     mock = await deploy('MockStableMath', { args: [] });
   });
 
-  describe('Simple swap', () => {
-    it('outGivenIn', async () => {
-      await compareOutGivenIn(
-        mock,
-        bn(7.6e18), //amp
-        [bn(108.6e18), bn(42.482e18)], //balances
-        0, //tokenIndexIn
-        1, //tokenIndexOut
-        bn(4.14e18) //tokenAmountIn
-      );
-    });
+  context('invariant', () => {
+    context('two tokens', () => {
+      it('returns invariant', async () => {
+        const amp = bn(100e18);
+        const balances = [bn(10e18), bn(12e18)];
 
-    it('inGivenOut', async () => {
-      await compareInGivenOut(
-        mock,
-        bn(7.6e18), //amp
-        [bn(108.6e18), bn(42.482e18)], //balances
-        0, //tokenIndexIn
-        1, //tokenIndexOut
-        bn(3.7928e18) //tokenAmountOut
-      );
-    });
-  });
+        const result = await mock.invariant(amp, balances);
+        const expectedInvariant = calculateInvariant(amp, balances);
 
-  describe('Extreme amounts', () => {
-    it('outGivenIn - min amount in', async () => {
-      await compareOutGivenIn(
-        mock,
-        bn(7.6e18), //amp
-        [bn(108.6e18), bn(42.482e18)], //balances
-        0, //tokenIndexIn
-        1, //tokenIndexOut
-        bn(10e9) //tokenAmountIn (MIN AMOUNT = 0.00000001)
-      );
-    });
+        expectEqualWithError(result, bn(expectedInvariant.toFixed(0)), MAX_RELATIVE_ERROR);
+      });
+      it('returns invariant equals analytical solution', async () => {
+        const amp = bn(100e18);
+        const balances = [bn(10e18), bn(12e18)];
 
-    it('inGivenOut - min amount out', async () => {
-      await compareInGivenOut(
-        mock,
-        bn(7.6e18), //amp
-        [bn(108.6e18), bn(42.482e18)], //balances
-        0, //tokenIndexIn
-        1, //tokenIndexOut
-        bn(10e9) //tokenAmountIn (MIN AMOUNT = 0.00000001)
-      );
+        const result = await mock.invariant(amp, balances);
+        const expectedInvariant = calculateAnalyticalInvariantForTwoTokens(amp, balances);
+
+        expectEqualWithError(result, bn(expectedInvariant.toFixed(0)), MAX_RELATIVE_ERROR);
+      });
+    });
+    context('three tokens', () => {
+      it('returns invariant', async () => {
+        const amp = bn(100e18);
+        const balances = [bn(10e18), bn(12e18), bn(14e18)];
+
+        const result = await mock.invariant(amp, balances);
+        const expectedInvariant = calculateInvariant(amp, balances);
+
+        expectEqualWithError(result, bn(expectedInvariant.toFixed(0)), MAX_RELATIVE_ERROR);
+      });
     });
   });
 
-  describe('Many tokens', () => {
-    //NOTE: the more tokens, the more the invariant error
-    it('outGivenIn', async () => {
-      await compareOutGivenIn(
-        mock,
-        bn(7.6e18), //amp
-        [bn(108.6e18), bn(42.482e18), bn(50e18), bn(60e18), bn(70e18), bn(80e18)], //balances
-        0, //tokenIndexIn
-        1, //tokenIndexOut
-        bn(4.14e18) //tokenAmountIn
-      );
-    });
+  context('in given out', () => {
+    context('two tokens', () => {
+      it('returns in given out', async () => {
+        const amp = bn(100e18);
+        const balances = [bn(10e18), bn(12e18)];
+        const tokenIndexIn = 0;
+        const tokenIndexOut = 1;
+        const amountOut = bn(1e18);
 
-    //NOTE: the more tokens, the more the invariant error
-    it('inGivenOut', async () => {
-      await compareInGivenOut(
-        mock,
-        bn(7.6e18), //amp
-        [bn(108.6e18), bn(42.482e18), bn(50e18), bn(60e18), bn(70e18), bn(80e18)], //balances
-        0, //tokenIndexIn
-        1, //tokenIndexOut
-        bn(6.108e18) //tokenAmountOut
-      );
+        const result = await mock.inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, amountOut);
+        const expectedAmountIn = calcInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, amountOut);
+
+        expectEqualWithError(result, bn(expectedAmountIn.toFixed(0)), MAX_RELATIVE_ERROR);
+      });
+    });
+    context('three tokens', () => {
+      it('returns in given out', async () => {
+        const amp = bn(100e18);
+        const balances = [bn(10e18), bn(12e18), bn(14e18)];
+        const tokenIndexIn = 0;
+        const tokenIndexOut = 1;
+        const amountOut = bn(1e18);
+
+        const result = await mock.inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, amountOut);
+        const expectedAmountIn = calcInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, amountOut);
+
+        expectEqualWithError(result, bn(expectedAmountIn.toFixed(0)), MAX_RELATIVE_ERROR);
+      });
+    });
+  });
+
+  context('out given in', () => {
+    context('two tokens', () => {
+      it('returns out given in', async () => {
+        const amp = bn(10e18);
+        const balances = [bn(10e18), bn(11e18)];
+        const tokenIndexIn = 0;
+        const tokenIndexOut = 1;
+        const amountIn = bn(1e18);
+
+        const result = await mock.outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, amountIn);
+        const expectedAmountOut = calcOutGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, amountIn);
+
+        expectEqualWithError(result, bn(expectedAmountOut.toFixed(0)), MAX_RELATIVE_ERROR);
+      });
+    });
+    context('three tokens', () => {
+      it('returns out given in', async () => {
+        const amp = bn(10e18);
+        const balances = [bn(10e18), bn(11e18), bn(12e18)];
+        const tokenIndexIn = 0;
+        const tokenIndexOut = 1;
+        const amountIn = bn(1e18);
+
+        const result = await mock.outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, amountIn);
+        const expectedAmountOut = calcOutGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, amountIn);
+
+        expectEqualWithError(result, bn(expectedAmountOut.toFixed(0)), MAX_RELATIVE_ERROR);
+      });
+    });
+  });
+
+  context('protocol swap fees', () => {
+    context('two tokens', () => {
+      it('returns protocol swap fees', async () => {
+        const amp = bn(100e18);
+        const balances = [bn(10e18), bn(11e18)];
+        const lastInvariant = bn(10e18);
+        const tokenIndex = 0;
+
+        const result = await mock.calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+
+        expectEqualWithError(result, bn(expectedFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
+      });
+    });
+    context('three tokens', () => {
+      it('returns protocol swap fees', async () => {
+        const amp = bn(100e18);
+        const balances = [bn(10e18), bn(11e18), bn(12e18)];
+        const lastInvariant = bn(10e18);
+        const tokenIndex = 0;
+
+        const result = await mock.calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+
+        expectEqualWithError(result, bn(expectedFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
+      });
     });
   });
 });
