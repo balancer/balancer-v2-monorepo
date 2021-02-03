@@ -36,7 +36,7 @@ describe('Vault - protocol fees', () => {
   });
 
   it('fees are initially zero', async () => {
-    expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(0);
+    expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([0]);
   });
 
   context('with collected protocol fees', () => {
@@ -54,8 +54,8 @@ describe('Vault - protocol fees', () => {
     });
 
     it('reports collected fee', async () => {
-      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(bn(0.05e18));
-      expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal(bn(0.1e18));
+      expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([bn(0.05e18)]);
+      expect(await vault.getCollectedFees([tokens.MKR.address])).to.deep.equal([bn(0.1e18)]);
     });
 
     it('authorized accounts can withdraw protocol fees to any recipient', async () => {
@@ -72,8 +72,8 @@ describe('Vault - protocol fees', () => {
         { account: other, changes: { DAI: bn(0.02e18), MKR: bn(0.04e18) } }
       );
 
-      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(bn(0.03e18));
-      expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal(bn(0.06e18));
+      expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([bn(0.03e18)]);
+      expect(await vault.getCollectedFees([tokens.MKR.address])).to.deep.equal([bn(0.06e18)]);
     });
 
     it('protocol fees cannot be over-withdrawn', async () => {

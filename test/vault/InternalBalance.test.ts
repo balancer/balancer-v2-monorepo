@@ -190,12 +190,12 @@ describe('Vault - internal balance', () => {
             });
 
             it('protocol fees are collected', async () => {
-              const previousCollectedFees = await vault.getCollectedFeesByToken(tokens.DAI.address);
+              const previousCollectedFees = await vault.getCollectedFees([tokens.DAI.address]);
 
               await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
 
-              const currentCollectedFees = await vault.getCollectedFeesByToken(tokens.DAI.address);
-              expect(currentCollectedFees.sub(previousCollectedFees)).to.equal(pct(amount, protocolWithdrawFee));
+              const currentCollectedFees = await vault.getCollectedFees([tokens.DAI.address]);
+              expect(currentCollectedFees[0].sub(previousCollectedFees[0])).to.equal(pct(amount, protocolWithdrawFee));
             });
           });
         });

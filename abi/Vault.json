@@ -635,25 +635,6 @@
   {
     "inputs": [
       {
-        "internalType": "contract IERC20",
-        "name": "token",
-        "type": "address"
-      }
-    ],
-    "name": "getCollectedFeesByToken",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "user",
         "type": "address"

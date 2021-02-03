@@ -520,11 +520,6 @@ interface IVault {
     function setProtocolFlashLoanFee(uint256 newFee) external;
 
     /**
-     * @dev Returns the amount of protocol fees collected by the Vault for `token`.
-     */
-    function getCollectedFeesByToken(IERC20 token) external view returns (uint256);
-
-    /**
      * @dev Returns the amount of protocol fees collected by the Vault for the given set of `tokens`.
      */
     function getCollectedFees(IERC20[] memory tokens) external view returns (uint256[] memory);

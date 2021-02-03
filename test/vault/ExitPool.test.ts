@@ -369,13 +369,9 @@ describe('Vault - exit pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const previousCollectedFees = await Promise.all(
-          tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
-        );
+        const previousCollectedFees = await Promise.all(tokenAddresses.map((token) => vault.getCollectedFees([token])));
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        const currentCollectedFees = await Promise.all(
-          tokenAddresses.map((token) => vault.getCollectedFeesByToken(token))
-        );
+        const currentCollectedFees = await Promise.all(tokenAddresses.map((token) => vault.getCollectedFees([token])));
 
         // Fees from both sources are lumped together.
         expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(

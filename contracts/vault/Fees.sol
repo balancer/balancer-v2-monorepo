@@ -94,10 +94,6 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         _protocolFlashLoanFee = newFee;
     }
 
-    function getCollectedFeesByToken(IERC20 token) external view override returns (uint256) {
-        return _getCollectedFeesByToken(token);
-    }
-
     function getCollectedFees(IERC20[] memory tokens) external view override returns (uint256[] memory fees) {
         return _getCollectedFees(tokens);
     }
@@ -121,13 +117,13 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     }
 
     function _increaseCollectedFees(IERC20 token, uint256 amount) internal {
-        uint256 currentCollectedFees = _getCollectedFeesByToken(token);
+        uint256 currentCollectedFees = _collectedProtocolFees[token];
         uint256 newTotal = currentCollectedFees.add(amount);
         _setCollectedFees(token, newTotal);
     }
 
     function _decreaseCollectedFees(IERC20 token, uint256 amount) internal {
-        uint256 currentCollectedFees = _getCollectedFeesByToken(token);
+        uint256 currentCollectedFees = _collectedProtocolFees[token];
         require(currentCollectedFees >= amount, "ERR_NOT_ENOUGH_COLLECTED_FEES");
         uint256 newTotal = currentCollectedFees - amount;
         _setCollectedFees(token, newTotal);
@@ -135,10 +131,6 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
 
     function _setCollectedFees(IERC20 token, uint256 newTotal) internal {
         _collectedProtocolFees[token] = newTotal;
-    }
-
-    function _getCollectedFeesByToken(IERC20 token) internal view returns (uint256) {
-        return _collectedProtocolFees[token];
     }
 
     function _getCollectedFees(IERC20[] memory tokens) internal view returns (uint256[] memory fees) {
