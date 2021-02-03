@@ -4,7 +4,7 @@ pragma solidity ^0.7.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow checks.
- * Adapted from OpenZeppelin's SafeMath and SignedSafeMath
+ * Adapted from OpenZeppelin's SafeMath library
  */
 library Math {
     /**
@@ -41,6 +41,13 @@ library Math {
         int256 c = a - b;
         require((b >= 0 && c <= a) || (b < 0 && c > a), "ERR_SUB_OVERFLOW");
         return c;
+    }
+
+    /**
+     * @dev Returns the largest of two numbers of 256 bits.
+     */
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a >= b ? a : b;
     }
 
     /**

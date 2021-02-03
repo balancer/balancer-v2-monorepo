@@ -256,6 +256,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         address recipient,
         uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
+        uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
@@ -358,6 +359,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         address, //recipient -  potential whitelisting
         uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
+        uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
@@ -487,7 +489,6 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         uint256[] memory dueProtocolFeeAmounts = new uint256[](currentBalances.length);
         // All other values are initialized to zero
         dueProtocolFeeAmounts[chosenTokenIndex] = chosenTokenDueProtocolFeeAmount;
-
         currentBalances[chosenTokenIndex] = currentBalances[chosenTokenIndex].sub(chosenTokenDueProtocolFeeAmount);
 
         return dueProtocolFeeAmounts;
@@ -541,7 +542,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     }
 
     function _addSwapFee(uint256 amount) private view returns (uint256) {
-        return amount.div(uint256(FixedPoint.ONE).sub(_swapFee));
+        return amount.div(FixedPoint.ONE.sub(_swapFee));
     }
 
     function _subtractSwapFee(uint256 amount) private view returns (uint256) {

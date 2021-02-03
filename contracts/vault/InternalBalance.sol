@@ -141,8 +141,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         IERC20 token,
         uint256 balance
     ) internal {
-        // We store internal balances
-        require(balance < 2**128, "ERR_CANNOT_CAST_TO_UINT128");
         _internalTokenBalance[account][token] = balance;
     }
 
