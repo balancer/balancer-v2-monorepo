@@ -141,7 +141,7 @@ contract TwoTokenPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
+        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateTwoTokenPoolSharedBalance(

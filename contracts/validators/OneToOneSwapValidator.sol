@@ -28,10 +28,10 @@ contract OneToOneSwapValidator is ISwapValidator {
         (
             IERC20 overallTokenIn,
             IERC20 overallTokenOut,
-            uint128 maxAmountIn,
-            uint128 minAmountOut,
+            uint112 maxAmountIn,
+            uint112 minAmountOut,
             uint256 deadline
-        ) = abi.decode((data), (IERC20, IERC20, uint128, uint128, uint256));
+        ) = abi.decode((data), (IERC20, IERC20, uint112, uint112, uint256));
 
         // Using timestamps is fine here, since the potential for griefing is minimal here. At the worst, a miner could
         // force a swap to fail by advancing the timestamp.
