@@ -231,7 +231,7 @@ abstract contract PoolRegistry is
         bool fromInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
-        require(tokens.length == maxAmountsIn.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
+        require(tokens.length == maxAmountsIn.length, "ERR_TOKENS_AMOUNTS_MISMATCH");
 
         // The balances array will be modified later on to update the vault balances after the join
         // This is simply to avoid using unnecessary memory
@@ -283,7 +283,7 @@ abstract contract PoolRegistry is
         bool toInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
-        require(tokens.length == minAmountsOut.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
+        require(tokens.length == minAmountsOut.length, "ERR_TOKENS_AMOUNTS_MISMATCH");
 
         // The balances array will be modified later on to update the vault balances after the join
         // This is simply to avoid using unnecessary memory
@@ -401,7 +401,7 @@ abstract contract PoolRegistry is
         );
 
         require(amountsIn.length == tokens.length, "ERR_AMOUNTS_IN_LENGTH");
-        require(dueProtocolFeeAmounts.length == tokens.length, "ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH");
+        require(dueProtocolFeeAmounts.length == tokens.length, "ERR_DUE_PROTOCOL_FEE_AMOUNTS");
     }
 
     function _callOnExitPool(
@@ -424,7 +424,7 @@ abstract contract PoolRegistry is
         );
 
         require(amountsOut.length == tokens.length, "ERR_AMOUNTS_OUT_LENGTH");
-        require(dueProtocolFeeAmounts.length == tokens.length, "ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH");
+        require(dueProtocolFeeAmounts.length == tokens.length, "ERR_DUE_PROTOCOL_FEE_AMOUNTS");
     }
 
     /**

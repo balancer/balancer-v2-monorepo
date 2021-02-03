@@ -197,7 +197,7 @@ library EnumerableMap {
      * - `index` must be strictly less than {length}.
      */
     function _at(Map storage map, uint256 index) private view returns (bytes32, bytes32) {
-        require(map._length > index, "EnumerableMap: index out of bounds");
+        require(map._length > index, "EnumerableMap: INDEX_BOUNDS");
 
         MapEntry storage entry = map._entries[index];
         return (entry._key, entry._value);

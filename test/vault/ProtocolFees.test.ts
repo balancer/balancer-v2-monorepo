@@ -89,7 +89,7 @@ describe('Vault - protocol fees', () => {
     it('unauthorized accounts cannot withdraw protocol fees', async () => {
       await expect(
         vault.connect(other).withdrawProtocolFees([tokens.DAI.address], [0], other.address)
-      ).to.be.revertedWith('Caller cannot withdraw protocol fees');
+      ).to.be.revertedWith('Cannot withdraw protocol fees');
     });
   });
 });

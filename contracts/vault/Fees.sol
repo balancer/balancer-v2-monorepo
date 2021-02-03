@@ -74,21 +74,21 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     }
 
     function setProtocolWithdrawFee(uint256 newFee) external override nonReentrant {
-        require(getAuthorizer().canSetProtocolWithdrawFee(msg.sender), "Caller cannot set protocol withdraw fee");
+        require(getAuthorizer().canSetProtocolWithdrawFee(msg.sender), "Cannot set protocol withdraw fee");
         require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "Withdraw fee too high");
 
         _protocolWithdrawFee = newFee;
     }
 
     function setProtocolSwapFee(uint256 newFee) external override nonReentrant {
-        require(getAuthorizer().canSetProtocolSwapFee(msg.sender), "Caller cannot set protocol swap fee");
+        require(getAuthorizer().canSetProtocolSwapFee(msg.sender), "Cannot set protocol swap fee");
         require(newFee <= _MAX_PROTOCOL_SWAP_FEE, "Swap fee too high");
 
         _protocolSwapFee = newFee;
     }
 
     function setProtocolFlashLoanFee(uint256 newFee) external override nonReentrant {
-        require(getAuthorizer().canSetProtocolFlashLoanFee(msg.sender), "Caller cannot set protocol flash loan fee");
+        require(getAuthorizer().canSetProtocolFlashLoanFee(msg.sender), "Cannot set flash loan fee");
         require(newFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FlashLoan fee too high");
 
         _protocolFlashLoanFee = newFee;
@@ -103,12 +103,12 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         uint256[] calldata amounts,
         address recipient
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
+        require(tokens.length == amounts.length, "Tokens and amounts mismatch");
 
         IAuthorizer authorizer = getAuthorizer();
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(authorizer.canWithdrawProtocolFees(msg.sender, token), "Caller cannot withdraw protocol fees");
+            require(authorizer.canWithdrawProtocolFees(msg.sender, token), "Cannot withdraw protocol fees");
 
             uint256 amount = amounts[i];
             _decreaseCollectedFees(token, amount);

@@ -141,11 +141,9 @@ describe('Vault - join pool', () => {
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
-        await expect(joinPool({ maxAmountsIn: array(0).slice(1) })).to.be.revertedWith(
-          'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
-        );
+        await expect(joinPool({ maxAmountsIn: array(0).slice(1) })).to.be.revertedWith('ERR_TOKENS_AMOUNTS_MISMATCH');
         await expect(joinPool({ maxAmountsIn: array(0).concat(bn(0)) })).to.be.revertedWith(
-          'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
+          'ERR_TOKENS_AMOUNTS_MISMATCH'
         );
       });
     });
@@ -163,12 +161,12 @@ describe('Vault - join pool', () => {
         it('reverts if due protocol fees length does not match token length', async () => {
           // Missing
           await expect(joinPool({ dueProtocolFeeAmounts: array(0).slice(1) })).to.be.revertedWith(
-            'ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH'
+            'ERR_DUE_PROTOCOL_FEE_AMOUNTS'
           );
 
           // Extra
           await expect(joinPool({ dueProtocolFeeAmounts: array(0).concat(bn(0)) })).to.be.revertedWith(
-            'ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH'
+            'ERR_DUE_PROTOCOL_FEE_AMOUNTS'
           );
         });
 
