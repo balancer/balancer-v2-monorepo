@@ -21,14 +21,12 @@ interface IMinimalSwapInfoPoolQuote {
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256 latestBlockNumberUsed
+        uint256 currentBalanceTokenOut
     ) external returns (uint256 amountOut);
 
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256 latestBlockNumberUsed
+        uint256 currentBalanceTokenOut
     ) external returns (uint256 amountIn);
 }

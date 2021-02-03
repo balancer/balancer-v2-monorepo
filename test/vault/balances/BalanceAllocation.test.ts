@@ -60,7 +60,7 @@ describe('Vault - balance allocation', () => {
     });
 
     it('stores extreme block number', async () => {
-      await testBalanceAllocation(42, 10, MAX_UINT32.div(2).add(1));
+      await testBalanceAllocation(42, 10, MAX_UINT32);
     });
 
     it('reverts on total overflow', async () => {

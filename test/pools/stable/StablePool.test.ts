@@ -572,6 +572,7 @@ describe('StablePool', function () {
         to: string;
         tokenIn: string;
         tokenOut: string;
+        latestBlockNumberUsed: number;
         userData: string;
       };
 
@@ -585,6 +586,7 @@ describe('StablePool', function () {
           to: other.address,
           tokenIn: tokenList.DAI.address,
           tokenOut: tokenList.MKR.address,
+          latestBlockNumberUsed: 0,
           userData: '0x',
         };
       });
@@ -620,6 +622,7 @@ describe('StablePool', function () {
         await expect(
           pool.quoteInGivenOut({ ...quoteData, amountOut: bn(1e18) }, poolInitialBalances, 10, 1)
         ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
+
         await expect(
           pool.quoteInGivenOut({ ...quoteData, amountOut: bn(1e18) }, poolInitialBalances, 0, 10)
         ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');

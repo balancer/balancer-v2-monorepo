@@ -285,8 +285,7 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256[] memory balances,
         uint256 indexIn,
-        uint256 indexOut,
-        uint256
+        uint256 indexOut
     ) external view override returns (uint256) {
         _validateIndexes(indexIn, indexOut, balances.length);
 
@@ -299,8 +298,7 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256[] memory balances,
         uint256 indexIn,
-        uint256 indexOut,
-        uint256
+        uint256 indexOut
     ) external view override returns (uint256) {
         _validateIndexes(indexIn, indexOut, balances.length);
 

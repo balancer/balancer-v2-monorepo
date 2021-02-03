@@ -495,8 +495,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256
+        uint256 currentBalanceTokenOut
     ) external view override returns (uint256) {
         uint256 adjustedIn = _subtractSwapFee(request.amountIn);
 
@@ -515,8 +514,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256
+        uint256 currentBalanceTokenOut
     ) external view override returns (uint256) {
         // Calculate the minimum amount that must be put into the pool
         uint256 minimumAmountIn = _inGivenOut(

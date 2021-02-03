@@ -421,6 +421,11 @@
             "type": "bytes32"
           },
           {
+            "internalType": "uint256",
+            "name": "latestBlockNumberUsed",
+            "type": "uint256"
+          },
+          {
             "internalType": "address",
             "name": "from",
             "type": "address"
@@ -453,11 +458,6 @@
       {
         "internalType": "uint256",
         "name": "indexOut",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
         "type": "uint256"
       }
     ],
@@ -497,6 +497,11 @@
             "type": "bytes32"
           },
           {
+            "internalType": "uint256",
+            "name": "latestBlockNumberUsed",
+            "type": "uint256"
+          },
+          {
             "internalType": "address",
             "name": "from",
             "type": "address"
@@ -529,11 +534,6 @@
       {
         "internalType": "uint256",
         "name": "indexOut",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
         "type": "uint256"
       }
     ],

@@ -114,7 +114,6 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256[] calldata,
         uint256,
-        uint256,
         uint256
     ) external view override returns (uint256) {
         return request.amountIn.mul(_multiplier);
@@ -123,7 +122,6 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
         uint256[] calldata,
-        uint256,
         uint256,
         uint256
     ) external view override returns (uint256) {
@@ -135,7 +133,6 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
     function quoteOutGivenIn(
         IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
         uint256,
-        uint256,
         uint256
     ) external view override returns (uint256) {
         return request.amountIn.mul(_multiplier);
@@ -143,7 +140,6 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
 
     function quoteInGivenOut(
         IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
-        uint256,
         uint256,
         uint256
     ) external view override returns (uint256) {

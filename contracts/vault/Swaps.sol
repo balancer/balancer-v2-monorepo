@@ -121,6 +121,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IERC20 tokenOut;
         uint256 amount;
         bytes32 poolId;
+        uint256 latestBlockNumberUsed;
         address from;
         address to;
         bytes userData;
@@ -334,6 +335,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenOut: tokenOut,
             amount: swap.amount,
             poolId: swap.poolId,
+            latestBlockNumberUsed: 0, // will be updated later on based on the pool specialization
             from: from,
             to: to,
             userData: swap.userData
@@ -449,19 +451,19 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     {
         uint256 tokenInTotal = tokenInBalance.total();
         uint256 tokenOutTotal = tokenOutBalance.total();
-        uint256 latestBlockNumberUsed = Math.max(tokenInBalance.blockNumber(), tokenOutBalance.blockNumber());
+        request.latestBlockNumberUsed = Math.max(tokenInBalance.blockNumber(), tokenOutBalance.blockNumber());
 
         // Perform the quote request and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
             IPoolQuoteStructs.QuoteRequestGivenIn memory quote = _toQuoteGivenIn(request);
-            uint256 amountOut = pool.quoteOutGivenIn(quote, tokenInTotal, tokenOutTotal, latestBlockNumberUsed);
+            uint256 amountOut = pool.quoteOutGivenIn(quote, tokenInTotal, tokenOutTotal);
 
             newTokenInBalance = tokenInBalance.increaseCash(request.amount);
             newTokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
             amountQuoted = amountOut;
         } else {
             IPoolQuoteStructs.QuoteRequestGivenOut memory quote = _toQuoteGivenOut(request);
-            uint256 amountIn = pool.quoteInGivenOut(quote, tokenInTotal, tokenOutTotal, latestBlockNumberUsed);
+            uint256 amountIn = pool.quoteInGivenOut(quote, tokenInTotal, tokenOutTotal);
 
             newTokenInBalance = tokenInBalance.increaseCash(amountIn);
             newTokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
@@ -481,7 +483,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         uint256 indexIn = poolBalances.indexOf(request.tokenIn, "ERR_TOKEN_NOT_REGISTERED");
         uint256 indexOut = poolBalances.indexOf(request.tokenOut, "ERR_TOKEN_NOT_REGISTERED");
 
-        uint256 latestBlockNumberUsed = 0;
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);
 
@@ -491,7 +492,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
-            latestBlockNumberUsed = Math.max(latestBlockNumberUsed, balance.blockNumber());
+            request.latestBlockNumberUsed = Math.max(request.latestBlockNumberUsed, balance.blockNumber());
 
             if (i == indexIn) {
                 tokenInBalance = balance;
@@ -503,14 +504,14 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Perform the quote request and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
             IPoolQuoteStructs.QuoteRequestGivenIn memory quote = _toQuoteGivenIn(request);
-            uint256 amountOut = pool.quoteOutGivenIn(quote, currentBalances, indexIn, indexOut, latestBlockNumberUsed);
+            uint256 amountOut = pool.quoteOutGivenIn(quote, currentBalances, indexIn, indexOut);
 
             amountQuoted = amountOut;
             tokenInBalance = tokenInBalance.increaseCash(request.amount);
             tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
         } else {
             IPoolQuoteStructs.QuoteRequestGivenOut memory quote = _toQuoteGivenOut(request);
-            uint256 amountIn = pool.quoteInGivenOut(quote, currentBalances, indexIn, indexOut, latestBlockNumberUsed);
+            uint256 amountIn = pool.quoteInGivenOut(quote, currentBalances, indexIn, indexOut);
 
             amountQuoted = amountIn;
             tokenInBalance = tokenInBalance.increaseCash(amountIn);

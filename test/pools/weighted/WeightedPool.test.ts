@@ -94,11 +94,11 @@ describe('WeightedPool', function () {
     const poolInitialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
     async function deployPool({
-      tokens,
-      weights,
-      swapFee,
-      fromFactory,
-    }: {
+                                tokens,
+                                weights,
+                                swapFee,
+                                fromFactory,
+                              }: {
       tokens?: string[];
       weights?: BigNumber[];
       swapFee?: BigNumber;
@@ -646,6 +646,7 @@ describe('WeightedPool', function () {
         poolId: string;
         from: string;
         to: string;
+        latestBlockNumberUsed: number;
         userData: string;
       };
 
@@ -658,6 +659,7 @@ describe('WeightedPool', function () {
           to: other.address,
           tokenIn: tokenList.DAI.address,
           tokenOut: tokenList.MKR.address,
+          latestBlockNumberUsed: 0,
           userData: '0x',
         };
       });
@@ -711,15 +713,7 @@ describe('WeightedPool', function () {
           const AMOUNT_OUT = bn(1.35e18);
 
           const result = await pool.quoteInGivenOut(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokenList.DAI.address,
-              tokenOut: tokenList.MKR.address,
-              amountOut: AMOUNT_OUT,
-              userData: '0x',
-            },
+            { ...quoteData, amountOut: AMOUNT_OUT },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
@@ -855,6 +849,7 @@ describe('WeightedPool', function () {
         );
 
         joinUserData = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', minimumBPT: 0 });
+
         newBalances = await expectJoinProtocolSwapFeeEqualWithError(
           newBalances,
           Array(poolTokens.length).fill(bn(100e18)),
@@ -867,6 +862,7 @@ describe('WeightedPool', function () {
           bptAmountIn: bn((10e18).toString()),
           exitTokenIndex: 0,
         });
+
         newBalances = await expectExitProtocolSwapFeeEqualWithError(
           newBalances,
           Array(poolTokens.length).fill(bn(0)),
@@ -878,6 +874,7 @@ describe('WeightedPool', function () {
           kind: 'ExactBPTInForAllTokensOut',
           bptAmountIn: bn((10e18).toString()),
         });
+
         newBalances = await expectExitProtocolSwapFeeEqualWithError(
           newBalances,
           Array(poolTokens.length).fill(bn(0)),
