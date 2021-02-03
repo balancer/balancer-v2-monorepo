@@ -49,7 +49,6 @@ contract MockVault {
         bytes32 poolId,
         address recipient,
         uint256[] memory currentBalances,
-        uint256[] memory maxAmountsIn,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
@@ -58,7 +57,6 @@ contract MockVault {
             msg.sender,
             recipient,
             currentBalances,
-            maxAmountsIn,
             protocolFeePercentage,
             userData
         );
@@ -70,7 +68,6 @@ contract MockVault {
         bytes32 poolId,
         address recipient,
         uint256[] memory currentBalances,
-        uint256[] memory minAmountsOut,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
@@ -79,7 +76,6 @@ contract MockVault {
             msg.sender,
             recipient,
             currentBalances,
-            minAmountsOut,
             protocolFeePercentage,
             userData
         );

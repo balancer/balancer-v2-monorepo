@@ -333,11 +333,6 @@
         "type": "uint256[]"
       },
       {
-        "internalType": "uint256[]",
-        "name": "minAmountsOut",
-        "type": "uint256[]"
-      },
-      {
         "internalType": "uint256",
         "name": "protocolFeePercentage",
         "type": "uint256"
@@ -384,11 +379,6 @@
       {
         "internalType": "uint256[]",
         "name": "currentBalances",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "maxAmountsIn",
         "type": "uint256[]"
       },
       {

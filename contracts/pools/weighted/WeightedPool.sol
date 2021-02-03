@@ -255,31 +255,32 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         address, // sender - potential whitelisting
         address recipient,
         uint256[] memory currentBalances,
-        uint256[] memory maxAmountsIn,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
-        // The Vault guarantees currentBalances and maxAmountsIn have the same length
 
         // TODO: This seems inconsistent w/ `getInvariant` for example. We assume the weights and balances order match
         uint256[] memory normalizedWeights = _normalizedWeights();
-        JoinKind kind = abi.decode(userData, (JoinKind));
+        (JoinKind kind, uint256[] memory amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
+
+        // The Vault guarantees currentBalances length is ok
+        require(currentBalances.length == amountsIn.length, "ERR_AMOUNTS_IN_LENGTH");
 
         if (kind == JoinKind.INIT) {
             //Max amounts in are equal to amounts in.
-            return _joinInitial(normalizedWeights, recipient, maxAmountsIn);
+            return _joinInitial(normalizedWeights, recipient, amountsIn);
         } else {
             // JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT
             //Max amounts in are equal to exact amounts in.
-            (, uint256 minimumBPT) = abi.decode(userData, (JoinKind, uint256));
+            (, , uint256 minimumBPT) = abi.decode(userData, (JoinKind, uint256[], uint256));
             return
                 _joinExactTokensInForBPTOut(
                     normalizedWeights,
                     currentBalances,
                     recipient,
-                    maxAmountsIn,
+                    amountsIn,
                     minimumBPT,
                     protocolFeePercentage
                 );
@@ -353,13 +354,11 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         address sender,
         address, //recipient -  potential whitelisting
         uint256[] memory currentBalances,
-        uint256[] memory minAmountsOut,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
         require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
-        // The Vault guarantees currentBalances and minAmountsOut have the same length
 
         uint256[] memory normalizedWeights = _normalizedWeights();
         // This updates currentBalances by deducting protocol fees to pay, which the Vault will charge the Pool once
@@ -389,14 +388,17 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
 
             (bptAmountIn, amountsOut) = _exitExactBPTInForAllTokensOut(currentBalances, bptAmountIn);
         } else {
+            uint256 maxBPTAmountIn;
             // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
-            (, uint256 maxBPTAmountIn) = abi.decode(userData, (ExitKind, uint256));
+            (, amountsOut, maxBPTAmountIn) = abi.decode(userData, (ExitKind, uint256[], uint256));
 
-            //Min amounts out are equal to amounts out
+            // The Vault guarantees currentBalances length is ok
+            require(currentBalances.length == amountsOut.length, "ERR_AMOUNTS_OUT_LENGTH");
+
             (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
                 normalizedWeights,
                 currentBalances,
-                minAmountsOut,
+                amountsOut,
                 maxBPTAmountIn
             );
         }
