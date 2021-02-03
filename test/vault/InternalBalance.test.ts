@@ -4,11 +4,12 @@ import { Dictionary } from 'lodash';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp, pct } from '../../lib/helpers/numbers';
-import { deploy } from '../../lib/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { MAX_UINT112, ZERO_ADDRESS } from '../../lib/helpers/constants';
+
+import { deploy } from '../../lib/helpers/deploy';
+import { bn, fp, pct } from '../../lib/helpers/numbers';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 
 describe('Vault - internal balance', () => {
@@ -344,21 +345,7 @@ describe('Vault - internal balance', () => {
       context('when the sender holds enough balance', () => {
         depositInitialBalances({ DAI: bn(1e18), MKR: bn(5e19) });
 
-        context('when the recipient can hold more tokens', () => {
-          itHandlesTransfersProperly(transferredAmounts);
-        });
-
-        context('when the recipient cannot hold any more tokens', () => {
-          beforeEach('deposit huge amount to recipient', async () => {
-            await mintTokens(tokens, 'DAI', recipient, MAX_UINT112);
-            await tokens.DAI.connect(recipient).approve(vault.address, MAX_UINT112);
-            await vault
-              .connect(recipient)
-              .depositToInternalBalance([tokens.DAI.address], [MAX_UINT112], recipient.address);
-          });
-
-          itReverts(transferredAmounts, 'ERR_CANNOT_CAST_TO_UINT112');
-        });
+        itHandlesTransfersProperly(transferredAmounts);
       });
 
       context('when the sender does not hold said balance', () => {
