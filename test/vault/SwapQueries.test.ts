@@ -7,7 +7,7 @@ import { fp, bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { MinimalSwapInfoPool } from '../../lib/helpers/pools';
 import { deploySortedTokens, TokenList } from '../../lib/helpers/tokens';
-import { MAX_UINT128, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { encodeJoin } from '../helpers/mockPool';
 
@@ -31,18 +31,15 @@ describe('Vault - swap queries', () => {
     assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
 
     for (const symbol in tokens) {
-      await tokens[symbol].mint(lp.address, MAX_UINT128.div(2));
-      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT128);
+      await tokens[symbol].mint(lp.address, MAX_UINT112.div(2));
+      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT112);
     }
 
     for (let i = 0; i < MAX_POOLS; ++i) {
       const pool = await deploy('MockPool', { args: [vault.address, MinimalSwapInfoPool] });
-      await pool.setMultiplier(fp(2));
-
       const poolId = await pool.getPoolId();
 
       await pool.setMultiplier(fp(2));
-
       await pool.registerTokens(tokenAddresses, assetManagers);
 
       await vault.connect(lp).joinPool(

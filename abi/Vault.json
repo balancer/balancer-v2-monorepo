@@ -765,6 +765,11 @@
         "internalType": "uint256",
         "name": "managed",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "blockNumber",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",

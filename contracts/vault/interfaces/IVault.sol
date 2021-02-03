@@ -128,7 +128,11 @@ interface IVault {
     function getPoolTokenBalanceInfo(bytes32 poolId, IERC20 token)
         external
         view
-        returns (uint256 cash, uint256 managed);
+        returns (
+            uint256 cash,
+            uint256 managed,
+            uint256 blockNumber
+        );
 
     // Pool Management
 
