@@ -298,7 +298,10 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         // _lastInvariant should also be zero
         uint256 invariantAfterJoin = _invariant(normalizedWeights, amountsIn);
 
-        _mintPoolTokens(recipient, invariantAfterJoin);
+        // Mints a total of: n * invariant 
+        uint256 tokensToMint = invariantAfterJoin.mul(normalizedWeights.length);
+
+        _mintPoolTokens(recipient, tokensToMint);
         _lastInvariant = invariantAfterJoin;
 
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens); // All zeroes
