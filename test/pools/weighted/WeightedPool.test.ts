@@ -260,7 +260,7 @@ describe('WeightedPool', function () {
           initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init' });
         });
 
-        it('grants the invariant amount of BPT', async () => {
+        it('grants the n * invariant amount of BPT', async () => {
           const invariant = calculateInvariant(poolInitialBalances, poolWeights);
 
           const receipt = await (
@@ -287,7 +287,7 @@ describe('WeightedPool', function () {
 
           // Initial balances should equal invariant
           const currentBptBalance = await pool.balanceOf(beneficiary.address);
-          expectEqualWithError(currentBptBalance, invariant, 0.001);
+          expectEqualWithError(currentBptBalance, invariant.mul(numberOfTokens), 0.001);
         });
 
         it('fails if already initialized', async () => {

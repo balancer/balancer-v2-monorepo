@@ -298,7 +298,11 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         // _lastInvariant should also be zero
         uint256 invariantAfterJoin = _invariant(normalizedWeights, amountsIn);
 
-        _mintPoolTokens(recipient, invariantAfterJoin);
+        // Mints a total of: n * invariant. Total tokens is not in FixedPoint
+        uint256 tokensToMint = invariantAfterJoin * _totalTokens;
+        require(tokensToMint / invariantAfterJoin == _totalTokens, "ERR_MUL_OVERFLOW");
+
+        _mintPoolTokens(recipient, tokensToMint);
         _lastInvariant = invariantAfterJoin;
 
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens); // All zeroes
