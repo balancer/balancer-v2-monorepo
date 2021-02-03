@@ -43,8 +43,8 @@ abstract contract PoolRegistry is
     using BalanceAllocation for bytes32[];
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    // Set with all Pools in the system
-    EnumerableSet.Bytes32Set internal _pools;
+    uint256 private _totalPools;
+    mapping(bytes32 => bool) private _isPoolRegistered;
 
     modifier withExistingPool(bytes32 poolId) {
         _ensureExistingPool(poolId);
@@ -101,29 +101,18 @@ abstract contract PoolRegistry is
     function registerPool(PoolSpecialization specialization) external override nonReentrant returns (bytes32) {
         // We use the Pool length as the Pool ID creation nonce. Since Pools cannot be deleted, nonces are unique. This
         // however assumes there will never be more than than 2**80 Pools.
-        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_pools.length()));
+        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_totalPools));
 
-        bool added = _pools.add(poolId);
-        require(added, "Pool ID already exists");
+        require(!_isPoolRegistered[poolId], "ERR_POOL_ALREADY_REGISTERED");
+        _totalPools++;
+        _isPoolRegistered[poolId] = true;
 
         emit PoolCreated(poolId);
-
         return poolId;
     }
 
     function getNumberOfPools() external view override returns (uint256) {
-        return _pools.length();
-    }
-
-    function getPoolIds(uint256 start, uint256 end) external view override returns (bytes32[] memory) {
-        require((end >= start) && (end - start) <= _pools.length(), "ERR_BAD_INDICES");
-
-        bytes32[] memory poolIds = new bytes32[](end - start);
-        for (uint256 i = 0; i < poolIds.length; ++i) {
-            poolIds[i] = _pools.at(i + start);
-        }
-
-        return poolIds;
+        return _totalPools;
     }
 
     function getPoolTokens(bytes32 poolId)
@@ -545,7 +534,7 @@ abstract contract PoolRegistry is
     }
 
     function _ensureExistingPool(bytes32 poolId) internal view {
-        require(_pools.contains(poolId), "Nonexistent pool");
+        require(_isPoolRegistered[poolId], "Nonexistent pool");
     }
 
     function _ensureTokenRegistered(bytes32 poolId, IERC20 token) internal view {
