@@ -19,7 +19,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/Math.sol";
-import "../lib/helpers/Uint256Helpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./Fees.sol";
@@ -27,7 +26,6 @@ import "./Fees.sol";
 abstract contract InternalBalance is ReentrancyGuard, Fees {
     using Math for uint256;
     using SafeERC20 for IERC20;
-    using Uint256Helpers for uint256;
 
     // user -> token -> internal balance
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
@@ -143,8 +141,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         IERC20 token,
         uint256 balance
     ) internal {
-        // We store internal balances in 256 bits but make sure they fit in 112 cause these can be brought back to cash
-        require(balance.canCastToUint112(), "ERR_CANNOT_CAST_TO_UINT112");
         _internalTokenBalance[account][token] = balance;
     }
 

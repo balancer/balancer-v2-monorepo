@@ -14,9 +14,7 @@
 
 pragma solidity ^0.7.1;
 
-import "hardhat/console.sol";
 import "../../lib/math/Math.sol";
-import "../../lib/helpers/Uint256Helpers.sol";
 
 // This library is used to create a data structure that represents a token's balance for a Pool. 'cash' is how many
 // tokens the Pool has sitting inside of the Vault. 'managed' is how many tokens were withdrawn from the Vault by the
@@ -43,7 +41,6 @@ import "../../lib/helpers/Uint256Helpers.sol";
 // the chance of misuse.
 library BalanceAllocation {
     using Math for uint256;
-    using Uint256Helpers for uint256;
 
     // The 'cash' portion of the balance is stored in the least significant 112 bits of a 256 bit word, while the
     // 'managed' part uses the most significant 112 bits.
@@ -135,7 +132,7 @@ library BalanceAllocation {
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
         uint256 balance = _cash + _managed;
-        require(balance >= _cash && balance.canCastToUint112(), "BALANCE_TOTAL_OVERFLOW");
+        require(balance >= _cash && balance < 2**112, "BALANCE_TOTAL_OVERFLOW");
         // We assume the block number will always fit in an uint32
         return _pack(_cash, _managed, _blockNumber);
     }
