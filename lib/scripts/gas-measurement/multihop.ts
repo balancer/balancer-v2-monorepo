@@ -2,7 +2,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { TokenList } from '../../helpers/tokens';
-import { MAX_UINT128, MAX_UINT256 } from '../../helpers/constants';
+import { MAX_UINT112, MAX_UINT256 } from '../../helpers/constants';
 import { encodeValidatorData, FundManagement, getTokensSwaps, toSwapIn } from '../../helpers/trading';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
 
@@ -80,7 +80,7 @@ async function multihop(getPool: (index: number) => Promise<string>, useInternal
           overallTokenIn,
           overallTokenOut,
           minimumAmountOut: 0,
-          maximumAmountIn: MAX_UINT128,
+          maximumAmountIn: MAX_UINT112,
           deadline: MAX_UINT256,
         }),
         toSwapIn(swaps),

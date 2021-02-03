@@ -131,6 +131,7 @@ contract StablePool is IPool, IGeneralPool, StableMath, BalancerPoolToken, Reent
         address recipient,
         uint256[] memory currentBalances,
         uint256[] memory maxAmountsIn,
+        uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
@@ -221,6 +222,7 @@ contract StablePool is IPool, IGeneralPool, StableMath, BalancerPoolToken, Reent
         address, //recipient -  potential whitelisting
         uint256[] memory currentBalances,
         uint256[] memory minAmountsOut,
+        uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
@@ -310,7 +312,7 @@ contract StablePool is IPool, IGeneralPool, StableMath, BalancerPoolToken, Reent
     }
 
     function _addSwapFee(uint256 amount) private view returns (uint256) {
-        return amount.div(uint256(FixedPoint.ONE).sub(_swapFee));
+        return amount.div(FixedPoint.ONE.sub(_swapFee));
     }
 
     function _subtractSwapFee(uint256 amount) private view returns (uint256) {

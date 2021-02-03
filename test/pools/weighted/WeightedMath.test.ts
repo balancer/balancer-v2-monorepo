@@ -1,6 +1,7 @@
 import { Contract } from 'ethers';
-import { deploy } from '../../../lib/helpers/deploy';
+
 import { bn } from '../../../lib/helpers/numbers';
+import { deploy } from '../../../lib/helpers/deploy';
 import { expectEqualWithError } from '../../helpers/relativeError';
 import {
   calculateInvariant,

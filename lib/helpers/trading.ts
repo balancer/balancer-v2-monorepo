@@ -80,7 +80,7 @@ export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<
 
 export function encodeValidatorData(data: OneToOneValidatorData): string {
   return utils.defaultAbiCoder.encode(
-    ['address', 'address', 'uint128', 'uint128', 'uint256'],
+    ['address', 'address', 'uint112', 'uint112', 'uint256'],
     [data.overallTokenIn, data.overallTokenOut, data.maximumAmountIn, data.minimumAmountOut, data.deadline]
   );
 }

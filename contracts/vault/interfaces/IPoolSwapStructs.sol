@@ -38,6 +38,7 @@ interface IPoolSwapStructs {
         uint256 amountIn;
         // Misc data
         bytes32 poolId;
+        uint256 latestBlockNumberUsed;
         address from;
         address to;
         bytes userData;
@@ -61,6 +62,7 @@ interface IPoolSwapStructs {
         uint256 amountOut;
         // Misc data
         bytes32 poolId;
+        uint256 latestBlockNumberUsed;
         address from;
         address to;
         bytes userData;

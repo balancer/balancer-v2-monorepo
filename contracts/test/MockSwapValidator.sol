@@ -19,7 +19,7 @@ pragma solidity ^0.7.1;
 import "../vault/interfaces/ISwapValidator.sol";
 
 contract MockSwapValidator is ISwapValidator {
-    event ValidationData(IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut);
+    event ValidationData(IERC20 overallTokenIn, IERC20 overallTokenOut, uint112 maxAmountIn, uint112 minAmountOut);
 
     function validate(
         IERC20[] calldata,
@@ -27,9 +27,9 @@ contract MockSwapValidator is ISwapValidator {
         bytes calldata data
     ) external override {
         //Decode data
-        (IERC20 overallTokenIn, IERC20 overallTokenOut, uint128 maxAmountIn, uint128 minAmountOut) = abi.decode(
+        (IERC20 overallTokenIn, IERC20 overallTokenOut, uint112 maxAmountIn, uint112 minAmountOut) = abi.decode(
             (data),
-            (IERC20, IERC20, uint128, uint128)
+            (IERC20, IERC20, uint112, uint112)
         );
 
         //Validate

@@ -21,7 +21,6 @@ import "../../lib/helpers/EnumerableMap.sol";
 
 contract GeneralPoolsBalance {
     using BalanceAllocation for bytes32;
-
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     // Data for Pools with General Pool Specialization setting
@@ -104,7 +103,7 @@ contract GeneralPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
+        _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateGeneralPoolBalance(

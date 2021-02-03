@@ -105,7 +105,7 @@ contract MinimalSwapInfoPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
+        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateMinimalSwapInfoPoolBalance(
