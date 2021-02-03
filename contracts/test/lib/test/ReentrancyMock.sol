@@ -28,7 +28,7 @@ contract ReentrancyMock is ReentrancyGuard {
             _count();
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = address(this).call(abi.encodeWithSignature("countThisRecursive(uint256)", n - 1));
-            require(success, "ReentrancyMock: failed call");
+            require(success, "REENTRANCY_MOCK");
         }
     }
 

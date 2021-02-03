@@ -104,7 +104,7 @@ export function shouldBehaveLikeMap(
     });
 
     it('reverts if the key is not in the map', async () => {
-      await expect(store.map.indexOf(keyA)).to.be.revertedWith('EnumerableMap: nonexistent key');
+      await expect(store.map.indexOf(keyA)).to.be.revertedWith('OUT_OF_BOUNDS');
     });
   });
 

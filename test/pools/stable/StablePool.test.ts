@@ -61,7 +61,7 @@ describe('StablePool', function () {
         deploy('StablePool', {
           args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, 0, 0],
         })
-      ).to.be.revertedWith('ERR_MIN_TOKENS');
+      ).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
@@ -88,7 +88,7 @@ describe('StablePool', function () {
         deploy('StablePool', {
           args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, 0, 0],
         })
-      ).to.be.revertedWith('ERR_MAX_TOKENS');
+      ).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
@@ -196,25 +196,25 @@ describe('StablePool', function () {
         it('reverts if there are repeated tokens', async () => {
           const tokens = new Array(numberOfTokens).fill(poolTokens[0]);
 
-          await expect(deployPool({ tokens })).to.be.revertedWith('ERR_TOKEN_ALREADY_REGISTERED');
+          await expect(deployPool({ tokens })).to.be.revertedWith('TOKEN_ALREADY_REGISTERED');
         });
 
         it('reverts if the swap fee is too high', async () => {
           const swapFee = fp(0.1).add(1);
 
-          await expect(deployPool({ tokens: poolTokens, swapFee })).to.be.revertedWith('ERR_MAX_SWAP_FEE');
+          await expect(deployPool({ tokens: poolTokens, swapFee })).to.be.revertedWith('MAX_SWAP_FEE');
         });
 
         it('reverts if amplification coefficient is too high', async () => {
           const highAmp = bn(5000).mul(bn(10e18));
 
-          await expect(deployPool({ tokens: poolTokens, amplification: highAmp })).to.be.revertedWith('ERR_MAX_AMP');
+          await expect(deployPool({ tokens: poolTokens, amplification: highAmp })).to.be.revertedWith('MAX_AMP');
         });
 
         it('reverts if amplification coefficient is too low', async () => {
           const lowAmp = bn(10);
 
-          await expect(deployPool({ tokens: poolTokens, amplification: lowAmp })).to.be.revertedWith('ERR_MIN_AMP');
+          await expect(deployPool({ tokens: poolTokens, amplification: lowAmp })).to.be.revertedWith('MIN_AMP');
         });
       });
     });
@@ -233,7 +233,7 @@ describe('StablePool', function () {
       it('fails if caller is not the vault', async () => {
         await expect(
           pool.connect(lp).onJoinPool(poolId, lp.address, other.address, [0], [0], 0, 0, '0x')
-        ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
       });
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
@@ -325,7 +325,7 @@ describe('StablePool', function () {
                 0,
                 initialJoinUserData
               )
-          ).to.be.be.revertedWith('ERR_ALREADY_INITIALIZED');
+          ).to.be.be.revertedWith('ALREADY_INITIALIZED');
         });
       });
 
@@ -336,7 +336,7 @@ describe('StablePool', function () {
             vault
               .connect(creator)
               .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, poolInitialBalances, 0, 0, joinUserData)
-          ).to.be.be.revertedWith('ERR_UNINITIALIZED');
+          ).to.be.be.revertedWith('UNINITIALIZED');
         });
 
         context('once initialized', () => {
@@ -410,7 +410,7 @@ describe('StablePool', function () {
       it('fails if caller is not the vault', async () => {
         await expect(
           pool.connect(lp).onExitPool(poolId, beneficiary.address, other.address, [0], [0], 0, 0, '0x')
-        ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
       });
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
@@ -542,11 +542,11 @@ describe('StablePool', function () {
         it('reverts when querying invalid indexes', async () => {
           await expect(
             pool.quoteOutGivenIn({ ...quoteData, amountIn: bn(1e18) }, poolInitialBalances, 10, 1)
-          ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
+          ).to.be.revertedWith('OUT_OF_BOUNDS');
 
           await expect(
             pool.quoteOutGivenIn({ ...quoteData, amountIn: bn(1e18) }, poolInitialBalances, 0, 10)
-          ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
+          ).to.be.revertedWith('OUT_OF_BOUNDS');
         });
       });
 
@@ -562,11 +562,11 @@ describe('StablePool', function () {
         it('reverts when querying invalid indexes', async () => {
           await expect(
             pool.quoteInGivenOut({ ...quoteData, amountOut: bn(1e18) }, poolInitialBalances, 10, 1)
-          ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
+          ).to.be.revertedWith('OUT_OF_BOUNDS');
 
           await expect(
             pool.quoteInGivenOut({ ...quoteData, amountOut: bn(1e18) }, poolInitialBalances, 0, 10)
-          ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
+          ).to.be.revertedWith('OUT_OF_BOUNDS');
         });
       });
     });

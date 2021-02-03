@@ -37,7 +37,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         bytes calldata receiverData
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "Tokens and amounts mismatch");
+        require(tokens.length == amounts.length, "ARRAY_LENGTH_MISMATCH");
 
         uint256[] memory feeAmounts = new uint256[](tokens.length);
         uint256[] memory preLoanBalances = new uint256[](tokens.length);
@@ -47,7 +47,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
             uint256 amount = amounts[i];
 
             preLoanBalances[i] = token.balanceOf(address(this));
-            require(preLoanBalances[i] >= amount, "Insufficient balance to borrow");
+            require(preLoanBalances[i] >= amount, "INSUFFICIENT_BALANCE");
 
             feeAmounts[i] = _calculateProtocolFlashLoanFeeAmount(amount);
 
@@ -61,10 +61,10 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
             uint256 preLoanBalance = preLoanBalances[i];
 
             uint256 postLoanBalance = token.balanceOf(address(this));
-            require(postLoanBalance >= preLoanBalance, "ERR_INVALID_POST_LOAN_BALANCE");
+            require(postLoanBalance >= preLoanBalance, "INVALID_POST_LOAN_BALANCE");
 
             uint256 receivedFees = postLoanBalance - preLoanBalance;
-            require(receivedFees >= feeAmounts[i], "ERR_NOT_ENOUGH_COLLECTED_FEES");
+            require(receivedFees >= feeAmounts[i], "INSUFFICIENT_COLLECTED_FEES");
 
             _increaseCollectedFees(token, receivedFees);
         }

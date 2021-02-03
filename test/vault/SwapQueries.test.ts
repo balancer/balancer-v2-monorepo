@@ -226,7 +226,7 @@ describe('Vault - swap queries', () => {
       ];
 
       await expect(vault.queryBatchSwapHelper(swaps, tokenAddresses, funds, 0)).to.be.revertedWith(
-        'Caller is not the Vault'
+        'CALLER_NOT_VAULT'
       );
     });
   });

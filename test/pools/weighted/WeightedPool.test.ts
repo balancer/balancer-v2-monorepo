@@ -55,7 +55,7 @@ describe('WeightedPool', function () {
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
       const args = [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE];
-      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('ERR_MIN_TOKENS');
+      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
@@ -82,7 +82,7 @@ describe('WeightedPool', function () {
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
       const args = [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE];
-      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('ERR_MAX_TOKENS');
+      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
@@ -192,7 +192,7 @@ describe('WeightedPool', function () {
         it('reverts if the number of tokens and weights do not match', async () => {
           const weights = poolWeights.slice(1);
 
-          await expect(deployPool({ weights })).to.be.revertedWith('ERR_TOKENS_WEIGHTS_LENGTH');
+          await expect(deployPool({ weights })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
 
         it('reverts if there are repeated tokens', async () => {
@@ -204,21 +204,21 @@ describe('WeightedPool', function () {
         it('reverts if the swap fee is too high', async () => {
           const swapFee = fp(0.1).add(1);
 
-          await expect(deployPool({ swapFee })).to.be.revertedWith('ERR_MAX_SWAP_FEE');
+          await expect(deployPool({ swapFee })).to.be.revertedWith('MAX_SWAP_FEE');
         });
 
         it('reverts if at least one weight is too high', async () => {
           const weights = WEIGHTS.slice(0, numberOfTokens);
           weights[0] = bn(50000).mul(bn(10e18));
 
-          await expect(deployPool({ weights: weights })).to.be.revertedWith('ERR_MAX_WEIGHT');
+          await expect(deployPool({ weights: weights })).to.be.revertedWith('MAX_WEIGHT');
         });
 
         it('reverts if at least one weight is too low', async () => {
           const weights = WEIGHTS.slice(0, numberOfTokens);
           weights[0] = bn(10);
 
-          await expect(deployPool({ weights: weights })).to.be.revertedWith('ERR_MIN_WEIGHT');
+          await expect(deployPool({ weights: weights })).to.be.revertedWith('MIN_WEIGHT');
         });
       });
     });
@@ -231,7 +231,7 @@ describe('WeightedPool', function () {
       it('fails if caller is not the vault', async () => {
         await expect(
           pool.connect(lp).onJoinPool(poolId, lp.address, other.address, [0], [0], 0, 0, '0x')
-        ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
       });
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
@@ -315,7 +315,7 @@ describe('WeightedPool', function () {
                 0,
                 initialJoinUserData
               )
-          ).to.be.be.revertedWith('ERR_ALREADY_INITIALIZED');
+          ).to.be.be.revertedWith('ALREADY_INITIALIZED');
         });
       });
 
@@ -326,7 +326,7 @@ describe('WeightedPool', function () {
             vault
               .connect(creator)
               .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, poolInitialBalances, 0, 0, joinUserData)
-          ).to.be.be.revertedWith('ERR_UNINITIALIZED');
+          ).to.be.be.revertedWith('UNINITIALIZED');
         });
 
         context('once initialized', () => {
@@ -415,7 +415,7 @@ describe('WeightedPool', function () {
                   0,
                   joinUserData
                 )
-            ).to.be.be.revertedWith('ERR_BPT_OUT_MIN_AMOUNT');
+            ).to.be.be.revertedWith('BPT_OUT_MIN_AMOUNT');
           });
         });
       });
@@ -440,7 +440,7 @@ describe('WeightedPool', function () {
       it('fails if caller is not the vault', async () => {
         await expect(
           pool.connect(lp).onExitPool(poolId, beneficiary.address, other.address, [0], [0], 0, 0, '0x')
-        ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
       });
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
@@ -643,7 +643,7 @@ describe('WeightedPool', function () {
                 0,
                 exitUserData
               )
-          ).to.be.be.revertedWith('ERR_BPT_IN_MAX_AMOUNT');
+          ).to.be.be.revertedWith('BPT_IN_MAX_AMOUNT');
         });
       });
     });
@@ -705,7 +705,7 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
@@ -715,7 +715,7 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
         });
       });
 
@@ -747,7 +747,7 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
@@ -757,7 +757,7 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
         });
       });
     });

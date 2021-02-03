@@ -12,7 +12,7 @@ library Math {
      */
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c = a + b;
-        require(c >= a, "ERR_ADD_OVERFLOW");
+        require(c >= a, "ADD_OVERFLOW");
         return c;
     }
 
@@ -21,7 +21,7 @@ library Math {
      */
     function add(int256 a, int256 b) internal pure returns (int256) {
         int256 c = a + b;
-        require((b >= 0 && c >= a) || (b < 0 && c < a), "ERR_ADD_OVERFLOW");
+        require((b >= 0 && c >= a) || (b < 0 && c < a), "ADD_OVERFLOW");
         return c;
     }
 
@@ -29,7 +29,7 @@ library Math {
      * @dev Returns the subtraction of two unsigned integers of 256 bits, reverting on overflow.
      */
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b <= a, "ERR_SUB_OVERFLOW");
+        require(b <= a, "SUB_OVERFLOW");
         uint256 c = a - b;
         return c;
     }
@@ -39,7 +39,7 @@ library Math {
      */
     function sub(int256 a, int256 b) internal pure returns (int256) {
         int256 c = a - b;
-        require((b >= 0 && c <= a) || (b < 0 && c > a), "ERR_SUB_OVERFLOW");
+        require((b >= 0 && c <= a) || (b < 0 && c > a), "SUB_OVERFLOW");
         return c;
     }
 

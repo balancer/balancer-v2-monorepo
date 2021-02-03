@@ -122,29 +122,27 @@ describe('Vault - join pool', () => {
 
     context('when called incorrectly', () => {
       it('reverts if the pool ID does not exist', async () => {
-        await expect(joinPool({ poolId: ethers.utils.id('invalid') })).to.be.revertedWith('Nonexistent pool');
+        await expect(joinPool({ poolId: ethers.utils.id('invalid') })).to.be.revertedWith('INVALID_POOL_ID');
       });
 
       it('reverts if token array is incorrect', async () => {
         // Missing - token addresses and max amounts min length must match
         await expect(
           joinPool({ tokenAddresses: tokenAddresses.slice(1), maxAmountsIn: array(0).slice(1) })
-        ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
         // Extra  - token addresses and max amounts min length must match
         await expect(
           joinPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]), maxAmountsIn: array(0).concat(bn(0)) })
-        ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
         // Unordered
-        await expect(joinPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        await expect(joinPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
-        await expect(joinPool({ maxAmountsIn: array(0).slice(1) })).to.be.revertedWith('ERR_TOKENS_AMOUNTS_MISMATCH');
-        await expect(joinPool({ maxAmountsIn: array(0).concat(bn(0)) })).to.be.revertedWith(
-          'ERR_TOKENS_AMOUNTS_MISMATCH'
-        );
+        await expect(joinPool({ maxAmountsIn: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+        await expect(joinPool({ maxAmountsIn: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
       });
     });
 
@@ -152,21 +150,21 @@ describe('Vault - join pool', () => {
       context('with incorrect pool return values', () => {
         it('reverts if join amounts length does not match token length', async () => {
           // Missing
-          await expect(joinPool({ joinAmounts: array(0).slice(1) })).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
+          await expect(joinPool({ joinAmounts: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
           // Extra
-          await expect(joinPool({ joinAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
+          await expect(joinPool({ joinAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
 
         it('reverts if due protocol fees length does not match token length', async () => {
           // Missing
           await expect(joinPool({ dueProtocolFeeAmounts: array(0).slice(1) })).to.be.revertedWith(
-            'ERR_DUE_PROTOCOL_FEE_AMOUNTS'
+            'ARRAY_LENGTH_MISMATCH'
           );
 
           // Extra
           await expect(joinPool({ dueProtocolFeeAmounts: array(0).concat(bn(0)) })).to.be.revertedWith(
-            'ERR_DUE_PROTOCOL_FEE_AMOUNTS'
+            'ARRAY_LENGTH_MISMATCH'
           );
         });
 
@@ -174,12 +172,12 @@ describe('Vault - join pool', () => {
           // Missing
           await expect(
             joinPool({ joinAmounts: array(0).slice(1), dueProtocolFeeAmounts: array(0).slice(1) })
-          ).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
+          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
           // Extra
           await expect(
             joinPool({ joinAmounts: array(0).concat(bn(0)), dueProtocolFeeAmounts: array(0).concat(bn(0)) })
-          ).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
+          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
       });
 
@@ -374,7 +372,7 @@ describe('Vault - join pool', () => {
               maxAmountsIn[i] = amount.sub(1);
 
               return expect(joinPool({ fromInternalBalance, dueProtocolFeeAmounts, maxAmountsIn })).to.be.revertedWith(
-                'ERR_JOIN_ABOVE_MAX'
+                'JOIN_ABOVE_MAX'
               );
             }
           })

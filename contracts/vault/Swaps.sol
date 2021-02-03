@@ -273,11 +273,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapInternal memory swap;
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
-            require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "ERR_INDEX_OUT_OF_BOUNDS");
+            require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "OUT_OF_BOUNDS");
 
             IERC20 tokenIn = tokens[swap.tokenInIndex];
             IERC20 tokenOut = tokens[swap.tokenOutIndex];
-            require(tokenIn != tokenOut, "Swap for same token");
+            require(tokenIn != tokenOut, "CANNOT_SWAP_SAME_TOKEN");
 
             if (swap.amount == 0) {
                 if (swaps.length > 1) {
@@ -287,10 +287,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                     // This makes it possible to e.g. swap a given amount of token A for token B,
                     // and then use the resulting token B amount to swap for token C.
                     bool usingPreviousToken = previous.tokenQuoted == _tokenGiven(kind, tokenIn, tokenOut);
-                    require(usingPreviousToken, "Misconstructed multihop swap");
+                    require(usingPreviousToken, "MALCONSTRUCTED_MULTIHOP_SWAP");
                     swap.amount = previous.amountQuoted;
                 } else {
-                    revert("Unknown amount in on first swap");
+                    revert("UNKNOWN_AMOUNT_IN_FIRST_SWAP");
                 }
             }
 
@@ -480,8 +480,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenOutBalance;
 
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
-        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "ERR_TOKEN_NOT_REGISTERED");
-        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "ERR_TOKEN_NOT_REGISTERED");
+        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "TOKEN_NOT_REGISTERED");
+        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "TOKEN_NOT_REGISTERED");
 
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);
@@ -575,7 +575,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement calldata funds,
         SwapKind kind
     ) external {
-        require(msg.sender == address(this), "Caller is not the Vault");
+        require(msg.sender == address(this), "CALLER_NOT_VAULT");
         int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
         revert(string(abi.encode(tokenDeltas)));
     }
