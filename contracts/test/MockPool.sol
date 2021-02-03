@@ -20,10 +20,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../lib/math/FixedPoint.sol";
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IPool.sol";
-import "../vault/interfaces/IGeneralPoolQuote.sol";
-import "../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
+import "../vault/interfaces/IGeneralPool.sol";
+import "../vault/interfaces/IMinimalSwapInfoPool.sol";
 
-contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
+contract MockPool is IPool, IGeneralPool, IMinimalSwapInfoPool {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -105,41 +105,41 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         _multiplier = newMultiplier;
     }
 
-    // IGeneralPoolQuote
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+    // IGeneralPool
+    function onSwapGivenIn(
+        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
         uint256[] calldata,
         uint256,
         uint256
     ) external view override returns (uint256) {
-        return request.amountIn.mul(_multiplier);
+        return swapRequest.amountIn.mul(_multiplier);
     }
 
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+    function onSwapGivenOut(
+        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
         uint256[] calldata,
         uint256,
         uint256
     ) external view override returns (uint256) {
-        uint256 amountIn = request.amountOut.div(_multiplier);
+        uint256 amountIn = swapRequest.amountOut.div(_multiplier);
         return amountIn;
     }
 
-    // IMinimalSwapInfoPoolQuote
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+    // IMinimalSwapInfoPool
+    function onSwapGivenIn(
+        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
         uint256,
         uint256
     ) external view override returns (uint256) {
-        return request.amountIn.mul(_multiplier);
+        return swapRequest.amountIn.mul(_multiplier);
     }
 
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+    function onSwapGivenOut(
+        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
         uint256,
         uint256
     ) external view override returns (uint256) {
-        uint256 amountIn = request.amountOut.div(_multiplier);
+        uint256 amountIn = swapRequest.amountOut.div(_multiplier);
         return amountIn;
     }
 }

@@ -25,9 +25,9 @@ import "../lib/helpers/EnumerableMap.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./PoolRegistry.sol";
-import "./interfaces/IPoolQuoteStructs.sol";
-import "./interfaces/IGeneralPoolQuote.sol";
-import "./interfaces/IMinimalSwapInfoPoolQuote.sol";
+import "./interfaces/IPoolSwapStructs.sol";
+import "./interfaces/IGeneralPool.sol";
+import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./interfaces/ISwapValidator.sol";
 import "./balances/BalanceAllocation.sol";
 
@@ -45,7 +45,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     enum SwapKind { GIVEN_IN, GIVEN_OUT }
 
     // This struct is identical in layout to SwapIn and SwapOut, except the 'amountIn/Out' field is named 'amount'.
-    struct SwapInternal {
+    struct InternalSwap {
         bytes32 poolId;
         uint256 tokenInIndex;
         uint256 tokenOutIndex;
@@ -101,23 +101,31 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     // We use inline assembly to cast from the external struct types to the internal one. This doesn't trigger any
     // conversions or runtime analysis: it is just coercing the type system to reinterpret the data as another type.
 
-    function _toInternalSwap(SwapIn[] memory swapsIn) private pure returns (SwapInternal[] memory swapsInternal) {
+    function _toInternalSwap(SwapIn[] memory swapsIn)
+        private
+        pure
+        returns (InternalSwap[] memory internalSwapRequests)
+    {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            swapsInternal := swapsIn
+            internalSwapRequests := swapsIn
         }
     }
 
-    function _toInternalSwap(SwapOut[] memory swapsOut) private pure returns (SwapInternal[] memory swapsInternal) {
+    function _toInternalSwap(SwapOut[] memory swapsOut)
+        private
+        pure
+        returns (InternalSwap[] memory internalSwapRequests)
+    {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            swapsInternal := swapsOut
+            internalSwapRequests := swapsOut
         }
     }
 
-    // This struct is identical in layout to QuoteRequestGivenIn and QuoteRequestGivenIn from IPoolQuoteStructs, except
+    // This struct is identical in layout to SwapRequestGivenIn and SwapRequestGivenOut from IPoolSwapStructs, except
     // the 'amountIn/Out' is named 'amount'.
-    struct QuoteRequestInternal {
+    struct InternalSwapRequest {
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint256 amount;
@@ -131,25 +139,25 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     // This doesn't trigger any conversions or runtime analysis: it is just coercing the type system to reinterpret the
     // data as another type.
 
-    function _toQuoteGivenIn(QuoteRequestInternal memory requestInternal)
+    function _toSwapRequestGivenIn(InternalSwapRequest memory internalSwapRequest)
         private
         pure
-        returns (IPoolQuoteStructs.QuoteRequestGivenIn memory requestGivenIn)
+        returns (IPoolSwapStructs.SwapRequestGivenIn memory swapRequestGivenIn)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            requestGivenIn := requestInternal
+            swapRequestGivenIn := internalSwapRequest
         }
     }
 
-    function _toQuoteGivenOut(QuoteRequestInternal memory requestInternal)
+    function _toSwapRequestGivenOut(InternalSwapRequest memory internalSwapRequest)
         private
         pure
-        returns (IPoolQuoteStructs.QuoteRequestGivenOut memory requestGivenOut)
+        returns (IPoolSwapStructs.SwapRequestGivenOut memory swapRequestGivenOut)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            requestGivenOut := requestInternal
+            swapRequestGivenOut := internalSwapRequest
         }
     }
 
@@ -158,7 +166,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      * `kind` value.
      */
     function _batchSwap(
-        SwapInternal[] memory swaps,
+        InternalSwap[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
@@ -201,7 +209,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     }
 
     // For `_batchSwap` to handle both given in and given out swaps, it internally tracks the 'given' amount (supplied
-    // by the caller), and the 'quoted' one (returned by the Pool in response to the quote request).
+    // by the caller), and the 'calculated' one (returned by the Pool in response to the swap request).
 
     /**
      * @dev Given the two swap tokens and the swap kind, returns which one is the 'given' token (the one for which the
@@ -216,10 +224,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     }
 
     /**
-     * @dev Given the two swap tokens and the swap kind, returns which one is the 'given' token (the one for which the
-     * amount is returned by the Pool).
+     * @dev Given the two swap tokens and the swap kind, returns which one is the 'calculated' token (the one for
+     * which the amount is calculated by the Pool).
      */
-    function _tokenQuoted(
+    function _tokenCalculated(
         SwapKind kind,
         IERC20 tokenIn,
         IERC20 tokenOut
@@ -228,36 +236,36 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     }
 
     /**
-     * @dev Returns an ordered pair (amountIn, amountOut) given the amounts given and quoted and the swap kind.
+     * @dev Returns an ordered pair (amountIn, amountOut) given the amounts given and calculated and the swap kind.
      */
     function _getAmounts(
         SwapKind kind,
         uint256 amountGiven,
-        uint256 amountQuoted
+        uint256 amountCalculated
     ) private pure returns (uint256 amountIn, uint256 amountOut) {
         if (kind == SwapKind.GIVEN_IN) {
-            (amountIn, amountOut) = (amountGiven, amountQuoted);
+            (amountIn, amountOut) = (amountGiven, amountCalculated);
         } else {
-            (amountIn, amountOut) = (amountQuoted, amountGiven);
+            (amountIn, amountOut) = (amountCalculated, amountGiven);
         }
     }
 
-    // This struct helps implement the multihop logic: if the amount given is not provided for a swap, then the token
-    // given must match the previous token quoted, and the previous amount quoted becomes the new amount given.
-    // For swaps of kind given in, amount in and token in are given, while amount out and token out quoted.
-    // For swaps of kind given out, amount out and token out are given, while amount in and token in quoted.
+    // This struct helps implement the multihop logic: if the amount given is not provided for a swap, then the given
+    // token must match the previous calculated token, and the previous calculated amount becomes the new given amount.
+    // For swaps of kind given in, amount in and token in are given, while amount out and token out are calculated.
+    // For swaps of kind given out, amount out and token out are given, while amount in and token are calculated.
     struct LastSwapData {
-        IERC20 tokenQuoted;
-        uint256 amountQuoted;
+        IERC20 tokenCalculated;
+        uint256 amountCalculated;
     }
 
     /**
-     * @dev Performs all `swaps`, requesting the Pools for quotes and updating their balances. Does not cause any
+     * @dev Performs all `swaps`, calling swap callbacks on the Pools and updating their balances. Does not cause any
      * transfer of tokens - it instead returns the net Vault token deltas: positive if the Vault should receive tokens,
      * and negative if it should send them.
      */
     function _swapWithPools(
-        SwapInternal[] memory swaps,
+        InternalSwap[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
@@ -270,7 +278,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each loop
         // iteration, increasing gas costs.
-        SwapInternal memory swap;
+        InternalSwap memory swap;
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
             require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "ERR_INDEX_OUT_OF_BOUNDS");
@@ -282,13 +290,13 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             if (swap.amount == 0) {
                 if (swaps.length > 1) {
                     // Sentinel value for multihop logic
-                    // When the amount given is not provided, we use the amount quoted for the previous swap,
-                    // assuming the current swap's token given is the previous' token quoted.
+                    // When the amount given is not provided, we use the calculated amount for the previous swap,
+                    // assuming the current swap's given token is the previous' calculated token.
                     // This makes it possible to e.g. swap a given amount of token A for token B,
                     // and then use the resulting token B amount to swap for token C.
-                    bool usingPreviousToken = previous.tokenQuoted == _tokenGiven(kind, tokenIn, tokenOut);
+                    bool usingPreviousToken = previous.tokenCalculated == _tokenGiven(kind, tokenIn, tokenOut);
                     require(usingPreviousToken, "Misconstructed multihop swap");
-                    swap.amount = previous.amountQuoted;
+                    swap.amount = previous.amountCalculated;
                 } else {
                     revert("Unknown amount in on first swap");
                 }
@@ -324,13 +332,13 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     function _swapWithPool(
         IERC20 tokenIn,
         IERC20 tokenOut,
-        SwapInternal memory swap,
+        InternalSwap memory swap,
         address from,
         address to,
         LastSwapData memory previous,
         SwapKind kind
     ) private returns (uint256 amountIn, uint256 amountOut) {
-        QuoteRequestInternal memory request = QuoteRequestInternal({
+        InternalSwapRequest memory swapRequest = InternalSwapRequest({
             tokenIn: tokenIn,
             tokenOut: tokenOut,
             amount: swap.amount,
@@ -340,40 +348,40 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             userData: swap.userData
         });
 
-        // Get the quoted amount from the Pool and update its balances
-        uint256 amountQuoted = _processQuoteRequest(request, kind);
+        // Get the calculated amount from the Pool and update its balances
+        uint256 amountCalculated = _processSwapRequest(swapRequest, kind);
 
         // Store swap information for next pass
-        previous.tokenQuoted = _tokenQuoted(kind, tokenIn, tokenOut);
-        previous.amountQuoted = amountQuoted;
+        previous.tokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
+        previous.amountCalculated = amountCalculated;
 
-        (amountIn, amountOut) = _getAmounts(kind, swap.amount, amountQuoted);
+        (amountIn, amountOut) = _getAmounts(kind, swap.amount, amountCalculated);
     }
 
     /**
-     * @dev Performs a quote request call to the Pool and updates its balances as a result of the swap being executed.
+     * @dev Calls the swap request callback on the Pool and updates its balances as a result of the swap being executed.
      * The interface used for the call will depend on the Pool's specialization setting.
      *
-     * Returns the token amount quoted by the Pool.
+     * Returns the token amount calculated by the Pool.
      */
-    function _processQuoteRequest(QuoteRequestInternal memory request, SwapKind kind) private returns (uint256) {
-        address pool = _getPoolAddress(request.poolId);
-        PoolSpecialization specialization = _getPoolSpecialization(request.poolId);
+    function _processSwapRequest(InternalSwapRequest memory swapRequest, SwapKind kind) private returns (uint256) {
+        address pool = _getPoolAddress(swapRequest.poolId);
+        PoolSpecialization specialization = _getPoolSpecialization(swapRequest.poolId);
 
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            return _processMinimalSwapInfoPoolQuoteRequest(request, IMinimalSwapInfoPoolQuote(pool), kind);
+            return _processMinimalSwapInfoPoolSwapRequest(swapRequest, IMinimalSwapInfoPool(pool), kind);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            return _processTwoTokenPoolQuoteRequest(request, IMinimalSwapInfoPoolQuote(pool), kind);
+            return _processTwoTokenPoolSwapRequest(swapRequest, IMinimalSwapInfoPool(pool), kind);
         } else {
-            return _processGeneralPoolQuoteRequest(request, IGeneralPoolQuote(pool), kind);
+            return _processGeneralPoolSwapRequest(swapRequest, IGeneralPool(pool), kind);
         }
     }
 
-    function _processTwoTokenPoolQuoteRequest(
-        QuoteRequestInternal memory request,
-        IMinimalSwapInfoPoolQuote pool,
+    function _processTwoTokenPoolSwapRequest(
+        InternalSwapRequest memory internalSwapRequest,
+        IMinimalSwapInfoPool pool,
         SwapKind kind
-    ) private returns (uint256 amountQuoted) {
+    ) private returns (uint256 amountCalculated) {
         // Due to gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are
         // stored internally, instead of using getters and setters for all operations.
 
@@ -381,14 +389,18 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             bytes32 tokenABalance,
             bytes32 tokenBBalance,
             TwoTokenSharedBalances storage poolSharedBalances
-        ) = _getTwoTokenPoolSharedBalances(request.poolId, request.tokenIn, request.tokenOut);
+        ) = _getTwoTokenPoolSharedBalances(
+            internalSwapRequest.poolId,
+            internalSwapRequest.tokenIn,
+            internalSwapRequest.tokenOut
+        );
 
         // We have the two Pool balances, but we don't know which one is the token in and which one is the token out.
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
         // In Two Token Pools, token A has a smaller address than token B
-        if (request.tokenIn < request.tokenOut) {
+        if (internalSwapRequest.tokenIn < internalSwapRequest.tokenOut) {
             // in is A, out is B
             tokenInBalance = tokenABalance;
             tokenOutBalance = tokenBBalance;
@@ -401,72 +413,78 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         uint256 tokenInTotalBalance = tokenInBalance.totalBalance();
         uint256 tokenOutTotalBalance = tokenOutBalance.totalBalance();
 
-        // Perform the quote request and compute the new balances for token in and token out after the swap
+        // Perform the swap request callback and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
-            IPoolQuoteStructs.QuoteRequestGivenIn memory quote = _toQuoteGivenIn(request);
-            uint256 amountOut = pool.quoteOutGivenIn(quote, tokenInTotalBalance, tokenOutTotalBalance);
+            IPoolSwapStructs.SwapRequestGivenIn memory swapRequestIn = _toSwapRequestGivenIn(internalSwapRequest);
+            uint256 amountOut = pool.onSwapGivenIn(swapRequestIn, tokenInTotalBalance, tokenOutTotalBalance);
 
-            tokenInBalance = tokenInBalance.increaseCash(request.amount);
+            tokenInBalance = tokenInBalance.increaseCash(internalSwapRequest.amount);
             tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
-            amountQuoted = amountOut;
+            amountCalculated = amountOut;
         } else {
-            IPoolQuoteStructs.QuoteRequestGivenOut memory quote = _toQuoteGivenOut(request);
-            uint256 amountIn = pool.quoteInGivenOut(quote, tokenInTotalBalance, tokenOutTotalBalance);
+            IPoolSwapStructs.SwapRequestGivenOut memory swapRequestOut = _toSwapRequestGivenOut(internalSwapRequest);
+            uint256 amountIn = pool.onSwapGivenOut(swapRequestOut, tokenInTotalBalance, tokenOutTotalBalance);
 
             tokenInBalance = tokenInBalance.increaseCash(amountIn);
-            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
-            amountQuoted = amountIn;
+            tokenOutBalance = tokenOutBalance.decreaseCash(internalSwapRequest.amount);
+            amountCalculated = amountIn;
         }
 
         // We check the token ordering again to create the new shared cash packed struct
-        poolSharedBalances.sharedCash = request.tokenIn < request.tokenOut
+        poolSharedBalances.sharedCash = internalSwapRequest.tokenIn < internalSwapRequest.tokenOut
             ? BalanceAllocation.toSharedCash(tokenInBalance, tokenOutBalance) // in is A, out is B
             : BalanceAllocation.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
     }
 
-    function _processMinimalSwapInfoPoolQuoteRequest(
-        QuoteRequestInternal memory request,
-        IMinimalSwapInfoPoolQuote pool,
+    function _processMinimalSwapInfoPoolSwapRequest(
+        InternalSwapRequest memory internalSwapRequest,
+        IMinimalSwapInfoPool pool,
         SwapKind kind
-    ) private returns (uint256 amountQuoted) {
-        bytes32 tokenInBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenIn);
-        bytes32 tokenOutBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenOut);
+    ) private returns (uint256 amountCalculated) {
+        bytes32 tokenInBalance = _getMinimalSwapInfoPoolBalance(
+            internalSwapRequest.poolId,
+            internalSwapRequest.tokenIn
+        );
+        bytes32 tokenOutBalance = _getMinimalSwapInfoPoolBalance(
+            internalSwapRequest.poolId,
+            internalSwapRequest.tokenOut
+        );
 
         uint256 tokenInTotalBalance = tokenInBalance.totalBalance();
         uint256 tokenOutTotalBalance = tokenOutBalance.totalBalance();
 
-        // Perform the quote request and compute the new balances for token in and token out after the swap
+        // Perform the swap request callback and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
-            IPoolQuoteStructs.QuoteRequestGivenIn memory quote = _toQuoteGivenIn(request);
-            uint256 amountOut = pool.quoteOutGivenIn(quote, tokenInTotalBalance, tokenOutTotalBalance);
+            IPoolSwapStructs.SwapRequestGivenIn memory swapRequestIn = _toSwapRequestGivenIn(internalSwapRequest);
+            uint256 amountOut = pool.onSwapGivenIn(swapRequestIn, tokenInTotalBalance, tokenOutTotalBalance);
 
-            tokenInBalance = tokenInBalance.increaseCash(request.amount);
+            tokenInBalance = tokenInBalance.increaseCash(internalSwapRequest.amount);
             tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
-            amountQuoted = amountOut;
+            amountCalculated = amountOut;
         } else {
-            IPoolQuoteStructs.QuoteRequestGivenOut memory quote = _toQuoteGivenOut(request);
-            uint256 amountIn = pool.quoteInGivenOut(quote, tokenInTotalBalance, tokenOutTotalBalance);
+            IPoolSwapStructs.SwapRequestGivenOut memory swapRequestOut = _toSwapRequestGivenOut(internalSwapRequest);
+            uint256 amountIn = pool.onSwapGivenOut(swapRequestOut, tokenInTotalBalance, tokenOutTotalBalance);
 
             tokenInBalance = tokenInBalance.increaseCash(amountIn);
-            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
-            amountQuoted = amountIn;
+            tokenOutBalance = tokenOutBalance.decreaseCash(internalSwapRequest.amount);
+            amountCalculated = amountIn;
         }
 
-        _minimalSwapInfoPoolsBalances[request.poolId][request.tokenIn] = tokenInBalance;
-        _minimalSwapInfoPoolsBalances[request.poolId][request.tokenOut] = tokenOutBalance;
+        _minimalSwapInfoPoolsBalances[internalSwapRequest.poolId][internalSwapRequest.tokenIn] = tokenInBalance;
+        _minimalSwapInfoPoolsBalances[internalSwapRequest.poolId][internalSwapRequest.tokenOut] = tokenOutBalance;
     }
 
-    function _processGeneralPoolQuoteRequest(
-        QuoteRequestInternal memory request,
-        IGeneralPoolQuote pool,
+    function _processGeneralPoolSwapRequest(
+        InternalSwapRequest memory internalSwapRequest,
+        IGeneralPool pool,
         SwapKind kind
-    ) private returns (uint256 amountQuoted) {
+    ) private returns (uint256 amountCalculated) {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
-        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "ERR_TOKEN_NOT_REGISTERED");
-        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "ERR_TOKEN_NOT_REGISTERED");
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[internalSwapRequest.poolId];
+        uint256 indexIn = poolBalances.indexOf(internalSwapRequest.tokenIn, "ERR_TOKEN_NOT_REGISTERED");
+        uint256 indexOut = poolBalances.indexOf(internalSwapRequest.tokenOut, "ERR_TOKEN_NOT_REGISTERED");
 
         uint256[] memory currentBalances = new uint256[](poolBalances.length());
 
@@ -485,21 +503,21 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             }
         }
 
-        // Perform the quote request and compute the new balances for token in and token out after the swap
+        // Perform the swap request callback and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
-            IPoolQuoteStructs.QuoteRequestGivenIn memory quote = _toQuoteGivenIn(request);
-            uint256 amountOut = pool.quoteOutGivenIn(quote, currentBalances, indexIn, indexOut);
+            IPoolSwapStructs.SwapRequestGivenIn memory swapRequestIn = _toSwapRequestGivenIn(internalSwapRequest);
+            uint256 amountOut = pool.onSwapGivenIn(swapRequestIn, currentBalances, indexIn, indexOut);
 
-            amountQuoted = amountOut;
-            tokenInBalance = tokenInBalance.increaseCash(request.amount);
+            amountCalculated = amountOut;
+            tokenInBalance = tokenInBalance.increaseCash(internalSwapRequest.amount);
             tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
         } else {
-            IPoolQuoteStructs.QuoteRequestGivenOut memory quote = _toQuoteGivenOut(request);
-            uint256 amountIn = pool.quoteInGivenOut(quote, currentBalances, indexIn, indexOut);
+            IPoolSwapStructs.SwapRequestGivenOut memory swapRequestOut = _toSwapRequestGivenOut(internalSwapRequest);
+            uint256 amountIn = pool.onSwapGivenOut(swapRequestOut, currentBalances, indexIn, indexOut);
 
-            amountQuoted = amountIn;
+            amountCalculated = amountIn;
             tokenInBalance = tokenInBalance.increaseCash(amountIn);
-            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
+            tokenOutBalance = tokenOutBalance.decreaseCash(internalSwapRequest.amount);
         }
 
         // Because no token registrations or unregistrations happened between now and when we retrieved the indexes for
@@ -527,7 +545,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     }
 
     function _callQueryBatchSwapHelper(
-        SwapInternal[] memory swaps,
+        InternalSwap[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds,
         SwapKind kind
@@ -545,16 +563,16 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      * @dev Despite this function being external, it can only be called by the Vault itself, and should not be
      * considered part of the Vault's external API.
      *
-     * It executes the Pool interaction part of a batch swap, asking Pools for quotes and computing the Vault deltas,
-     * but without performing any token transfers. It then reverts unconditionally, returning the Vault deltas array as
-     * the revert data.
+     * It executes the Pool interaction part of a batch swap, calling swap request callbacks on pools and computing,
+     * the Vault deltas, but without performing any token transfers. It then reverts unconditionally, returning the
+     * Vault deltas array as the revert data.
      *
      * This enables an accurate implementation of queryBatchSwapGivenIn and queryBatchSwapGivenOut, since the array
      * 'returned' by this function is the result of the exact same computation a swap would perform, including the Pool
      * calls.
      */
     function queryBatchSwapHelper(
-        SwapInternal[] memory swaps,
+        InternalSwap[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds,
         SwapKind kind

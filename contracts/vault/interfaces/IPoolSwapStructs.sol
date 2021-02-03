@@ -16,9 +16,9 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IPoolQuoteStructs {
-    // This is not really an interface - it just defines common structs used by other interfaces: IGeneralPoolQuote and
-    // IMinimalSwapInfoPoolQuote.
+interface IPoolSwapStructs {
+    // This is not really an interface - it just defines common structs used by other interfaces: IGeneralPool and
+    // IMinimalSwapInfoPool.
 
     // This data structure represents a request for a token swap, where the amount received by the Pool is known.
     //
@@ -32,7 +32,7 @@ interface IPoolQuoteStructs {
     // `from` is the origin address where funds the Pool receives are coming from, and `to` is the destination address
     // where the funds the Pool sends are going to.
     // `userData` is extra data provided by the caller - typically a signature from a trusted party.
-    struct QuoteRequestGivenIn {
+    struct SwapRequestGivenIn {
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint256 amountIn;
@@ -55,7 +55,7 @@ interface IPoolQuoteStructs {
     // `from` is the origin address where funds the Pool receives are coming from, and `to` is the destination address
     // where the funds the Pool sends are going to.
     // `userData` is extra data provided by the caller - typically a signature from a trusted party.
-    struct QuoteRequestGivenOut {
+    struct SwapRequestGivenOut {
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint256 amountOut;

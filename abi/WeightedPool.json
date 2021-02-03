@@ -434,7 +434,7 @@
           },
           {
             "internalType": "uint256",
-            "name": "amountOut",
+            "name": "amountIn",
             "type": "uint256"
           },
           {
@@ -458,8 +458,8 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct IPoolQuoteStructs.QuoteRequestGivenOut",
-        "name": "request",
+        "internalType": "struct IPoolSwapStructs.SwapRequestGivenIn",
+        "name": "swapRequest",
         "type": "tuple"
       },
       {
@@ -473,7 +473,7 @@
         "type": "uint256"
       }
     ],
-    "name": "quoteInGivenOut",
+    "name": "onSwapGivenIn",
     "outputs": [
       {
         "internalType": "uint256",
@@ -500,7 +500,7 @@
           },
           {
             "internalType": "uint256",
-            "name": "amountIn",
+            "name": "amountOut",
             "type": "uint256"
           },
           {
@@ -524,8 +524,8 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct IPoolQuoteStructs.QuoteRequestGivenIn",
-        "name": "request",
+        "internalType": "struct IPoolSwapStructs.SwapRequestGivenOut",
+        "name": "swapRequest",
         "type": "tuple"
       },
       {
@@ -539,7 +539,7 @@
         "type": "uint256"
       }
     ],
-    "name": "quoteOutGivenIn",
+    "name": "onSwapGivenOut",
     "outputs": [
       {
         "internalType": "uint256",

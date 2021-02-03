@@ -638,8 +638,8 @@ describe('WeightedPool', function () {
       });
     });
 
-    describe('quotes', () => {
-      let quoteData: {
+    describe('swapRequests', () => {
+      let swapRequestData: {
         tokenIn: string;
         tokenOut: string;
         amountIn?: BigNumberish;
@@ -650,10 +650,10 @@ describe('WeightedPool', function () {
         userData: string;
       };
 
-      beforeEach('set default quote data', async () => {
+      beforeEach('set default swap request data', async () => {
         ({ pool, poolId } = await deployPool());
 
-        quoteData = {
+        swapRequestData = {
           poolId,
           from: other.address,
           to: other.address,
@@ -664,13 +664,13 @@ describe('WeightedPool', function () {
       });
 
       context('given in', () => {
-        it('quotes amount out', async () => {
+        it('calculates amount out', async () => {
           // swap the same amount as the initial balance for token #0
           const AMOUNT_IN = bn(0.9e18);
           const AMOUNT_IN_WITH_FEES = AMOUNT_IN.mul(POOL_SWAP_FEE.add(bn(1e18))).div(bn(1e18));
 
-          const result = await pool.quoteOutGivenIn(
-            { ...quoteData, amountIn: AMOUNT_IN_WITH_FEES },
+          const result = await pool.onSwapGivenIn(
+            { ...swapRequestData, amountIn: AMOUNT_IN_WITH_FEES },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
@@ -687,31 +687,31 @@ describe('WeightedPool', function () {
         });
 
         it('reverts if token in is not in the pool', async () => {
-          const quote = pool.quoteOutGivenIn(
-            { ...quoteData, tokenIn: tokenList.BAT.address, amountIn: 100 },
+          const calculatedAmount = pool.onSwapGivenIn(
+            { ...swapRequestData, tokenIn: tokenList.BAT.address, amountIn: 100 },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(calculatedAmount).to.be.revertedWith('ERR_INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          const quote = pool.quoteOutGivenIn(
-            { ...quoteData, tokenOut: tokenList.BAT.address, amountIn: 100 },
+          const calculatedAmount = pool.onSwapGivenIn(
+            { ...swapRequestData, tokenOut: tokenList.BAT.address, amountIn: 100 },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(calculatedAmount).to.be.revertedWith('ERR_INVALID_TOKEN');
         });
       });
 
       context('given out', () => {
-        it('quotes amount in', async () => {
+        it('calculates amount in', async () => {
           const AMOUNT_OUT = bn(1.35e18);
 
-          const result = await pool.quoteInGivenOut(
+          const result = await pool.onSwapGivenOut(
             {
               poolId,
               from: other.address,
@@ -737,23 +737,23 @@ describe('WeightedPool', function () {
         });
 
         it('reverts if token in is not in the pool when given out', async () => {
-          const quote = pool.quoteInGivenOut(
-            { ...quoteData, tokenIn: tokenList.BAT.address, amountOut: 100 },
+          const calculatedAmount = pool.onSwapGivenOut(
+            { ...swapRequestData, tokenIn: tokenList.BAT.address, amountOut: 100 },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(calculatedAmount).to.be.revertedWith('ERR_INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          const quote = pool.quoteInGivenOut(
-            { ...quoteData, tokenOut: tokenList.BAT.address, amountOut: 100 },
+          const calculatedAmount = pool.onSwapGivenOut(
+            { ...swapRequestData, tokenOut: tokenList.BAT.address, amountOut: 100 },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(calculatedAmount).to.be.revertedWith('ERR_INVALID_TOKEN');
         });
       });
     });

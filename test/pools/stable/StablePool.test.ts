@@ -551,11 +551,11 @@ describe('StablePool', function () {
       });
     });
 
-    describe('quotes', () => {
+    describe('swapRequests', () => {
       let pool: Contract;
       let poolId: string;
 
-      let quoteData: {
+      let swapRequestData: {
         poolId: string;
         from: string;
         to: string;
@@ -564,11 +564,11 @@ describe('StablePool', function () {
         userData: string;
       };
 
-      beforeEach('set default quote data', async () => {
+      beforeEach('set default swapRequest data', async () => {
         pool = await deployPool({ tokens: poolTokens });
         poolId = await pool.getPoolId();
 
-        quoteData = {
+        swapRequestData = {
           poolId,
           from: other.address,
           to: other.address,
@@ -579,10 +579,10 @@ describe('StablePool', function () {
       });
 
       context('given in', () => {
-        it('quotes amount out', async () => {
+        it('calculates amount out', async () => {
           const amountIn = bn(1e18);
 
-          const result = await pool.quoteOutGivenIn({ ...quoteData, amountIn }, poolInitialBalances, 0, 1);
+          const result = await pool.onSwapGivenIn({ ...swapRequestData, amountIn }, poolInitialBalances, 0, 1);
 
           const expectedAmountOut = calcOutGivenIn(poolAmplification, poolInitialBalances, 0, 1, amountIn);
 
@@ -591,10 +591,10 @@ describe('StablePool', function () {
       });
 
       context('given out', () => {
-        it('quotes amount in', async () => {
+        it('calculates amount in', async () => {
           const amountOut = bn(1e18);
 
-          const result = await pool.quoteInGivenOut({ ...quoteData, amountOut }, poolInitialBalances, 0, 1);
+          const result = await pool.onSwapGivenOut({ ...swapRequestData, amountOut }, poolInitialBalances, 0, 1);
 
           const expectedAmountIn = calcInGivenOut(poolAmplification, poolInitialBalances, 0, 1, amountOut);
 
@@ -604,19 +604,19 @@ describe('StablePool', function () {
 
       it('reverts when querying out given in invalid indexes', async () => {
         await expect(
-          pool.quoteOutGivenIn({ ...quoteData, amountIn: bn(1e18) }, poolInitialBalances, 10, 1)
+          pool.onSwapGivenIn({ ...swapRequestData, amountIn: bn(1e18) }, poolInitialBalances, 10, 1)
         ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
         await expect(
-          pool.quoteOutGivenIn({ ...quoteData, amountIn: bn(1e18) }, poolInitialBalances, 0, 10)
+          pool.onSwapGivenIn({ ...swapRequestData, amountIn: bn(1e18) }, poolInitialBalances, 0, 10)
         ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
       });
 
       it('reverts when querying in given out invalid indexes', async () => {
         await expect(
-          pool.quoteInGivenOut({ ...quoteData, amountOut: bn(1e18) }, poolInitialBalances, 10, 1)
+          pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 10, 1)
         ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
         await expect(
-          pool.quoteInGivenOut({ ...quoteData, amountOut: bn(1e18) }, poolInitialBalances, 0, 10)
+          pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 0, 10)
         ).to.be.revertedWith('ERR_INDEX_OUT_OF_BOUNDS');
       });
     });
