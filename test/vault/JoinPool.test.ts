@@ -317,7 +317,6 @@ describe('Vault - join pool', () => {
           sender: lp.address,
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
-          maxAmountsIn: array(MAX_UINT256),
           protocolSwapFee: await vault.getProtocolSwapFee(),
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
