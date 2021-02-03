@@ -73,7 +73,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
       parameters: [tokenAddresses, weights, swapFee],
     });
 
-    joinUserData = encodeJoinWeightedPool({ kind: 'Init' });
+    joinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
   } else if (poolName == 'StablePool') {
     const amp = bn(50e18);
 
@@ -82,7 +82,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
       parameters: [tokenAddresses, amp, swapFee],
     });
 
-    joinUserData = encodeJoinStablePool({ kind: 'Init' });
+    joinUserData = encodeJoinStablePool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);
   }
