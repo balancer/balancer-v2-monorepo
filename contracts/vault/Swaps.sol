@@ -27,7 +27,6 @@ import "./PoolRegistry.sol";
 import "./interfaces/IPoolQuoteStructs.sol";
 import "./interfaces/IGeneralPoolQuote.sol";
 import "./interfaces/IMinimalSwapInfoPoolQuote.sol";
-import "./interfaces/ISwapValidator.sol";
 import "./balances/BalanceAllocation.sol";
 
 abstract contract Swaps is ReentrancyGuard, PoolRegistry {
@@ -61,40 +60,28 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     );
 
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
-    // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
+    // the actual swap is reentrancy-protected by _batchSwapAndValidate being non-reentrant.
 
     function batchSwapGivenIn(
-        ISwapValidator validator,
-        bytes calldata validatorData,
         SwapIn[] memory swaps,
         IERC20[] calldata tokens,
-        FundManagement calldata funds
+        FundManagement calldata funds,
+        int256[] memory limits,
+        uint256 deadline
     ) external override returns (int256[] memory) {
-        int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
-
-        if (address(validator) != address(0)) {
-            validator.validate(tokens, tokenDeltas, validatorData);
-        }
-
-        return tokenDeltas;
+        return _batchSwapAndValidate(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_IN);
     }
 
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
-    // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
+    // the actual swap is reentrancy-protected by _batchSwapAndValidate being non-reentrant.
     function batchSwapGivenOut(
-        ISwapValidator validator,
-        bytes calldata validatorData,
         SwapOut[] memory swaps,
         IERC20[] calldata tokens,
-        FundManagement calldata funds
+        FundManagement calldata funds,
+        int256[] memory limits,
+        uint256 deadline
     ) external override returns (int256[] memory) {
-        int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
-
-        if (address(validator) != address(0)) {
-            validator.validate(tokens, tokenDeltas, validatorData);
-        }
-
-        return tokenDeltas;
+        return _batchSwapAndValidate(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_OUT);
     }
 
     // We use inline assembly to cast from the external struct types to the internal one. This doesn't trigger any
@@ -154,15 +141,34 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     }
 
     /**
-     * @dev Implements both `batchSwapGivenIn` and `batchSwapGivenIn` (minus the validator call), depending on the
-     * `kind` value.
+     * @dev Implements both `batchSwapGivenIn` and `batchSwapGivenIn` depending on the `kind` value.
      */
+    function _batchSwapAndValidate(
+        SwapInternal[] memory swaps,
+        IERC20[] calldata tokens,
+        FundManagement calldata funds,
+        int256[] memory limits,
+        uint256 deadline,
+        SwapKind kind
+    ) private nonReentrant returns (int256[] memory) {
+        require(block.timestamp <= deadline, "ERR_SWAP_DEADLINE");
+        require(tokens.length == limits.length, "ERR_TOKENS_LIMITS_MISMATCH");
+
+        int256[] memory tokenDeltas = _batchSwap(swaps, tokens, funds, kind);
+
+        for (uint256 i = 0; i < limits.length; ++i) {
+            require(tokenDeltas[i] <= limits[i], "ERR_LIMIT");
+        }
+
+        return tokenDeltas;
+    }
+
     function _batchSwap(
         SwapInternal[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
-    ) private nonReentrant returns (int256[] memory) {
+    ) private returns (int256[] memory) {
         // Perform the swaps, updating the Pool balances and computing the net Vault token deltas
         int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
