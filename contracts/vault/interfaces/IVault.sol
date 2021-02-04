@@ -103,11 +103,6 @@ interface IVault {
      */
     function getNumberOfPools() external view returns (uint256);
 
-    /**
-     * @dev Returns a partial list of Pool IDs, starting at index `start`, up to index `end`.
-     */
-    function getPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory);
-
     // These functions revert if querying a Pool that doesn't exist
 
     /**
