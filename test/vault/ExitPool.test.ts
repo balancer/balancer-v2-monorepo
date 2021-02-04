@@ -270,10 +270,10 @@ describe('Vault - exit pool', () => {
       let expectedProtocolWithdrawFeesToCollect: BigNumber[];
 
       beforeEach('calculate intermediate values', async () => {
-        const procotolWithdrawFee = await vault.getProtocolWithdrawFee();
+        const { withdrawFee } = await vault.getProtocolFees();
         expectedProtocolWithdrawFeesToCollect = exitAmounts.map((amount) =>
           // Fixed point division rounding up, since the protocol withdraw fee is a fixed point number
-          divCeil(amount.mul(procotolWithdrawFee), FP_SCALING_FACTOR)
+          divCeil(amount.mul(withdrawFee), FP_SCALING_FACTOR)
         );
       });
 
@@ -335,7 +335,7 @@ describe('Vault - exit pool', () => {
           sender: lp.address,
           recipient: recipient.address,
           currentBalances: previousPoolBalances,
-          protocolSwapFee: await vault.getProtocolSwapFee(),
+          protocolSwapFee: (await vault.getProtocolFees()).swapFee,
           latestBlockNumberUsed: previousBlockNumber,
           userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
         });

@@ -315,7 +315,7 @@ describe('Vault - join pool', () => {
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
           latestBlockNumberUsed: previousBlockNumber,
-          protocolSwapFee: await vault.getProtocolSwapFee(),
+          protocolSwapFee: (await vault.getProtocolFees()).swapFee,
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
       });

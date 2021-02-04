@@ -41,23 +41,43 @@ contract Authorizer is IAuthorizer, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    function canChangeAuthorizer(address account) external view override returns (bool) {
+    function validateCanChangeAuthorizer(address account) external view override {
+        require(canChangeAuthorizer(account), "CANNOT_TRANSFER_AUTHORITY");
+    }
+
+    function validateCanSetProtocolWithdrawFee(address account) external view override {
+        require(canSetProtocolWithdrawFee(account), "CANNOT_SET_WITHDRAW_FEE");
+    }
+
+    function validateCanSetProtocolSwapFee(address account) external view override {
+        require(canSetProtocolSwapFee(account), "CANNOT_SET_SWAP_FEE");
+    }
+
+    function validateCanSetProtocolFlashLoanFee(address account) external view override {
+        require(canSetProtocolFlashLoanFee(account), "CANNOT_SET_FLASH_LOAN_FEE");
+    }
+
+    function validateCanWithdrawCollectedFees(address account, IERC20 token) external view override {
+        require(canWithdrawCollectedFees(account, token), "CANNOT_WITHDRAW_FEES");
+    }
+
+    function canChangeAuthorizer(address account) public view override returns (bool) {
         return hasRole(CHANGE_AUTHORIZER_ROLE, account);
     }
 
-    function canSetProtocolWithdrawFee(address account) external view override returns (bool) {
+    function canSetProtocolWithdrawFee(address account) public view override returns (bool) {
         return hasRole(SET_PROTOCOL_WITHDRAW_FEE_ROLE, account);
     }
 
-    function canSetProtocolSwapFee(address account) external view override returns (bool) {
+    function canSetProtocolSwapFee(address account) public view override returns (bool) {
         return hasRole(SET_PROTOCOL_SWAP_FEE_ROLE, account);
     }
 
-    function canSetProtocolFlashLoanFee(address account) external view override returns (bool) {
+    function canSetProtocolFlashLoanFee(address account) public view override returns (bool) {
         return hasRole(SET_PROTOCOL_FLASH_LOAN_FEE_ROLE, account);
     }
 
-    function canWithdrawCollectedFees(address account, IERC20 token) external view override returns (bool) {
+    function canWithdrawCollectedFees(address account, IERC20 token) public view override returns (bool) {
         return
             hasRole(WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE, account) ||
             hasRole(WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(token), account);

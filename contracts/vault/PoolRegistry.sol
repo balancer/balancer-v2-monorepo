@@ -384,7 +384,7 @@ abstract contract PoolRegistry is
             recipient,
             totalBalances,
             latestBlockNumberUsed,
-            getProtocolSwapFee(),
+            _protocolSwapFee,
             userData
         );
 
@@ -410,7 +410,7 @@ abstract contract PoolRegistry is
             recipient,
             totalBalances,
             latestBlockNumberUsed,
-            getProtocolSwapFee(),
+            _protocolSwapFee,
             userData
         );
 
