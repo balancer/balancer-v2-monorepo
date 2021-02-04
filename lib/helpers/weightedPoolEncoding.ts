@@ -4,6 +4,7 @@ import { BigNumberish } from './numbers';
 
 const JOIN_WEIGHTED_POOL_INIT_TAG = 0;
 const JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT_TAG = 1;
+const JOIN_WEIGHTED_POOL_TOKEN_IN_FOR_EXACT_BPT_OUT_TAG = 2;
 
 export type JoinWeightedPoolInit = {
   kind: 'Init';
@@ -16,18 +17,29 @@ export type JoinWeightedPoolExactTokensInForBPTOut = {
   minimumBPT: BigNumberish;
 };
 
+export type JoinWeightedPoolTokenInForExactBPTOut = {
+  kind: 'TokenInForExactBPTOut';
+  bptAmountOut: BigNumberish;
+  enterTokenIndex: number;
+};
+
 export function encodeJoinWeightedPool(
-  joinData: JoinWeightedPoolInit | JoinWeightedPoolExactTokensInForBPTOut
+  joinData: JoinWeightedPoolInit | JoinWeightedPoolExactTokensInForBPTOut | JoinWeightedPoolTokenInForExactBPTOut
 ): string {
   if (joinData.kind == 'Init') {
     return ethers.utils.defaultAbiCoder.encode(
       ['uint256', 'uint256[]'],
       [JOIN_WEIGHTED_POOL_INIT_TAG, joinData.amountsIn]
     );
-  } else {
+  } else if (joinData.kind == 'ExactTokensInForBPTOut') {
     return ethers.utils.defaultAbiCoder.encode(
       ['uint256', 'uint256[]', 'uint256'],
       [JOIN_WEIGHTED_POOL_EXACT_TOKENS_IN_FOR_BPT_OUT_TAG, joinData.amountsIn, joinData.minimumBPT]
+    );
+  } else {
+    return ethers.utils.defaultAbiCoder.encode(
+      ['uint256', 'uint256', 'uint256'],
+      [JOIN_WEIGHTED_POOL_TOKEN_IN_FOR_EXACT_BPT_OUT_TAG, joinData.bptAmountOut, joinData.enterTokenIndex]
     );
   }
 }

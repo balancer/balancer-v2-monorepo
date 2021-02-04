@@ -15,18 +15,21 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./IPoolQuoteStructs.sol";
+import "./IPoolBase.sol";
+import "./IPoolSwapStructs.sol";
 
-interface IMinimalSwapInfoPoolQuote {
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
+interface IGeneralPool is IPoolBase {
+    function onSwapGivenIn(
+        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
+        uint256[] calldata balances,
+        uint256 indexIn,
+        uint256 indexOut
     ) external returns (uint256 amountOut);
 
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
+    function onSwapGivenOut(
+        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
+        uint256[] calldata balances,
+        uint256 indexIn,
+        uint256 indexOut
     ) external returns (uint256 amountIn);
 }

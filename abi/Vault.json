@@ -1028,7 +1028,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct Swaps.SwapInternal[]",
+        "internalType": "struct Swaps.InternalSwap[]",
         "name": "swaps",
         "type": "tuple[]"
       },

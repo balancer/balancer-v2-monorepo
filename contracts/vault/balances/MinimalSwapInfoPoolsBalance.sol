@@ -25,7 +25,7 @@ contract MinimalSwapInfoPoolsBalance {
 
     // Data for Pools with Minimal Swap Info Specialization setting
     //
-    // These Pools use the IMinimalSwapInfoPoolQuote interface, and so the Vault must read the balance of the two tokens
+    // These Pools use the IMinimalSwapInfoPool interface, and so the Vault must read the balance of the two tokens
     // in the swap. The best solution is to use a mapping from token to balance, which lets us read or write any token's
     // balance in a single storage access.
     // We also keep a set with all tokens in the Pool, and update this set when cash is added or removed from the pool.
@@ -74,7 +74,7 @@ contract MinimalSwapInfoPoolsBalance {
         }
     }
 
-    function _updateMinimalSwapInfoPoolBalances(
+    function _setMinimalSwapInfoPoolBalances(
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances

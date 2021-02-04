@@ -25,12 +25,12 @@ contract GeneralPoolsBalance {
 
     // Data for Pools with General Pool Specialization setting
     //
-    // These Pools use the IGeneralPoolQuote interface, which means the Vault must query the balance for *all* of their
+    // These Pools use the IGeneralPool interface, which means the Vault must query the balance for *all* of their
     // tokens in every swap. If we kept a mapping of token to balance plus a set (array) of tokens, it'd be very gas
     // intensive to read all token addresses just to then do a lookup on the balance mapping.
     // Instead, we use our customized EnumerableMap, which lets us read the N balances in N+1 storage accesses (one for
     // the number of tokens in the Pool), as well as access the index of any token in a single read (required for the
-    // IGeneralPoolQuote call) and update an entry's value given its index.
+    // IGeneralPool call) and update an entry's value given its index.
 
     mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _generalPoolsBalances;
 
@@ -73,7 +73,7 @@ contract GeneralPoolsBalance {
         }
     }
 
-    function _updateGeneralPoolBalances(bytes32 poolId, bytes32[] memory balances) internal {
+    function _setGeneralPoolBalances(bytes32 poolId, bytes32[] memory balances) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         for (uint256 i = 0; i < balances.length; ++i) {
             // Note we assume all balances are properly ordered.
