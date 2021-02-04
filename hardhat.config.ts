@@ -1,13 +1,12 @@
 import 'dotenv/config';
+import 'solidity-coverage';
 import '@tenderly/hardhat-tenderly';
 import 'hardhat-deploy';
 import 'hardhat-abi-exporter';
+import 'hardhat-local-networks-config-plugin';
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
-import 'solidity-coverage';
-
-import { task } from 'hardhat/config';
-import { HardhatUserConfig } from 'hardhat/config';
+import { task, HardhatUserConfig } from 'hardhat/config';
 
 task('seed', 'Add seed data').setAction(async (args, hre) => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
