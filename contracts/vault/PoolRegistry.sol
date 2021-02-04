@@ -271,7 +271,7 @@ abstract contract PoolRegistry is
         // Grant tokens to pools - how this is done depends on the Pool specialization setting
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _updateTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
+            _setTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
@@ -322,7 +322,7 @@ abstract contract PoolRegistry is
         // Grant tokens to pools - how this is done depends on the Pool specialization setting
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _updateTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
+            _setTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
