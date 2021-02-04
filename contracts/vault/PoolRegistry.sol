@@ -22,7 +22,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../lib/math/Math.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
-import "./interfaces/IPool.sol";
+import "./interfaces/IPoolBase.sol";
 import "./InternalBalance.sol";
 import "./balances/BalanceAllocation.sol";
 import "./balances/GeneralPoolsBalance.sol";
@@ -258,11 +258,11 @@ abstract contract PoolRegistry is
         // Grant tokens to pools - how this is done depends on the Pool specialization setting
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _updateTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
+            _setTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
+            _setMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
-            _updateGeneralPoolBalances(poolId, balances);
+            _setGeneralPoolBalances(poolId, balances);
         }
         emit PoolJoined(poolId, msg.sender, amountsIn, dueProtocolFeeAmounts);
     }
@@ -308,11 +308,11 @@ abstract contract PoolRegistry is
         // Grant tokens to pools - how this is done depends on the Pool specialization setting
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _updateTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
+            _setTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
+            _setMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
-            _updateGeneralPoolBalances(poolId, balances);
+            _setGeneralPoolBalances(poolId, balances);
         }
 
         emit PoolExited(poolId, msg.sender, amountsOut, dueProtocolFeeAmounts);
@@ -382,7 +382,7 @@ abstract contract PoolRegistry is
         (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
 
         address pool = _getPoolAddress(poolId);
-        (amountsIn, dueProtocolFeeAmounts) = IPool(pool).onJoinPool(
+        (amountsIn, dueProtocolFeeAmounts) = IPoolBase(pool).onJoinPool(
             poolId,
             msg.sender,
             recipient,
@@ -408,7 +408,7 @@ abstract contract PoolRegistry is
         (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
 
         address pool = _getPoolAddress(poolId);
-        (amountsOut, dueProtocolFeeAmounts) = IPool(pool).onExitPool(
+        (amountsOut, dueProtocolFeeAmounts) = IPoolBase(pool).onExitPool(
             poolId,
             msg.sender,
             recipient,

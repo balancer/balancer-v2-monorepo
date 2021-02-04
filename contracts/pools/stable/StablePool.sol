@@ -25,10 +25,9 @@ import "../../lib/helpers/ReentrancyGuard.sol";
 import "./StableMath.sol";
 import "../BalancerPoolToken.sol";
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPool.sol";
-import "../../vault/interfaces/IGeneralPoolQuote.sol";
+import "../../vault/interfaces/IGeneralPool.sol";
 
-contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, ReentrancyGuard {
+contract StablePool is IGeneralPool, StableMath, BalancerPoolToken, ReentrancyGuard {
     using Math for uint256;
     using FixedPoint for uint256;
 
@@ -263,30 +262,30 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         }
     }
 
-    //Quote Swaps
+    //Swap callbacks
 
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+    function onSwapGivenIn(
+        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint256) {
         _validateIndexes(indexIn, indexOut, balances.length);
 
-        uint256 adjustedIn = _subtractSwapFee(request.amountIn);
+        uint256 adjustedIn = _subtractSwapFee(swapRequest.amountIn);
         uint256 maximumAmountOut = _outGivenIn(_amp, balances, indexIn, indexOut, adjustedIn);
         return maximumAmountOut;
     }
 
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+    function onSwapGivenOut(
+        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) external view override returns (uint256) {
         _validateIndexes(indexIn, indexOut, balances.length);
 
-        uint256 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, request.amountOut);
+        uint256 minimumAmountIn = _inGivenOut(_amp, balances, indexIn, indexOut, swapRequest.amountOut);
         return _addSwapFee(minimumAmountIn);
     }
 

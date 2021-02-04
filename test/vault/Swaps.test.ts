@@ -116,7 +116,7 @@ describe('Vault - swaps', () => {
 
     await pool.connect(lp).registerTokens(tokenAddresses, assetManagers);
 
-    // Join the pool - the actual amount is not relevant since the MockPool relies on the multiplier to quote prices
+    // Join the pool - the actual amount is not relevant since the MockPool relies on the multiplier to calculate prices
     const tokenAmounts = tokenAddresses.map(() => bn(100e18));
 
     const poolId = pool.getPoolId();
