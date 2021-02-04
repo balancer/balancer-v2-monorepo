@@ -49,7 +49,6 @@ contract MockVault {
         bytes32 poolId,
         address recipient,
         uint256[] memory currentBalances,
-        uint256[] memory maxAmountsIn,
         uint256 latestBlockNumberUsed,
         uint256 protocolFeePercentage,
         bytes memory userData
@@ -59,7 +58,6 @@ contract MockVault {
             msg.sender,
             recipient,
             currentBalances,
-            maxAmountsIn,
             latestBlockNumberUsed,
             protocolFeePercentage,
             userData
@@ -72,7 +70,6 @@ contract MockVault {
         bytes32 poolId,
         address recipient,
         uint256[] memory currentBalances,
-        uint256[] memory minAmountsOut,
         uint256 latestBlockNumberUsed,
         uint256 protocolFeePercentage,
         bytes memory userData
@@ -82,7 +79,6 @@ contract MockVault {
             msg.sender,
             recipient,
             currentBalances,
-            minAmountsOut,
             latestBlockNumberUsed,
             protocolFeePercentage,
             userData

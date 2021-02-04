@@ -234,7 +234,6 @@ abstract contract PoolRegistry is
             tokens,
             balances,
             recipient,
-            maxAmountsIn,
             userData
         );
 
@@ -286,7 +285,6 @@ abstract contract PoolRegistry is
             tokens,
             balances,
             recipient,
-            minAmountsOut,
             userData
         );
 
@@ -379,7 +377,6 @@ abstract contract PoolRegistry is
         IERC20[] memory tokens,
         bytes32[] memory balances,
         address recipient,
-        uint256[] memory maxAmountsIn,
         bytes memory userData
     ) private returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
         (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
@@ -390,7 +387,6 @@ abstract contract PoolRegistry is
             msg.sender,
             recipient,
             totalBalances,
-            maxAmountsIn,
             latestBlockNumberUsed,
             getProtocolSwapFee(),
             userData
@@ -407,7 +403,6 @@ abstract contract PoolRegistry is
         IERC20[] memory tokens,
         bytes32[] memory balances,
         address recipient,
-        uint256[] memory minAmountsOut,
         bytes memory userData
     ) private returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
         (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
@@ -418,7 +413,6 @@ abstract contract PoolRegistry is
             msg.sender,
             recipient,
             totalBalances,
-            minAmountsOut,
             latestBlockNumberUsed,
             getProtocolSwapFee(),
             userData
