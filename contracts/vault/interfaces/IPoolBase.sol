@@ -17,7 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "./IVault.sol";
 
-interface IPool {
+// This interface is incomplete as it is missing the swap hooks: Pools must instead inherit from either IGeneralPool or
+// IMinimalSwapInfoPool.
+interface IPoolBase {
     function getVault() external view returns (IVault);
 
     function getPoolId() external view returns (bytes32);
@@ -42,7 +44,6 @@ interface IPool {
         address sender,
         address recipient,
         uint256[] calldata currentBalances,
-        uint256[] calldata maxAmountsIn,
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes calldata userData
@@ -68,7 +69,6 @@ interface IPool {
         address sender,
         address recipient,
         uint256[] calldata currentBalances,
-        uint256[] calldata minAmountsOut,
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes calldata userData

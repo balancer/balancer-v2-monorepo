@@ -25,12 +25,12 @@ contract GeneralPoolsBalance {
 
     // Data for Pools with General Pool Specialization setting
     //
-    // These Pools use the IGeneralPoolQuote interface, which means the Vault must query the balance for *all* of their
+    // These Pools use the IGeneralPool interface, which means the Vault must query the balance for *all* of their
     // tokens in every swap. If we kept a mapping of token to balance plus a set (array) of tokens, it'd be very gas
     // intensive to read all token addresses just to then do a lookup on the balance mapping.
     // Instead, we use our customized EnumerableMap, which lets us read the N balances in N+1 storage accesses (one for
     // the number of tokens in the Pool), as well as access the index of any token in a single read (required for the
-    // IGeneralPoolQuote call) and update an entry's value given its index.
+    // IGeneralPool call) and update an entry's value given its index.
 
     mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _generalPoolsBalances;
 
@@ -47,9 +47,9 @@ contract GeneralPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "ERR_TOKEN_CANT_BE_ZERO");
+            require(token != IERC20(0), "ZERO_ADDRESS_TOKEN");
             bool added = poolBalances.set(token, 0);
-            require(added, "ERR_TOKEN_ALREADY_REGISTERED");
+            require(added, "TOKEN_ALREADY_REGISTERED");
             // No need to delete the balance entries, since they already are zero
         }
     }
@@ -68,12 +68,12 @@ contract GeneralPoolsBalance {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
-            require(currentBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+            require(currentBalance.isZero(), "NONZERO_TOKEN_BALANCE");
             poolBalances.remove(token);
         }
     }
 
-    function _updateGeneralPoolBalances(bytes32 poolId, bytes32[] memory balances) internal {
+    function _setGeneralPoolBalances(bytes32 poolId, bytes32[] memory balances) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         for (uint256 i = 0; i < balances.length; ++i) {
             // Note we assume all balances are properly ordered.
@@ -149,7 +149,7 @@ contract GeneralPoolsBalance {
         view
         returns (bytes32)
     {
-        return poolBalances.get(token, "ERR_TOKEN_NOT_REGISTERED");
+        return poolBalances.get(token, "TOKEN_NOT_REGISTERED");
     }
 
     function _isGeneralPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {

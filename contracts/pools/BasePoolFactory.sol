@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IPool.sol";
+import "../vault/interfaces/IPoolBase.sol";
 
 abstract contract BasePoolFactory {
     using Address for address;
@@ -46,7 +46,7 @@ abstract contract BasePoolFactory {
     }
 
     function getCreatedPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory) {
-        require((end >= start) && (end - start) <= _createdPools.length(), "ERR_BAD_INDICES");
+        require((end >= start) && (end - start) <= _createdPools.length(), "OUT_OF_BOUNDS");
 
         bytes32[] memory poolIds = new bytes32[](end - start);
         for (uint256 i = 0; i < poolIds.length; ++i) {
@@ -72,10 +72,10 @@ abstract contract BasePoolFactory {
      */
     function _create(bytes memory creationCode) internal returns (address) {
         address pool = Create2.deploy(0, bytes32(_createdPools.length()), creationCode);
-        bytes32 poolId = IPool(pool).getPoolId();
+        bytes32 poolId = IPoolBase(pool).getPoolId();
 
         bool added = _createdPools.add(poolId);
-        require(added, "Repeated Pool ID"); // This should never happen, as the Vault assigns unique IDs
+        require(added, "INVALID_POOL_ID"); // This should never happen, as the Vault assigns unique IDs
 
         emit PoolCreated(pool);
 

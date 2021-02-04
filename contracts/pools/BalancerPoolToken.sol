@@ -108,7 +108,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         address recipient,
         uint256 amount
     ) external override returns (bool) {
-        require(msg.sender == sender || amount <= _allowance[sender][msg.sender], "ERR_BPT_BAD_CALLER");
+        require(msg.sender == sender || amount <= _allowance[sender][msg.sender], "BPT_BAD_CALLER");
 
         _move(sender, recipient, amount);
 
@@ -116,7 +116,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         uint256 oldAllowance = _allowance[sender][msg.sender];
 
         if (msg.sender != sender && oldAllowance != uint256(-1)) {
-            require(oldAllowance >= amount, "ERR_INSUFFICIENT_ALLOWANCE");
+            require(oldAllowance >= amount, "INSUFFICIENT_ALLOWANCE");
             _setAllowance(sender, msg.sender, oldAllowance - amount);
         }
 
@@ -193,7 +193,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         _move(sender, address(this), amount);
 
         uint256 currentBalance = _balance[address(this)];
-        require(currentBalance >= amount, "ERR_INSUFFICIENT_BALANCE");
+        require(currentBalance >= amount, "NSUFFICIENT_BALANCE");
 
         _balance[address(this)] = currentBalance - amount;
         _totalSupply = _totalSupply.sub(amount);
@@ -207,7 +207,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         uint256 amount
     ) internal {
         uint256 currentBalance = _balance[sender];
-        require(currentBalance >= amount, "ERR_INSUFFICIENT_BAL");
+        require(currentBalance >= amount, "NSUFFICIENT_BALANCE");
 
         _balance[sender] = currentBalance - amount;
         _balance[recipient] = _balance[recipient].add(amount);

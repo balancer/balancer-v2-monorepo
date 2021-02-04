@@ -1,78 +1,38 @@
 import { BigNumber, Contract, Event } from 'ethers';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { deepEqual } from 'assert';
 
 import * as allPools from './allPools.json';
-import { bn, BigNumberish } from '../../helpers/numbers';
+import { bn, fp } from '../../helpers/numbers';
 import { TokenList, deployTokens } from '../../helpers/tokens';
-import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
-import { encodeValidatorData, FundManagement, SwapIn } from '../../helpers/trading';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
+import { FundManagement, SwapIn } from '../../helpers/trading';
+import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
+import { formatPools, getTokenInfoForDeploy, Pool } from './processJSON';
 
 let ethers: any;
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
-let validator: Contract;
+//let validator: Contract;
 let assetManager: SignerWithAddress; // This would normally be a contract
+const NUM_POOLS = 5;
 
 const INVESTMENT_AMOUNT = 123;
-
-interface Pool {
-  id: string;
-  finalized: boolean;
-  publicSwap: boolean;
-  liquidity: number;
-  swapFee: BigNumber;
-  totalWeight: BigNumber;
-  tokens: Token[];
-  tokensList: string[];
-}
-
-interface Token {
-  address: string;
-  symbol: string;
-  name: string;
-  balance: BigNumber;
-  decimals: number;
-  denormWeight: BigNumber;
-}
-
-interface TokenJSON {
-  address: string;
-  balance: string;
-  decimals: number;
-  denormWeight: string;
-  name: string;
-  symbol: string;
-}
-
-interface PoolJSON {
-  id: string;
-  finalized: boolean;
-  publicSwap: boolean;
-  liquidity: string;
-  swapFee: string;
-  totalWeight: string;
-  tokens: TokenJSON[];
-  tokensList: string[];
-}
-
-interface allPoolsJSON {
-  pools: PoolJSON[];
-}
-
 module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment) {
   ethers = hre.ethers;
   [deployer, controller, trader, assetManager] = await ethers.getSigners();
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
+  const authorizer = await ethers.getContract('Authorizer');
 
   // Format pools to BigNumber/scaled format
   const formattedPools: Pool[] = formatPools(allPools);
 
   // Currently filters pools by top 5 liquidity
-  const filteredPools: Pool[] = filterPools(formattedPools, 5);
+  const filteredPools: Pool[] = filterPools(formattedPools, NUM_POOLS);
 
   // Get token symbols and decimals to deploy test tokens
   const [symbols, decimals, balances] = getTokenInfoForDeploy(filteredPools);
@@ -86,7 +46,7 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     const token = tokens[symbol];
     const index = symbols.indexOf(symbol);
     const tradingBalance = balances[index];
-    console.log(`${symbol}: ${token.address}`);
+    console.log(`${symbol}: ${token.address} ${tradingBalance}`);
 
     await token.connect(controller).approve(vault.address, MAX_UINT256);
     await token.connect(deployer).mint(controller.address, tradingBalance);
@@ -103,7 +63,6 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
   const pools: Contract[] = (await deployPools(filteredPools, tokens)).filter((x): x is Contract => x !== undefined);
 
   console.log(`\nSwapping a few tokens...`);
-  validator = await ethers.getContract('OneToOneSwapValidator');
   await Promise.all(pools.map((p) => swapInPool(p)));
 
   // TODO add pool type which supports asset withdrawals
@@ -112,6 +71,11 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     console.log('Making a few investments...');
     await Promise.all(pools.map(investPool));
   }
+
+  console.log('\nSetting the protocol swap fee...');
+  await authorizer.connect(deployer).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), deployer.address);
+  await vault.connect(deployer).setProtocolSwapFee(fp(0.1));
+
   return;
 };
 
@@ -121,13 +85,14 @@ async function swapInPool(pool: Contract) {
   const vault = await ethers.getContract('Vault');
   const { tokens: tokenAddresses } = await vault.getPoolTokens(poolId);
 
-  const [overallTokenIn, overallTokenOut] = tokenAddresses;
+  const amountInDecimals = 2;
+  const amountIn = bn(100).mul(bn(10).pow(amountInDecimals));
 
   const swap: SwapIn = {
     poolId,
     tokenInIndex: 0,
     tokenOutIndex: 1,
-    amountIn: 100,
+    amountIn,
     userData: '0x',
   };
   const swaps: SwapIn[] = [swap];
@@ -138,21 +103,10 @@ async function swapInPool(pool: Contract) {
     toInternalBalance: false,
   };
 
-  const receipt = await (
-    await vault.connect(trader).batchSwapGivenIn(
-      validator.address,
-      encodeValidatorData({
-        overallTokenIn,
-        overallTokenOut,
-        minimumAmountOut: 0,
-        maximumAmountIn: MAX_UINT112,
-        deadline: MAX_UINT256,
-      }),
-      swaps,
-      tokenAddresses,
-      funds
-    )
-  ).wait();
+  const validatorData = '0x';
+  const params = [ZERO_ADDRESS, validatorData, swaps, tokenAddresses, funds];
+
+  const receipt = await (await vault.connect(trader).batchSwapGivenIn(...params)).wait();
   const event = receipt.events?.find((e: Event) => e.event == 'Swap');
   if (event == undefined) {
     throw new Error('Could not find Swap event');
@@ -172,36 +126,37 @@ async function investPool(pool: Contract) {
   return vault.connect(assetManager).withdrawFromPoolBalance(poolId, token, INVESTMENT_AMOUNT);
 }
 
+// in order to keep the tokens in line with the initial balances, weights, etc
+// we presort the addresses before deploying the pool
+const compareAddresses = (addressA: string, addressB: string) =>
+  addressA.toLowerCase() > addressB.toLowerCase() ? 1 : -1;
+
 async function deployPools(filteredPools: Pool[], tokens: TokenList): Promise<(Contract | undefined)[]> {
-  const promises = [];
-  for (let i = 0; i < filteredPools.length; i++) {
+  const promises = filteredPools.map((p) => {
     const tokensList: Array<string> = [];
     const weights: Array<BigNumber> = [];
     const balances: Array<BigNumber> = [];
-    const swapFee: BigNumber = filteredPools[i].swapFee;
+    const swapFee: BigNumber = p.swapFee;
 
-    for (let j = 0; j < filteredPools[i].tokens.length; j++) {
-      tokensList.push(tokens[filteredPools[i].tokens[j].symbol].address);
-      weights.push(filteredPools[i].tokens[j].denormWeight);
-      balances.push(filteredPools[i].tokens[j].balance);
-    }
+    p.tokens
+      .sort((a, b) => compareAddresses(tokens[a.symbol].address, tokens[b.symbol].address))
+      .forEach((t) => {
+        // this is the address of the deployed tost token, not the original token (in the TokenJSON)
+        tokensList.push(tokens[t.symbol].address);
+        weights.push(t.denormWeight);
+        balances.push(t.balance);
+      });
 
     // Deploy pool and provide liquidity
-    promises.push(deployStrategyPool(tokensList, weights, balances, swapFee));
-  }
+    return deployStrategyPool(tokensList, weights, balances, swapFee);
+  });
   return await Promise.all(promises);
 }
 
-function encodeJoin(joinAmounts: BigNumberish[], dueProtocolFeeAmounts: BigNumberish[]): string {
-  return ethers.utils.defaultAbiCoder.encode(['uint256[]', 'uint256[]'], [joinAmounts, dueProtocolFeeAmounts]);
-}
-
-// Deploy strategy then newPool with that strategy
-// Finally Add liquidity to pool
 async function deployStrategyPool(
   tokens: Array<string>,
   weights: Array<BigNumber>,
-  balances: Array<BigNumber>,
+  initialBalances: Array<BigNumber>,
   swapFee: BigNumber
 ): Promise<Contract | undefined> {
   const vault = await ethers.getContract('Vault');
@@ -215,7 +170,7 @@ async function deployStrategyPool(
 
   console.log(`\nNew Pool With ${tokens.length} tokens`);
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
-  tokens.forEach((token, i) => console.log(`${token} - ${balances[i].toString()}`));
+  tokens.forEach((token, i) => console.log(`${token} - ${initialBalances[i].toString()}`));
 
   const name = tokens.length + ' token pool';
   const sym = 'TESTPOOL';
@@ -229,91 +184,47 @@ async function deployStrategyPool(
   }
   const poolAddress = event.args.pool;
   const pool = await wpFactory.attach(poolAddress);
-  const poolId = await pool.getPoolId();
-
-  const maxAmountsIn = Array(tokens.length).fill(MAX_UINT256);
-  const protocolFeeDue = Array(tokens.length).fill(bn(0));
-
-  const initialJoinUserData = encodeJoin(balances, protocolFeeDue);
-
-  await vault.connect(controller).joinPool(poolId, ZERO_ADDRESS, tokens, maxAmountsIn, false, initialJoinUserData);
 
   console.log(`New Pool Address: ${poolAddress}`);
+  await initializeStrategyPool(pool, tokens, initialBalances);
   return pool;
 }
-// Convert all pools to BigNumber/scaled format
-function formatPools(allPools: allPoolsJSON): Pool[] {
-  const formattedPools: Pool[] = [];
-  for (let i = 0; i < allPools.pools.length; i++) {
-    if (allPools.pools[i].tokens.length < 2) {
-      continue;
-    }
 
-    const tokens: Token[] = [];
-    const pool: Pool = {
-      id: allPools.pools[i].id,
-      finalized: allPools.pools[i].finalized,
-      publicSwap: allPools.pools[i].publicSwap,
-      liquidity: Number(allPools.pools[i].liquidity),
-      swapFee: ethers.utils.parseUnits(allPools.pools[i].swapFee, 18),
-      totalWeight: ethers.utils.parseUnits(allPools.pools[i].totalWeight, 18),
-      tokens: tokens,
-      tokensList: allPools.pools[i].tokensList,
-    };
+async function initializeStrategyPool(
+  pool: Contract,
+  tokens: Array<string>,
+  initialBalances: Array<BigNumber>
+  //swapFee: BigNumber
+): Promise<any> {
+  const vault = await ethers.getContract('Vault');
 
-    // For each token in pool convert weights/decimals and scale balances
-    for (let j = 0; j < allPools.pools[i].tokens.length; j++) {
-      const token: Token = {
-        balance: ethers.utils.parseUnits(
-          allPools.pools[i].tokens[j].balance,
-          Number(allPools.pools[i].tokens[j].decimals)
-        ),
-        decimals: Number(allPools.pools[i].tokens[j].decimals),
-        denormWeight: ethers.utils.parseUnits(allPools.pools[i].tokens[j].denormWeight, 18),
-        symbol: allPools.pools[i].tokens[j].symbol,
-        name: allPools.pools[i].tokens[j].name,
-        address: allPools.pools[i].tokens[j].address,
-      };
+  const poolId = await pool.getPoolId();
 
-      pool.tokens.push(token);
-    }
+  // Sanity check: need to make sure tokens are in sorted order in some cases
+  // or joinPool will fail
+  deepEqual(tokens, (await vault.getPoolTokens(poolId)).tokens);
 
-    formattedPools.push(pool);
+  const recipient = controller.address;
+  const maxAmountsIn = initialBalances;
+  const fromInternalBalance = false;
+  const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init' });
+
+  const joinTx = await vault
+    .connect(controller)
+    .joinPool(poolId, recipient, tokens, maxAmountsIn, fromInternalBalance, initialJoinUserData);
+  const receipt = await joinTx.wait();
+
+  const event = receipt.events?.find((e: Event) => e.event == 'PoolJoined');
+  if (event == undefined) {
+    throw new Error('Could not find PoolJoined event');
   }
-
-  return formattedPools;
+  return event;
 }
 
 function filterPools(allPools: Pool[], count: number): Pool[] {
   // Order by liquidity
   allPools.sort((a, b) => b.liquidity - a.liquidity);
 
-  return allPools.slice(0, count);
-}
-
-// Find array of token symbols, decimals and total balances for pools of interest
-function getTokenInfoForDeploy(pools: Pool[]): [Array<string>, Array<number>, Array<BigNumber>] {
-  const symbols: Array<string> = [];
-  const decimals: Array<number> = [];
-  const balanceArray: Array<BigNumber> = [];
-  const balances: any = {};
-  const buckets: any = {};
-
-  // for each pool check tokens, if not exists add to list
-  for (let i = 0; i < pools.length; i++) {
-    for (let j = 0; j < pools[i].tokens.length; j++) {
-      if (!buckets[pools[i].tokens[j].address]) buckets[pools[i].tokens[j].address] = pools[i].tokens[j];
-
-      if (!balances[pools[i].tokens[j].address]) balances[pools[i].tokens[j].address] = pools[i].tokens[j].balance;
-      else balances[pools[i].tokens[j].address] = balances[pools[i].tokens[j].address].add(pools[i].tokens[j].balance);
-    }
-  }
-
-  for (const key in buckets) {
-    symbols.push(buckets[key].symbol);
-    decimals.push(buckets[key].decimals);
-    balanceArray.push(balances[key]);
-  }
-
-  return [symbols, decimals, balanceArray];
+  const start = 0;
+  return allPools.slice(start, start + count);
 }

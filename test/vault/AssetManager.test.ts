@@ -81,14 +81,14 @@ describe('Vault - asset manager', function () {
       });
 
       it('reverts when querying the asset manager of an unknown pool', async () => {
-        const error = 'Nonexistent pool';
+        const error = 'INVALID_POOL_ID';
         const token = tokens.DAI.address;
         await expect(vault.getPoolAssetManager(ZERO_BYTES32, token)).to.be.revertedWith(error);
       });
 
       it('reverts when querying the asset manager of an unknown token', async () => {
         for (const token of [ZERO_ADDRESS, otherToken.address]) {
-          const error = 'ERR_TOKEN_NOT_REGISTERED';
+          const error = 'TOKEN_NOT_REGISTERED';
           await expect(vault.getPoolAssetManager(poolId, token)).to.be.revertedWith(error);
         }
       });
@@ -136,7 +136,7 @@ describe('Vault - asset manager', function () {
 
           it('reverts', async () => {
             const withdraw = vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount);
-            await expect(withdraw).to.be.revertedWith('ERR_SUB_OVERFLOW');
+            await expect(withdraw).to.be.revertedWith('SUB_OVERFLOW');
           });
         });
       });
@@ -197,7 +197,7 @@ describe('Vault - asset manager', function () {
 
           it('reverts', async () => {
             const deposit = vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount);
-            await expect(deposit).to.be.revertedWith('ERR_SUB_OVERFLOW');
+            await expect(deposit).to.be.revertedWith('SUB_OVERFLOW');
           });
         });
 
@@ -328,7 +328,7 @@ describe('Vault - asset manager', function () {
 
         for (const symbol in tokens) {
           const token = tokens[symbol].address;
-          const error = 'ERR_TOKEN_NOT_REGISTERED';
+          const error = 'TOKEN_NOT_REGISTERED';
           await expect(vault.getPoolAssetManager(poolId, token)).to.be.revertedWith(error);
         }
 

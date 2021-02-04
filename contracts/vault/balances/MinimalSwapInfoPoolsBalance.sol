@@ -25,7 +25,7 @@ contract MinimalSwapInfoPoolsBalance {
 
     // Data for Pools with Minimal Swap Info Specialization setting
     //
-    // These Pools use the IMinimalSwapInfoPoolQuote interface, and so the Vault must read the balance of the two tokens
+    // These Pools use the IMinimalSwapInfoPool interface, and so the Vault must read the balance of the two tokens
     // in the swap. The best solution is to use a mapping from token to balance, which lets us read or write any token's
     // balance in a single storage access.
     // We also keep a set with all tokens in the Pool, and update this set when cash is added or removed from the pool.
@@ -48,9 +48,9 @@ contract MinimalSwapInfoPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "ERR_TOKEN_CANT_BE_ZERO");
+            require(token != IERC20(0), "ZERO_ADDRESS_TOKEN");
             bool added = poolTokens.add(address(token));
-            require(added, "ERR_TOKEN_ALREADY_REGISTERED");
+            require(added, "TOKEN_ALREADY_REGISTERED");
         }
     }
 
@@ -67,14 +67,14 @@ contract MinimalSwapInfoPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(_minimalSwapInfoPoolsBalances[poolId][token].isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+            require(_minimalSwapInfoPoolsBalances[poolId][token].isZero(), "NONZERO_TOKEN_BALANCE");
             bool removed = poolTokens.remove(address(token));
-            require(removed, "ERR_TOKEN_NOT_REGISTERED");
+            require(removed, "TOKEN_NOT_REGISTERED");
             // No need to delete the balance entries, since they already are zero
         }
     }
 
-    function _updateMinimalSwapInfoPoolBalances(
+    function _setMinimalSwapInfoPoolBalances(
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances
@@ -148,7 +148,7 @@ contract MinimalSwapInfoPoolsBalance {
     function _getMinimalSwapInfoPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         bytes32 balance = _minimalSwapInfoPoolsBalances[poolId][token];
         bool existsToken = balance.isNotZero() || _minimalSwapInfoPoolsTokens[poolId].contains(address(token));
-        require(existsToken, "ERR_TOKEN_NOT_REGISTERED");
+        require(existsToken, "TOKEN_NOT_REGISTERED");
         return balance;
     }
 

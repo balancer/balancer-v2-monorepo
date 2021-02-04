@@ -48,7 +48,7 @@ contract WETH9 is AccessControl {
     }
 
     function withdraw(uint256 wad) public {
-        require(balanceOf[msg.sender] >= wad, "ERR_BALANCE");
+        require(balanceOf[msg.sender] >= wad, "INSUFFICIENT_BALANCE");
         balanceOf[msg.sender] -= wad;
         msg.sender.transfer(wad);
         emit Withdrawal(msg.sender, wad);
@@ -56,7 +56,7 @@ contract WETH9 is AccessControl {
 
     // For testing purposes - this creates WETH that cannot be redeemed for ETH via 'withdraw'
     function mint(address destinatary, uint256 amount) external {
-        require(hasRole(MINTER_ROLE, msg.sender), "ERR_MINTER_ROLE");
+        require(hasRole(MINTER_ROLE, msg.sender), "NOT_MINTER");
         balanceOf[destinatary] += amount;
         emit Deposit(destinatary, amount);
     }
@@ -80,10 +80,10 @@ contract WETH9 is AccessControl {
         address dst,
         uint256 wad
     ) public returns (bool) {
-        require(balanceOf[src] >= wad, "ERR_BALANCE");
+        require(balanceOf[src] >= wad, "INSUFFICIENT_BALANCE");
 
         if (src != msg.sender && allowance[src][msg.sender] != uint256(-1)) {
-            require(allowance[src][msg.sender] >= wad, "ERR_ALLOWANCE");
+            require(allowance[src][msg.sender] >= wad, "INSUFFICIENT_ALLOWANCE");
             allowance[src][msg.sender] -= wad;
         }
 
