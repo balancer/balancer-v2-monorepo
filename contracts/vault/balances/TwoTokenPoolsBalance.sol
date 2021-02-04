@@ -99,7 +99,9 @@ contract TwoTokenPoolsBalance {
     ) internal {
         (bytes32 balanceA, bytes32 balanceB, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
         require(balanceA.isZero() && balanceB.isZero(), "NONZERO_TOKEN_BALANCE");
+
         delete _twoTokenPoolTokens[poolId];
+        // No need to delete the balance entries, since they already are zero
     }
 
     /**
