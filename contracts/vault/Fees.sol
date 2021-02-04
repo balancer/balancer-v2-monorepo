@@ -45,13 +45,13 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     uint256 private _protocolFlashLoanFee;
 
     // solhint-disable-next-line var-name-mixedcase
-    uint256 private immutable _MAX_PROTOCOL_WITHDRAW_FEE = FixedPoint.ONE.mul(2).div(100); // 0.02 (2%)
+    uint256 private constant _MAX_PROTOCOL_WITHDRAW_FEE = 0.02e18; // 2%
 
     // solhint-disable-next-line var-name-mixedcase
-    uint256 private immutable _MAX_PROTOCOL_SWAP_FEE = FixedPoint.ONE.mul(50).div(100); // 0.5 (50%)
+    uint256 private constant _MAX_PROTOCOL_SWAP_FEE = 0.5e18; // 50%
 
     // solhint-disable-next-line var-name-mixedcase
-    uint256 private immutable _MAX_PROTOCOL_FLASH_LOAN_FEE = FixedPoint.ONE.mul(50).div(100); // 0.5 (50%)
+    uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE = 0.5e18; // 50%
 
     function getProtocolWithdrawFee() public view override returns (uint256) {
         return _protocolWithdrawFee;
