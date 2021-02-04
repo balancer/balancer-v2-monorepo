@@ -17,7 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "./IVault.sol";
 
-interface IPool {
+// This interface is incomplete as it is missing the swap hooks: Pools must instead inherit from either IGeneralPool or
+// IMinimalSwapInfoPool.
+interface IPoolBase {
     function getVault() external view returns (IVault);
 
     function getPoolId() external view returns (bytes32);

@@ -25,10 +25,9 @@ import "../../lib/helpers/ReentrancyGuard.sol";
 import "./StableMath.sol";
 import "../BalancerPoolToken.sol";
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPool.sol";
 import "../../vault/interfaces/IGeneralPool.sol";
 
-contract StablePool is IPool, IGeneralPool, StableMath, BalancerPoolToken, ReentrancyGuard {
+contract StablePool is IGeneralPool, StableMath, BalancerPoolToken, ReentrancyGuard {
     using Math for uint256;
     using FixedPoint for uint256;
 

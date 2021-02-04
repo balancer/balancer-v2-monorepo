@@ -25,14 +25,13 @@ import "../../lib/helpers/ReentrancyGuard.sol";
 import "./WeightedMath.sol";
 import "../BalancerPoolToken.sol";
 import "../../vault/interfaces/IVault.sol";
-import "../../vault/interfaces/IPool.sol";
 import "../../vault/interfaces/IMinimalSwapInfoPool.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract WeightedPool is IPool, IMinimalSwapInfoPool, BalancerPoolToken, WeightedMath, ReentrancyGuard {
+contract WeightedPool is IMinimalSwapInfoPool, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using Math for uint256;
     using FixedPoint for uint256;
 

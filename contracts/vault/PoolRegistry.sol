@@ -22,7 +22,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../lib/math/Math.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
-import "./interfaces/IPool.sol";
+import "./interfaces/IPoolBase.sol";
 import "./InternalBalance.sol";
 import "./balances/BalanceAllocation.sol";
 import "./balances/GeneralPoolsBalance.sol";
@@ -382,7 +382,7 @@ abstract contract PoolRegistry is
         (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
 
         address pool = _getPoolAddress(poolId);
-        (amountsIn, dueProtocolFeeAmounts) = IPool(pool).onJoinPool(
+        (amountsIn, dueProtocolFeeAmounts) = IPoolBase(pool).onJoinPool(
             poolId,
             msg.sender,
             recipient,
@@ -408,7 +408,7 @@ abstract contract PoolRegistry is
         (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
 
         address pool = _getPoolAddress(poolId);
-        (amountsOut, dueProtocolFeeAmounts) = IPool(pool).onExitPool(
+        (amountsOut, dueProtocolFeeAmounts) = IPoolBase(pool).onExitPool(
             poolId,
             msg.sender,
             recipient,

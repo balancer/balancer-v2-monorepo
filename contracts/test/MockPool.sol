@@ -19,11 +19,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../lib/math/FixedPoint.sol";
 import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IPool.sol";
 import "../vault/interfaces/IGeneralPool.sol";
 import "../vault/interfaces/IMinimalSwapInfoPool.sol";
 
-contract MockPool is IPool, IGeneralPool, IMinimalSwapInfoPool {
+contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
@@ -79,7 +78,15 @@ contract MockPool is IPool, IGeneralPool, IMinimalSwapInfoPool {
         uint256 protocolSwapFee,
         bytes memory userData
     ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
-        emit OnJoinPoolCalled(poolId, sender, recipient, currentBalances, latestBlockNumberUsed, protocolSwapFee, userData);
+        emit OnJoinPoolCalled(
+            poolId,
+            sender,
+            recipient,
+            currentBalances,
+            latestBlockNumberUsed,
+            protocolSwapFee,
+            userData
+        );
 
         (amountsIn, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
@@ -93,7 +100,15 @@ contract MockPool is IPool, IGeneralPool, IMinimalSwapInfoPool {
         uint256 protocolSwapFee,
         bytes memory userData
     ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
-        emit OnExitPoolCalled(poolId, sender, recipient, currentBalances, latestBlockNumberUsed, protocolSwapFee, userData);
+        emit OnExitPoolCalled(
+            poolId,
+            sender,
+            recipient,
+            currentBalances,
+            latestBlockNumberUsed,
+            protocolSwapFee,
+            userData
+        );
 
         (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
