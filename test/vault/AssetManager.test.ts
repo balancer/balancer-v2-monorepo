@@ -81,14 +81,14 @@ describe('Vault - asset manager', function () {
       });
 
       it('reverts when querying the asset manager of an unknown pool', async () => {
-        const error = 'Nonexistent pool';
+        const error = 'INVALID_POOL_ID';
         const token = tokens.DAI.address;
         await expect(vault.getPoolAssetManager(ZERO_BYTES32, token)).to.be.revertedWith(error);
       });
 
       it('reverts when querying the asset manager of an unknown token', async () => {
         for (const token of [ZERO_ADDRESS, otherToken.address]) {
-          const error = 'ERR_TOKEN_NOT_REGISTERED';
+          const error = 'TOKEN_NOT_REGISTERED';
           await expect(vault.getPoolAssetManager(poolId, token)).to.be.revertedWith(error);
         }
       });
@@ -131,29 +131,34 @@ describe('Vault - asset manager', function () {
           });
         });
 
-        it('reverts when sending more than the pool balance', async () => {
-          await expect(
-            vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, tokenInitialBalance.add(1))
-          ).to.be.revertedWith('ERR_SUB_OVERFLOW');
+        context('when trying to send more than the pool balance', () => {
+          const amount = tokenInitialBalance.add(1);
+
+          it('reverts', async () => {
+            const withdraw = vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount);
+            await expect(withdraw).to.be.revertedWith('SUB_OVERFLOW');
+          });
         });
       });
 
-      it('reverts if the sender is not the manager', async () => {
-        await expect(vault.connect(other).withdrawFromPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
-          'SENDER_NOT_ASSET_MANAGER'
-        );
+      context('when the sender is not the manager', () => {
+        it('reverts', async () => {
+          const withdraw = vault.connect(other).withdrawFromPoolBalance(poolId, tokens.DAI.address, 0);
+          await expect(withdraw).to.be.revertedWith('SENDER_NOT_ASSET_MANAGER');
+        });
       });
     });
 
     describe('deposit to pool', () => {
       context('when the sender is an allowed manager', () => {
-        context('when trying to move less than the managed balance', () => {
-          const externalAmount = bn(75e18);
-          const amount = externalAmount.div(2);
+        const externalAmount = bn(75e18);
 
-          beforeEach('put under management', async () => {
-            await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, externalAmount);
-          });
+        beforeEach('withdraw funds', async () => {
+          await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, externalAmount);
+        });
+
+        context('when trying to move less than the managed balance', () => {
+          const amount = externalAmount.div(2);
 
           it('transfers only the requested token from the manager to the vault', async () => {
             await expectBalanceChange(
@@ -187,25 +192,33 @@ describe('Vault - asset manager', function () {
           });
         });
 
-        it('does nothing when divesting zero tokens', async () => {
-          await expectBalanceChange(
-            () => vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, 0),
-            tokens,
-            { account: vault.address }
-          );
+        context('when cashing out more than the managed balance', () => {
+          const amount = externalAmount.add(2);
+
+          it('reverts', async () => {
+            const deposit = vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount);
+            await expect(deposit).to.be.revertedWith('SUB_OVERFLOW');
+          });
         });
 
-        it('reverts when cashing out more than the managed balance', async () => {
-          await expect(
-            vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, 1)
-          ).to.be.revertedWith('ERR_SUB_OVERFLOW');
+        context('when trying divest a zeroed amount', () => {
+          const amount = 0;
+
+          it('ignores the request', async () => {
+            await expectBalanceChange(
+              () => vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount),
+              tokens,
+              { account: vault.address }
+            );
+          });
         });
       });
 
-      it('reverts if the sender is not the manager', async () => {
-        await expect(vault.connect(other).depositToPoolBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
-          'SENDER_NOT_ASSET_MANAGER'
-        );
+      context('when the sender is not an allowed manager', () => {
+        it('reverts', async () => {
+          const deposit = vault.connect(other).depositToPoolBalance(poolId, tokens.DAI.address, 0);
+          await expect(deposit).to.be.revertedWith('SENDER_NOT_ASSET_MANAGER');
+        });
       });
     });
 
@@ -315,7 +328,7 @@ describe('Vault - asset manager', function () {
 
         for (const symbol in tokens) {
           const token = tokens[symbol].address;
-          const error = 'ERR_TOKEN_NOT_REGISTERED';
+          const error = 'TOKEN_NOT_REGISTERED';
           await expect(vault.getPoolAssetManager(poolId, token)).to.be.revertedWith(error);
         }
 

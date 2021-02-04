@@ -23,8 +23,8 @@ import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IPool.sol";
 
 abstract contract BasePoolFactory {
-    using EnumerableSet for EnumerableSet.Bytes32Set;
     using Address for address;
+    using EnumerableSet for EnumerableSet.Bytes32Set;
 
     IVault internal immutable _vault;
 
@@ -46,7 +46,7 @@ abstract contract BasePoolFactory {
     }
 
     function getCreatedPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory) {
-        require((end >= start) && (end - start) <= _createdPools.length(), "ERR_BAD_INDICES");
+        require((end >= start) && (end - start) <= _createdPools.length(), "OUT_OF_BOUNDS");
 
         bytes32[] memory poolIds = new bytes32[](end - start);
         for (uint256 i = 0; i < poolIds.length; ++i) {
@@ -75,7 +75,7 @@ abstract contract BasePoolFactory {
         bytes32 poolId = IPool(pool).getPoolId();
 
         bool added = _createdPools.add(poolId);
-        require(added, "Repeated Pool ID"); // This should never happen, as the Vault assigns unique IDs
+        require(added, "INVALID_POOL_ID"); // This should never happen, as the Vault assigns unique IDs
 
         emit PoolCreated(pool);
 

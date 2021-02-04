@@ -122,31 +122,27 @@ describe('Vault - join pool', () => {
 
     context('when called incorrectly', () => {
       it('reverts if the pool ID does not exist', async () => {
-        await expect(joinPool({ poolId: ethers.utils.id('invalid') })).to.be.revertedWith('Nonexistent pool');
+        await expect(joinPool({ poolId: ethers.utils.id('invalid') })).to.be.revertedWith('INVALID_POOL_ID');
       });
 
       it('reverts if token array is incorrect', async () => {
         // Missing - token addresses and max amounts min length must match
         await expect(
           joinPool({ tokenAddresses: tokenAddresses.slice(1), maxAmountsIn: array(0).slice(1) })
-        ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
         // Extra  - token addresses and max amounts min length must match
         await expect(
           joinPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]), maxAmountsIn: array(0).concat(bn(0)) })
-        ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
         // Unordered
-        await expect(joinPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        await expect(joinPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
-        await expect(joinPool({ maxAmountsIn: array(0).slice(1) })).to.be.revertedWith(
-          'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
-        );
-        await expect(joinPool({ maxAmountsIn: array(0).concat(bn(0)) })).to.be.revertedWith(
-          'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
-        );
+        await expect(joinPool({ maxAmountsIn: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+        await expect(joinPool({ maxAmountsIn: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
       });
     });
 
@@ -154,21 +150,21 @@ describe('Vault - join pool', () => {
       context('with incorrect pool return values', () => {
         it('reverts if join amounts length does not match token length', async () => {
           // Missing
-          await expect(joinPool({ joinAmounts: array(0).slice(1) })).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
+          await expect(joinPool({ joinAmounts: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
           // Extra
-          await expect(joinPool({ joinAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
+          await expect(joinPool({ joinAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
 
         it('reverts if due protocol fees length does not match token length', async () => {
           // Missing
           await expect(joinPool({ dueProtocolFeeAmounts: array(0).slice(1) })).to.be.revertedWith(
-            'ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH'
+            'ARRAY_LENGTH_MISMATCH'
           );
 
           // Extra
           await expect(joinPool({ dueProtocolFeeAmounts: array(0).concat(bn(0)) })).to.be.revertedWith(
-            'ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH'
+            'ARRAY_LENGTH_MISMATCH'
           );
         });
 
@@ -176,12 +172,12 @@ describe('Vault - join pool', () => {
           // Missing
           await expect(
             joinPool({ joinAmounts: array(0).slice(1), dueProtocolFeeAmounts: array(0).slice(1) })
-          ).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
+          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
           // Extra
           await expect(
             joinPool({ joinAmounts: array(0).concat(bn(0)), dueProtocolFeeAmounts: array(0).concat(bn(0)) })
-          ).to.be.revertedWith('ERR_AMOUNTS_IN_LENGTH');
+          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
       });
 
@@ -296,9 +292,9 @@ describe('Vault - join pool', () => {
       });
 
       it('assigns tokens to the pool', async () => {
-        const previousPoolBalances = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
         await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
-        const currentPoolBalances = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: currentPoolBalances } = await vault.getPoolTokens(poolId);
 
         // The Pool balance is expected to increase by join amounts minus due protocol fees. Note that the deltas are
         // not necessarily positive, if the fees due are larger than the join amounts.
@@ -308,7 +304,8 @@ describe('Vault - join pool', () => {
       });
 
       it('calls the pool with the join data', async () => {
-        const previousPoolBalances = (await vault.getPoolTokens(poolId)).balances;
+        const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
+        const { blockNumber: previousBlockNumber } = await vault.getPoolTokenBalanceInfo(poolId, tokenAddresses[0]);
 
         const receipt = await (await joinPool({ fromInternalBalance, dueProtocolFeeAmounts })).wait();
 
@@ -317,9 +314,21 @@ describe('Vault - join pool', () => {
           sender: lp.address,
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
+          latestBlockNumberUsed: previousBlockNumber,
           protocolSwapFee: await vault.getProtocolSwapFee(),
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
+      });
+
+      it('updates the latest block number used for all tokens', async () => {
+        const currentBlockNumber = await ethers.provider.getBlockNumber();
+
+        await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
+
+        for (const token of tokenAddresses) {
+          const { blockNumber: newBlockNumber } = await vault.getPoolTokenBalanceInfo(poolId, token);
+          expect(newBlockNumber).to.equal(currentBlockNumber + 1);
+        }
       });
 
       it('emits PoolJoined from the vault', async () => {
@@ -362,7 +371,7 @@ describe('Vault - join pool', () => {
               maxAmountsIn[i] = amount.sub(1);
 
               return expect(joinPool({ fromInternalBalance, dueProtocolFeeAmounts, maxAmountsIn })).to.be.revertedWith(
-                'ERR_JOIN_ABOVE_MAX'
+                'JOIN_ABOVE_MAX'
               );
             }
           })
@@ -373,7 +382,7 @@ describe('Vault - join pool', () => {
         const expectedTokensToTransfer = arraySub(joinAmounts, expectedInternalBalanceToUse);
 
         await Promise.all(
-          expectedTokensToTransfer.map(async (amount, i) => {
+          expectedTokensToTransfer.map(async (amount: BigNumber, i: number) => {
             if (amount.gt(0)) {
               const token = tokens[symbol(tokenAddresses[i])];
 

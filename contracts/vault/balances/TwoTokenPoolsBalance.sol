@@ -71,14 +71,14 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ERR_TOKEN_CANT_BE_ZERO");
+        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ZERO_ADDRESS_TOKEN");
 
         // Not technically true since we didn't register yet, but this is consistent with the error messages of other
         // specialization settings.
-        require(tokenX != tokenY, "ERR_TOKEN_ALREADY_REGISTERED");
+        require(tokenX != tokenY, "TOKEN_ALREADY_REGISTERED");
 
         TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "ERR_TOKENS_ALREADY_SET");
+        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "TOKENS_ALREADY_SET");
 
         (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
         _poolTwoTokenTokens[poolId] = TwoTokenTokens({ tokenA: tokenA, tokenB: tokenB });
@@ -98,7 +98,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY
     ) internal {
         (bytes32 tokenABalance, bytes32 tokenBBalance, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
-        require(tokenABalance.isZero() && tokenBBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+        require(tokenABalance.isZero() && tokenBBalance.isZero(), "NONZERO_TOKEN_BALANCE");
 
         delete _poolTwoTokenTokens[poolId];
         // No need to delete the balance entries, since they already are zero
@@ -141,7 +141,7 @@ contract TwoTokenPoolsBalance {
         IERC20 token,
         uint256 amount
     ) internal {
-        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManagedBalance, amount);
+        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateTwoTokenPoolSharedBalance(
@@ -165,7 +165,7 @@ contract TwoTokenPoolsBalance {
         } else if (token == poolTokens.tokenB) {
             tokenBBalance = mutation(tokenBBalance, amount);
         } else {
-            revert("ERR_TOKEN_NOT_REGISTERED");
+            revert("TOKEN_NOT_REGISTERED");
         }
 
         poolSharedBalances.sharedCash = BalanceAllocation.toSharedCash(tokenABalance, tokenBBalance);
@@ -205,7 +205,7 @@ contract TwoTokenPoolsBalance {
         // Only registered tokens can have non-zero balances, so we can use this as a shortcut to avoid the
         // expensive _hasPoolTwoTokens check.
         bool exists = sharedCash.isNotZero() || sharedManaged.isNotZero() || _hasPoolTwoTokens(poolId, tokenA, tokenB);
-        require(exists, "ERR_TOKEN_NOT_REGISTERED");
+        require(exists, "TOKEN_NOT_REGISTERED");
 
         tokenABalance = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
         tokenBBalance = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
@@ -264,7 +264,7 @@ contract TwoTokenPoolsBalance {
         } else if (token == poolTokens.tokenB) {
             return BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
         } else {
-            revert("ERR_TOKEN_NOT_REGISTERED");
+            revert("TOKEN_NOT_REGISTERED");
         }
     }
 

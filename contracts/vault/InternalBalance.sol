@@ -66,7 +66,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         address user
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LEN_MISMATCH");
+        require(tokens.length == amounts.length, "ARRAY_LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
@@ -83,7 +83,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         address recipient
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LEN_MISMATCH");
+        require(tokens.length == amounts.length, "ARRAY_LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
@@ -103,7 +103,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         address recipient
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "ERR_TOKENS_AMOUNTS_LEN_MISMATCH");
+        require(tokens.length == amounts.length, "ARRAY_LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
@@ -131,7 +131,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256 amount
     ) internal {
         uint256 currentInternalBalance = _getInternalBalance(account, token);
-        require(currentInternalBalance >= amount, "ERR_NOT_ENOUGH_INTERNAL_BALANCE");
+        require(currentInternalBalance >= amount, "INSUFFICIENT_INTERNAL_BALANCE");
         uint256 newBalance = currentInternalBalance - amount;
         _setInternalBalance(account, token, newBalance);
     }
@@ -141,8 +141,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         IERC20 token,
         uint256 balance
     ) internal {
-        // We store internal balances
-        require(balance < 2**128, "ERR_CANNOT_CAST_TO_UINT128");
         _internalTokenBalance[account][token] = balance;
     }
 

@@ -4,11 +4,12 @@ import { Dictionary } from 'lodash';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp, pct } from '../../lib/helpers/numbers';
-import { deploy } from '../../lib/helpers/deploy';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { MAX_UINT128, ZERO_ADDRESS } from '../../lib/helpers/constants';
+
+import { deploy } from '../../lib/helpers/deploy';
+import { bn, fp, pct } from '../../lib/helpers/numbers';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 
 describe('Vault - internal balance', () => {
@@ -89,7 +90,7 @@ describe('Vault - internal balance', () => {
                 [amount],
                 recipient.address
               );
-              await expect(badDeposit).to.be.revertedWith('ERR_TOKENS_AMOUNTS_LEN_MISMATCH');
+              await expect(badDeposit).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
             });
           });
         });
@@ -206,7 +207,7 @@ describe('Vault - internal balance', () => {
               [amount],
               recipient.address
             );
-            await expect(badWithdrawal).to.be.revertedWith('ERR_TOKENS_AMOUNTS_LEN_MISMATCH');
+            await expect(badWithdrawal).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
           });
         });
       };
@@ -234,7 +235,7 @@ describe('Vault - internal balance', () => {
 
         it('reverts', async () => {
           const withdraw = vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
-          await expect(withdraw).to.be.revertedWith('ERR_NOT_ENOUGH_INTERNAL_BALANCE');
+          await expect(withdraw).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
         });
       });
     });
@@ -244,7 +245,7 @@ describe('Vault - internal balance', () => {
 
       it('reverts', async () => {
         const withdraw = vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
-        await expect(withdraw).to.be.revertedWith('ERR_NOT_ENOUGH_INTERNAL_BALANCE');
+        await expect(withdraw).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
       });
     });
   });
@@ -330,7 +331,7 @@ describe('Vault - internal balance', () => {
       });
     }
 
-    function itReverts(transferredAmounts: Dictionary<BigNumber>, errorReason = 'ERR_NOT_ENOUGH_INTERNAL_BALANCE') {
+    function itReverts(transferredAmounts: Dictionary<BigNumber>, errorReason = 'INSUFFICIENT_INTERNAL_BALANCE') {
       it('reverts', async () => {
         const amounts = Object.values(transferredAmounts);
         const transfer = vault.transferInternalBalance(tokenAddresses, amounts, recipient.address);
@@ -344,21 +345,7 @@ describe('Vault - internal balance', () => {
       context('when the sender holds enough balance', () => {
         depositInitialBalances({ DAI: bn(1e18), MKR: bn(5e19) });
 
-        context('when the recipient can hold more tokens', () => {
-          itHandlesTransfersProperly(transferredAmounts);
-        });
-
-        context('when the recipient cannot hold any more tokens', () => {
-          beforeEach('deposit huge amount to recipient', async () => {
-            await mintTokens(tokens, 'DAI', recipient, MAX_UINT128);
-            await tokens.DAI.connect(recipient).approve(vault.address, MAX_UINT128);
-            await vault
-              .connect(recipient)
-              .depositToInternalBalance([tokens.DAI.address], [MAX_UINT128], recipient.address);
-          });
-
-          itReverts(transferredAmounts, 'ERR_CANNOT_CAST_TO_UINT128');
-        });
+        itHandlesTransfersProperly(transferredAmounts);
       });
 
       context('when the sender does not hold said balance', () => {

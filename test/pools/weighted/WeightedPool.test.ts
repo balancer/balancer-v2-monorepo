@@ -17,8 +17,8 @@ import {
 
 import { deploy } from '../../../lib/helpers/deploy';
 import { bn, fp, decimal, pct } from '../../../lib/helpers/numbers';
+import { ZERO_ADDRESS, MAX_UINT112 } from '../../../lib/helpers/constants';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
-import { MAX_UINT128, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';
 
@@ -55,7 +55,7 @@ describe('WeightedPool', function () {
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
       const args = [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE];
-      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('ERR_MIN_TOKENS');
+      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
@@ -82,7 +82,7 @@ describe('WeightedPool', function () {
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
       const args = [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE];
-      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('ERR_MAX_TOKENS');
+      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
@@ -109,8 +109,6 @@ describe('WeightedPool', function () {
       swapFee = swapFee ?? POOL_SWAP_FEE;
       fromFactory = fromFactory ?? false;
 
-      let pool, vault;
-
       if (fromFactory) {
         vault = await deploy('Vault', { args: [authorizer.address] });
         factory = await deploy('WeightedPoolFactory', { args: [vault.address] });
@@ -124,8 +122,7 @@ describe('WeightedPool', function () {
         pool = await deploy('WeightedPool', { args });
       }
 
-      const poolId = await pool.getPoolId();
-      return { pool, vault, poolId };
+      poolId = await pool.getPoolId();
     }
 
     beforeEach('define pool tokens', () => {
@@ -135,7 +132,7 @@ describe('WeightedPool', function () {
     describe('creation', () => {
       context('when the creation succeeds', () => {
         beforeEach('deploy pool from factory', async () => {
-          ({ pool, poolId, vault } = await deployPool({ fromFactory: true }));
+          await deployPool({ fromFactory: true });
         });
 
         it('sets the vault', async () => {
@@ -195,11 +192,11 @@ describe('WeightedPool', function () {
         it('reverts if the number of tokens and weights do not match', async () => {
           const weights = poolWeights.slice(1);
 
-          await expect(deployPool({ weights })).to.be.revertedWith('ERR_TOKENS_WEIGHTS_LENGTH');
+          await expect(deployPool({ weights })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
 
         it('reverts if there are repeated tokens', async () => {
-          const tokens = new Array(poolTokens.length).fill(poolTokens[0]);
+          const tokens = new Array(numberOfTokens).fill(poolTokens[0]);
 
           await expect(deployPool({ tokens, fromFactory: true })).to.be.revertedWith('Create2: Failed on deploy');
         });
@@ -207,41 +204,41 @@ describe('WeightedPool', function () {
         it('reverts if the swap fee is too high', async () => {
           const swapFee = fp(0.1).add(1);
 
-          await expect(deployPool({ swapFee })).to.be.revertedWith('ERR_MAX_SWAP_FEE');
+          await expect(deployPool({ swapFee })).to.be.revertedWith('MAX_SWAP_FEE');
         });
 
         it('reverts if at least one weight is too high', async () => {
           const weights = WEIGHTS.slice(0, numberOfTokens);
           weights[0] = bn(50000).mul(bn(10e18));
 
-          await expect(deployPool({ weights: weights })).to.be.revertedWith('ERR_MAX_WEIGHT');
+          await expect(deployPool({ weights: weights })).to.be.revertedWith('MAX_WEIGHT');
         });
 
         it('reverts if at least one weight is too low', async () => {
           const weights = WEIGHTS.slice(0, numberOfTokens);
           weights[0] = bn(10);
 
-          await expect(deployPool({ weights: weights })).to.be.revertedWith('ERR_MIN_WEIGHT');
+          await expect(deployPool({ weights: weights })).to.be.revertedWith('MIN_WEIGHT');
         });
       });
     });
 
     describe('onJoinPool', () => {
       beforeEach('deploy pool', async () => {
-        ({ vault, pool, poolId } = await deployPool());
+        await deployPool();
       });
 
       it('fails if caller is not the vault', async () => {
-        await expect(pool.connect(lp).onJoinPool(poolId, lp.address, other.address, [0], 0, '0x')).to.be.revertedWith(
-          'ERR_CALLER_NOT_VAULT'
-        );
+        await expect(
+          pool.connect(lp).onJoinPool(poolId, lp.address, other.address, [0], 0, 0, '0x')
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
       });
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
 
       it('fails if no user data', async () => {
         await expect(
-          vault.connect(lp).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, '0x')
+          vault.connect(lp).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, '0x')
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -249,7 +246,7 @@ describe('WeightedPool', function () {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
         await expect(
-          vault.connect(lp).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, wrongUserData)
+          vault.connect(lp).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, wrongUserData)
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -260,13 +257,13 @@ describe('WeightedPool', function () {
           initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
         });
 
-        it('grants the invariant amount of BPT', async () => {
+        it('grants the n * invariant amount of BPT', async () => {
           const invariant = calculateInvariant(poolInitialBalances, poolWeights);
 
           const receipt = await (
             await vault
               .connect(creator)
-              .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, initialJoinUserData)
+              .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData)
           ).wait();
 
           const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
@@ -274,23 +271,24 @@ describe('WeightedPool', function () {
           // Amounts in should be the same as initial ones
           expect(amountsIn).to.deep.equal(poolInitialBalances);
 
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
 
           // Initial balances should equal invariant
           const currentBptBalance = await pool.balanceOf(beneficiary.address);
-          expectEqualWithError(currentBptBalance, invariant, 0.001);
+          expectEqualWithError(currentBptBalance, invariant.mul(numberOfTokens), 0.001);
         });
 
         it('fails if already initialized', async () => {
           await vault
             .connect(creator)
-            .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, initialJoinUserData);
+            .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
 
           await expect(
             vault
               .connect(creator)
-              .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, initialJoinUserData)
-          ).to.be.be.revertedWith('ERR_ALREADY_INITIALIZED');
+              .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData)
+          ).to.be.be.revertedWith('ALREADY_INITIALIZED');
         });
       });
 
@@ -302,8 +300,8 @@ describe('WeightedPool', function () {
             minimumBPT: 0,
           });
           await expect(
-            vault.connect(creator).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, joinUserData)
-          ).to.be.be.revertedWith('ERR_UNINITIALIZED');
+            vault.connect(creator).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, joinUserData)
+          ).to.be.be.revertedWith('UNINITIALIZED');
         });
 
         context('once initialized', () => {
@@ -313,13 +311,13 @@ describe('WeightedPool', function () {
             const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
             await vault
               .connect(creator)
-              .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, initialJoinUserData);
+              .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
           });
 
           beforeEach('compute expected BPT balances', async () => {
             previousBptSupply = await pool.totalSupply();
 
-            exactAmountsIn = Object.assign([], ZEROS);
+            exactAmountsIn = [...ZEROS];
             exactAmountsIn[1] = bn(0.1e18);
 
             expectedBptAmount = await calcBptOutGivenExactTokensIn(
@@ -344,7 +342,7 @@ describe('WeightedPool', function () {
             const receipt = await (
               await vault
                 .connect(lp)
-                .callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, joinUserData)
+                .callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
             ).wait();
 
             const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
@@ -352,6 +350,7 @@ describe('WeightedPool', function () {
             // Amounts in should be the same as initial ones
             expect(amountsIn).to.deep.equal(exactAmountsIn);
 
+            // Protocol fees should be zero
             expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
 
             // Make sure received BPT is closed to what we expect
@@ -371,8 +370,8 @@ describe('WeightedPool', function () {
             await expect(
               vault
                 .connect(lp)
-                .callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, joinUserData)
-            ).to.be.be.revertedWith('ERR_BPT_OUT_MIN_AMOUNT');
+                .callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
+            ).to.be.be.revertedWith('BPT_OUT_MIN_AMOUNT');
           });
         });
       });
@@ -382,11 +381,11 @@ describe('WeightedPool', function () {
       let previousBptBalance: BigNumber, previousBptSupply: BigNumber;
 
       beforeEach('deploy and initialize pool', async () => {
-        ({ vault, pool, poolId } = await deployPool());
+        await deployPool();
 
         // Initialize from creator
         const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
-        await vault.connect(creator).callJoinPool(pool.address, poolId, lp.address, ZEROS, 0, initialJoinUserData);
+        await vault.connect(creator).callJoinPool(pool.address, poolId, lp.address, ZEROS, 0, 0, initialJoinUserData);
 
         previousBptSupply = await pool.totalSupply();
         previousBptBalance = await pool.balanceOf(lp.address);
@@ -394,15 +393,15 @@ describe('WeightedPool', function () {
 
       it('fails if caller is not the vault', async () => {
         await expect(
-          pool.connect(lp).onExitPool(poolId, beneficiary.address, other.address, [0], 0, '0x')
-        ).to.be.revertedWith('ERR_CALLER_NOT_VAULT');
+          pool.connect(lp).onExitPool(poolId, beneficiary.address, other.address, [0], 0, 0, '0x')
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
       });
 
       it.skip('fails if wrong pool id'); // if Pools can only register themselves, this is unnecessary
 
       it('fails if no user data', async () => {
         await expect(
-          vault.connect(lp).callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, '0x')
+          vault.connect(lp).callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, '0x')
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -412,7 +411,7 @@ describe('WeightedPool', function () {
         await expect(
           vault
             .connect(lp)
-            .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, wrongUserData)
+            .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, wrongUserData)
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -440,11 +439,12 @@ describe('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, exitUserData)
+              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
           ).wait();
 
           const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
 
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
 
           // Only token out should be the one transferred
@@ -468,11 +468,12 @@ describe('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, exitUserData)
+              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
           ).wait();
 
           const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
 
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
 
           // Balances are reduced by half because we are returning half of the BPT supply
@@ -491,11 +492,12 @@ describe('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, exitUserData)
+              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
           ).wait();
 
           const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
 
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
 
           // All token balances should have been extracted because we are returning the entire BPT supply
@@ -521,11 +523,12 @@ describe('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, exitUserData)
+              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
           ).wait();
 
           const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
 
+          // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
 
           // Token balances should been reduced as requested
@@ -549,8 +552,8 @@ describe('WeightedPool', function () {
           await expect(
             vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, exitUserData)
-          ).to.be.be.revertedWith('ERR_BPT_IN_MAX_AMOUNT');
+              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
+          ).to.be.be.revertedWith('BPT_IN_MAX_AMOUNT');
         });
       });
     });
@@ -564,11 +567,12 @@ describe('WeightedPool', function () {
         poolId: string;
         from: string;
         to: string;
+        latestBlockNumberUsed: number;
         userData: string;
       };
 
       beforeEach('set default quote data', async () => {
-        ({ pool, poolId } = await deployPool());
+        await deployPool();
 
         quoteData = {
           poolId,
@@ -576,6 +580,7 @@ describe('WeightedPool', function () {
           to: other.address,
           tokenIn: tokenList.DAI.address,
           tokenOut: tokenList.MKR.address,
+          latestBlockNumberUsed: 0,
           userData: '0x',
         };
       });
@@ -610,7 +615,7 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
@@ -620,7 +625,7 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
         });
       });
 
@@ -629,15 +634,7 @@ describe('WeightedPool', function () {
           const AMOUNT_OUT = bn(1.35e18);
 
           const result = await pool.quoteInGivenOut(
-            {
-              poolId,
-              from: other.address,
-              to: other.address,
-              tokenIn: tokenList.DAI.address,
-              tokenOut: tokenList.MKR.address,
-              amountOut: AMOUNT_OUT,
-              userData: '0x',
-            },
+            { ...quoteData, amountOut: AMOUNT_OUT },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
@@ -660,7 +657,7 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
@@ -670,26 +667,22 @@ describe('WeightedPool', function () {
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('ERR_INVALID_TOKEN');
+          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
         });
       });
     });
 
     describe('protocol swap fees', () => {
-      let pool: Contract;
-      let poolId: string;
+      const PROTOCOL_SWAP_FEE = fp(0.1); // 10 %
 
-      const protocolSwapFee = fp(0.1); // 10 %
-
-      beforeEach(async () => {
-        //Use a mock vault
-        ({ vault, pool, poolId } = await deployPool());
+      beforeEach('deploy and join pool', async () => {
+        await deployPool();
 
         // Initialize from creator
         const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
         await vault
           .connect(creator)
-          .callJoinPool(pool.address, poolId, lp.address, ZEROS, protocolSwapFee, initialJoinUserData);
+          .callJoinPool(pool.address, poolId, lp.address, ZEROS, 0, PROTOCOL_SWAP_FEE, initialJoinUserData);
       });
 
       const expectJoinProtocolSwapFeeEqualWithError = async (
@@ -700,11 +693,10 @@ describe('WeightedPool', function () {
         const receipt = await (
           await vault
             .connect(lp)
-            .callJoinPool(pool.address, poolId, lp.address, initialBalances, protocolSwapFee, joinUserData)
+            .callJoinPool(pool.address, poolId, lp.address, initialBalances, 0, PROTOCOL_SWAP_FEE, joinUserData)
         ).wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolJoined');
-        const amountsIn = event.args.amountsIn;
-        const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
+
+        const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
 
         for (let index = 0; index < dueProtocolFeeAmounts.length; index++) {
           expectEqualWithError(dueProtocolFeeAmounts[index], expectedDueProtocolFeeAmounts[index], 0.1);
@@ -721,11 +713,9 @@ describe('WeightedPool', function () {
         const receipt = await (
           await vault
             .connect(lp)
-            .callExitPool(pool.address, poolId, lp.address, initialBalances, protocolSwapFee, exitUserData)
+            .callExitPool(pool.address, poolId, lp.address, initialBalances, 0, PROTOCOL_SWAP_FEE, exitUserData)
         ).wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolExited');
-        const amountsOut = event.args.amountsOut;
-        const dueProtocolFeeAmounts = event.args.dueProtocolFeeAmounts;
+        const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
 
         for (let index = 0; index < dueProtocolFeeAmounts.length; index++) {
           expectEqualWithError(dueProtocolFeeAmounts[index], expectedDueProtocolFeeAmounts[index], 0.1);
@@ -740,80 +730,55 @@ describe('WeightedPool', function () {
           amountsIn: Array(poolTokens.length).fill(bn(100e18)),
           minimumBPT: 0,
         });
-        let newBalances = await expectJoinProtocolSwapFeeEqualWithError(
-          poolInitialBalances,
-
-          Array(poolTokens.length).fill(bn(0)),
-          joinUserData
-        );
+        let newBalances = await expectJoinProtocolSwapFeeEqualWithError(poolInitialBalances, ZEROS, joinUserData);
 
         joinUserData = encodeJoinWeightedPool({
           kind: 'ExactTokensInForBPTOut',
           amountsIn: Array(poolTokens.length).fill(bn(100e18)),
           minimumBPT: 0,
         });
-        newBalances = await expectJoinProtocolSwapFeeEqualWithError(
-          newBalances,
-          Array(poolTokens.length).fill(bn(0)),
-          joinUserData
-        );
+        newBalances = await expectJoinProtocolSwapFeeEqualWithError(newBalances, ZEROS, joinUserData);
 
         let exitUserData = encodeExitWeightedPool({
           kind: 'ExactBPTInForOneTokenOut',
-          bptAmountIn: bn((10e18).toString()),
+          bptAmountIn: bn(10e18),
           exitTokenIndex: 0,
         });
-        newBalances = await expectExitProtocolSwapFeeEqualWithError(
-          newBalances,
-          Array(poolTokens.length).fill(bn(0)),
-          exitUserData
-        );
+        newBalances = await expectExitProtocolSwapFeeEqualWithError(newBalances, ZEROS, exitUserData);
 
-        exitUserData = encodeExitWeightedPool({
-          kind: 'ExactBPTInForAllTokensOut',
-          bptAmountIn: bn((10e18).toString()),
-        });
-        newBalances = await expectExitProtocolSwapFeeEqualWithError(
-          newBalances,
-          Array(poolTokens.length).fill(bn(0)),
-          exitUserData
-        );
+        exitUserData = encodeExitWeightedPool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: bn(10e18) });
+        newBalances = await expectExitProtocolSwapFeeEqualWithError(newBalances, ZEROS, exitUserData);
 
         joinUserData = encodeJoinWeightedPool({
           kind: 'ExactTokensInForBPTOut',
           amountsIn: Array(poolTokens.length).fill(bn(10e18)),
           minimumBPT: 0,
         });
-        newBalances = await expectJoinProtocolSwapFeeEqualWithError(
-          newBalances,
-          Array(poolTokens.length).fill(bn(0)),
-          joinUserData
-        );
+        newBalances = await expectJoinProtocolSwapFeeEqualWithError(newBalances, ZEROS, joinUserData);
 
         exitUserData = encodeExitWeightedPool({
           kind: 'BPTInForExactTokensOut',
           amountsOut: Array(poolTokens.length).fill(bn(10e18)),
-          maxBPTAmountIn: MAX_UINT128,
+          maxBPTAmountIn: MAX_UINT112,
         });
-        await expectExitProtocolSwapFeeEqualWithError(newBalances, Array(poolTokens.length).fill(bn(0)), exitUserData);
+        await expectExitProtocolSwapFeeEqualWithError(newBalances, ZEROS, exitUserData);
       });
 
       context('with swap', () => {
         let currentBalances: BigNumber[];
         let expectedDueProtocolFeeAmounts: BigNumber[];
 
-        beforeEach(async () => {
+        beforeEach('compute expected due protocol fees', async () => {
           const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
           const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
 
           const lastInvariant = calculateInvariant(poolInitialBalances, poolWeights);
-          currentBalances = poolInitialBalances.map((balance) => balance.mul(2)); //twice the initial balances
+          currentBalances = poolInitialBalances.map((balance) => balance.mul(2)); // twice the initial balances
 
           const feeAmount = calculateOneTokenSwapFee(currentBalances, poolWeights, lastInvariant, paidTokenIndex);
+          const protocolFeeAmount = bn(feeAmount).mul(PROTOCOL_SWAP_FEE).div(bn(1e18));
 
-          const protocolFeeAmount = bn(feeAmount.toString()).mul(protocolSwapFee).div((1e18).toString());
-
-          expectedDueProtocolFeeAmounts = Array(poolTokens.length).fill(bn(0));
+          expectedDueProtocolFeeAmounts = [...ZEROS];
           expectedDueProtocolFeeAmounts[paidTokenIndex] = protocolFeeAmount;
         });
 
@@ -823,23 +788,23 @@ describe('WeightedPool', function () {
             amountsIn: Array(poolTokens.length).fill(bn(1e18)),
             minimumBPT: 0,
           });
+
           await expectJoinProtocolSwapFeeEqualWithError(currentBalances, expectedDueProtocolFeeAmounts, joinUserData);
         });
 
         it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
           const exitUserData = encodeExitWeightedPool({
             kind: 'ExactBPTInForOneTokenOut',
-            bptAmountIn: bn((1e18).toString()),
+            bptAmountIn: bn(1e18),
             exitTokenIndex: 0,
           });
+
           await expectExitProtocolSwapFeeEqualWithError(currentBalances, expectedDueProtocolFeeAmounts, exitUserData);
         });
 
         it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
-          const exitUserData = encodeExitWeightedPool({
-            kind: 'ExactBPTInForAllTokensOut',
-            bptAmountIn: bn((1e18).toString()),
-          });
+          const exitUserData = encodeExitWeightedPool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: bn(1e18) });
+
           await expectExitProtocolSwapFeeEqualWithError(currentBalances, expectedDueProtocolFeeAmounts, exitUserData);
         });
 
@@ -847,8 +812,9 @@ describe('WeightedPool', function () {
           const exitUserData = encodeExitWeightedPool({
             kind: 'BPTInForExactTokensOut',
             amountsOut: Array(poolTokens.length).fill(bn(1e18)),
-            maxBPTAmountIn: MAX_UINT128,
+            maxBPTAmountIn: MAX_UINT112,
           });
+
           await expectExitProtocolSwapFeeEqualWithError(currentBalances, expectedDueProtocolFeeAmounts, exitUserData);
         });
       });

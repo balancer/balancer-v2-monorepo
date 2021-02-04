@@ -96,9 +96,9 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         uint256[] memory weights,
         uint256 swapFee
     ) BalancerPoolToken(name, symbol) {
-        require(tokens.length >= _MIN_TOKENS, "ERR_MIN_TOKENS");
-        require(tokens.length <= _MAX_TOKENS, "ERR_MAX_TOKENS");
-        require(tokens.length == weights.length, "ERR_TOKENS_WEIGHTS_LENGTH");
+        require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
+        require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
+        require(tokens.length == weights.length, "ARRAY_LENGTH_MISMATCH");
 
         IVault.PoolSpecialization specialization = tokens.length == 2
             ? IVault.PoolSpecialization.TWO_TOKEN
@@ -114,7 +114,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         _poolId = poolId;
         _totalTokens = tokens.length;
 
-        require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_SWAP_FEE");
+        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
         _swapFee = swapFee;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
@@ -138,8 +138,8 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         // Check valid weights and compute normalized weights
         uint256 sumWeights = 0;
         for (uint8 i = 0; i < weights.length; i++) {
-            require(weights[i] >= _MIN_WEIGHT, "ERR_MIN_WEIGHT");
-            require(weights[i] <= _MAX_WEIGHT, "ERR_MAX_WEIGHT");
+            require(weights[i] >= _MIN_WEIGHT, "MIN_WEIGHT");
+            require(weights[i] <= _MAX_WEIGHT, "MAX_WEIGHT");
 
             sumWeights = sumWeights.add(weights[i]);
         }
@@ -185,7 +185,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         else if (token == _token14) { return _normalizedWeight14; }
         else if (token == _token15) { return _normalizedWeight15; }
         else {
-            revert("ERR_INVALID_TOKEN");
+            revert("INVALID_TOKEN");
         }
     }
 
@@ -255,10 +255,11 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         address, // sender - potential whitelisting
         address recipient,
         uint256[] memory currentBalances,
+        uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
+        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
         // TODO: This seems inconsistent w/ `getInvariant` for example. We assume the weights and balances order match
@@ -292,14 +293,18 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         address recipient,
         uint256[] memory amountsIn
     ) private returns (uint256[] memory, uint256[] memory) {
-        require(totalSupply() == 0, "ERR_ALREADY_INITIALIZED");
+        require(totalSupply() == 0, "ALREADY_INITIALIZED");
 
         // Pool initialization - currentBalances should be all zeroes
 
         // _lastInvariant should also be zero
         uint256 invariantAfterJoin = _invariant(normalizedWeights, amountsIn);
 
-        _mintPoolTokens(recipient, invariantAfterJoin);
+        // Mints a total of: n * invariant. Total tokens is not in FixedPoint
+        uint256 tokensToMint = invariantAfterJoin * _totalTokens;
+        require(tokensToMint / invariantAfterJoin == _totalTokens, "MUL_OVERFLOW");
+
+        _mintPoolTokens(recipient, tokensToMint);
         _lastInvariant = invariantAfterJoin;
 
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens); // All zeroes
@@ -315,7 +320,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         uint256 protocolFeePercentage
     ) private returns (uint256[] memory, uint256[] memory) {
         uint256 currentBPT = totalSupply();
-        require(currentBPT > 0, "ERR_UNINITIALIZED");
+        require(currentBPT > 0, "UNINITIALIZED");
 
         // This updates currentBalances by deducting protocol fees to pay, which the Vault will charge the Pool once
         // this function returns.
@@ -333,7 +338,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
             _swapFee
         );
 
-        require(bptAmountOut >= minimumBPT, "ERR_BPT_OUT_MIN_AMOUNT");
+        require(bptAmountOut >= minimumBPT, "BPT_OUT_MIN_AMOUNT");
 
         _mintPoolTokens(recipient, bptAmountOut);
 
@@ -354,10 +359,11 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         address sender,
         address, //recipient -  potential whitelisting
         uint256[] memory currentBalances,
+        uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
+        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
         uint256[] memory normalizedWeights = _normalizedWeights();
@@ -421,7 +427,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         uint256 bptAmountIn,
         uint256 tokenIndex
     ) private view returns (uint256, uint256[] memory) {
-        require(tokenIndex < currentBalances.length, "ERR_INVALID_TOKEN_INDEX");
+        require(tokenIndex < currentBalances.length, "OUT_OF_BOUNDS");
 
         uint256[] memory amountsOut = new uint256[](_totalTokens);
         amountsOut[tokenIndex] = _exactBPTInForTokenOut(
@@ -461,7 +467,7 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
             totalSupply(),
             _swapFee
         );
-        require(bptAmountIn <= maxBPTAmountIn, "ERR_BPT_IN_MAX_AMOUNT");
+        require(bptAmountIn <= maxBPTAmountIn, "BPT_IN_MAX_AMOUNT");
         return (bptAmountIn, amountsOut);
     }
 
@@ -485,7 +491,6 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         uint256[] memory dueProtocolFeeAmounts = new uint256[](currentBalances.length);
         // All other values are initialized to zero
         dueProtocolFeeAmounts[chosenTokenIndex] = chosenTokenDueProtocolFeeAmount;
-
         currentBalances[chosenTokenIndex] = currentBalances[chosenTokenIndex].sub(chosenTokenDueProtocolFeeAmount);
 
         return dueProtocolFeeAmounts;
@@ -534,12 +539,12 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
     function _getSupplyRatio(uint256 amount) internal view returns (uint256) {
         uint256 poolTotal = totalSupply();
         uint256 ratio = amount.div(poolTotal);
-        require(ratio != 0, "ERR_MATH_APPROX");
+        require(ratio != 0, "MATH_APPROX");
         return ratio;
     }
 
     function _addSwapFee(uint256 amount) private view returns (uint256) {
-        return amount.div(uint256(FixedPoint.ONE).sub(_swapFee));
+        return amount.div(FixedPoint.ONE.sub(_swapFee));
     }
 
     function _subtractSwapFee(uint256 amount) private view returns (uint256) {

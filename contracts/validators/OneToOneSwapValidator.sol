@@ -28,15 +28,15 @@ contract OneToOneSwapValidator is ISwapValidator {
         (
             IERC20 overallTokenIn,
             IERC20 overallTokenOut,
-            uint128 maxAmountIn,
-            uint128 minAmountOut,
+            uint112 maxAmountIn,
+            uint112 minAmountOut,
             uint256 deadline
-        ) = abi.decode((data), (IERC20, IERC20, uint128, uint128, uint256));
+        ) = abi.decode((data), (IERC20, IERC20, uint112, uint112, uint256));
 
         // Using timestamps is fine here, since the potential for griefing is minimal here. At the worst, a miner could
         // force a swap to fail by advancing the timestamp.
         // solhint-disable-next-line not-rely-on-time
-        require(block.timestamp <= deadline, "Deadline expired");
+        require(block.timestamp <= deadline, "DEADLINE_EXPIRED");
 
         //Validate
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -44,13 +44,13 @@ contract OneToOneSwapValidator is ISwapValidator {
             int256 delta = vaultDeltas[i];
 
             if (token == overallTokenIn) {
-                require(delta <= maxAmountIn, "Excessive amount in");
+                require(delta <= maxAmountIn, "EXCESSIVE_AMOUNT_IN");
             } else if (token == overallTokenOut) {
                 // An int256 will always fit in an uint256, no need to safe cast
                 uint256 deltaAbs = uint256(delta > 0 ? delta : -delta);
-                require(deltaAbs >= minAmountOut, "Not enough tokens out");
+                require(deltaAbs >= minAmountOut, "INSUFFICIENT_TOKENS_OUT");
             } else {
-                require(delta == 0, "Intermediate non-zero balance");
+                require(delta == 0, "INTERMEDIATE_NONZERO_BALANCE");
             }
         }
     }

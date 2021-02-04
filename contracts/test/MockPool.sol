@@ -55,6 +55,7 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         address sender,
         address recipient,
         uint256[] currentBalances,
+        uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes userData
     );
@@ -64,6 +65,7 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         address sender,
         address recipient,
         uint256[] currentBalances,
+        uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes userData
     );
@@ -73,10 +75,11 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
+        uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes memory userData
     ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
-        emit OnJoinPoolCalled(poolId, sender, recipient, currentBalances, protocolSwapFee, userData);
+        emit OnJoinPoolCalled(poolId, sender, recipient, currentBalances, latestBlockNumberUsed, protocolSwapFee, userData);
 
         (amountsIn, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
@@ -86,10 +89,11 @@ contract MockPool is IPool, IGeneralPoolQuote, IMinimalSwapInfoPoolQuote {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
+        uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes memory userData
     ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
-        emit OnExitPoolCalled(poolId, sender, recipient, currentBalances, protocolSwapFee, userData);
+        emit OnExitPoolCalled(poolId, sender, recipient, currentBalances, latestBlockNumberUsed, protocolSwapFee, userData);
 
         (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }

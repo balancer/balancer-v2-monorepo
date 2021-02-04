@@ -334,6 +334,11 @@
       },
       {
         "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
         "name": "protocolFeePercentage",
         "type": "uint256"
       },
@@ -380,6 +385,11 @@
         "internalType": "uint256[]",
         "name": "currentBalances",
         "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       },
       {
         "internalType": "uint256",
@@ -431,6 +441,11 @@
             "internalType": "bytes32",
             "name": "poolId",
             "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "latestBlockNumberUsed",
+            "type": "uint256"
           },
           {
             "internalType": "address",
@@ -497,6 +512,11 @@
             "internalType": "bytes32",
             "name": "poolId",
             "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "latestBlockNumberUsed",
+            "type": "uint256"
           },
           {
             "internalType": "address",

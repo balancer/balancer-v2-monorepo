@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "../lib/math/Math.sol";
 import "../lib/helpers/EnumerableMap.sol";
@@ -122,6 +121,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IERC20 tokenOut;
         uint256 amount;
         bytes32 poolId;
+        uint256 latestBlockNumberUsed;
         address from;
         address to;
         bytes userData;
@@ -273,11 +273,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapInternal memory swap;
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
-            require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "ERR_INDEX_OUT_OF_BOUNDS");
+            require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "OUT_OF_BOUNDS");
 
             IERC20 tokenIn = tokens[swap.tokenInIndex];
             IERC20 tokenOut = tokens[swap.tokenOutIndex];
-            require(tokenIn != tokenOut, "Swap for same token");
+            require(tokenIn != tokenOut, "CANNOT_SWAP_SAME_TOKEN");
 
             if (swap.amount == 0) {
                 if (swaps.length > 1) {
@@ -287,10 +287,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                     // This makes it possible to e.g. swap a given amount of token A for token B,
                     // and then use the resulting token B amount to swap for token C.
                     bool usingPreviousToken = previous.tokenQuoted == _tokenGiven(kind, tokenIn, tokenOut);
-                    require(usingPreviousToken, "Misconstructed multihop swap");
+                    require(usingPreviousToken, "MALCONSTRUCTED_MULTIHOP_SWAP");
                     swap.amount = previous.amountQuoted;
                 } else {
-                    revert("Unknown amount in on first swap");
+                    revert("UNKNOWN_AMOUNT_IN_FIRST_SWAP");
                 }
             }
 
@@ -335,6 +335,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenOut: tokenOut,
             amount: swap.amount,
             poolId: swap.poolId,
+            latestBlockNumberUsed: 0, // will be updated later on based on the pool specialization
             from: from,
             to: to,
             userData: swap.userData
@@ -398,25 +399,14 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenInBalance = tokenBBalance;
         }
 
-        uint256 tokenInTotalBalance = tokenInBalance.totalBalance();
-        uint256 tokenOutTotalBalance = tokenOutBalance.totalBalance();
-
         // Perform the quote request and compute the new balances for token in and token out after the swap
-        if (kind == SwapKind.GIVEN_IN) {
-            IPoolQuoteStructs.QuoteRequestGivenIn memory quote = _toQuoteGivenIn(request);
-            uint256 amountOut = pool.quoteOutGivenIn(quote, tokenInTotalBalance, tokenOutTotalBalance);
-
-            tokenInBalance = tokenInBalance.increaseCash(request.amount);
-            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
-            amountQuoted = amountOut;
-        } else {
-            IPoolQuoteStructs.QuoteRequestGivenOut memory quote = _toQuoteGivenOut(request);
-            uint256 amountIn = pool.quoteInGivenOut(quote, tokenInTotalBalance, tokenOutTotalBalance);
-
-            tokenInBalance = tokenInBalance.increaseCash(amountIn);
-            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
-            amountQuoted = amountIn;
-        }
+        (tokenInBalance, tokenOutBalance, amountQuoted) = _processMinimalSwapQuoteRequest(
+            request,
+            pool,
+            kind,
+            tokenInBalance,
+            tokenOutBalance
+        );
 
         // We check the token ordering again to create the new shared cash packed struct
         poolSharedBalances.sharedCash = request.tokenIn < request.tokenOut
@@ -432,28 +422,53 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenInBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenIn);
         bytes32 tokenOutBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenOut);
 
-        uint256 tokenInTotalBalance = tokenInBalance.totalBalance();
-        uint256 tokenOutTotalBalance = tokenOutBalance.totalBalance();
+        // Perform the quote request and compute the new balances for token in and token out after the swap
+        (tokenInBalance, tokenOutBalance, amountQuoted) = _processMinimalSwapQuoteRequest(
+            request,
+            pool,
+            kind,
+            tokenInBalance,
+            tokenOutBalance
+        );
+
+        _minimalSwapInfoPoolsBalances[request.poolId][request.tokenIn] = tokenInBalance;
+        _minimalSwapInfoPoolsBalances[request.poolId][request.tokenOut] = tokenOutBalance;
+    }
+
+    function _processMinimalSwapQuoteRequest(
+        QuoteRequestInternal memory request,
+        IMinimalSwapInfoPoolQuote pool,
+        SwapKind kind,
+        bytes32 tokenInBalance,
+        bytes32 tokenOutBalance
+    )
+        internal
+        returns (
+            bytes32 newTokenInBalance,
+            bytes32 newTokenOutBalance,
+            uint256 amountQuoted
+        )
+    {
+        uint256 tokenInTotal = tokenInBalance.total();
+        uint256 tokenOutTotal = tokenOutBalance.total();
+        request.latestBlockNumberUsed = Math.max(tokenInBalance.blockNumber(), tokenOutBalance.blockNumber());
 
         // Perform the quote request and compute the new balances for token in and token out after the swap
         if (kind == SwapKind.GIVEN_IN) {
             IPoolQuoteStructs.QuoteRequestGivenIn memory quote = _toQuoteGivenIn(request);
-            uint256 amountOut = pool.quoteOutGivenIn(quote, tokenInTotalBalance, tokenOutTotalBalance);
+            uint256 amountOut = pool.quoteOutGivenIn(quote, tokenInTotal, tokenOutTotal);
 
-            tokenInBalance = tokenInBalance.increaseCash(request.amount);
-            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
+            newTokenInBalance = tokenInBalance.increaseCash(request.amount);
+            newTokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
             amountQuoted = amountOut;
         } else {
             IPoolQuoteStructs.QuoteRequestGivenOut memory quote = _toQuoteGivenOut(request);
-            uint256 amountIn = pool.quoteInGivenOut(quote, tokenInTotalBalance, tokenOutTotalBalance);
+            uint256 amountIn = pool.quoteInGivenOut(quote, tokenInTotal, tokenOutTotal);
 
-            tokenInBalance = tokenInBalance.increaseCash(amountIn);
-            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
+            newTokenInBalance = tokenInBalance.increaseCash(amountIn);
+            newTokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
             amountQuoted = amountIn;
         }
-
-        _minimalSwapInfoPoolsBalances[request.poolId][request.tokenIn] = tokenInBalance;
-        _minimalSwapInfoPoolsBalances[request.poolId][request.tokenOut] = tokenOutBalance;
     }
 
     function _processGeneralPoolQuoteRequest(
@@ -465,18 +480,19 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenOutBalance;
 
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
-        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "ERR_TOKEN_NOT_REGISTERED");
-        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "ERR_TOKEN_NOT_REGISTERED");
+        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "TOKEN_NOT_REGISTERED");
+        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "TOKEN_NOT_REGISTERED");
 
-        uint256[] memory currentBalances = new uint256[](poolBalances.length());
+        uint256 tokenAmount = poolBalances.length();
+        uint256[] memory currentBalances = new uint256[](tokenAmount);
 
-        uint256 tokenAmount = currentBalances.length;
         for (uint256 i = 0; i < tokenAmount; i++) {
             // Because the iteration is bounded by `tokenAmount` and no tokens are registered or unregistered here, we
             // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
-            currentBalances[i] = balance.totalBalance();
+            currentBalances[i] = balance.total();
+            request.latestBlockNumberUsed = Math.max(request.latestBlockNumberUsed, balance.blockNumber());
 
             if (i == indexIn) {
                 tokenInBalance = balance;
@@ -559,7 +575,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement calldata funds,
         SwapKind kind
     ) external {
-        require(msg.sender == address(this), "Caller is not the Vault");
+        require(msg.sender == address(this), "CALLER_NOT_VAULT");
         int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
         revert(string(abi.encode(tokenDeltas)));
     }
