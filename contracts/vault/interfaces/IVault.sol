@@ -508,18 +508,18 @@ interface IVault {
     function setProtocolFlashLoanFee(uint256 newFee) external;
 
     /**
-     * @dev Returns the amount of protocol fees collected by the Vault for `token`.
+     * @dev Returns the amount of protocol fees collected by the Vault for the given set of `tokens`.
      */
-    function getCollectedFeesByToken(IERC20 token) external view returns (uint256);
+    function getCollectedFees(IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
      * @dev Withdraws collected protocol fees.
      *
      * Requirements:
      *
-     * - the caller must be approved by the authorizer (`IAuthorizer.canWithdrawProtocolFees`) for each token.
+     * - the caller must be approved by the authorizer (`IAuthorizer.canWithdrawCollectedFees`) for each token.
      */
-    function withdrawProtocolFees(
+    function withdrawCollectedFees(
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
