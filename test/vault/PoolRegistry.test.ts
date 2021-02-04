@@ -64,10 +64,6 @@ describe('Vault - pool registry', () => {
       poolId = event.args.poolId;
     });
 
-    it('new pool is added to pool list', async () => {
-      expect(await vault.getNumberOfPools()).to.equal(1);
-    });
-
     it('has an address and an specialization setting', async () => {
       expect(await vault.getPool(poolId)).to.deep.equal([other.address, GeneralPool]);
     });
@@ -85,7 +81,6 @@ describe('Vault - pool registry', () => {
       const otherPoolId = event.args.poolId;
 
       expect(poolId).to.not.equal(otherPoolId);
-      expect(await vault.getNumberOfPools()).to.equal(2);
     });
   });
 

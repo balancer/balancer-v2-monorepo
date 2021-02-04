@@ -110,10 +110,6 @@ abstract contract PoolRegistry is
         return poolId;
     }
 
-    function getNumberOfPools() external view override returns (uint256) {
-        return _totalPools;
-    }
-
     function getPoolTokens(bytes32 poolId)
         public
         view
