@@ -335,7 +335,6 @@ describe('Vault - exit pool', () => {
           sender: lp.address,
           recipient: recipient.address,
           currentBalances: previousPoolBalances,
-          minAmountsOut: array(0),
           protocolSwapFee: await vault.getProtocolSwapFee(),
           latestBlockNumberUsed: previousBlockNumber,
           userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
