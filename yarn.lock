@@ -5071,10 +5071,10 @@ hardhat-deploy@^0.7.0-beta.32:
     murmur-128 "^0.2.1"
     qs "^6.9.4"
 
-hardhat-local-networks-config-plugin@0.0.2:
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/hardhat-local-networks-config-plugin/-/hardhat-local-networks-config-plugin-0.0.2.tgz#892fa91ddc3f8848664791bcbea14d39ed79eb4c"
-  integrity sha512-imjnwaUGur/JvqPHGLbOzl+RdGr9wtpqRUdg/r2SwEOVtHrKBD8RK6LbS7xG+DE3wzb74vFOZw4+/9bU5EvuCw==
+hardhat-local-networks-config-plugin@0.0.5:
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/hardhat-local-networks-config-plugin/-/hardhat-local-networks-config-plugin-0.0.5.tgz#75b7c9ea1b8fb379e54c80dc8d88ae74dfaa37cc"
+  integrity sha512-rZ1437jcjWPErmbUDJTevW+dF+nM3EcOzm9ADDwJMBq0mGDGiSEOqKHPs22ebgjav+aW3zYZqI5lv+NY3n9smg==
 
 hardhat@^2.0.7:
   version "2.0.7"

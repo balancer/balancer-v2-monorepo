@@ -100,7 +100,7 @@ library EnumerableMap {
      * - `key` must be in the map.
      */
     function _indexOf(Map storage map, bytes32 key) private view returns (uint256) {
-        return _indexOf(map, key, "EnumerableMap: nonexistent key");
+        return _indexOf(map, key, "OUT_OF_BOUNDS");
     }
 
     /**
@@ -197,7 +197,7 @@ library EnumerableMap {
      * - `index` must be strictly less than {length}.
      */
     function _at(Map storage map, uint256 index) private view returns (bytes32, bytes32) {
-        require(map._length > index, "EnumerableMap: index out of bounds");
+        require(map._length > index, "OUT_OF_BOUNDS");
 
         MapEntry storage entry = map._entries[index];
         return (entry._key, entry._value);
@@ -231,7 +231,7 @@ library EnumerableMap {
      * - `key` must be in the map.
      */
     function _get(Map storage map, bytes32 key) private view returns (bytes32) {
-        return _get(map, key, "EnumerableMap: nonexistent key");
+        return _get(map, key, "OUT_OF_BOUNDS");
     }
 
     /**

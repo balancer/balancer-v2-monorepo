@@ -83,13 +83,13 @@ describe('Vault - protocol fees', () => {
 
       await expect(
         vault.connect(feeCollector).withdrawCollectedFees([tokens.DAI.address], [bn(0.05e18).add(1)], other.address)
-      ).to.be.revertedWith('ERR_NOT_ENOUGH_COLLECTED_FEES');
+      ).to.be.revertedWith('INSUFFICIENT_COLLECTED_FEES');
     });
 
     it('unauthorized accounts cannot withdraw collected fees', async () => {
       await expect(
         vault.connect(other).withdrawCollectedFees([tokens.DAI.address], [0], other.address)
-      ).to.be.revertedWith('Caller cannot withdraw collected fees');
+      ).to.be.revertedWith('CANNOT_WITHDRAW_FEES');
     });
   });
 });

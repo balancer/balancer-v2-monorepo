@@ -41,10 +41,9 @@ abstract contract PoolRegistry is
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
-    using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    // Set with all Pools in the system
-    EnumerableSet.Bytes32Set internal _pools;
+    uint256 private _totalPools;
+    mapping(bytes32 => bool) private _isPoolRegistered;
 
     modifier withExistingPool(bytes32 poolId) {
         _ensureExistingPool(poolId);
@@ -101,29 +100,18 @@ abstract contract PoolRegistry is
     function registerPool(PoolSpecialization specialization) external override nonReentrant returns (bytes32) {
         // We use the Pool length as the Pool ID creation nonce. Since Pools cannot be deleted, nonces are unique. This
         // however assumes there will never be more than than 2**80 Pools.
-        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_pools.length()));
+        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_totalPools));
+        require(!_isPoolRegistered[poolId], "INVALID_POOL_ID");
 
-        bool added = _pools.add(poolId);
-        require(added, "Pool ID already exists");
+        _totalPools++;
+        _isPoolRegistered[poolId] = true;
 
         emit PoolCreated(poolId);
-
         return poolId;
     }
 
     function getNumberOfPools() external view override returns (uint256) {
-        return _pools.length();
-    }
-
-    function getPoolIds(uint256 start, uint256 end) external view override returns (bytes32[] memory) {
-        require((end >= start) && (end - start) <= _pools.length(), "ERR_BAD_INDICES");
-
-        bytes32[] memory poolIds = new bytes32[](end - start);
-        for (uint256 i = 0; i < poolIds.length; ++i) {
-            poolIds[i] = _pools.at(i + start);
-        }
-
-        return poolIds;
+        return _totalPools;
     }
 
     function getPoolTokens(bytes32 poolId)
@@ -182,7 +170,7 @@ abstract contract PoolRegistry is
     ) external override nonReentrant onlyPool(poolId) {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
-            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
+            require(tokens.length == 2, "TOKENS_LENGTH_MUST_BE_2");
             _registerTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _registerMinimalSwapInfoPoolTokens(poolId, tokens);
@@ -211,7 +199,7 @@ abstract contract PoolRegistry is
     {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
-            require(tokens.length == 2, "ERR_TOKENS_LENGTH_MUST_BE_2");
+            require(tokens.length == 2, "TOKENS_LENGTH_MUST_BE_2");
             _unregisterTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _unregisterMinimalSwapInfoPoolTokens(poolId, tokens);
@@ -236,7 +224,7 @@ abstract contract PoolRegistry is
         bool fromInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
-        require(tokens.length == maxAmountsIn.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
+        require(tokens.length == maxAmountsIn.length, "ARRAY_LENGTH_MISMATCH");
 
         // The balances array will be modified later on to update the vault balances after the join
         // This is simply to avoid using unnecessary memory
@@ -251,7 +239,7 @@ abstract contract PoolRegistry is
         );
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            require(amountsIn[i] <= maxAmountsIn[i], "ERR_JOIN_ABOVE_MAX");
+            require(amountsIn[i] <= maxAmountsIn[i], "JOIN_ABOVE_MAX");
             uint256 amountIn = amountsIn[i];
 
             // Receive tokens
@@ -288,7 +276,7 @@ abstract contract PoolRegistry is
         bool toInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
-        require(tokens.length == minAmountsOut.length, "ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH");
+        require(tokens.length == minAmountsOut.length, "ARRAY_LENGTH_MISMATCH");
 
         // The balances array will be modified later on to update the vault balances after the join
         // This is simply to avoid using unnecessary memory
@@ -303,7 +291,7 @@ abstract contract PoolRegistry is
         );
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            require(amountsOut[i] >= minAmountsOut[i], "ERR_EXIT_BELOW_MIN");
+            require(amountsOut[i] >= minAmountsOut[i], "EXIT_BELOW_MIN");
             uint256 amountOut = amountsOut[i];
 
             // Send tokens
@@ -408,8 +396,10 @@ abstract contract PoolRegistry is
             userData
         );
 
-        require(amountsIn.length == tokens.length, "ERR_AMOUNTS_IN_LENGTH");
-        require(dueProtocolFeeAmounts.length == tokens.length, "ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH");
+        require(
+            amountsIn.length == tokens.length && dueProtocolFeeAmounts.length == tokens.length,
+            "ARRAY_LENGTH_MISMATCH"
+        );
     }
 
     function _callOnExitPool(
@@ -434,8 +424,10 @@ abstract contract PoolRegistry is
             userData
         );
 
-        require(amountsOut.length == tokens.length, "ERR_AMOUNTS_OUT_LENGTH");
-        require(dueProtocolFeeAmounts.length == tokens.length, "ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH");
+        require(
+            amountsOut.length == tokens.length && dueProtocolFeeAmounts.length == tokens.length,
+            "ARRAY_LENGTH_MISMATCH"
+        );
     }
 
     /**
@@ -447,10 +439,10 @@ abstract contract PoolRegistry is
         returns (bytes32[] memory)
     {
         (IERC20[] memory actualTokens, bytes32[] memory balances) = _getPoolTokens(poolId);
-        require(actualTokens.length == expectedTokens.length, "ERR_TOKENS_MISMATCH");
+        require(actualTokens.length == expectedTokens.length, "ARRAY_LENGTH_MISMATCH");
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
-            require(actualTokens[i] == expectedTokens[i], "ERR_TOKENS_MISMATCH");
+            require(actualTokens[i] == expectedTokens[i], "TOKENS_MISMATCH");
         }
 
         return balances;
@@ -541,15 +533,15 @@ abstract contract PoolRegistry is
     function _ensurePoolIsSender(bytes32 poolId) internal view {
         _ensureExistingPool(poolId);
         address pool = _getPoolAddress(poolId);
-        require(pool == msg.sender, "Caller is not the pool");
+        require(pool == msg.sender, "CALLER_NOT_POOL");
     }
 
     function _ensureExistingPool(bytes32 poolId) internal view {
-        require(_pools.contains(poolId), "Nonexistent pool");
+        require(_isPoolRegistered[poolId], "INVALID_POOL_ID");
     }
 
     function _ensureTokenRegistered(bytes32 poolId, IERC20 token) internal view {
-        require(_isTokenRegistered(poolId, token), "ERR_TOKEN_NOT_REGISTERED");
+        require(_isTokenRegistered(poolId, token), "TOKEN_NOT_REGISTERED");
     }
 
     function _ensurePoolAssetManagerIsSender(bytes32 poolId, IERC20 token) internal view {

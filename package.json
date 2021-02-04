@@ -53,7 +53,7 @@
     "hardhat-abi-exporter": "^2.0.6",
     "hardhat-deploy": "^0.7.0-beta.32",
     "hardhat-deploy-ethers": "^0.3.0-beta.7",
-    "hardhat-local-networks-config-plugin": "0.0.2",
+    "hardhat-local-networks-config-plugin": "0.0.5",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
     "lodash.times": "^4.3.2",

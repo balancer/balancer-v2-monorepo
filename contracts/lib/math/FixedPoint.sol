@@ -24,19 +24,19 @@ library FixedPoint {
 
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c0 = a * b;
-        require(a == 0 || c0 / a == b, "ERR_MUL_OVERFLOW");
+        require(a == 0 || c0 / a == b, "MUL_OVERFLOW");
         uint256 c1 = c0 + (ONE / 2);
-        require(c1 >= c0, "ERR_MUL_OVERFLOW");
+        require(c1 >= c0, "MUL_OVERFLOW");
         uint256 c2 = c1 / ONE;
         return c2;
     }
 
     function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "ERR_ZERO_DIVISION");
+        require(b != 0, "ZERO_DIVISION");
         uint256 c0 = a * ONE;
-        require(a == 0 || c0 / a == ONE, "ERR_DIV_INTERNAL"); // mul overflow
+        require(a == 0 || c0 / a == ONE, "DIV_INTERNAL"); // mul overflow
         uint256 c1 = c0 + (b / 2);
-        require(c1 >= c0, "ERR_DIV_INTERNAL"); // add require
+        require(c1 >= c0, "DIV_INTERNAL"); // add require
         uint256 c2 = c1 / b;
         return c2;
     }
