@@ -93,7 +93,7 @@ describe('Vault - internal balance', () => {
                 [amount],
                 recipient.address
               );
-              await expect(badDeposit).to.be.revertedWith('ERR_TOKENS_AMOUNTS_LEN_MISMATCH');
+              await expect(badDeposit).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
             });
           });
         });
@@ -210,7 +210,7 @@ describe('Vault - internal balance', () => {
               [amount],
               recipient.address
             );
-            await expect(badWithdrawal).to.be.revertedWith('ERR_TOKENS_AMOUNTS_LEN_MISMATCH');
+            await expect(badWithdrawal).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
           });
         });
       };
@@ -238,7 +238,7 @@ describe('Vault - internal balance', () => {
 
         it('reverts', async () => {
           const withdraw = vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
-          await expect(withdraw).to.be.revertedWith('ERR_NOT_ENOUGH_INTERNAL_BALANCE');
+          await expect(withdraw).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
         });
       });
     });
@@ -248,7 +248,7 @@ describe('Vault - internal balance', () => {
 
       it('reverts', async () => {
         const withdraw = vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
-        await expect(withdraw).to.be.revertedWith('ERR_NOT_ENOUGH_INTERNAL_BALANCE');
+        await expect(withdraw).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
       });
     });
   });
@@ -344,14 +344,14 @@ describe('Vault - internal balance', () => {
             amounts,
             Array(amounts.length).fill(recipient.address)
           );
-          await expect(badWithdrawal).to.be.revertedWith('ERR_TOKENS_AMOUNTS_LEN_MISMATCH');
+          await expect(badWithdrawal).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
       });
 
       context('when tokens and recipients are mismatched', () => {
         it('reverts', async () => {
           const badWithdrawal = vault.transferInternalBalance(tokenAddresses, amounts, [recipient.address]);
-          await expect(badWithdrawal).to.be.revertedWith('ERR_TOKENS_RECIPIENTS_LEN_MISMATCH');
+          await expect(badWithdrawal).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
       });
 
@@ -362,7 +362,7 @@ describe('Vault - internal balance', () => {
             [(10e18).toString()],
             Array(amounts.length).fill(recipient.address)
           );
-          await expect(badWithdrawal).to.be.revertedWith('ERR_TOKENS_AMOUNTS_LEN_MISMATCH');
+          await expect(badWithdrawal).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
       });
 
@@ -387,7 +387,7 @@ describe('Vault - internal balance', () => {
       });
     }
 
-    function itReverts(transferredAmounts: Dictionary<BigNumber>, errorReason = 'ERR_NOT_ENOUGH_INTERNAL_BALANCE') {
+    function itReverts(transferredAmounts: Dictionary<BigNumber>, errorReason = 'INSUFFICIENT_INTERNAL_BALANCE') {
       it('reverts', async () => {
         const amounts = Object.values(transferredAmounts);
         const transfer = vault.transferInternalBalance(

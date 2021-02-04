@@ -7,6 +7,7 @@ const JOIN_STABLE_POOL_ALL_TOKENS_IN_FOR_EXACT_BPT_OUT_TAG = 1;
 
 export type JoinStablePoolInit = {
   kind: 'Init';
+  amountsIn: BigNumberish[];
 };
 
 export type JoinStablePoolAllTokensInForExactBPTOut = {
@@ -16,7 +17,10 @@ export type JoinStablePoolAllTokensInForExactBPTOut = {
 
 export function encodeJoinStablePool(joinData: JoinStablePoolInit | JoinStablePoolAllTokensInForExactBPTOut): string {
   if (joinData.kind == 'Init') {
-    return ethers.utils.defaultAbiCoder.encode(['uint256'], [JOIN_STABLE_POOL_INIT_TAG]);
+    return ethers.utils.defaultAbiCoder.encode(
+      ['uint256', 'uint256[]'],
+      [JOIN_STABLE_POOL_INIT_TAG, joinData.amountsIn]
+    );
   } else {
     return ethers.utils.defaultAbiCoder.encode(
       ['uint256', 'uint256'],

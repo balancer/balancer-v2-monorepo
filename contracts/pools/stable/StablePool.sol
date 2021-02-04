@@ -56,8 +56,8 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         uint256 amp,
         uint256 swapFee
     ) BalancerPoolToken(name, symbol) {
-        require(tokens.length >= 2, "ERR_MIN_TOKENS");
-        require(tokens.length <= _MAX_TOKENS, "ERR_MAX_TOKENS");
+        require(tokens.length >= 2, "MIN_TOKENS");
+        require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
 
         bytes32 poolId = vault.registerPool(IVault.PoolSpecialization.GENERAL);
 
@@ -68,11 +68,11 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         _vault = vault;
         _poolId = poolId;
 
-        require(swapFee <= _MAX_SWAP_FEE, "ERR_MAX_SWAP_FEE");
+        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
         _swapFee = swapFee;
 
-        require(amp >= _MIN_AMP, "ERR_MIN_AMP");
-        require(amp <= _MAX_AMP, "ERR_MAX_AMP");
+        require(amp >= _MIN_AMP, "MIN_AMP");
+        require(amp <= _MAX_AMP, "MAX_AMP");
         _amp = amp;
     }
 
@@ -130,20 +130,22 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         address, // sender - potential whitelisting
         address recipient,
         uint256[] memory currentBalances,
-        uint256[] memory maxAmountsIn,
         uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
+        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
-
-        // The Vault guarantees currentBalances and maxAmountsIn have the same length
 
         JoinKind kind = abi.decode(userData, (JoinKind));
 
         if (kind == JoinKind.INIT) {
-            return _joinInitial(currentBalances.length, recipient, maxAmountsIn);
+            (, uint256[] memory amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
+
+            // The Vault guarantees currentBalances length is ok
+            require(currentBalances.length == amountsIn.length, "ERR_AMOUNTS_IN_LENGTH");
+
+            return _joinInitial(currentBalances.length, recipient, amountsIn);
         } else {
             // JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT
             (, uint256 bptAmountOut) = abi.decode(userData, (JoinKind, uint256));
@@ -152,7 +154,6 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
                     currentBalances.length,
                     currentBalances,
                     recipient,
-                    maxAmountsIn,
                     protocolFeePercentage,
                     bptAmountOut
                 );
@@ -162,31 +163,30 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
     function _joinInitial(
         uint256 totalTokens,
         address recipient,
-        uint256[] memory maxAmountsIn
+        uint256[] memory amountsIn
     ) private returns (uint256[] memory, uint256[] memory) {
-        require(totalSupply() == 0, "ERR_ALREADY_INITIALIZED");
+        require(totalSupply() == 0, "ALREADY_INITIALIZED");
 
         // Pool initialization - currentBalances should be all zeroes
 
         // _lastInvariant should also be zero
-        uint256 invariantAfterJoin = _invariant(_amp, maxAmountsIn);
+        uint256 invariantAfterJoin = _invariant(_amp, amountsIn);
 
         _mintPoolTokens(recipient, invariantAfterJoin);
         _lastInvariant = invariantAfterJoin;
 
         uint256[] memory dueProtocolFeeAmounts = new uint256[](totalTokens); // All zeroes
-        return (maxAmountsIn, dueProtocolFeeAmounts);
+        return (amountsIn, dueProtocolFeeAmounts);
     }
 
     function _joinAllTokensInForExactBPTOut(
         uint256 totalTokens,
         uint256[] memory currentBalances,
         address recipient,
-        uint256[] memory,
         uint256 protocolFeePercentage,
         uint256 bptAmountOut
     ) private returns (uint256[] memory, uint256[] memory) {
-        require(totalSupply() > 0, "ERR_UNINITIALIZED");
+        require(totalSupply() > 0, "UNINITIALIZED");
 
         // This updates currentBalances by deducting protocol fees to pay, which the Vault will charge the Pool once
         // this function returns.
@@ -221,15 +221,12 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         address sender,
         address, //recipient -  potential whitelisting
         uint256[] memory currentBalances,
-        uint256[] memory minAmountsOut,
         uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "ERR_CALLER_NOT_VAULT");
+        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
-
-        // The Vault guarantees currentBalances and minAmountsOut have the same length
 
         uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
             currentBalances,
@@ -240,12 +237,7 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         (, uint256 bptAmountIn) = abi.decode(userData, (ExitKind, uint256));
         uint256 totalTokens = currentBalances.length;
 
-        uint256[] memory amountsOut = _exitExactBPTInForAllTokensOut(
-            totalTokens,
-            currentBalances,
-            minAmountsOut,
-            bptAmountIn
-        );
+        uint256[] memory amountsOut = _exitExactBPTInForAllTokensOut(totalTokens, currentBalances, bptAmountIn);
 
         _burnPoolTokens(sender, bptAmountIn);
 
@@ -261,17 +253,13 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
     function _exitExactBPTInForAllTokensOut(
         uint256 totalTokens,
         uint256[] memory currentBalances,
-        uint256[] memory minAmountsOut,
         uint256 bptAmountIn
     ) private view returns (uint256[] memory amountsOut) {
         uint256 bptRatio = _getSupplyRatio(bptAmountIn);
 
         amountsOut = new uint256[](totalTokens);
         for (uint256 i = 0; i < totalTokens; i++) {
-            uint256 amountOut = currentBalances[i].mul(bptRatio);
-            require(amountOut >= minAmountsOut[i], "ERR_EXIT_BELOW_REQUESTED_MINIMUM");
-
-            amountsOut[i] = amountOut;
+            amountsOut[i] = currentBalances[i].mul(bptRatio);
         }
     }
 
@@ -307,7 +295,7 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
     function _getSupplyRatio(uint256 amount) private view returns (uint256) {
         uint256 poolTotal = totalSupply();
         uint256 ratio = amount.div(poolTotal);
-        require(ratio != 0, "ERR_MATH_APPROX");
+        require(ratio != 0, "MATH_APPROX");
         return ratio;
     }
 
@@ -325,6 +313,6 @@ contract StablePool is IPool, IGeneralPoolQuote, StableMath, BalancerPoolToken, 
         uint256 indexOut,
         uint256 limit
     ) internal pure {
-        require(indexIn < limit && indexOut < limit, "ERR_INDEX_OUT_OF_BOUNDS");
+        require(indexIn < limit && indexOut < limit, "OUT_OF_BOUNDS");
     }
 }

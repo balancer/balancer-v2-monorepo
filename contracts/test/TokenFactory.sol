@@ -36,7 +36,7 @@ contract TokenFactory {
     }
 
     function getTokens(uint256 start, uint256 end) external view returns (address[] memory) {
-        require((end >= start) && (end - start) <= _tokens.length(), "Bad indices");
+        require((end >= start) && (end - start) <= _tokens.length(), "OUT_OF_BOUNDS");
 
         address[] memory token = new address[](end - start);
         for (uint256 i = 0; i < token.length; ++i) {

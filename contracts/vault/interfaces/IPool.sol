@@ -42,7 +42,6 @@ interface IPool {
         address sender,
         address recipient,
         uint256[] calldata currentBalances,
-        uint256[] calldata maxAmountsIn,
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes calldata userData
@@ -68,7 +67,6 @@ interface IPool {
         address sender,
         address recipient,
         uint256[] calldata currentBalances,
-        uint256[] calldata minAmountsOut,
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
         bytes calldata userData

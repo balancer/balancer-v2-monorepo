@@ -66,7 +66,6 @@ describe('Vault - pool registry', () => {
 
     it('new pool is added to pool list', async () => {
       expect(await vault.getNumberOfPools()).to.equal(1);
-      expect(await vault.getPoolIds(0, 1)).to.have.members([poolId]);
     });
 
     it('has an address and an specialization setting', async () => {
@@ -87,7 +86,6 @@ describe('Vault - pool registry', () => {
 
       expect(poolId).to.not.equal(otherPoolId);
       expect(await vault.getNumberOfPools()).to.equal(2);
-      expect(await vault.getPoolIds(0, 2)).to.have.members([poolId, otherPoolId]);
     });
   });
 
@@ -107,7 +105,7 @@ describe('Vault - pool registry', () => {
       });
 
       it('reverts when querying token balances of unexisting pools', async () => {
-        await expect(vault.getPoolTokens(ZERO_BYTES32)).to.be.revertedWith('Nonexistent pool');
+        await expect(vault.getPoolTokens(ZERO_BYTES32)).to.be.revertedWith('INVALID_POOL_ID');
       });
     }
 
@@ -159,7 +157,7 @@ describe('Vault - pool registry', () => {
                 });
 
                 it('reverts', async () => {
-                  const error = 'ERR_TOKEN_CANT_BE_ZERO';
+                  const error = 'ZERO_ADDRESS_TOKEN';
                   await expect(pool.registerTokens(tokenAddresses, assetManagers)).to.be.revertedWith(error);
                   await expect(pool.registerTokens(tokenAddresses.reverse(), assetManagers)).to.be.revertedWith(error);
                 });
@@ -186,7 +184,7 @@ describe('Vault - pool registry', () => {
 
                   if (specialization == TwoTokenPool) {
                     it('cannot be registered individually', async () => {
-                      const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                      const error = 'TOKENS_LENGTH_MUST_BE_2';
                       await expect(pool.registerTokens([tokenAddresses[0]], [assetManagers[0]])).to.be.revertedWith(
                         error
                       );
@@ -206,7 +204,7 @@ describe('Vault - pool registry', () => {
 
                 const itRevertsDueToTwoTokens = () => {
                   it('reverts', async () => {
-                    const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                    const error = 'TOKENS_LENGTH_MUST_BE_2';
                     await expect(pool.registerTokens(tokenAddresses, assetManagers)).to.be.revertedWith(error);
                   });
                 };
@@ -236,8 +234,7 @@ describe('Vault - pool registry', () => {
               });
 
               it('reverts', async () => {
-                const error =
-                  specialization == TwoTokenPool ? 'ERR_TOKENS_ALREADY_SET' : 'ERR_TOKEN_ALREADY_REGISTERED';
+                const error = specialization == TwoTokenPool ? 'TOKENS_ALREADY_SET' : 'TOKEN_ALREADY_REGISTERED';
                 await expect(pool.registerTokens(tokenAddresses, assetManagers)).to.be.revertedWith(error);
               });
             });
@@ -247,7 +244,7 @@ describe('Vault - pool registry', () => {
             it('reverts', async () => {
               await expect(
                 vault.connect(other).registerTokens(poolId, tokenAddresses, assetManagers)
-              ).to.be.revertedWith('Caller is not the pool');
+              ).to.be.revertedWith('CALLER_NOT_POOL');
             });
           });
         });
@@ -255,7 +252,7 @@ describe('Vault - pool registry', () => {
         context('when the pool was not created', () => {
           it('reverts', async () => {
             await expect(vault.registerTokens(ZERO_BYTES32, tokenAddresses, assetManagers)).to.be.revertedWith(
-              'Nonexistent pool'
+              'INVALID_POOL_ID'
             );
           });
         });
@@ -307,7 +304,7 @@ describe('Vault - pool registry', () => {
                   context('when trying to unregister individually', () => {
                     if (specialization == TwoTokenPool) {
                       it('reverts', async () => {
-                        const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                        const error = 'TOKENS_LENGTH_MUST_BE_2';
                         await expect(pool.unregisterTokens([tokenAddresses[0]])).to.be.revertedWith(error);
                       });
                     } else {
@@ -334,7 +331,7 @@ describe('Vault - pool registry', () => {
 
                   context('when trying to unregister all tokens at once', () => {
                     it('reverts', async () => {
-                      const error = 'ERR_TOKEN_BALANCE_IS_NOT_ZERO';
+                      const error = 'NONZERO_TOKEN_BALANCE';
                       await expect(pool.unregisterTokens(tokenAddresses)).to.be.revertedWith(error);
                     });
                   });
@@ -369,7 +366,7 @@ describe('Vault - pool registry', () => {
 
               const itRevertsDueToTwoTokens = () => {
                 it('reverts', async () => {
-                  const error = 'ERR_TOKENS_LENGTH_MUST_BE_2';
+                  const error = 'TOKENS_LENGTH_MUST_BE_2';
                   await expect(pool.unregisterTokens(tokenAddresses)).to.be.revertedWith(error);
                 });
               };
@@ -394,7 +391,7 @@ describe('Vault - pool registry', () => {
               setTokensAddresses(2);
 
               it('reverts', async () => {
-                const error = 'ERR_TOKEN_NOT_REGISTERED';
+                const error = 'TOKEN_NOT_REGISTERED';
                 await expect(pool.unregisterTokens(tokenAddresses)).to.be.revertedWith(error);
               });
             });
@@ -403,7 +400,7 @@ describe('Vault - pool registry', () => {
           context('when the sender is not the pool', () => {
             it('reverts', async () => {
               await expect(vault.connect(other).unregisterTokens(poolId, tokenAddresses)).to.be.revertedWith(
-                'Caller is not the pool'
+                'CALLER_NOT_POOL'
               );
             });
           });
@@ -411,7 +408,7 @@ describe('Vault - pool registry', () => {
 
         context('when the pool was not created', () => {
           it('reverts', async () => {
-            await expect(vault.unregisterTokens(ZERO_BYTES32, tokenAddresses)).to.be.revertedWith('Nonexistent pool');
+            await expect(vault.unregisterTokens(ZERO_BYTES32, tokenAddresses)).to.be.revertedWith('INVALID_POOL_ID');
           });
         });
       };
