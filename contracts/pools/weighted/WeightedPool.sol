@@ -26,13 +26,13 @@ import "./WeightedMath.sol";
 import "../BalancerPoolToken.sol";
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/interfaces/IPool.sol";
-import "../../vault/interfaces/IMinimalSwapInfoPoolQuote.sol";
+import "../../vault/interfaces/IMinimalSwapInfoPool.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, WeightedMath, ReentrancyGuard {
+contract WeightedPool is IPool, IMinimalSwapInfoPool, BalancerPoolToken, WeightedMath, ReentrancyGuard {
     using Math for uint256;
     using FixedPoint for uint256;
 
@@ -518,39 +518,39 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
         return dueProtocolFeeAmounts;
     }
 
-    //Quote Swaps
+    //Swap callbacks
 
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+    function onSwapGivenIn(
+        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) external view override returns (uint256) {
-        uint256 adjustedIn = _subtractSwapFee(request.amountIn);
+        uint256 adjustedIn = _subtractSwapFee(swapRequest.amountIn);
 
         // Calculate the maximum amount that can be taken out of the pool
         uint256 maximumAmountOut = _outGivenIn(
             currentBalanceTokenIn,
-            _normalizedWeight(request.tokenIn),
+            _normalizedWeight(swapRequest.tokenIn),
             currentBalanceTokenOut,
-            _normalizedWeight(request.tokenOut),
+            _normalizedWeight(swapRequest.tokenOut),
             adjustedIn
         );
 
         return maximumAmountOut;
     }
 
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+    function onSwapGivenOut(
+        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) external view override returns (uint256) {
         // Calculate the minimum amount that must be put into the pool
         uint256 minimumAmountIn = _inGivenOut(
             currentBalanceTokenIn,
-            _normalizedWeight(request.tokenIn),
+            _normalizedWeight(swapRequest.tokenIn),
             currentBalanceTokenOut,
-            _normalizedWeight(request.tokenOut),
-            request.amountOut
+            _normalizedWeight(swapRequest.tokenOut),
+            swapRequest.amountOut
         );
 
         return _addSwapFee(minimumAmountIn);

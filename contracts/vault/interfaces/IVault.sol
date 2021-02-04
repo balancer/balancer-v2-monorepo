@@ -71,16 +71,16 @@ interface IVault {
     // There are three specialization levels for Pools, which allow for lower swap gas costs at the cost of reduced
     // functionality:
     //
-    //  - general: no specialization, IGeneralPoolQuote is used to ask for quotes, passing the balance of all tokens in
-    // the Pool. Swaps cost more gas the more tokens the Pool has (because of the extra storage reads).
+    //  - general: no specialization, IGeneralPool is used for swap request callbacks, passing the balance of all tokens
+    // in the Pool. Swaps cost more gas the more tokens the Pool has (because of the extra storage reads).
     //
-    //  - minimal swap info: IMinimalSwapInfoPoolQuote is used instead, which saves gas by only passes the balance of
+    //  - minimal swap info: IMinimalSwapInfoPool is used instead, which saves gas by only passes the balance of
     // the two tokens involved in the swap. This is suitable for some pricing algorithms, like the weighted constant
     // product one popularized by Balancer v1. Swap gas cost is independent of the number of tokens in the Pool.
     //
     //  - two tokens: this level achieves the lowest possible swap gas costs by restricting Pools to only having two
     // tokens, which allows for a specialized balance packing format. Like minimal swap info Pools, these are called via
-    // IMinimalSwapInfoPoolQuote.
+    // IMinimalSwapInfoPool.
 
     enum PoolSpecialization { GENERAL, MINIMAL_SWAP_INFO, TWO_TOKEN }
 
@@ -244,8 +244,8 @@ interface IVault {
      *
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
-     * The `tokenOut` amount is determined by the Pool's pricing algorithm by calling the `quoteOutGivenIn` function
-     * (from IGeneralPoolQuote or IMinimalSwapInfoPoolQuote).
+     * The `tokenOut` amount is determined by the Pool's pricing algorithm by calling the `onSwapGivenIn` function
+     * (from IGeneralPool or IMinimalSwapInfoPool).
      *
      * Multihop swaps, where one token is exchanged for another one by passing through one or more intermediate tokens,
      * can be executed by passing an `amountIn` value of zero for a swap. This will cause the amount out of the previous
@@ -269,7 +269,7 @@ interface IVault {
      * passed to that function.
      *
      * `amountIn` tokens are sent to the `poolId` Pool for the token in, and `userData` is forwarded to the Pool in the
-     * `quoteOutGivenIn` function. If `amountIn` is zero, the multihop mechanism is used to determine the actual amount.
+     * `onSwapGivenIn` function. If `amountIn` is zero, the multihop mechanism is used to determine the actual amount.
      */
     struct SwapIn {
         bytes32 poolId;
@@ -299,8 +299,8 @@ interface IVault {
      *
      * The `swaps` array contains the information about each individual swaps. All swaps consist of a Pool receiving
      * some amount of one of its tokens (`tokenIn`), and sending some amount of another one of its tokens (`tokenOut`).
-     * The `tokenIn` amount is determined by the Pool's pricing algorithm by calling the `quoteInGivenOut` function
-     * (from IGeneralPoolQuote or IMinimalSwapInfoPoolQuote).
+     * The `tokenIn` amount is determined by the Pool's pricing algorithm by calling the `onSwapGivenIn` function
+     * (from IGeneralPool or IMinimalSwapInfoPool).
      *
      * Multihop swaps, where one token is exchanged for another one by passing through one or more intermediate tokens,
      * can be executed by passing an `amountOut` value of zero for a swap. This will cause the amount in of the previous
@@ -324,7 +324,7 @@ interface IVault {
      * passed to that function.
      *
      * `amountOut` tokens are received from the `poolId` Pool for the token out, and `userData` is forwarded to the Pool
-     *  in the `quoteInGivenOut` function. If `amountOut` is zero, the multihop mechanism is used to determine the
+     *  in the `onSwapGivenOut` function. If `amountOut` is zero, the multihop mechanism is used to determine the
      * actual amount.
      */
     struct SwapOut {
