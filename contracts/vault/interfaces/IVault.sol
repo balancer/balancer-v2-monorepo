@@ -57,12 +57,13 @@ interface IVault {
 
     /**
      * @dev Transfers tokens from the caller's Internal Balance, transferring them to `recipient`'s Internal Balance.
-     * This does not charge protocol withdrawal fees.
+     * This does not charge protocol withdrawal fees. Allow a different recipient for each token, as support for
+     * aggregators wanting to settle multiple trades in a single transaction.
      */
     function transferInternalBalance(
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        address recipient
+        address[] memory recipients
     ) external;
 
     // Pools
@@ -95,14 +96,7 @@ interface IVault {
      */
     event PoolCreated(bytes32 poolId);
 
-    // Pool Queries
-
-    /**
-     * @dev Returns the number of Pools.
-     */
-    function getNumberOfPools() external view returns (uint256);
-
-    // These functions revert if querying a Pool that doesn't exist
+    // Pool Queries - these functions revert if querying a Pool that doesn't exist
 
     /**
      * @dev Returns a Pool's address and specialization level.
@@ -514,18 +508,18 @@ interface IVault {
     function setProtocolFlashLoanFee(uint256 newFee) external;
 
     /**
-     * @dev Returns the amount of protocol fees collected by the Vault for `token`.
+     * @dev Returns the amount of protocol fees collected by the Vault for the given set of `tokens`.
      */
-    function getCollectedFeesByToken(IERC20 token) external view returns (uint256);
+    function getCollectedFees(IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
      * @dev Withdraws collected protocol fees.
      *
      * Requirements:
      *
-     * - the caller must be approved by the authorizer (`IAuthorizer.canWithdrawProtocolFees`) for each token.
+     * - the caller must be approved by the authorizer (`IAuthorizer.canWithdrawCollectedFees`) for each token.
      */
-    function withdrawProtocolFees(
+    function withdrawCollectedFees(
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient

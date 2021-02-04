@@ -89,7 +89,7 @@ describe('Vault - flash loans', () => {
         { account: vault, changes: { DAI: feeAmount } }
       );
 
-      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(feeAmount);
+      expect((await vault.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
     });
 
     it('excess fees can be paid', async () => {
@@ -104,7 +104,7 @@ describe('Vault - flash loans', () => {
         { account: vault.address, changes: { DAI: feeAmount } }
       );
 
-      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(feeAmount);
+      expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([feeAmount]);
     });
 
     it('all balance can be loaned', async () => {
@@ -139,8 +139,8 @@ describe('Vault - flash loans', () => {
           { account: vault, changes: { DAI: feeAmounts[0], MKR: feeAmounts[1] } }
         );
 
-        expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(feeAmounts[0]);
-        expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal(feeAmounts[1]);
+        expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([feeAmounts[0]]);
+        expect(await vault.getCollectedFees([tokens.MKR.address])).to.deep.equal([feeAmounts[1]]);
       });
 
       it('all balance can be loaned', async () => {

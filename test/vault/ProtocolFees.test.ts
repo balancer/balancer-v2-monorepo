@@ -36,7 +36,7 @@ describe('Vault - protocol fees', () => {
   });
 
   it('fees are initially zero', async () => {
-    expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(0);
+    expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([bn(0)]);
   });
 
   context('with collected protocol fees', () => {
@@ -54,8 +54,8 @@ describe('Vault - protocol fees', () => {
     });
 
     it('reports collected fee', async () => {
-      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(bn(0.05e18));
-      expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal(bn(0.1e18));
+      expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([bn(0.05e18)]);
+      expect(await vault.getCollectedFees([tokens.MKR.address])).to.deep.equal([bn(0.1e18)]);
     });
 
     it('authorized accounts can withdraw protocol fees to any recipient', async () => {
@@ -67,13 +67,13 @@ describe('Vault - protocol fees', () => {
         () =>
           vault
             .connect(feeCollector)
-            .withdrawProtocolFees([tokens.DAI.address, tokens.MKR.address], [bn(0.02e18), bn(0.04e18)], other.address),
+            .withdrawCollectedFees([tokens.DAI.address, tokens.MKR.address], [bn(0.02e18), bn(0.04e18)], other.address),
         tokens,
         { account: other, changes: { DAI: bn(0.02e18), MKR: bn(0.04e18) } }
       );
 
-      expect(await vault.getCollectedFeesByToken(tokens.DAI.address)).to.equal(bn(0.03e18));
-      expect(await vault.getCollectedFeesByToken(tokens.MKR.address)).to.equal(bn(0.06e18));
+      expect(await vault.getCollectedFees([tokens.DAI.address])).to.deep.equal([bn(0.03e18)]);
+      expect(await vault.getCollectedFees([tokens.MKR.address])).to.deep.equal([bn(0.06e18)]);
     });
 
     it('protocol fees cannot be over-withdrawn', async () => {
@@ -82,13 +82,13 @@ describe('Vault - protocol fees', () => {
         .grantRole(await authorizer.WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
 
       await expect(
-        vault.connect(feeCollector).withdrawProtocolFees([tokens.DAI.address], [bn(0.05e18).add(1)], other.address)
+        vault.connect(feeCollector).withdrawCollectedFees([tokens.DAI.address], [bn(0.05e18).add(1)], other.address)
       ).to.be.revertedWith('INSUFFICIENT_COLLECTED_FEES');
     });
 
-    it('unauthorized accounts cannot withdraw protocol fees', async () => {
+    it('unauthorized accounts cannot withdraw collected fees', async () => {
       await expect(
-        vault.connect(other).withdrawProtocolFees([tokens.DAI.address], [0], other.address)
+        vault.connect(other).withdrawCollectedFees([tokens.DAI.address], [0], other.address)
       ).to.be.revertedWith('CANNOT_WITHDRAW_FEES');
     });
   });
