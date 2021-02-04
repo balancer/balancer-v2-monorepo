@@ -15,6 +15,7 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -273,9 +274,9 @@ abstract contract PoolRegistry is
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _updateTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
+            _setMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
-            _updateGeneralPoolBalances(poolId, balances);
+            _setGeneralPoolBalances(poolId, balances);
         }
         emit PoolJoined(poolId, msg.sender, amountsIn, dueProtocolFeeAmounts);
     }
@@ -324,9 +325,9 @@ abstract contract PoolRegistry is
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _updateTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
+            _setMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
-            _updateGeneralPoolBalances(poolId, balances);
+            _setGeneralPoolBalances(poolId, balances);
         }
 
         emit PoolExited(poolId, msg.sender, amountsOut, dueProtocolFeeAmounts);

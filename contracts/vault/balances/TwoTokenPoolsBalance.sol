@@ -44,7 +44,7 @@ contract TwoTokenPoolsBalance {
         bytes32 sharedManaged;
     }
 
-    mapping(bytes32 => TwoTokenTokens) internal _poolTwoTokenTokens;
+    mapping(bytes32 => TwoTokenTokens) private _poolTwoTokenTokens;
 
     // We could just keep a mapping from Pool ID to TwoTokenSharedBalances, but there's an issue: we wouldn't know to
     // which tokens those balances correspond. This would mean having to also check the tokens struct in a swap, to make

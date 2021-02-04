@@ -17,10 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../lib/math/Math.sol";
-import "../lib/helpers/EnumerableMap.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./PoolRegistry.sol";
@@ -31,12 +29,9 @@ import "./interfaces/ISwapValidator.sol";
 import "./balances/BalanceAllocation.sol";
 
 abstract contract Swaps is ReentrancyGuard, PoolRegistry {
-    using SafeERC20 for IERC20;
-    using EnumerableSet for EnumerableSet.AddressSet;
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
-
     using Math for int256;
     using SafeCast for uint256;
+    using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
 
     // Despite the external API having two separate functions for given in and given out, internally their are handled
@@ -431,8 +426,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             tokenOutBalance
         );
 
-        _minimalSwapInfoPoolsBalances[request.poolId][request.tokenIn] = tokenInBalance;
-        _minimalSwapInfoPoolsBalances[request.poolId][request.tokenOut] = tokenOutBalance;
+        MinimalSwapInfoPoolTokens storage poolTokens = _minimalSwapInfoPoolTokens[request.poolId];
+        poolTokens.info[request.tokenIn].balance = tokenInBalance;
+        poolTokens.info[request.tokenOut].balance = tokenOutBalance;
     }
 
     function _processMinimalSwapQuoteRequest(
@@ -479,17 +475,17 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
-        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "TOKEN_NOT_REGISTERED");
-        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "TOKEN_NOT_REGISTERED");
+        GeneralPoolTokens storage poolTokens = _generalPoolTokens[request.poolId];
+        uint256 indexIn = _getGeneralPoolBalanceTokenIndex(poolTokens, request.tokenIn);
+        uint256 indexOut = _getGeneralPoolBalanceTokenIndex(poolTokens, request.tokenOut);
 
-        uint256 tokenAmount = poolBalances.length();
+        uint256 tokenAmount = poolTokens.totalTokens;
         uint256[] memory currentBalances = new uint256[](tokenAmount);
 
         for (uint256 i = 0; i < tokenAmount; i++) {
             // Because the iteration is bounded by `tokenAmount` and no tokens are registered or unregistered here, we
-            // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
-            bytes32 balance = poolBalances.unchecked_valueAt(i);
+            // can access the balance directly as we know `i` is a valid token index, saving storage reads.
+            bytes32 balance = poolTokens.info[i].balance;
 
             currentBalances[i] = balance.total();
             request.latestBlockNumberUsed = Math.max(request.latestBlockNumberUsed, balance.blockNumber());
@@ -519,9 +515,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         // Because no token registrations or unregistrations happened between now and when we retrieved the indexes for
-        // token in and token out, we can use `unchecked_setAt`, saving storage reads.
-        poolBalances.unchecked_setAt(indexIn, tokenInBalance);
-        poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
+        // token in and token out, we can access the balances directly saving storage reads.
+        poolTokens.info[indexIn].balance = tokenInBalance;
+        poolTokens.info[indexOut].balance = tokenOutBalance;
     }
 
     function queryBatchSwapGivenIn(

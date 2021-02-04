@@ -15,13 +15,11 @@
 pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "./BalanceAllocation.sol";
 
 contract MinimalSwapInfoPoolsBalance {
     using BalanceAllocation for bytes32;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     // Data for Pools with Minimal Swap Info Specialization setting
     //
@@ -32,8 +30,18 @@ contract MinimalSwapInfoPoolsBalance {
     // Tokens in the set always have a non-zero balance, so we don't need
     // to check the set for token existence during a swap: the non-zero balance check achieves this for less gas.
 
-    mapping(bytes32 => EnumerableSet.AddressSet) internal _minimalSwapInfoPoolsTokens;
-    mapping(bytes32 => mapping(IERC20 => bytes32)) internal _minimalSwapInfoPoolsBalances;
+    struct MinimalSwapInfoPoolTokenInfo {
+        bool registered;
+        bytes32 balance;
+    }
+
+    struct MinimalSwapInfoPoolTokens {
+        uint256 totalTokens;
+        mapping(uint256 => IERC20) tokens;
+        mapping(IERC20 => MinimalSwapInfoPoolTokenInfo) info;
+    }
+
+    mapping(bytes32 => MinimalSwapInfoPoolTokens) internal _minimalSwapInfoPoolTokens;
 
     /**
      * @dev Registers a list of tokens in a Minimal Swap Info Pool.
@@ -44,13 +52,17 @@ contract MinimalSwapInfoPoolsBalance {
      * - Each token must not be registered in the Pool.
      */
     function _registerMinimalSwapInfoPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
-        EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
+        MinimalSwapInfoPoolTokens storage poolTokens = _minimalSwapInfoPoolTokens[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
+            MinimalSwapInfoPoolTokenInfo storage tokenInfo = poolTokens.info[token];
+
             require(token != IERC20(0), "ZERO_ADDRESS_TOKEN");
-            bool added = poolTokens.add(address(token));
-            require(added, "TOKEN_ALREADY_REGISTERED");
+            require(!tokenInfo.registered, "TOKEN_ALREADY_REGISTERED");
+
+            poolTokens.tokens[poolTokens.totalTokens++] = token;
+            tokenInfo.registered = true;
         }
     }
 
@@ -63,24 +75,43 @@ contract MinimalSwapInfoPoolsBalance {
      * - Each token must have non balance in the Vault.
      */
     function _unregisterMinimalSwapInfoPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
-        EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
+        MinimalSwapInfoPoolTokens storage poolTokens = _minimalSwapInfoPoolTokens[poolId];
+        uint256 totalTokens = poolTokens.totalTokens;
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(_minimalSwapInfoPoolsBalances[poolId][token].isZero(), "NONZERO_TOKEN_BALANCE");
-            bool removed = poolTokens.remove(address(token));
-            require(removed, "TOKEN_NOT_REGISTERED");
+            MinimalSwapInfoPoolTokenInfo storage tokenInfo = poolTokens.info[token];
+
+            require(tokenInfo.registered, "TOKEN_NOT_REGISTERED");
+            require(tokenInfo.balance.isZero(), "NONZERO_TOKEN_BALANCE");
+
+            tokenInfo.registered = false;
             // No need to delete the balance entries, since they already are zero
+
+            uint256 tokenIndex = 0;
+            for (uint256 j = 0; j < totalTokens; j++) {
+                if (poolTokens.tokens[j] == token) {
+                    tokenIndex = j;
+                    break;
+                }
+            }
+
+            totalTokens--;
+            poolTokens.tokens[tokenIndex] = poolTokens.tokens[totalTokens];
+            delete poolTokens.tokens[totalTokens];
         }
+
+        poolTokens.totalTokens = totalTokens;
     }
 
-    function _updateMinimalSwapInfoPoolBalances(
+    function _setMinimalSwapInfoPoolBalances(
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances
     ) internal {
+        MinimalSwapInfoPoolTokens storage poolTokens = _minimalSwapInfoPoolTokens[poolId];
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _minimalSwapInfoPoolsBalances[poolId][tokens[i]] = balances[i];
+            poolTokens.info[tokens[i]].balance = balances[i];
         }
     }
 
@@ -114,8 +145,9 @@ contract MinimalSwapInfoPoolsBalance {
         function(bytes32, uint256) pure returns (bytes32) mutation,
         uint256 amount
     ) internal {
-        bytes32 currentBalance = _getMinimalSwapInfoPoolBalance(poolId, token);
-        _minimalSwapInfoPoolsBalances[poolId][token] = mutation(currentBalance, amount);
+        MinimalSwapInfoPoolTokenInfo storage tokenInfo = _minimalSwapInfoPoolTokens[poolId].info[token];
+        bytes32 currentBalance = _getMinimalSwapInfoPoolBalance(tokenInfo);
+        tokenInfo.balance = mutation(currentBalance, amount);
     }
 
     /**
@@ -127,14 +159,14 @@ contract MinimalSwapInfoPoolsBalance {
         view
         returns (IERC20[] memory tokens, bytes32[] memory balances)
     {
-        EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
-        tokens = new IERC20[](poolTokens.length());
+        MinimalSwapInfoPoolTokens storage poolTokens = _minimalSwapInfoPoolTokens[poolId];
+        tokens = new IERC20[](poolTokens.totalTokens);
         balances = new bytes32[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = IERC20(poolTokens.at(i));
+            IERC20 token = poolTokens.tokens[i];
             tokens[i] = token;
-            balances[i] = _minimalSwapInfoPoolsBalances[poolId][token];
+            balances[i] = poolTokens.info[token].balance;
         }
     }
 
@@ -146,14 +178,23 @@ contract MinimalSwapInfoPoolsBalance {
      * - `token` must be in the Pool.
      */
     function _getMinimalSwapInfoPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
-        bytes32 balance = _minimalSwapInfoPoolsBalances[poolId][token];
-        bool existsToken = balance.isNotZero() || _minimalSwapInfoPoolsTokens[poolId].contains(address(token));
+        MinimalSwapInfoPoolTokenInfo storage tokenInfo = _minimalSwapInfoPoolTokens[poolId].info[token];
+        return _getMinimalSwapInfoPoolBalance(tokenInfo);
+    }
+
+    function _getMinimalSwapInfoPoolBalance(MinimalSwapInfoPoolTokenInfo storage tokenInfo)
+        internal
+        view
+        returns (bytes32)
+    {
+        bytes32 balance = tokenInfo.balance;
+        bool existsToken = balance.isNotZero() || tokenInfo.registered;
         require(existsToken, "TOKEN_NOT_REGISTERED");
         return balance;
     }
 
     function _isMinimalSwapInfoPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
-        return poolTokens.contains(address(token));
+        MinimalSwapInfoPoolTokenInfo storage tokenInfo = _minimalSwapInfoPoolTokens[poolId].info[token];
+        return tokenInfo.registered;
     }
 }
