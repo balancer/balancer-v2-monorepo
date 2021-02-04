@@ -77,6 +77,29 @@ export function calcBptOutGivenExactTokensIn(
   return bn(bptOut);
 }
 
+export function calcTokenInGivenExactBptOut(
+  tokenIndex: number,
+  rawBalances: BigNumber[],
+  rawWeights: BigNumber[],
+  rawBptAmountOut: BigNumber,
+  rawBptTotalSupply: BigNumber,
+  rawSwapFee: BigNumber
+): BigNumber {
+  const bptAmountOut = decimal(rawBptAmountOut);
+  const bptTotalSupply = decimal(rawBptTotalSupply);
+  const swapFee = decimal(rawSwapFee).div(ONE);
+  const weights = toNormalizedWeights(rawWeights);
+  const balances = rawBalances.map((b) => decimal(b).div(ONE));
+
+  const invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
+  const tokenBalanceRatio = invariantRatio.pow(decimal(1).div(weights[tokenIndex]));
+  const tokenBalancePercentageExcess = decimal(1).sub(weights[tokenIndex]);
+  const amountInAfterFee = balances[tokenIndex].mul(tokenBalanceRatio.sub(decimal(1)));
+
+  const amountIn = amountInAfterFee.mul(ONE).div(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+  return bn(amountIn);
+}
+
 export function calcBptInGivenExactTokensOut(
   rawBalances: BigNumber[],
   rawWeights: BigNumber[],

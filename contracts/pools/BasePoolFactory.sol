@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IPool.sol";
+import "../vault/interfaces/IPoolBase.sol";
 
 abstract contract BasePoolFactory {
     using Address for address;
@@ -72,7 +72,7 @@ abstract contract BasePoolFactory {
      */
     function _create(bytes memory creationCode) internal returns (address) {
         address pool = Create2.deploy(0, bytes32(_createdPools.length()), creationCode);
-        bytes32 poolId = IPool(pool).getPoolId();
+        bytes32 poolId = IPoolBase(pool).getPoolId();
 
         bool added = _createdPools.add(poolId);
         require(added, "INVALID_POOL_ID"); // This should never happen, as the Vault assigns unique IDs

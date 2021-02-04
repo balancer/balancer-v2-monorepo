@@ -7,6 +7,7 @@ import * as expectEvent from '../../helpers/expectEvent';
 import { expectEqualWithError } from '../../helpers/relativeError';
 import {
   calcBptOutGivenExactTokensIn,
+  calcTokenInGivenExactBptOut,
   calcInGivenOut,
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
@@ -375,6 +376,75 @@ describe('WeightedPool', function () {
           });
         });
       });
+
+      context('join token out for exact BPT in', () => {
+        const enterTokenIndex = 0;
+
+        it('fails if not initialized', async () => {
+          const joinUserData = encodeJoinWeightedPool({
+            kind: 'TokenInForExactBPTOut',
+            bptAmountOut: bn(10e18),
+            enterTokenIndex,
+          });
+          await expect(
+            vault.connect(creator).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, joinUserData)
+          ).to.be.be.revertedWith('UNINITIALIZED');
+        });
+
+        context('once initialized', () => {
+          beforeEach('initialize pool', async () => {
+            const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
+            await vault
+              .connect(creator)
+              .callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
+          });
+
+          it('grants exact BPT for token in', async () => {
+            const previousBptSupply = await pool.totalSupply();
+
+            const bptAmountOut = bn(10e18);
+
+            const exactAmountsIn = [...ZEROS];
+            exactAmountsIn[enterTokenIndex] = await calcTokenInGivenExactBptOut(
+              enterTokenIndex,
+              poolInitialBalances,
+              poolWeights,
+              bn(10e18),
+              previousBptSupply,
+              POOL_SWAP_FEE
+            );
+
+            const previousBptBalance = await pool.balanceOf(beneficiary.address);
+
+            const joinUserData = encodeJoinWeightedPool({
+              kind: 'TokenInForExactBPTOut',
+              bptAmountOut,
+              enterTokenIndex,
+            });
+
+            const receipt = await (
+              await vault
+                .connect(lp)
+                .callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
+            ).wait();
+
+            const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
+
+            // Only token in should be the one transferred
+            expectEqualWithError(amountsIn[enterTokenIndex], exactAmountsIn[enterTokenIndex], 0.001);
+            amountsIn
+              .filter((amountIn: BigNumber, i: number) => i != enterTokenIndex)
+              .forEach((amountIn: BigNumber) => expect(amountIn).to.equal(0));
+
+            // Protocol fees should be zero
+            expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
+
+            // Make sure received BPT is closed to what we expect
+            const currentBptBalance = await pool.balanceOf(beneficiary.address);
+            expectEqualWithError(currentBptBalance.sub(previousBptBalance), bptAmountOut, 0.001);
+          });
+        });
+      });
     });
 
     describe('onExitPool', () => {
@@ -558,8 +628,8 @@ describe('WeightedPool', function () {
       });
     });
 
-    describe('quotes', () => {
-      let quoteData: {
+    describe('swapRequests', () => {
+      let swapRequestData: {
         tokenIn: string;
         tokenOut: string;
         amountIn?: BigNumberish;
@@ -571,10 +641,10 @@ describe('WeightedPool', function () {
         userData: string;
       };
 
-      beforeEach('set default quote data', async () => {
+      beforeEach('set default swap request data', async () => {
         await deployPool();
 
-        quoteData = {
+        swapRequestData = {
           poolId,
           from: other.address,
           to: other.address,
@@ -586,13 +656,13 @@ describe('WeightedPool', function () {
       });
 
       context('given in', () => {
-        it('quotes amount out', async () => {
+        it('calculates amount out', async () => {
           // swap the same amount as the initial balance for token #0
           const AMOUNT_IN = bn(0.9e18);
           const AMOUNT_IN_WITH_FEES = AMOUNT_IN.mul(POOL_SWAP_FEE.add(bn(1e18))).div(bn(1e18));
 
-          const result = await pool.quoteOutGivenIn(
-            { ...quoteData, amountIn: AMOUNT_IN_WITH_FEES },
+          const result = await pool.onSwapGivenIn(
+            { ...swapRequestData, amountIn: AMOUNT_IN_WITH_FEES },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
@@ -609,32 +679,32 @@ describe('WeightedPool', function () {
         });
 
         it('reverts if token in is not in the pool', async () => {
-          const quote = pool.quoteOutGivenIn(
-            { ...quoteData, tokenIn: tokenList.BAT.address, amountIn: 100 },
+          const calculatedAmount = pool.onSwapGivenIn(
+            { ...swapRequestData, tokenIn: tokenList.BAT.address, amountIn: 100 },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
+          await expect(calculatedAmount).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          const quote = pool.quoteOutGivenIn(
-            { ...quoteData, tokenOut: tokenList.BAT.address, amountIn: 100 },
+          const calculatedAmount = pool.onSwapGivenIn(
+            { ...swapRequestData, tokenOut: tokenList.BAT.address, amountIn: 100 },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
+          await expect(calculatedAmount).to.be.revertedWith('INVALID_TOKEN');
         });
       });
 
       context('given out', () => {
-        it('quotes amount in', async () => {
+        it('calculates amount in', async () => {
           const AMOUNT_OUT = bn(1.35e18);
 
-          const result = await pool.quoteInGivenOut(
-            { ...quoteData, amountOut: AMOUNT_OUT },
+          const result = await pool.onSwapGivenOut(
+            { ...swapRequestData, amountOut: AMOUNT_OUT },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
@@ -651,23 +721,23 @@ describe('WeightedPool', function () {
         });
 
         it('reverts if token in is not in the pool when given out', async () => {
-          const quote = pool.quoteInGivenOut(
-            { ...quoteData, tokenIn: tokenList.BAT.address, amountOut: 100 },
+          const calculatedAmount = pool.onSwapGivenOut(
+            { ...swapRequestData, tokenIn: tokenList.BAT.address, amountOut: 100 },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
+          await expect(calculatedAmount).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          const quote = pool.quoteInGivenOut(
-            { ...quoteData, tokenOut: tokenList.BAT.address, amountOut: 100 },
+          const calculatedAmount = pool.onSwapGivenOut(
+            { ...swapRequestData, tokenOut: tokenList.BAT.address, amountOut: 100 },
             poolInitialBalances[0], // tokenInBalance
             poolInitialBalances[1] // tokenOutBalance
           );
 
-          await expect(quote).to.be.revertedWith('INVALID_TOKEN');
+          await expect(calculatedAmount).to.be.revertedWith('INVALID_TOKEN');
         });
       });
     });
@@ -733,9 +803,9 @@ describe('WeightedPool', function () {
         let newBalances = await expectJoinProtocolSwapFeeEqualWithError(poolInitialBalances, ZEROS, joinUserData);
 
         joinUserData = encodeJoinWeightedPool({
-          kind: 'ExactTokensInForBPTOut',
-          amountsIn: Array(poolTokens.length).fill(bn(100e18)),
-          minimumBPT: 0,
+          kind: 'TokenInForExactBPTOut',
+          bptAmountOut: bn(1e18),
+          enterTokenIndex: 0,
         });
         newBalances = await expectJoinProtocolSwapFeeEqualWithError(newBalances, ZEROS, joinUserData);
 
