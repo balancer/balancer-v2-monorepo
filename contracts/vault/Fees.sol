@@ -117,13 +117,13 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     }
 
     function _increaseCollectedFees(IERC20 token, uint256 amount) internal {
-        uint256 currentCollectedFees = _getCollectedFeesByToken(token);
+        uint256 currentCollectedFees = _collectedProtocolFees[token];
         uint256 newTotal = currentCollectedFees.add(amount);
         _setCollectedFees(token, newTotal);
     }
 
     function _decreaseCollectedFees(IERC20 token, uint256 amount) internal {
-        uint256 currentCollectedFees = _getCollectedFeesByToken(token);
+        uint256 currentCollectedFees = _collectedProtocolFees[token];
         require(currentCollectedFees >= amount, "INSUFFICIENT_COLLECTED_FEES");
 
         uint256 newTotal = currentCollectedFees - amount;
@@ -140,9 +140,5 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         for (uint256 i = 0; i < tokens.length; ++i) {
             fees[i] = _collectedProtocolFees[tokens[i]];
         }
-    }
-
-    function _getCollectedFeesByToken(IERC20 token) internal view returns (uint256) {
-        return _collectedProtocolFees[token];
     }
 }
