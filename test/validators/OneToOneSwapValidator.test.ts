@@ -123,7 +123,7 @@ describe('OneToOneSwapValidator', () => {
 
     await expect(
       vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
-    ).to.be.revertedWith('Excessive amount in');
+    ).to.be.revertedWith('EXCESSIVE_AMOUNT_IN');
   });
 
   it('reverts if too few tokens out received', async () => {
@@ -136,7 +136,7 @@ describe('OneToOneSwapValidator', () => {
     });
     await expect(
       vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
-    ).to.be.revertedWith('Not enough tokens out');
+    ).to.be.revertedWith('INSUFFICIENT_TOKENS_OUT');
   });
 
   it('reverts if other tokens end up with non-zero balance', async () => {
@@ -167,7 +167,7 @@ describe('OneToOneSwapValidator', () => {
 
     await expect(
       vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
-    ).to.be.revertedWith('Intermediate non-zero balance');
+    ).to.be.revertedWith('INTERMEDIATE_NONZERO_BALANCE');
   });
 
   it('reverts if the deadline is in the past', async () => {
@@ -180,6 +180,6 @@ describe('OneToOneSwapValidator', () => {
     });
     await expect(
       vault.connect(trader).batchSwapGivenIn(validator.address, validatorData, swaps, tokenAddresses, funds)
-    ).to.be.revertedWith('Deadline expired');
+    ).to.be.revertedWith('DEADLINE_EXPIRED');
   });
 });

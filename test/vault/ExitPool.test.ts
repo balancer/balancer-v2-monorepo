@@ -131,32 +131,28 @@ describe('Vault - exit pool', () => {
 
     context('when called incorrectly', () => {
       it('reverts if the pool ID does not exist', async () => {
-        await expect(exitPool({ poolId: ethers.utils.id('invalid') })).to.be.revertedWith('Nonexistent pool');
+        await expect(exitPool({ poolId: ethers.utils.id('invalid') })).to.be.revertedWith('INVALID_POOL_ID');
       });
 
       it('reverts if token array is incorrect', async () => {
         // Missing - token addresses and min amounts out length must match
         await expect(
           exitPool({ tokenAddresses: tokenAddresses.slice(1), minAmountsOut: array(0).slice(1) })
-        ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
         // Extra - token addresses and min amounts out length must match
         await expect(
           exitPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]), minAmountsOut: array(0).concat(bn(0)) })
-        ).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
         // Unordered
-        await expect(exitPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('ERR_TOKENS_MISMATCH');
+        await expect(exitPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
-        await expect(exitPool({ minAmountsOut: array(0).slice(1) })).to.be.revertedWith(
-          'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
-        );
+        await expect(exitPool({ minAmountsOut: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
-        await expect(exitPool({ minAmountsOut: array(0).concat(bn(0)) })).to.be.revertedWith(
-          'ERR_TOKENS_AMOUNTS_LENGTH_MISMATCH'
-        );
+        await expect(exitPool({ minAmountsOut: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
       });
     });
 
@@ -164,21 +160,21 @@ describe('Vault - exit pool', () => {
       context('with incorrect pool return values', () => {
         it('reverts if exit amounts length does not match token length', async () => {
           // Missing
-          await expect(exitPool({ exitAmounts: array(0).slice(1) })).to.be.revertedWith('ERR_AMOUNTS_OUT_LENGTH');
+          await expect(exitPool({ exitAmounts: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
           // Extra
-          await expect(exitPool({ exitAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('ERR_AMOUNTS_OUT_LENGTH');
+          await expect(exitPool({ exitAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
 
         it('reverts if due protocol fees length does not match token length', async () => {
           // Missing
           await expect(exitPool({ dueProtocolFeeAmounts: array(0).slice(1) })).to.be.revertedWith(
-            'ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH'
+            'ARRAY_LENGTH_MISMATCH'
           );
 
           // Extra
           await expect(exitPool({ dueProtocolFeeAmounts: array(0).concat(bn(0)) })).to.be.revertedWith(
-            'ERR_DUE_PROTOCOL_FEE_AMOUNTS_LENGTH'
+            'ARRAY_LENGTH_MISMATCH'
           );
         });
 
@@ -186,12 +182,12 @@ describe('Vault - exit pool', () => {
           // Missing
           await expect(
             exitPool({ exitAmounts: array(0).slice(1), dueProtocolFeeAmounts: array(0).slice(1) })
-          ).to.be.revertedWith('ERR_AMOUNTS_OUT_LENGTH');
+          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
 
           // Extra
           await expect(
             exitPool({ exitAmounts: array(0).concat(bn(0)), dueProtocolFeeAmounts: array(0).concat(bn(0)) })
-          ).to.be.revertedWith('ERR_AMOUNTS_OUT_LENGTH');
+          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
         });
       });
 
@@ -339,7 +335,6 @@ describe('Vault - exit pool', () => {
           sender: lp.address,
           recipient: recipient.address,
           currentBalances: previousPoolBalances,
-          minAmountsOut: array(0),
           protocolSwapFee: await vault.getProtocolSwapFee(),
           latestBlockNumberUsed: previousBlockNumber,
           userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
@@ -409,7 +404,7 @@ describe('Vault - exit pool', () => {
             minAmountsOut[i] = amount.add(1);
 
             return expect(exitPool({ toInternalBalance, dueProtocolFeeAmounts, minAmountsOut })).to.be.revertedWith(
-              'ERR_EXIT_BELOW_MIN'
+              'EXIT_BELOW_MIN'
             );
           })
         );
@@ -425,7 +420,7 @@ describe('Vault - exit pool', () => {
 
             return expect(
               exitPool({ toInternalBalance, dueProtocolFeeAmounts, exitAmounts: excessiveExitAmounts })
-            ).to.be.revertedWith('ERR_SUB_OVERFLOW');
+            ).to.be.revertedWith('SUB_OVERFLOW');
           })
         );
       });

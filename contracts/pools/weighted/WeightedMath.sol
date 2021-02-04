@@ -91,7 +91,7 @@ contract WeightedMath {
         // bi = balance index i     | |  bi ^   = i                                                  //
         // i = invariant                                                                             //
         **********************************************************************************************/
-        require(normalizedWeights.length == balances.length, "ERR_BALANCES_LENGTH");
+        require(normalizedWeights.length == balances.length, "ARRAY_LENGTH_MISMATCH");
 
         invariant = FixedPoint.ONE;
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
