@@ -264,18 +264,23 @@ contract WeightedPool is IPool, IMinimalSwapInfoPoolQuote, BalancerPoolToken, We
 
         // TODO: This seems inconsistent w/ `getInvariant` for example. We assume the weights and balances order match
         uint256[] memory normalizedWeights = _normalizedWeights();
-        (JoinKind kind, uint256[] memory amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
-
-        // The Vault guarantees currentBalances length is ok
-        require(currentBalances.length == amountsIn.length, "ERR_AMOUNTS_IN_LENGTH");
+        JoinKind kind = abi.decode(userData, (JoinKind));
 
         if (kind == JoinKind.INIT) {
-            //Max amounts in are equal to amounts in.
+            // JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT
+            (, uint256[] memory amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
+
+            // The Vault guarantees currentBalances length is ok
+            require(currentBalances.length == amountsIn.length, "ERR_AMOUNTS_IN_LENGTH");
+
             return _joinInitial(normalizedWeights, recipient, amountsIn);
         } else {
             // JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT
-            //Max amounts in are equal to exact amounts in.
-            (, , uint256 minimumBPT) = abi.decode(userData, (JoinKind, uint256[], uint256));
+            (, uint256[] memory amountsIn, uint256 minimumBPT) = abi.decode(userData, (JoinKind, uint256[], uint256));
+
+            // The Vault guarantees currentBalances length is ok
+            require(currentBalances.length == amountsIn.length, "ERR_AMOUNTS_IN_LENGTH");
+
             return
                 _joinExactTokensInForBPTOut(
                     normalizedWeights,
