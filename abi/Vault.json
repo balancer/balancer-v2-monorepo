@@ -1151,9 +1151,9 @@
         "type": "uint256[]"
       },
       {
-        "internalType": "address",
-        "name": "recipient",
-        "type": "address"
+        "internalType": "address[]",
+        "name": "recipients",
+        "type": "address[]"
       }
     ],
     "name": "transferInternalBalance",
