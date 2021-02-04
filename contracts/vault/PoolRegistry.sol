@@ -273,9 +273,9 @@ abstract contract PoolRegistry is
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _setTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
+            _setMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
-            _updateGeneralPoolBalances(poolId, balances);
+            _setGeneralPoolBalances(poolId, balances);
         }
         emit PoolJoined(poolId, msg.sender, amountsIn, dueProtocolFeeAmounts);
     }
@@ -324,9 +324,9 @@ abstract contract PoolRegistry is
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _setTwoTokenPoolCashBalances(poolId, tokens[0], balances[0], tokens[1], balances[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _updateMinimalSwapInfoPoolBalances(poolId, tokens, balances);
+            _setMinimalSwapInfoPoolBalances(poolId, tokens, balances);
         } else {
-            _updateGeneralPoolBalances(poolId, balances);
+            _setGeneralPoolBalances(poolId, balances);
         }
 
         emit PoolExited(poolId, msg.sender, amountsOut, dueProtocolFeeAmounts);

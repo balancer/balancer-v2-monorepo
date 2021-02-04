@@ -103,7 +103,8 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * @dev This setter is only used when adding/removing liquidity, where tokens are guaranteed to be ordered.
+     * @dev This setter is only used when adding/removing liquidity, where tokens are guaranteed to be ordered and
+     * registered. These methods actually fetch the tokens from `_getTwoTokenPoolTokens` first.
      */
     function _setTwoTokenPoolCashBalances(
         bytes32 poolId,
@@ -221,6 +222,9 @@ contract TwoTokenPoolsBalance {
         if (tokenA == IERC20(0) || tokenB == IERC20(0)) {
             return (new IERC20[](0), new bytes32[](0));
         }
+
+        // Note that functions relying on this getter expect tokens to be properly ordered, so it's extremely important
+        // to always return (A,B)
 
         tokens = new IERC20[](2);
         tokens[0] = tokenA;

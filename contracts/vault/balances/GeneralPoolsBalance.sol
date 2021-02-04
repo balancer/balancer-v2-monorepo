@@ -73,7 +73,7 @@ contract GeneralPoolsBalance {
         }
     }
 
-    function _updateGeneralPoolBalances(bytes32 poolId, bytes32[] memory balances) internal {
+    function _setGeneralPoolBalances(bytes32 poolId, bytes32[] memory balances) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         for (uint256 i = 0; i < balances.length; ++i) {
             // Note we assume all balances are properly ordered.

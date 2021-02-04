@@ -74,7 +74,7 @@ contract MinimalSwapInfoPoolsBalance {
         }
     }
 
-    function _updateMinimalSwapInfoPoolBalances(
+    function _setMinimalSwapInfoPoolBalances(
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances
