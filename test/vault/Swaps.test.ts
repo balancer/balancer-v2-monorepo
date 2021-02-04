@@ -226,14 +226,14 @@ describe('Vault - swaps', () => {
                   context('when requesting more than the available balance', () => {
                     const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                    assertSwapGivenInReverts({ swaps }, 'ERR_SUB_OVERFLOW');
+                    assertSwapGivenInReverts({ swaps }, 'SUB_OVERFLOW');
                   });
                 });
 
                 context('when the requesting the same token', () => {
                   const swaps = [{ in: 1, out: 1, amount: 1e18 }];
 
-                  assertSwapGivenInReverts({ swaps }, 'Swap for same token');
+                  assertSwapGivenInReverts({ swaps }, 'CANNOT_SWAP_SAME_TOKEN');
                 });
               });
 
@@ -255,13 +255,13 @@ describe('Vault - swaps', () => {
             context('when the token index in is not valid', () => {
               const swaps = [{ in: 30, out: 1, amount: 1e18 }];
 
-              assertSwapGivenInReverts({ swaps }, 'ERR_INDEX_OUT_OF_BOUNDS');
+              assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS');
             });
 
             context('when the token index out is not valid', () => {
               const swaps = [{ in: 0, out: 10, amount: 1e18 }];
 
-              assertSwapGivenInReverts({ swaps }, 'ERR_INDEX_OUT_OF_BOUNDS');
+              assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS');
             });
           });
         });
@@ -269,7 +269,7 @@ describe('Vault - swaps', () => {
         context('when no amount is specified', () => {
           const swaps = [{ in: 1, out: 0, amount: 0 }];
 
-          assertSwapGivenInReverts({ swaps }, 'Unknown amount in on first swap');
+          assertSwapGivenInReverts({ swaps }, 'UNKNOWN_AMOUNT_IN_FIRST_SWAP');
         });
       });
 
@@ -416,7 +416,7 @@ describe('Vault - swaps', () => {
                 { in: 1, out: 0, amount: 0 },
               ];
 
-              assertSwapGivenInReverts({ swaps }, 'Misconstructed multihop swap');
+              assertSwapGivenInReverts({ swaps }, 'MALCONSTRUCTED_MULTIHOP_SWAP');
             });
           });
 
@@ -553,14 +553,14 @@ describe('Vault - swaps', () => {
                   context('when requesting more than the available balance', () => {
                     const swaps = [{ in: 1, out: 0, amount: 200e18 }];
 
-                    assertSwapGivenOutReverts({ swaps }, 'ERR_SUB_OVERFLOW');
+                    assertSwapGivenOutReverts({ swaps }, 'SUB_OVERFLOW');
                   });
                 });
 
                 context('when the requesting the same token', () => {
                   const swaps = [{ in: 1, out: 1, amount: 1e18 }];
 
-                  assertSwapGivenOutReverts({ swaps }, 'Swap for same token');
+                  assertSwapGivenOutReverts({ swaps }, 'CANNOT_SWAP_SAME_TOKEN');
                 });
               });
 
@@ -582,13 +582,13 @@ describe('Vault - swaps', () => {
             context('when the token index in is not valid', () => {
               const swaps = [{ in: 30, out: 1, amount: 1e18 }];
 
-              assertSwapGivenOutReverts({ swaps }, 'ERR_INDEX_OUT_OF_BOUNDS');
+              assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS');
             });
 
             context('when the token index out is not valid', () => {
               const swaps = [{ in: 0, out: 10, amount: 1e18 }];
 
-              assertSwapGivenOutReverts({ swaps }, 'ERR_INDEX_OUT_OF_BOUNDS');
+              assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS');
             });
           });
         });
@@ -596,7 +596,7 @@ describe('Vault - swaps', () => {
         context('when no amount is specified', () => {
           const swaps = [{ in: 1, out: 0, amount: 0 }];
 
-          assertSwapGivenOutReverts({ swaps }, 'Unknown amount in on first swap');
+          assertSwapGivenOutReverts({ swaps }, 'UNKNOWN_AMOUNT_IN_FIRST_SWAP');
         });
       });
 
@@ -739,7 +739,7 @@ describe('Vault - swaps', () => {
                 { in: 1, out: 0, amount: 0 },
               ];
 
-              assertSwapGivenOutReverts({ swaps }, 'Misconstructed multihop swap');
+              assertSwapGivenOutReverts({ swaps }, 'MALCONSTRUCTED_MULTIHOP_SWAP');
             });
           });
 

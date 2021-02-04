@@ -61,7 +61,7 @@ describe('Vault - flash loans', () => {
     it('reverts if the loan is larger than available balance', async () => {
       await expect(
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(100e18).add(1)], '0x10')
-      ).to.be.revertedWith('Insufficient balance to borrow');
+      ).to.be.revertedWith('INSUFFICIENT_BALANCE');
     });
 
     it('reverts if the borrower does not repay the loan', async () => {
@@ -69,7 +69,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10')
-      ).to.be.revertedWith('ERR_INVALID_POST_LOAN_BALANCE');
+      ).to.be.revertedWith('INVALID_POST_LOAN_BALANCE');
     });
   });
 
@@ -116,7 +116,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10')
-      ).to.be.revertedWith('ERR_NOT_ENOUGH_COLLECTED_FEES');
+      ).to.be.revertedWith('INSUFFICIENT_COLLECTED_FEES');
     });
 
     it('reverts if the borrower reenters the Vault', async () => {
@@ -124,7 +124,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10')
-      ).to.be.revertedWith('ReentrancyGuard: reentrant call');
+      ).to.be.revertedWith('REENTRANCY');
     });
 
     describe('multi asset loan', () => {

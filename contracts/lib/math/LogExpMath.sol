@@ -68,10 +68,8 @@ library LogExpMath {
      * @return eˆx
      */
     function n_exp(int256 x) internal pure returns (int256) {
-        require(
-            x >= EXPONENT_LB && x <= EXPONENT_UB,
-            "Natural exp argument must be between -41.446531673892822312 and 130.700829182905140221"
-        );
+        require(x >= EXPONENT_LB && x <= EXPONENT_UB, "OUT_OF_BOUNDS");
+
         if (x < 0) return (DOUBLE_DECIMALS / n_exp(-x));
         int256 ans = PRECISION;
         int256 last = 1;
@@ -150,7 +148,7 @@ library LogExpMath {
      * @return ln(x)
      */
     function n_log(int256 a) internal pure returns (int256) {
-        require(a > 0, "Natural log argument must be positive");
+        require(a > 0, "OUT_OF_BOUNDS");
         if (a < DECIMALS) return (-n_log(DOUBLE_DECIMALS / a));
         int256 ans = 0;
         if (a >= a0 * DECIMALS) {
@@ -235,8 +233,8 @@ library LogExpMath {
             return 0;
         }
 
-        require(x < 2**255, "x must be less than 2**255"); // uint256 can be casted to a positive int256
-        require(y < MILD_EXPONENT_BOUND, "input y has to be less than 2**254 / 10**20");
+        require(x < 2**255, "X_OUT_OF_BOUNDS"); // uint256 can be casted to a positive int256
+        require(y < MILD_EXPONENT_BOUND, "Y_OUT_OF_BOUNDS");
         int256 x_int256 = int256(x);
         int256 y_int256 = int256(y);
         int256 logx_times_y;
@@ -248,7 +246,7 @@ library LogExpMath {
         }
         require(
             EXPONENT_LB * DECIMALS <= logx_times_y && logx_times_y <= EXPONENT_UB * DECIMALS,
-            "log(x) times y must be between -41.446531673892822312 and 130.700829182905140221"
+            "PRODUCT_OUT_OF_BOUNDS"
         );
         logx_times_y /= DECIMALS;
         return uint256(n_exp(logx_times_y));
