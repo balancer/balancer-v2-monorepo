@@ -389,12 +389,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         (
             bytes32 tokenABalance,
             bytes32 tokenBBalance,
-            TwoTokenSharedBalances storage poolSharedBalances
-        ) = _getTwoTokenPoolSharedBalances(
-            internalSwapRequest.poolId,
-            internalSwapRequest.tokenIn,
-            internalSwapRequest.tokenOut
-        );
+            TwoTokenPoolBalances storage poolBalances
+        ) = _getTwoTokenPoolSharedBalances(internalSwapRequest.poolId, internalSwapRequest.tokenIn, internalSwapRequest.tokenOut);
 
         // We have the two Pool balances, but we don't know which one is the token in and which one is the token out.
         bytes32 tokenInBalance;
@@ -421,7 +417,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         );
 
         // We check the token ordering again to create the new shared cash packed struct
-        poolSharedBalances.sharedCash = internalSwapRequest.tokenIn < internalSwapRequest.tokenOut
+        poolBalances.sharedCash = internalSwapRequest.tokenIn < internalSwapRequest.tokenOut
             ? BalanceAllocation.toSharedCash(tokenInBalance, tokenOutBalance) // in is A, out is B
             : BalanceAllocation.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
     }
