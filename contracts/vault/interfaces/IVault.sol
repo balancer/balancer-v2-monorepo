@@ -96,14 +96,7 @@ interface IVault {
      */
     event PoolCreated(bytes32 poolId);
 
-    // Pool Queries
-
-    /**
-     * @dev Returns the number of Pools.
-     */
-    function getNumberOfPools() external view returns (uint256);
-
-    // These functions revert if querying a Pool that doesn't exist
+    // Pool Queries - these functions revert if querying a Pool that doesn't exist
 
     /**
      * @dev Returns a Pool's address and specialization level.
