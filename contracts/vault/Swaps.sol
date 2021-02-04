@@ -151,13 +151,15 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         uint256 deadline,
         SwapKind kind
     ) private nonReentrant returns (int256[] memory) {
-        require(block.timestamp <= deadline, "ERR_SWAP_DEADLINE");
-        require(tokens.length == limits.length, "ERR_TOKENS_LIMITS_MISMATCH");
+        // The deadline is timestamp-based: it should not be relied on having sub-minute accuracy.
+        // solhint-ignore not-rely-on-time
+        require(block.timestamp <= deadline, "SWAP_DEADLINE");
+        require(tokens.length == limits.length, "TOKENS_LIMITS_MISMATCH");
 
         int256[] memory tokenDeltas = _batchSwap(swaps, tokens, funds, kind);
 
         for (uint256 i = 0; i < limits.length; ++i) {
-            require(tokenDeltas[i] <= limits[i], "ERR_LIMIT");
+            require(tokenDeltas[i] <= limits[i], "SWAP_LIMIT");
         }
 
         return tokenDeltas;
