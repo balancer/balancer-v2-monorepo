@@ -220,7 +220,7 @@ abstract contract PoolRegistry is
         bool fromInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
-        require(tokens.length == maxAmountsIn.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         // The balances array will be modified later on to update the vault balances after the join
         // This is simply to avoid using unnecessary memory
@@ -271,7 +271,7 @@ abstract contract PoolRegistry is
         bool toInternalBalance,
         bytes memory userData
     ) external override nonReentrant withExistingPool(poolId) {
-        require(tokens.length == minAmountsOut.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
 
         // The balances array will be modified later on to update the vault balances after the join
         // This is simply to avoid using unnecessary memory
@@ -388,10 +388,7 @@ abstract contract PoolRegistry is
             userData
         );
 
-        require(
-            amountsIn.length == tokens.length && dueProtocolFeeAmounts.length == tokens.length,
-            "ARRAY_LENGTH_MISMATCH"
-        );
+        InputHelpers.ensureInputLengthMatch(tokens.length, amountsIn.length, dueProtocolFeeAmounts.length);
     }
 
     function _callOnExitPool(
@@ -414,10 +411,7 @@ abstract contract PoolRegistry is
             userData
         );
 
-        require(
-            amountsOut.length == tokens.length && dueProtocolFeeAmounts.length == tokens.length,
-            "ARRAY_LENGTH_MISMATCH"
-        );
+        InputHelpers.ensureInputLengthMatch(tokens.length, amountsOut.length, dueProtocolFeeAmounts.length);
     }
 
     /**
@@ -429,7 +423,7 @@ abstract contract PoolRegistry is
         returns (bytes32[] memory)
     {
         (IERC20[] memory actualTokens, bytes32[] memory balances) = _getPoolTokens(poolId);
-        require(actualTokens.length == expectedTokens.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             require(actualTokens[i] == expectedTokens[i], "TOKENS_MISMATCH");
