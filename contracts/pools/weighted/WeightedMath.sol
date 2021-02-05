@@ -17,6 +17,7 @@ pragma solidity ^0.7.1;
 import "../../lib/math/Math.sol";
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/math/LogExpMath.sol";
+import "../../lib/helpers/InputHelpers.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.
@@ -91,7 +92,7 @@ contract WeightedMath {
         // bi = balance index i     | |  bi ^   = i                                                  //
         // i = invariant                                                                             //
         **********************************************************************************************/
-        require(normalizedWeights.length == balances.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(normalizedWeights.length, balances.length);
 
         invariant = FixedPoint.ONE;
         for (uint8 i = 0; i < normalizedWeights.length; i++) {

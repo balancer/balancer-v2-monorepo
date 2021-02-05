@@ -28,8 +28,8 @@ describe('Vault - join pool', () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), admin.address);
-    await vault.connect(admin).setProtocolSwapFee(fp(0.1));
+    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+    await vault.connect(admin).setProtocolFees(fp(0.1), 0, 0);
 
     tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
     TOKEN_ADDRESSES = [];
@@ -129,20 +129,20 @@ describe('Vault - join pool', () => {
         // Missing - token addresses and max amounts min length must match
         await expect(
           joinPool({ tokenAddresses: tokenAddresses.slice(1), maxAmountsIn: array(0).slice(1) })
-        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+        ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
         // Extra  - token addresses and max amounts min length must match
         await expect(
           joinPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]), maxAmountsIn: array(0).concat(bn(0)) })
-        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+        ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
         // Unordered
         await expect(joinPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
-        await expect(joinPool({ maxAmountsIn: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
-        await expect(joinPool({ maxAmountsIn: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+        await expect(joinPool({ maxAmountsIn: array(0).slice(1) })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        await expect(joinPool({ maxAmountsIn: array(0).concat(bn(0)) })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
       });
     });
 
@@ -150,21 +150,21 @@ describe('Vault - join pool', () => {
       context('with incorrect pool return values', () => {
         it('reverts if join amounts length does not match token length', async () => {
           // Missing
-          await expect(joinPool({ joinAmounts: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          await expect(joinPool({ joinAmounts: array(0).slice(1) })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
           // Extra
-          await expect(joinPool({ joinAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          await expect(joinPool({ joinAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if due protocol fees length does not match token length', async () => {
           // Missing
           await expect(joinPool({ dueProtocolFeeAmounts: array(0).slice(1) })).to.be.revertedWith(
-            'ARRAY_LENGTH_MISMATCH'
+            'INPUT_LENGTH_MISMATCH'
           );
 
           // Extra
           await expect(joinPool({ dueProtocolFeeAmounts: array(0).concat(bn(0)) })).to.be.revertedWith(
-            'ARRAY_LENGTH_MISMATCH'
+            'INPUT_LENGTH_MISMATCH'
           );
         });
 
@@ -172,12 +172,12 @@ describe('Vault - join pool', () => {
           // Missing
           await expect(
             joinPool({ joinAmounts: array(0).slice(1), dueProtocolFeeAmounts: array(0).slice(1) })
-          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
           // Extra
           await expect(
             joinPool({ joinAmounts: array(0).concat(bn(0)), dueProtocolFeeAmounts: array(0).concat(bn(0)) })
-          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
       });
 
@@ -315,7 +315,7 @@ describe('Vault - join pool', () => {
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
           latestBlockNumberUsed: previousBlockNumber,
-          protocolSwapFee: await vault.getProtocolSwapFee(),
+          protocolSwapFee: (await vault.getProtocolFees()).swapFee,
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
       });

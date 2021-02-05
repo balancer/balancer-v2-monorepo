@@ -25,7 +25,7 @@ describe('Vault - flash loans', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FLASH_LOAN_FEE_ROLE(), feeSetter.address);
+    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), feeSetter.address);
     vault = await deploy('Vault', { args: [authorizer.address] });
 
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
@@ -43,7 +43,7 @@ describe('Vault - flash loans', () => {
 
   context('with no protocol fees', () => {
     beforeEach(async () => {
-      await vault.connect(feeSetter).setProtocolFlashLoanFee(0);
+      await vault.connect(feeSetter).setProtocolFees(0, 0, 0);
     });
 
     it('causes no net balance change on the Vault', async () => {
@@ -61,7 +61,7 @@ describe('Vault - flash loans', () => {
     it('reverts if the loan is larger than available balance', async () => {
       await expect(
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(100e18).add(1)], '0x10')
-      ).to.be.revertedWith('INSUFFICIENT_BALANCE');
+      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
     });
 
     it('reverts if the borrower does not repay the loan', async () => {
@@ -77,7 +77,20 @@ describe('Vault - flash loans', () => {
     const feePercentage = fp(0.005); // 0.5%
 
     beforeEach(async () => {
-      await vault.connect(feeSetter).setProtocolFlashLoanFee(feePercentage);
+      await vault.connect(feeSetter).setProtocolFees(0, 0, feePercentage);
+    });
+
+    it('zero loans are possible', async () => {
+      const loan = 0;
+      const feeAmount = 0;
+
+      await expectBalanceChange(
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
+        tokens,
+        { account: vault }
+      );
+
+      expect((await vault.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
     });
 
     it('zero loans are possible', async () => {

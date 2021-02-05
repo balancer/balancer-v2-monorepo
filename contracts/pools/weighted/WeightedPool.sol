@@ -57,6 +57,12 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
+    modifier onlyVault(bytes32 poolId) {
+        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
+        require(poolId == _poolId, "INVALID_POOL_ID");
+        _;
+    }
+
     constructor(
         IVault vault,
         string memory name,
