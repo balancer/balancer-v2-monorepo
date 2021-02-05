@@ -31,7 +31,7 @@ jobs:
       - name: Install
         run: yarn --frozen-lockfile
       - name: Test
-        run: yarn test:fast
+        run: yarn test
 
   coverage:
     runs-on: ubuntu-latest
