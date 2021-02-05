@@ -18,6 +18,7 @@ describe('Vault - exit pool', () => {
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList = {};
 
+  const SWAP_FEE = fp(0.1);
   let TOKEN_ADDRESSES: string[];
 
   before(async () => {
@@ -28,8 +29,8 @@ describe('Vault - exit pool', () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), admin.address);
-    await vault.connect(admin).setProtocolSwapFee(fp(0.1));
+    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+    await vault.connect(admin).setProtocolFees(SWAP_FEE, 0, 0);
 
     tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
     TOKEN_ADDRESSES = [];
@@ -198,8 +199,8 @@ describe('Vault - exit pool', () => {
 
         context('with protocol withdraw fee', () => {
           beforeEach('set protocol withdraw fee', async () => {
-            await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), admin.address);
-            await vault.connect(admin).setProtocolWithdrawFee(fp(0.02));
+            await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+            await vault.connect(admin).setProtocolFees(SWAP_FEE, fp(0.2), 0);
           });
 
           itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance();
@@ -269,12 +270,12 @@ describe('Vault - exit pool', () => {
       let expectedProtocolWithdrawFeesToCollect: BigNumber[];
 
       beforeEach('calculate intermediate values', async () => {
-        const procotolWithdrawFee = await vault.getProtocolWithdrawFee();
+        const { withdrawFee } = await vault.getProtocolFees();
         expectedProtocolWithdrawFeesToCollect = exitAmounts.map((amount) =>
           toInternalBalance
             ? bn(0)
             : // Fixed point division rounding up, since the protocol withdraw fee is a fixed point number
-              divCeil(amount.mul(procotolWithdrawFee), FP_SCALING_FACTOR)
+              divCeil(amount.mul(withdrawFee), FP_SCALING_FACTOR)
         );
       });
 
@@ -336,7 +337,7 @@ describe('Vault - exit pool', () => {
           sender: lp.address,
           recipient: recipient.address,
           currentBalances: previousPoolBalances,
-          protocolSwapFee: await vault.getProtocolSwapFee(),
+          protocolSwapFee: (await vault.getProtocolFees()).swapFee,
           latestBlockNumberUsed: previousBlockNumber,
           userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
         });

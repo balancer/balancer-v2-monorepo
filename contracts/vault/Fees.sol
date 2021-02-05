@@ -53,48 +53,50 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     // solhint-disable-next-line var-name-mixedcase
     uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE = 0.5e18; // 50%
 
-    function getProtocolWithdrawFee() public view override returns (uint256) {
-        return _protocolWithdrawFee;
+    function setProtocolFees(
+        uint256 newSwapFee,
+        uint256 newWithdrawFee,
+        uint256 newFlashLoanFee
+    ) external override nonReentrant {
+        getAuthorizer().validateCanSetProtocolFees(msg.sender);
+
+        require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, "SWAP_FEE_TOO_HIGH");
+        require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "WITHDRAW_FEE_TOO_HIGH");
+        require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FLASH_LOAN_FEE_TOO_HIGH");
+
+        _protocolSwapFee = newSwapFee;
+        _protocolWithdrawFee = newWithdrawFee;
+        _protocolFlashLoanFee = newFlashLoanFee;
+    }
+
+    function getProtocolFees()
+        external
+        view
+        override
+        returns (
+            uint256 swapFee,
+            uint256 withdrawFee,
+            uint256 flashLoanFee
+        )
+    {
+        swapFee = _protocolSwapFee;
+        withdrawFee = _protocolWithdrawFee;
+        flashLoanFee = _protocolFlashLoanFee;
+    }
+
+    function _getProtocolSwapFee() internal view returns (uint256) {
+        return _protocolSwapFee;
     }
 
     function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view returns (uint256) {
         return amount.mulUp(_protocolWithdrawFee);
     }
 
-    function getProtocolSwapFee() public view override returns (uint256) {
-        return _protocolSwapFee;
-    }
-
-    function getProtocolFlashLoanFee() public view override returns (uint256) {
-        return _protocolFlashLoanFee;
-    }
-
     function _calculateProtocolFlashLoanFeeAmount(uint256 swapFeeAmount) internal view returns (uint256) {
         return swapFeeAmount.mulUp(_protocolFlashLoanFee);
     }
 
-    function setProtocolWithdrawFee(uint256 newFee) external override nonReentrant {
-        require(getAuthorizer().canSetProtocolWithdrawFee(msg.sender), "CANNOT_SET_WITHDRAW_FEE");
-        require(newFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "WITHDRAW_FEE_TOO_HIGH");
-
-        _protocolWithdrawFee = newFee;
-    }
-
-    function setProtocolSwapFee(uint256 newFee) external override nonReentrant {
-        require(getAuthorizer().canSetProtocolSwapFee(msg.sender), "CANNOT_SET_SWAP_FEE");
-        require(newFee <= _MAX_PROTOCOL_SWAP_FEE, "SWAP_FEE_TOO_HIGH");
-
-        _protocolSwapFee = newFee;
-    }
-
-    function setProtocolFlashLoanFee(uint256 newFee) external override nonReentrant {
-        require(getAuthorizer().canSetProtocolFlashLoanFee(msg.sender), "CANNOT_SET_FLASHLOAN_FEE");
-        require(newFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FLASHLOAN_FEE_TOO_HIGH");
-
-        _protocolFlashLoanFee = newFee;
-    }
-
-    function getCollectedFees(IERC20[] memory tokens) external view override returns (uint256[] memory fees) {
+    function getCollectedFees(IERC20[] memory tokens) external view override returns (uint256[] memory) {
         return _getCollectedFees(tokens);
     }
 
@@ -108,7 +110,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         IAuthorizer authorizer = getAuthorizer();
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(authorizer.canWithdrawCollectedFees(msg.sender, token), "CANNOT_WITHDRAW_FEES");
+            authorizer.validateCanWithdrawCollectedFees(msg.sender, token);
 
             uint256 amount = amounts[i];
             _decreaseCollectedFees(token, amount);
