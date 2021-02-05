@@ -11,7 +11,6 @@ import { MAX_UINT112, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { createTransfersStruct } from '../../lib/helpers/trading';
 import { encodeJoin } from '../helpers/mockPool';
 
 type SwapData = {
@@ -200,7 +199,7 @@ describe('Vault - swaps', () => {
                       context('when using more than available as internal balance', () => {
                         beforeEach('deposit to internal balance', async () => {
                           funds.fromInternalBalance = true;
-                          const transfers = createTransfersStruct([tokens.MKR.address], bn(0.3e18), trader.address);
+                          const transfers = [{ token: tokens.MKR.address, amount: bn(0.3e18), account: trader.address }];
 
                           await vault.connect(trader).depositToInternalBalance(transfers);
                         });
@@ -527,7 +526,7 @@ describe('Vault - swaps', () => {
                       context('when using more than available as internal balance', () => {
                         beforeEach('deposit to internal balance', async () => {
                           funds.fromInternalBalance = true;
-                          const transfers = createTransfersStruct([tokens.MKR.address], bn(0.3e18), trader.address);
+                          const transfers = [{ token: tokens.MKR.address, amount: bn(0.3e18), account: trader.address }];
 
                           await vault.connect(trader).depositToInternalBalance(transfers);
                         });

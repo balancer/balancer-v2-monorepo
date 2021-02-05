@@ -5,7 +5,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { createTransfersStruct } from '../../lib/helpers/trading';
 import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } from '../../lib/helpers/numbers';
@@ -106,7 +105,11 @@ describe('Vault - exit pool', () => {
 
       // Deposit to Internal Balance from the creator so that the Vault has some additional tokens. Otherwise, tests
       // might fail not because the Vault checks its accounting, but because it is out of tokens to send.
-      const transfers = createTransfersStruct(tokenAddresses, bn(50e18), creator.address);
+      const transfers = [];
+
+      for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+        transfers.push({ token: tokenAddresses[idx], amount: bn(50e18), account: creator.address });
+      }
 
       await vault.connect(creator).depositToInternalBalance(transfers);
     });
@@ -239,7 +242,11 @@ describe('Vault - exit pool', () => {
 
         context('with some internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            const transfers = createTransfersStruct(tokenAddresses, bn(1.5e18), recipient.address);
+            const transfers = [];
+
+            for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+              transfers.push({ token: tokenAddresses[idx], amount: bn(1.5e18), account: recipient.address });
+            }
 
             await vault.connect(recipient).depositToInternalBalance(transfers);
           });
@@ -257,8 +264,12 @@ describe('Vault - exit pool', () => {
 
         context('with some internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            const transfers = createTransfersStruct(tokenAddresses, bn(1.5e18), recipient.address);
+            const transfers = [];
 
+            for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+              transfers.push({ token: tokenAddresses[idx], amount: bn(1.5e18), account: recipient.address });
+            }
+      
             await vault.connect(recipient).depositToInternalBalance(transfers);
           });
 

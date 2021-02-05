@@ -11,7 +11,6 @@ import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
 import { bn } from '../../helpers/numbers';
 import { deployPoolFromFactory, PoolName } from '../../helpers/pools';
 import { deploySortedTokens, mintTokens, TokenList } from '../../helpers/tokens';
-import { createTransfersStruct } from '../../helpers/trading';
 
 export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH'];
 
@@ -43,8 +42,11 @@ export async function setupEnvironment(): Promise<{
   }
 
   // deposit internal balance for trader to make it non-zero
+  const transfers = [];
 
-  const transfers = createTransfersStruct(tokenAddresses, bn(1e18), trader.address);
+  for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+    transfers.push({ token: tokenAddresses[idx], amount: bn(1e18), account: trader.address });
+  }
 
   await vault.connect(trader).depositToInternalBalance(transfers);
 
