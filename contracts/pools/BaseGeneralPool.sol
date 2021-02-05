@@ -16,55 +16,50 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "./BasePool.sol";
-import "../vault/interfaces/IMinimalSwapInfoPool.sol";
+import "../vault/interfaces/IGeneralPool.sol";
 
-abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
+abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     constructor(
         IVault vault,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFee
-    )
-        BasePool(
-            vault,
-            tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-            name,
-            symbol,
-            tokens,
-            swapFee
-        )
-    {}
+    ) BasePool(vault, IVault.PoolSpecialization.GENERAL, name, symbol, tokens, swapFee) {}
 
     // Swap Hooks
 
     function onSwapGivenIn(
         IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
     ) external override returns (uint256) {
         swapRequest.amountIn = _subtractSwapFee(swapRequest.amountIn);
-        return _onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        return _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
     }
 
     function onSwapGivenOut(
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
     ) external override returns (uint256) {
-        uint256 amountIn = _onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 amountIn = _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
         return _addSwapFee(amountIn);
     }
 
     function _onSwapGivenIn(
         IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
     ) internal virtual returns (uint256);
 
     function _onSwapGivenOut(
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
     ) internal virtual returns (uint256);
 }
