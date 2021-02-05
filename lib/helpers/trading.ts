@@ -113,16 +113,3 @@ export function toSwapOut(swaps: Array<Swap>): Array<SwapOut> {
     };
   });
 }
-
-export function createAssetManagerTransfersStruct(
-  tokenAddresses: Array<string>,
-  commonAmount: BigNumberish
-): Array<AssetManagerTransfer> {
-  const transfers = [];
-
-  for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-    transfers.push({ token: tokenAddresses[idx], amount: commonAmount });
-  }
-
-  return transfers;
-}
