@@ -39,7 +39,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
 
     // The swap fee is charged whenever a swap occurs, and is a percentage of the fee charged by the Pool.
     // The Vault relies on the Pool being honest and reporting the actual fee it charged.
-    uint256 internal _protocolSwapFee;
+    uint256 private _protocolSwapFee;
 
     // The flash loan fee is charged whenever a flash loan occurs, and is a percentage of the tokens lent
     uint256 private _protocolFlashLoanFee;
@@ -82,6 +82,10 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         swapFee = _protocolSwapFee;
         withdrawFee = _protocolWithdrawFee;
         flashLoanFee = _protocolFlashLoanFee;
+    }
+
+    function _getProtocolSwapFee() internal view returns (uint256) {
+        return _protocolSwapFee;
     }
 
     function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view returns (uint256) {
