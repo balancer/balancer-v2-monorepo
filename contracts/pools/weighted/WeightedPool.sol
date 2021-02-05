@@ -87,6 +87,12 @@ contract WeightedPool is IMinimalSwapInfoPool, BalancerPoolToken, WeightedMath, 
 
     uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
 
+    modifier onlyVault(bytes32 poolId) {
+        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
+        require(poolId == _poolId, "INVALID_POOL_ID");
+        _;
+    }
+
     constructor(
         IVault vault,
         string memory name,
@@ -97,7 +103,7 @@ contract WeightedPool is IMinimalSwapInfoPool, BalancerPoolToken, WeightedMath, 
     ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
-        require(tokens.length == weights.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(tokens.length, weights.length);
 
         IVault.PoolSpecialization specialization = tokens.length == 2
             ? IVault.PoolSpecialization.TWO_TOKEN
@@ -229,16 +235,15 @@ contract WeightedPool is IMinimalSwapInfoPool, BalancerPoolToken, WeightedMath, 
     }
 
     function getInvariant() external view returns (uint256) {
-        (IERC20[] memory tokens, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
-        uint256[] memory normalizedWeights = getNormalizedWeights(tokens);
+        // TODO: Make sure weights and balances are in the same order (not obvious for 2-token pools)
+        // We trust the vault and the pool have the same token list and in the same order
+        (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
+        uint256[] memory normalizedWeights = _normalizedWeights();
         return _invariant(normalizedWeights, balances);
     }
 
-    function getNormalizedWeights(IERC20[] memory tokens) public view returns (uint256[] memory normalizedWeights) {
-        normalizedWeights = new uint256[](tokens.length);
-        for (uint256 i = 0; i < normalizedWeights.length; ++i) {
-            normalizedWeights[i] = _normalizedWeight(tokens[i]);
-        }
+    function getNormalizedWeights() external view returns (uint256[] memory) {
+        return _normalizedWeights();
     }
 
     function getSwapFee() external view returns (uint256) {
@@ -257,11 +262,7 @@ contract WeightedPool is IMinimalSwapInfoPool, BalancerPoolToken, WeightedMath, 
         uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
-        require(poolId == _poolId, "INVALID_POOL_ID");
-
-        // TODO: This seems inconsistent w/ `getInvariant` for example. We assume the weights and balances order match
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory normalizedWeights = _normalizedWeights();
         JoinKind kind = abi.decode(userData, (JoinKind));
 
@@ -383,10 +384,7 @@ contract WeightedPool is IMinimalSwapInfoPool, BalancerPoolToken, WeightedMath, 
         uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
-        require(poolId == _poolId, "INVALID_POOL_ID");
-
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory normalizedWeights = _normalizedWeights();
         // This updates currentBalances by deducting protocol fees to pay, which the Vault will charge the Pool once
         // this function returns.

@@ -14,18 +14,16 @@
 
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+library InputHelpers {
+    function ensureInputLengthMatch(uint256 a, uint256 b) internal pure {
+        require(a == b, "INPUT_LENGTH_MISMATCH");
+    }
 
-interface IAuthorizer {
-    function validateCanChangeAuthorizer(address account) external view;
-
-    function validateCanSetProtocolFees(address account) external view;
-
-    function validateCanWithdrawCollectedFees(address account, IERC20 token) external view;
-
-    function canChangeAuthorizer(address account) external view returns (bool);
-
-    function canSetProtocolFees(address account) external view returns (bool);
-
-    function canWithdrawCollectedFees(address account, IERC20 token) external view returns (bool);
+    function ensureInputLengthMatch(
+        uint256 a,
+        uint256 b,
+        uint256 c
+    ) internal pure {
+        require(a == b && b == c, "INPUT_LENGTH_MISMATCH");
+    }
 }
