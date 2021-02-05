@@ -217,12 +217,16 @@ contract StableMath {
     // S = sum of final balances but f                                                           //
     // P = product of final balances but f                                                       //
     **********************************************************************************************/
-    function _calculateOneTokenAccumulatedSwapFees(
+    function _calculateDueTokenProtocolSwapFee(
         uint256 amp,
         uint256[] memory balances,
         uint256 lastInvariant,
-        uint256 tokenIndex
+        uint256 tokenIndex,
+        uint256 protocolSwapFeePercentage
     ) internal pure returns (uint256) {
+        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less protocol fees
+        // to the Vault.
+
         uint256 inv = lastInvariant;
         uint256 p = inv;
         uint256 sum = 0;
@@ -242,6 +246,8 @@ contract StableMath {
         p = (p * inv) / (amp * nn * nn);
         uint256 b = sum + inv / (amp * nn);
         uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
-        return (balances[tokenIndex] - y - 1);
+
+        uint256 accumulatedTokenSwapFees = (balances[tokenIndex] - y - 1);
+        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage);
     }
 }

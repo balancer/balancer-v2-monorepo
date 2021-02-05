@@ -257,21 +257,16 @@ contract StablePool is BaseGeneralPool, StableMath {
         // multiple joins and exits. This pseudo-randomness being manipulated is not an issue.
         uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
 
-        uint256 chosenTokenAccumulatedSwapFees = StableMath._calculateOneTokenAccumulatedSwapFees(
-            _amp,
-            currentBalances,
-            previousInvariant,
-            chosenTokenIndex
-        );
-
-        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less protocol fees
-        // to the Vault.
-        uint256 chosenTokenDueProtocolSwapFees = chosenTokenAccumulatedSwapFees.mulDown(protocolSwapFeePercentage);
-
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
         // Set the fee to pay in the selected token
-        dueProtocolFeeAmounts[chosenTokenIndex] = chosenTokenDueProtocolSwapFees;
+        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calculateDueTokenProtocolSwapFee(
+            _amp,
+            currentBalances,
+            previousInvariant,
+            chosenTokenIndex,
+            protocolSwapFeePercentage
+        );
 
         return dueProtocolFeeAmounts;
     }

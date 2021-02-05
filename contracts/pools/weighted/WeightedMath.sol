@@ -261,9 +261,11 @@ contract WeightedMath {
         /*  protocolSwapFee * balanceToken * ( 1 - (previousInvariant / currentInvariant) ^ (1 / weightToken))
         *********************************************************************************/
 
-        // We're computing due protocol swap fees, so overall we round up. Fee percentage and balance multiplications
-        // round up, while the subtrahend (power) rounds down (as does the base). Because
-        // previousInvariant / currentInvariant <= 1, the exponent rounds up.
+        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less protocol fees
+        // to the Vault.
+
+        // Fee percentage and balance multiplications round down, while the subtrahend (power) rounds up (as does the
+        // base). Because previousInvariant / currentInvariant <= 1, the exponent rounds down.
 
         if (currentInvariant < previousInvariant) {
             // This should never happen, but this acts as a safeguard to prevent the Pool from entering a locked state
@@ -271,12 +273,12 @@ contract WeightedMath {
             return 0;
         }
 
-        uint256 base = previousInvariant.divDown(currentInvariant);
-        uint256 exponent = FixedPoint.ONE.divUp(normalizedWeight);
+        uint256 base = previousInvariant.divUp(currentInvariant);
+        uint256 exponent = FixedPoint.ONE.divDown(normalizedWeight);
 
         uint256 power = LogExpMath.powUp(base, exponent);
 
-        uint256 tokenAccruedFees = balance.mulUp(FixedPoint.ONE.sub(power));
-        return tokenAccruedFees.mulUp(protocolSwapFeePercentage);
+        uint256 tokenAccruedFees = balance.mulDown(FixedPoint.ONE.sub(power));
+        return tokenAccruedFees.mulDown(protocolSwapFeePercentage);
     }
 }
