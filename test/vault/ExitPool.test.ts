@@ -206,7 +206,7 @@ describe('Vault - exit pool', () => {
         context('with protocol withdraw fee', () => {
           beforeEach('set protocol withdraw fee', async () => {
             await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
-            await vault.connect(admin).setProtocolFees(SWAP_FEE, fp(0.2), 0);
+            await vault.connect(admin).setProtocolFees(SWAP_FEE, fp(0.02), 0);
           });
 
           itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance();
