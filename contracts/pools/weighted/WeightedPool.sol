@@ -97,7 +97,7 @@ contract WeightedPool is IMinimalSwapInfoPool, BalancerPoolToken, WeightedMath, 
     ) BalancerPoolToken(name, symbol) {
         require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
-        require(tokens.length == weights.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(tokens.length, weights.length);
 
         IVault.PoolSpecialization specialization = tokens.length == 2
             ? IVault.PoolSpecialization.TWO_TOKEN

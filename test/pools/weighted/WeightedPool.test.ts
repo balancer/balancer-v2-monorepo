@@ -193,7 +193,7 @@ describe('WeightedPool', function () {
         it('reverts if the number of tokens and weights do not match', async () => {
           const weights = poolWeights.slice(1);
 
-          await expect(deployPool({ weights })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          await expect(deployPool({ weights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if there are repeated tokens', async () => {
