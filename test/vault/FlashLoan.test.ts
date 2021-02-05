@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../lib/helpers/deploy';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { bn, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
+import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
 import { TokenList, deployTokens } from '../../lib/helpers/tokens';
 
 describe('Vault - flash loans', () => {
@@ -80,11 +80,38 @@ describe('Vault - flash loans', () => {
       await vault.connect(feeSetter).setProtocolFees(0, 0, feePercentage);
     });
 
-    it('the Vault receives protocol fees', async () => {
-      const feeAmount = bn(1e18).mul(feePercentage).div(FP_SCALING_FACTOR);
+    it('zero loans are possible', async () => {
+      const loan = 0;
+      const feeAmount = 0;
 
       await expectBalanceChange(
-        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
+        tokens,
+        { account: vault }
+      );
+
+      expect((await vault.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
+    });
+
+    it('the Vault receives protocol fees', async () => {
+      const loan = bn(1e18);
+      const feeAmount = divCeil(loan.mul(feePercentage), FP_SCALING_FACTOR);
+
+      await expectBalanceChange(
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
+        tokens,
+        { account: vault, changes: { DAI: feeAmount } }
+      );
+
+      expect((await vault.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
+    });
+
+    it('protocol fees are rounded up', async () => {
+      const loan = bn(1);
+      const feeAmount = bn(1); // In this extreme case, fees account for the full loan
+
+      await expectBalanceChange(
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
         tokens,
         { account: vault, changes: { DAI: feeAmount } }
       );
