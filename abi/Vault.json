@@ -491,19 +491,26 @@
   {
     "inputs": [
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "amounts",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "address",
-        "name": "user",
-        "type": "address"
+        "components": [
+          {
+            "internalType": "contract IERC20",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct IVault.BalanceTransfer[]",
+        "name": "transfers",
+        "type": "tuple[]"
       }
     ],
     "name": "depositToInternalBalance",
@@ -649,7 +656,7 @@
     "outputs": [
       {
         "internalType": "uint256[]",
-        "name": "",
+        "name": "balances",
         "type": "uint256[]"
       }
     ],
@@ -1141,19 +1148,26 @@
   {
     "inputs": [
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "amounts",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "address[]",
-        "name": "recipients",
-        "type": "address[]"
+        "components": [
+          {
+            "internalType": "contract IERC20",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct IVault.BalanceTransfer[]",
+        "name": "transfers",
+        "type": "tuple[]"
       }
     ],
     "name": "transferInternalBalance",
@@ -1228,19 +1242,26 @@
   {
     "inputs": [
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "amounts",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "address",
-        "name": "recipient",
-        "type": "address"
+        "components": [
+          {
+            "internalType": "contract IERC20",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct IVault.BalanceTransfer[]",
+        "name": "transfers",
+        "type": "tuple[]"
       }
     ],
     "name": "withdrawFromInternalBalance",

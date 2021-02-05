@@ -50,68 +50,53 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         external
         view
         override
-        returns (uint256[] memory)
+        returns (uint256[] memory balances)
     {
-        uint256[] memory balances = new uint256[](tokens.length);
+        balances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             balances[i] = _getInternalBalance(user, tokens[i]);
         }
-
-        return balances;
     }
 
-    function depositToInternalBalance(
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address user
-    ) external override nonReentrant {
-        require(tokens.length == amounts.length, "ARRAY_LENGTH_MISMATCH");
-
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = tokens[i];
-            uint256 amount = amounts[i];
+    function depositToInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
+        for (uint256 i = 0; i < transfers.length; i++) {
+            IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
+            address user = transfers[i].account;
 
             _increaseInternalBalance(user, token, amount);
             token.safeTransferFrom(msg.sender, address(this), amount);
+
             emit InternalBalanceDeposited(msg.sender, user, token, amount);
         }
     }
 
-    function withdrawFromInternalBalance(
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address recipient
-    ) external override nonReentrant {
-        require(tokens.length == amounts.length, "ARRAY_LENGTH_MISMATCH");
-
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = tokens[i];
-            uint256 amount = amounts[i];
+    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
+        for (uint256 i = 0; i < transfers.length; i++) {
+            IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
+            address recipient = transfers[i].account;
 
             uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
             _increaseCollectedFees(token, feeAmount);
 
             _decreaseInternalBalance(msg.sender, token, amount);
             token.safeTransfer(recipient, amount.sub(feeAmount));
+
             emit InternalBalanceWithdrawn(msg.sender, recipient, token, amount);
         }
     }
 
-    function transferInternalBalance(
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address[] memory recipients
-    ) external override nonReentrant {
-        require(tokens.length == amounts.length && amounts.length == recipients.length, "ARRAY_LENGTH_MISMATCH");
-
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = tokens[i];
-            uint256 amount = amounts[i];
-            address recipient = recipients[i];
+    function transferInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
+        for (uint256 i = 0; i < transfers.length; i++) {
+            IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
+            address recipient = transfers[i].account;
 
             _decreaseInternalBalance(msg.sender, token, amount);
             _increaseInternalBalance(recipient, token, amount);
+            
             emit InternalBalanceTransferred(msg.sender, recipient, token, amount);
         }
     }

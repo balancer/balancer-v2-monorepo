@@ -47,6 +47,12 @@ export type OneToOneValidatorData = {
   deadline: BigNumberish;
 };
 
+export type BalanceTransfer = {
+  token: string;
+  amount: BigNumberish;
+  account: string;
+};
+
 export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<Swap>] {
   const swaps: Array<Swap> = [];
 
@@ -107,4 +113,24 @@ export function toSwapOut(swaps: Array<Swap>): Array<SwapOut> {
       userData: swap.userData,
     };
   });
+}
+
+export function createGeneralTransfersStruct(tokenAddresses: Array<string>, tokenAmounts: Array<BigNumberish>, accounts: Array<string>): Array<BalanceTransfer> {
+  let transfers = [];
+
+  for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+    transfers.push({token: tokenAddresses[idx], amount: tokenAmounts[idx], account: accounts[idx]});
+  }
+
+  return transfers;
+}
+
+export function createTransfersStruct(tokenAddresses: Array<string>, commonAmount: BigNumberish, commonAccount: string): Array<BalanceTransfer> {
+  let transfers = [];
+
+  for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+    transfers.push({token: tokenAddresses[idx], amount: commonAmount, account: commonAccount});
+  }
+
+  return transfers;
 }

@@ -10,6 +10,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { FundManagement, SwapIn } from '../../helpers/trading';
 import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
 import { formatPools, getTokenInfoForDeploy, Pool } from './processJSON';
+import { createTransfersStruct } from '../../helpers/trading';
 
 let ethers: any;
 let deployer: SignerWithAddress;
@@ -56,7 +57,8 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
 
     // deposit half into user balance
     const depositBalance = tradingBalance.div(bn(2));
-    await vault.connect(trader).depositToInternalBalance([token.address], [depositBalance], trader.address);
+    const transfers = createTransfersStruct([token.address], depositBalance, trader.address);
+    await vault.connect(trader).depositToInternalBalance(transfers);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);

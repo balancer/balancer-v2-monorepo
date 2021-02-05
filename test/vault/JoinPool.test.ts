@@ -12,6 +12,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
 import { times } from 'lodash';
 import { encodeJoin } from '../helpers/mockPool';
+import { createTransfersStruct } from '../../lib/helpers/trading';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -210,7 +211,9 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(tokenAddresses, array(1.5e18), lp.address);
+            const transfers = createTransfersStruct([tokens.DAI.address], bn(1.5e18), lp.address);
+
+            await vault.connect(lp).depositToInternalBalance(transfers);
           });
 
           itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });
@@ -226,7 +229,9 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(tokenAddresses, array(1.5e18), lp.address);
+            const transfers = createTransfersStruct(tokenAddresses, bn(1.5e18), lp.address);
+
+            await vault.connect(lp).depositToInternalBalance(transfers);
           });
 
           itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });
@@ -234,7 +239,8 @@ describe('Vault - join pool', () => {
 
         context('with enough internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(tokenAddresses, array(100e18), lp.address);
+            const transfers = createTransfersStruct(tokenAddresses, bn(100e18), lp.address);
+            await vault.connect(lp).depositToInternalBalance(transfers);
           });
 
           itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });

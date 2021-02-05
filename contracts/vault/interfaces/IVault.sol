@@ -32,40 +32,47 @@ interface IVault {
     // Internal Balance
 
     /**
+     * @dev Data for internal balance transfers - encompassing deposits, withdrawals, and transfers between accounts.
+     *
+     * This gives aggregators maximum flexibility, and makes it possible for an asset manager to manage multiple tokens
+     * and pools with less gas and fewer calls to the vault.
+     */
+
+    struct BalanceTransfer {
+        IERC20 token;
+        uint256 amount;
+        address account;
+    }
+
+    /**
      * @dev Returns `user`'s Internal Balance for a specific token.
      */
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits tokens from the caller into `user`'s Internal Balance. The caller must have allowed the Vault
-     * to use their tokens via `IERC20.approve()`.
+     * @dev Deposits tokens from the caller into Internal Balances of the users specified in the `account` field of 
+     * the struct. The caller must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     * Allows aggregators to settle multiple accounts in a single transaction.
      */
-    function depositToInternalBalance(
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address user
-    ) external;
+    function depositToInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Withdraws tokens from the caller's Internal Balance, transferring them to `recipient`.
+     * @dev Withdraws tokens from the caller's Internal Balance, transferring them to the recipients
+     * specified in the `account` field of the struct. Allows aggregators to settle multiple accounts
+     * in a single transaction.
+     *
      * This charges protocol withdrawal fees.
      */
-    function withdrawFromInternalBalance(
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address recipient
-    ) external;
+    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Transfers tokens from the caller's Internal Balance, transferring them to `recipient`'s Internal Balance.
-     * This does not charge protocol withdrawal fees. Allow a different recipient for each token, as support for
-     * aggregators wanting to settle multiple trades in a single transaction.
+     * @dev Transfers tokens from the caller's Internal Balance, transferring them to Internal Balances
+     * of the recipients specified in the `account` field of the struct. Allows aggregators to settle multiple
+     * accounts in a single transaction.
+     *
+     * This does not charge protocol withdrawal fees.
      */
-    function transferInternalBalance(
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address[] memory recipients
-    ) external;
+    function transferInternalBalance(BalanceTransfer[] memory transfers) external;
 
     // Pools
 
