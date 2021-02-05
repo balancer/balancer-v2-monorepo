@@ -440,72 +440,97 @@ abstract contract PoolRegistry is
 
     // Assets under management
 
-    modifier onlyPoolAssetManager(bytes32 poolId, IERC20 token) {
-        _ensurePoolAssetManagerIsSender(poolId, token);
-        _;
-    }
-
-    function getPoolAssetManager(bytes32 poolId, IERC20 token)
+    function getPoolAssetManagers(bytes32 poolId, IERC20[] memory tokens)
         external
         view
         override
         withExistingPool(poolId)
-        returns (address)
+        returns (address[] memory assetManagers)
     {
-        _ensureTokenRegistered(poolId, token);
-        return _poolAssetManagers[poolId][token];
-    }
+        assetManagers = new address[](tokens.length);
 
-    function withdrawFromPoolBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
-        PoolSpecialization specialization = _getPoolSpecialization(poolId);
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _twoTokenPoolCashToManaged(poolId, token, amount);
-        } else {
-            _generalPoolCashToManaged(poolId, token, amount);
+        for (uint256 idx = 0; idx < tokens.length; ++idx) {
+            IERC20 token = tokens[idx];
+
+            _ensureTokenRegistered(poolId, token);
+            assetManagers[idx] = _poolAssetManagers[poolId][token];
         }
-
-        token.safeTransfer(msg.sender, amount);
-
-        emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
     }
 
-    function depositToPoolBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
+    function withdrawFromPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers)
+        external
+        override
+        nonReentrant
+    {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _twoTokenPoolManagedToCash(poolId, token, amount);
-        } else {
-            _generalPoolManagedToCash(poolId, token, amount);
+
+        for (uint256 idx = 0; idx < transfers.length; ++idx) {
+            IERC20 token = transfers[idx].token;
+            _ensurePoolAssetManagerIsSender(poolId, token);
+
+            uint256 amount = transfers[idx].amount;
+
+            if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+                _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
+            } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+                _twoTokenPoolCashToManaged(poolId, token, amount);
+            } else {
+                _generalPoolCashToManaged(poolId, token, amount);
+            }
+
+            token.safeTransfer(msg.sender, amount);
+
+            emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
         }
-
-        token.safeTransferFrom(msg.sender, address(this), amount);
-
-        emit PoolBalanceChanged(poolId, msg.sender, token, -(amount.toInt256()));
     }
 
-    function updateManagedBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) external override nonReentrant onlyPoolAssetManager(poolId, token) {
+    function depositToPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers)
+        external
+        override
+        nonReentrant
+    {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _setTwoTokenPoolManagedBalance(poolId, token, amount);
-        } else {
-            _setGeneralPoolManagedBalance(poolId, token, amount);
+
+        for (uint256 idx = 0; idx < transfers.length; ++idx) {
+            IERC20 token = transfers[idx].token;
+            _ensurePoolAssetManagerIsSender(poolId, token);
+
+            uint256 amount = transfers[idx].amount;
+
+            if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+                _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
+            } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+                _twoTokenPoolManagedToCash(poolId, token, amount);
+            } else {
+                _generalPoolManagedToCash(poolId, token, amount);
+            }
+
+            token.safeTransferFrom(msg.sender, address(this), amount);
+
+            emit PoolBalanceChanged(poolId, msg.sender, token, -(amount.toInt256()));
+        }
+    }
+
+    function updateManagedBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers)
+        external
+        override
+        nonReentrant
+    {
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+
+        for (uint256 idx = 0; idx < transfers.length; ++idx) {
+            IERC20 token = transfers[idx].token;
+            _ensurePoolAssetManagerIsSender(poolId, token);
+
+            uint256 amount = transfers[idx].amount;
+
+            if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+                _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
+            } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+                _setTwoTokenPoolManagedBalance(poolId, token, amount);
+            } else {
+                _setGeneralPoolManagedBalance(poolId, token, amount);
+            }
         }
     }
 

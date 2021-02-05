@@ -403,43 +403,42 @@ interface IVault {
 
     // Asset management interface
 
-    /**
-     * @dev Returns a Pool's Asset Manager for `token`. Asset Managers can manage a Pool's assets by taking
-     * them out of the Vault via `withdrawFromPoolBalance`, `depositToPoolBalance` and `updateManagedBalance`.
-     */
-    function getPoolAssetManager(bytes32 poolId, IERC20 token) external view returns (address);
+    struct AssetManagerTransfer {
+        IERC20 token;
+        uint256 amount;
+    }
 
     /**
-     * @dev Called by a Pool's Asset Manager for `token` to withdraw `amount` tokens from the Vault. This decreases
+     * @dev Returns the Pool's Asset Managers for the given `tokens`. Asset Managers can manage a Pool's assets
+     * by taking them out of the Vault via `withdrawFromPoolBalance`, `depositToPoolBalance` and `updateManagedBalance`.
+     */
+    function getPoolAssetManagers(bytes32 poolId, IERC20[] memory tokens)
+        external
+        view
+        returns (address[] memory assetManagers);
+
+    /**
+     * @dev Called by a Pool's Asset Manager to withdraw tokens from the Vault. This decreases
      * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
+     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
      */
-    function withdrawFromPoolBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) external;
+    function withdrawFromPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
 
     /**
-     * @dev Called by a Pool's Asset Manager for `token` to deposit `amount` tokens into the Vault. This increases
-     * the Pool's cash but decreases its managed balance, leaving the total balance unchanged. The Asset Manager
-     * must have approved the Vault to use `token`.
+     * @dev Called by a Pool's Asset Manager to deposit tokens into the Vault. This increases the Pool's cash,
+     * but decreases its managed balance, leaving the total balance unchanged. The Asset Manager must have approved
+     * the Vault to use each token. Array input allows asset managers to manage multiple tokens for a pool in a
+     * single transaction.
      */
-    function depositToPoolBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) external;
+    function depositToPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
 
     /**
-     * @dev Called by a Pool's Asset Manager for `token` to update the external amount. This causes no change on
-     * the Pool's cash, but because the managed balance changes, so does the total balance. The external amount can be
-     * both increased and decreased by this call.
+     * @dev Called by a Pool's Asset Manager for to update the amount held outside the vault. This does not affect
+     * the Pool's cash balance, but because the managed balance changes, it does alter the total. The external
+     * amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
+     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
      */
-    function updateManagedBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) external;
+    function updateManagedBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
 
     // Authorizer
 

@@ -47,6 +47,11 @@ export type OneToOneValidatorData = {
   deadline: BigNumberish;
 };
 
+export type AssetManagerTransfer = {
+  token: string;
+  amount: BigNumberish;
+};
+
 export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<Swap>] {
   const swaps: Array<Swap> = [];
 
@@ -107,4 +112,17 @@ export function toSwapOut(swaps: Array<Swap>): Array<SwapOut> {
       userData: swap.userData,
     };
   });
+}
+
+export function createAssetManagerTransfersStruct(
+  tokenAddresses: Array<string>,
+  commonAmount: BigNumberish
+): Array<AssetManagerTransfer> {
+  const transfers = [];
+
+  for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+    transfers.push({ token: tokenAddresses[idx], amount: commonAmount });
+  }
+
+  return transfers;
 }

@@ -163,7 +163,7 @@ describe('StablePool', function () {
           const poolId = await pool.getPoolId();
 
           for (const token of poolTokens) {
-            expect(await vault.getPoolAssetManager(poolId, token)).to.equal(ZERO_ADDRESS);
+            expect(await vault.getPoolAssetManagers(poolId, [token])).to.deep.equal([ZERO_ADDRESS]);
           }
         });
 
