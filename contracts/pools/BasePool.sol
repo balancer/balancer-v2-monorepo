@@ -125,19 +125,25 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
         require(poolId == _poolId, "INVALID_POOL_ID");
 
-        (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(
-            poolId,
-            sender,
-            recipient,
-            currentBalances,
-            latestBlockNumberUsed,
-            protocolSwapFeePercentage,
-            userData
-        );
+        if (totalSupply() == 0) {
+            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
 
-        _mintPoolTokens(recipient, bptAmountOut);
+            _mintPoolTokens(recipient, bptAmountOut);
+            return (amountsIn, new uint256[](_totalTokens));
+        } else {
+            (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(
+                poolId,
+                sender,
+                recipient,
+                currentBalances,
+                latestBlockNumberUsed,
+                protocolSwapFeePercentage,
+                userData
+            );
 
-        return (amountsIn, dueProtocolFeeAmounts);
+            _mintPoolTokens(recipient, bptAmountOut);
+            return (amountsIn, dueProtocolFeeAmounts);
+        }
     }
 
     function onExitPool(
@@ -166,6 +172,13 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
 
         return (amountsOut, dueProtocolFeeAmounts);
     }
+
+    function _onInitializePool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        bytes memory userData
+    ) internal virtual returns (uint256, uint256[] memory);
 
     function _onJoinPool(
         bytes32 poolId,

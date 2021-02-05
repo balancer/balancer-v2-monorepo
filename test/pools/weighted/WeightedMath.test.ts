@@ -212,6 +212,7 @@ describe('WeightedMath', function () {
         expectEqualWithError(result, bn(expectedFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });
     });
+
     context('three tokens', () => {
       it('returns protocol swap fees', async () => {
         const normalizedWeights = [bn(0.3e18), bn(0.2e18), bn(0.5e18)];

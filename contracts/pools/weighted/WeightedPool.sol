@@ -54,6 +54,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     uint256 private _lastInvariant;
 
+    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
+
     constructor(
         IVault vault,
         string memory name,
@@ -62,6 +65,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory weights,
         uint256 swapFee
     ) BaseMinimalSwapInfoPool(vault, name, symbol, tokens, swapFee) {
+        require(weights.length == tokens.length, "ARRAY_LENGTH_MISMATCH");
+
         // Check valid weights and compute normalized weights
         uint256 sumWeights = 0;
         for (uint8 i = 0; i < weights.length; i++) {
@@ -149,20 +154,22 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     function getInvariant() external view returns (uint256) {
         (IERC20[] memory tokens, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
         uint256[] memory normalizedWeights = getNormalizedWeights(tokens);
-        return _invariant(normalizedWeights, balances);
+        return WeightedMath._invariant(normalizedWeights, balances);
     }
 
     function getNormalizedWeights(IERC20[] memory tokens) public view returns (uint256[] memory normalizedWeights) {
-        normalizedWeights = new uint256[](tokens.length);
-        for (uint256 i = 0; i < normalizedWeights.length; ++i) {
+        normalizedWeights = new uint256[](_totalTokens);
+        for (uint256 i = 0; i < _totalTokens; ++i) {
             normalizedWeights[i] = _normalizedWeight(tokens[i]);
         }
     }
 
+    // Base Pool handlers
+
     // Swap
 
     function _onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
+        IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
@@ -177,7 +184,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     }
 
     function _onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
+        IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
@@ -191,143 +198,36 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             );
     }
 
-    // Join
+    // Initialize
 
-    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
-
-    function _onJoinPool(
+    function _onInitializePool(
         bytes32,
         address,
         address,
-        uint256[] memory currentBalances,
-        uint256,
-        uint256 protocolSwapFeePercentage,
         bytes memory userData
-    )
-        internal
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
-        // TODO: This seems inconsistent w/ `getInvariant` for example. We assume the weights and balances order match
-        uint256[] memory normalizedWeights = _normalizedWeights();
+    ) internal override returns (uint256, uint256[] memory) {
         JoinKind kind = abi.decode(userData, (JoinKind));
+        require(kind == JoinKind.INIT, "UNINITIALIZED");
 
-        if (kind == JoinKind.INIT) {
-            // JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT
-            (, uint256[] memory amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
+        (, uint256[] memory amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
+        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
 
-            // The Vault guarantees currentBalances length is ok
-            require(currentBalances.length == amountsIn.length, "ERR_AMOUNTS_IN_LENGTH");
+        uint256[] memory normalizedWeights = _normalizedWeights();
 
-            return _joinInitial(normalizedWeights, recipient, amountsIn);
-        } else {
-            uint256 bptAmountOut;
-            uint256[] memory amountsIn;
+        uint256 invariantAfterJoin = WeightedMath._invariant(normalizedWeights, amountsIn);
 
-            uint256 currentBPT = totalSupply();
-            require(currentBPT > 0, "UNINITIALIZED");
+        uint256 bptAmountOut = invariantAfterJoin * _totalTokens;
+        require(bptAmountOut / invariantAfterJoin == _totalTokens, "MUL_OVERFLOW");
 
-            // This updates currentBalances by deducting protocol fees to pay, which the Vault will charge the Pool once
-            // this function returns.
-            uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
-                currentBalances,
-                normalizedWeights,
-                protocolSwapFeePercentage
-            );
+        _lastInvariant = _invariantAfterJoin(new uint256[](_totalTokens), amountsIn, normalizedWeights);
 
-            if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-                uint256 minimumBPT;
-                (, amountsIn, minimumBPT) = abi.decode(userData, (JoinKind, uint256[], uint256));
-
-                // The Vault guarantees currentBalances length is ok
-                require(currentBalances.length == amountsIn.length, "ERR_AMOUNTS_IN_LENGTH");
-
-                bptAmountOut = _joinExactTokensInForBPTOut(
-                    normalizedWeights,
-                    currentBalances,
-                    amountsIn,
-                    minimumBPT,
-                    currentBPT
-                );
-            } else {
-                //JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT
-                uint256 tokenIndex;
-                (, bptAmountOut, tokenIndex) = abi.decode(userData, (JoinKind, uint256, uint256));
-
-                amountsIn = new uint256[](_totalTokens);
-                amountsIn[tokenIndex] = _joinTokenInForExactBPTOut(
-                    normalizedWeights[tokenIndex],
-                    currentBalances[tokenIndex],
-                    bptAmountOut,
-                    currentBPT
-                );
-            }
-
-            _mintPoolTokens(recipient, bptAmountOut);
-
-            for (uint8 i = 0; i < _totalTokens; i++) {
-                currentBalances[i] = currentBalances[i].add(amountsIn[i]);
-            }
-
-            // Reset swap fee accumulation
-            _lastInvariant = _invariant(normalizedWeights, currentBalances);
-
-            return (amountsIn, dueProtocolFeeAmounts);
-        }
+        return (bptAmountOut, amountsIn);
     }
 
-    function _joinInitial(
-        uint256[] memory normalizedWeights,
-        address recipient,
-        uint256[] memory amountsIn
-    ) private returns (uint256[] memory, uint256[] memory) {
-        require(totalSupply() == 0, "ALREADY_INITIALIZED");
+    // Join
 
-        // Pool initialization - currentBalances should be all zeroes
-
-        // _lastInvariant should also be zero
-        uint256 invariantAfterJoin = _invariant(normalizedWeights, amountsIn);
-
-        // Mints a total of: n * invariant. Total tokens is not in FixedPoint
-        uint256 tokensToMint = invariantAfterJoin * _totalTokens;
-        require(tokensToMint / invariantAfterJoin == _totalTokens, "MUL_OVERFLOW");
-
-        _mintPoolTokens(recipient, tokensToMint);
-        _lastInvariant = invariantAfterJoin;
-
-        uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens); // All zeroes
-        return (amountsIn, dueProtocolFeeAmounts);
-    }
-
-    function _joinExactTokensInForBPTOut(
-        uint256[] memory normalizedWeights,
-        uint256[] memory currentBalances,
-        uint256[] memory amountsIn,
-        uint256 minimumBPT,
-        uint256 currentBPT
-    ) private view returns (uint256 bptAmountOut) {
-        bptAmountOut = _exactTokensInForBPTOut(currentBalances, normalizedWeights, amountsIn, currentBPT, _swapFee);
-
-        require(bptAmountOut >= minimumBPT, "BPT_OUT_MIN_AMOUNT");
-    }
-
-    function _joinTokenInForExactBPTOut(
-        uint256 tokenNormalizedWeight,
-        uint256 tokenBalance,
-        uint256 bptAmountOut,
-        uint256 currentBPT
-    ) private view returns (uint256 amountTokenIn) {
-        amountTokenIn = _tokenInForExactBPTOut(tokenBalance, tokenNormalizedWeight, bptAmountOut, currentBPT, _swapFee);
-    }
-
-    // Exit
-
-    function _onExitPool(
-        bytes32 poolId,
+    function _onJoinPool(
+        bytes32,
         address,
         address,
         uint256[] memory currentBalances,
@@ -347,12 +247,115 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
         // event and now - the invariant's growth is due exclusively to swap fees.
-        uint256 invariantBeforeExit = _invariant(normalizedWeights, currentBalances);
+        uint256 invariantBeforeJoin = WeightedMath._invariant(normalizedWeights, currentBalances);
         uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
             currentBalances,
             normalizedWeights,
-            invariantBeforeExit,
             _lastInvariant,
+            invariantBeforeJoin,
+            protocolSwapFeePercentage
+        );
+
+        // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
+        // returns.
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            currentBalances[i] = currentBalances[i].sub(dueProtocolFeeAmounts[i]);
+        }
+
+        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(currentBalances, normalizedWeights, userData);
+
+        // Update the invariant with the balances the Pool will have after the join, in order to compute the due
+        // protocol swap fees in future joins and exits.
+        _lastInvariant = _invariantAfterJoin(currentBalances, amountsIn, normalizedWeights);
+
+        return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
+    }
+
+    function _doJoin(
+        uint256[] memory currentBalances,
+        uint256[] memory normalizedWeights,
+        bytes memory userData
+    ) private view returns (uint256, uint256[] memory) {
+        JoinKind kind = abi.decode(userData, (JoinKind));
+
+        if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return _joinExactTokensInForBPTOut(currentBalances, normalizedWeights, userData);
+        } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            return _joinTokenInForExactBPTOut(currentBalances, normalizedWeights, userData);
+        } else {
+            revert("UNHANDLED_JOIN_KIND");
+        }
+    }
+
+    function _joinExactTokensInForBPTOut(
+        uint256[] memory currentBalances,
+        uint256[] memory normalizedWeights,
+        bytes memory userData
+    ) private view returns (uint256, uint256[] memory) {
+        (, uint256[] memory amountsIn, uint256 minBPTAmountIn) = abi.decode(userData, (JoinKind, uint256[], uint256));
+        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+
+        uint256 bptAmountOut = WeightedMath._exactTokensInForBPTOut(
+            currentBalances,
+            normalizedWeights,
+            amountsIn,
+            totalSupply(),
+            _swapFee
+        );
+
+        require(bptAmountOut >= minBPTAmountIn, "BPT_OUT_MIN_AMOUNT");
+
+        return (bptAmountOut, amountsIn);
+    }
+
+    function _joinTokenInForExactBPTOut(
+        uint256[] memory currentBalances,
+        uint256[] memory normalizedWeights,
+        bytes memory userData
+    ) private view returns (uint256, uint256[] memory) {
+        (, uint256 bptAmountOut, uint256 tokenIndex) = abi.decode(userData, (JoinKind, uint256, uint256));
+
+        uint256[] memory amountsIn = new uint256[](_totalTokens);
+        amountsIn[tokenIndex] = WeightedMath._tokenInForExactBPTOut(
+            currentBalances[tokenIndex],
+            normalizedWeights[tokenIndex],
+            bptAmountOut,
+            totalSupply(),
+            _swapFee
+        );
+
+        return (bptAmountOut, amountsIn);
+    }
+
+    // Exit
+
+    function _onExitPool(
+        bytes32,
+        address,
+        address,
+        uint256[] memory currentBalances,
+        uint256,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    )
+        internal
+        override
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        uint256[] memory normalizedWeights = _normalizedWeights();
+
+        // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
+        // event and now - the invariant's growth is due exclusively to swap fees.
+        uint256 invariantBeforeExit = WeightedMath._invariant(normalizedWeights, currentBalances);
+        uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
+            currentBalances,
+            normalizedWeights,
+            _lastInvariant,
+            invariantBeforeExit,
             protocolSwapFeePercentage
         );
 
@@ -371,20 +374,19 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
     }
 
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
-
     function _doExit(
         uint256[] memory currentBalances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private pure returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         ExitKind kind = abi.decode(userData, (ExitKind));
+
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForOneTokenOut(normalizedWeights, currentBalances, userData);
         } else if (kind == ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
             return _exitExactBPTInForAllTokensOut(currentBalances, userData);
         } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            _exitBPTInForExactTokensOut(normalizedWeights, currentBalances, userData);
+            return _exitBPTInForExactTokensOut(normalizedWeights, currentBalances, userData);
         } else {
             revert("UNHANDLED_EXIT_KIND");
         }
@@ -435,7 +437,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (, uint256[] memory amountsOut, uint256 maxBPTAmountIn) = abi.decode(userData, (ExitKind, uint256[], uint256));
-        require(currentBalances.length == amountsOut.length, "ERR_AMOUNTS_OUT_LENGTH");
+        require(amountsOut.length == _totalTokens, "ERR_AMOUNTS_OUT_LENGTH");
 
         uint256 bptAmountIn = _bptInForExactTokensOut(
             currentBalances,
@@ -467,7 +469,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
 
         // Initialize with zeros
-        uint256[] memory dueProtocolFeeAmounts = new uint256[](currentBalances.length);
+        uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
 
         // Set the fee to pay in the selected token
         dueProtocolFeeAmounts[chosenTokenIndex] = WeightedMath._calculateDueTokenProtocolSwapFee(
@@ -481,15 +483,27 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return dueProtocolFeeAmounts;
     }
 
+    function _invariantAfterJoin(
+        uint256[] memory currentBalances,
+        uint256[] memory amountsOut,
+        uint256[] memory normalizedWeights
+    ) private view returns (uint256) {
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            currentBalances[i] = currentBalances[i].add(amountsOut[i]);
+        }
+
+        return WeightedMath._invariant(normalizedWeights, currentBalances);
+    }
+
     function _invariantAfterExit(
         uint256[] memory currentBalances,
         uint256[] memory amountsOut,
         uint256[] memory normalizedWeights
-    ) private pure returns (uint256) {
+    ) private view returns (uint256) {
         for (uint256 i = 0; i < _totalTokens; ++i) {
             currentBalances[i] = currentBalances[i].sub(amountsOut[i]);
         }
 
-        return _invariant(normalizedWeights, currentBalances);
+        return WeightedMath._invariant(normalizedWeights, currentBalances);
     }
 }
