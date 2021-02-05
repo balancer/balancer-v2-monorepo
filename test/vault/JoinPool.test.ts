@@ -12,7 +12,6 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import * as expectEvent from '../helpers/expectEvent';
 import { times } from 'lodash';
 import { encodeJoin } from '../helpers/mockPool';
-import { createTransfersStruct } from '../../lib/helpers/trading';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -211,7 +210,7 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            const transfers = createTransfersStruct([tokens.DAI.address], bn(1.5e18), lp.address);
+            const transfers = [{ token: tokens.DAI.address, amount: bn(1.5e18), account: lp.address }]
 
             await vault.connect(lp).depositToInternalBalance(transfers);
           });
@@ -229,8 +228,12 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            const transfers = createTransfersStruct(tokenAddresses, bn(1.5e18), lp.address);
+            const transfers = [];
 
+            for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+              transfers.push({ token: tokenAddresses[idx], amount: bn(1.5e18), account: lp.address });
+            }
+      
             await vault.connect(lp).depositToInternalBalance(transfers);
           });
 
@@ -239,7 +242,12 @@ describe('Vault - join pool', () => {
 
         context('with enough internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            const transfers = createTransfersStruct(tokenAddresses, bn(100e18), lp.address);
+            const transfers = [];
+
+            for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+              transfers.push({ token: tokenAddresses[idx], amount: bn(1.5e18), account: lp.address });
+            }
+            
             await vault.connect(lp).depositToInternalBalance(transfers);
           });
 
