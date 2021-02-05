@@ -96,7 +96,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
 
             _decreaseInternalBalance(msg.sender, token, amount);
             _increaseInternalBalance(recipient, token, amount);
-            
+
             emit InternalBalanceTransferred(msg.sender, recipient, token, amount);
         }
     }

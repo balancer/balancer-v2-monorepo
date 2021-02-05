@@ -50,8 +50,8 @@ interface IVault {
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits tokens from the caller into Internal Balances of the users specified in the `account` field of 
-     * the struct. The caller must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     * @dev Deposits tokens from the caller into Internal Balances of the users specified in the `account` field
+     * of the struct. The caller must have allowed the Vault to use their tokens via `IERC20.approve()`.
      * Allows aggregators to settle multiple accounts in a single transaction.
      */
     function depositToInternalBalance(BalanceTransfer[] memory transfers) external;
