@@ -1,6 +1,6 @@
 import { Contract } from 'ethers';
 
-import { bn } from '../../../lib/helpers/numbers';
+import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { deploy } from '../../../lib/helpers/deploy';
 import { expectEqualWithError } from '../../helpers/relativeError';
 import {
@@ -206,10 +206,21 @@ describe('WeightedMath', function () {
         const lastInvariant = bn(10e18);
         const tokenIndex = 0;
 
-        const result = await mock.calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
+        const currentInvariant = calculateInvariant(balances, normalizedWeights);
+        const protocolSwapFee = fp(0.1);
+
+        const result = await mock.calculateDueTokenProtocolSwapFee(
+          balances[tokenIndex],
+          normalizedWeights[tokenIndex],
+          lastInvariant,
+          currentInvariant,
+          protocolSwapFee
+        );
         const expectedFeeAmount = calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
 
-        expectEqualWithError(result, bn(expectedFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
+        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
+
+        expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });
     });
 
@@ -220,10 +231,21 @@ describe('WeightedMath', function () {
         const lastInvariant = bn(10e18);
         const tokenIndex = 0;
 
-        const result = await mock.calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
+        const currentInvariant = calculateInvariant(balances, normalizedWeights);
+        const protocolSwapFee = fp(0.1);
+
+        const result = await mock.calculateDueTokenProtocolSwapFee(
+          balances[tokenIndex],
+          normalizedWeights[tokenIndex],
+          lastInvariant,
+          currentInvariant,
+          protocolSwapFee
+        );
         const expectedFeeAmount = calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
 
-        expectEqualWithError(result, bn(expectedFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
+        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
+
+        expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });
     });
   });

@@ -23,7 +23,7 @@ import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';
 
-describe.only('WeightedPool', function () {
+describe('WeightedPool', function () {
   let authorizer: Contract, tokenList: TokenList, tokens: Array<Contract>;
   let admin: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
