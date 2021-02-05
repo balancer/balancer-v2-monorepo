@@ -61,7 +61,7 @@ describe('Vault - flash loans', () => {
     it('reverts if the loan is larger than available balance', async () => {
       await expect(
         vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(100e18).add(1)], '0x10')
-      ).to.be.revertedWith('INSUFFICIENT_BALANCE');
+      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
     });
 
     it('reverts if the borrower does not repay the loan', async () => {
