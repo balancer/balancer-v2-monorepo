@@ -46,9 +46,8 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
 
+            // Not checking amount against current balance, transfer will revert if it is exceeded
             preLoanBalances[i] = token.balanceOf(address(this));
-            require(preLoanBalances[i] >= amount, "INSUFFICIENT_BALANCE");
-
             feeAmounts[i] = _calculateProtocolFlashLoanFeeAmount(amount);
 
             token.safeTransfer(address(receiver), amount);
