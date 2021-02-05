@@ -32,8 +32,7 @@ abstract contract Authorization is IVault, ReentrancyGuard {
     }
 
     function changeAuthorizer(IAuthorizer newAuthorizer) external override nonReentrant {
-        require(_authorizer.canChangeAuthorizer(msg.sender), "CANNOT_TRANSFER_AUTHORITY");
-
+        _authorizer.validateCanChangeAuthorizer(msg.sender);
         _authorizer = newAuthorizer;
     }
 }

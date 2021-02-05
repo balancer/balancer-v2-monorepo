@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../lib/helpers/deploy';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { bn, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
+import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
 import { TokenList, deployTokens } from '../../lib/helpers/tokens';
 
 describe('Vault - flash loans', () => {
@@ -25,7 +25,7 @@ describe('Vault - flash loans', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FLASH_LOAN_FEE_ROLE(), feeSetter.address);
+    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), feeSetter.address);
     vault = await deploy('Vault', { args: [authorizer.address] });
 
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
@@ -43,7 +43,7 @@ describe('Vault - flash loans', () => {
 
   context('with no protocol fees', () => {
     beforeEach(async () => {
-      await vault.connect(feeSetter).setProtocolFlashLoanFee(0);
+      await vault.connect(feeSetter).setProtocolFees(0, 0, 0);
     });
 
     it('causes no net balance change on the Vault', async () => {
@@ -77,14 +77,41 @@ describe('Vault - flash loans', () => {
     const feePercentage = fp(0.005); // 0.5%
 
     beforeEach(async () => {
-      await vault.connect(feeSetter).setProtocolFlashLoanFee(feePercentage);
+      await vault.connect(feeSetter).setProtocolFees(0, 0, feePercentage);
+    });
+
+    it('zero loans are possible', async () => {
+      const loan = 0;
+      const feeAmount = 0;
+
+      await expectBalanceChange(
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
+        tokens,
+        { account: vault }
+      );
+
+      expect((await vault.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
     });
 
     it('the Vault receives protocol fees', async () => {
-      const feeAmount = bn(1e18).mul(feePercentage).div(FP_SCALING_FACTOR);
+      const loan = bn(1e18);
+      const feeAmount = divCeil(loan.mul(feePercentage), FP_SCALING_FACTOR);
 
       await expectBalanceChange(
-        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
+        tokens,
+        { account: vault, changes: { DAI: feeAmount } }
+      );
+
+      expect((await vault.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
+    });
+
+    it('protocol fees are rounded up', async () => {
+      const loan = bn(1);
+      const feeAmount = bn(1); // In this extreme case, fees account for the full loan
+
+      await expectBalanceChange(
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
         tokens,
         { account: vault, changes: { DAI: feeAmount } }
       );
