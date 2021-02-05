@@ -18,6 +18,7 @@ describe('Vault - exit pool', () => {
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList = {};
 
+  const SWAP_FEE = fp(0.1);
   let TOKEN_ADDRESSES: string[];
 
   before(async () => {
@@ -28,8 +29,8 @@ describe('Vault - exit pool', () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), admin.address);
-    await vault.connect(admin).setProtocolSwapFee(fp(0.1));
+    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+    await vault.connect(admin).setProtocolFees(SWAP_FEE, 0, 0);
 
     tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
     TOKEN_ADDRESSES = [];
@@ -199,8 +200,8 @@ describe('Vault - exit pool', () => {
         // TODO: enable these tests once protocol withdraw fees properly round up
         context.skip('with protocol withdraw fee', () => {
           beforeEach('set protocol withdraw fee', async () => {
-            await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), admin.address);
-            await vault.connect(admin).setProtocolWithdrawFee(fp(0.02));
+            await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+            await vault.connect(admin).setProtocolFees(SWAP_FEE, fp(0.2), 0);
           });
 
           itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance();

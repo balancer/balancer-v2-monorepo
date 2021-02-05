@@ -19,21 +19,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IAuthorizer {
     function validateCanChangeAuthorizer(address account) external view;
 
-    function validateCanSetProtocolWithdrawFee(address account) external view;
-
-    function validateCanSetProtocolSwapFee(address account) external view;
-
-    function validateCanSetProtocolFlashLoanFee(address account) external view;
+    function validateCanSetProtocolFees(address account) external view;
 
     function validateCanWithdrawCollectedFees(address account, IERC20 token) external view;
 
     function canChangeAuthorizer(address account) external view returns (bool);
 
-    function canSetProtocolWithdrawFee(address account) external view returns (bool);
-
-    function canSetProtocolSwapFee(address account) external view returns (bool);
-
-    function canSetProtocolFlashLoanFee(address account) external view returns (bool);
+    function canSetProtocolFees(address account) external view returns (bool);
 
     function canWithdrawCollectedFees(address account, IERC20 token) external view returns (bool);
 }

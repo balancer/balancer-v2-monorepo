@@ -480,10 +480,8 @@ interface IVault {
      * @dev Sets new Protocol fees.
      *
      * Requirements:
-     * - The caller must be approved by the authorizer with:
-     *   - `IAuthorizer.canSetProtocolSwapFee` to change swap fees.
-     *   - `IAuthorizer.canSetProtocolWithdrawFee` to change withdraw fees.
-     *   - `IAuthorizer.canSetProtocolFlashLoanFee` to change flash loan fees.
+     *
+     * - The caller must be approved by the authorizer with `IAuthorizer.canSetProtocolFees`.
      */
     function setProtocolFees(
         uint256 swapFee,

@@ -58,25 +58,15 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         uint256 newWithdrawFee,
         uint256 newFlashLoanFee
     ) external override nonReentrant {
-        IAuthorizer authorizer = getAuthorizer();
+        getAuthorizer().validateCanSetProtocolFees(msg.sender);
 
-        if (_protocolSwapFee != newSwapFee) {
-            authorizer.validateCanSetProtocolSwapFee(msg.sender);
-            require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, "SWAP_FEE_TOO_HIGH");
-            _protocolSwapFee = newSwapFee;
-        }
+        require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, "SWAP_FEE_TOO_HIGH");
+        require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "WITHDRAW_FEE_TOO_HIGH");
+        require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FLASH_LOAN_FEE_TOO_HIGH");
 
-        if (_protocolWithdrawFee != newWithdrawFee) {
-            authorizer.validateCanSetProtocolWithdrawFee(msg.sender);
-            require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "WITHDRAW_FEE_TOO_HIGH");
-            _protocolWithdrawFee = newWithdrawFee;
-        }
-
-        if (_protocolWithdrawFee != newFlashLoanFee) {
-            authorizer.validateCanSetProtocolFlashLoanFee(msg.sender);
-            require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FLASH_LOAN_FEE_TOO_HIGH");
-            _protocolWithdrawFee = newFlashLoanFee;
-        }
+        _protocolSwapFee = newSwapFee;
+        _protocolWithdrawFee = newWithdrawFee;
+        _protocolWithdrawFee = newFlashLoanFee;
     }
 
     function getProtocolFees()

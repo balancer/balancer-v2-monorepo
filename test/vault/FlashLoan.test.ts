@@ -25,7 +25,7 @@ describe('Vault - flash loans', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FLASH_LOAN_FEE_ROLE(), feeSetter.address);
+    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), feeSetter.address);
     vault = await deploy('Vault', { args: [authorizer.address] });
 
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
@@ -43,7 +43,7 @@ describe('Vault - flash loans', () => {
 
   context('with no protocol fees', () => {
     beforeEach(async () => {
-      await vault.connect(feeSetter).setProtocolFlashLoanFee(0);
+      await vault.connect(feeSetter).setProtocolFees(0, 0, 0);
     });
 
     it('causes no net balance change on the Vault', async () => {
@@ -77,7 +77,7 @@ describe('Vault - flash loans', () => {
     const feePercentage = fp(0.005); // 0.5%
 
     beforeEach(async () => {
-      await vault.connect(feeSetter).setProtocolFlashLoanFee(feePercentage);
+      await vault.connect(feeSetter).setProtocolFees(0, 0, feePercentage);
     });
 
     it('the Vault receives protocol fees', async () => {
