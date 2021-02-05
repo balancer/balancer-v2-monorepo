@@ -164,7 +164,7 @@ describe('WeightedPool', function () {
         });
 
         it('sets token weights', async () => {
-          const normalizedWeights = await pool.getNormalizedWeights(poolTokens);
+          const normalizedWeights = await pool.getNormalizedWeights();
           const expectedNormalizedWeights = toNormalizedWeights(poolWeights).map((w) => bn(w.mul(1e18)));
 
           normalizedWeights.map((weight: BigNumber, i: number) => {
