@@ -1,17 +1,19 @@
+import { times } from 'lodash';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import * as expectEvent from '../helpers/expectEvent';
+import { encodeJoin } from '../helpers/mockPool';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+
 import { deploy } from '../../lib/helpers/deploy';
+import { roleId } from '../../lib/helpers/roles';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
-import { expectBalanceChange } from '../helpers/tokenBalance';
-import * as expectEvent from '../helpers/expectEvent';
-import { times } from 'lodash';
-import { encodeJoin } from '../helpers/mockPool';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -28,7 +30,8 @@ describe('Vault - join pool', () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+    const role = roleId(vault, 'setProtocolFees');
+    await authorizer.connect(admin).grantRole(role, admin.address);
     await vault.connect(admin).setProtocolFees(fp(0.1), 0, 0);
 
     tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
@@ -95,7 +98,15 @@ describe('Vault - join pool', () => {
       // Join the Pool from the creator so that it has some tokens to pay protocol fees with
       await vault
         .connect(creator)
-        .joinPool(poolId, ZERO_ADDRESS, tokenAddresses, array(MAX_UINT256), false, encodeJoin(array(50e18), array(0)));
+        .joinPool(
+          poolId,
+          creator.address,
+          ZERO_ADDRESS,
+          tokenAddresses,
+          array(MAX_UINT256),
+          false,
+          encodeJoin(array(50e18), array(0))
+        );
     });
 
     type JoinPoolData = {
@@ -112,6 +123,7 @@ describe('Vault - join pool', () => {
         .connect(lp)
         .joinPool(
           data.poolId ?? poolId,
+          lp.address,
           ZERO_ADDRESS,
           data.tokenAddresses ?? tokenAddresses,
           data.maxAmountsIn ?? array(MAX_UINT256),
@@ -210,7 +222,7 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(tokenAddresses, array(1.5e18), lp.address);
+            await vault.connect(lp).depositToInternalBalance(lp.address, tokenAddresses, array(1.5e18), lp.address);
           });
 
           itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });
@@ -226,7 +238,7 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(tokenAddresses, array(1.5e18), lp.address);
+            await vault.connect(lp).depositToInternalBalance(lp.address, tokenAddresses, array(1.5e18), lp.address);
           });
 
           itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });
@@ -234,7 +246,7 @@ describe('Vault - join pool', () => {
 
         context('with enough internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(tokenAddresses, array(100e18), lp.address);
+            await vault.connect(lp).depositToInternalBalance(lp.address, tokenAddresses, array(100e18), lp.address);
           });
 
           itJoinsCorrectly({ fromInternalBalance, dueProtocolFeeAmounts });

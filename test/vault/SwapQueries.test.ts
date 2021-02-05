@@ -58,6 +58,7 @@ describe('Vault - swap queries', () => {
     }
 
     funds = {
+      sender: vault.address,
       recipient: ZERO_ADDRESS,
       fromInternalBalance: false,
       toInternalBalance: false,

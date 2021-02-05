@@ -4,11 +4,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deepEqual } from 'assert';
 
 import * as allPools from './allPools.json';
+import { roleId } from '../../helpers/roles';
 import { bn, fp } from '../../helpers/numbers';
 import { TokenList, deployTokens } from '../../helpers/tokens';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { FundManagement, SwapIn } from '../../helpers/trading';
 import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { formatPools, getTokenInfoForDeploy, Pool } from './processJSON';
 
 let ethers: any;
@@ -56,7 +57,9 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
 
     // deposit half into user balance
     const depositBalance = tradingBalance.div(bn(2));
-    await vault.connect(trader).depositToInternalBalance([token.address], [depositBalance], trader.address);
+    await vault
+      .connect(trader)
+      .depositToInternalBalance(trader.address, [token.address], [depositBalance], trader.address);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
@@ -73,7 +76,8 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
   }
 
   console.log('\nSetting the protocol swap fee...');
-  await authorizer.connect(deployer).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), deployer.address);
+  const role = roleId(vault, 'setProtocolFees');
+  await authorizer.connect(deployer).grantRole(role, deployer.address);
   await vault.connect(deployer).setProtocolFees(fp(0.1), 0, 0);
 
   return;
@@ -211,7 +215,7 @@ async function initializeStrategyPool(
 
   const joinTx = await vault
     .connect(controller)
-    .joinPool(poolId, recipient, tokens, maxAmountsIn, fromInternalBalance, initialJoinUserData);
+    .joinPool(poolId, controller.address, recipient, tokens, maxAmountsIn, fromInternalBalance, initialJoinUserData);
   const receipt = await joinTx.wait();
 
   const event = receipt.events?.find((e: Event) => e.event == 'PoolJoined');

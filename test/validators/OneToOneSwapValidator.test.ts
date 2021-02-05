@@ -65,6 +65,7 @@ describe('OneToOneSwapValidator', () => {
       await vault.connect(lp).joinPool(
         poolId,
         lp.address,
+        lp.address,
         tokenAddresses,
         tokenAddresses.map(() => MAX_UINT256),
         false,
@@ -88,6 +89,7 @@ describe('OneToOneSwapValidator', () => {
     ];
 
     funds = {
+      sender: trader.address,
       recipient: trader.address,
       fromInternalBalance: false,
       toInternalBalance: false,

@@ -69,7 +69,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapIn[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external override returns (int256[] memory tokenDeltas) {
+    ) external override authenticateFor(funds.sender) returns (int256[] memory tokenDeltas) {
         tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
         if (address(validator) != address(0)) {
             validator.validate(tokens, tokenDeltas, validatorData);
@@ -84,7 +84,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapOut[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external override returns (int256[] memory tokenDeltas) {
+    ) external override authenticateFor(funds.sender) returns (int256[] memory tokenDeltas) {
         tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
         if (address(validator) != address(0)) {
             validator.validate(tokens, tokenDeltas, validatorData);
@@ -178,13 +178,13 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             if (delta > 0) {
                 uint256 toReceive = uint256(delta);
                 if (funds.fromInternalBalance) {
-                    uint256 currentInternalBalance = _getInternalBalance(msg.sender, token);
+                    uint256 currentInternalBalance = _getInternalBalance(funds.sender, token);
                     uint256 toWithdraw = Math.min(currentInternalBalance, toReceive);
-                    _setInternalBalance(msg.sender, token, currentInternalBalance - toWithdraw);
+                    _setInternalBalance(funds.sender, token, currentInternalBalance - toWithdraw);
                     toReceive -= toWithdraw;
                 }
                 if (toReceive > 0) {
-                    token.safeTransferFrom(msg.sender, address(this), toReceive);
+                    token.safeTransferFrom(funds.sender, address(this), toReceive);
                 }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
@@ -298,7 +298,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 tokenIn,
                 tokenOut,
                 swap,
-                msg.sender,
+                funds.sender,
                 funds.recipient,
                 previous,
                 kind

@@ -34,6 +34,7 @@ export type SwapOut = {
 };
 
 export type FundManagement = {
+  sender: string;
   recipient: string;
   fromInternalBalance: boolean;
   toInternalBalance: boolean;
