@@ -197,8 +197,7 @@ describe('Vault - exit pool', () => {
           itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance();
         });
 
-        // TODO: enable these tests once protocol withdraw fees properly round up
-        context.skip('with protocol withdraw fee', () => {
+        context('with protocol withdraw fee', () => {
           beforeEach('set protocol withdraw fee', async () => {
             await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
             await vault.connect(admin).setProtocolFees(SWAP_FEE, fp(0.2), 0);
@@ -273,8 +272,10 @@ describe('Vault - exit pool', () => {
       beforeEach('calculate intermediate values', async () => {
         const { withdrawFee } = await vault.getProtocolFees();
         expectedProtocolWithdrawFeesToCollect = exitAmounts.map((amount) =>
-          // Fixed point division rounding up, since the protocol withdraw fee is a fixed point number
-          divCeil(amount.mul(withdrawFee), FP_SCALING_FACTOR)
+          toInternalBalance
+            ? bn(0)
+            : // Fixed point division rounding up, since the protocol withdraw fee is a fixed point number
+              divCeil(amount.mul(withdrawFee), FP_SCALING_FACTOR)
         );
       });
 
@@ -365,9 +366,9 @@ describe('Vault - exit pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const previousCollectedFees = await Promise.all(tokenAddresses.map((token) => vault.getCollectedFees([token])));
+        const previousCollectedFees = await vault.getCollectedFees(tokenAddresses);
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts });
-        const currentCollectedFees = await Promise.all(tokenAddresses.map((token) => vault.getCollectedFees([token])));
+        const currentCollectedFees = await vault.getCollectedFees(tokenAddresses);
 
         // Fees from both sources are lumped together.
         expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(
