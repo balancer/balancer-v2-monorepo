@@ -115,21 +115,29 @@ export function toSwapOut(swaps: Array<Swap>): Array<SwapOut> {
   });
 }
 
-export function createGeneralTransfersStruct(tokenAddresses: Array<string>, tokenAmounts: Array<BigNumberish>, accounts: Array<string>): Array<BalanceTransfer> {
-  let transfers = [];
+export function createGeneralTransfersStruct(
+  tokenAddresses: Array<string>,
+  tokenAmounts: Array<BigNumberish>,
+  accounts: Array<string>
+): Array<BalanceTransfer> {
+  const transfers = [];
 
   for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-    transfers.push({token: tokenAddresses[idx], amount: tokenAmounts[idx], account: accounts[idx]});
+    transfers.push({ token: tokenAddresses[idx], amount: tokenAmounts[idx], account: accounts[idx] });
   }
 
   return transfers;
 }
 
-export function createTransfersStruct(tokenAddresses: Array<string>, commonAmount: BigNumberish, commonAccount: string): Array<BalanceTransfer> {
-  let transfers = [];
+export function createTransfersStruct(
+  tokenAddresses: Array<string>,
+  commonAmount: BigNumberish,
+  commonAccount: string
+): Array<BalanceTransfer> {
+  const transfers = [];
 
   for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-    transfers.push({token: tokenAddresses[idx], amount: commonAmount, account: commonAccount});
+    transfers.push({ token: tokenAddresses[idx], amount: commonAmount, account: commonAccount });
   }
 
   return transfers;

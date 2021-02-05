@@ -53,14 +53,10 @@ describe('Vault - internal balance', () => {
             it('transfers the tokens from the sender to the vault', async () => {
               const transfers = createTransfersStruct([tokens.DAI.address], amount, recipient.address);
 
-              await expectBalanceChange(
-                () => vault.depositToInternalBalance(transfers),
-                tokens,
-                [
-                  { account: sender.address, changes: { DAI: -amount } },
-                  { account: vault.address, changes: { DAI: amount } },
-                ]
-              );
+              await expectBalanceChange(() => vault.depositToInternalBalance(transfers), tokens, [
+                { account: sender.address, changes: { DAI: -amount } },
+                { account: vault.address, changes: { DAI: amount } },
+              ]);
             });
 
             it('deposits the internal balance into the recipient account', async () => {
@@ -141,11 +137,10 @@ describe('Vault - internal balance', () => {
             it('transfers the tokens from the vault to recipient', async () => {
               const transfers = createTransfersStruct([tokens.DAI.address], amount, recipient.address);
 
-              await expectBalanceChange(
-                () => vault.withdrawFromInternalBalance(transfers),
-                tokens,
-                { account: recipient, changes: { DAI: amount } }
-              );
+              await expectBalanceChange(() => vault.withdrawFromInternalBalance(transfers), tokens, {
+                account: recipient,
+                changes: { DAI: amount },
+              });
             });
 
             it('withdraws the internal balance from the sender account', async () => {
@@ -189,11 +184,10 @@ describe('Vault - internal balance', () => {
             it('tokens minus fee are pushed', async () => {
               const transfers = createTransfersStruct([tokens.DAI.address], amount, recipient.address);
 
-              await expectBalanceChange(
-                () => vault.withdrawFromInternalBalance(transfers),
-                tokens,
-                { account: recipient, changes: { DAI: amount.sub(pct(amount, protocolWithdrawFee)) } }
-              );
+              await expectBalanceChange(() => vault.withdrawFromInternalBalance(transfers), tokens, {
+                account: recipient,
+                changes: { DAI: amount.sub(pct(amount, protocolWithdrawFee)) },
+              });
             });
 
             it('protocol fees are collected', async () => {
@@ -269,7 +263,11 @@ describe('Vault - internal balance', () => {
         }
 
         const balances = Object.values(initialBalances);
-        const transfers = createGeneralTransfersStruct(tokenAddresses, balances, Array(balances.length).fill(sender.address));
+        const transfers = createGeneralTransfersStruct(
+          tokenAddresses,
+          balances,
+          Array(balances.length).fill(sender.address)
+        );
 
         await vault.depositToInternalBalance(transfers);
       });
@@ -282,7 +280,11 @@ describe('Vault - internal balance', () => {
       it('transfers the tokens from the sender to a single recipient', async () => {
         const previousSenderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
         const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
-        const transfers = createGeneralTransfersStruct(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address));
+        const transfers = createGeneralTransfersStruct(
+          tokenAddresses,
+          amounts,
+          Array(amounts.length).fill(recipient.address)
+        );
 
         await vault.transferInternalBalance(transfers);
 
@@ -299,8 +301,10 @@ describe('Vault - internal balance', () => {
         const previousSenderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
         const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
         const previousOtherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokenAddresses);
-        const transfers = createGeneralTransfersStruct(tokenAddresses, amounts, [recipient.address, otherRecipient.address]);
-
+        const transfers = createGeneralTransfersStruct(tokenAddresses, amounts, [
+          recipient.address,
+          otherRecipient.address,
+        ]);
 
         await vault.transferInternalBalance(transfers);
 
@@ -328,7 +332,11 @@ describe('Vault - internal balance', () => {
           previousBalances[symbol] = { sender: senderBalance, recipient: recipientBalance };
         }
 
-        const transfers = createGeneralTransfersStruct(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address));
+        const transfers = createGeneralTransfersStruct(
+          tokenAddresses,
+          amounts,
+          Array(amounts.length).fill(recipient.address)
+        );
 
         await vault.transferInternalBalance(transfers);
 
@@ -342,11 +350,13 @@ describe('Vault - internal balance', () => {
       });
 
       it('emits an event for each transfer', async () => {
-        const transfers = createGeneralTransfersStruct(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address));
+        const transfers = createGeneralTransfersStruct(
+          tokenAddresses,
+          amounts,
+          Array(amounts.length).fill(recipient.address)
+        );
 
-        const receipt = await (
-          await vault.transferInternalBalance(transfers)
-        ).wait();
+        const receipt = await (await vault.transferInternalBalance(transfers)).wait();
 
         expectEvent.inReceipt(receipt, 'InternalBalanceTransferred', {
           from: sender.address,
@@ -367,7 +377,11 @@ describe('Vault - internal balance', () => {
     function itReverts(transferredAmounts: Dictionary<BigNumber>, errorReason = 'INSUFFICIENT_INTERNAL_BALANCE') {
       it('reverts', async () => {
         const amounts = Object.values(transferredAmounts);
-        const transfers = createGeneralTransfersStruct(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address));
+        const transfers = createGeneralTransfersStruct(
+          tokenAddresses,
+          amounts,
+          Array(amounts.length).fill(recipient.address)
+        );
 
         const transfer = vault.transferInternalBalance(transfers);
         await expect(transfer).to.be.revertedWith(errorReason);

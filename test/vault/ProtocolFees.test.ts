@@ -46,11 +46,19 @@ describe('Vault - protocol fees', () => {
       await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), feeSetter.address);
       await vault.connect(feeSetter).setProtocolWithdrawFee(bn(0.01e18));
 
-      const transfersIn = createGeneralTransfersStruct([tokens.DAI.address, tokens.MKR.address], [bn(20e18), bn(20e18)], [user.address, user.address]);
+      const transfersIn = createGeneralTransfersStruct(
+        [tokens.DAI.address, tokens.MKR.address],
+        [bn(20e18), bn(20e18)],
+        [user.address, user.address]
+      );
 
       await vault.connect(user).depositToInternalBalance(transfersIn);
 
-      const transfersOut = createGeneralTransfersStruct([tokens.DAI.address, tokens.MKR.address], [bn(5e18), bn(10e18)], [user.address, user.address]);
+      const transfersOut = createGeneralTransfersStruct(
+        [tokens.DAI.address, tokens.MKR.address],
+        [bn(5e18), bn(10e18)],
+        [user.address, user.address]
+      );
 
       // Withdraw internal balance - this will cause withdraw fees to be charged
       await vault.connect(user).withdrawFromInternalBalance(transfersOut);
