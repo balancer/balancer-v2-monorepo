@@ -69,14 +69,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapIn[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external override returns (int256[] memory) {
-        int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
-
+    ) external override returns (int256[] memory tokenDeltas) {
+        tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
         if (address(validator) != address(0)) {
             validator.validate(tokens, tokenDeltas, validatorData);
         }
-
-        return tokenDeltas;
     }
 
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
@@ -87,14 +84,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapOut[] memory swaps,
         IERC20[] calldata tokens,
         FundManagement calldata funds
-    ) external override returns (int256[] memory) {
-        int256[] memory tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
-
+    ) external override returns (int256[] memory tokenDeltas) {
+        tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
         if (address(validator) != address(0)) {
             validator.validate(tokens, tokenDeltas, validatorData);
         }
-
-        return tokenDeltas;
     }
 
     // We use inline assembly to cast from the external struct types to the internal one. This doesn't trigger any
@@ -170,9 +164,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
-    ) private nonReentrant returns (int256[] memory) {
+    ) private nonReentrant returns (int256[] memory tokenDeltas) {
         // Perform the swaps, updating the Pool balances and computing the net Vault token deltas
-        int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
+        tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
         // Process token deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
@@ -204,8 +198,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 }
             }
         }
-
-        return tokenDeltas;
     }
 
     // For `_batchSwap` to handle both given in and given out swaps, it internally tracks the 'given' amount (supplied
@@ -318,8 +310,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
             emit Swap(swap.poolId, tokenIn, tokenOut, amountIn, amountOut);
         }
-
-        return tokenDeltas;
     }
 
     /**

@@ -23,11 +23,9 @@ import "../vault/interfaces/IAuthorizer.sol";
 // solhint-disable func-name-mixedcase
 
 contract Authorizer is IAuthorizer, AccessControl {
-    bytes32 public immutable CHANGE_AUTHORIZER_ROLE = keccak256("CHANGE_AUTHORIZER_ROLE");
+    bytes32 public immutable SET_PROTOCOL_FEES_ROLE = keccak256("SET_PROTOCOL_FEES_ROLE");
 
-    bytes32 public immutable SET_PROTOCOL_WITHDRAW_FEE_ROLE = keccak256("SET_PROTOCOL_WITHDRAW_FEE_ROLE");
-    bytes32 public immutable SET_PROTOCOL_SWAP_FEE_ROLE = keccak256("SET_PROTOCOL_SWAP_FEE_ROLE");
-    bytes32 public immutable SET_PROTOCOL_FLASH_LOAN_FEE_ROLE = keccak256("SET_PROTOCOL_FLASH_LOAN_FEE_ROLE");
+    bytes32 public immutable CHANGE_AUTHORIZER_ROLE = keccak256("CHANGE_AUTHORIZER_ROLE");
 
     bytes32 public immutable WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE = keccak256(
         "WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE"
@@ -41,23 +39,27 @@ contract Authorizer is IAuthorizer, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    function canChangeAuthorizer(address account) external view override returns (bool) {
+    function validateCanChangeAuthorizer(address account) external view override {
+        require(canChangeAuthorizer(account), "CANNOT_TRANSFER_AUTHORITY");
+    }
+
+    function validateCanSetProtocolFees(address account) external view override {
+        require(canSetProtocolFees(account), "CANNOT_SET_PROTOCOL_FEES");
+    }
+
+    function validateCanWithdrawCollectedFees(address account, IERC20 token) external view override {
+        require(canWithdrawCollectedFees(account, token), "CANNOT_WITHDRAW_FEES");
+    }
+
+    function canChangeAuthorizer(address account) public view override returns (bool) {
         return hasRole(CHANGE_AUTHORIZER_ROLE, account);
     }
 
-    function canSetProtocolWithdrawFee(address account) external view override returns (bool) {
-        return hasRole(SET_PROTOCOL_WITHDRAW_FEE_ROLE, account);
+    function canSetProtocolFees(address account) public view override returns (bool) {
+        return hasRole(SET_PROTOCOL_FEES_ROLE, account);
     }
 
-    function canSetProtocolSwapFee(address account) external view override returns (bool) {
-        return hasRole(SET_PROTOCOL_SWAP_FEE_ROLE, account);
-    }
-
-    function canSetProtocolFlashLoanFee(address account) external view override returns (bool) {
-        return hasRole(SET_PROTOCOL_FLASH_LOAN_FEE_ROLE, account);
-    }
-
-    function canWithdrawCollectedFees(address account, IERC20 token) external view override returns (bool) {
+    function canWithdrawCollectedFees(address account, IERC20 token) public view override returns (bool) {
         return
             hasRole(WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE, account) ||
             hasRole(WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(token), account);

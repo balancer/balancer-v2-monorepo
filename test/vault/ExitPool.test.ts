@@ -18,6 +18,7 @@ describe('Vault - exit pool', () => {
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList = {};
 
+  const SWAP_FEE = fp(0.1);
   let TOKEN_ADDRESSES: string[];
 
   before(async () => {
@@ -28,8 +29,8 @@ describe('Vault - exit pool', () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), admin.address);
-    await vault.connect(admin).setProtocolSwapFee(fp(0.1));
+    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+    await vault.connect(admin).setProtocolFees(SWAP_FEE, 0, 0);
 
     tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
     TOKEN_ADDRESSES = [];
@@ -138,21 +139,21 @@ describe('Vault - exit pool', () => {
         // Missing - token addresses and min amounts out length must match
         await expect(
           exitPool({ tokenAddresses: tokenAddresses.slice(1), minAmountsOut: array(0).slice(1) })
-        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+        ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
         // Extra - token addresses and min amounts out length must match
         await expect(
           exitPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]), minAmountsOut: array(0).concat(bn(0)) })
-        ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+        ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
         // Unordered
         await expect(exitPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
-        await expect(exitPool({ minAmountsOut: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+        await expect(exitPool({ minAmountsOut: array(0).slice(1) })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
-        await expect(exitPool({ minAmountsOut: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+        await expect(exitPool({ minAmountsOut: array(0).concat(bn(0)) })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
       });
     });
 
@@ -160,21 +161,21 @@ describe('Vault - exit pool', () => {
       context('with incorrect pool return values', () => {
         it('reverts if exit amounts length does not match token length', async () => {
           // Missing
-          await expect(exitPool({ exitAmounts: array(0).slice(1) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          await expect(exitPool({ exitAmounts: array(0).slice(1) })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
           // Extra
-          await expect(exitPool({ exitAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          await expect(exitPool({ exitAmounts: array(0).concat(bn(0)) })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if due protocol fees length does not match token length', async () => {
           // Missing
           await expect(exitPool({ dueProtocolFeeAmounts: array(0).slice(1) })).to.be.revertedWith(
-            'ARRAY_LENGTH_MISMATCH'
+            'INPUT_LENGTH_MISMATCH'
           );
 
           // Extra
           await expect(exitPool({ dueProtocolFeeAmounts: array(0).concat(bn(0)) })).to.be.revertedWith(
-            'ARRAY_LENGTH_MISMATCH'
+            'INPUT_LENGTH_MISMATCH'
           );
         });
 
@@ -182,12 +183,12 @@ describe('Vault - exit pool', () => {
           // Missing
           await expect(
             exitPool({ exitAmounts: array(0).slice(1), dueProtocolFeeAmounts: array(0).slice(1) })
-          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
           // Extra
           await expect(
             exitPool({ exitAmounts: array(0).concat(bn(0)), dueProtocolFeeAmounts: array(0).concat(bn(0)) })
-          ).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
       });
 
@@ -198,8 +199,8 @@ describe('Vault - exit pool', () => {
 
         context('with protocol withdraw fee', () => {
           beforeEach('set protocol withdraw fee', async () => {
-            await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), admin.address);
-            await vault.connect(admin).setProtocolWithdrawFee(fp(0.02));
+            await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+            await vault.connect(admin).setProtocolFees(SWAP_FEE, fp(0.02), 0);
           });
 
           itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance();
@@ -269,12 +270,12 @@ describe('Vault - exit pool', () => {
       let expectedProtocolWithdrawFeesToCollect: BigNumber[];
 
       beforeEach('calculate intermediate values', async () => {
-        const procotolWithdrawFee = await vault.getProtocolWithdrawFee();
+        const { withdrawFee } = await vault.getProtocolFees();
         expectedProtocolWithdrawFeesToCollect = exitAmounts.map((amount) =>
           toInternalBalance
             ? bn(0)
             : // Fixed point division rounding up, since the protocol withdraw fee is a fixed point number
-              divCeil(amount.mul(procotolWithdrawFee), FP_SCALING_FACTOR)
+              divCeil(amount.mul(withdrawFee), FP_SCALING_FACTOR)
         );
       });
 
@@ -336,7 +337,7 @@ describe('Vault - exit pool', () => {
           sender: lp.address,
           recipient: recipient.address,
           currentBalances: previousPoolBalances,
-          protocolSwapFee: await vault.getProtocolSwapFee(),
+          protocolSwapFee: (await vault.getProtocolFees()).swapFee,
           latestBlockNumberUsed: previousBlockNumber,
           userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
         });
