@@ -4,7 +4,7 @@ import {
   calculateInvariant,
   calcInGivenOut,
   calcOutGivenIn,
-  calculateOneTokenSwapFee,
+  calculateOneTokenAccumulatedSwapFees,
 } from '../../helpers/math/stable';
 import { expectEqualWithError } from '../../helpers/relativeError';
 import { bn } from '../../../lib/helpers/numbers';
@@ -126,8 +126,8 @@ describe('StableMath', function () {
         const lastInvariant = bn(10e18);
         const tokenIndex = 0;
 
-        const result = await mock.calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
-        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+        const result = await mock.calculateOneTokenAccumulatedSwapFees(amp, balances, lastInvariant, tokenIndex);
+        const expectedFeeAmount = calculateOneTokenAccumulatedSwapFees(amp, balances, lastInvariant, tokenIndex);
 
         expectEqualWithError(result, bn(expectedFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });
@@ -139,8 +139,8 @@ describe('StableMath', function () {
         const lastInvariant = bn(10e18);
         const tokenIndex = 0;
 
-        const result = await mock.calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
-        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+        const result = await mock.calculateOneTokenAccumulatedSwapFees(amp, balances, lastInvariant, tokenIndex);
+        const expectedFeeAmount = calculateOneTokenAccumulatedSwapFees(amp, balances, lastInvariant, tokenIndex);
 
         expectEqualWithError(result, bn(expectedFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });

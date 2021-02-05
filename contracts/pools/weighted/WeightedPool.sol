@@ -219,7 +219,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 bptAmountOut = invariantAfterJoin * _totalTokens;
         require(bptAmountOut / invariantAfterJoin == _totalTokens, "MUL_OVERFLOW");
 
-        _lastInvariant = _invariantAfterJoin(new uint256[](_totalTokens), amountsIn, normalizedWeights);
+        _lastInvariant = invariantAfterJoin;
 
         return (bptAmountOut, amountsIn);
     }
@@ -248,7 +248,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
         // event and now - the invariant's growth is due exclusively to swap fees.
         uint256 invariantBeforeJoin = WeightedMath._invariant(normalizedWeights, currentBalances);
-        uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
+        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             currentBalances,
             normalizedWeights,
             _lastInvariant,
@@ -351,7 +351,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
         // event and now - the invariant's growth is due exclusively to swap fees.
         uint256 invariantBeforeExit = WeightedMath._invariant(normalizedWeights, currentBalances);
-        uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
+        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             currentBalances,
             normalizedWeights,
             _lastInvariant,
@@ -439,7 +439,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         (, uint256[] memory amountsOut, uint256 maxBPTAmountIn) = abi.decode(userData, (ExitKind, uint256[], uint256));
         require(amountsOut.length == _totalTokens, "ERR_AMOUNTS_OUT_LENGTH");
 
-        uint256 bptAmountIn = _bptInForExactTokensOut(
+        uint256 bptAmountIn = WeightedMath._bptInForExactTokensOut(
             currentBalances,
             normalizedWeights,
             amountsOut,
@@ -453,7 +453,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     // Helpers
 
-    function _getAndApplyDueProtocolFeeAmounts(
+    function _getDueProtocolFeeAmounts(
         uint256[] memory currentBalances,
         uint256[] memory normalizedWeights,
         uint256 previousInvariant,

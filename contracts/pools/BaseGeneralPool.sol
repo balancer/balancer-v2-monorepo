@@ -35,6 +35,8 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexIn,
         uint256 indexOut
     ) external override returns (uint256) {
+        _validateIndexes(indexIn, indexOut, _totalTokens);
+
         swapRequest.amountIn = _subtractSwapFee(swapRequest.amountIn);
         return _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
     }
@@ -45,6 +47,8 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexIn,
         uint256 indexOut
     ) external override returns (uint256) {
+        _validateIndexes(indexIn, indexOut, _totalTokens);
+
         uint256 amountIn = _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
         return _addSwapFee(amountIn);
     }
@@ -62,4 +66,12 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual returns (uint256);
+
+    function _validateIndexes(
+        uint256 indexIn,
+        uint256 indexOut,
+        uint256 limit
+    ) private pure {
+        require(indexIn < limit && indexOut < limit, "OUT_OF_BOUNDS");
+    }
 }

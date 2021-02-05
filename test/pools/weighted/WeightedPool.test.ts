@@ -281,7 +281,15 @@ describe('WeightedPool', function () {
           await vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
 
           await expect(
-            vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData)
+            vault.callJoinPool(
+              pool.address,
+              poolId,
+              beneficiary.address,
+              poolInitialBalances,
+              0,
+              0,
+              initialJoinUserData
+            )
           ).to.be.be.revertedWith('UNHANDLED_JOIN_KIND');
         });
       });
