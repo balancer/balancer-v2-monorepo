@@ -215,9 +215,9 @@ describe('Vault - internal balance', () => {
             const protocolWithdrawFee = 0.01;
 
             beforeEach('set fee', async () => {
-              const role = await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE();
+              const role = await authorizer.SET_PROTOCOL_FEES_ROLE();
               await authorizer.connect(admin).grantRole(role, admin.address);
-              await vault.connect(admin).setProtocolWithdrawFee(fp(protocolWithdrawFee));
+              await vault.connect(admin).setProtocolFees(0, fp(protocolWithdrawFee), 0);
             });
 
             it('tokens minus fee are pushed', async () => {

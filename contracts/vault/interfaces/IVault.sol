@@ -212,7 +212,7 @@ interface IVault {
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
-        bool tointernalBalance,
+        bool toInternalBalance,
         bytes memory userData
     ) external;
 
@@ -467,53 +467,34 @@ interface IVault {
     // Protocol Fees
 
     /**
-     * @dev Returns the Protocol Withdraw Fee. Withdraw fees are applied on `withdraw` and `exitPool` (unless
+     * @dev Returns the Protocol fees.
+     * @return swapFee - These are paid by Pools via `paySwapProtocolFees`.
+     * @return withdrawFee - These are applied on `withdraw` and `exitPool` (unless
      * depositing into User's Internal Balance). Swaps and `withdrawFromPoolBalance` are not charged withdraw fees.
-     *
-     * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
+     * @return flashLoanFee - These are collected on all Flash Loans.
+     * These are an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
      */
-    function getProtocolWithdrawFee() external view returns (uint256);
+    function getProtocolFees()
+        external
+        view
+        returns (
+            uint256 swapFee,
+            uint256 withdrawFee,
+            uint256 flashLoanFee
+        );
 
     /**
-     * @dev Returns the Protocol Swap Fee. These are paid by Pools via `paySwapProtocolFees`.
-     *
-     * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
-     */
-    function getProtocolSwapFee() external view returns (uint256);
-
-    /**
-     * @dev Returns the Protocol Flash Loan Fee. These are collected on all Flash Loans.
-     *
-     * This is an 18 decimal fixed point number, so e.g. 0.1e18 stands for a 10% fee.
-     */
-    function getProtocolFlashLoanFee() external view returns (uint256);
-
-    /**
-     * @dev Sets a new Protocol Withdraw Fee.
+     * @dev Sets new Protocol fees.
      *
      * Requirements:
      *
-     * - the caller must be approved by the authorizer (`IAuthorizer.canSetProtocolWithdrawFee`).
+     * - The caller must be approved by the authorizer with `IAuthorizer.canSetProtocolFees`.
      */
-    function setProtocolWithdrawFee(uint256 newFee) external;
-
-    /**
-     * @dev Sets a new Protocol Swap Fee.
-     *
-     * Requirements:
-     *
-     * - the caller must be approved by the authorizer (`IAuthorizer.canSetProtocolSwapFee`).
-     */
-    function setProtocolSwapFee(uint256 newFee) external;
-
-    /**
-     * @dev Sets a new Protocol Flash Loan Fee.
-     *
-     * Requirements:
-     *
-     * - the caller must be approved by the authorizer (`IAuthorizer.canSetProtocolFlashLoanFee`).
-     */
-    function setProtocolFlashLoanFee(uint256 newFee) external;
+    function setProtocolFees(
+        uint256 swapFee,
+        uint256 withdrawFee,
+        uint256 flashLoanFee
+    ) external;
 
     /**
      * @dev Returns the amount of protocol fees collected by the Vault for the given set of `tokens`.

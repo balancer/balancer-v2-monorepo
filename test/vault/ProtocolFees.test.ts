@@ -43,8 +43,8 @@ describe('Vault - protocol fees', () => {
   context('with collected protocol fees', () => {
     beforeEach(async () => {
       // Set a non-zero withdraw fee
-      await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE(), feeSetter.address);
-      await vault.connect(feeSetter).setProtocolWithdrawFee(bn(0.01e18));
+      await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), feeSetter.address);
+      await vault.connect(feeSetter).setProtocolFees(0, bn(0.01e18), 0);
 
       const transfersIn = createGeneralTransfersStruct(
         [tokens.DAI.address, tokens.MKR.address],

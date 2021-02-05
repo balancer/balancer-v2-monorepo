@@ -50,15 +50,12 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         external
         view
         override
-        returns (uint256[] memory)
+        returns (uint256[] memory balances)
     {
-        uint256[] memory balances = new uint256[](tokens.length);
-
+        balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             balances[i] = _getInternalBalance(user, tokens[i]);
         }
-
-        return balances;
     }
 
     function depositToInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {

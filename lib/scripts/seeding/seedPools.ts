@@ -75,8 +75,8 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
   }
 
   console.log('\nSetting the protocol swap fee...');
-  await authorizer.connect(deployer).grantRole(await authorizer.SET_PROTOCOL_SWAP_FEE_ROLE(), deployer.address);
-  await vault.connect(deployer).setProtocolSwapFee(fp(0.1));
+  await authorizer.connect(deployer).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), deployer.address);
+  await vault.connect(deployer).setProtocolFees(fp(0.1), 0, 0);
 
   return;
 };
