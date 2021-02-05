@@ -199,7 +199,9 @@ describe('Vault - swaps', () => {
                       context('when using more than available as internal balance', () => {
                         beforeEach('deposit to internal balance', async () => {
                           funds.fromInternalBalance = true;
-                          const transfers = [{ token: tokens.MKR.address, amount: bn(0.3e18), account: trader.address }];
+                          const transfers = [
+                            { token: tokens.MKR.address, amount: bn(0.3e18), account: trader.address },
+                          ];
 
                           await vault.connect(trader).depositToInternalBalance(transfers);
                         });
@@ -526,7 +528,9 @@ describe('Vault - swaps', () => {
                       context('when using more than available as internal balance', () => {
                         beforeEach('deposit to internal balance', async () => {
                           funds.fromInternalBalance = true;
-                          const transfers = [{ token: tokens.MKR.address, amount: bn(0.3e18), account: trader.address }];
+                          const transfers = [
+                            { token: tokens.MKR.address, amount: bn(0.3e18), account: trader.address },
+                          ];
 
                           await vault.connect(trader).depositToInternalBalance(transfers);
                         });

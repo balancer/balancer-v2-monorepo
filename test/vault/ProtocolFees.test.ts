@@ -8,7 +8,6 @@ import { bn } from '../../lib/helpers/numbers';
 import { MAX_UINT256 } from '../../lib/helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens, mintTokens } from '../../lib/helpers/tokens';
-import { createGeneralTransfersStruct } from '../../lib/helpers/trading';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
@@ -46,19 +45,13 @@ describe('Vault - protocol fees', () => {
       await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), feeSetter.address);
       await vault.connect(feeSetter).setProtocolFees(0, bn(0.01e18), 0);
 
-      const transfersIn = createGeneralTransfersStruct(
-        [tokens.DAI.address, tokens.MKR.address],
-        [bn(20e18), bn(20e18)],
-        [user.address, user.address]
-      );
+      const transfersIn = [{token: tokens.DAI.address, amount: bn(20e18), account: user.address},
+                         {token: tokens.MKR.address, amount: bn(20e18), account: user.address}];
 
       await vault.connect(user).depositToInternalBalance(transfersIn);
 
-      const transfersOut = createGeneralTransfersStruct(
-        [tokens.DAI.address, tokens.MKR.address],
-        [bn(5e18), bn(10e18)],
-        [user.address, user.address]
-      );
+      const transfersOut = [{token: tokens.DAI.address, amount: bn(5e18), account: user.address},
+                            {token: tokens.MKR.address, amount: bn(10e18), account: user.address}];
 
       // Withdraw internal balance - this will cause withdraw fees to be charged
       await vault.connect(user).withdrawFromInternalBalance(transfersOut);
