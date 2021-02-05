@@ -34,7 +34,9 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
             tokens,
             swapFee
         )
-    {}
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     // Swap Hooks
 

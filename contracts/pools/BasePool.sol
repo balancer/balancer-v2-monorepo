@@ -21,6 +21,10 @@ import "./BalancerPoolToken.sol";
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
 
+// This contract relies on tons of immutable state variables to
+// perform efficient lookup, without resorting to storage reads.
+// solhint-disable max-states-count
+
 abstract contract BasePool is IBasePool, BalancerPoolToken {
     using Math for uint256;
     using FixedPoint for uint256;
