@@ -117,6 +117,12 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
 
     // Join / Exit Hooks
 
+    modifier onlyVault(bytes32 poolId) {
+        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
+        require(poolId == _poolId, "INVALID_POOL_ID");
+        _;
+    }
+
     function onJoinPool(
         bytes32 poolId,
         address sender,
@@ -125,10 +131,7 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
-        require(poolId == _poolId, "INVALID_POOL_ID");
-
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
 
@@ -158,10 +161,7 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
-        require(poolId == _poolId, "INVALID_POOL_ID");
-
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(
             poolId,
             sender,
