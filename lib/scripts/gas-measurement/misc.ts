@@ -16,7 +16,6 @@ export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'H
 
 export async function setupEnvironment(): Promise<{
   vault: Contract;
-  validator: Contract;
   tokens: TokenList;
   trader: SignerWithAddress;
 }> {
@@ -24,8 +23,6 @@ export async function setupEnvironment(): Promise<{
 
   const authorizer = await deploy('Authorizer', { args: [admin.address] });
   const vault = await deploy('Vault', { args: [authorizer.address] });
-
-  const validator = await deploy('OneToOneSwapValidator', { args: [] });
 
   const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 
@@ -50,7 +47,7 @@ export async function setupEnvironment(): Promise<{
 
   await vault.connect(trader).depositToInternalBalance(transfers);
 
-  return { vault, validator, tokens, trader };
+  return { vault, tokens, trader };
 }
 
 export async function deployPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {

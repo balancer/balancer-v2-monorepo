@@ -7,7 +7,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
 import { deployTokens, TokenList } from '../../lib/helpers/tokens';
-import { MAX_UINT112, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
@@ -159,8 +159,11 @@ describe('Vault - swaps', () => {
           const recipient = input.toOther ? other : trader;
           const swaps = toSwapIn(parseSwap(input));
 
+          const limits = Array(tokenAddresses.length).fill(MAX_INT256);
+          const deadline = MAX_UINT256;
+
           await expectBalanceChange(
-            () => vault.connect(sender).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
+            () => vault.connect(sender).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline),
             tokens,
             [{ account: recipient, changes }]
           );
@@ -171,7 +174,11 @@ describe('Vault - swaps', () => {
         it('reverts', async () => {
           const sender = input.fromOther ? other : trader;
           const swaps = toSwapIn(parseSwap(input));
-          const call = vault.connect(sender).batchSwapGivenIn(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
+
+          const limits = Array(tokenAddresses.length).fill(MAX_INT256);
+          const deadline = MAX_UINT256;
+
+          const call = vault.connect(sender).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline);
 
           reason ? await expect(call).to.be.revertedWith(reason) : await expect(call).to.be.reverted;
         });
@@ -488,8 +495,11 @@ describe('Vault - swaps', () => {
           const recipient = input.toOther ? other : trader;
           const swaps = toSwapOut(parseSwap(input));
 
+          const limits = Array(tokenAddresses.length).fill(MAX_INT256);
+          const deadline = MAX_UINT256;
+
           await expectBalanceChange(
-            () => vault.connect(sender).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds),
+            () => vault.connect(sender).batchSwapGivenOut(swaps, tokenAddresses, funds, limits, deadline),
             tokens,
             [{ account: recipient, changes }]
           );
@@ -500,7 +510,11 @@ describe('Vault - swaps', () => {
         it('reverts', async () => {
           const sender = input.fromOther ? other : trader;
           const swaps = toSwapOut(parseSwap(input));
-          const call = vault.connect(sender).batchSwapGivenOut(ZERO_ADDRESS, '0x', swaps, tokenAddresses, funds);
+
+          const limits = Array(tokenAddresses.length).fill(MAX_INT256);
+          const deadline = MAX_UINT256;
+
+          const call = vault.connect(sender).batchSwapGivenOut(swaps, tokenAddresses, funds, limits, deadline);
 
           reason ? await expect(call).to.be.revertedWith(reason) : await expect(call).to.be.reverted;
         });
