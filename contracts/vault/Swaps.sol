@@ -161,7 +161,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapKind kind
     ) private nonReentrant returns (int256[] memory tokenDeltas) {
         // The deadline is timestamp-based: it should not be relied on having sub-minute accuracy.
-        // solhint-ignore not-rely-on-time
+        // solhint-disable-next-line not-rely-on-time
         require(block.timestamp <= deadline, "SWAP_DEADLINE");
 
         InputHelpers.ensureInputLengthMatch(tokens.length, limits.length);
