@@ -18,7 +18,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./IFlashLoanReceiver.sol";
 import "./IAuthorizer.sol";
-import "./ISwapValidator.sol";
 
 pragma solidity ^0.7.1;
 
@@ -251,11 +250,11 @@ interface IVault {
      * Funds will be sent and  received according to the data in the `funds` struct.
      */
     function batchSwapGivenIn(
-        ISwapValidator validator,
-        bytes calldata validatorData,
         SwapIn[] calldata swaps,
         IERC20[] memory tokens,
-        FundManagement calldata funds
+        FundManagement calldata funds,
+        int256[] memory limits,
+        uint256 deadline
     ) external returns (int256[] memory);
 
     /**
@@ -306,11 +305,11 @@ interface IVault {
      * Funds will be sent and  received according to the data in the `funds` struct.
      */
     function batchSwapGivenOut(
-        ISwapValidator validator,
-        bytes calldata validatorData,
         SwapOut[] calldata swaps,
         IERC20[] memory tokens,
-        FundManagement calldata funds
+        FundManagement calldata funds,
+        int256[] memory limits,
+        uint256 deadline
     ) external returns (int256[] memory);
 
     /**
