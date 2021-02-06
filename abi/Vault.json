@@ -385,7 +385,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "tokenDeltas",
+        "name": "",
         "type": "int256[]"
       }
     ],
@@ -468,7 +468,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "tokenDeltas",
+        "name": "",
         "type": "int256[]"
       }
     ],

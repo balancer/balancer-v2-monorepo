@@ -139,13 +139,13 @@ describe('Vault - swap validation', () => {
 
       it('reverts if there are less limits than tokens', async () => {
         await expect(doSwap(funds, Array(tokenAddresses.length - 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
-          'TOKENS_LIMITS_MISMATCH'
+          'INPUT_LENGTH_MISMATCH'
         );
       });
 
       it('reverts if there are more limits than tokens', async () => {
         await expect(doSwap(funds, Array(tokenAddresses.length + 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
-          'TOKENS_LIMITS_MISMATCH'
+          'INPUT_LENGTH_MISMATCH'
         );
       });
 
