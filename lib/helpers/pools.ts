@@ -10,6 +10,16 @@ export const TwoTokenPool = 2;
 export type PoolSpecializationSetting = typeof MinimalSwapInfoPool | typeof GeneralPool | typeof TwoTokenPool;
 export type PoolName = 'WeightedPool' | 'StablePool';
 
+export function poolSpecializationName(specialization: PoolSpecializationSetting): string {
+  if (specialization == GeneralPool) {
+    return 'general';
+  } else if (specialization == MinimalSwapInfoPool) {
+    return 'minimal swap info';
+  } else {
+    return 'two token';
+  }
+}
+
 /**
  * Deploys a Pool via a Factory contract.
  *

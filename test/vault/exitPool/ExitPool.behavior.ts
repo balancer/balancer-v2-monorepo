@@ -3,91 +3,77 @@ import { expect } from 'chai';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../lib/helpers/deploy';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
-import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } from '../../lib/helpers/numbers';
-import { expectBalanceChange } from '../helpers/tokenBalance';
-import * as expectEvent from '../helpers/expectEvent';
+import { deploy } from '../../../lib/helpers/deploy';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
+import { deploySortedTokens, mintTokens, TokenList } from '../../../lib/helpers/tokens';
+import { PoolSpecializationSetting, poolSpecializationName } from '../../../lib/helpers/pools';
+import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } from '../../../lib/helpers/numbers';
+import { expectBalanceChange } from '../../helpers/tokenBalance';
+import * as expectEvent from '../../helpers/expectEvent';
+import { encodeExit } from '../../helpers/mockPool';
 import { times } from 'lodash';
-import { encodeExit } from '../helpers/mockPool';
 
-describe('Vault - exit pool', () => {
-  let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, recipient: SignerWithAddress;
-  let authorizer: Contract, vault: Contract;
-  let tokens: TokenList = {};
+export function describeExitSpecializedPool(specialization: PoolSpecializationSetting, tokenAmount: number): void {
+  describe(`Vault - exit ${poolSpecializationName(specialization)} pool`, () => {
+    let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, recipient: SignerWithAddress;
+    let authorizer: Contract, vault: Contract, pool: Contract;
 
-  const SWAP_FEE = fp(0.1);
-  let TOKEN_ADDRESSES: string[];
+    let tokens: TokenList = {};
+    let tokenAddresses: string[];
 
-  before(async () => {
-    [, admin, creator, lp, recipient] = await ethers.getSigners();
-  });
-
-  beforeEach('deploy vault & tokens', async () => {
-    authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
-
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
-    await vault.connect(admin).setProtocolFees(SWAP_FEE, 0, 0);
-
-    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
-    TOKEN_ADDRESSES = [];
-
-    for (const symbol in tokens) {
-      // Mint tokens for the creator to create the Pool and deposit as Internal Balance
-      await mintTokens(tokens, symbol, creator, bn(100e18));
-      await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
-
-      // Mint tokens for the recipient to set as initial Internal Balance
-      await mintTokens(tokens, symbol, recipient, bn(100e18));
-      await tokens[symbol].connect(recipient).approve(vault.address, MAX_UINT256);
-
-      TOKEN_ADDRESSES.push(tokens[symbol].address);
-    }
-  });
-
-  function symbol(tokenAddress: string): string {
-    for (const symbol in tokens) {
-      if (tokens[symbol].address === tokenAddress) {
-        return symbol;
-      }
-    }
-
-    throw new Error(`Symbol for token ${tokenAddress} not found`);
-  }
-
-  describe('with general pool', () => {
-    itExitsSpecializedPoolCorrectly(GeneralPool, 4);
-  });
-
-  describe('with minimal swap info pool', () => {
-    itExitsSpecializedPoolCorrectly(MinimalSwapInfoPool, 3);
-  });
-
-  describe('with two token pool', () => {
-    itExitsSpecializedPoolCorrectly(TwoTokenPool, 2);
-  });
-
-  function itExitsSpecializedPoolCorrectly(specialization: PoolSpecializationSetting, tokenAmount: number) {
-    let pool: Contract;
     let poolId: string;
 
-    let tokenAddresses: string[];
+    const SWAP_FEE = fp(0.1);
 
     let exitAmounts: BigNumber[];
     let dueProtocolFeeAmounts: BigNumber[];
 
+    before(async () => {
+      [, admin, creator, lp, recipient] = await ethers.getSigners();
+    });
+
+    beforeEach('deploy vault & tokens', async () => {
+      authorizer = await deploy('Authorizer', { args: [admin.address] });
+      vault = await deploy('Vault', { args: [authorizer.address] });
+
+      await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+      await vault.connect(admin).setProtocolFees(SWAP_FEE, 0, 0);
+
+      const SYMBOLS = ['DAI', 'MKR', 'SNX', 'BAT'].slice(0, tokenAmount);
+      tokens = await deploySortedTokens(SYMBOLS, Array(tokenAmount).fill(18));
+
+      tokenAddresses = [];
+      for (const symbol in tokens) {
+        // Mint tokens for the creator to create the Pool and deposit as Internal Balance
+        await mintTokens(tokens, symbol, creator, bn(100e18));
+        await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
+
+        // Mint tokens for the recipient to set as initial Internal Balance
+        await mintTokens(tokens, symbol, recipient, bn(100e18));
+        await tokens[symbol].connect(recipient).approve(vault.address, MAX_UINT256);
+
+        tokenAddresses.push(tokens[symbol].address);
+      }
+    });
+
     function array(value: BigNumberish): BigNumber[] {
       return Array(tokenAmount).fill(bn(value));
+    }
+
+    function symbol(tokenAddress: string): string {
+      for (const symbol in tokens) {
+        if (tokens[symbol].address === tokenAddress) {
+          return symbol;
+        }
+      }
+
+      throw new Error(`Symbol for token ${tokenAddress} not found`);
     }
 
     beforeEach('deploy & register pool', async () => {
       pool = await deploy('MockPool', { args: [vault.address, specialization] });
       poolId = await pool.getPoolId();
 
-      tokenAddresses = TOKEN_ADDRESSES.slice(0, tokenAmount);
       await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
       exitAmounts = tokenAddresses.map(
@@ -143,7 +129,10 @@ describe('Vault - exit pool', () => {
 
         // Extra - token addresses and min amounts out length must match
         await expect(
-          exitPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]), minAmountsOut: array(0).concat(bn(0)) })
+          exitPool({
+            tokenAddresses: tokenAddresses.concat(tokenAddresses[0]),
+            minAmountsOut: array(0).concat(bn(0)),
+          })
         ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
         // Unordered
@@ -423,5 +412,5 @@ describe('Vault - exit pool', () => {
         );
       });
     }
-  }
-});
+  });
+}

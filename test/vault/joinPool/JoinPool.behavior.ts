@@ -3,80 +3,66 @@ import { expect } from 'chai';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../lib/helpers/deploy';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
-import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
-import { expectBalanceChange } from '../helpers/tokenBalance';
-import * as expectEvent from '../helpers/expectEvent';
+import { deploy } from '../../../lib/helpers/deploy';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
+import { deploySortedTokens, mintTokens, TokenList } from '../../../lib/helpers/tokens';
+import { PoolSpecializationSetting, poolSpecializationName } from '../../../lib/helpers/pools';
+import { arraySub, bn, BigNumberish, min, fp } from '../../../lib/helpers/numbers';
+import { expectBalanceChange } from '../../helpers/tokenBalance';
+import * as expectEvent from '../../helpers/expectEvent';
 import { times } from 'lodash';
-import { encodeJoin } from '../helpers/mockPool';
+import { encodeJoin } from '../../helpers/mockPool';
 
-describe('Vault - join pool', () => {
-  let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
-  let authorizer: Contract, vault: Contract;
-  let tokens: TokenList = {};
+export function describeJoinSpecializedPool(specialization: PoolSpecializationSetting, tokenAmount: number): void {
+  describe(`Vault - join ${poolSpecializationName(specialization)} pool`, () => {
+    let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
+    let authorizer: Contract, vault: Contract, pool: Contract;
 
-  let TOKEN_ADDRESSES: string[];
-
-  before(async () => {
-    [, admin, creator, lp] = await ethers.getSigners();
-  });
-
-  beforeEach('deploy vault & tokens', async () => {
-    authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
-
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
-    await vault.connect(admin).setProtocolFees(fp(0.1), 0, 0);
-
-    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
-    TOKEN_ADDRESSES = [];
-
-    for (const symbol in tokens) {
-      // Mint tokens for the creator to create the Pool
-      await mintTokens(tokens, symbol, creator, bn(100e18));
-      await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
-
-      // Mint tokens for the lp to join the Pool
-      await mintTokens(tokens, symbol, lp, bn(100e18));
-      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
-
-      TOKEN_ADDRESSES.push(tokens[symbol].address);
-    }
-  });
-
-  function symbol(tokenAddress: string): string {
-    for (const symbol in tokens) {
-      if (tokens[symbol].address === tokenAddress) {
-        return symbol;
-      }
-    }
-
-    throw new Error(`Symbol for token ${tokenAddress} not found`);
-  }
-
-  describe('with general pool', () => {
-    itJoinsSpecializedPoolCorrectly(GeneralPool, 4);
-  });
-
-  describe('with minimal swap info pool', () => {
-    itJoinsSpecializedPoolCorrectly(MinimalSwapInfoPool, 3);
-  });
-
-  describe('with two token pool', () => {
-    itJoinsSpecializedPoolCorrectly(TwoTokenPool, 2);
-  });
-
-  function itJoinsSpecializedPoolCorrectly(specialization: PoolSpecializationSetting, tokenAmount: number) {
-    let pool: Contract;
-    let poolId: string;
-
+    let tokens: TokenList = {};
     let tokenAddresses: string[];
+
+    let poolId: string;
 
     let joinAmounts: BigNumber[];
     let dueProtocolFeeAmounts: BigNumber[];
+
+    before(async () => {
+      [, admin, creator, lp] = await ethers.getSigners();
+    });
+
+    beforeEach('deploy vault & tokens', async () => {
+      authorizer = await deploy('Authorizer', { args: [admin.address] });
+      vault = await deploy('Vault', { args: [authorizer.address] });
+
+      await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), admin.address);
+      await vault.connect(admin).setProtocolFees(fp(0.1), 0, 0);
+
+      const SYMBOLS = ['DAI', 'MKR', 'SNX', 'BAT'].slice(0, tokenAmount);
+      tokens = await deploySortedTokens(SYMBOLS, Array(tokenAmount).fill(18));
+
+      tokenAddresses = [];
+      for (const symbol in tokens) {
+        // Mint tokens for the creator to create the Pool
+        await mintTokens(tokens, symbol, creator, bn(100e18));
+        await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
+
+        // Mint tokens for the lp to join the Pool
+        await mintTokens(tokens, symbol, lp, bn(100e18));
+        await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
+
+        tokenAddresses.push(tokens[symbol].address);
+      }
+    });
+
+    function symbol(tokenAddress: string): string {
+      for (const symbol in tokens) {
+        if (tokens[symbol].address === tokenAddress) {
+          return symbol;
+        }
+      }
+
+      throw new Error(`Symbol for token ${tokenAddress} not found`);
+    }
 
     function array(value: BigNumberish): BigNumber[] {
       return Array(tokenAmount).fill(bn(value));
@@ -86,7 +72,6 @@ describe('Vault - join pool', () => {
       pool = await deploy('MockPool', { args: [vault.address, specialization] });
       poolId = await pool.getPoolId();
 
-      tokenAddresses = TOKEN_ADDRESSES.slice(0, tokenAmount);
       await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
       joinAmounts = tokenAddresses.map((_, i) => bn(1e18).mul(i + 1));
@@ -394,5 +379,5 @@ describe('Vault - join pool', () => {
         );
       });
     }
-  }
-});
+  });
+}
