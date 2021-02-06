@@ -93,6 +93,19 @@ describe('Vault - flash loans', () => {
       expect((await vault.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
     });
 
+    it('zero loans are possible', async () => {
+      const loan = 0;
+      const feeAmount = 0;
+
+      await expectBalanceChange(
+        () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
+        tokens,
+        { account: vault }
+      );
+
+      expect((await vault.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
+    });
+
     it('the Vault receives protocol fees', async () => {
       const loan = bn(1e18);
       const feeAmount = divCeil(loan.mul(feePercentage), FP_SCALING_FACTOR);

@@ -144,7 +144,7 @@ export function calcInGivenOut(
   return amountInBalance.sub(balances[tokenIndexIn].toString()).add(1);
 }
 
-export function calculateOneTokenSwapFee(
+export function calculateOneTokenAccumulatedSwapFees(
   amp: BigNumberish,
   balances: BigNumberish[],
   lastInvariant: BigNumberish,

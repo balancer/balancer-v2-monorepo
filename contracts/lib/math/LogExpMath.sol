@@ -252,6 +252,14 @@ library LogExpMath {
         return uint256(n_exp(logx_times_y));
     }
 
+    function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
+        return pow(x, y);
+    }
+
+    function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
+        return pow(x, y);
+    }
+
     /**
      * Computes log of a number in base of another number, both numbers with 18 decimals precision.
      * @param arg Argument with 18 decimal places.

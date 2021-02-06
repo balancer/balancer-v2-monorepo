@@ -45,12 +45,20 @@ contract MockWeightedMath is WeightedMath {
         return _inGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut);
     }
 
-    function calculateOneTokenSwapFee(
-        uint256[] calldata balances,
-        uint256[] calldata normalizedWeights,
-        uint256 lastInvariant,
-        uint256 tokenIndex
+    function calculateDueTokenProtocolSwapFee(
+        uint256 balance,
+        uint256 normalizedWeight,
+        uint256 previousInvariant,
+        uint256 currentInvariant,
+        uint256 protocolSwapFeePercentage
     ) external pure returns (uint256) {
-        return _calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
+        return
+            _calculateDueTokenProtocolSwapFee(
+                balance,
+                normalizedWeight,
+                previousInvariant,
+                currentInvariant,
+                protocolSwapFeePercentage
+            );
     }
 }
