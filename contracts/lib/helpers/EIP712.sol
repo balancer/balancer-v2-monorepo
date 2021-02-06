@@ -19,6 +19,8 @@ pragma solidity ^0.7.1;
  *
  * NOTE: This contract implements the version of the encoding known as "v4", as implemented by the JSON RPC method
  * https://docs.metamask.io/guide/signing-data.html[`eth_signTypedDataV4` in MetaMask].
+ *
+ * _Available since v3.4._
  */
 abstract contract EIP712 {
     /* solhint-disable var-name-mixedcase */
@@ -30,6 +32,8 @@ abstract contract EIP712 {
     bytes32 private immutable _HASHED_NAME;
     bytes32 private immutable _HASHED_VERSION;
     bytes32 private immutable _TYPE_HASH;
+
+    /* solhint-enable var-name-mixedcase */
 
     /**
      * @dev Initializes the domain separator and parameter caches.
@@ -59,7 +63,7 @@ abstract contract EIP712 {
     /**
      * @dev Returns the domain separator for the current chain.
      */
-    function _domainSeparatorV4() internal view returns (bytes32) {
+    function _domainSeparatorV4() internal view virtual returns (bytes32) {
         if (_getChainId() == _CACHED_CHAIN_ID) {
             return _CACHED_DOMAIN_SEPARATOR;
         } else {
@@ -90,7 +94,7 @@ abstract contract EIP712 {
      * address signer = ECDSA.recover(digest, signature);
      * ```
      */
-    function _hashTypedDataV4(bytes32 structHash) internal view returns (bytes32) {
+    function _hashTypedDataV4(bytes32 structHash) internal view virtual returns (bytes32) {
         return keccak256(abi.encodePacked("\x19\x01", _domainSeparatorV4(), structHash));
     }
 

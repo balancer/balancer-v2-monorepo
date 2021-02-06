@@ -15,8 +15,9 @@
 pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "../lib/helpers/IERC20Permit.sol";
-import "../lib/helpers/Counters.sol";
+import "../lib/helpers/ECDSA.sol";
 import "../lib/helpers/EIP712.sol";
 import "../lib/math/Math.sol";
 
@@ -131,21 +132,18 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         bytes32 s
     ) external override {
         // solhint-disable-next-line not-rely-on-time
-        require(block.timestamp <= deadline, "BalancerV2: EXPIRED");
+        require(block.timestamp <= deadline, "DEADLINE_EXPIRED");
 
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                _domainSeparatorV4(),
-                keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner].current(), deadline))
-            )
+        bytes32 structHash = keccak256(
+            abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner].current(), deadline)
         );
 
-        address signer = ecrecover(digest, v, r, s);
-        require(signer != address(0) && signer == owner, "BalancerV2: INVALID_SIGNATURE");
+        bytes32 hash = _hashTypedDataV4(structHash);
+
+        address signer = ECDSA.recover(hash, v, r, s);
+        require(signer == owner, "INVALID_SIGNATURE");
 
         _nonces[owner].increment();
-
         _setAllowance(owner, spender, value);
     }
 
