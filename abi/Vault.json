@@ -520,7 +520,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "depositor",
+        "name": "sender",
         "type": "address"
       },
       {
@@ -535,7 +535,7 @@
       },
       {
         "internalType": "address",
-        "name": "user",
+        "name": "recipient",
         "type": "address"
       }
     ],
@@ -576,7 +576,7 @@
       },
       {
         "internalType": "address",
-        "name": "provider",
+        "name": "sender",
         "type": "address"
       },
       {
@@ -856,7 +856,7 @@
       },
       {
         "internalType": "address",
-        "name": "provider",
+        "name": "sender",
         "type": "address"
       },
       {
@@ -1192,7 +1192,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "user",
+        "name": "sender",
         "type": "address"
       },
       {
@@ -1284,7 +1284,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "user",
+        "name": "sender",
         "type": "address"
       },
       {

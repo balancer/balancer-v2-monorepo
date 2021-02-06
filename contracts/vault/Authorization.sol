@@ -25,18 +25,18 @@ abstract contract Authorization is IVault, ReentrancyGuard {
     mapping(address => mapping(address => bool)) private _allowedRelayers;
 
     /**
-     * @dev Check that the sender is the user to act on behalf of or someone with the required permission
-     */
-    modifier authenticateFor(address user) {
-        _authenticateSenderFor(user);
-        _;
-    }
-
-    /**
      * @dev Check that the sender has the required permission
      */
     modifier authenticate() {
         _authenticateSender();
+        _;
+    }
+
+    /**
+     * @dev Check that the sender is the user to act on behalf of or someone with the required permission
+     */
+    modifier authenticateFor(address user) {
+        _authenticateSenderFor(user);
         _;
     }
 
@@ -72,7 +72,7 @@ abstract contract Authorization is IVault, ReentrancyGuard {
     function _authenticateSenderFor(address user) internal view {
         if (msg.sender != user) {
             _authenticateSender();
-            require(_hasAllowedRelayer(user, msg.sender), "SENDER_DOES_NOT_ALLOW_RELAYER");
+            require(_hasAllowedRelayer(user, msg.sender), "USER_DOESNT_ALLOW_RELAYER");
         }
     }
 
@@ -80,15 +80,8 @@ abstract contract Authorization is IVault, ReentrancyGuard {
      * @dev Ensure that the sender is the user to act on behalf of or someone with the required permission
      */
     function _authenticateSender() internal view {
-        require(_hasRole(msg.sender), "SENDER_NOT_ALLOWED");
-    }
-
-    /**
-     * @dev Tell whether an account holds the required permission to access the requested functionality
-     */
-    function _hasRole(address account) internal view returns (bool) {
         bytes32 roleId = keccak256(abi.encodePacked(address(this), msg.sig));
-        return _authorizer.hasRole(roleId, account);
+        require(_authorizer.hasRole(roleId, msg.sender), "SENDER_NOT_ALLOWED");
     }
 
     /**

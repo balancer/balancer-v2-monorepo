@@ -220,7 +220,7 @@ describe('Vault - swaps', () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, false);
                             });
 
-                            assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_DOES_NOT_ALLOW_RELAYER');
+                            assertSwapGivenInReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
                           });
                         });
 
@@ -375,6 +375,7 @@ describe('Vault - swaps', () => {
                       // The caller will receive profit in MKR, since it sold DAI for more MKR than it bought it for.
                       // The caller receives tokens and doesn't send any.
                       // Note the caller didn't even have any tokens to begin with.
+                      funds.sender = other.address;
                       funds.recipient = other.address;
                     });
 
@@ -592,7 +593,7 @@ describe('Vault - swaps', () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, false);
                             });
 
-                            assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_DOES_NOT_ALLOW_RELAYER');
+                            assertSwapGivenOutReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
                           });
                         });
 
@@ -747,6 +748,7 @@ describe('Vault - swaps', () => {
                       // The caller will receive profit in MKR, since it sold DAI for more MKR than it bought it for.
                       // The caller receives tokens and doesn't send any.
                       // Note the caller didn't even have any tokens to begin with.
+                      funds.sender = other.address;
                       funds.recipient = other.address;
                     });
 

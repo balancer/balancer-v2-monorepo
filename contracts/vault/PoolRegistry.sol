@@ -214,13 +214,13 @@ abstract contract PoolRegistry is
 
     function joinPool(
         bytes32 poolId,
-        address provider,
+        address sender,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
         bool fromInternalBalance,
         bytes memory userData
-    ) external override nonReentrant withExistingPool(poolId) authenticateFor(provider) {
+    ) external override nonReentrant withExistingPool(poolId) authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         // The balances array will be modified later on to update the vault balances after the join
@@ -230,7 +230,7 @@ abstract contract PoolRegistry is
             poolId,
             tokens,
             balances,
-            provider,
+            sender,
             recipient,
             userData
         );
@@ -240,7 +240,7 @@ abstract contract PoolRegistry is
             uint256 amountIn = amountsIn[i];
 
             // Receive tokens
-            _receiveTokens(tokens[i], amountIn, provider, fromInternalBalance);
+            _receiveTokens(tokens[i], amountIn, sender, fromInternalBalance);
 
             // Charge swap protocol fees to pool
             uint256 feeToPay = dueProtocolFeeAmounts[i];
@@ -261,18 +261,18 @@ abstract contract PoolRegistry is
         } else {
             _setGeneralPoolBalances(poolId, balances);
         }
-        emit PoolJoined(poolId, provider, amountsIn, dueProtocolFeeAmounts);
+        emit PoolJoined(poolId, sender, amountsIn, dueProtocolFeeAmounts);
     }
 
     function exitPool(
         bytes32 poolId,
-        address provider,
+        address sender,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
         bool toInternalBalance,
         bytes memory userData
-    ) external override nonReentrant withExistingPool(poolId) authenticateFor(provider) {
+    ) external override nonReentrant withExistingPool(poolId) authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
 
         // The balances array will be modified later on to update the vault balances after the join
@@ -282,7 +282,7 @@ abstract contract PoolRegistry is
             poolId,
             tokens,
             balances,
-            provider,
+            sender,
             recipient,
             userData
         );
@@ -313,7 +313,7 @@ abstract contract PoolRegistry is
             _setGeneralPoolBalances(poolId, balances);
         }
 
-        emit PoolExited(poolId, provider, amountsOut, dueProtocolFeeAmounts);
+        emit PoolExited(poolId, sender, amountsOut, dueProtocolFeeAmounts);
     }
 
     /**
@@ -374,7 +374,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances,
-        address provider,
+        address sender,
         address recipient,
         bytes memory userData
     ) private returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
@@ -383,7 +383,7 @@ abstract contract PoolRegistry is
         address pool = _getPoolAddress(poolId);
         (amountsIn, dueProtocolFeeAmounts) = IPoolBase(pool).onJoinPool(
             poolId,
-            provider,
+            sender,
             recipient,
             totalBalances,
             latestBlockNumberUsed,
@@ -398,7 +398,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances,
-        address provider,
+        address sender,
         address recipient,
         bytes memory userData
     ) private returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
@@ -407,7 +407,7 @@ abstract contract PoolRegistry is
         address pool = _getPoolAddress(poolId);
         (amountsOut, dueProtocolFeeAmounts) = IPoolBase(pool).onExitPool(
             poolId,
-            provider,
+            sender,
             recipient,
             totalBalances,
             latestBlockNumberUsed,

@@ -94,7 +94,7 @@ describe('Vault - protocol fees', () => {
     it('unauthorized accounts cannot withdraw collected fees', async () => {
       await expect(
         vault.connect(other).withdrawCollectedFees([tokens.DAI.address], [0], other.address)
-      ).to.be.revertedWith('CANNOT_WITHDRAW_FEES');
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
 });
