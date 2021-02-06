@@ -312,16 +312,6 @@
   {
     "inputs": [
       {
-        "internalType": "contract ISwapValidator",
-        "name": "validator",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes",
-        "name": "validatorData",
-        "type": "bytes"
-      },
-      {
         "components": [
           {
             "internalType": "bytes32",
@@ -379,13 +369,23 @@
         "internalType": "struct IVault.FundManagement",
         "name": "funds",
         "type": "tuple"
+      },
+      {
+        "internalType": "int256[]",
+        "name": "limits",
+        "type": "int256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
       }
     ],
     "name": "batchSwapGivenIn",
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "tokenDeltas",
+        "name": "",
         "type": "int256[]"
       }
     ],
@@ -394,16 +394,6 @@
   },
   {
     "inputs": [
-      {
-        "internalType": "contract ISwapValidator",
-        "name": "validator",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes",
-        "name": "validatorData",
-        "type": "bytes"
-      },
       {
         "components": [
           {
@@ -462,13 +452,23 @@
         "internalType": "struct IVault.FundManagement",
         "name": "funds",
         "type": "tuple"
+      },
+      {
+        "internalType": "int256[]",
+        "name": "limits",
+        "type": "int256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
       }
     ],
     "name": "batchSwapGivenOut",
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "tokenDeltas",
+        "name": "",
         "type": "int256[]"
       }
     ],
