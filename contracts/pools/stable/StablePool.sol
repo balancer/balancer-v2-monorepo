@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../lib/math/Math.sol";
 import "../../lib/math/FixedPoint.sol";
+import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/helpers/UnsafeRandom.sol";
 
 import "../BaseGeneralPool.sol";
@@ -88,7 +89,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         require(kind == JoinKind.INIT, "UNINITIALIZED");
 
         (, uint256[] memory amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
-        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
 
         uint256 invariantAfterJoin = StableMath._invariant(_amp, amountsIn);
         uint256 bptAmountOut = invariantAfterJoin;

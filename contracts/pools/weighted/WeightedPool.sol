@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../lib/math/Math.sol";
 import "../../lib/math/FixedPoint.sol";
+import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/helpers/UnsafeRandom.sol";
 
 import "../BaseMinimalSwapInfoPool.sol";
@@ -71,7 +72,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory weights,
         uint256 swapFee
     ) BaseMinimalSwapInfoPool(vault, name, symbol, tokens, swapFee) {
-        require(weights.length == tokens.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(weights.length, tokens.length);
 
         // Check valid weights and compute normalized weights
         uint256 sumWeights = 0;
@@ -158,16 +159,13 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     }
 
     function getInvariant() external view returns (uint256) {
-        (IERC20[] memory tokens, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
-        uint256[] memory normalizedWeights = getNormalizedWeights(tokens);
+        (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
+        uint256[] memory normalizedWeights = _normalizedWeights();
         return WeightedMath._invariant(normalizedWeights, balances);
     }
 
-    function getNormalizedWeights(IERC20[] memory tokens) public view returns (uint256[] memory normalizedWeights) {
-        normalizedWeights = new uint256[](_totalTokens);
-        for (uint256 i = 0; i < _totalTokens; ++i) {
-            normalizedWeights[i] = _normalizedWeight(tokens[i]);
-        }
+    function getNormalizedWeights() public view returns (uint256[] memory) {
+        return _normalizedWeights();
     }
 
     // Base Pool handlers
@@ -443,7 +441,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (, uint256[] memory amountsOut, uint256 maxBPTAmountIn) = abi.decode(userData, (ExitKind, uint256[], uint256));
-        require(amountsOut.length == _totalTokens, "ERR_AMOUNTS_OUT_LENGTH");
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, _totalTokens);
 
         uint256 bptAmountIn = WeightedMath._bptInForExactTokensOut(
             currentBalances,
