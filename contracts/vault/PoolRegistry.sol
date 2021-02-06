@@ -99,8 +99,7 @@ abstract contract PoolRegistry is
     }
 
     function registerPool(PoolSpecialization specialization) external override nonReentrant returns (bytes32) {
-        // We use the Pool length as the Pool ID creation nonce. Since Pools cannot be deleted, nonces are unique. This
-        // however assumes there will never be more than than 2**80 Pools.
+        // Use _totalPools as the Pool ID nonce. uint80 assumes there will never be more than than 2**80 Pools.
         bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_totalPools));
         require(!_isPoolRegistered[poolId], "INVALID_POOL_ID");
 
