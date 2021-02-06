@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../lib/math/FixedPoint.sol";
+import "../lib/helpers/InputHelpers.sol";
 
 import "./BalancerPoolToken.sol";
 import "../vault/interfaces/IVault.sol";
@@ -70,6 +71,10 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
 
         require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
 
+        // Because these Pools will register tokens only once, if the tokens array is sorted, then the Pool tokens will
+        // have this same order. We rely on this property to make Pools simpler to write, as it lets us assume that the
+        // order of token-specific parameters (such as token weights) will not change.
+        InputHelpers.ensureArrayIsSorted(tokens);
         bytes32 poolId = vault.registerPool(specialization);
 
         // Pass in zero addresses for Asset Managers
