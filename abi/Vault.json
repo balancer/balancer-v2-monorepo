@@ -385,7 +385,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "",
+        "name": "tokenDeltas",
         "type": "int256[]"
       }
     ],
@@ -468,7 +468,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "",
+        "name": "tokenDeltas",
         "type": "int256[]"
       }
     ],
@@ -625,7 +625,7 @@
     "outputs": [
       {
         "internalType": "uint256[]",
-        "name": "fees",
+        "name": "",
         "type": "uint256[]"
       }
     ],
@@ -649,7 +649,7 @@
     "outputs": [
       {
         "internalType": "uint256[]",
-        "name": "",
+        "name": "balances",
         "type": "uint256[]"
       }
     ],
@@ -764,37 +764,21 @@
   },
   {
     "inputs": [],
-    "name": "getProtocolFlashLoanFee",
+    "name": "getProtocolFees",
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "swapFee",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getProtocolSwapFee",
-    "outputs": [
+      },
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "withdrawFee",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getProtocolWithdrawFee",
-    "outputs": [
+      },
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "flashLoanFee",
         "type": "uint256"
       }
     ],
@@ -1103,37 +1087,21 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "newFee",
+        "name": "newSwapFee",
         "type": "uint256"
-      }
-    ],
-    "name": "setProtocolFlashLoanFee",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+      },
       {
         "internalType": "uint256",
-        "name": "newFee",
+        "name": "newWithdrawFee",
         "type": "uint256"
-      }
-    ],
-    "name": "setProtocolSwapFee",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+      },
       {
         "internalType": "uint256",
-        "name": "newFee",
+        "name": "newFlashLoanFee",
         "type": "uint256"
       }
     ],
-    "name": "setProtocolWithdrawFee",
+    "name": "setProtocolFees",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -93,7 +93,7 @@ describe('Vault - internal balance', () => {
                 [amount],
                 recipient.address
               );
-              await expect(badDeposit).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+              await expect(badDeposit).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
             });
           });
         });
@@ -179,9 +179,9 @@ describe('Vault - internal balance', () => {
             const protocolWithdrawFee = 0.01;
 
             beforeEach('set fee', async () => {
-              const role = await authorizer.SET_PROTOCOL_WITHDRAW_FEE_ROLE();
+              const role = await authorizer.SET_PROTOCOL_FEES_ROLE();
               await authorizer.connect(admin).grantRole(role, admin.address);
-              await vault.connect(admin).setProtocolWithdrawFee(fp(protocolWithdrawFee));
+              await vault.connect(admin).setProtocolFees(0, fp(protocolWithdrawFee), 0);
             });
 
             it('tokens minus fee are pushed', async () => {
@@ -210,7 +210,7 @@ describe('Vault - internal balance', () => {
               [amount],
               recipient.address
             );
-            await expect(badWithdrawal).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+            await expect(badWithdrawal).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           });
         });
       };
@@ -344,14 +344,14 @@ describe('Vault - internal balance', () => {
             amounts,
             Array(amounts.length).fill(recipient.address)
           );
-          await expect(badWithdrawal).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          await expect(badWithdrawal).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
       });
 
       context('when tokens and recipients are mismatched', () => {
         it('reverts', async () => {
           const badWithdrawal = vault.transferInternalBalance(tokenAddresses, amounts, [recipient.address]);
-          await expect(badWithdrawal).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          await expect(badWithdrawal).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
       });
 
@@ -362,7 +362,7 @@ describe('Vault - internal balance', () => {
             [(10e18).toString()],
             Array(amounts.length).fill(recipient.address)
           );
-          await expect(badWithdrawal).to.be.revertedWith('ARRAY_LENGTH_MISMATCH');
+          await expect(badWithdrawal).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
       });
 

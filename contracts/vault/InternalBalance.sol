@@ -50,15 +50,12 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         external
         view
         override
-        returns (uint256[] memory)
+        returns (uint256[] memory balances)
     {
-        uint256[] memory balances = new uint256[](tokens.length);
-
+        balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             balances[i] = _getInternalBalance(user, tokens[i]);
         }
-
-        return balances;
     }
 
     function depositToInternalBalance(
@@ -66,7 +63,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         address user
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
@@ -83,7 +80,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         address recipient
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
@@ -103,7 +100,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         address[] memory recipients
     ) external override nonReentrant {
-        require(tokens.length == amounts.length && amounts.length == recipients.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length, recipients.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];

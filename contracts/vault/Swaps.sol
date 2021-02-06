@@ -158,19 +158,17 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         int256[] memory limits,
         uint256 deadline,
         SwapKind kind
-    ) private nonReentrant returns (int256[] memory) {
+    ) private nonReentrant returns (int256[] memory tokenDeltas) {
         // The deadline is timestamp-based: it should not be relied on having sub-minute accuracy.
         // solhint-ignore not-rely-on-time
         require(block.timestamp <= deadline, "SWAP_DEADLINE");
         require(tokens.length == limits.length, "TOKENS_LIMITS_MISMATCH");
 
-        int256[] memory tokenDeltas = _batchSwap(swaps, tokens, funds, kind);
+        tokenDeltas = _batchSwap(swaps, tokens, funds, kind);
 
         for (uint256 i = 0; i < limits.length; ++i) {
             require(tokenDeltas[i] <= limits[i], "SWAP_LIMIT");
         }
-
-        return tokenDeltas;
     }
 
     function _batchSwap(
@@ -178,9 +176,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
-    ) private returns (int256[] memory) {
+    ) private returns (int256[] memory tokenDeltas) {
         // Perform the swaps, updating the Pool balances and computing the net Vault token deltas
-        int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
+        tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
         // Process token deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
@@ -212,8 +210,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 }
             }
         }
-
-        return tokenDeltas;
     }
 
     // For `_batchSwap` to handle both given in and given out swaps, it internally tracks the 'given' amount (supplied
@@ -326,8 +322,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
             emit Swap(swap.poolId, tokenIn, tokenOut, amountIn, amountOut);
         }
-
-        return tokenDeltas;
     }
 
     /**
