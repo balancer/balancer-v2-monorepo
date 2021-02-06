@@ -47,6 +47,12 @@ contract StablePool is IGeneralPool, StableMath, BalancerPoolToken, ReentrancyGu
     uint256 private constant _MIN_AMP = 50 * (10**18);
     uint256 private constant _MAX_AMP = 2000 * (10**18);
 
+    modifier onlyVault(bytes32 poolId) {
+        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
+        require(poolId == _poolId, "INVALID_POOL_ID");
+        _;
+    }
+
     constructor(
         IVault vault,
         string memory name,
@@ -132,10 +138,7 @@ contract StablePool is IGeneralPool, StableMath, BalancerPoolToken, ReentrancyGu
         uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
-        require(poolId == _poolId, "INVALID_POOL_ID");
-
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         JoinKind kind = abi.decode(userData, (JoinKind));
 
         if (kind == JoinKind.INIT) {
@@ -223,10 +226,7 @@ contract StablePool is IGeneralPool, StableMath, BalancerPoolToken, ReentrancyGu
         uint256,
         uint256 protocolFeePercentage,
         bytes memory userData
-    ) external override returns (uint256[] memory, uint256[] memory) {
-        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
-        require(poolId == _poolId, "INVALID_POOL_ID");
-
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory dueProtocolFeeAmounts = _getAndApplyDueProtocolFeeAmounts(
             currentBalances,
             protocolFeePercentage
