@@ -12,6 +12,9 @@ export const bn = (x: BigNumberish | Decimal): BigNumber =>
 
 export const decimal = (x: BigNumberish): Decimal => new Decimal(x.toString());
 
+export const fromFp = (x: BigNumberish): Decimal => decimal(x).div(SCALING_FACTOR);
+export const toFp = (x: Decimal): BigNumber => bn(x.mul(SCALING_FACTOR));
+
 export const maxUint = (e: number): BigNumber => bn(2).pow(e).sub(1);
 
 export const maxInt = (e: number): BigNumber => bn(2).pow(bn(e).sub(1)).sub(1);

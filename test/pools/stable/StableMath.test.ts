@@ -4,10 +4,10 @@ import {
   calculateInvariant,
   calcInGivenOut,
   calcOutGivenIn,
-  calculateOneTokenSwapFee,
+  calculateOneTokenAccumulatedSwapFees,
 } from '../../helpers/math/stable';
 import { expectEqualWithError } from '../../helpers/relativeError';
-import { bn } from '../../../lib/helpers/numbers';
+import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { Contract } from 'ethers';
 
 const MAX_RELATIVE_ERROR = 0.001; //Max relative error
@@ -126,10 +126,20 @@ describe('StableMath', function () {
         const lastInvariant = bn(10e18);
         const tokenIndex = 0;
 
-        const result = await mock.calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
-        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+        const protocolSwapFee = fp(0.1);
 
-        expectEqualWithError(result, bn(expectedFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
+        const result = await mock.calculateDueTokenProtocolSwapFee(
+          amp,
+          balances,
+          lastInvariant,
+          tokenIndex,
+          protocolSwapFee
+        );
+
+        const expectedFeeAmount = calculateOneTokenAccumulatedSwapFees(amp, balances, lastInvariant, tokenIndex);
+        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
+
+        expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });
     });
     context('three tokens', () => {
@@ -139,10 +149,20 @@ describe('StableMath', function () {
         const lastInvariant = bn(10e18);
         const tokenIndex = 0;
 
-        const result = await mock.calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
-        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+        const protocolSwapFee = fp(0.1);
 
-        expectEqualWithError(result, bn(expectedFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
+        const result = await mock.calculateDueTokenProtocolSwapFee(
+          amp,
+          balances,
+          lastInvariant,
+          tokenIndex,
+          protocolSwapFee
+        );
+        const expectedFeeAmount = calculateOneTokenAccumulatedSwapFees(amp, balances, lastInvariant, tokenIndex);
+
+        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
+
+        expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });
     });
   });

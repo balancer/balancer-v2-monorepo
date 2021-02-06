@@ -16,7 +16,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IPoolBase.sol";
+import "../vault/interfaces/IBasePool.sol";
 
 contract MockVault {
     event PoolJoined(uint256[] amountsIn, uint256[] dueProtocolFeeAmounts);
@@ -53,7 +53,7 @@ contract MockVault {
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
-        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = IPoolBase(poolAddress).onJoinPool(
+        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = IBasePool(poolAddress).onJoinPool(
             poolId,
             msg.sender,
             recipient,
@@ -74,7 +74,7 @@ contract MockVault {
         uint256 protocolFeePercentage,
         bytes memory userData
     ) external {
-        (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = IPoolBase(poolAddress).onExitPool(
+        (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = IBasePool(poolAddress).onExitPool(
             poolId,
             msg.sender,
             recipient,
