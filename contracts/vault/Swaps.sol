@@ -21,13 +21,13 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../lib/math/Math.sol";
 import "../lib/helpers/EnumerableMap.sol";
+import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./PoolRegistry.sol";
 import "./interfaces/IPoolSwapStructs.sol";
 import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
-import "./interfaces/ISwapValidator.sol";
 import "./balances/BalanceAllocation.sol";
 
 abstract contract Swaps is ReentrancyGuard, PoolRegistry {
@@ -64,31 +64,25 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
 
     function batchSwapGivenIn(
-        ISwapValidator validator,
-        bytes calldata validatorData,
         SwapIn[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds
-    ) external override returns (int256[] memory tokenDeltas) {
-        tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
-        if (address(validator) != address(0)) {
-            validator.validate(tokens, tokenDeltas, validatorData);
-        }
+        IERC20[] memory tokens,
+        FundManagement memory funds,
+        int256[] memory limits,
+        uint256 deadline
+    ) external override returns (int256[] memory) {
+        return _batchSwap(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_IN);
     }
 
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
     // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
     function batchSwapGivenOut(
-        ISwapValidator validator,
-        bytes calldata validatorData,
         SwapOut[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds
-    ) external override returns (int256[] memory tokenDeltas) {
-        tokenDeltas = _batchSwap(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
-        if (address(validator) != address(0)) {
-            validator.validate(tokens, tokenDeltas, validatorData);
-        }
+        IERC20[] memory tokens,
+        FundManagement memory funds,
+        int256[] memory limits,
+        uint256 deadline
+    ) external override returns (int256[] memory) {
+        return _batchSwap(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_OUT);
     }
 
     // We use inline assembly to cast from the external struct types to the internal one. This doesn't trigger any
@@ -156,15 +150,22 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     }
 
     /**
-     * @dev Implements both `batchSwapGivenIn` and `batchSwapGivenIn` (minus the validator call), depending on the
-     * `kind` value.
+     * @dev Implements both `batchSwapGivenIn` and `batchSwapGivenIn` depending on the `kind` value.
      */
     function _batchSwap(
         InternalSwap[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
+        int256[] memory limits,
+        uint256 deadline,
         SwapKind kind
     ) private nonReentrant returns (int256[] memory tokenDeltas) {
+        // The deadline is timestamp-based: it should not be relied on having sub-minute accuracy.
+        // solhint-disable-next-line not-rely-on-time
+        require(block.timestamp <= deadline, "SWAP_DEADLINE");
+
+        InputHelpers.ensureInputLengthMatch(tokens.length, limits.length);
+
         // Perform the swaps, updating the Pool balances and computing the net Vault token deltas
         tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
@@ -173,6 +174,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             int256 delta = tokenDeltas[i];
+
+            require(delta <= limits[i], "SWAP_LIMIT");
 
             // Ignore zeroed deltas
             if (delta > 0) {
