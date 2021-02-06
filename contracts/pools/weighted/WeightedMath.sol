@@ -170,7 +170,7 @@ contract WeightedMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) internal pure returns (uint256) {
-        // Calculate the factor by which the invariant will increase after minting BPTAmountOut
+        // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
 
         //TODO: review impact of exp math error that increases result

@@ -35,6 +35,8 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
 
     uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
 
+    uint256 private constant _MINIMUM_BPT = 10**3;
+
     IVault internal immutable _vault;
     bytes32 internal immutable _poolId;
     uint256 internal immutable _swapFee;
@@ -140,7 +142,13 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
 
-            _mintPoolTokens(recipient, bptAmountOut);
+            // On initialization, we lock _MINIMUM_BPT by minting it for the zero address. This BPT acts as a minimum
+            // as it will never be burned, which reduces potential issues with rounding, and also prevents the Pool from
+            // ever being fully drained.
+            require(bptAmountOut >= _MINIMUM_BPT, "MINUMUM_BPT");
+            _mintPoolTokens(address(0), _MINIMUM_BPT);
+            _mintPoolTokens(recipient, bptAmountOut - _MINIMUM_BPT);
+
             return (amountsIn, new uint256[](_totalTokens));
         } else {
             (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(

@@ -4,7 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../helpers/expectEvent';
-import { expectEqualWithError } from '../../helpers/relativeError';
+import { expectEqualWithError, expectLessThanOrEqualWithError } from '../../helpers/relativeError';
 import {
   calculateInvariant,
   calcOutGivenIn,
@@ -14,7 +14,7 @@ import {
 
 import { deploy } from '../../../lib/helpers/deploy';
 import { GeneralPool } from '../../../lib/helpers/pools';
-import { bn, fp, decimal } from '../../../lib/helpers/numbers';
+import { bn, fp, decimal, pct } from '../../../lib/helpers/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
@@ -405,13 +405,20 @@ describe('StablePool', function () {
         });
 
         it('fully exit', async () => {
-          const prevBPT = await pool.balanceOf(lp.address);
-          const exitUserData = encodeExitStablePool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: prevBPT });
+          const lpBPT = await pool.balanceOf(lp.address);
+          const exitUserData = encodeExitStablePool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: lpBPT });
+
+          const currentBalances = poolInitialBalances;
+
+          // The LP doesn't own all BPT, since some was locked. They will only be able to exctract a (large) percentage
+          // of the Pool's balance: the rest remains there forever.
+          const totalBPT = await pool.totalSupply();
+          const expectedAmountsOut = currentBalances.map((balance) => balance.mul(lpBPT).div(totalBPT));
 
           const receipt = await (
             await vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
+              .callExitPool(pool.address, poolId, beneficiary.address, currentBalances, 0, 0, exitUserData)
           ).wait();
 
           const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
@@ -419,8 +426,10 @@ describe('StablePool', function () {
           // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
 
-          //All balances are extracted
-          expect(amountsOut).to.deep.equal(poolInitialBalances);
+          // All balances are extracted
+          amountsOut.map((amountOut: BigNumber, i: number) => {
+            expectLessThanOrEqualWithError(amountOut, expectedAmountsOut[i], 0.00001);
+          });
 
           expect(await pool.balanceOf(lp.address)).to.equal(0);
         });
