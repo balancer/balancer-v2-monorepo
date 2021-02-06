@@ -16,7 +16,8 @@ import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } 
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 
 describe('Vault - exit pool', () => {
-  let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, recipient: SignerWithAddress;
+  let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
+  let recipient: SignerWithAddress, relayer: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList = {};
 
@@ -24,7 +25,7 @@ describe('Vault - exit pool', () => {
   let TOKEN_ADDRESSES: string[];
 
   before(async () => {
-    [, admin, creator, lp, recipient] = await ethers.getSigners();
+    [, admin, creator, lp, recipient, relayer] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
@@ -131,17 +132,17 @@ describe('Vault - exit pool', () => {
     };
 
     function exitPool(data: ExitPoolData): Promise<ContractTransaction> {
-      return vault
-        .connect(lp)
-        .exitPool(
-          data.poolId ?? poolId,
-          lp.address,
-          recipient.address,
-          data.tokenAddresses ?? tokenAddresses,
-          data.minAmountsOut ?? array(0),
-          data.toInternalBalance ?? false,
-          encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts)
-        );
+      if (!vault.signer) vault = vault.connect(lp);
+
+      return vault.exitPool(
+        data.poolId ?? poolId,
+        lp.address,
+        recipient.address,
+        data.tokenAddresses ?? tokenAddresses,
+        data.minAmountsOut ?? array(0),
+        data.toInternalBalance ?? false,
+        encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts)
+      );
     }
 
     context('when called incorrectly', () => {
@@ -227,7 +228,51 @@ describe('Vault - exit pool', () => {
       const dueProtocolFeeAmounts = array(0);
 
       context('with no due protocol fees', () => {
-        itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
+        context('when the sender is the user', () => {
+          itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
+        });
+
+        context('when the sender is a relayer', () => {
+          beforeEach('set sender', () => {
+            vault = vault.connect(relayer);
+          });
+
+          context('when the relayer is whitelisted by the authorizer', () => {
+            beforeEach('grant role to relayer', async () => {
+              const role = roleId(vault, 'exitPool');
+              await authorizer.connect(admin).grantRole(role, relayer.address);
+            });
+
+            context('when the relayer is allowed by the user', () => {
+              beforeEach('allow relayer', async () => {
+                await vault.connect(lp).changeRelayerAllowance(relayer.address, true);
+              });
+
+              itExitsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
+            });
+
+            context('when the relayer is not allowed by the user', () => {
+              beforeEach('disallow relayer', async () => {
+                await vault.connect(lp).changeRelayerAllowance(relayer.address, false);
+              });
+
+              it('reverts', async () => {
+                await expect(exitPool({ dueProtocolFeeAmounts })).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+              });
+            });
+          });
+
+          context('when the relayer is not whitelisted by the authorizer', () => {
+            beforeEach('revoke role from relayer', async () => {
+              const role = roleId(vault, 'batchSwapGivenIn');
+              await authorizer.connect(admin).revokeRole(role, relayer.address);
+            });
+
+            it('reverts', async () => {
+              await expect(exitPool({ dueProtocolFeeAmounts })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            });
+          });
+        });
       });
 
       context('with due protocol fees', () => {

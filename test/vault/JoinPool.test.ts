@@ -16,14 +16,14 @@ import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tok
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 
 describe('Vault - join pool', () => {
-  let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
+  let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList = {};
 
   let TOKEN_ADDRESSES: string[];
 
   before(async () => {
-    [, admin, creator, lp] = await ethers.getSigners();
+    [, admin, creator, lp, relayer] = await ethers.getSigners();
   });
 
   beforeEach('deploy vault & tokens', async () => {
@@ -119,17 +119,17 @@ describe('Vault - join pool', () => {
     };
 
     function joinPool(data: JoinPoolData): Promise<ContractTransaction> {
-      return vault
-        .connect(lp)
-        .joinPool(
-          data.poolId ?? poolId,
-          lp.address,
-          ZERO_ADDRESS,
-          data.tokenAddresses ?? tokenAddresses,
-          data.maxAmountsIn ?? array(MAX_UINT256),
-          data.fromInternalBalance ?? false,
-          encodeJoin(data.joinAmounts ?? joinAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts)
-        );
+      if (!vault.signer) vault = vault.connect(lp);
+
+      return vault.joinPool(
+        data.poolId ?? poolId,
+        lp.address,
+        ZERO_ADDRESS,
+        data.tokenAddresses ?? tokenAddresses,
+        data.maxAmountsIn ?? array(MAX_UINT256),
+        data.fromInternalBalance ?? false,
+        encodeJoin(data.joinAmounts ?? joinAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts)
+      );
     }
 
     context('when called incorrectly', () => {
@@ -197,7 +197,55 @@ describe('Vault - join pool', () => {
         context('with no due protocol fees', () => {
           const dueProtocolFeeAmounts = array(0);
 
-          itJoinsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
+          context('when the sender is the user', () => {
+            beforeEach('set sender', async () => {
+              vault = vault.connect(lp);
+            });
+
+            itJoinsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
+          });
+
+          context('when the sender is a relayer', () => {
+            beforeEach('set sender', async () => {
+              vault = vault.connect(relayer);
+            });
+
+            context('when the relayer is whitelisted by the authorizer', () => {
+              beforeEach('grant role to relayer', async () => {
+                const role = roleId(vault, 'joinPool');
+                await authorizer.connect(admin).grantRole(role, relayer.address);
+              });
+
+              context.skip('when the relayer is allowed by the user', () => {
+                beforeEach('allow relayer', async () => {
+                  await vault.connect(lp).changeRelayerAllowance(relayer.address, true);
+                });
+
+                itJoinsCorrectlyWithAndWithoutInternalBalance({ dueProtocolFeeAmounts });
+              });
+
+              context('when the relayer is not allowed by the user', () => {
+                beforeEach('disallow relayer', async () => {
+                  await vault.connect(lp).changeRelayerAllowance(relayer.address, false);
+                });
+
+                it('reverts', async () => {
+                  await expect(joinPool({ dueProtocolFeeAmounts })).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+                });
+              });
+            });
+
+            context('when the relayer is not whitelisted by the authorizer', () => {
+              beforeEach('revoke role from relayer', async () => {
+                const role = roleId(vault, 'batchSwapGivenIn');
+                await authorizer.connect(admin).revokeRole(role, relayer.address);
+              });
+
+              it('reverts', async () => {
+                await expect(joinPool({ dueProtocolFeeAmounts })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+              });
+            });
+          });
         });
 
         context('with due protocol fees', () => {
