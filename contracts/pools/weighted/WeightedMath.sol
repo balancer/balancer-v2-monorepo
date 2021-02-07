@@ -182,6 +182,33 @@ contract WeightedMath {
         return amountOutBeforeFee.mul(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee)));
     }
 
+    function _exactBPTInForAllTokensOut(
+        uint256[] memory currentBalances,
+        uint256 bptAmountIn,
+        uint256 totalBPT
+    ) internal pure returns (uint256[] memory) {
+        /**********************************************************************************************
+        // exactBPTInForAllTokensOut                                                                 //
+        // (per token)                                                                               //
+        // aO = tokenAmountOut             /        bptIn         \                                  //
+        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
+        // bptIn = bptAmountIn             \       totalBPT       /                                  //
+        // bpt = totalBPT                                                                            //
+        **********************************************************************************************/
+
+        // Since we're computing an amount out, we round down overall. This means rouding down on both the
+        // multiplication and division.
+
+        uint256 bptRatio = bptAmountIn.divDown(totalBPT);
+
+        uint256[] memory amountsOut = new uint256[](currentBalances.length);
+        for (uint256 i = 0; i < currentBalances.length; i++) {
+            amountsOut[i] = currentBalances[i].mulDown(bptRatio);
+        }
+
+        return amountsOut;
+    }
+
     function _bptInForExactTokensOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
@@ -224,21 +251,35 @@ contract WeightedMath {
         return bptTotalSupply.mul(FixedPoint.ONE.sub(invariantRatio));
     }
 
-    function _calculateOneTokenSwapFee(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256 lastInvariant,
-        uint256 tokenIndex
-    ) internal pure returns (uint256 chosenTokenAccruedFees) {
+    function _calculateDueTokenProtocolSwapFee(
+        uint256 balance,
+        uint256 normalizedWeight,
+        uint256 previousInvariant,
+        uint256 currentInvariant,
+        uint256 protocolSwapFeePercentage
+    ) internal pure returns (uint256) {
         /*********************************************************************************
-        /*  balanceToken * ( 1 - (lastInvariant / currentInvariant) ^ (1 / weightToken))  
+        /*  protocolSwapFee * balanceToken * ( 1 - (previousInvariant / currentInvariant) ^ (1 / weightToken))
         *********************************************************************************/
 
-        uint256 exponent = FixedPoint.ONE.div(normalizedWeights[tokenIndex]);
+        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less protocol fees
+        // to the Vault.
 
-        uint256 currentInvariant = _invariant(normalizedWeights, balances);
-        uint256 invariantRatio = lastInvariant.div(currentInvariant);
+        // Fee percentage and balance multiplications round down, while the subtrahend (power) rounds up (as does the
+        // base). Because previousInvariant / currentInvariant <= 1, the exponent rounds down.
 
-        chosenTokenAccruedFees = balances[tokenIndex].mul(FixedPoint.ONE.sub(LogExpMath.pow(invariantRatio, exponent)));
+        if (currentInvariant < previousInvariant) {
+            // This should never happen, but this acts as a safeguard to prevent the Pool from entering a locked state
+            // in which joins and exits revert while computing accumulated swap fees.
+            return 0;
+        }
+
+        uint256 base = previousInvariant.divUp(currentInvariant);
+        uint256 exponent = FixedPoint.ONE.divDown(normalizedWeight);
+
+        uint256 power = LogExpMath.powUp(base, exponent);
+
+        uint256 tokenAccruedFees = balance.mulDown(FixedPoint.ONE.sub(power));
+        return tokenAccruedFees.mulDown(protocolSwapFeePercentage);
     }
 }
