@@ -80,9 +80,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
             uint256 flashLoanFee
         )
     {
-        swapFee = _protocolSwapFee;
-        withdrawFee = _protocolWithdrawFee;
-        flashLoanFee = _protocolFlashLoanFee;
+        return (_protocolSwapFee, _protocolWithdrawFee, _protocolFlashLoanFee);
     }
 
     function _getProtocolSwapFee() internal view returns (uint256) {

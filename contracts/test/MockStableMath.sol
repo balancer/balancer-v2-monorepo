@@ -41,12 +41,13 @@ contract MockStableMath is StableMath {
         return _inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
     }
 
-    function calculateOneTokenSwapFee(
+    function calculateDueTokenProtocolSwapFee(
         uint256 amp,
         uint256[] memory balances,
         uint256 lastInvariant,
-        uint256 tokenIndex
+        uint256 tokenIndex,
+        uint256 protocolSwapFeePercentage
     ) external pure returns (uint256) {
-        return _calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+        return _calculateDueTokenProtocolSwapFee(amp, balances, lastInvariant, tokenIndex, protocolSwapFeePercentage);
     }
 }
