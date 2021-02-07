@@ -775,17 +775,17 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "swapFee",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "withdrawFee",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "flashLoanFee",
         "type": "uint256"
       }
     ],
