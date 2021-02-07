@@ -24,6 +24,8 @@ import "../../lib/math/FixedPoint.sol";
 // solhint-disable var-name-mixedcase
 
 contract StableMath {
+    using FixedPoint for uint256;
+
     /**********************************************************************************************
     // invariant                                                                                 //
     // D = invariant to compute                                                                  //
@@ -168,6 +170,60 @@ contract StableMath {
         return balances[tokenIndexOut] > y ? balances[tokenIndexOut] - y : 0;
     }
 
+    function _allTokensInForExactBPTOut(
+        uint256[] memory currentBalances,
+        uint256 bptAmountOut,
+        uint256 totalBPT
+    ) internal pure returns (uint256[] memory) {
+        /**********************************************************************************************
+        // allTokensInForExactBPTOut                                                                 //
+        // (per token)                                                                               //
+        // aI = tokenAmountIn              /        bptOut         \                                 //
+        // b = tokenBalance      aI = b * | ---------------------  |                                 //
+        // bptOut = bptAmountOut           \       totalBPT       /                                  //
+        // bpt = totalBPT                                                                            //
+        **********************************************************************************************/
+
+        // Since we're computing an amount in, we round up overall. This means rouding up on both the multiplication and
+        // division.
+
+        uint256 bptRatio = bptAmountOut.divUp(totalBPT);
+
+        uint256[] memory amountsOut = new uint256[](currentBalances.length);
+        for (uint256 i = 0; i < currentBalances.length; i++) {
+            amountsOut[i] = currentBalances[i].mulUp(bptRatio);
+        }
+
+        return amountsOut;
+    }
+
+    function _exactBPTInForAllTokensOut(
+        uint256[] memory currentBalances,
+        uint256 bptAmountIn,
+        uint256 totalBPT
+    ) internal pure returns (uint256[] memory) {
+        /**********************************************************************************************
+        // exactBPTInForAllTokensOut                                                                 //
+        // (per token)                                                                               //
+        // aO = tokenAmountOut             /        bptIn         \                                  //
+        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
+        // bptIn = bptAmountIn             \       totalBPT       /                                  //
+        // bpt = totalBPT                                                                            //
+        **********************************************************************************************/
+
+        // Since we're computing an amount out, we round down overall. This means rouding down on both the
+        // multiplication and division.
+
+        uint256 bptRatio = bptAmountIn.divDown(totalBPT);
+
+        uint256[] memory amountsOut = new uint256[](currentBalances.length);
+        for (uint256 i = 0; i < currentBalances.length; i++) {
+            amountsOut[i] = currentBalances[i].mulDown(bptRatio);
+        }
+
+        return amountsOut;
+    }
+
     /**********************************************************************************************
     // oneTokenSwapFee - polynomial equation to solve                                            //
     // af = fee amount to calculate in one token                                                 //
@@ -179,12 +235,16 @@ contract StableMath {
     // S = sum of final balances but f                                                           //
     // P = product of final balances but f                                                       //
     **********************************************************************************************/
-    function _calculateOneTokenSwapFee(
+    function _calculateDueTokenProtocolSwapFee(
         uint256 amp,
         uint256[] memory balances,
         uint256 lastInvariant,
-        uint256 tokenIndex
+        uint256 tokenIndex,
+        uint256 protocolSwapFeePercentage
     ) internal pure returns (uint256) {
+        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less protocol fees
+        // to the Vault.
+
         //Last invariant is rounded up
         uint256 inv = lastInvariant;
         uint256 p = inv;
@@ -211,6 +271,7 @@ contract StableMath {
         //Round up y
         uint256 y = c == 0 ? 0 : ((c - 1) / 2) + 1;
         //Result is rownded down
-        return balances[tokenIndex] > y ? balances[tokenIndex] - y : 0;
+        uint256 accumulatedTokenSwapFees = balances[tokenIndex] > y ? balances[tokenIndex] - y : 0;
+        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage);
     }
 }

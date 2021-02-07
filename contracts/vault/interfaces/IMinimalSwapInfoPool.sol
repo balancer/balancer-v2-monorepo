@@ -15,10 +15,10 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "./IPoolBase.sol";
+import "./IBasePool.sol";
 import "./IPoolSwapStructs.sol";
 
-interface IMinimalSwapInfoPool is IPoolBase {
+interface IMinimalSwapInfoPool is IBasePool {
     function onSwapGivenIn(
         IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
         uint256 currentBalanceTokenIn,

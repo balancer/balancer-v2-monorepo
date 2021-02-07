@@ -2,19 +2,18 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { TokenList } from '../../helpers/tokens';
-import { MAX_UINT112, MAX_UINT256 } from '../../helpers/constants';
-import { encodeValidatorData, FundManagement, getTokensSwaps, toSwapIn } from '../../helpers/trading';
+import { MAX_INT256, MAX_UINT256 } from '../../helpers/constants';
+import { FundManagement, getTokensSwaps, toSwapIn } from '../../helpers/trading';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
 
 let vault: Contract;
-let validator: Contract;
 let tokens: TokenList;
 let trader: SignerWithAddress;
 
 const MAX_HOPS = 6;
 
 async function main() {
-  ({ vault, validator, tokens, trader } = await setupEnvironment());
+  ({ vault, tokens, trader } = await setupEnvironment());
 
   console.log('== One token in for one token out, multiple hops ==');
 
@@ -70,23 +69,16 @@ async function multihop(getPool: (index: number) => Promise<string>, useInternal
 
     const [tokenAddresses, swaps] = getTokensSwaps(tokens, trades);
 
-    const overallTokenIn = tokenAddresses[swaps[0].tokenInIndex];
-    const overallTokenOut = tokenAddresses[swaps[swaps.length - 1].tokenOutIndex];
-
     const receipt = await (
-      await vault.connect(trader).batchSwapGivenIn(
-        validator.address,
-        encodeValidatorData({
-          overallTokenIn,
-          overallTokenOut,
-          minimumAmountOut: 0,
-          maximumAmountIn: MAX_UINT112,
-          deadline: MAX_UINT256,
-        }),
-        toSwapIn(swaps),
-        tokenAddresses,
-        funds
-      )
+      await vault
+        .connect(trader)
+        .batchSwapGivenIn(
+          toSwapIn(swaps),
+          tokenAddresses,
+          funds,
+          Array(tokenAddresses.length).fill(MAX_INT256),
+          MAX_UINT256
+        )
     ).wait();
 
     console.log(`${numHops} hops: ${printGas(receipt.gasUsed)} (${printGas(receipt.gasUsed / numHops)} per swap)`);

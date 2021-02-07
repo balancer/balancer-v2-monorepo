@@ -12,19 +12,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma experimental ABIEncoderV2;
-
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+library InputHelpers {
+    function ensureInputLengthMatch(uint256 a, uint256 b) internal pure {
+        require(a == b, "INPUT_LENGTH_MISMATCH");
+    }
 
-interface ISwapValidator {
-    function validate(
-        IERC20[] calldata tokens,
-        int256[] calldata vaultDeltas,
-        //address caller, //TODO: is it useful to validate?
-        //address from, //TODO: is it useful to validate?
-        //address to, //TODO: is it useful to validate?
-        bytes calldata data
-    ) external;
+    function ensureInputLengthMatch(
+        uint256 a,
+        uint256 b,
+        uint256 c
+    ) internal pure {
+        require(a == b && b == c, "INPUT_LENGTH_MISMATCH");
+    }
 }

@@ -20,6 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/Math.sol";
 import "../lib/math/FixedPoint.sol";
+import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
@@ -79,9 +80,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
             uint256 flashLoanFee
         )
     {
-        swapFee = _protocolSwapFee;
-        withdrawFee = _protocolWithdrawFee;
-        flashLoanFee = _protocolFlashLoanFee;
+        return (_protocolSwapFee, _protocolWithdrawFee, _protocolFlashLoanFee);
     }
 
     function _getProtocolSwapFee() internal view returns (uint256) {
@@ -105,7 +104,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         uint256[] calldata amounts,
         address recipient
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "ARRAY_LENGTH_MISMATCH");
+        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         IAuthorizer authorizer = getAuthorizer();
         for (uint256 i = 0; i < tokens.length; ++i) {
