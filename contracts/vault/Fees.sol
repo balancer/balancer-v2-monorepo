@@ -75,9 +75,9 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         view
         override
         returns (
-            uint256,
-            uint256,
-            uint256
+            uint256 swapFee,
+            uint256 withdrawFee,
+            uint256 flashLoanFee
         )
     {
         return (_protocolSwapFee, _protocolWithdrawFee, _protocolFlashLoanFee);
