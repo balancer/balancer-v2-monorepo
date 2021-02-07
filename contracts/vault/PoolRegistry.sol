@@ -53,9 +53,6 @@ abstract contract PoolRegistry is
 
     mapping(bytes32 => mapping(IERC20 => address)) private _poolAssetManagers;
 
-    event PoolAssetManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed manager);
-    event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
-
     modifier onlyPool(bytes32 poolId) {
         _ensurePoolIsSender(poolId);
         _;
@@ -123,7 +120,7 @@ abstract contract PoolRegistry is
         balances = rawBalances.totals();
     }
 
-    function getPoolTokenBalanceInfo(bytes32 poolId, IERC20 token)
+    function getPoolTokenInfo(bytes32 poolId, IERC20 token)
         external
         view
         override
@@ -131,7 +128,8 @@ abstract contract PoolRegistry is
         returns (
             uint256 cash,
             uint256 managed,
-            uint256 blockNumber
+            uint256 blockNumber,
+            address assetManager
         )
     {
         bytes32 balance;
@@ -148,6 +146,7 @@ abstract contract PoolRegistry is
         cash = balance.cash();
         managed = balance.managed();
         blockNumber = balance.blockNumber();
+        assetManager = _poolAssetManagers[poolId][token];
     }
 
     function getPool(bytes32 poolId)
@@ -188,7 +187,7 @@ abstract contract PoolRegistry is
         emit TokensRegistered(poolId, tokens);
     }
 
-    function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
+    function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
         external
         override
         nonReentrant
@@ -197,20 +196,20 @@ abstract contract PoolRegistry is
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             require(tokens.length == 2, "TOKENS_LENGTH_MUST_BE_2");
-            _unregisterTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
+            _deregisterTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _unregisterMinimalSwapInfoPoolTokens(poolId, tokens);
+            _deregisterMinimalSwapInfoPoolTokens(poolId, tokens);
         } else {
-            _unregisterGeneralPoolTokens(poolId, tokens);
+            _deregisterGeneralPoolTokens(poolId, tokens);
         }
 
-        // The unregister calls above ensure the token balance is zero
+        // The deregister calls above ensure the token balance is zero
         // So safe to remove any associated asset managers
         for (uint256 i = 0; i < tokens.length; ++i) {
             delete _poolAssetManagers[poolId][tokens[i]];
         }
 
-        emit TokensUnregistered(poolId, tokens);
+        emit TokensDeregistered(poolId, tokens);
     }
 
     function joinPool(
@@ -438,17 +437,6 @@ abstract contract PoolRegistry is
     modifier onlyPoolAssetManager(bytes32 poolId, IERC20 token) {
         _ensurePoolAssetManagerIsSender(poolId, token);
         _;
-    }
-
-    function getPoolAssetManager(bytes32 poolId, IERC20 token)
-        external
-        view
-        override
-        withExistingPool(poolId)
-        returns (address)
-    {
-        _ensureTokenRegistered(poolId, token);
-        return _poolAssetManagers[poolId][token];
     }
 
     function withdrawFromPoolBalance(

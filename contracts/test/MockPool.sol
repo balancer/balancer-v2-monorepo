@@ -45,8 +45,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         _vault.registerTokens(_poolId, tokens, assetManagers);
     }
 
-    function unregisterTokens(IERC20[] memory tokens) external {
-        _vault.unregisterTokens(_poolId, tokens);
+    function deregisterTokens(IERC20[] memory tokens) external {
+        _vault.deregisterTokens(_poolId, tokens);
     }
 
     event OnJoinPoolCalled(

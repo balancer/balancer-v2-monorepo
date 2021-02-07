@@ -305,7 +305,7 @@ describe('Vault - join pool', () => {
 
       it('calls the pool with the join data', async () => {
         const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
-        const { blockNumber: previousBlockNumber } = await vault.getPoolTokenBalanceInfo(poolId, tokenAddresses[0]);
+        const { blockNumber: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokenAddresses[0]);
 
         const receipt = await (await joinPool({ fromInternalBalance, dueProtocolFeeAmounts })).wait();
 
@@ -326,7 +326,7 @@ describe('Vault - join pool', () => {
         await joinPool({ fromInternalBalance, dueProtocolFeeAmounts });
 
         for (const token of tokenAddresses) {
-          const { blockNumber: newBlockNumber } = await vault.getPoolTokenBalanceInfo(poolId, token);
+          const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token);
           expect(newBlockNumber).to.equal(currentBlockNumber + 1);
         }
       });

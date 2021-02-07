@@ -52,14 +52,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes userData;
     }
 
-    event Swap(
-        bytes32 indexed poolId,
-        IERC20 indexed tokenIn,
-        IERC20 indexed tokenOut,
-        uint256 tokensIn,
-        uint256 tokensOut
-    );
-
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
     // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
 
@@ -179,6 +171,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
             // Ignore zeroed deltas
             if (delta > 0) {
+                _receiveTokens(token, uint256(delta), msg.sender, funds.fromInternalBalance);
                 uint256 toReceive = uint256(delta);
                 if (funds.fromInternalBalance) {
                     uint256 currentInternalBalance = _getInternalBalance(msg.sender, token);
@@ -488,7 +481,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         uint256[] memory currentBalances = new uint256[](tokenAmount);
 
         for (uint256 i = 0; i < tokenAmount; i++) {
-            // Because the iteration is bounded by `tokenAmount` and no tokens are registered or unregistered here, we
+            // Because the iteration is bounded by `tokenAmount` and no tokens are registered or deregistered here, we
             // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
