@@ -303,7 +303,7 @@ contract StablePool is IGeneralPool, StableMath, BalancerPoolToken, ReentrancyGu
     }
 
     function _subtractSwapFee(uint256 amount) private view returns (uint256) {
-        uint256 fees = amount.mul(_swapFee);
+        uint256 fees = amount.mulUp(_swapFee);
         return amount.sub(fees);
     }
 

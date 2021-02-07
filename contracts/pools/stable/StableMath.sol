@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
+import "hardhat/console.sol";
 
 import "../../lib/math/FixedPoint.sol";
 
@@ -47,14 +48,16 @@ contract StableMath {
         for (uint256 i = 0; i < 255; i++) {
             uint256 P_D = totalCoins * balances[0];
             for (uint256 j = 1; j < totalCoins; j++) {
-                P_D = (P_D * balances[j] * totalCoins) / inv;
+                //P_D is rounded up
+                P_D = (((P_D * balances[j] * totalCoins) - 1) / inv) + 1;
             }
             prevInv = inv;
+            //inv is rounded up
             inv =
-                (totalCoins * inv * inv + ampTimesTotal * sum * P_D) /
-                ((totalCoins + 1) * inv + (ampTimesTotal - 1) * P_D);
+                (((totalCoins * inv * inv + ampTimesTotal * sum * P_D) - 1) /
+                    ((totalCoins + 1) * inv + (ampTimesTotal - 1) * P_D)) +
+                1;
             // Equality with the precision of 1
-
             if (inv > prevInv) {
                 if ((inv - prevInv) <= 1) {
                     break;
@@ -63,6 +66,7 @@ contract StableMath {
                 break;
             }
         }
+        //Result is rownded up
         return inv;
     }
 
@@ -84,6 +88,7 @@ contract StableMath {
         uint256 tokenIndexOut,
         uint256 tokenAmountOut
     ) internal pure returns (uint256) {
+        //Invariant is rounded up
         uint256 inv = _invariant(amp, balances);
         uint256 p = inv;
         uint256 sum = 0;
@@ -100,12 +105,18 @@ contract StableMath {
             }
             sum += x;
             nn = totalCoins * totalCoins;
-            p = (p * inv) / x;
+            //Round up p
+            p = (((p * inv) - 1) / x) + 1;
         }
-        p = (p * inv) / (amp * nn * nn);
+        //Round up p
+        p = (((p * inv) - 1) / (amp * nn * nn)) + 1;
+        //Round down b
         uint256 b = sum + inv / (amp * nn);
-        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
-        return (y - balances[tokenIndexIn] + 1);
+        uint256 c = ((inv - b) + FixedPoint.sqrtUp((inv - b) * (inv - b) + 4 * p));
+        //Round up y
+        uint256 y = c == 0 ? 0 : ((c - 1) / 2) + 1;
+        //Result is rownded up
+        return y - balances[tokenIndexIn];
     }
 
     /**********************************************************************************************
@@ -126,6 +137,7 @@ contract StableMath {
         uint256 tokenIndexOut,
         uint256 tokenAmountIn
     ) internal pure returns (uint256) {
+        //Invariant is rounded up
         uint256 inv = _invariant(amp, balances);
         uint256 p = inv;
         uint256 sum = 0;
@@ -142,12 +154,18 @@ contract StableMath {
             }
             sum += x;
             nn = totalCoins * totalCoins;
-            p = (p * inv) / x;
+            //Round up p
+            p = (((p * inv) - 1) / x) + 1;
         }
-        p = (p * inv) / (amp * nn * nn);
+        //Round up p
+        p = (((p * inv) - 1) / (amp * nn * nn)) + 1;
+        //Round down b
         uint256 b = sum + inv / (amp * nn);
-        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
-        return (balances[tokenIndexOut] - y - 1);
+        uint256 c = ((inv - b) + FixedPoint.sqrtUp((inv - b) * (inv - b) + 4 * p));
+        //Round up y
+        uint256 y = c == 0 ? 0 : ((c - 1) / 2) + 1;
+        //Result is rownded down
+        return balances[tokenIndexOut] > y ? balances[tokenIndexOut] - y : 0;
     }
 
     /**********************************************************************************************
@@ -167,6 +185,7 @@ contract StableMath {
         uint256 lastInvariant,
         uint256 tokenIndex
     ) internal pure returns (uint256) {
+        //Last invariant is rounded up
         uint256 inv = lastInvariant;
         uint256 p = inv;
         uint256 sum = 0;
@@ -181,11 +200,17 @@ contract StableMath {
             }
             sum += x;
             nn = totalCoins * totalCoins;
-            p = (p * inv) / x;
+            //Round up p
+            p = (((p * inv) - 1) / x) + 1;
         }
-        p = (p * inv) / (amp * nn * nn);
+        //Round up p
+        p = (((p * inv) - 1) / (amp * nn * nn)) + 1;
+        //Round down b
         uint256 b = sum + inv / (amp * nn);
-        uint256 y = ((inv - b) + FixedPoint.sqrt((inv - b) * (inv - b) + 4 * p)) / 2;
-        return (balances[tokenIndex] - y - 1);
+        uint256 c = ((inv - b) + FixedPoint.sqrtUp((inv - b) * (inv - b) + 4 * p));
+        //Round up y
+        uint256 y = c == 0 ? 0 : ((c - 1) / 2) + 1;
+        //Result is rownded down
+        return balances[tokenIndex] > y ? balances[tokenIndex] - y : 0;
     }
 }

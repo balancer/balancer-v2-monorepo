@@ -138,4 +138,14 @@ library FixedPoint {
         uint256 r1 = x / r;
         return (r < r1 ? r : r1);
     }
+
+    function sqrtUp(uint256 x) internal pure returns (uint256) {
+        //TODO: implement rounding in sqrt function
+        return sqrt(x);
+    }
+
+    function sqrtDown(uint256 x) internal pure returns (uint256) {
+        //TODO: implement rounding in sqrt function
+        return sqrt(x);
+    }
 }
