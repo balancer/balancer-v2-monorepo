@@ -27,24 +27,8 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
-    // user -> token -> internal balance
+    // Stores all account's Internal Balance for each token.
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
-
-    event InternalBalanceDeposited(
-        address indexed depositor,
-        address indexed user,
-        IERC20 indexed token,
-        uint256 amount
-    );
-
-    event InternalBalanceWithdrawn(
-        address indexed user,
-        address indexed recipient,
-        IERC20 indexed token,
-        uint256 amount
-    );
-
-    event InternalBalanceTransferred(address indexed from, address indexed to, IERC20 indexed token, uint256 amount);
 
     function getInternalBalance(address user, IERC20[] memory tokens)
         external
@@ -113,6 +97,9 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         }
     }
 
+    /**
+     * @dev Increases `account`'s Internal Balance for `token` by `amount`.
+     */
     function _increaseInternalBalance(
         address account,
         IERC20 token,
@@ -123,6 +110,9 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         _setInternalBalance(account, token, newBalance);
     }
 
+    /**
+     * @dev Decreases `account`'s Internal Balance for `token` by `amount`.
+     */
     function _decreaseInternalBalance(
         address account,
         IERC20 token,
@@ -134,6 +124,12 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         _setInternalBalance(account, token, newBalance);
     }
 
+    /**
+     * @dev Sets `account`'s Internal Balance for `token` to `balance`.
+     *
+     * This costs less gas than `_increaseInternalBalance` or `_decreaseInternalBalance`, since the current collected
+     * fees do not need to be read.
+     */
     function _setInternalBalance(
         address account,
         IERC20 token,
@@ -142,6 +138,9 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         _internalTokenBalance[account][token] = balance;
     }
 
+    /**
+     * @dev Returns `account`'s Internal Balance for `token`.
+     */
     function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
         return _internalTokenBalance[account][token];
     }

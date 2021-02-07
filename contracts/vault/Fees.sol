@@ -34,24 +34,23 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     // Stores the fee collected per each token that is only withdrawable by the admin.
     mapping(IERC20 => uint256) private _collectedProtocolFees;
 
+    // All fixed are 18-decimal fixed point numbers.
+
     // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
-    // percentage of the tokens exiting
+    // percentage of the tokens exiting.
     uint256 private _protocolWithdrawFee;
 
-    // The swap fee is charged whenever a swap occurs, and is a percentage of the fee charged by the Pool.
-    // The Vault relies on the Pool being honest and reporting the actual fee it charged.
+    // The swap fee is charged whenever a swap occurs, and is a percentage of the fee charged by the Pool. These are not
+    // actually charged on each individual swap: the `Vault` relies on the Pools being honest and reporting due fees
+    // when joined and exited.
     uint256 private _protocolSwapFee;
 
-    // The flash loan fee is charged whenever a flash loan occurs, and is a percentage of the tokens lent
+    // The flash loan fee is charged whenever a flash loan occurs, and is a percentage of the tokens lent.
     uint256 private _protocolFlashLoanFee;
 
-    // solhint-disable-next-line var-name-mixedcase
+    // Absolute maximum fee percentages.
     uint256 private constant _MAX_PROTOCOL_WITHDRAW_FEE = 0.02e18; // 2%
-
-    // solhint-disable-next-line var-name-mixedcase
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE = 0.5e18; // 50%
-
-    // solhint-disable-next-line var-name-mixedcase
     uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE = 0.5e18; // 50%
 
     function setProtocolFees(
@@ -83,16 +82,29 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         return (_protocolSwapFee, _protocolWithdrawFee, _protocolFlashLoanFee);
     }
 
+    /**
+     * @dev Returns the protocol swap fee percentage.
+     */
     function _getProtocolSwapFee() internal view returns (uint256) {
         return _protocolSwapFee;
     }
 
+    /**
+     * @dev Returns the protocol fee to charge for a withdrawal of `amount`.
+     */
     function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view returns (uint256) {
+        // Fixed point multiplication introduces error: we round up, which means in certain scenarios the charged
+        // percentage can be slightly higher than intended.
         return amount.mulUp(_protocolWithdrawFee);
     }
 
-    function _calculateProtocolFlashLoanFeeAmount(uint256 swapFeeAmount) internal view returns (uint256) {
-        return swapFeeAmount.mulUp(_protocolFlashLoanFee);
+    /**
+     * @dev Returns the protocol fee to charge for a flash loan of `amount`.
+     */
+    function _calculateProtocolFlashLoanFeeAmount(uint256 amount) internal view returns (uint256) {
+        // Fixed point multiplication introduces error: we round up, which means in certain scenarios the charged
+        // percentage can be slightly higher than intended.
+        return amount.mulUp(_protocolFlashLoanFee);
     }
 
     function getCollectedFees(IERC20[] memory tokens) external view override returns (uint256[] memory) {
@@ -117,12 +129,18 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         }
     }
 
+    /**
+     * @dev Increases the number of collected protocol fees for `token` by `amount`.
+     */
     function _increaseCollectedFees(IERC20 token, uint256 amount) internal {
         uint256 currentCollectedFees = _collectedProtocolFees[token];
         uint256 newTotal = currentCollectedFees.add(amount);
         _setCollectedFees(token, newTotal);
     }
 
+    /**
+     * @dev Decreases the number of collected protocol fees for `token` by `amount`.
+     */
     function _decreaseCollectedFees(IERC20 token, uint256 amount) internal {
         uint256 currentCollectedFees = _collectedProtocolFees[token];
         require(currentCollectedFees >= amount, "INSUFFICIENT_COLLECTED_FEES");
@@ -131,10 +149,19 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         _setCollectedFees(token, newTotal);
     }
 
+    /**
+     * @dev Sets the number of collected protocol fees for `token` to `newTotal`.
+     *
+     * This costs less gas than `_increaseCollectedFees` or `_decreaseCollectedFees`, since the current collected fees
+     * do not need to be read.
+     */
     function _setCollectedFees(IERC20 token, uint256 newTotal) internal {
         _collectedProtocolFees[token] = newTotal;
     }
 
+    /**
+     * @dev Returns the number of collected fees for each token in the `tokens` array.
+     */
     function _getCollectedFees(IERC20[] memory tokens) internal view returns (uint256[] memory fees) {
         fees = new uint256[](tokens.length);
 

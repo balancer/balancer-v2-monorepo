@@ -21,15 +21,18 @@ import "./IAuthorizer.sol";
 
 pragma solidity ^0.7.1;
 
-// Full external interface for the Vault core contract - no external or public methods exist in the contract that don't
-// override one of these declarations.
+/**
+ * @dev Full external interface for the Vault core contract - no external or public methods exist in the contract that
+ * don't override one of these declarations.
+ */
 interface IVault {
     // Generalities about the Vault:
     //
     // - Whenever documentation refers to 'tokens', it strictly refers to ERC20-compliant token contracts. Tokens are
     // transferred out of the Vault by calling the `IERC20.transfer` function, and transferred in by calling
     // `IERC20.transferFrom`. In these cases, the sender must have previously allowed the Vault to use their tokens by
-    // calling `IERC20.approve`.
+    // calling `IERC20.approve`. The only deviation from the ERC20 standard that is supported is functions not returning
+    // a boolean value: in these scenarios, a non-reverting call is assumed to be successful.
     //
     // - All non-view functions in the Vault are non-reentrant: calling them while another one is mid-execution (e.g.
     // while execution control is transferred to a token contract during a swap) will result in a revert. View
@@ -57,6 +60,8 @@ interface IVault {
      *
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
      * deposit for each token contract.
+     *
+     * Emits `InternalBalanceDeposited` events.
      */
     function depositToInternalBalance(
         IERC20[] memory tokens,
@@ -65,11 +70,23 @@ interface IVault {
     ) external;
 
     /**
+     * @dev Emitted when a user deposits to Internal Balance via `depositToInternalBalance`.
+     */
+    event InternalBalanceDeposited(
+        address indexed depositor,
+        address indexed user,
+        IERC20 indexed token,
+        uint256 amount
+    );
+
+    /**
      * @dev Withdraws tokens from the caller's Internal Balance, transferring them to `recipient`. This charges protocol
      * withdrawal fees.
      *
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
      * withdraw for each token contract.
+     *
+     * Emits `InternalBalanceWithdrawn` events.
      */
     function withdrawFromInternalBalance(
         IERC20[] memory tokens,
@@ -78,17 +95,34 @@ interface IVault {
     ) external;
 
     /**
+     * @dev Emitted when a user withdraws from Internal Balance via `withdrawFromInternalBalance`.
+     */
+    event InternalBalanceWithdrawn(
+        address indexed user,
+        address indexed recipient,
+        IERC20 indexed token,
+        uint256 amount
+    );
+
+    /**
      * @dev Transfers tokens from the caller's Internal Balance, transferring them to a recipient's Internal Balance.
      * This does not charge protocol withdrawal fees.
      *
      * The `tokens`, `amounts` and `recipients` arrays must have the same length, and each entry in these indicates the
      * amount to transfer for each token contract to each recipient.
+     *
+     * Emits `InternalBalanceTransferred` events.
      */
     function transferInternalBalance(
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address[] memory recipients
     ) external;
+
+    /**
+     * @dev Emitted when a user transfers Internal Balance via `transferInternalBalance`.
+     */
+    event InternalBalanceTransferred(address indexed from, address indexed to, IERC20 indexed token, uint256 amount);
 
     // Pools
     //
@@ -357,8 +391,8 @@ interface IVault {
     event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     /**
-     * @dev Updates a Pool's `managed` balance, without transferring any tokens. Must be called by the Pool's token Asset
-     * Manager.
+     * @dev Updates a Pool's `managed` balance, without transferring any tokens. Must be called by the Pool's token
+     * Asset Manager.
      *
      * This changes the Pool's `managed` balance but doesn't alter its `cash` balance, causing the total balance to
      * change (see `getPoolTokenInfo`). Asset Managers can use this function to reflect profits or losses on the Vault,
@@ -608,7 +642,7 @@ interface IVault {
     //
     // There are three kinds of protocol fees:
     //
-    //  - flash loan fees: charged on all flash loans, as a percentage of the amounts loaned.
+    //  - flash loan fees: charged on all flash loans, as a percentage of the amounts lent.
     //
     //  - withdraw fees: charged when users take tokens out of the Vault, by either calling
     // `withdrawFromInternalBalance` or calling `exitPool` without depositing to Internal Balance. The fee is a
