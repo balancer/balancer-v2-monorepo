@@ -42,6 +42,7 @@ async function multihop(getPool: (index: number) => Promise<string>, useInternal
   console.log(`\n## ${useInternalBalance ? 'Using Internal Balance' : 'Sending and receiving tokens'}`);
 
   const funds: FundManagement = {
+    sender: trader.address,
     recipient: trader.address,
     fromInternalBalance: useInternalBalance,
     toInternalBalance: useInternalBalance,
