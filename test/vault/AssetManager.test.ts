@@ -76,8 +76,8 @@ describe('Vault - asset manager', function () {
 
     describe('setting', () => {
       it('different managers can be set for different tokens', async () => {
-        expect(await vault.getPoolTokenInfo(poolId, tokens.DAI.address).assetManager).to.equal(assetManager.address);
-        expect(await vault.getPoolTokenInfo(poolId, tokens.USDT.address).assetManager).to.equal(other.address);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).assetManager).to.equal(assetManager.address);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.USDT.address)).assetManager).to.equal(other.address);
       });
 
       it('reverts when querying the asset manager of an unknown pool', async () => {
@@ -303,8 +303,8 @@ describe('Vault - asset manager', function () {
 
       it('removes asset managers when deregistering', async () => {
         // First asset the managers are set
-        expect(await vault.getPoolTokenInfo(poolId, tokens.DAI.address).assetManager).to.equal(assetManager.address);
-        expect(await vault.getPoolTokenInfo(poolId, tokens.USDT.address).assetManager).to.equal(other.address);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).assetManager).to.equal(assetManager.address);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.USDT.address)).assetManager).to.equal(other.address);
 
         const [poolAddress] = await vault.getPool(poolId);
         const pool = await ethers.getContractAt('MockPool', poolAddress);
@@ -335,8 +335,8 @@ describe('Vault - asset manager', function () {
         // Should also be able to re-register (just one in this case)
         await pool.registerTokens([tokens.DAI.address, tokens.USDT.address], [assetManager.address, ZERO_ADDRESS]);
 
-        expect(await vault.getPoolTokenInfo(poolId, tokens.DAI.address).assetManager).to.equal(assetManager.address);
-        expect(await vault.getPoolTokenInfo(poolId, tokens.USDT.address).assetManager).to.equal(ZERO_ADDRESS);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).assetManager).to.equal(assetManager.address);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.USDT.address)).assetManager).to.equal(ZERO_ADDRESS);
       });
     });
   }

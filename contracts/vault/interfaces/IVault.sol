@@ -430,8 +430,10 @@ interface IVault {
     // updating the Pool's internal balances).
     //
     // To protect users from front-running or the market changing rapidly, they supply a list of 'limits' for each token
-    // involved in the swap, where either the maximum number of tokens to send or minimum amount of tokens to receive is
-    // specified. Additionally, a 'deadline' timestamp can also be provided, forcing the swap to fail if it occurs after
+    // involved in the swap, where either the maximum number of tokens to send (by passing a positive value) or minimum
+    // amount of tokens to receive (by passing a negative value) is specified.
+    //
+    // Additionally, a 'deadline' timestamp can also be provided, forcing the swap to fail if it occurs after
     // this point in time (e.g. if the transaction failed to be included in a block promptly).
     //
     // Finally, Internal Balance can be used both when sending and receiving tokens.
