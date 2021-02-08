@@ -56,4 +56,25 @@ library Math {
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
+
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a * b;
+        require(a == 0 || c / a == b, "MUL_OVERFLOW");
+        return c;
+    }
+
+    function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b != 0, "ZERO_DIVISION");
+        return a / b;
+    }
+
+    function divUp(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b != 0, "ZERO_DIVISION");
+
+        if (a == 0) {
+            return 0;
+        } else {
+            return 1 + (a - 1) / b;
+        }
+    }
 }

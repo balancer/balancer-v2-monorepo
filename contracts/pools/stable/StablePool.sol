@@ -15,7 +15,6 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../../lib/math/Math.sol";
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/helpers/UnsafeRandom.sol";
@@ -25,7 +24,6 @@ import "../BaseGeneralPool.sol";
 import "./StableMath.sol";
 
 contract StablePool is BaseGeneralPool, StableMath {
-    using Math for uint256;
     using FixedPoint for uint256;
 
     uint256 private immutable _amp;

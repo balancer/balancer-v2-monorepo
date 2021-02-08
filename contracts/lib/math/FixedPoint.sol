@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.1;
 
+import "./Math.sol";
+
 /* solhint-disable private-vars-leading-underscore */
 
 library FixedPoint {
@@ -21,6 +23,16 @@ library FixedPoint {
     uint256 internal constant MIN_POW_BASE = 1 wei;
     uint256 internal constant MAX_POW_BASE = (2 * ONE) - 1 wei;
     uint256 internal constant POW_PRECISION = ONE / 10**10;
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Fixed point addition is the same as regular integer addition
+        return Math.add(a, b);
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Fixed point subtraction is the same as regular integer subtraction
+        return Math.sub(a, b);
+    }
 
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c0 = a * b;

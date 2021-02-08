@@ -15,7 +15,6 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import "../../lib/math/Math.sol";
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/helpers/UnsafeRandom.sol";
@@ -29,7 +28,6 @@ import "./WeightedMath.sol";
 // solhint-disable max-states-count
 
 contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
-    using Math for uint256;
     using FixedPoint for uint256;
 
     //TODO: link info about these limits once they are studied and documented

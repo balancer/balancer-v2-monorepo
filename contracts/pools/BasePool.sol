@@ -29,7 +29,6 @@ import "../vault/interfaces/IBasePool.sol";
 // solhint-disable max-states-count
 
 abstract contract BasePool is IBasePool, BalancerPoolToken {
-    using Math for uint256;
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
@@ -362,40 +361,32 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
     }
 
     function _upscale(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return amount * scalingFactor;
+        return Math.mul(amount, scalingFactor);
     }
 
     function _upscaleArray(uint256[] memory amount, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            amount[i] *= scalingFactors[i];
+            amount[i] = Math.mul(amount[i], scalingFactors[i]);
         }
     }
 
     function _downscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return amount / scalingFactor;
+        return Math.divDown(amount, scalingFactor);
     }
 
     function _downscaleDownArray(uint256[] memory amount, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            amount[i] /= scalingFactors[i];
+            amount[i] = Math.divDown(amount[i], scalingFactors[i]);
         }
     }
 
     function _downscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return _divUp(amount, scalingFactor);
+        return Math.divUp(amount, scalingFactor);
     }
 
     function _downscaleUpArray(uint256[] memory amount, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            amount[i] = _divUp(amount[i], scalingFactors[i]);
-        }
-    }
-
-    function _divUp(uint256 x, uint256 y) private pure returns (uint256) {
-        if (x == 0) {
-            return 0;
-        } else {
-            return (x - 1) / y + 1;
+            amount[i] = Math.divUp(amount[i], scalingFactors[i]);
         }
     }
 }
