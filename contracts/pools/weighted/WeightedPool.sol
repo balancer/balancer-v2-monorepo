@@ -211,8 +211,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         uint256 invariantAfterJoin = WeightedMath._invariant(normalizedWeights, amountsIn);
 
-        uint256 bptAmountOut = invariantAfterJoin * _totalTokens;
-        require(bptAmountOut / invariantAfterJoin == _totalTokens, "MUL_OVERFLOW");
+        uint256 bptAmountOut = Math.mul(invariantAfterJoin, _totalTokens);
 
         _lastInvariant = invariantAfterJoin;
 
@@ -334,7 +333,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         returns (uint256[] memory amountsIn, uint256 minBPTAmountIn)
     {
         (, amountsIn, minBPTAmountIn) = abi.decode(userData, (JoinKind, uint256[], uint256));
-        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
         _upscaleArray(amountsIn, _scalingFactors());
     }
 
