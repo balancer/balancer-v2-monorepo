@@ -11,6 +11,19 @@ export function expectEqualWithError(actualValue: BigNumberish, expectedValue: B
   expect(actualValue).to.be.at.most(expectedValue.add(acceptedError));
 }
 
+export function expectLessThanOrEqualWithError(
+  actualValue: BigNumberish,
+  expectedValue: BigNumberish,
+  error = 0.001
+): void {
+  actualValue = bn(actualValue);
+  expectedValue = bn(expectedValue);
+  const minimumValue = expectedValue.sub(pct(expectedValue, error));
+
+  expect(actualValue).to.be.at.most(expectedValue);
+  expect(actualValue).to.be.at.least(minimumValue);
+}
+
 export function expectRelativeError(actual: Decimal, expected: Decimal, maxRelativeError: Decimal): void {
   const lessThanOrEqualTo = actual.dividedBy(expected).sub(1).abs().lessThanOrEqualTo(maxRelativeError);
   expect(lessThanOrEqualTo, 'Relative error too big').to.be.true;

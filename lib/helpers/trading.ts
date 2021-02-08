@@ -1,4 +1,3 @@
-import { utils } from 'ethers';
 import { TokenList } from './tokens';
 import { BigNumberish } from './numbers';
 
@@ -34,6 +33,7 @@ export type SwapOut = {
 };
 
 export type FundManagement = {
+  sender: string;
   recipient: string;
   fromInternalBalance: boolean;
   toInternalBalance: boolean;
@@ -76,13 +76,6 @@ export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<
   }
 
   return [tokenAddresses, swaps];
-}
-
-export function encodeValidatorData(data: OneToOneValidatorData): string {
-  return utils.defaultAbiCoder.encode(
-    ['address', 'address', 'uint112', 'uint112', 'uint256'],
-    [data.overallTokenIn, data.overallTokenOut, data.maximumAmountIn, data.minimumAmountOut, data.deadline]
-  );
 }
 
 export function toSwapIn(swaps: Array<Swap>): Array<SwapIn> {

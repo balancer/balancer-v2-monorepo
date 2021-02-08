@@ -20,9 +20,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
-import "./interfaces/IPoolBase.sol";
+import "./interfaces/IBasePool.sol";
 import "./InternalBalance.sol";
 import "./balances/BalanceAllocation.sol";
 import "./balances/GeneralPoolsBalance.sol";
@@ -214,12 +215,13 @@ abstract contract PoolRegistry is
 
     function joinPool(
         bytes32 poolId,
+        address sender,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
         bool fromInternalBalance,
         bytes memory userData
-    ) external override nonReentrant withExistingPool(poolId) {
+    ) external override nonReentrant withExistingPool(poolId) authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         // The balances array will be modified later on to update the vault balances after the join
@@ -229,6 +231,7 @@ abstract contract PoolRegistry is
             poolId,
             tokens,
             balances,
+            sender,
             recipient,
             userData
         );
@@ -238,12 +241,11 @@ abstract contract PoolRegistry is
             uint256 amountIn = amountsIn[i];
 
             // Receive tokens
-            IERC20 token = tokens[i];
-            _receiveTokens(token, amountIn, msg.sender, fromInternalBalance);
+            _receiveTokens(tokens[i], amountIn, sender, fromInternalBalance);
 
             // Charge swap protocol fees to pool
             uint256 feeToPay = dueProtocolFeeAmounts[i];
-            _increaseCollectedFees(token, feeToPay);
+            _increaseCollectedFees(tokens[i], feeToPay);
 
             // Fees could be larger than the amounts in for a token and end up being a subtraction.
             balances[i] = amountIn >= feeToPay
@@ -260,17 +262,18 @@ abstract contract PoolRegistry is
         } else {
             _setGeneralPoolBalances(poolId, balances);
         }
-        emit PoolJoined(poolId, msg.sender, amountsIn, dueProtocolFeeAmounts);
+        emit PoolJoined(poolId, sender, amountsIn, dueProtocolFeeAmounts);
     }
 
     function exitPool(
         bytes32 poolId,
+        address sender,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
         bool toInternalBalance,
         bytes memory userData
-    ) external override nonReentrant withExistingPool(poolId) {
+    ) external override nonReentrant withExistingPool(poolId) authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
 
         // The balances array will be modified later on to update the vault balances after the join
@@ -280,6 +283,7 @@ abstract contract PoolRegistry is
             poolId,
             tokens,
             balances,
+            sender,
             recipient,
             userData
         );
@@ -289,12 +293,11 @@ abstract contract PoolRegistry is
             uint256 amountOut = amountsOut[i];
 
             // Send tokens
-            IERC20 token = tokens[i];
-            uint256 withdrawFee = _sendTokens(token, amountOut, recipient, toInternalBalance);
+            uint256 withdrawFee = _sendTokens(tokens[i], amountOut, recipient, toInternalBalance);
 
             // Charge swap protocol fees to pool
             uint256 feeToPay = dueProtocolFeeAmounts[i];
-            _increaseCollectedFees(token, feeToPay.add(withdrawFee));
+            _increaseCollectedFees(tokens[i], feeToPay.add(withdrawFee));
 
             // Compute new balance
             uint256 delta = amountOut.add(feeToPay);
@@ -311,7 +314,7 @@ abstract contract PoolRegistry is
             _setGeneralPoolBalances(poolId, balances);
         }
 
-        emit PoolExited(poolId, msg.sender, amountsOut, dueProtocolFeeAmounts);
+        emit PoolExited(poolId, sender, amountsOut, dueProtocolFeeAmounts);
     }
 
     /**
@@ -372,15 +375,16 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances,
+        address sender,
         address recipient,
         bytes memory userData
     ) private returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
         (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
 
         address pool = _getPoolAddress(poolId);
-        (amountsIn, dueProtocolFeeAmounts) = IPoolBase(pool).onJoinPool(
+        (amountsIn, dueProtocolFeeAmounts) = IBasePool(pool).onJoinPool(
             poolId,
-            msg.sender,
+            sender,
             recipient,
             totalBalances,
             latestBlockNumberUsed,
@@ -395,15 +399,16 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances,
+        address sender,
         address recipient,
         bytes memory userData
     ) private returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
         (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
 
         address pool = _getPoolAddress(poolId);
-        (amountsOut, dueProtocolFeeAmounts) = IPoolBase(pool).onExitPool(
+        (amountsOut, dueProtocolFeeAmounts) = IBasePool(pool).onExitPool(
             poolId,
-            msg.sender,
+            sender,
             recipient,
             totalBalances,
             latestBlockNumberUsed,

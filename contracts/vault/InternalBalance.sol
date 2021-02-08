@@ -59,27 +59,29 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     }
 
     function depositToInternalBalance(
+        address sender,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        address user
-    ) external override nonReentrant {
+        address recipient
+    ) external override nonReentrant authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
 
-            _increaseInternalBalance(user, token, amount);
-            token.safeTransferFrom(msg.sender, address(this), amount);
-            emit InternalBalanceDeposited(msg.sender, user, token, amount);
+            _increaseInternalBalance(recipient, token, amount);
+            token.safeTransferFrom(sender, address(this), amount);
+            emit InternalBalanceDeposited(sender, recipient, token, amount);
         }
     }
 
     function withdrawFromInternalBalance(
+        address sender,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address recipient
-    ) external override nonReentrant {
+    ) external override nonReentrant authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -89,17 +91,18 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
             uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
             _increaseCollectedFees(token, feeAmount);
 
-            _decreaseInternalBalance(msg.sender, token, amount);
+            _decreaseInternalBalance(sender, token, amount);
             token.safeTransfer(recipient, amount.sub(feeAmount));
-            emit InternalBalanceWithdrawn(msg.sender, recipient, token, amount);
+            emit InternalBalanceWithdrawn(sender, recipient, token, amount);
         }
     }
 
     function transferInternalBalance(
+        address sender,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address[] memory recipients
-    ) external override nonReentrant {
+    ) external override nonReentrant authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length, recipients.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -107,9 +110,9 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
             uint256 amount = amounts[i];
             address recipient = recipients[i];
 
-            _decreaseInternalBalance(msg.sender, token, amount);
+            _decreaseInternalBalance(sender, token, amount);
             _increaseInternalBalance(recipient, token, amount);
-            emit InternalBalanceTransferred(msg.sender, recipient, token, amount);
+            emit InternalBalanceTransferred(sender, recipient, token, amount);
         }
     }
 

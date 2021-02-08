@@ -16,7 +16,6 @@ export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'H
 
 export async function setupEnvironment(): Promise<{
   vault: Contract;
-  validator: Contract;
   tokens: TokenList;
   trader: SignerWithAddress;
 }> {
@@ -24,8 +23,6 @@ export async function setupEnvironment(): Promise<{
 
   const authorizer = await deploy('Authorizer', { args: [admin.address] });
   const vault = await deploy('Vault', { args: [authorizer.address] });
-
-  const validator = await deploy('OneToOneSwapValidator', { args: [] });
 
   const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 
@@ -44,9 +41,14 @@ export async function setupEnvironment(): Promise<{
   // deposit internal balance for trader to make it non-zero
   await vault
     .connect(trader)
-    .depositToInternalBalance(tokenAddresses, Array(tokenAddresses.length).fill(bn(1e18)), trader.address);
+    .depositToInternalBalance(
+      trader.address,
+      tokenAddresses,
+      Array(tokenAddresses.length).fill(bn(1e18)),
+      trader.address
+    );
 
-  return { vault, validator, tokens, trader };
+  return { vault, tokens, trader };
 }
 
 export async function deployPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {
@@ -91,6 +93,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   await vault.connect(creator).joinPool(
     poolId,
+    creator.address,
     creator.address,
     tokenAddresses,
     tokenAddresses.map(() => initialPoolBalance), // These end up being the actual join amounts

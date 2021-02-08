@@ -58,9 +58,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         uint256 newSwapFee,
         uint256 newWithdrawFee,
         uint256 newFlashLoanFee
-    ) external override nonReentrant {
-        getAuthorizer().validateCanSetProtocolFees(msg.sender);
-
+    ) external override nonReentrant authenticate {
         require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, "SWAP_FEE_TOO_HIGH");
         require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "WITHDRAW_FEE_TOO_HIGH");
         require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FLASH_LOAN_FEE_TOO_HIGH");
@@ -80,9 +78,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
             uint256 flashLoanFee
         )
     {
-        swapFee = _protocolSwapFee;
-        withdrawFee = _protocolWithdrawFee;
-        flashLoanFee = _protocolFlashLoanFee;
+        return (_protocolSwapFee, _protocolWithdrawFee, _protocolFlashLoanFee);
     }
 
     function _getProtocolSwapFee() internal view returns (uint256) {
@@ -105,14 +101,11 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
-    ) external override nonReentrant {
+    ) external override nonReentrant authenticate {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
-        IAuthorizer authorizer = getAuthorizer();
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            authorizer.validateCanWithdrawCollectedFees(msg.sender, token);
-
             uint256 amount = amounts[i];
             _decreaseCollectedFees(token, amount);
             token.safeTransfer(recipient, amount);
