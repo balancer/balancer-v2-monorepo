@@ -45,6 +45,7 @@ describe('Vault - swap queries', () => {
       await vault.connect(lp).joinPool(
         poolId,
         lp.address,
+        lp.address,
         tokenAddresses,
         tokenAddresses.map(() => MAX_UINT256),
         false,
@@ -58,6 +59,7 @@ describe('Vault - swap queries', () => {
     }
 
     funds = {
+      sender: vault.address,
       recipient: ZERO_ADDRESS,
       fromInternalBalance: false,
       toInternalBalance: false,

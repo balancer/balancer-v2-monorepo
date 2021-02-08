@@ -4,14 +4,16 @@ import { Contract } from 'ethers';
 import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { roleId } from '../../lib/helpers/roles';
+import { encodeJoin } from '../helpers/mockPool';
+import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
+
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
 import { deployTokens, TokenList } from '../../lib/helpers/tokens';
 import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { encodeJoin } from '../helpers/mockPool';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -30,19 +32,20 @@ type SwapInput = {
 };
 
 describe('Vault - swaps', () => {
-  let vault: Contract, funds: FundManagement;
+  let vault: Contract, authorizer: Contract, funds: FundManagement;
   let tokens: TokenList, tokenAddresses: string[];
   let poolIds: string[], poolId: string, anotherPoolId: string;
-  let lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
+  let lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress, admin: SignerWithAddress;
 
   before('setup', async () => {
-    [, lp, trader, other] = await ethers.getSigners();
+    [, lp, trader, other, admin] = await ethers.getSigners();
 
     // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
     // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
     // or rely on internal balance).
 
-    vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
     tokens = await deployTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
     tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
 
@@ -58,7 +61,7 @@ describe('Vault - swaps', () => {
 
   beforeEach('set up default sender', async () => {
     funds = {
-      //sender: trader.address,
+      sender: trader.address,
       recipient: trader.address,
       fromInternalBalance: false,
       toInternalBalance: false,
@@ -122,6 +125,7 @@ describe('Vault - swaps', () => {
     const poolId = pool.getPoolId();
     await vault.connect(lp).joinPool(
       poolId,
+      lp.address,
       other.address,
       tokenAddresses,
       tokenAmounts,
@@ -195,7 +199,61 @@ describe('Vault - swaps', () => {
                     const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
                     context('when using managed balance', () => {
-                      assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -1e18 });
+                      context('when the sender is the user', () => {
+                        const fromOther = false;
+
+                        assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
+                      });
+
+                      context('when the sender is a relayer', () => {
+                        const fromOther = true;
+
+                        context('when the relayer is whitelisted by the authorizer', () => {
+                          beforeEach('grant role to relayer', async () => {
+                            const role = roleId(vault, 'batchSwapGivenIn');
+                            await authorizer.connect(admin).grantRole(role, other.address);
+                          });
+
+                          context('when the relayer is allowed by the user', () => {
+                            beforeEach('allow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                            });
+
+                            assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
+                          });
+
+                          context('when the relayer is not allowed by the user', () => {
+                            beforeEach('disallow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                            });
+
+                            assertSwapGivenInReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
+                          });
+                        });
+
+                        context('when the relayer is not whitelisted by the authorizer', () => {
+                          beforeEach('revoke role from relayer', async () => {
+                            const role = roleId(vault, 'batchSwapGivenIn');
+                            await authorizer.connect(admin).revokeRole(role, other.address);
+                          });
+
+                          context('when the relayer is allowed by the user', () => {
+                            beforeEach('allow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                            });
+
+                            assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          });
+
+                          context('when the relayer is not allowed by the user', () => {
+                            beforeEach('disallow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                            });
+
+                            assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          });
+                        });
+                      });
                     });
 
                     context('when withdrawing from internal balance', () => {
@@ -208,7 +266,12 @@ describe('Vault - swaps', () => {
                           funds.fromInternalBalance = true;
                           await vault
                             .connect(trader)
-                            .depositToInternalBalance([tokens.MKR.address], [bn(0.3e18)], trader.address);
+                            .depositToInternalBalance(
+                              trader.address,
+                              [tokens.MKR.address],
+                              [bn(0.3e18)],
+                              trader.address
+                            );
                         });
 
                         assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
@@ -333,6 +396,7 @@ describe('Vault - swaps', () => {
                       // The caller will receive profit in MKR, since it sold DAI for more MKR than it bought it for.
                       // The caller receives tokens and doesn't send any.
                       // Note the caller didn't even have any tokens to begin with.
+                      funds.sender = other.address;
                       funds.recipient = other.address;
                     });
 
@@ -529,7 +593,61 @@ describe('Vault - swaps', () => {
                     const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
                     context('when using managed balance', () => {
-                      assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.5e18 });
+                      context('when the sender is the user', () => {
+                        const fromOther = false;
+
+                        assertSwapGivenOut({ swaps, fromOther }, { DAI: 1e18, MKR: -0.5e18 });
+                      });
+
+                      context('when the sender is a relayer', () => {
+                        const fromOther = true;
+
+                        context('when the relayer is whitelisted by the authorizer', () => {
+                          beforeEach('grant role to relayer', async () => {
+                            const role = roleId(vault, 'batchSwapGivenOut');
+                            await authorizer.connect(admin).grantRole(role, other.address);
+                          });
+
+                          context('when the relayer is allowed by the user', () => {
+                            beforeEach('allow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                            });
+
+                            assertSwapGivenOut({ swaps, fromOther }, { DAI: 1e18, MKR: -0.5e18 });
+                          });
+
+                          context('when the relayer is not allowed by the user', () => {
+                            beforeEach('disallow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                            });
+
+                            assertSwapGivenOutReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
+                          });
+                        });
+
+                        context('when the relayer is not whitelisted by the authorizer', () => {
+                          beforeEach('revoke role from relayer', async () => {
+                            const role = roleId(vault, 'batchSwapGivenOut');
+                            await authorizer.connect(admin).revokeRole(role, other.address);
+                          });
+
+                          context('when the relayer is allowed by the user', () => {
+                            beforeEach('allow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                            });
+
+                            assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          });
+
+                          context('when the relayer is not allowed by the user', () => {
+                            beforeEach('disallow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                            });
+
+                            assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          });
+                        });
+                      });
                     });
 
                     context('when withdrawing from internal balance', () => {
@@ -542,7 +660,12 @@ describe('Vault - swaps', () => {
                           funds.fromInternalBalance = true;
                           await vault
                             .connect(trader)
-                            .depositToInternalBalance([tokens.MKR.address], [bn(0.3e18)], trader.address);
+                            .depositToInternalBalance(
+                              trader.address,
+                              [tokens.MKR.address],
+                              [bn(0.3e18)],
+                              trader.address
+                            );
                         });
 
                         assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
@@ -667,6 +790,7 @@ describe('Vault - swaps', () => {
                       // The caller will receive profit in MKR, since it sold DAI for more MKR than it bought it for.
                       // The caller receives tokens and doesn't send any.
                       // Note the caller didn't even have any tokens to begin with.
+                      funds.sender = other.address;
                       funds.recipient = other.address;
                     });
 
