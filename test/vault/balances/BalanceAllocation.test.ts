@@ -326,9 +326,10 @@ describe('Vault - balance allocation', () => {
         expect(await library.managed(newBalance)).to.equal(newManaged);
         expect(await library.total(newBalance)).to.equal(cash.add(newManaged));
 
-        // Does not update the block number
+        // Updates the block number
+        const currentBlockNumber = await ethers.provider.getBlockNumber();
         expect(await library.blockNumber(balance)).to.equal(BLOCK_NUMBER);
-        expect(await library.blockNumber(newBalance)).to.equal(BLOCK_NUMBER);
+        expect(await library.blockNumber(newBalance)).to.equal(currentBlockNumber + 1);
       }
 
       it('sets managed to zero', async () => {
