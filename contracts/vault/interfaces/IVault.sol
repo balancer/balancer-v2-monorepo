@@ -41,6 +41,40 @@ interface IVault {
     //
     // - View functions revert if referring to either unregistered Pools, or unregistered tokens for registered Pools.
 
+    // Authorizer
+    //
+    // Some system actions are permissioned, like setting and collecting protocol fees. This permissioning system exists
+    // outside of the Vault in the Authorizer contract: the Vault simply calls the Authorizer to check if the caller
+    // can perform a given action.
+    // The only exception to this are relayers. A relayer is an account (typically a contract) that can use the Internal
+    // Balance and Vault allowance of other accounts. For an account to be able to wield this power, two things must
+    // happen:
+    //  - it must be allowed by the Authorizer to call the functions where it intends to use this permission
+    //  - it must be allowed by each individual user to act in their stead
+    // This combined requirements means users cannot be tricked into allowing malicious relayers (because they will not
+    // have been allowed by the Authorizer), nor can a malicious Authorizer allow malicious relayers to drain user funds
+    // (unless the user then allows this malicious relayer).
+
+    /**
+     * @dev Returns the Vault's Authorizer.
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
+
+    /**
+     * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
+     */
+    function changeAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /**
+     * @dev Returns true if `user` has allowed `relayer` as a relayer for them.
+     */
+    function hasAllowedRelayer(address user, address relayer) external view returns (bool);
+
+    /**
+     * @dev Allows `relayer` to act as a relayer for the caller if `allowed` is true, and disallows it otherwise.
+     */
+    function changeRelayerAllowance(address relayer, bool allowed) external;
+
     // Internal Balance
     //
     // Users can deposit tokens into the Vault, where it is known as Internal Balance. This Internal Balance can be
@@ -56,7 +90,9 @@ interface IVault {
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits tokens from the caller into `user`'s Internal Balance.
+     * @dev Deposits tokens from `sender` into `recipient`'s Internal Balance.
+     *
+     * If the caller is not `sender`, it must be an authorized relayer for them.
      *
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
      * deposit for each token contract.
@@ -64,25 +100,17 @@ interface IVault {
      * Emits `InternalBalanceChanged` events.
      */
     function depositToInternalBalance(
-        address depositor,
+        address sender,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        address user
+        address recipient
     ) external;
 
     /**
-     * @dev Emitted when a user deposits to Internal Balance via `depositToInternalBalance`.
-     */
-    event InternalBalanceDeposited(
-        address indexed depositor,
-        address indexed user,
-        IERC20 indexed token,
-        uint256 amount
-    );
-
-    /**
-     * @dev Withdraws tokens from the caller's Internal Balance, transferring them to `recipient`. This charges protocol
+     * @dev Withdraws tokens from `sender`'s Internal Balance, transferring them to `recipient`. This charges protocol
      * withdrawal fees.
+     *
+     * If the caller is not `sender`, it must be an authorized relayer for them.
      *
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
      * withdraw for each token contract.
@@ -90,25 +118,17 @@ interface IVault {
      * Emits `InternalBalanceChanged` events.
      */
     function withdrawFromInternalBalance(
-        address user,
+        address sender,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address recipient
     ) external;
 
     /**
-     * @dev Emitted when a user withdraws from Internal Balance via `withdrawFromInternalBalance`.
-     */
-    event InternalBalanceWithdrawn(
-        address indexed user,
-        address indexed recipient,
-        IERC20 indexed token,
-        uint256 amount
-    );
-
-    /**
-     * @dev Transfers tokens from the caller's Internal Balance, transferring them to a recipient's Internal Balance.
+     * @dev Transfers tokens from `sender`'s Internal Balance, transferring them to a recipient's Internal Balance.
      * This does not charge protocol withdrawal fees.
+     *
+     * If the caller is not `sender`, it must be an authorized relayer for them.
      *
      * The `tokens`, `amounts` and `recipients` arrays must have the same length, and each entry in these indicates the
      * amount to transfer for each token contract to each recipient.
@@ -116,7 +136,7 @@ interface IVault {
      * Emits `InternalBalanceChanged` events.
      */
     function transferInternalBalance(
-        address user,
+        address sender,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address[] memory recipients
@@ -255,9 +275,11 @@ interface IVault {
         );
 
     /**
-     * @dev Called by users to join a Pool, which transfers tokens from the caller into the Pool's balance. This will
+     * @dev Called by users to join a Pool, which transfers tokens from `sender` into the Pool's balance. This will
      * trigger custom Pool behavior, which will typically grant something in return to `recipient` - often tokenized
      * Pool shares.
+     *
+     * If the caller is not `sender`, it must be an authorized relayer for them.
      *
      * The `tokens` and `maxAmountsIn` arrays must have the same length, and each entry in these indicates the maximum
      * token amount to send for each token contract. The amounts to send are decided by the Pool and not the Vault: it
@@ -278,7 +300,7 @@ interface IVault {
      */
     function joinPool(
         bytes32 poolId,
-        address provider,
+        address sender,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
@@ -298,9 +320,11 @@ interface IVault {
 
     /**
      * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
-     * trigger custom Pool behavior, which will typically ask for something in return from the caller - often tokenized
+     * trigger custom Pool behavior, which will typically ask for something in return from `sender` - often tokenized
      * Pool shares. The amount of tokens that can be withdraw is limited by the Pool's `cash` balance (see
      * `getPoolTokenInfo`).
+     *
+     * If the caller is not `sender`, it must be an authorized relayer for them.
      *
      * The `tokens` and `minAmountsOut` arrays must have the same length, and each entry in these indicates the minimum
      * token amount to receive for each token contract. The amounts to send are decided by the Pool and not the Vault:
@@ -328,7 +352,7 @@ interface IVault {
      */
     function exitPool(
         bytes32 poolId,
-        address provider,
+        address sender,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
@@ -413,8 +437,8 @@ interface IVault {
     // aware of the Pools' pricing algorithms in order to estimate the prices Pools will quote.
     //
     // Both swap functions are batched, meaning they perform multiple of swaps in sequence. In each individual swap,
-    // tokens of one kind are sent from the caller to the Pool (this is the 'token in'), and tokens of one
-    // other kind are sent from the Pool to the caller in exchange (this is the 'token out'). More complex swaps, such
+    // tokens of one kind are sent from the sender to the Pool (this is the 'token in'), and tokens of one
+    // other kind are sent from the Pool to the sender in exchange (this is the 'token out'). More complex swaps, such
     // as one token in to multiple tokens out can be achieved by batching together individual swaps.
     //
     // Additionally, it is possible to chain swaps by using the output of one of them as the input for the other, as
@@ -553,6 +577,8 @@ interface IVault {
     /**
      * @dev All tokens in a swap are sent to the Vault from the `sender`'s account, and sent to `recipient`.
      *
+     * If the caller is not `sender`, it must be an authorized relayer for them.
+     *
      * If `fromInternalBalance` is true, the `sender`'s Internal Balance will be preferred, performing an ERC20
      * transfer for the difference between the requested amount and the User's Internal Balance (if any). The `sender`
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
@@ -570,14 +596,14 @@ interface IVault {
     /**
      * @dev Simulates a call to `batchSwapGivenIn` or `batchSwapGivenOut`, returning an array of Vault token deltas.
      * Each element in the array corresponds to the token at the same index, and indicates the number of tokens the
-     * Vault would take from the caller (if positive) or send to the recipient (if negative). The arguments it receives
+     * Vault would take from the sender (if positive) or send to the recipient (if negative). The arguments it receives
      * are the same that an equivalent `batchSwapGivenOut` or `batchSwapGivenOut` call would receive, except the
      * `SwapRequest` struct is used instead, and the `kind` argument specifies whether the swap is given in or given
      * out.
      *
-     * Unlike `batchSwapGivenIn` and `batchSwapGivenOut`, this function performs no checks on its caller nor the
-     * recipient field in the `funds` struct. This makes it suitable to be called by off-chain applications via eth_call
-     * without needing to hold tokens, approve them for the Vault, or even know a user's address.
+     * Unlike `batchSwapGivenIn` and `batchSwapGivenOut`, this function performs no checks on the sender nor recipient
+     * field in the `funds` struct. This makes it suitable to be called by off-chain applications via eth_call without
+     * needing to hold tokens, approve them for the Vault, or even know a user's address.
      *
      * Note that this function is not 'view' (due to implementation details): the client code must explicitly execute
      * eth_call instead of eth_sendTransaction.
@@ -618,32 +644,6 @@ interface IVault {
         uint256[] calldata amounts,
         bytes calldata receiverData
     ) external;
-
-    // Authorizer
-    //
-    // Some system actions are permissioned, like setting and collecting protocol fees. This permissioning system exists
-    // outside of the Vault in the Authorizer contract: the Vault simply calls the Authorizer to check if the caller
-    // can perform a given action.
-
-    /**
-     * @dev Returns the Vault's Authorizer.
-     */
-    function getAuthorizer() external view returns (IAuthorizer);
-
-    /**
-     * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
-     */
-    function changeAuthorizer(IAuthorizer newAuthorizer) external;
-
-    /**
-     * @dev Tells whether a user has allowed a specific relayer
-     */
-    function hasAllowedRelayer(address user, address relayer) external view returns (bool);
-
-    /**
-     * @dev Changes the allowance for a relayer
-     */
-    function changeRelayerAllowance(address relayer, bool allowed) external;
 
     // Protocol Fees
     //
