@@ -29,7 +29,6 @@ import "./Authorization.sol";
 abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     using Math for uint256;
     using SafeERC20 for IERC20;
-    using FixedPoint for uint256;
 
     // Stores the fee collected per each token that is only withdrawable by the admin.
     mapping(IERC20 => uint256) private _collectedProtocolFees;
@@ -58,9 +57,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         uint256 newSwapFee,
         uint256 newWithdrawFee,
         uint256 newFlashLoanFee
-    ) external override nonReentrant {
-        getAuthorizer().validateCanSetProtocolFees(msg.sender);
-
+    ) external override nonReentrant authenticate {
         require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, "SWAP_FEE_TOO_HIGH");
         require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "WITHDRAW_FEE_TOO_HIGH");
         require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FLASH_LOAN_FEE_TOO_HIGH");
@@ -88,11 +85,11 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     }
 
     function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view returns (uint256) {
-        return amount.mulUp(_protocolWithdrawFee);
+        return FixedPoint.mulUp(amount, _protocolWithdrawFee);
     }
 
     function _calculateProtocolFlashLoanFeeAmount(uint256 swapFeeAmount) internal view returns (uint256) {
-        return swapFeeAmount.mulUp(_protocolFlashLoanFee);
+        return FixedPoint.mulUp(swapFeeAmount, _protocolFlashLoanFee);
     }
 
     function getCollectedFees(IERC20[] memory tokens) external view override returns (uint256[] memory) {
@@ -103,14 +100,11 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
-    ) external override nonReentrant {
+    ) external override nonReentrant authenticate {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
-        IAuthorizer authorizer = getAuthorizer();
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            authorizer.validateCanWithdrawCollectedFees(msg.sender, token);
-
             uint256 amount = amounts[i];
             _decreaseCollectedFees(token, amount);
             token.safeTransfer(recipient, amount);

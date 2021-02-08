@@ -16,8 +16,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./IFlashLoanReceiver.sol";
 import "./IAuthorizer.sol";
+import "./IFlashLoanReceiver.sol";
 
 pragma solidity ^0.7.1;
 
@@ -40,38 +40,39 @@ interface IVault {
     struct BalanceTransfer {
         IERC20 token;
         uint256 amount;
-        address account;
+        address source;
+        address destination;
     }
 
     /**
-     * @dev Returns `user`'s Internal Balance for a specific token.
+     * @dev Returns `user`'s Internal Balance for a set of tokens.
      */
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits tokens from the caller into Internal Balances of the users specified in the `account` field
-     * of the struct. The caller must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     * @dev Deposits tokens from each `source` address into Internal Balances of the corresponding `destination`
+     * accounts specified in the struct. The sources must have allowed the Vault to use their tokens via `IERC20.approve()`.
      * Allows aggregators to settle multiple accounts in a single transaction.
      */
     function depositToInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Withdraws tokens from the caller's Internal Balance, transferring them to the recipients
-     * specified in the `account` field of the struct. Allows aggregators to settle multiple accounts
-     * in a single transaction.
+     * @dev Withdraws tokens from each the internal balance of each `source` address into the `destination` accounts
+     * specified in the struct. Allows aggregators to settle multiple accounts in a single transaction.
      *
      * This charges protocol withdrawal fees.
      */
     function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Transfers tokens from the caller's Internal Balance, transferring them to Internal Balances
-     * of the recipients specified in the `account` field of the struct. Allows aggregators to settle multiple
-     * accounts in a single transaction.
+     * @dev Transfers tokens from the internal balance of each `source` address to Internal Balances
+     * of each `destination`. Allows aggregators to settle multiple accounts in a single transaction.
      *
      * This does not charge protocol withdrawal fees.
      */
     function transferInternalBalance(BalanceTransfer[] memory transfers) external;
+
+    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 balance);
 
     // Pools
 
@@ -146,7 +147,7 @@ interface IVault {
         address[] calldata assetManagers
     ) external;
 
-    event TokensRegistered(bytes32 poolId, IERC20[] tokens);
+    event TokensRegistered(bytes32 poolId, IERC20[] tokens, address[] assetManagers);
 
     /**
      * @dev Called by the Pool to unregisted `tokens`. This prevents adding and removing liquidity in the future, as
@@ -177,6 +178,7 @@ interface IVault {
      */
     function joinPool(
         bytes32 poolId,
+        address provider,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
@@ -208,6 +210,7 @@ interface IVault {
      */
     function exitPool(
         bytes32 poolId,
+        address provider,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
@@ -336,20 +339,29 @@ interface IVault {
     }
 
     /**
-     * @dev All tokens in a swap are sent to the Vault from the caller's account, and sent to `recipient`.
+     * @dev All tokens in a swap are sent to the Vault from the `sender`'s account, and sent to `recipient`.
      *
-     * If `fromInternalBalance` is true, the caller's Internal Balance will be preferred, performing an ERC20
-     * transfer for the difference between the requested amount and the User's Internal Balance (if any). The caller
+     * If `fromInternalBalance` is true, the `sender`'s Internal Balance will be preferred, performing an ERC20
+     * transfer for the difference between the requested amount and the User's Internal Balance (if any). The `sender`
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
      * `joinPool`.
      *     * If `tointernalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
      * transferred. This matches the behavior of `exitPool`.
      */
     struct FundManagement {
-        address recipient;
+        address sender;
         bool fromInternalBalance;
+        address recipient;
         bool toInternalBalance;
     }
+
+    event Swap(
+        bytes32 indexed poolId,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 tokensIn,
+        uint256 tokensOut
+    );
 
     // Swap query methods
 
@@ -463,6 +475,16 @@ interface IVault {
      */
     function changeAuthorizer(IAuthorizer newAuthorizer) external;
 
+    /**
+     * @dev Tells whether a user has allowed a specific relayer
+     */
+    function hasAllowedRelayer(address user, address relayer) external view returns (bool);
+
+    /**
+     * @dev Changes the allowance for a relayer
+     */
+    function changeRelayerAllowance(address relayer, bool allowed) external;
+
     // Protocol Fees
 
     /**
@@ -487,7 +509,7 @@ interface IVault {
      *
      * Requirements:
      *
-     * - The caller must be approved by the authorizer with `IAuthorizer.canSetProtocolFees`.
+     * - The caller must be approved by the authorizer.
      */
     function setProtocolFees(
         uint256 swapFee,

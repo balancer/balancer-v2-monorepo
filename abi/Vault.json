@@ -16,12 +16,6 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "depositor",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
         "name": "user",
         "type": "address"
       },
@@ -34,73 +28,11 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "amount",
+        "name": "balance",
         "type": "uint256"
       }
     ],
-    "name": "InternalBalanceDeposited",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "from",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "contract IERC20",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "InternalBalanceTransferred",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "user",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "recipient",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "contract IERC20",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "InternalBalanceWithdrawn",
+    "name": "InternalBalanceChanged",
     "type": "event"
   },
   {
@@ -285,6 +217,12 @@
         "internalType": "contract IERC20[]",
         "name": "tokens",
         "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "address[]",
+        "name": "assetManagers",
+        "type": "address[]"
       }
     ],
     "name": "TokensRegistered",
@@ -352,13 +290,18 @@
         "components": [
           {
             "internalType": "address",
-            "name": "recipient",
+            "name": "sender",
             "type": "address"
           },
           {
             "internalType": "bool",
             "name": "fromInternalBalance",
             "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
           },
           {
             "internalType": "bool",
@@ -435,13 +378,18 @@
         "components": [
           {
             "internalType": "address",
-            "name": "recipient",
+            "name": "sender",
             "type": "address"
           },
           {
             "internalType": "bool",
             "name": "fromInternalBalance",
             "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
           },
           {
             "internalType": "bool",
@@ -491,6 +439,24 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "relayer",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "allowed",
+        "type": "bool"
+      }
+    ],
+    "name": "changeRelayerAllowance",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "components": [
           {
             "internalType": "contract IERC20",
@@ -504,7 +470,12 @@
           },
           {
             "internalType": "address",
-            "name": "account",
+            "name": "source",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "destination",
             "type": "address"
           }
         ],
@@ -547,6 +518,11 @@
         "internalType": "bytes32",
         "name": "poolId",
         "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
       },
       {
         "internalType": "address",
@@ -795,9 +771,38 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "relayer",
+        "type": "address"
+      }
+    ],
+    "name": "hasAllowedRelayer",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "poolId",
         "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
       },
       {
         "internalType": "address",
@@ -873,13 +878,18 @@
         "components": [
           {
             "internalType": "address",
-            "name": "recipient",
+            "name": "sender",
             "type": "address"
           },
           {
             "internalType": "bool",
             "name": "fromInternalBalance",
             "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
           },
           {
             "internalType": "bool",
@@ -946,13 +956,18 @@
         "components": [
           {
             "internalType": "address",
-            "name": "recipient",
+            "name": "sender",
             "type": "address"
           },
           {
             "internalType": "bool",
             "name": "fromInternalBalance",
             "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
           },
           {
             "internalType": "bool",
@@ -1019,13 +1034,18 @@
         "components": [
           {
             "internalType": "address",
-            "name": "recipient",
+            "name": "sender",
             "type": "address"
           },
           {
             "internalType": "bool",
             "name": "fromInternalBalance",
             "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "recipient",
+            "type": "address"
           },
           {
             "internalType": "bool",
@@ -1129,7 +1149,12 @@
           },
           {
             "internalType": "address",
-            "name": "account",
+            "name": "source",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "destination",
             "type": "address"
           }
         ],
@@ -1223,7 +1248,12 @@
           },
           {
             "internalType": "address",
-            "name": "account",
+            "name": "source",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "destination",
             "type": "address"
           }
         ],

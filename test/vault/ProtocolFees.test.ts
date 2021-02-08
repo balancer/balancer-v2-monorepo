@@ -8,6 +8,7 @@ import { bn } from '../../lib/helpers/numbers';
 import { MAX_UINT256 } from '../../lib/helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens, mintTokens } from '../../lib/helpers/tokens';
+import { roleId } from '../../lib/helpers/roles';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
@@ -42,19 +43,20 @@ describe('Vault - protocol fees', () => {
   context('with collected protocol fees', () => {
     beforeEach(async () => {
       // Set a non-zero withdraw fee
-      await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), feeSetter.address);
+      const role = roleId(vault, 'setProtocolFees');
+      await authorizer.connect(admin).grantRole(role, feeSetter.address);
       await vault.connect(feeSetter).setProtocolFees(0, bn(0.01e18), 0);
 
       const transfersIn = [
-        { token: tokens.DAI.address, amount: bn(20e18), account: user.address },
-        { token: tokens.MKR.address, amount: bn(20e18), account: user.address },
+        { token: tokens.DAI.address, amount: bn(20e18), source: user.address, destination: user.address },
+        { token: tokens.MKR.address, amount: bn(20e18), source: user.address, destination: user.address },
       ];
 
       await vault.connect(user).depositToInternalBalance(transfersIn);
 
       const transfersOut = [
-        { token: tokens.DAI.address, amount: bn(5e18), account: user.address },
-        { token: tokens.MKR.address, amount: bn(10e18), account: user.address },
+        { token: tokens.DAI.address, amount: bn(5e18), source: user.address, destination: user.address },
+        { token: tokens.MKR.address, amount: bn(10e18), source: user.address, destination: user.address },
       ];
 
       // Withdraw internal balance - this will cause withdraw fees to be charged
@@ -67,9 +69,8 @@ describe('Vault - protocol fees', () => {
     });
 
     it('authorized accounts can withdraw protocol fees to any recipient', async () => {
-      await authorizer
-        .connect(admin)
-        .grantRole(await authorizer.WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
+      const role = roleId(vault, 'withdrawCollectedFees');
+      await authorizer.connect(admin).grantRole(role, feeCollector.address);
 
       await expectBalanceChange(
         () =>
@@ -85,9 +86,9 @@ describe('Vault - protocol fees', () => {
     });
 
     it('protocol fees cannot be over-withdrawn', async () => {
-      await authorizer
-        .connect(admin)
-        .grantRole(await authorizer.WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE(), feeCollector.address);
+      const role = roleId(vault, 'withdrawCollectedFees');
+
+      await authorizer.connect(admin).grantRole(role, feeCollector.address);
 
       await expect(
         vault.connect(feeCollector).withdrawCollectedFees([tokens.DAI.address], [bn(0.05e18).add(1)], other.address)
@@ -97,7 +98,7 @@ describe('Vault - protocol fees', () => {
     it('unauthorized accounts cannot withdraw collected fees', async () => {
       await expect(
         vault.connect(other).withdrawCollectedFees([tokens.DAI.address], [0], other.address)
-      ).to.be.revertedWith('CANNOT_WITHDRAW_FEES');
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
 });

@@ -43,6 +43,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
   console.log(`\n## ${useInternalBalance ? 'Using Internal Balance' : 'Sending and receiving tokens'}`);
 
   const funds: FundManagement = {
+    sender: trader.address,
     recipient: trader.address,
     fromInternalBalance: useInternalBalance,
     toInternalBalance: useInternalBalance,

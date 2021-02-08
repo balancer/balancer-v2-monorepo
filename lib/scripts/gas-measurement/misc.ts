@@ -42,7 +42,7 @@ export async function setupEnvironment(): Promise<{
   const transfers = [];
 
   for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-    transfers.push({ token: tokenAddresses[idx], amount: bn(1e18), account: trader.address });
+    transfers.push({ token: tokenAddresses[idx], amount: bn(1e18), source: trader.address, destination: trader.address});
   }
 
   await vault.connect(trader).depositToInternalBalance(transfers);
@@ -92,6 +92,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   await vault.connect(creator).joinPool(
     poolId,
+    creator.address,
     creator.address,
     tokenAddresses,
     tokenAddresses.map(() => initialPoolBalance), // These end up being the actual join amounts
