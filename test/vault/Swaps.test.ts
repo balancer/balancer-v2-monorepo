@@ -237,7 +237,21 @@ describe('Vault - swaps', () => {
                             await authorizer.connect(admin).revokeRole(role, other.address);
                           });
 
-                          assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          context('when the relayer is allowed by the user', () => {
+                            beforeEach('allow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                            });
+
+                            assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          });
+
+                          context('when the relayer is not allowed by the user', () => {
+                            beforeEach('disallow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                            });
+
+                            assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          });
                         });
                       });
                     });
@@ -617,7 +631,21 @@ describe('Vault - swaps', () => {
                             await authorizer.connect(admin).revokeRole(role, other.address);
                           });
 
-                          assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          context('when the relayer is allowed by the user', () => {
+                            beforeEach('allow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                            });
+
+                            assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          });
+
+                          context('when the relayer is not allowed by the user', () => {
+                            beforeEach('disallow relayer', async () => {
+                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                            });
+
+                            assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                          });
                         });
                       });
                     });

@@ -241,8 +241,24 @@ describe('Vault - join pool', () => {
                 await authorizer.connect(admin).revokeRole(role, relayer.address);
               });
 
-              it('reverts', async () => {
-                await expect(joinPool({ dueProtocolFeeAmounts })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+              context('when the relayer is allowed by the user', () => {
+                beforeEach('allow relayer', async () => {
+                  await vault.connect(lp).changeRelayerAllowance(relayer.address, true);
+                });
+
+                it('reverts', async () => {
+                  await expect(joinPool({ dueProtocolFeeAmounts })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+                });
+              });
+
+              context('when the relayer is not allowed by the user', () => {
+                beforeEach('disallow relayer', async () => {
+                  await vault.connect(lp).changeRelayerAllowance(relayer.address, false);
+                });
+
+                it('reverts', async () => {
+                  await expect(joinPool({ dueProtocolFeeAmounts })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+                });
               });
             });
           });

@@ -180,10 +180,28 @@ describe('Vault - internal balance', () => {
       });
 
       context('when the relayer is not whitelisted by the authorizer', () => {
-        it('reverts', async () => {
-          await expect(
-            vault.depositToInternalBalance(sender.address, [tokens.DAI.address], [initialBalance], recipient.address)
-          ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        context('when the relayer is allowed by the user', () => {
+          beforeEach('allow relayer', async () => {
+            await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
+          });
+
+          it('reverts', async () => {
+            await expect(
+              vault.depositToInternalBalance(sender.address, [tokens.DAI.address], [initialBalance], recipient.address)
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        });
+
+        context('when the relayer is not allowed by the user', () => {
+          beforeEach('disallow relayer', async () => {
+            await vault.connect(sender).changeRelayerAllowance(relayer.address, false);
+          });
+
+          it('reverts', async () => {
+            await expect(
+              vault.depositToInternalBalance(sender.address, [tokens.DAI.address], [initialBalance], recipient.address)
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
         });
       });
     });
@@ -368,15 +386,38 @@ describe('Vault - internal balance', () => {
       });
 
       context('when the relayer is not whitelisted by the authorizer', () => {
-        it('reverts', async () => {
-          await expect(
-            vault.withdrawFromInternalBalance(
-              sender.address,
-              [tokens.DAI.address],
-              [depositedAmount],
-              recipient.address
-            )
-          ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        context('when the relayer is allowed by the user', () => {
+          beforeEach('allow relayer', async () => {
+            await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
+          });
+
+          it('reverts', async () => {
+            await expect(
+              vault.withdrawFromInternalBalance(
+                sender.address,
+                [tokens.DAI.address],
+                [depositedAmount],
+                recipient.address
+              )
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        });
+
+        context('when the relayer is not allowed by the user', () => {
+          beforeEach('disallow relayer', async () => {
+            await vault.connect(sender).changeRelayerAllowance(relayer.address, false);
+          });
+
+          it('reverts', async () => {
+            await expect(
+              vault.withdrawFromInternalBalance(
+                sender.address,
+                [tokens.DAI.address],
+                [depositedAmount],
+                recipient.address
+              )
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
         });
       });
     });
@@ -646,15 +687,38 @@ describe('Vault - internal balance', () => {
       });
 
       context('when the relayer is not whitelisted by the authorizer', () => {
-        it('reverts', async () => {
-          await expect(
-            vault.transferInternalBalance(
-              sender.address,
-              tokenAddresses,
-              Object.values(transferredAmounts),
-              Array(tokenAddresses.length).fill(recipient.address)
-            )
-          ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        context('when the relayer is allowed by the user', () => {
+          beforeEach('allow relayer', async () => {
+            await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
+          });
+
+          it('reverts', async () => {
+            await expect(
+              vault.transferInternalBalance(
+                sender.address,
+                tokenAddresses,
+                Object.values(transferredAmounts),
+                Array(tokenAddresses.length).fill(recipient.address)
+              )
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        });
+
+        context('when the relayer is not allowed by the user', () => {
+          beforeEach('disallow relayer', async () => {
+            await vault.connect(sender).changeRelayerAllowance(relayer.address, false);
+          });
+
+          it('reverts', async () => {
+            await expect(
+              vault.transferInternalBalance(
+                sender.address,
+                tokenAddresses,
+                Object.values(transferredAmounts),
+                Array(tokenAddresses.length).fill(recipient.address)
+              )
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
         });
       });
     });
