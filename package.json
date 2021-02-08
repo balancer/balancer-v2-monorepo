@@ -27,7 +27,7 @@
     "lint:solidity": "solhint 'contracts/**/*.sol'",
     "lint:typescript": "eslint . --ext .ts",
     "test": "hardhat test",
-    "test:lib": "yarn test test/lib/*.test.ts",
+    "test:lib": "yarn test test/lib/*.test.ts test/pools/*.test.ts",
     "test:swaps": "yarn test test/vault/Swap*.test.ts",
     "test:join": "yarn test test/vault/JoinPool.test.ts",
     "test:exit": "yarn test test/vault/ExitPool.test.ts",
