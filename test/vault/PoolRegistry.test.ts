@@ -286,6 +286,7 @@ describe('Vault - pool registry', () => {
                   beforeEach('add some balance', async () => {
                     await vault.connect(lp).joinPool(
                       poolId,
+                      lp.address,
                       other.address,
                       tokenAddresses,
                       tokenAddresses.map(() => MAX_UINT256),
@@ -307,6 +308,7 @@ describe('Vault - pool registry', () => {
                       it('can unregister the tokens without balance', async () => {
                         await vault.connect(lp).exitPool(
                           poolId,
+                          lp.address,
                           other.address,
                           tokenAddresses,
                           tokenAddresses.map(() => 0),

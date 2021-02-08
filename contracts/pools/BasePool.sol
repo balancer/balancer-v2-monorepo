@@ -16,6 +16,7 @@ pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
 import "../lib/math/FixedPoint.sol";
+import "../lib/helpers/InputHelpers.sol";
 
 import "./BalancerPoolToken.sol";
 import "../vault/interfaces/IVault.sol";
@@ -33,6 +34,8 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
     uint256 private constant _MAX_TOKENS = 16;
 
     uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
+
+    uint256 private constant _MINIMUM_BPT = 10**3;
 
     IVault internal immutable _vault;
     bytes32 internal immutable _poolId;
@@ -70,6 +73,10 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
 
         require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
 
+        // Because these Pools will register tokens only once, if the tokens array is sorted, then the Pool tokens will
+        // have this same order. We rely on this property to make Pools simpler to write, as it lets us assume that the
+        // order of token-specific parameters (such as token weights) will not change.
+        InputHelpers.ensureArrayIsSorted(tokens);
         bytes32 poolId = vault.registerPool(specialization);
 
         // Pass in zero addresses for Asset Managers
@@ -135,7 +142,13 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
 
-            _mintPoolTokens(recipient, bptAmountOut);
+            // On initialization, we lock _MINIMUM_BPT by minting it for the zero address. This BPT acts as a minimum
+            // as it will never be burned, which reduces potential issues with rounding, and also prevents the Pool from
+            // ever being fully drained.
+            require(bptAmountOut >= _MINIMUM_BPT, "MINUMUM_BPT");
+            _mintPoolTokens(address(0), _MINIMUM_BPT);
+            _mintPoolTokens(recipient, bptAmountOut - _MINIMUM_BPT);
+
             return (amountsIn, new uint256[](_totalTokens));
         } else {
             (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(
