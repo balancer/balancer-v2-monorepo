@@ -448,11 +448,11 @@ abstract contract PoolRegistry is
     {
         assetManagers = new address[](tokens.length);
 
-        for (uint256 idx = 0; idx < tokens.length; ++idx) {
-            IERC20 token = tokens[idx];
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
 
             _ensureTokenRegistered(poolId, token);
-            assetManagers[idx] = _poolAssetManagers[poolId][token];
+            assetManagers[i] = _poolAssetManagers[poolId][token];
         }
     }
 
@@ -461,13 +461,14 @@ abstract contract PoolRegistry is
         override
         nonReentrant
     {
+        _ensureExistingPool(poolId);
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
 
-        for (uint256 idx = 0; idx < transfers.length; ++idx) {
-            IERC20 token = transfers[idx].token;
+        for (uint256 i = 0; i < transfers.length; ++i) {
+            IERC20 token = transfers[i].token;
             _ensurePoolAssetManagerIsSender(poolId, token);
 
-            uint256 amount = transfers[idx].amount;
+            uint256 amount = transfers[i].amount;
 
             if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
                 _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
@@ -488,13 +489,14 @@ abstract contract PoolRegistry is
         override
         nonReentrant
     {
+        _ensureExistingPool(poolId);
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
 
-        for (uint256 idx = 0; idx < transfers.length; ++idx) {
-            IERC20 token = transfers[idx].token;
+        for (uint256 i = 0; i < transfers.length; ++i) {
+            IERC20 token = transfers[i].token;
             _ensurePoolAssetManagerIsSender(poolId, token);
 
-            uint256 amount = transfers[idx].amount;
+            uint256 amount = transfers[i].amount;
 
             if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
                 _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
@@ -515,13 +517,14 @@ abstract contract PoolRegistry is
         override
         nonReentrant
     {
+        _ensureExistingPool(poolId);
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
 
-        for (uint256 idx = 0; idx < transfers.length; ++idx) {
-            IERC20 token = transfers[idx].token;
+        for (uint256 i = 0; i < transfers.length; ++i) {
+            IERC20 token = transfers[i].token;
             _ensurePoolAssetManagerIsSender(poolId, token);
 
-            uint256 amount = transfers[idx].amount;
+            uint256 amount = transfers[i].amount;
 
             if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
                 _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
@@ -559,7 +562,6 @@ abstract contract PoolRegistry is
     }
 
     function _ensurePoolAssetManagerIsSender(bytes32 poolId, IERC20 token) internal view {
-        _ensureExistingPool(poolId);
         _ensureTokenRegistered(poolId, token);
         require(_poolAssetManagers[poolId][token] == msg.sender, "SENDER_NOT_ASSET_MANAGER");
     }
