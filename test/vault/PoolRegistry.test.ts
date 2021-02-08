@@ -174,6 +174,7 @@ describe('Vault - pool registry', () => {
                     expectEvent.inIndirectReceipt(receipt, vault.interface, 'TokensRegistered', {
                       poolId,
                       tokens: tokenAddresses,
+                      assetManagers,
                     });
                   });
 

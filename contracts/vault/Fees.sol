@@ -29,7 +29,6 @@ import "./Authorization.sol";
 abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     using Math for uint256;
     using SafeERC20 for IERC20;
-    using FixedPoint for uint256;
 
     // Stores the fee collected per each token that is only withdrawable by the admin.
     mapping(IERC20 => uint256) private _collectedProtocolFees;
@@ -86,11 +85,11 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     }
 
     function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view returns (uint256) {
-        return amount.mulUp(_protocolWithdrawFee);
+        return FixedPoint.mulUp(amount, _protocolWithdrawFee);
     }
 
     function _calculateProtocolFlashLoanFeeAmount(uint256 swapFeeAmount) internal view returns (uint256) {
-        return swapFeeAmount.mulUp(_protocolFlashLoanFee);
+        return FixedPoint.mulUp(swapFeeAmount, _protocolFlashLoanFee);
     }
 
     function getCollectedFees(IERC20[] memory tokens) external view override returns (uint256[] memory) {

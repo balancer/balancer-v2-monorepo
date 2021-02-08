@@ -109,7 +109,7 @@ contract GeneralPoolsBalance {
     function _updateGeneralPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        function(bytes32, uint256) pure returns (bytes32) mutation,
+        function(bytes32, uint256) returns (bytes32) mutation,
         uint256 amount
     ) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];

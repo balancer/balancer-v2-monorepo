@@ -22,6 +22,22 @@ library FixedPoint {
     uint256 internal constant MAX_POW_BASE = (2 * ONE) - 1 wei;
     uint256 internal constant POW_PRECISION = ONE / 10**10;
 
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Fixed Point addition is the same as regular checked addition
+
+        uint256 c = a + b;
+        require(c >= a, "ADD_OVERFLOW");
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Fixed Point addition is the same as regular checked addition
+
+        require(b <= a, "SUB_OVERFLOW");
+        uint256 c = a - b;
+        return c;
+    }
+
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c0 = a * b;
         require(a == 0 || c0 / a == b, "MUL_OVERFLOW");
