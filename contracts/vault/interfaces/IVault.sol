@@ -141,7 +141,7 @@ interface IVault {
         address[] calldata assetManagers
     ) external;
 
-    event TokensRegistered(bytes32 poolId, IERC20[] tokens);
+    event TokensRegistered(bytes32 poolId, IERC20[] tokens, address[] assetManagers);
 
     /**
      * @dev Called by the Pool to unregisted `tokens`. This prevents adding and removing liquidity in the future, as
@@ -345,6 +345,14 @@ interface IVault {
         bool fromInternalBalance;
         bool toInternalBalance;
     }
+
+    event Swap(
+        bytes32 indexed poolId,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 tokensIn,
+        uint256 tokensOut
+    );
 
     // Swap query methods
 

@@ -182,10 +182,9 @@ abstract contract PoolRegistry is
 
             // The asset manager feature is disabled by setting it to the zero address
             _poolAssetManagers[poolId][token] = assetManager;
-            emit PoolAssetManagerSet(poolId, token, assetManager);
         }
 
-        emit TokensRegistered(poolId, tokens);
+        emit TokensRegistered(poolId, tokens, assetManagers);
     }
 
     function unregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
