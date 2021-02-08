@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -41,20 +41,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     // Despite the external API having two separate functions for given in and given out, internally their are handled
     // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
-    enum SwapKind { GIVEN_IN, GIVEN_OUT }
-
-    // This struct is identical in layout to SwapIn and SwapOut, except the 'amountIn/Out' field is named 'amount'.
-    struct InternalSwap {
-        bytes32 poolId;
-        uint256 tokenInIndex;
-        uint256 tokenOutIndex;
-        uint256 amount;
-        bytes userData;
-    }
 
     // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
     // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
-
     function batchSwapGivenIn(
         SwapIn[] memory swaps,
         IERC20[] memory tokens,
@@ -80,11 +69,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     // We use inline assembly to cast from the external struct types to the internal one. This doesn't trigger any
     // conversions or runtime analysis: it is just coercing the type system to reinterpret the data as another type.
 
-    function _toInternalSwap(SwapIn[] memory swapsIn)
-        private
-        pure
-        returns (InternalSwap[] memory internalSwapRequests)
-    {
+    function _toInternalSwap(SwapIn[] memory swapsIn) private pure returns (SwapRequest[] memory internalSwapRequests) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             internalSwapRequests := swapsIn
@@ -94,7 +79,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     function _toInternalSwap(SwapOut[] memory swapsOut)
         private
         pure
-        returns (InternalSwap[] memory internalSwapRequests)
+        returns (SwapRequest[] memory internalSwapRequests)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
@@ -145,7 +130,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      * @dev Implements both `batchSwapGivenIn` and `batchSwapGivenIn` depending on the `kind` value.
      */
     function _batchSwap(
-        InternalSwap[] memory swaps,
+        SwapRequest[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
         int256[] memory limits,
@@ -252,7 +237,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      * and negative if it should send them.
      */
     function _swapWithPools(
-        InternalSwap[] memory swaps,
+        SwapRequest[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
@@ -265,7 +250,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each loop
         // iteration, increasing gas costs.
-        InternalSwap memory swap;
+        SwapRequest memory swap;
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
             require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "OUT_OF_BOUNDS");
@@ -317,7 +302,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     function _swapWithPool(
         IERC20 tokenIn,
         IERC20 tokenOut,
-        InternalSwap memory swap,
+        SwapRequest memory swap,
         address from,
         address to,
         LastSwapData memory previous,
@@ -517,59 +502,36 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
     }
 
-    function queryBatchSwapGivenIn(
-        SwapIn[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds
+    // This function is not marked as `nonReentrant` because the underlying query mechanism relies on reentrancy
+    function queryBatchSwap(
+        SwapKind kind,
+        SwapRequest[] memory swaps,
+        IERC20[] memory tokens,
+        FundManagement memory funds
     ) external override returns (int256[] memory) {
-        // This function is not marked as `nonReentrant` because the underlying query mechanism relies on reentrancy
-        return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_IN);
-    }
-
-    function queryBatchSwapGivenOut(
-        SwapOut[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds
-    ) external override returns (int256[] memory) {
-        // This function is not marked as `nonReentrant` because the underlying query mechanism relies on reentrancy
-        return _callQueryBatchSwapHelper(_toInternalSwap(swaps), tokens, funds, SwapKind.GIVEN_OUT);
-    }
-
-    function _callQueryBatchSwapHelper(
-        InternalSwap[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds,
-        SwapKind kind
-    ) private returns (int256[] memory tokenDeltas) {
-        try this.queryBatchSwapHelper(swaps, tokens, funds, kind)  {
-            // This call should never revert, but it is still useful to use the try-catch syntax as it provides
-            // automatic decoding of the returndata.
-            assert(false);
-        } catch Error(string memory reason) {
-            tokenDeltas = abi.decode(bytes(reason), (int256[]));
+        if (msg.sender != address(this)) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = address(this).call(msg.data);
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                // This call should always revert to decode the actual token deltas from the revert reason
+                switch success
+                    case 0 {
+                        mstore(0, 0x20) // manually abi.encode the array of token deltas
+                        returndatacopy(0x20, 0, returndatasize()) // copy to 0x20 the array of token deltas
+                        return(0, add(returndatasize(), 0x20)) // return 1 word extra for the abi.encode
+                    }
+                    default {
+                        invalid()
+                    }
+            }
+        } else {
+            int256[] memory deltas = _swapWithPools(swaps, tokens, funds, kind);
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                let size := mul(mload(deltas), 0x20)
+                revert(deltas, add(size, 0x20))
+            }
         }
-    }
-
-    /**
-     * @dev Despite this function being external, it can only be called by the Vault itself, and should not be
-     * considered part of the Vault's external API.
-     *
-     * It executes the Pool interaction part of a batch swap, calling swap request callbacks on pools and computing,
-     * the Vault deltas, but without performing any token transfers. It then reverts unconditionally, returning the
-     * Vault deltas array as the revert data.
-     *
-     * This enables an accurate implementation of queryBatchSwapGivenIn and queryBatchSwapGivenOut, since the array
-     * 'returned' by this function is the result of the exact same computation a swap would perform, including the Pool
-     * calls.
-     */
-    function queryBatchSwapHelper(
-        InternalSwap[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds,
-        SwapKind kind
-    ) external {
-        require(msg.sender == address(this), "CALLER_NOT_VAULT");
-        int256[] memory tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
-        revert(string(abi.encode(tokenDeltas)));
     }
 }

@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAuthorizer.sol";
 import "./IFlashLoanReceiver.sol";
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 // Full external interface for the Vault core contract - no external or public methods exist in the contract that don't
 // override one of these declarations.
@@ -362,24 +362,16 @@ interface IVault {
 
     // Swap query methods
 
-    /**
-     * @dev Simulates a call to batchSwapGivenIn, returning an array of Vault token deltas. Each element in the array
-     * corresponds to the token at the same index, and indicates the number of tokens the Vault would take from the
-     * caller (if positive) or send to the recipient (if negative). The arguments it receives are the same that
-     * an equivalent batchSwapGivenIn would receive.
-     *
-     * Unlike batchSwapGivenIn, this function performs no checks on its caller nor the recipient field in the
-     * FundsManagement struct. This makes it suitable to be called by off-chain applications via eth_call without
-     * needing to hold tokens, approve them for the Vault, or even know a user's address.
-     *
-     * Note that this function is not 'view' (due to implementation details): the client code must explicitly execute
-     * eth_call instead of eth_sendTransaction.
-     */
-    function queryBatchSwapGivenIn(
-        SwapIn[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds
-    ) external returns (int256[] memory);
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
+
+    // This struct is identical in layout to SwapIn and SwapOut, except the 'amountIn/Out' field is named 'amount'.
+    struct SwapRequest {
+        bytes32 poolId;
+        uint256 tokenInIndex;
+        uint256 tokenOutIndex;
+        uint256 amount;
+        bytes userData;
+    }
 
     /**
      * @dev Simulates a call to batchSwapGivenOut, returning an array of Vault token deltas. Each element in the array
@@ -394,11 +386,12 @@ interface IVault {
      * Note that this function is not 'view' (due to implementation details): the client code must explicitly execute
      * eth_call instead of eth_sendTransaction.
      */
-    function queryBatchSwapGivenOut(
-        SwapOut[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds
-    ) external returns (int256[] memory);
+    function queryBatchSwap(
+        SwapKind kind,
+        SwapRequest[] memory swaps,
+        IERC20[] memory tokens,
+        FundManagement memory funds
+    ) external returns (int256[] memory tokenDeltas);
 
     // Flash Loan interface
 

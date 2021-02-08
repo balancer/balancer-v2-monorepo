@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -41,7 +41,6 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
     IVault internal immutable _vault;
     bytes32 internal immutable _poolId;
     uint256 internal immutable _swapFee;
-
     uint256 internal immutable _totalTokens;
 
     IERC20 internal immutable _token0;
