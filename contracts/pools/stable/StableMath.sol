@@ -13,8 +13,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.1;
-import "hardhat/console.sol";
 
+import "../../lib/math/Math.sol";
 import "../../lib/math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
@@ -24,7 +24,7 @@ import "../../lib/math/FixedPoint.sol";
 // solhint-disable var-name-mixedcase
 
 contract StableMath {
-    using FixedPoint for uint256;
+    using Math for uint256;
 
     /**********************************************************************************************
     // invariant                                                                                 //
@@ -38,37 +38,36 @@ contract StableMath {
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
         for (uint256 i = 0; i < totalCoins; i++) {
-            sum = sum + balances[i];
+            sum = sum.add(balances[i]);
         }
         if (sum == 0) {
             return 0;
         }
         uint256 prevInv = 0;
         uint256 inv = sum;
-        uint256 ampTimesTotal = amp * totalCoins;
+        uint256 ampTimesTotal = amp.mul(totalCoins);
 
         for (uint256 i = 0; i < 255; i++) {
-            uint256 P_D = totalCoins * balances[0];
+            uint256 P_D = totalCoins.mul(balances[0]);
             for (uint256 j = 1; j < totalCoins; j++) {
                 //P_D is rounded up
-                P_D = (((P_D * balances[j] * totalCoins) - 1) / inv) + 1;
+                P_D = P_D.mul(balances[j]).mul(totalCoins).divUp(inv);
             }
             prevInv = inv;
             //inv is rounded up
-            inv =
-                (((totalCoins * inv * inv + ampTimesTotal * sum * P_D) - 1) /
-                    ((totalCoins + 1) * inv + (ampTimesTotal - 1) * P_D)) +
-                1;
+            inv = totalCoins.mul(inv).mul(inv).add(ampTimesTotal.mul(sum).mul(P_D)).divUp(
+                totalCoins.add(1).mul(inv).add((ampTimesTotal.sub(1).mul(P_D)))
+            );
             // Equality with the precision of 1
             if (inv > prevInv) {
-                if ((inv - prevInv) <= 1) {
+                if ((inv.sub(prevInv)) <= 1) {
                     break;
                 }
-            } else if ((prevInv - inv) <= 1) {
+            } else if ((prevInv.sub(inv)) <= 1) {
                 break;
             }
         }
-        //Result is rownded up
+        //Result is rounded up
         return inv;
     }
 
@@ -99,26 +98,23 @@ contract StableMath {
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
             if (i == tokenIndexOut) {
-                x = balances[i] - tokenAmountOut;
+                x = balances[i].sub(tokenAmountOut);
             } else if (i != tokenIndexIn) {
                 x = balances[i];
             } else {
                 continue;
             }
-            sum += x;
-            nn = totalCoins * totalCoins;
+            sum = sum.add(x);
+            nn = totalCoins.mul(totalCoins);
             //Round up p
-            p = (((p * inv) - 1) / x) + 1;
+            p = p.mul(inv).divUp(x);
         }
-        //Round up p
-        p = (((p * inv) - 1) / (amp * nn * nn)) + 1;
-        //Round down b
-        uint256 b = sum + inv / (amp * nn);
-        uint256 c = ((inv - b) + FixedPoint.sqrtUp((inv - b) * (inv - b) + 4 * p));
-        //Round up y
-        uint256 y = c == 0 ? 0 : ((c - 1) / 2) + 1;
-        //Result is rownded up
-        return y - balances[tokenIndexIn];
+
+        //Calculate in balance
+        uint256 y = _calculateBalance(sum, inv, amp, nn, p);
+
+        //Result is rounded up
+        return y.sub(balances[tokenIndexIn]);
     }
 
     /**********************************************************************************************
@@ -148,26 +144,23 @@ contract StableMath {
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
             if (i == tokenIndexIn) {
-                x = balances[i] + tokenAmountIn;
+                x = balances[i].add(tokenAmountIn);
             } else if (i != tokenIndexOut) {
                 x = balances[i];
             } else {
                 continue;
             }
-            sum += x;
-            nn = totalCoins * totalCoins;
+            sum = sum.add(x);
+            nn = totalCoins.mul(totalCoins);
             //Round up p
-            p = (((p * inv) - 1) / x) + 1;
+            p = p.mul(inv).divUp(x);
         }
-        //Round up p
-        p = (((p * inv) - 1) / (amp * nn * nn)) + 1;
-        //Round down b
-        uint256 b = sum + inv / (amp * nn);
-        uint256 c = ((inv - b) + FixedPoint.sqrtUp((inv - b) * (inv - b) + 4 * p));
-        //Round up y
-        uint256 y = c == 0 ? 0 : ((c - 1) / 2) + 1;
-        //Result is rownded down
-        return balances[tokenIndexOut] > y ? balances[tokenIndexOut] - y : 0;
+
+        //Calculate out balance
+        uint256 y = _calculateBalance(sum, inv, amp, nn, p);
+
+        //Result is rounded down
+        return balances[tokenIndexOut] > y ? balances[tokenIndexOut].sub(y) : 0;
     }
 
     function _allTokensInForExactBPTOut(
@@ -187,11 +180,9 @@ contract StableMath {
         // Since we're computing an amount in, we round up overall. This means rouding up on both the multiplication and
         // division.
 
-        uint256 bptRatio = bptAmountOut.divUp(totalBPT);
-
         uint256[] memory amountsOut = new uint256[](currentBalances.length);
         for (uint256 i = 0; i < currentBalances.length; i++) {
-            amountsOut[i] = currentBalances[i].mulUp(bptRatio);
+            amountsOut[i] = currentBalances[i].mul(bptAmountOut).divUp(totalBPT);
         }
 
         return amountsOut;
@@ -214,11 +205,9 @@ contract StableMath {
         // Since we're computing an amount out, we round down overall. This means rouding down on both the
         // multiplication and division.
 
-        uint256 bptRatio = bptAmountIn.divDown(totalBPT);
-
         uint256[] memory amountsOut = new uint256[](currentBalances.length);
         for (uint256 i = 0; i < currentBalances.length; i++) {
-            amountsOut[i] = currentBalances[i].mulDown(bptRatio);
+            amountsOut[i] = currentBalances[i].mul(bptAmountIn).divDown(totalBPT);
         }
 
         return amountsOut;
@@ -258,20 +247,38 @@ contract StableMath {
             } else {
                 continue;
             }
-            sum += x;
-            nn = totalCoins * totalCoins;
+            sum = sum.add(x);
+            nn = totalCoins.mul(totalCoins);
             //Round up p
-            p = (((p * inv) - 1) / x) + 1;
+            p = p.mul(inv).divUp(x);
         }
+
+        //Calculate token balance balance
+        uint256 y = _calculateBalance(sum, inv, amp, nn, p);
+
+        //Result is rounded down
+        uint256 accumulatedTokenSwapFees = balances[tokenIndex] > y ? balances[tokenIndex].sub(y) : 0;
+        return accumulatedTokenSwapFees.mul(protocolSwapFeePercentage).divUp(FixedPoint.ONE);
+    }
+
+    //Private functions
+
+    function _calculateBalance(
+        uint256 sum,
+        uint256 inv,
+        uint256 amp,
+        uint256 nn,
+        uint256 p
+    ) private pure returns (uint256 y) {
         //Round up p
-        p = (((p * inv) - 1) / (amp * nn * nn)) + 1;
+        p = p.mul(inv).divUp(amp.mul(nn).mul(nn));
         //Round down b
-        uint256 b = sum + inv / (amp * nn);
-        uint256 c = ((inv - b) + FixedPoint.sqrtUp((inv - b) * (inv - b) + 4 * p));
+        uint256 b = sum.add(inv.divDown(amp.mul(nn)));
+        //Round up c
+        uint256 c = inv >= b
+            ? inv.sub(b).add(Math.sqrtUp(inv.sub(b).mul(inv.sub(b)).add(p.mul(4))))
+            : Math.sqrtUp(b.sub(inv).mul(b.sub(inv)).add(p.mul(4))).sub(b.sub(inv));
         //Round up y
-        uint256 y = c == 0 ? 0 : ((c - 1) / 2) + 1;
-        //Result is rownded down
-        uint256 accumulatedTokenSwapFees = balances[tokenIndex] > y ? balances[tokenIndex] - y : 0;
-        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage);
+        y = c == 0 ? 0 : c.divUp(2);
     }
 }
