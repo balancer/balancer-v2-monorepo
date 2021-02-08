@@ -88,8 +88,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         JoinKind kind = abi.decode(userData, (JoinKind));
         require(kind == JoinKind.INIT, "UNINITIALIZED");
 
-        (, uint256[] memory amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
-        InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
+        uint256[] memory amountsIn = _decodeInitialize(userData);
 
         uint256 invariantAfterJoin = StableMath._invariant(_amp, amountsIn);
         uint256 bptAmountOut = invariantAfterJoin;
@@ -97,6 +96,13 @@ contract StablePool is BaseGeneralPool, StableMath {
         _lastInvariant = invariantAfterJoin;
 
         return (bptAmountOut, amountsIn);
+    }
+
+    function _decodeInitialize(bytes memory userData) private view returns (uint256[] memory amountsIn) {
+        (, amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
+
+        _upscaleArray(amountsIn, _scalingFactors());
     }
 
     // Join
@@ -160,7 +166,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256, uint256[] memory)
     {
-        (, uint256 bptAmountOut) = abi.decode(userData, (JoinKind, uint256));
+        uint256 bptAmountOut = _decodeJoinAllTokensInForExactBPTOut(userData);
 
         uint256[] memory amountsIn = StableMath._allTokensInForExactBPTOut(
             currentBalances,
@@ -169,6 +175,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         );
 
         return (bptAmountOut, amountsIn);
+    }
+
+    function _decodeJoinAllTokensInForExactBPTOut(bytes memory userData) private pure returns (uint256 bptAmountOut) {
+        (, bptAmountOut) = abi.decode(userData, (JoinKind, uint256));
     }
 
     // Exit
@@ -232,7 +242,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256, uint256[] memory)
     {
-        (, uint256 bptAmountIn) = abi.decode(userData, (ExitKind, uint256));
+        uint256 bptAmountIn = _decodeExitExactBPTInForAllTokensOut(userData);
 
         uint256[] memory amountsOut = StableMath._exactBPTInForAllTokensOut(
             currentBalances,
@@ -241,6 +251,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         );
 
         return (bptAmountIn, amountsOut);
+    }
+
+    function _decodeExitExactBPTInForAllTokensOut(bytes memory userData) private pure returns (uint256 bptAmountIn) {
+        (, bptAmountIn) = abi.decode(userData, (JoinKind, uint256));
     }
 
     // Helpers
