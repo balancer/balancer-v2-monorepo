@@ -102,7 +102,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256 currentInternalBalance = _getInternalBalance(account, token);
         uint256 newBalance = currentInternalBalance.add(amount);
         _setInternalBalance(account, token, newBalance);
-        emit InternalBalanceChanged(account, token, amount, true);
     }
 
     function _decreaseInternalBalance(
@@ -114,7 +113,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         require(currentInternalBalance >= amount, "INSUFFICIENT_INTERNAL_BALANCE");
         uint256 newBalance = currentInternalBalance - amount;
         _setInternalBalance(account, token, newBalance);
-        emit InternalBalanceChanged(account, token, amount, false);
     }
 
     function _setInternalBalance(
@@ -123,6 +121,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256 balance
     ) internal {
         _internalTokenBalance[account][token] = balance;
+        emit InternalBalanceChanged(account, token, balance);
     }
 
     function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {

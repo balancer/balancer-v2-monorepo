@@ -28,14 +28,8 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "amount",
+        "name": "balance",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "positive",
-        "type": "bool"
       }
     ],
     "name": "InternalBalanceChanged",

@@ -66,7 +66,7 @@ interface IVault {
         address[] memory recipients
     ) external;
 
-    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 amount, bool positive);
+    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 balance);
 
     // Pools
 

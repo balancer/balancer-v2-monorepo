@@ -80,28 +80,25 @@ describe('Vault - internal balance', () => {
               expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
                 user: recipient.address,
                 token: tokens.DAI.address,
-                amount,
-                positive: true,
+                balance: amount,
               });
             });
           });
 
           context('when tokens and balances are mismatched', () => {
             it('reverts', async () => {
-              const badDeposit = vault.depositToInternalBalance(
-                [tokens.DAI.address, tokens.MKR.address],
-                [amount],
-                recipient.address
-              );
-              await expect(badDeposit).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+              await expect(
+                vault.depositToInternalBalance([tokens.DAI.address, tokens.MKR.address], [amount], recipient.address)
+              ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
             });
           });
         });
 
         context('when the given amount is not approved by the sender', () => {
           it('reverts', async () => {
-            const deposit = vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address);
-            await expect(deposit).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
+            await expect(
+              vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address)
+            ).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
           });
         });
       });
@@ -169,8 +166,7 @@ describe('Vault - internal balance', () => {
               expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
                 user: sender.address,
                 token: tokens.DAI.address,
-                amount,
-                positive: false,
+                balance: depositedAmount.sub(amount),
               });
             });
           });
@@ -205,12 +201,9 @@ describe('Vault - internal balance', () => {
 
         context('when tokens and balances are mismatched', () => {
           it('reverts', async () => {
-            const badWithdrawal = vault.withdrawFromInternalBalance(
-              [tokens.DAI.address, tokens.MKR.address],
-              [amount],
-              recipient.address
-            );
-            await expect(badWithdrawal).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+            await expect(
+              vault.withdrawFromInternalBalance([tokens.DAI.address, tokens.MKR.address], [amount], recipient.address)
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           });
         });
       };
@@ -271,132 +264,136 @@ describe('Vault - internal balance', () => {
         }
 
         const balances = Object.values(initialBalances);
-
         await vault.depositToInternalBalance(tokenAddresses, balances, sender.address);
       });
     }
 
-    function itHandlesTransfersProperly(transferredAmounts: Dictionary<BigNumber>) {
+    function itHandlesTransfersProperly(
+      initialBalances: Dictionary<BigNumber>,
+      transferredAmounts: Dictionary<BigNumber>
+    ) {
       const amounts = Object.values(transferredAmounts);
-      let idx;
 
-      it('transfers the tokens from the sender to a single recipient', async () => {
-        const previousSenderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
-        const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
+      context('when the given input is correct', () => {
+        it('transfers the tokens from the sender to a single recipient', async () => {
+          const previousSenderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
+          const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
 
-        await vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address));
+          await vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address));
 
-        const senderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
-        const recipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
+          const senderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
+          const recipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
 
-        for (idx = 1; idx < tokenAddresses.length; idx++) {
-          expect(senderBalances[idx]).to.equal(previousSenderBalances[idx].sub(amounts[idx]));
-          expect(recipientBalances[idx]).to.equal(previousRecipientBalances[idx].add(amounts[idx]));
-        }
-      });
+          for (let i = 0; i < tokenAddresses.length; i++) {
+            expect(senderBalances[i]).to.equal(previousSenderBalances[i].sub(amounts[i]));
+            expect(recipientBalances[i]).to.equal(previousRecipientBalances[i].add(amounts[i]));
+          }
+        });
 
-      it('transfers the tokens from the sender to multiple recipients', async () => {
-        const previousSenderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
-        const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
-        const previousOtherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokenAddresses);
+        it('transfers the tokens from the sender to multiple recipients', async () => {
+          const previousSenderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
+          const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
+          const previousOtherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokenAddresses);
 
-        await vault.transferInternalBalance(tokenAddresses, amounts, [recipient.address, otherRecipient.address]);
+          await vault.transferInternalBalance(tokenAddresses, amounts, [recipient.address, otherRecipient.address]);
 
-        const senderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
-        const recipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
-        const otherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokenAddresses);
+          const senderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
+          const recipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
+          const otherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokenAddresses);
 
-        for (idx = 1; idx < tokenAddresses.length; idx++) {
-          expect(senderBalances[idx]).to.equal(previousSenderBalances[idx].sub(amounts[idx]));
-        }
+          for (let i = 0; i < tokenAddresses.length; i++) {
+            expect(senderBalances[i]).to.equal(previousSenderBalances[i].sub(amounts[i]));
+          }
 
-        expect(recipientBalances[0]).to.equal(previousRecipientBalances[0].add(amounts[0]));
-        expect(recipientBalances[1]).to.equal(previousRecipientBalances[1]);
+          expect(recipientBalances[0]).to.equal(previousRecipientBalances[0].add(amounts[0]));
+          expect(recipientBalances[1]).to.equal(previousRecipientBalances[1]);
 
-        expect(otherRecipientBalances[0]).to.equal(previousOtherRecipientBalances[0]);
-        expect(otherRecipientBalances[1]).to.equal(previousOtherRecipientBalances[1].add(amounts[1]));
-      });
+          expect(otherRecipientBalances[0]).to.equal(previousOtherRecipientBalances[0]);
+          expect(otherRecipientBalances[1]).to.equal(previousOtherRecipientBalances[1].add(amounts[1]));
+        });
 
-      it('does not affect the token balances of the sender nor the recipient', async () => {
-        const previousBalances: Dictionary<Dictionary<BigNumber>> = {};
+        it('does not affect the token balances of the sender nor the recipient', async () => {
+          const previousBalances: Dictionary<Dictionary<BigNumber>> = {};
 
-        for (const symbol in tokens) {
-          const senderBalance = await tokens[symbol].balanceOf(sender.address);
-          const recipientBalance = await tokens[symbol].balanceOf(recipient.address);
-          previousBalances[symbol] = { sender: senderBalance, recipient: recipientBalance };
-        }
+          for (const symbol in tokens) {
+            const senderBalance = await tokens[symbol].balanceOf(sender.address);
+            const recipientBalance = await tokens[symbol].balanceOf(recipient.address);
+            previousBalances[symbol] = { sender: senderBalance, recipient: recipientBalance };
+          }
 
-        await vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address));
+          await vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address));
 
-        for (const symbol in tokens) {
-          const senderBalance = await tokens[symbol].balanceOf(sender.address);
-          expect(senderBalance).to.equal(previousBalances[symbol].sender);
+          for (const symbol in tokens) {
+            const senderBalance = await tokens[symbol].balanceOf(sender.address);
+            expect(senderBalance).to.equal(previousBalances[symbol].sender);
 
-          const recipientBalance = await tokens[symbol].balanceOf(recipient.address);
-          expect(recipientBalance).to.equal(previousBalances[symbol].recipient);
-        }
-      });
+            const recipientBalance = await tokens[symbol].balanceOf(recipient.address);
+            expect(recipientBalance).to.equal(previousBalances[symbol].recipient);
+          }
+        });
 
-      context('when tokens and balances are mismatched', () => {
-        it('reverts', async () => {
-          const badWithdrawal = vault.transferInternalBalance(
-            [tokens.DAI.address],
-            amounts,
-            Array(amounts.length).fill(recipient.address)
-          );
-          await expect(badWithdrawal).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        it('emits an event for each transfer', async () => {
+          const receipt = await (
+            await vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address))
+          ).wait();
+
+          expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+            user: sender.address,
+            token: tokens.DAI.address,
+            balance: initialBalances.DAI.sub(transferredAmounts.DAI),
+          });
+
+          expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+            user: recipient.address,
+            token: tokens.DAI.address,
+            balance: transferredAmounts.DAI,
+          });
+
+          expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+            user: sender.address,
+            token: tokens.MKR.address,
+            balance: initialBalances.MKR.sub(transferredAmounts.MKR),
+          });
+
+          expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+            user: recipient.address,
+            token: tokens.MKR.address,
+            balance: transferredAmounts.MKR,
+          });
         });
       });
 
-      context('when tokens and recipients are mismatched', () => {
-        it('reverts', async () => {
-          const badWithdrawal = vault.transferInternalBalance(tokenAddresses, amounts, [recipient.address]);
-          await expect(badWithdrawal).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-        });
-      });
-
-      context('when balances and recipients are mismatched', () => {
-        it('reverts', async () => {
-          const badWithdrawal = vault.transferInternalBalance(
-            tokenAddresses,
-            [(10e18).toString()],
-            Array(amounts.length).fill(recipient.address)
-          );
-          await expect(badWithdrawal).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-        });
-      });
-
-      it('emits an event for each transfer', async () => {
-        const receipt = await (
-          await vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address))
-        ).wait();
-
-        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
-          user: sender.address,
-          token: tokens.DAI.address,
-          amount: transferredAmounts.DAI,
-          positive: false,
+      context('when the given input is not correct', () => {
+        context('when tokens and balances are mismatched', () => {
+          it('reverts', async () => {
+            await expect(
+              vault.transferInternalBalance(
+                [tokens.DAI.address],
+                amounts,
+                Array(amounts.length).fill(recipient.address)
+              )
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
         });
 
-        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
-          user: recipient.address,
-          token: tokens.DAI.address,
-          amount: transferredAmounts.DAI,
-          positive: true,
+        context('when tokens and recipients are mismatched', () => {
+          it('reverts', async () => {
+            await expect(
+              vault.transferInternalBalance(tokenAddresses, amounts, [recipient.address])
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
         });
 
-        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
-          user: sender.address,
-          token: tokens.MKR.address,
-          amount: transferredAmounts.MKR,
-          positive: false,
-        });
-
-        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
-          user: recipient.address,
-          token: tokens.MKR.address,
-          amount: transferredAmounts.MKR,
-          positive: true,
+        context('when balances and recipients are mismatched', () => {
+          it('reverts', async () => {
+            await expect(
+              vault.transferInternalBalance(
+                tokenAddresses,
+                [(10e18).toString()],
+                Array(amounts.length).fill(recipient.address)
+              )
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
         });
       });
     }
@@ -404,12 +401,9 @@ describe('Vault - internal balance', () => {
     function itReverts(transferredAmounts: Dictionary<BigNumber>, errorReason = 'INSUFFICIENT_INTERNAL_BALANCE') {
       it('reverts', async () => {
         const amounts = Object.values(transferredAmounts);
-        const transfer = vault.transferInternalBalance(
-          tokenAddresses,
-          amounts,
-          Array(amounts.length).fill(recipient.address)
-        );
-        await expect(transfer).to.be.revertedWith(errorReason);
+        await expect(
+          vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address))
+        ).to.be.revertedWith(errorReason);
       });
     }
 
@@ -417,9 +411,10 @@ describe('Vault - internal balance', () => {
       const transferredAmounts = { DAI: bn(1e16), MKR: bn(2e16) };
 
       context('when the sender holds enough balance', () => {
-        depositInitialBalances({ DAI: bn(1e18), MKR: bn(5e19) });
+        const initialBalances = { DAI: bn(1e18), MKR: bn(5e19) };
 
-        itHandlesTransfersProperly(transferredAmounts);
+        depositInitialBalances(initialBalances);
+        itHandlesTransfersProperly(initialBalances, transferredAmounts);
       });
 
       context('when the sender does not hold said balance', () => {
@@ -450,11 +445,13 @@ describe('Vault - internal balance', () => {
         const initialBalances: Dictionary<BigNumber> = { DAI: bn(1e18), MKR: bn(5e19) };
 
         depositInitialBalances(initialBalances);
-        itHandlesTransfersProperly(transferredAmounts);
+        itHandlesTransfersProperly(initialBalances, transferredAmounts);
       });
 
       context('when the sender does not have any balance', () => {
-        itHandlesTransfersProperly(transferredAmounts);
+        const initialBalances: Dictionary<BigNumber> = { DAI: bn(0), MKR: bn(0) };
+
+        itHandlesTransfersProperly(initialBalances, transferredAmounts);
       });
     });
   });
