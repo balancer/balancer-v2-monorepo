@@ -85,14 +85,14 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * @dev Unregisters the tokens of a Two Token Pool.
+     * @dev Deregisters the tokens of a Two Token Pool.
      *
      * Requirements:
      *
      * - `tokenX` and `tokenY` must be the Pool's tokens.
      * - Both tokens must have non balance in the Vault.
      */
-    function _unregisterTwoTokenPoolTokens(
+    function _deregisterTwoTokenPoolTokens(
         bytes32 poolId,
         IERC20 tokenX,
         IERC20 tokenY

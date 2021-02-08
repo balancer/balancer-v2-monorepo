@@ -21,8 +21,38 @@ import "./Authorization.sol";
 import "./FlashLoanProvider.sol";
 import "./Swaps.sol";
 
-// solhint-disable no-empty-blocks
-
+/**
+ * @dev The `Vault` is Balancer V2's core contract. A single instance of it exists in the entire network, and it is the
+ * entity used to interact with Pools by joining, exiting, or swapping with them.
+ *
+ * The `Vault`'s source code is split among a number of sub-contracts with the goal of improving readability and making
+ * understanding the system easier. All sub-contracts have been marked as `abstract` to make explicit the fact that only
+ * the full `Vault` is meant to be deployed.
+ *
+ * Roughly speaking, these are the contents of each sub-contract:
+ *
+ *  - `InternalBalance`: deposit, withdrawal and transfer of Internal Balance.
+ *  - `Fees`: set and compute protocol fees.
+ *  - `FlashLoanProvider`: flash loans.
+ *  - `PoolRegistry`: Pool registration, joining, exiting, and Asset Manager interactions.
+ *  - `Swaps`: Pool swaps.
+ *
+ * Additionally, the different Pool specializations are handled by the `GeneralPoolsBalance`,
+ * `MinimalSwapInfoPoolsBalance` and `TwoTokenPoolsBalance` sub-contracts, which in turn make use of the
+ * `BalanceAllocation` library.
+ *
+ * The most important goal of the `Vault` is to make token swaps use as little gas as possible. This is reflected in a
+ * multitude of design decisions, from minor things like the format used to store Pool IDs, to major features such as
+ * the different Pool specialization settings.
+ *
+ * Finally, the large number of tasks carried out by the Vault mean its bytecode is very large, which is at odds with
+ * the contract size limit imposed by EIP 170 (https://eips.ethereum.org/EIPS/eip-170). Manual tuning of the source code
+ * was required to improve code generation and bring the bytecode size below this limit. This includes extensive
+ * utilization of `internal` functions (particularly inside modifiers), usage of named return arguments, and dedicated
+ * storage access methods, to name a few.
+ */
 contract Vault is Authorization, FlashLoanProvider, Swaps {
-    constructor(IAuthorizer authorizer) Authorization(authorizer) {}
+    constructor(IAuthorizer authorizer) Authorization(authorizer) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

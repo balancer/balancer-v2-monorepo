@@ -28,6 +28,13 @@ import "../vault/interfaces/IBasePool.sol";
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
+/**
+ * @dev Reference implementation for the base layer of a Pool contract that manges a single Pool with an immutable set
+ * of registered tokens, no Asset Managers, and an immutable swap fee.
+ *
+ * Because this contract doesn't implement the swap hooks, derived contracts should likely inherit from BaseGeneralPool
+ * or BaseMinimalSwapInfoPool instead.
+ */
 abstract contract BasePool is IBasePool, BalancerPoolToken {
     using FixedPoint for uint256;
 

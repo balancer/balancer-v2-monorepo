@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 

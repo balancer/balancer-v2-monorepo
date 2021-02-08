@@ -55,14 +55,14 @@ contract GeneralPoolsBalance {
     }
 
     /**
-     * @dev Unregisters a list of tokens in a General Pool.
+     * @dev Deregisters a list of tokens in a General Pool.
      *
      * Requirements:
      *
      * - Each token must be registered in the Pool.
      * - Each token must have non balance in the Vault.
      */
-    function _unregisterGeneralPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+    function _deregisterGeneralPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {

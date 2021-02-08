@@ -40,9 +40,15 @@
     "inputs": [
       {
         "indexed": true,
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
+        "internalType": "address",
+        "name": "depositor",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
       },
       {
         "indexed": true,
@@ -51,13 +57,44 @@
         "type": "address"
       },
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "manager",
-        "type": "address"
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
       }
     ],
-    "name": "PoolAssetManagerSet",
+    "name": "InternalBalanceDeposited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "InternalBalanceWithdrawn",
     "type": "event"
   },
   {
@@ -217,15 +254,9 @@
         "internalType": "contract IERC20[]",
         "name": "tokens",
         "type": "address[]"
-      },
-      {
-        "indexed": false,
-        "internalType": "address[]",
-        "name": "assetManagers",
-        "type": "address[]"
       }
     ],
-    "name": "TokensRegistered",
+    "name": "TokensDeregistered",
     "type": "event"
   },
   {
@@ -242,9 +273,15 @@
         "internalType": "contract IERC20[]",
         "name": "tokens",
         "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "address[]",
+        "name": "assetManagers",
+        "type": "address[]"
       }
     ],
-    "name": "TokensUnregistered",
+    "name": "TokensRegistered",
     "type": "event"
   },
   {
@@ -513,6 +550,24 @@
         "type": "bytes32"
       },
       {
+        "internalType": "contract IERC20[]",
+        "name": "tokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "deregisterTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "poolId",
+        "type": "bytes32"
+      },
+      {
         "internalType": "address",
         "name": "sender",
         "type": "address"
@@ -669,31 +724,7 @@
         "type": "address"
       }
     ],
-    "name": "getPoolAssetManager",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "contract IERC20",
-        "name": "token",
-        "type": "address"
-      }
-    ],
-    "name": "getPoolTokenBalanceInfo",
+    "name": "getPoolTokenInfo",
     "outputs": [
       {
         "internalType": "uint256",
@@ -709,6 +740,11 @@
         "internalType": "uint256",
         "name": "blockNumber",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "assetManager",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -1000,24 +1036,6 @@
       }
     ],
     "name": "transferInternalBalance",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      }
-    ],
-    "name": "unregisterTokens",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

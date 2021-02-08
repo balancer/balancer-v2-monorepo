@@ -55,14 +55,14 @@ contract MinimalSwapInfoPoolsBalance {
     }
 
     /**
-     * @dev Unregisters a list of tokens in a Minimal Swap Info Pool.
+     * @dev Deregisters a list of tokens in a Minimal Swap Info Pool.
      *
      * Requirements:
      *
      * - Each token must be registered in the Pool.
      * - Each token must have non balance in the Vault.
      */
-    function _unregisterMinimalSwapInfoPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+    function _deregisterMinimalSwapInfoPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
