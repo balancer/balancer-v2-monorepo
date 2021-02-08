@@ -19,10 +19,16 @@ describe('Vault - swap validation', () => {
 
   let poolIds: string[];
 
+  const SWAP_KIND = {
+    GIVEN_IN: 0,
+    GIVEN_OUT: 1,
+  };
+
   beforeEach('setup', async () => {
     [, lp, trader, other] = await ethers.getSigners();
 
-    vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
+    const authorizer = await deploy('Authorizer', { args: [ZERO_ADDRESS] });
+    vault = await deploy('Vault', { args: [authorizer.address] });
     tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
 
     const initialBalance = bn(100e18);
@@ -52,6 +58,7 @@ describe('Vault - swap validation', () => {
         .connect(lp)
         .joinPool(
           poolId,
+          lp.address,
           ZERO_ADDRESS,
           tokenAddresses,
           Array(tokenAddresses.length).fill(MAX_UINT256),
@@ -88,7 +95,7 @@ describe('Vault - swap validation', () => {
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwapGivenIn(toSwapIn(swaps), tokenAddresses, funds);
+      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);
@@ -100,7 +107,7 @@ describe('Vault - swap validation', () => {
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwapGivenOut(toSwapOut(swaps), tokenAddresses, funds);
+      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokenAddresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);
@@ -113,6 +120,7 @@ describe('Vault - swap validation', () => {
     let funds: FundManagement;
     beforeEach('setup funds', async () => {
       funds = {
+        sender: trader.address,
         recipient: other.address,
         fromInternalBalance: false,
         toInternalBalance: false,
@@ -132,6 +140,7 @@ describe('Vault - swap validation', () => {
 
     context('with unexpired deadline', () => {
       let deadline: BigNumber;
+
       beforeEach('set deadline', async () => {
         const now = bn((await ethers.provider.getBlock('latest')).timestamp);
         deadline = now.add(10);
@@ -149,8 +158,9 @@ describe('Vault - swap validation', () => {
         );
       });
 
-      context('with correct limit lenght', () => {
+      context('with correct limit length', () => {
         let deltas: BigNumber[];
+
         beforeEach('query deltas', async () => {
           deltas = await querySwap(funds);
         });
@@ -193,11 +203,10 @@ describe('Vault - swap validation', () => {
           context('with limits too low', () => {
             it('reverts', async () => {
               await Promise.all(
-                deltas.map((_, i) => {
+                deltas.map(async (_, i) => {
                   const limits = [...deltas];
                   limits[i] = deltas[i].sub(1);
-
-                  expect(doSwap(funds, limits, deadline)).to.be.revertedWith('SWAP_LIMIT');
+                  await expect(doSwap(funds, limits, deadline)).to.be.revertedWith('SWAP_LIMIT');
                 })
               );
             });

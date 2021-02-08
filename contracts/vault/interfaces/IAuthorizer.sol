@@ -12,20 +12,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
-
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+pragma solidity ^0.7.0;
 
 interface IAuthorizer {
-    function validateCanChangeAuthorizer(address account) external view;
-
-    function validateCanSetProtocolFees(address account) external view;
-
-    function validateCanWithdrawCollectedFees(address account, IERC20 token) external view;
-
-    function canChangeAuthorizer(address account) external view returns (bool);
-
-    function canSetProtocolFees(address account) external view returns (bool);
-
-    function canWithdrawCollectedFees(address account, IERC20 token) external view returns (bool);
+    function hasRole(bytes32 role, address account) external view returns (bool);
 }

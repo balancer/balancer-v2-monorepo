@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/SafeCast.sol";
@@ -207,10 +207,9 @@ abstract contract PoolRegistry is
             address assetManager = assetManagers[i];
 
             _poolAssetManagers[poolId][token] = assetManager;
-            emit PoolAssetManagerSet(poolId, token, assetManager);
         }
 
-        emit TokensRegistered(poolId, tokens);
+        emit TokensRegistered(poolId, tokens, assetManagers);
     }
 
     function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
@@ -240,12 +239,13 @@ abstract contract PoolRegistry is
 
     function joinPool(
         bytes32 poolId,
+        address sender,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
         bool fromInternalBalance,
         bytes memory userData
-    ) external override nonReentrant withRegisteredPool(poolId) {
+    ) external override nonReentrant withRegisteredPool(poolId) authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         bytes32[] memory balances = _validateTokensAndGetBalances(poolId, tokens);
@@ -256,6 +256,7 @@ abstract contract PoolRegistry is
             poolId,
             tokens,
             balances,
+            sender,
             recipient,
             userData
         );
@@ -265,8 +266,7 @@ abstract contract PoolRegistry is
             require(amountIn <= maxAmountsIn[i], "JOIN_ABOVE_MAX");
 
             // Receive tokens from the caller - possibly from Internal Balance
-            IERC20 token = tokens[i];
-            _receiveTokens(token, amountIn, msg.sender, fromInternalBalance);
+            _receiveTokens(tokens[i], amountIn, msg.sender, fromInternalBalance);
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
 
@@ -277,7 +277,7 @@ abstract contract PoolRegistry is
                 ? balances[i].increaseCash(amountIn - feeToPay) // Don't need checked arithmetic
                 : balances[i].decreaseCash(feeToPay - amountIn); // Same as -(int256(amountIn) - int256(feeToPay))
 
-            _increaseCollectedFees(token, feeToPay);
+            _increaseCollectedFees(tokens[i], feeToPay);
         }
 
         // Update the Pool's balance - how this is done depends on the Pool specialization setting.
@@ -290,17 +290,18 @@ abstract contract PoolRegistry is
             _setGeneralPoolBalances(poolId, balances);
         }
 
-        emit PoolJoined(poolId, msg.sender, amountsIn, dueProtocolFeeAmounts);
+        emit PoolJoined(poolId, sender, amountsIn, dueProtocolFeeAmounts);
     }
 
     function exitPool(
         bytes32 poolId,
+        address sender,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
         bool toInternalBalance,
         bytes memory userData
-    ) external override nonReentrant withRegisteredPool(poolId) {
+    ) external override nonReentrant withRegisteredPool(poolId) authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
 
         bytes32[] memory balances = _validateTokensAndGetBalances(poolId, tokens);
@@ -311,6 +312,7 @@ abstract contract PoolRegistry is
             poolId,
             tokens,
             balances,
+            sender,
             recipient,
             userData
         );
@@ -320,8 +322,7 @@ abstract contract PoolRegistry is
             uint256 amountOut = amountsOut[i];
 
             // Send tokens from the recipient - possibly to Internal Balance
-            IERC20 token = tokens[i];
-            uint256 withdrawFee = _sendTokens(token, amountOut, recipient, toInternalBalance);
+            uint256 withdrawFee = _sendTokens(tokens[i], amountOut, recipient, toInternalBalance);
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
 
@@ -330,7 +331,7 @@ abstract contract PoolRegistry is
             uint256 delta = amountOut.add(feeToPay);
             balances[i] = balances[i].decreaseCash(delta);
 
-            _increaseCollectedFees(token, feeToPay.add(withdrawFee));
+            _increaseCollectedFees(tokens[i], feeToPay.add(withdrawFee));
         }
 
         // Update the Pool's balance - how this is done depends on the Pool specialization setting.
@@ -343,7 +344,7 @@ abstract contract PoolRegistry is
             _setGeneralPoolBalances(poolId, balances);
         }
 
-        emit PoolExited(poolId, msg.sender, amountsOut, dueProtocolFeeAmounts);
+        emit PoolExited(poolId, sender, amountsOut, dueProtocolFeeAmounts);
     }
 
     /**
@@ -415,6 +416,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances,
+        address sender,
         address recipient,
         bytes memory userData
     ) private returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
@@ -423,7 +425,7 @@ abstract contract PoolRegistry is
         address pool = _getPoolAddress(poolId);
         (amountsIn, dueProtocolFeeAmounts) = IBasePool(pool).onJoinPool(
             poolId,
-            msg.sender,
+            sender,
             recipient,
             totalBalances,
             latestBlockNumberUsed,
@@ -442,6 +444,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20[] memory tokens,
         bytes32[] memory balances,
+        address sender,
         address recipient,
         bytes memory userData
     ) private returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
@@ -450,7 +453,7 @@ abstract contract PoolRegistry is
         address pool = _getPoolAddress(poolId);
         (amountsOut, dueProtocolFeeAmounts) = IBasePool(pool).onExitPool(
             poolId,
-            msg.sender,
+            sender,
             recipient,
             totalBalances,
             latestBlockNumberUsed,

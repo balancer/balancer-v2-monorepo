@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
@@ -111,7 +111,7 @@ contract MinimalSwapInfoPoolsBalance {
     function _updateMinimalSwapInfoPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        function(bytes32, uint256) pure returns (bytes32) mutation,
+        function(bytes32, uint256) returns (bytes32) mutation,
         uint256 amount
     ) internal {
         bytes32 currentBalance = _getMinimalSwapInfoPoolBalance(poolId, token);

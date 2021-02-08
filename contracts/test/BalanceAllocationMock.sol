@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 import "../vault/balances/BalanceAllocation.sol";
 
@@ -67,7 +67,7 @@ contract BalanceAllocationMock {
         return balance.managedToCash(amount);
     }
 
-    function setManagedBalance(bytes32 balance, uint256 newManaged) public pure returns (bytes32) {
+    function setManaged(bytes32 balance, uint256 newManaged) public view returns (bytes32) {
         return balance.setManaged(newManaged);
     }
 

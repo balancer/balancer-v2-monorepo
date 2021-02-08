@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 import "../../lib/math/Math.sol";
 
@@ -193,10 +193,10 @@ library BalanceAllocation {
      * @dev Sets 'managed' balance to an arbitrary value, changing 'total'. Called when the Asset Manager reports
      * profits or losses. It's the Manager's responsibility to provide a meaningful value.
      */
-    function setManaged(bytes32 balance, uint256 newManaged) internal pure returns (bytes32) {
+    function setManaged(bytes32 balance, uint256 newManaged) internal view returns (bytes32) {
         uint256 currentCash = cash(balance);
-        uint256 currentBlockNumber = blockNumber(balance);
-        return toBalance(currentCash, newManaged, currentBlockNumber);
+        uint256 newBlockNumber = block.number;
+        return toBalance(currentCash, newManaged, newBlockNumber);
     }
 
     // Alternative mode for Pools with the token token specialization setting

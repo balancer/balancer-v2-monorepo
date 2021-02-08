@@ -16,10 +16,10 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./IFlashLoanReceiver.sol";
 import "./IAuthorizer.sol";
+import "./IFlashLoanReceiver.sol";
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 /**
  * @dev Full external interface for the Vault core contract - no external or public methods exist in the contract that
@@ -61,9 +61,10 @@ interface IVault {
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
      * deposit for each token contract.
      *
-     * Emits `InternalBalanceDeposited` events.
+     * Emits `InternalBalanceChanged` events.
      */
     function depositToInternalBalance(
+        address depositor,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address user
@@ -86,9 +87,10 @@ interface IVault {
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
      * withdraw for each token contract.
      *
-     * Emits `InternalBalanceWithdrawn` events.
+     * Emits `InternalBalanceChanged` events.
      */
     function withdrawFromInternalBalance(
+        address user,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address recipient
@@ -111,18 +113,20 @@ interface IVault {
      * The `tokens`, `amounts` and `recipients` arrays must have the same length, and each entry in these indicates the
      * amount to transfer for each token contract to each recipient.
      *
-     * Emits `InternalBalanceTransferred` events.
+     * Emits `InternalBalanceChanged` events.
      */
     function transferInternalBalance(
+        address user,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address[] memory recipients
     ) external;
 
     /**
-     * @dev Emitted when a user transfers Internal Balance via `transferInternalBalance`.
+     * @dev Emitted when a user's Internal Balance changes, either due to calls to the Internal Balance functions, or
+     * due to interacting with Pools using Internal Balance.
      */
-    event InternalBalanceTransferred(address indexed from, address indexed to, IERC20 indexed token, uint256 amount);
+    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 balance);
 
     // Pools
     //
@@ -183,7 +187,7 @@ interface IVault {
      * Pools can not set an Asset Manager by setting them to the zero address. Once an Asset Manager is set, it cannot
      * be changed, except by deregistering the associated token and registering again with a different Manager.
      *
-     * Emits `TokensRegistered` and `PoolAssetManagerSet` events.
+     * Emits `TokensRegistered` events.
      */
     function registerTokens(
         bytes32 poolId,
@@ -194,12 +198,7 @@ interface IVault {
     /**
      * @dev Emitted when a Pool registers tokens by calling `registerTokens`.
      */
-    event TokensRegistered(bytes32 poolId, IERC20[] tokens);
-
-    /**
-     * @dev Emitted when a Pool sets an Asset Manager by calling `registerTokens`.
-     */
-    event PoolAssetManagerSet(bytes32 indexed poolId, IERC20 indexed token, address indexed manager);
+    event TokensRegistered(bytes32 poolId, IERC20[] tokens, address[] assetManagers);
 
     /**
      * @dev Deregisters `tokens` for the `poolId` Pool. Must be called by the Pool's contract.
@@ -279,6 +278,7 @@ interface IVault {
      */
     function joinPool(
         bytes32 poolId,
+        address provider,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
@@ -328,6 +328,7 @@ interface IVault {
      */
     function exitPool(
         bytes32 poolId,
+        address provider,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
@@ -550,57 +551,54 @@ interface IVault {
     );
 
     /**
-     * @dev Data describing the overall flow of tokens of `batchSwapGivenIn` and `batchSwapGivenOut`. .
+     * @dev All tokens in a swap are sent to the Vault from the `sender`'s account, and sent to `recipient`.
      *
-     * If `fromInternalBalance` is true, the caller's Internal Balance will be preferred: ERC20 transfers will only
-     * be made for the difference between the requested amount and Internal Balance (if any).
-     *
-     * If `toInternalBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
-     * an ERC20 transfer will be performed to `recipient`.
+     * If `fromInternalBalance` is true, the `sender`'s Internal Balance will be preferred, performing an ERC20
+     * transfer for the difference between the requested amount and the User's Internal Balance (if any). The `sender`
+     * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
+     * `joinPool`.
+     *     * If `tointernalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
+     * transferred. This matches the behavior of `exitPool`.
      */
     struct FundManagement {
-        address recipient;
+        address sender;
         bool fromInternalBalance;
+        address recipient;
         bool toInternalBalance;
     }
 
     /**
-     * @dev Simulates a call to `batchSwapGivenIn`, returning an array of Vault token deltas. Each element in the array
-     * corresponds to the token at the same index, and indicates the number of tokens the Vault would take from the
-     * caller (if positive) or send to the recipient (if negative). The arguments it receives are the same that
-     * an equivalent `batchSwapGivenIn` call would receive.
+     * @dev Simulates a call to `batchSwapGivenIn` or `batchSwapGivenOut`, returning an array of Vault token deltas.
+     * Each element in the array corresponds to the token at the same index, and indicates the number of tokens the
+     * Vault would take from the caller (if positive) or send to the recipient (if negative). The arguments it receives
+     * are the same that an equivalent `batchSwapGivenOut` or `batchSwapGivenOut` call would receive, except the
+     * `SwapRequest` struct is used instead, and the `kind` argument specifies whether the swap is given in or given
+     * out.
      *
-     * Unlike `batchSwapGivenIn`, this function performs no checks on its caller nor the recipient field in the `funds`
-     * struct. This makes it suitable to be called by off-chain applications via eth_call without needing to hold
-     * tokens, approve them for the Vault, or even know a user's address.
+     * Unlike `batchSwapGivenIn` and `batchSwapGivenOut`, this function performs no checks on its caller nor the
+     * recipient field in the `funds` struct. This makes it suitable to be called by off-chain applications via eth_call
+     * without needing to hold tokens, approve them for the Vault, or even know a user's address.
      *
      * Note that this function is not 'view' (due to implementation details): the client code must explicitly execute
      * eth_call instead of eth_sendTransaction.
      */
-    function queryBatchSwapGivenIn(
-        SwapIn[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds
-    ) external returns (int256[] memory);
+    function queryBatchSwap(
+        SwapKind kind,
+        SwapRequest[] memory swaps,
+        IERC20[] memory tokens,
+        FundManagement memory funds
+    ) external returns (int256[] memory tokenDeltas);
 
-    /**
-     * @dev Simulates a call to `batchSwapGivenOut`, returning an array of Vault token deltas. Each element in the array
-     * corresponds to the token at the same index, and indicates the number of tokens the Vault would take from the
-     * caller (if positive) or send to the recipient (if negative). The arguments it receives are the same that
-     * an equivalent `batchSwapGivenOut` call would receive.
-     *
-     * Unlike `batchSwapGivenOut`, this function performs no checks on its caller nor the recipient field in the `funds`
-     * struct. This makes it suitable to be called by off-chain applications via eth_call without needing to hold
-     * tokens, approve them for the Vault, or even know a user's address.
-     *
-     * Note that this function is not 'view' (due to implementation details): the client code must explicitly execute
-     * eth_call instead of eth_sendTransaction.
-     */
-    function queryBatchSwapGivenOut(
-        SwapOut[] memory swaps,
-        IERC20[] calldata tokens,
-        FundManagement calldata funds
-    ) external returns (int256[] memory);
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
+
+    // This struct is identical in layout to SwapIn and SwapOut, except the 'amountIn/Out' field is named 'amount'.
+    struct SwapRequest {
+        bytes32 poolId;
+        uint256 tokenInIndex;
+        uint256 tokenOutIndex;
+        uint256 amount;
+        bytes userData;
+    }
 
     // Flash Loans
 
@@ -636,6 +634,16 @@ interface IVault {
      * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
      */
     function changeAuthorizer(IAuthorizer newAuthorizer) external;
+
+    /**
+     * @dev Tells whether a user has allowed a specific relayer
+     */
+    function hasAllowedRelayer(address user, address relayer) external view returns (bool);
+
+    /**
+     * @dev Changes the allowance for a relayer
+     */
+    function changeRelayerAllowance(address relayer, bool allowed) external;
 
     // Protocol Fees
     //

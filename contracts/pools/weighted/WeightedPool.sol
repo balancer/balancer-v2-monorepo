@@ -12,10 +12,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../../lib/math/Math.sol";
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/helpers/UnsafeRandom.sol";
@@ -29,7 +28,6 @@ import "./WeightedMath.sol";
 // solhint-disable max-states-count
 
 contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
-    using Math for uint256;
     using FixedPoint for uint256;
 
     //TODO: link info about these limits once they are studied and documented
@@ -158,7 +156,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return WeightedMath._invariant(normalizedWeights, balances);
     }
 
-    function getNormalizedWeights() public view returns (uint256[] memory) {
+    function getNormalizedWeights() external view returns (uint256[] memory) {
         return _normalizedWeights();
     }
 
@@ -207,19 +205,24 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         JoinKind kind = abi.decode(userData, (JoinKind));
         require(kind == JoinKind.INIT, "UNINITIALIZED");
 
-        (, uint256[] memory amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
-        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        uint256[] memory amountsIn = _decodeInitialize(userData);
 
         uint256[] memory normalizedWeights = _normalizedWeights();
 
         uint256 invariantAfterJoin = WeightedMath._invariant(normalizedWeights, amountsIn);
 
-        uint256 bptAmountOut = invariantAfterJoin * _totalTokens;
-        require(bptAmountOut / invariantAfterJoin == _totalTokens, "MUL_OVERFLOW");
+        uint256 bptAmountOut = Math.mul(invariantAfterJoin, _totalTokens);
 
         _lastInvariant = invariantAfterJoin;
 
         return (bptAmountOut, amountsIn);
+    }
+
+    function _decodeInitialize(bytes memory userData) private view returns (uint256[] memory amountsIn) {
+        (, amountsIn) = abi.decode(userData, (JoinKind, uint256[]));
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
+
+        _upscaleArray(amountsIn, _scalingFactors());
     }
 
     // Join
@@ -290,8 +293,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (, uint256[] memory amountsIn, uint256 minBPTAmountIn) = abi.decode(userData, (JoinKind, uint256[], uint256));
-        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        (uint256[] memory amountsIn, uint256 minBPTAmountIn) = _decodeJoinExactTokensInForBPTOut(userData);
 
         uint256 bptAmountOut = WeightedMath._exactTokensInForBPTOut(
             currentBalances,
@@ -311,7 +313,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (, uint256 bptAmountOut, uint256 tokenIndex) = abi.decode(userData, (JoinKind, uint256, uint256));
+        (uint256 bptAmountOut, uint256 tokenIndex) = _decodeJoinTokenInForExactBPTOut(userData);
 
         uint256[] memory amountsIn = new uint256[](_totalTokens);
         amountsIn[tokenIndex] = WeightedMath._tokenInForExactBPTOut(
@@ -323,6 +325,25 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         );
 
         return (bptAmountOut, amountsIn);
+    }
+
+    function _decodeJoinExactTokensInForBPTOut(bytes memory userData)
+        private
+        view
+        returns (uint256[] memory amountsIn, uint256 minBPTAmountIn)
+    {
+        (, amountsIn, minBPTAmountIn) = abi.decode(userData, (JoinKind, uint256[], uint256));
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
+        _upscaleArray(amountsIn, _scalingFactors());
+    }
+
+    function _decodeJoinTokenInForExactBPTOut(bytes memory userData)
+        private
+        view
+        returns (uint256 bptAmountOut, uint256 tokenIndex)
+    {
+        (, bptAmountOut, tokenIndex) = abi.decode(userData, (JoinKind, uint256, uint256));
+        require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
     }
 
     // Exit
@@ -395,8 +416,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory currentBalances,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (, uint256 bptAmountIn, uint256 tokenIndex) = abi.decode(userData, (ExitKind, uint256, uint256));
-        require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
+        (uint256 bptAmountIn, uint256 tokenIndex) = _decodeExitExactBPTInForOneTokenOut(userData);
 
         // We exit in a single token, so we initialize amountsOut with zeros
         uint256[] memory amountsOut = new uint256[](_totalTokens);
@@ -418,7 +438,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         view
         returns (uint256, uint256[] memory)
     {
-        (, uint256 bptAmountIn) = abi.decode(userData, (ExitKind, uint256));
+        uint256 bptAmountIn = _decodeExitExactBPTInForAllTokensOut(userData);
 
         uint256[] memory amountsOut = WeightedMath._exactBPTInForAllTokensOut(
             currentBalances,
@@ -434,8 +454,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory currentBalances,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (, uint256[] memory amountsOut, uint256 maxBPTAmountIn) = abi.decode(userData, (ExitKind, uint256[], uint256));
-        InputHelpers.ensureInputLengthMatch(amountsOut.length, _totalTokens);
+        (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = _decodeExitBPTInForExactTokensOut(userData);
 
         uint256 bptAmountIn = WeightedMath._bptInForExactTokensOut(
             currentBalances,
@@ -447,6 +466,29 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         require(bptAmountIn <= maxBPTAmountIn, "BPT_IN_MAX_AMOUNT");
 
         return (bptAmountIn, amountsOut);
+    }
+
+    function _decodeExitExactBPTInForOneTokenOut(bytes memory userData)
+        private
+        view
+        returns (uint256 bptAmountIn, uint256 tokenIndex)
+    {
+        (, bptAmountIn, tokenIndex) = abi.decode(userData, (ExitKind, uint256, uint256));
+        require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
+    }
+
+    function _decodeExitExactBPTInForAllTokensOut(bytes memory userData) private pure returns (uint256 bptAmountIn) {
+        (, bptAmountIn) = abi.decode(userData, (ExitKind, uint256));
+    }
+
+    function _decodeExitBPTInForExactTokensOut(bytes memory userData)
+        private
+        view
+        returns (uint256[] memory amountsOut, uint256 maxBPTAmountIn)
+    {
+        (, amountsOut, maxBPTAmountIn) = abi.decode(userData, (ExitKind, uint256[], uint256));
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, _totalTokens);
+        _upscaleArray(amountsOut, _scalingFactors());
     }
 
     // Helpers

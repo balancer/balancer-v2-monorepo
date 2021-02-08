@@ -20,7 +20,7 @@ jobs:
       - name: Lint
         run: yarn lint
 
-  test:
+  test_swaps:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -30,8 +30,86 @@ jobs:
           node-version: 14
       - name: Install
         run: yarn --frozen-lockfile
-      - name: Test
-        run: yarn test
+      - name: Test Swaps
+        run: yarn test:swaps
+
+  test_join:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Test Join
+        run: yarn test:join
+
+  test_exit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Test Exit
+        run: yarn test:exit
+
+  test_weighted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Test Weighted Pool
+        run: yarn test:weighted
+
+  test_stable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Test Stable Pool
+        run: yarn test:stable
+
+  test_vault:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Test Vault
+        run: yarn test:vault
+
+  test_lib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Test Lib
+        run: yarn test:lib
 
   coverage:
     runs-on: ubuntu-latest

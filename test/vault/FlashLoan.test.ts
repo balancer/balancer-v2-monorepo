@@ -7,6 +7,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
 import { TokenList, deployTokens } from '../../lib/helpers/tokens';
+import { roleId } from '../../lib/helpers/roles';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress;
@@ -25,12 +26,12 @@ describe('Vault - flash loans', () => {
 
   beforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    await authorizer.connect(admin).grantRole(await authorizer.SET_PROTOCOL_FEES_ROLE(), feeSetter.address);
     vault = await deploy('Vault', { args: [authorizer.address] });
-
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
-
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18], minter);
+
+    const role = roleId(vault, 'setProtocolFees');
+    await authorizer.connect(admin).grantRole(role, feeSetter.address);
 
     for (const symbol in tokens) {
       // Grant token balance to the Vault - typically this would happen by the pool controllers adding liquidity

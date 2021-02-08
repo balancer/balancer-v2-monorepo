@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./BasePool.sol";
@@ -44,17 +44,43 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) external override returns (uint256) {
+    ) external view override returns (uint256) {
+        // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
         swapRequest.amountIn = _subtractSwapFee(swapRequest.amountIn);
-        return _onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+
+        uint256 scalingFactorTokenIn = _scalingFactor(swapRequest.tokenIn);
+        uint256 scalingFactorTokenOut = _scalingFactor(swapRequest.tokenOut);
+
+        // All token amounts are upscaled.
+        currentBalanceTokenIn = _upscale(currentBalanceTokenIn, scalingFactorTokenIn);
+        currentBalanceTokenOut = _upscale(currentBalanceTokenOut, scalingFactorTokenOut);
+        swapRequest.amountIn = _upscale(swapRequest.amountIn, scalingFactorTokenIn);
+
+        uint256 amountOut = _onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+
+        // amountOut tokens are exiting the Pool, so we round down.
+        return _downscaleDown(amountOut, scalingFactorTokenOut);
     }
 
     function onSwapGivenOut(
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) external override returns (uint256) {
+    ) external view override returns (uint256) {
+        uint256 scalingFactorTokenIn = _scalingFactor(swapRequest.tokenIn);
+        uint256 scalingFactorTokenOut = _scalingFactor(swapRequest.tokenOut);
+
+        // All token amounts are upscaled.
+        currentBalanceTokenIn = _upscale(currentBalanceTokenIn, scalingFactorTokenIn);
+        currentBalanceTokenOut = _upscale(currentBalanceTokenOut, scalingFactorTokenOut);
+        swapRequest.amountOut = _upscale(swapRequest.amountOut, scalingFactorTokenOut);
+
         uint256 amountIn = _onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+
+        // amountIn are tokens entering the Pool, so we round up.
+        amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
+
+        // Fees are added after scaling happens, to reduce complexity of rounding direction analysis.
         return _addSwapFee(amountIn);
     }
 

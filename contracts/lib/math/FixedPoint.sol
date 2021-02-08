@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 /* solhint-disable private-vars-leading-underscore */
 
@@ -21,6 +21,22 @@ library FixedPoint {
     uint256 internal constant MIN_POW_BASE = 1 wei;
     uint256 internal constant MAX_POW_BASE = (2 * ONE) - 1 wei;
     uint256 internal constant POW_PRECISION = ONE / 10**10;
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Fixed Point addition is the same as regular checked addition
+
+        uint256 c = a + b;
+        require(c >= a, "ADD_OVERFLOW");
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Fixed Point addition is the same as regular checked addition
+
+        require(b <= a, "SUB_OVERFLOW");
+        uint256 c = a - b;
+        return c;
+    }
 
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c0 = a * b;
@@ -91,51 +107,5 @@ library FixedPoint {
 
             return ((aInflated - 1) / b) + 1;
         }
-    }
-
-    // credit for this implementation goes to
-    // https://github.com/abdk-consulting/abdk-libraries-solidity/blob/master/ABDKMath64x64.sol#L687
-    function sqrt(uint256 x) internal pure returns (uint256) {
-        if (x == 0) return 0;
-        // this block is equivalent to r = uint256(1) << (BitMath.mostSignificantBit(x) / 2);
-        // however that code costs significantly more gas
-        uint256 xx = x;
-        uint256 r = 1;
-        if (xx >= 0x100000000000000000000000000000000) {
-            xx >>= 128;
-            r <<= 64;
-        }
-        if (xx >= 0x10000000000000000) {
-            xx >>= 64;
-            r <<= 32;
-        }
-        if (xx >= 0x100000000) {
-            xx >>= 32;
-            r <<= 16;
-        }
-        if (xx >= 0x10000) {
-            xx >>= 16;
-            r <<= 8;
-        }
-        if (xx >= 0x100) {
-            xx >>= 8;
-            r <<= 4;
-        }
-        if (xx >= 0x10) {
-            xx >>= 4;
-            r <<= 2;
-        }
-        if (xx >= 0x8) {
-            r <<= 1;
-        }
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1; // Seven iterations should be enough
-        uint256 r1 = x / r;
-        return (r < r1 ? r : r1);
     }
 }
