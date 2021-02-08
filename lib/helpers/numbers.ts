@@ -10,7 +10,7 @@ export const fp = (x: number): BigNumber => bn(x * SCALING_FACTOR);
 export const bn = (x: BigNumberish | Decimal): BigNumber =>
   BigNumber.isBigNumber(x) ? x : BigNumber.from(parseInt(x.toString()).toString());
 
-export const decimal = (x: BigNumberish): Decimal => new Decimal(x.toString());
+export const decimal = (x: BigNumberish | Decimal): Decimal => new Decimal(x.toString());
 
 export const fromFp = (x: BigNumberish): Decimal => decimal(x).div(SCALING_FACTOR);
 export const toFp = (x: Decimal): BigNumber => bn(x.mul(SCALING_FACTOR));
@@ -21,7 +21,7 @@ export const maxInt = (e: number): BigNumber => bn(2).pow(bn(e).sub(1)).sub(1);
 
 export const minInt = (e: number): BigNumber => bn(2).pow(bn(e).sub(1)).mul(-1);
 
-export const pct = (x: BigNumberish, pct: number): BigNumber => bn(decimal(x).div(decimal(1).div(decimal(pct))));
+export const pct = (x: BigNumberish, pct: number | Decimal): BigNumber => bn(decimal(x).mul(decimal(pct)));
 
 export const max = (a: BigNumberish, b: BigNumberish): BigNumber => {
   a = bn(a);

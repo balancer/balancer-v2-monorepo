@@ -67,7 +67,7 @@ contract BalanceAllocationMock {
         return balance.managedToCash(amount);
     }
 
-    function setManagedBalance(bytes32 balance, uint256 newManaged) public pure returns (bytes32) {
+    function setManaged(bytes32 balance, uint256 newManaged) public view returns (bytes32) {
         return balance.setManaged(newManaged);
     }
 

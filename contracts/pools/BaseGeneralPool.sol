@@ -39,8 +39,19 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     ) external override returns (uint256) {
         _validateIndexes(indexIn, indexOut, _totalTokens);
 
+        // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
         swapRequest.amountIn = _subtractSwapFee(swapRequest.amountIn);
-        return _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
+
+        uint256[] memory scalingFactors = _scalingFactors();
+
+        // All token amounts are upscaled.
+        swapRequest.amountIn = _upscale(swapRequest.amountIn, scalingFactors[indexIn]);
+        _upscaleArray(balances, scalingFactors);
+
+        uint256 amountOut = _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
+
+        // amountOut tokens are exiting the Pool, so we round down.
+        return _downscaleDown(amountOut, scalingFactors[indexOut]);
     }
 
     function onSwapGivenOut(
@@ -51,7 +62,18 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     ) external override returns (uint256) {
         _validateIndexes(indexIn, indexOut, _totalTokens);
 
+        uint256[] memory scalingFactors = _scalingFactors();
+
+        // All token amounts are upscaled.
+        swapRequest.amountOut = _upscale(swapRequest.amountOut, scalingFactors[indexOut]);
+        _upscaleArray(balances, scalingFactors);
+
         uint256 amountIn = _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
+
+        // amountIn are tokens entering the Pool, so we round up.
+        amountIn = _downscaleUp(amountIn, scalingFactors[indexIn]);
+
+        // Fees are added after scaling happens, to reduce complexity of rounding direction analysis.
         return _addSwapFee(amountIn);
     }
 

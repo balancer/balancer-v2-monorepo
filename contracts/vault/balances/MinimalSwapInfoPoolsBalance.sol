@@ -111,7 +111,7 @@ contract MinimalSwapInfoPoolsBalance {
     function _updateMinimalSwapInfoPoolBalance(
         bytes32 poolId,
         IERC20 token,
-        function(bytes32, uint256) pure returns (bytes32) mutation,
+        function(bytes32, uint256) returns (bytes32) mutation,
         uint256 amount
     ) internal {
         bytes32 currentBalance = _getMinimalSwapInfoPoolBalance(poolId, token);

@@ -63,6 +63,7 @@ describe('Vault - asset manager', function () {
 
       await vault.connect(lp).joinPool(
         poolId,
+        lp.address,
         other.address,
         tokenAddresses,
         tokenAddresses.map(() => MAX_UINT256),
@@ -128,6 +129,7 @@ describe('Vault - asset manager', function () {
             const currentBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
             expect(currentBalance.cash).to.equal(previousBalance.cash.sub(amount));
             expect(currentBalance.managed).to.equal(previousBalance.managed.add(amount));
+            expect(currentBalance.blockNumber).to.equal(previousBalance.blockNumber);
           });
         });
 
@@ -189,6 +191,7 @@ describe('Vault - asset manager', function () {
             const currentBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
             expect(currentBalance.cash).to.equal(previousBalance.cash.add(amount));
             expect(currentBalance.managed).to.equal(previousBalance.managed.sub(amount));
+            expect(currentBalance.blockNumber).to.equal(previousBalance.blockNumber);
           });
         });
 
@@ -259,6 +262,9 @@ describe('Vault - asset manager', function () {
             const currentBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
             expect(currentBalance.cash).to.equal(previousBalance.cash);
             expect(currentBalance.managed).to.equal(amount);
+
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+            expect(currentBalance.blockNumber).to.equal(currentBlockNumber);
           });
         });
 
@@ -291,6 +297,9 @@ describe('Vault - asset manager', function () {
             const currentBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
             expect(currentBalance.cash).to.equal(previousBalance.cash);
             expect(currentBalance.managed).to.equal(amount);
+
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+            expect(currentBalance.blockNumber).to.equal(currentBlockNumber);
           });
         });
       });
@@ -316,6 +325,7 @@ describe('Vault - asset manager', function () {
           .connect(lp)
           .exitPool(
             poolId,
+            lp.address,
             lp.address,
             poolTokens,
             Array(poolTokens.length).fill(0),
