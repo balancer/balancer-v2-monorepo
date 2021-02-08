@@ -67,7 +67,9 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         IERC20[] memory tokens,
         uint256 swapFee
     ) BalancerPoolToken(name, symbol) {
-        require(tokens.length >= _MIN_TOKENS && tokens.length <= _MAX_TOKENS, "INVALID_TOKENS_LENGTH");
+        require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
+        require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
+
         require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
 
         // Because these Pools will register tokens only once, if the tokens array is sorted, then the Pool tokens will
