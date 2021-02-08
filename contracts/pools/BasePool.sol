@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../lib/math/FixedPoint.sol";
@@ -40,7 +40,6 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
     IVault internal immutable _vault;
     bytes32 internal immutable _poolId;
     uint256 internal immutable _swapFee;
-
     uint256 internal immutable _totalTokens;
 
     IERC20 internal immutable _token0;
@@ -68,9 +67,7 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         IERC20[] memory tokens,
         uint256 swapFee
     ) BalancerPoolToken(name, symbol) {
-        require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
-        require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
-
+        require(tokens.length >= _MIN_TOKENS && tokens.length <= _MAX_TOKENS, "INVALID_TOKENS_LENGTH");
         require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
 
         // Because these Pools will register tokens only once, if the tokens array is sorted, then the Pool tokens will

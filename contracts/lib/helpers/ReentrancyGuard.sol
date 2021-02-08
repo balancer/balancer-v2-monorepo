@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 // Based on the ReentrancyGuard library from OpenZeppelin contracts, altered to reduce bytecode size.
 // Modifier code is inlined by the compiler, which causes its code to appear multiple times in the codebase. By using
