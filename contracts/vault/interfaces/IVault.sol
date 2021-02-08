@@ -66,6 +66,8 @@ interface IVault {
         address[] memory recipients
     ) external;
 
+    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 amount, bool positive);
+
     // Pools
 
     // There are three specialization levels for Pools, which allow for lower swap gas costs at the cost of reduced

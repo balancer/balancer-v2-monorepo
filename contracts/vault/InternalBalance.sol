@@ -30,22 +30,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     // user -> token -> internal balance
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
-    event InternalBalanceDeposited(
-        address indexed depositor,
-        address indexed user,
-        IERC20 indexed token,
-        uint256 amount
-    );
-
-    event InternalBalanceWithdrawn(
-        address indexed user,
-        address indexed recipient,
-        IERC20 indexed token,
-        uint256 amount
-    );
-
-    event InternalBalanceTransferred(address indexed from, address indexed to, IERC20 indexed token, uint256 amount);
-
     function getInternalBalance(address user, IERC20[] memory tokens)
         external
         view
@@ -71,7 +55,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
 
             _increaseInternalBalance(user, token, amount);
             token.safeTransferFrom(msg.sender, address(this), amount);
-            emit InternalBalanceDeposited(msg.sender, user, token, amount);
         }
     }
 
@@ -91,7 +74,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
 
             _decreaseInternalBalance(msg.sender, token, amount);
             token.safeTransfer(recipient, amount.sub(feeAmount));
-            emit InternalBalanceWithdrawn(msg.sender, recipient, token, amount);
         }
     }
 
@@ -109,7 +91,6 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
 
             _decreaseInternalBalance(msg.sender, token, amount);
             _increaseInternalBalance(recipient, token, amount);
-            emit InternalBalanceTransferred(msg.sender, recipient, token, amount);
         }
     }
 
@@ -121,6 +102,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         uint256 currentInternalBalance = _getInternalBalance(account, token);
         uint256 newBalance = currentInternalBalance.add(amount);
         _setInternalBalance(account, token, newBalance);
+        emit InternalBalanceChanged(account, token, amount, true);
     }
 
     function _decreaseInternalBalance(
@@ -132,6 +114,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         require(currentInternalBalance >= amount, "INSUFFICIENT_INTERNAL_BALANCE");
         uint256 newBalance = currentInternalBalance - amount;
         _setInternalBalance(account, token, newBalance);
+        emit InternalBalanceChanged(account, token, amount, false);
     }
 
     function _setInternalBalance(

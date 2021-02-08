@@ -77,11 +77,11 @@ describe('Vault - internal balance', () => {
               const tx = await vault.depositToInternalBalance([tokens.DAI.address], [amount], recipient.address);
               const receipt = await tx.wait();
 
-              expectEvent.inReceipt(receipt, 'InternalBalanceDeposited', {
-                depositor: sender.address,
+              expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
                 user: recipient.address,
                 token: tokens.DAI.address,
                 amount,
+                positive: true,
               });
             });
           });
@@ -166,11 +166,11 @@ describe('Vault - internal balance', () => {
               const tx = await vault.withdrawFromInternalBalance([tokens.DAI.address], [amount], recipient.address);
               const receipt = await tx.wait();
 
-              expectEvent.inReceipt(receipt, 'InternalBalanceWithdrawn', {
+              expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
                 user: sender.address,
-                recipient: recipient.address,
                 token: tokens.DAI.address,
                 amount,
+                positive: false,
               });
             });
           });
@@ -371,18 +371,32 @@ describe('Vault - internal balance', () => {
           await vault.transferInternalBalance(tokenAddresses, amounts, Array(amounts.length).fill(recipient.address))
         ).wait();
 
-        expectEvent.inReceipt(receipt, 'InternalBalanceTransferred', {
-          from: sender.address,
-          to: recipient.address,
+        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+          user: sender.address,
           token: tokens.DAI.address,
           amount: transferredAmounts.DAI,
+          positive: false,
         });
 
-        expectEvent.inReceipt(receipt, 'InternalBalanceTransferred', {
-          from: sender.address,
-          to: recipient.address,
+        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+          user: recipient.address,
+          token: tokens.DAI.address,
+          amount: transferredAmounts.DAI,
+          positive: true,
+        });
+
+        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+          user: sender.address,
           token: tokens.MKR.address,
           amount: transferredAmounts.MKR,
+          positive: false,
+        });
+
+        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+          user: recipient.address,
+          token: tokens.MKR.address,
+          amount: transferredAmounts.MKR,
+          positive: true,
         });
       });
     }
