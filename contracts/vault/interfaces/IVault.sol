@@ -16,8 +16,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./IFlashLoanReceiver.sol";
 import "./IAuthorizer.sol";
+import "./IFlashLoanReceiver.sol";
 
 pragma solidity ^0.7.1;
 
@@ -40,6 +40,7 @@ interface IVault {
      * to use their tokens via `IERC20.approve()`.
      */
     function depositToInternalBalance(
+        address depositor,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address user
@@ -50,6 +51,7 @@ interface IVault {
      * This charges protocol withdrawal fees.
      */
     function withdrawFromInternalBalance(
+        address user,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address recipient
@@ -61,10 +63,13 @@ interface IVault {
      * aggregators wanting to settle multiple trades in a single transaction.
      */
     function transferInternalBalance(
+        address user,
         IERC20[] memory tokens,
         uint256[] memory amounts,
         address[] memory recipients
     ) external;
+
+    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 balance);
 
     // Pools
 
@@ -139,7 +144,7 @@ interface IVault {
         address[] calldata assetManagers
     ) external;
 
-    event TokensRegistered(bytes32 poolId, IERC20[] tokens);
+    event TokensRegistered(bytes32 poolId, IERC20[] tokens, address[] assetManagers);
 
     /**
      * @dev Called by the Pool to unregisted `tokens`. This prevents adding and removing liquidity in the future, as
@@ -170,6 +175,7 @@ interface IVault {
      */
     function joinPool(
         bytes32 poolId,
+        address provider,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory maxAmountsIn,
@@ -201,6 +207,7 @@ interface IVault {
      */
     function exitPool(
         bytes32 poolId,
+        address provider,
         address recipient,
         IERC20[] memory tokens,
         uint256[] memory minAmountsOut,
@@ -329,20 +336,29 @@ interface IVault {
     }
 
     /**
-     * @dev All tokens in a swap are sent to the Vault from the caller's account, and sent to `recipient`.
+     * @dev All tokens in a swap are sent to the Vault from the `sender`'s account, and sent to `recipient`.
      *
-     * If `fromInternalBalance` is true, the caller's Internal Balance will be preferred, performing an ERC20
-     * transfer for the difference between the requested amount and the User's Internal Balance (if any). The caller
+     * If `fromInternalBalance` is true, the `sender`'s Internal Balance will be preferred, performing an ERC20
+     * transfer for the difference between the requested amount and the User's Internal Balance (if any). The `sender`
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
      * `joinPool`.
      *     * If `tointernalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
      * transferred. This matches the behavior of `exitPool`.
      */
     struct FundManagement {
-        address recipient;
+        address sender;
         bool fromInternalBalance;
+        address recipient;
         bool toInternalBalance;
     }
+
+    event Swap(
+        bytes32 indexed poolId,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 tokensIn,
+        uint256 tokensOut
+    );
 
     // Swap query methods
 
@@ -456,6 +472,16 @@ interface IVault {
      */
     function changeAuthorizer(IAuthorizer newAuthorizer) external;
 
+    /**
+     * @dev Tells whether a user has allowed a specific relayer
+     */
+    function hasAllowedRelayer(address user, address relayer) external view returns (bool);
+
+    /**
+     * @dev Changes the allowance for a relayer
+     */
+    function changeRelayerAllowance(address relayer, bool allowed) external;
+
     // Protocol Fees
 
     /**
@@ -480,7 +506,7 @@ interface IVault {
      *
      * Requirements:
      *
-     * - The caller must be approved by the authorizer with `IAuthorizer.canSetProtocolFees`.
+     * - The caller must be approved by the authorizer.
      */
     function setProtocolFees(
         uint256 swapFee,

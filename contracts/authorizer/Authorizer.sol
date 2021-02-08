@@ -14,54 +14,10 @@
 
 pragma solidity ^0.7.1;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-import "../vault/interfaces/IAuthorizer.sol";
-
-// solhint-disable var-name-mixedcase
-// solhint-disable func-name-mixedcase
-
-contract Authorizer is IAuthorizer, AccessControl {
-    bytes32 public immutable SET_PROTOCOL_FEES_ROLE = keccak256("SET_PROTOCOL_FEES_ROLE");
-
-    bytes32 public immutable CHANGE_AUTHORIZER_ROLE = keccak256("CHANGE_AUTHORIZER_ROLE");
-
-    bytes32 public immutable WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE = keccak256(
-        "WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE"
-    );
-
-    function WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(IERC20 token) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked("WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE", token));
-    }
-
+contract Authorizer is AccessControl {
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
-    }
-
-    function validateCanChangeAuthorizer(address account) external view override {
-        require(canChangeAuthorizer(account), "CANNOT_TRANSFER_AUTHORITY");
-    }
-
-    function validateCanSetProtocolFees(address account) external view override {
-        require(canSetProtocolFees(account), "CANNOT_SET_PROTOCOL_FEES");
-    }
-
-    function validateCanWithdrawCollectedFees(address account, IERC20 token) external view override {
-        require(canWithdrawCollectedFees(account, token), "CANNOT_WITHDRAW_FEES");
-    }
-
-    function canChangeAuthorizer(address account) public view override returns (bool) {
-        return hasRole(CHANGE_AUTHORIZER_ROLE, account);
-    }
-
-    function canSetProtocolFees(address account) public view override returns (bool) {
-        return hasRole(SET_PROTOCOL_FEES_ROLE, account);
-    }
-
-    function canWithdrawCollectedFees(address account, IERC20 token) public view override returns (bool) {
-        return
-            hasRole(WITHDRAW_PROTOCOL_FEES_ALL_TOKENS_ROLE, account) ||
-            hasRole(WITHDRAW_PROTOCOL_FEES_SINGLE_TOKEN_ROLE(token), account);
     }
 }
