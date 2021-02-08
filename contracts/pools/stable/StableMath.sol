@@ -111,7 +111,7 @@ contract StableMath {
         }
 
         //Calculate in balance
-        uint256 y = _calculateBalance(sum, inv, amp, nn, p);
+        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nn, p);
 
         //Result is rounded up
         return y.sub(balances[tokenIndexIn]);
@@ -157,7 +157,7 @@ contract StableMath {
         }
 
         //Calculate out balance
-        uint256 y = _calculateBalance(sum, inv, amp, nn, p);
+        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nn, p);
 
         //Result is rounded down
         return balances[tokenIndexOut] > y ? balances[tokenIndexOut].sub(y) : 0;
@@ -254,7 +254,7 @@ contract StableMath {
         }
 
         //Calculate token balance balance
-        uint256 y = _calculateBalance(sum, inv, amp, nn, p);
+        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nn, p);
 
         //Result is rounded down
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] > y ? balances[tokenIndex].sub(y) : 0;
@@ -263,7 +263,8 @@ contract StableMath {
 
     //Private functions
 
-    function _calculateBalance(
+    //This function calcuates the analytical solution to find the balance required
+    function _solveAnalyticalBalance(
         uint256 sum,
         uint256 inv,
         uint256 amp,
