@@ -14,7 +14,7 @@ import {
 
 import { deploy } from '../../../lib/helpers/deploy';
 import { GeneralPool } from '../../../lib/helpers/pools';
-import { bn, fp, decimal, pct } from '../../../lib/helpers/numbers';
+import { bn, fp, decimal } from '../../../lib/helpers/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
@@ -193,7 +193,7 @@ describe('StablePool', function () {
         it('reverts if there are repeated tokens', async () => {
           const tokens = new Array(numberOfTokens).fill(poolTokens[0]);
 
-          await expect(deployPool({ tokens })).to.be.revertedWith('TOKEN_ALREADY_REGISTERED');
+          await expect(deployPool({ tokens })).to.be.revertedWith('UNSORTED_ARRAY');
         });
 
         it('reverts if the swap fee is too high', async () => {
