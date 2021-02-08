@@ -121,7 +121,12 @@ describe('Vault - exit pool', () => {
       const transfers = [];
 
       for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-        transfers.push({ token: tokenAddresses[idx], amount: bn(50e18), source: creator.address, destination: creator.address });
+        transfers.push({
+          token: tokenAddresses[idx],
+          amount: bn(50e18),
+          source: creator.address,
+          destination: creator.address,
+        });
       }
 
       await vault.connect(creator).depositToInternalBalance(transfers);
@@ -327,7 +332,12 @@ describe('Vault - exit pool', () => {
             const transfers = [];
 
             for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({ token: tokenAddresses[idx], amount: bn(1.5e18), source: recipient.address, destination: recipient.address });
+              transfers.push({
+                token: tokenAddresses[idx],
+                amount: bn(1.5e18),
+                source: recipient.address,
+                destination: recipient.address,
+              });
             }
 
             await vault.connect(recipient).depositToInternalBalance(transfers);
@@ -349,7 +359,12 @@ describe('Vault - exit pool', () => {
             const transfers = [];
 
             for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({ token: tokenAddresses[idx], amount: bn(1.5e18), source: recipient.address, destination: recipient.address });
+              transfers.push({
+                token: tokenAddresses[idx],
+                amount: bn(1.5e18),
+                source: recipient.address,
+                destination: recipient.address,
+              });
             }
 
             await vault.connect(recipient).depositToInternalBalance(transfers);

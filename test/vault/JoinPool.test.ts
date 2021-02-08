@@ -293,7 +293,9 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            const transfers = [{ token: tokens.DAI.address, amount: bn(1.5e18), source: lp.address, destination: lp.address }];
+            const transfers = [
+              { token: tokens.DAI.address, amount: bn(1.5e18), source: lp.address, destination: lp.address },
+            ];
 
             await vault.connect(lp).depositToInternalBalance(transfers);
           });
@@ -314,7 +316,12 @@ describe('Vault - join pool', () => {
             const transfers = [];
 
             for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({ token: tokenAddresses[idx], amount: bn(1.5e18), source: lp.address, destination: lp.address });
+              transfers.push({
+                token: tokenAddresses[idx],
+                amount: bn(1.5e18),
+                source: lp.address,
+                destination: lp.address,
+              });
             }
 
             await vault.connect(lp).depositToInternalBalance(transfers);
@@ -328,7 +335,12 @@ describe('Vault - join pool', () => {
             const transfers = [];
 
             for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({ token: tokenAddresses[idx], amount: bn(1.5e18), source: lp.address, destination: lp.address });
+              transfers.push({
+                token: tokenAddresses[idx],
+                amount: bn(1.5e18),
+                source: lp.address,
+                destination: lp.address,
+              });
             }
 
             await vault.connect(lp).depositToInternalBalance(transfers);

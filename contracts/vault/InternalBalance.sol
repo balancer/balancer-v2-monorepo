@@ -60,7 +60,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].source;
             _authenticateSenderFor(sender);
-            
+
             IERC20 token = transfers[i].token;
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].destination;

@@ -14,10 +14,7 @@ import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 
 describe('Vault - internal balance', () => {
-  let admin: SignerWithAddress,
-    sender: SignerWithAddress,
-    otherSender: SignerWithAddress,
-    recipient: SignerWithAddress;
+  let admin: SignerWithAddress, sender: SignerWithAddress, otherSender: SignerWithAddress, recipient: SignerWithAddress;
   let relayer: SignerWithAddress, otherRecipient: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList = {};
@@ -38,7 +35,10 @@ describe('Vault - internal balance', () => {
     const itHandlesDepositsProperly = (amount: BigNumber) => {
       it('transfers the tokens from the sender to the vault', async () => {
         await expectBalanceChange(
-          () => vault.depositToInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }]),
+          () =>
+            vault.depositToInternalBalance([
+              { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+            ]),
           tokens,
           [
             { account: sender.address, changes: { DAI: -amount } },
@@ -51,7 +51,9 @@ describe('Vault - internal balance', () => {
         const previousSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
         const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
 
-        await vault.depositToInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }]);
+        await vault.depositToInternalBalance([
+          { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+        ]);
 
         const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
         expect(currentSenderBalance[0]).to.be.equal(previousSenderBalance[0]);
@@ -62,7 +64,9 @@ describe('Vault - internal balance', () => {
 
       it('emits an event', async () => {
         const receipt = await (
-          await vault.depositToInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }])
+          await vault.depositToInternalBalance([
+            { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+          ])
         ).wait();
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
@@ -107,7 +111,14 @@ describe('Vault - internal balance', () => {
           context('when the given amount is not approved by the sender', () => {
             it('reverts', async () => {
               await expect(
-                vault.depositToInternalBalance([{token: tokens.DAI.address, amount: initialBalance, source: sender.address, destination: recipient.address}])
+                vault.depositToInternalBalance([
+                  {
+                    token: tokens.DAI.address,
+                    amount: initialBalance,
+                    source: sender.address,
+                    destination: recipient.address,
+                  },
+                ])
               ).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
             });
           });
@@ -116,7 +127,14 @@ describe('Vault - internal balance', () => {
         context('when the sender does not hold enough balance', () => {
           it('reverts', async () => {
             await expect(
-              vault.depositToInternalBalance([{ token: tokens.DAI.address, amount: initialBalance, source: sender.address, destination: recipient.address }])
+              vault.depositToInternalBalance([
+                {
+                  token: tokens.DAI.address,
+                  amount: initialBalance,
+                  source: sender.address,
+                  destination: recipient.address,
+                },
+              ])
             ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
           });
         });
@@ -125,7 +143,9 @@ describe('Vault - internal balance', () => {
       context('when the token is the zero address', () => {
         it('reverts', async () => {
           await expect(
-            vault.depositToInternalBalance([{ token: ZERO_ADDRESS, amount: initialBalance, source: sender.address, destination: recipient.address }])
+            vault.depositToInternalBalance([
+              { token: ZERO_ADDRESS, amount: initialBalance, source: sender.address, destination: recipient.address },
+            ])
           ).to.be.revertedWith('Address: call to non-contract');
         });
       });
@@ -155,7 +175,14 @@ describe('Vault - internal balance', () => {
         context('when the relayer is not allowed by the user', () => {
           it('reverts', async () => {
             await expect(
-              vault.depositToInternalBalance([{ token: tokens.DAI.address, amount: initialBalance, source: sender.address, destination: recipient.address }])
+              vault.depositToInternalBalance([
+                {
+                  token: tokens.DAI.address,
+                  amount: initialBalance,
+                  source: sender.address,
+                  destination: recipient.address,
+                },
+              ])
             ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
           });
         });
@@ -169,7 +196,14 @@ describe('Vault - internal balance', () => {
 
           it('reverts', async () => {
             await expect(
-              vault.depositToInternalBalance([{ token: tokens.DAI.address, amount: initialBalance, source: sender.address, destination: recipient.address }])
+              vault.depositToInternalBalance([
+                {
+                  token: tokens.DAI.address,
+                  amount: initialBalance,
+                  source: sender.address,
+                  destination: recipient.address,
+                },
+              ])
             ).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
@@ -181,7 +215,14 @@ describe('Vault - internal balance', () => {
 
           it('reverts', async () => {
             await expect(
-              vault.depositToInternalBalance([{ token: tokens.DAI.address, amount: initialBalance, source: sender.address, destination: recipient.address }])
+              vault.depositToInternalBalance([
+                {
+                  token: tokens.DAI.address,
+                  amount: initialBalance,
+                  source: sender.address,
+                  destination: recipient.address,
+                },
+              ])
             ).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
@@ -196,7 +237,9 @@ describe('Vault - internal balance', () => {
           it('transfers the tokens from the vault to recipient', async () => {
             await expectBalanceChange(
               () =>
-                vault.withdrawFromInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }]),
+                vault.withdrawFromInternalBalance([
+                  { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+                ]),
               tokens,
               { account: recipient, changes: { DAI: amount } }
             );
@@ -206,7 +249,9 @@ describe('Vault - internal balance', () => {
             const previousSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
             const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
 
-            await vault.withdrawFromInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }]);
+            await vault.withdrawFromInternalBalance([
+              { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+            ]);
 
             const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
             expect(currentSenderBalance[0]).to.be.equal(previousSenderBalance[0].sub(amount));
@@ -217,7 +262,9 @@ describe('Vault - internal balance', () => {
 
           it('emits an event', async () => {
             const receipt = await (
-              await vault.withdrawFromInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }])
+              await vault.withdrawFromInternalBalance([
+                { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+              ])
             ).wait();
 
             expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
@@ -240,7 +287,9 @@ describe('Vault - internal balance', () => {
           it('tokens minus fee are pushed', async () => {
             await expectBalanceChange(
               () =>
-                vault.withdrawFromInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }]),
+                vault.withdrawFromInternalBalance([
+                  { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+                ]),
               tokens,
               { account: recipient, changes: { DAI: amount.sub(pct(amount, withdrawFee)) } }
             );
@@ -249,7 +298,9 @@ describe('Vault - internal balance', () => {
           it('protocol fees are collected', async () => {
             const previousCollectedFees = await vault.getCollectedFees([tokens.DAI.address]);
 
-            await vault.withdrawFromInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }]);
+            await vault.withdrawFromInternalBalance([
+              { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+            ]);
 
             const currentCollectedFees = await vault.getCollectedFees([tokens.DAI.address]);
             expect(currentCollectedFees[0].sub(previousCollectedFees[0])).to.equal(pct(amount, withdrawFee));
@@ -269,7 +320,9 @@ describe('Vault - internal balance', () => {
         beforeEach('deposit internal balance', async () => {
           await mintTokens(tokens, 'DAI', sender, depositedAmount);
           await tokens.DAI.connect(sender).approve(vault.address, depositedAmount);
-          await vault.depositToInternalBalance([{ token: tokens.DAI.address, amount: depositedAmount, source: sender.address, destination: sender.address }]);
+          await vault.depositToInternalBalance([
+            { token: tokens.DAI.address, amount: depositedAmount, source: sender.address, destination: sender.address },
+          ]);
         });
 
         context('when requesting all the available balance', () => {
@@ -295,7 +348,9 @@ describe('Vault - internal balance', () => {
 
           it('reverts', async () => {
             await expect(
-              vault.withdrawFromInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }])
+              vault.withdrawFromInternalBalance([
+                { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+              ])
             ).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
           });
         });
@@ -306,7 +361,9 @@ describe('Vault - internal balance', () => {
 
         it('reverts', async () => {
           await expect(
-            vault.withdrawFromInternalBalance([{ token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address }])
+            vault.withdrawFromInternalBalance([
+              { token: tokens.DAI.address, amount: amount, source: sender.address, destination: recipient.address },
+            ])
           ).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
         });
       });
@@ -322,7 +379,9 @@ describe('Vault - internal balance', () => {
         await tokens.DAI.connect(sender).approve(vault.address, depositedAmount);
         await vault
           .connect(sender)
-          .depositToInternalBalance([{ token: tokens.DAI.address, amount: depositedAmount, source: sender.address, destination: sender.address }]);
+          .depositToInternalBalance([
+            { token: tokens.DAI.address, amount: depositedAmount, source: sender.address, destination: sender.address },
+          ]);
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
@@ -342,7 +401,14 @@ describe('Vault - internal balance', () => {
         context('when the relayer is not allowed by the user', () => {
           it('reverts', async () => {
             await expect(
-              vault.withdrawFromInternalBalance([{token: tokens.DAI.address, amount: depositedAmount, source: sender.address, destination: recipient.address}])
+              vault.withdrawFromInternalBalance([
+                {
+                  token: tokens.DAI.address,
+                  amount: depositedAmount,
+                  source: sender.address,
+                  destination: recipient.address,
+                },
+              ])
             ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
           });
         });
@@ -356,7 +422,14 @@ describe('Vault - internal balance', () => {
 
           it('reverts', async () => {
             await expect(
-              vault.withdrawFromInternalBalance([{token: tokens.DAI.address, amount: depositedAmount, source: sender.address, destination: recipient.address}])
+              vault.withdrawFromInternalBalance([
+                {
+                  token: tokens.DAI.address,
+                  amount: depositedAmount,
+                  source: sender.address,
+                  destination: recipient.address,
+                },
+              ])
             ).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
@@ -368,8 +441,15 @@ describe('Vault - internal balance', () => {
 
           it('reverts', async () => {
             await expect(
-              vault.withdrawFromInternalBalance([{token: tokens.DAI.address, amount: depositedAmount, source: sender.address, destination: recipient.address}])
-              ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+              vault.withdrawFromInternalBalance([
+                {
+                  token: tokens.DAI.address,
+                  amount: depositedAmount,
+                  source: sender.address,
+                  destination: recipient.address,
+                },
+              ])
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
       });
@@ -395,7 +475,12 @@ describe('Vault - internal balance', () => {
         const transfers = [];
 
         for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-          transfers.push({ token: tokenAddresses[idx], amount: amounts[idx], source: sender.address, destination: recipient.address });
+          transfers.push({
+            token: tokenAddresses[idx],
+            amount: amounts[idx],
+            source: sender.address,
+            destination: recipient.address,
+          });
         }
 
         await vault.transferInternalBalance(transfers);
@@ -447,7 +532,12 @@ describe('Vault - internal balance', () => {
         const transfers = [];
 
         for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-          transfers.push({ token: tokenAddresses[idx], amount: amounts[idx], source: sender.address, destination: recipient.address });
+          transfers.push({
+            token: tokenAddresses[idx],
+            amount: amounts[idx],
+            source: sender.address,
+            destination: recipient.address,
+          });
         }
 
         await vault.transferInternalBalance(transfers);
@@ -465,12 +555,15 @@ describe('Vault - internal balance', () => {
         const transfers = [];
 
         for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-          transfers.push({ token: tokenAddresses[idx], amount: amounts[idx], source: sender.address, destination: recipient.address });
+          transfers.push({
+            token: tokenAddresses[idx],
+            amount: amounts[idx],
+            source: sender.address,
+            destination: recipient.address,
+          });
         }
 
-        const receipt = await (
-          await vault.transferInternalBalance(transfers)
-        ).wait();
+        const receipt = await (await vault.transferInternalBalance(transfers)).wait();
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: sender.address,
@@ -511,7 +604,12 @@ describe('Vault - internal balance', () => {
         const transfers = [];
 
         for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-          transfers.push({ token: tokenAddresses[idx], amount: balances[idx], source: sender.address, destination: sender.address });
+          transfers.push({
+            token: tokenAddresses[idx],
+            amount: balances[idx],
+            source: sender.address,
+            destination: sender.address,
+          });
         }
 
         await vault.connect(sender).depositToInternalBalance(transfers);
@@ -529,12 +627,15 @@ describe('Vault - internal balance', () => {
           const transfers = [];
 
           for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-            transfers.push({ token: tokenAddresses[idx], amount: amounts[idx], source: sender.address, destination: recipient.address });
+            transfers.push({
+              token: tokenAddresses[idx],
+              amount: amounts[idx],
+              source: sender.address,
+              destination: recipient.address,
+            });
           }
-  
-          await expect(
-            vault.transferInternalBalance(transfers)
-          ).to.be.revertedWith(errorReason);
+
+          await expect(vault.transferInternalBalance(transfers)).to.be.revertedWith(errorReason);
         });
       }
 
@@ -618,12 +719,15 @@ describe('Vault - internal balance', () => {
             const amounts = Object.values(transferredAmounts);
 
             for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({ token: tokenAddresses[idx], amount: amounts[idx], source: sender.address, destination: recipient.address });
+              transfers.push({
+                token: tokenAddresses[idx],
+                amount: amounts[idx],
+                source: sender.address,
+                destination: recipient.address,
+              });
             }
 
-            await expect(
-              vault.transferInternalBalance(transfers)
-            ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+            await expect(vault.transferInternalBalance(transfers)).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
           });
         });
       });
@@ -639,12 +743,15 @@ describe('Vault - internal balance', () => {
             const amounts = Object.values(transferredAmounts);
 
             for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({ token: tokenAddresses[idx], amount: amounts[idx], source: sender.address, destination: recipient.address });
+              transfers.push({
+                token: tokenAddresses[idx],
+                amount: amounts[idx],
+                source: sender.address,
+                destination: recipient.address,
+              });
             }
 
-            await expect(
-              vault.transferInternalBalance(transfers)
-            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(vault.transferInternalBalance(transfers)).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
 
@@ -658,12 +765,15 @@ describe('Vault - internal balance', () => {
             const amounts = Object.values(transferredAmounts);
 
             for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({ token: tokenAddresses[idx], amount: amounts[idx], source: sender.address, destination: recipient.address });
+              transfers.push({
+                token: tokenAddresses[idx],
+                amount: amounts[idx],
+                source: sender.address,
+                destination: recipient.address,
+              });
             }
 
-            await expect(
-              vault.transferInternalBalance(transfers)
-            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(vault.transferInternalBalance(transfers)).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
       });

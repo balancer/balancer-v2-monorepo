@@ -51,7 +51,8 @@ interface IVault {
 
     /**
      * @dev Deposits tokens from each `source` address into Internal Balances of the corresponding `destination`
-     * accounts specified in the struct. The sources must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     * accounts specified in the struct. The sources must have allowed the Vault to use their tokens
+     * via `IERC20.approve()`.
      * Allows aggregators to settle multiple accounts in a single transaction.
      */
     function depositToInternalBalance(BalanceTransfer[] memory transfers) external;

@@ -265,7 +265,12 @@ describe('Vault - swaps', () => {
                         beforeEach('deposit to internal balance', async () => {
                           funds.fromInternalBalance = true;
                           const transfers = [
-                            { token: tokens.MKR.address, amount: bn(0.3e18), source: trader.address, destination: trader.address },
+                            {
+                              token: tokens.MKR.address,
+                              amount: bn(0.3e18),
+                              source: trader.address,
+                              destination: trader.address,
+                            },
                           ];
 
                           await vault.connect(trader).depositToInternalBalance(transfers);
@@ -656,7 +661,12 @@ describe('Vault - swaps', () => {
                         beforeEach('deposit to internal balance', async () => {
                           funds.fromInternalBalance = true;
                           const transfers = [
-                            { token: tokens.MKR.address, amount: bn(0.3e18), source: trader.address, destination: trader.address },
+                            {
+                              token: tokens.MKR.address,
+                              amount: bn(0.3e18),
+                              source: trader.address,
+                              destination: trader.address,
+                            },
                           ];
 
                           await vault.connect(trader).depositToInternalBalance(transfers);
