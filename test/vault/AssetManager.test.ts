@@ -297,7 +297,9 @@ describe('Vault - asset manager', function () {
             const currentBalance = await vault.getPoolTokenBalanceInfo(poolId, tokens.DAI.address);
             expect(currentBalance.cash).to.equal(previousBalance.cash);
             expect(currentBalance.managed).to.equal(amount);
-            expect(currentBalance.blockNumber).to.equal(previousBalance.blockNumber);
+
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+            expect(currentBalance.blockNumber).to.equal(currentBlockNumber);
           });
         });
       });
