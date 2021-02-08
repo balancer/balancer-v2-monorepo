@@ -15,6 +15,8 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/InputHelpers.sol";
 
@@ -27,7 +29,6 @@ import "../vault/interfaces/IBasePool.sol";
 // solhint-disable max-states-count
 
 abstract contract BasePool is IBasePool, BalancerPoolToken {
-    using Math for uint256;
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
@@ -60,6 +61,24 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
     IERC20 internal immutable _token14;
     IERC20 internal immutable _token15;
 
+    // Scaling factors for each token
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
+    uint256 internal immutable _scalingFactor4;
+    uint256 internal immutable _scalingFactor5;
+    uint256 internal immutable _scalingFactor6;
+    uint256 internal immutable _scalingFactor7;
+    uint256 internal immutable _scalingFactor8;
+    uint256 internal immutable _scalingFactor9;
+    uint256 internal immutable _scalingFactor10;
+    uint256 internal immutable _scalingFactor11;
+    uint256 internal immutable _scalingFactor12;
+    uint256 internal immutable _scalingFactor13;
+    uint256 internal immutable _scalingFactor14;
+    uint256 internal immutable _scalingFactor15;
+
     constructor(
         IVault vault,
         IVault.PoolSpecialization specialization,
@@ -90,6 +109,7 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         _totalTokens = tokens.length;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
+
         _token0 = tokens.length > 0 ? tokens[0] : IERC20(0);
         _token1 = tokens.length > 1 ? tokens[1] : IERC20(0);
         _token2 = tokens.length > 2 ? tokens[2] : IERC20(0);
@@ -106,6 +126,23 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         _token13 = tokens.length > 13 ? tokens[13] : IERC20(0);
         _token14 = tokens.length > 14 ? tokens[14] : IERC20(0);
         _token15 = tokens.length > 15 ? tokens[15] : IERC20(0);
+
+        _scalingFactor0 = tokens.length > 0 ? _computeScalingFactor(tokens[0]) : 0;
+        _scalingFactor1 = tokens.length > 1 ? _computeScalingFactor(tokens[1]) : 0;
+        _scalingFactor2 = tokens.length > 2 ? _computeScalingFactor(tokens[2]) : 0;
+        _scalingFactor3 = tokens.length > 3 ? _computeScalingFactor(tokens[3]) : 0;
+        _scalingFactor4 = tokens.length > 4 ? _computeScalingFactor(tokens[4]) : 0;
+        _scalingFactor5 = tokens.length > 5 ? _computeScalingFactor(tokens[5]) : 0;
+        _scalingFactor6 = tokens.length > 6 ? _computeScalingFactor(tokens[6]) : 0;
+        _scalingFactor7 = tokens.length > 7 ? _computeScalingFactor(tokens[7]) : 0;
+        _scalingFactor8 = tokens.length > 8 ? _computeScalingFactor(tokens[8]) : 0;
+        _scalingFactor9 = tokens.length > 9 ? _computeScalingFactor(tokens[9]) : 0;
+        _scalingFactor10 = tokens.length > 10 ? _computeScalingFactor(tokens[10]) : 0;
+        _scalingFactor11 = tokens.length > 11 ? _computeScalingFactor(tokens[11]) : 0;
+        _scalingFactor12 = tokens.length > 12 ? _computeScalingFactor(tokens[12]) : 0;
+        _scalingFactor13 = tokens.length > 13 ? _computeScalingFactor(tokens[13]) : 0;
+        _scalingFactor14 = tokens.length > 14 ? _computeScalingFactor(tokens[14]) : 0;
+        _scalingFactor15 = tokens.length > 15 ? _computeScalingFactor(tokens[15]) : 0;
     }
 
     // Getters
@@ -139,6 +176,9 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        _upscaleArray(currentBalances, scalingFactors);
+
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
 
@@ -148,6 +188,9 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
             require(bptAmountOut >= _MINIMUM_BPT, "MINUMUM_BPT");
             _mintPoolTokens(address(0), _MINIMUM_BPT);
             _mintPoolTokens(recipient, bptAmountOut - _MINIMUM_BPT);
+
+            // amountsIn are amounts entering the Pool, so we round up.
+            _downscaleUpArray(amountsIn, scalingFactors);
 
             return (amountsIn, new uint256[](_totalTokens));
         } else {
@@ -162,6 +205,12 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
             );
 
             _mintPoolTokens(recipient, bptAmountOut);
+
+            // amountsIn are amounts entering the Pool, so we round up.
+            _downscaleUpArray(amountsIn, scalingFactors);
+            // dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
+            _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
+
             return (amountsIn, dueProtocolFeeAmounts);
         }
     }
@@ -175,6 +224,9 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+        uint256[] memory scalingFactors = _scalingFactors();
+        _upscaleArray(currentBalances, scalingFactors);
+
         (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(
             poolId,
             sender,
@@ -186,6 +238,10 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         );
 
         _burnPoolTokens(sender, bptAmountIn);
+
+        // Both amountsOut and dueProtocolFees are amounts exiting the Pool, so we round down.
+        _downscaleDownArray(amountsOut, scalingFactors);
+        _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
 
         return (amountsOut, dueProtocolFeeAmounts);
     }
@@ -240,5 +296,97 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         // Round up, favoring fees.
         uint256 fees = amount.mulUp(_swapFee);
         return amount.sub(fees);
+    }
+
+    /**
+     * @dev Returns a scaling factor that, when multiplied to a token amount for `token`, normalizes its balance as if
+     * it had 18 decimals.
+     */
+    function _computeScalingFactor(IERC20 token) private view returns (uint256) {
+        // Tokens that don't implement the `decimals` method are not supported.
+        uint256 tokenDecimals = ERC20(address(token)).decimals();
+
+        // Tokens with more than 18 decimals are not supported.
+        uint256 decimalsDifference = Math.sub(18, tokenDecimals);
+        return 10**decimalsDifference;
+    }
+
+    function _scalingFactor(IERC20 token) internal view returns (uint256) {
+        // prettier-ignore
+        if (token == _token0) { return _scalingFactor0; }
+        else if (token == _token1) { return _scalingFactor1; }
+        else if (token == _token2) { return _scalingFactor2; }
+        else if (token == _token3) { return _scalingFactor3; }
+        else if (token == _token4) { return _scalingFactor4; }
+        else if (token == _token5) { return _scalingFactor5; }
+        else if (token == _token6) { return _scalingFactor6; }
+        else if (token == _token7) { return _scalingFactor7; }
+        else if (token == _token8) { return _scalingFactor8; }
+        else if (token == _token9) { return _scalingFactor9; }
+        else if (token == _token10) { return _scalingFactor10; }
+        else if (token == _token11) { return _scalingFactor11; }
+        else if (token == _token12) { return _scalingFactor12; }
+        else if (token == _token13) { return _scalingFactor13; }
+        else if (token == _token14) { return _scalingFactor14; }
+        else if (token == _token15) { return _scalingFactor15; }
+        else {
+            revert("INVALID_TOKEN");
+        }
+    }
+
+    function _scalingFactors() internal view returns (uint256[] memory) {
+        uint256[] memory scalingFactors = new uint256[](_totalTokens);
+
+        // prettier-ignore
+        {
+            if (_totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
+            if (_totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
+            if (_totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
+            if (_totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
+            if (_totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
+            if (_totalTokens > 5) { scalingFactors[5] = _scalingFactor5; } else { return scalingFactors; }
+            if (_totalTokens > 6) { scalingFactors[6] = _scalingFactor6; } else { return scalingFactors; }
+            if (_totalTokens > 7) { scalingFactors[7] = _scalingFactor7; } else { return scalingFactors; }
+            if (_totalTokens > 8) { scalingFactors[8] = _scalingFactor8; } else { return scalingFactors; }
+            if (_totalTokens > 9) { scalingFactors[9] = _scalingFactor9; } else { return scalingFactors; }
+            if (_totalTokens > 10) { scalingFactors[10] = _scalingFactor10; } else { return scalingFactors; }
+            if (_totalTokens > 11) { scalingFactors[11] = _scalingFactor11; } else { return scalingFactors; }
+            if (_totalTokens > 12) { scalingFactors[12] = _scalingFactor12; } else { return scalingFactors; }
+            if (_totalTokens > 13) { scalingFactors[13] = _scalingFactor13; } else { return scalingFactors; }
+            if (_totalTokens > 14) { scalingFactors[14] = _scalingFactor14; } else { return scalingFactors; }
+            if (_totalTokens > 15) { scalingFactors[15] = _scalingFactor15; } else { return scalingFactors; }
+        }
+
+        return scalingFactors;
+    }
+
+    function _upscale(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+        return Math.mul(amount, scalingFactor);
+    }
+
+    function _upscaleArray(uint256[] memory amount, uint256[] memory scalingFactors) internal view {
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            amount[i] = Math.mul(amount[i], scalingFactors[i]);
+        }
+    }
+
+    function _downscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+        return Math.divDown(amount, scalingFactor);
+    }
+
+    function _downscaleDownArray(uint256[] memory amount, uint256[] memory scalingFactors) internal view {
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            amount[i] = Math.divDown(amount[i], scalingFactors[i]);
+        }
+    }
+
+    function _downscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
+        return Math.divUp(amount, scalingFactor);
+    }
+
+    function _downscaleUpArray(uint256[] memory amount, uint256[] memory scalingFactors) internal view {
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            amount[i] = Math.divUp(amount[i], scalingFactors[i]);
+        }
     }
 }

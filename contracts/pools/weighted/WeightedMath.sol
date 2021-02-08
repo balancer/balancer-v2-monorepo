@@ -14,7 +14,6 @@
 
 pragma solidity ^0.7.1;
 
-import "../../lib/math/Math.sol";
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/math/LogExpMath.sol";
 import "../../lib/helpers/InputHelpers.sol";
@@ -25,7 +24,6 @@ import "../../lib/helpers/InputHelpers.sol";
 /* solhint-disable private-vars-leading-underscore */
 
 contract WeightedMath {
-    using Math for uint256;
     using FixedPoint for uint256;
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
