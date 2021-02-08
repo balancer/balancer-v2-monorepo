@@ -69,6 +69,8 @@ interface IVault {
         address[] memory recipients
     ) external;
 
+    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 balance);
+
     // Pools
 
     // There are three specialization levels for Pools, which allow for lower swap gas costs at the cost of reduced
@@ -142,7 +144,7 @@ interface IVault {
         address[] calldata assetManagers
     ) external;
 
-    event TokensRegistered(bytes32 poolId, IERC20[] tokens);
+    event TokensRegistered(bytes32 poolId, IERC20[] tokens, address[] assetManagers);
 
     /**
      * @dev Called by the Pool to unregisted `tokens`. This prevents adding and removing liquidity in the future, as
@@ -349,6 +351,14 @@ interface IVault {
         address recipient;
         bool toInternalBalance;
     }
+
+    event Swap(
+        bytes32 indexed poolId,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 tokensIn,
+        uint256 tokensOut
+    );
 
     // Swap query methods
 

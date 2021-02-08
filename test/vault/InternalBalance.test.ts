@@ -7,11 +7,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
+import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { bn, fp, pct } from '../../lib/helpers/numbers';
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
-import { roleId } from '../../lib/helpers/roles';
 
 describe('Vault - internal balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
@@ -62,11 +62,10 @@ describe('Vault - internal balance', () => {
           await vault.depositToInternalBalance(sender.address, [tokens.DAI.address], [amount], recipient.address)
         ).wait();
 
-        expectEvent.inReceipt(receipt, 'InternalBalanceDeposited', {
-          depositor: sender.address,
+        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: recipient.address,
           token: tokens.DAI.address,
-          amount,
+          balance: amount,
         });
       });
     };
@@ -208,7 +207,7 @@ describe('Vault - internal balance', () => {
   });
 
   describe('withdraw', () => {
-    const itHandlesWithdrawalsProperly = (amount: BigNumber) => {
+    const itHandlesWithdrawalsProperly = (initialBalance: BigNumber, amount: BigNumber) => {
       context('when tokens and balances match', () => {
         context('without protocol withdraw fees', () => {
           it('transfers the tokens from the vault to recipient', async () => {
@@ -238,11 +237,10 @@ describe('Vault - internal balance', () => {
               await vault.withdrawFromInternalBalance(sender.address, [tokens.DAI.address], [amount], recipient.address)
             ).wait();
 
-            expectEvent.inReceipt(receipt, 'InternalBalanceWithdrawn', {
+            expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
               user: sender.address,
-              recipient: recipient.address,
               token: tokens.DAI.address,
-              amount,
+              balance: initialBalance.sub(amount),
             });
           });
         });
@@ -307,19 +305,19 @@ describe('Vault - internal balance', () => {
         context('when requesting all the available balance', () => {
           const amount = depositedAmount;
 
-          itHandlesWithdrawalsProperly(amount);
+          itHandlesWithdrawalsProperly(depositedAmount, amount);
         });
 
         context('when requesting part of the balance', () => {
           const amount = depositedAmount.div(2);
 
-          itHandlesWithdrawalsProperly(amount);
+          itHandlesWithdrawalsProperly(depositedAmount, amount);
         });
 
         context('when requesting no balance', () => {
           const amount = bn(0);
 
-          itHandlesWithdrawalsProperly(amount);
+          itHandlesWithdrawalsProperly(depositedAmount, amount);
         });
 
         context('with requesting more balance than available', () => {
@@ -368,7 +366,7 @@ describe('Vault - internal balance', () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
-          itHandlesWithdrawalsProperly(depositedAmount);
+          itHandlesWithdrawalsProperly(depositedAmount, depositedAmount);
         });
 
         context('when the relayer is not allowed by the user', () => {
@@ -430,7 +428,10 @@ describe('Vault - internal balance', () => {
       tokenAddresses = Object.values(tokens).map((token) => token.address);
     });
 
-    function itHandlesTransfersProperly(transferredAmounts: Dictionary<BigNumber>) {
+    function itHandlesTransfersProperly(
+      initialBalances: Dictionary<BigNumber>,
+      transferredAmounts: Dictionary<BigNumber>
+    ) {
       const amounts = Object.values(transferredAmounts);
 
       it('transfers the tokens from the sender to a single recipient', async () => {
@@ -447,9 +448,9 @@ describe('Vault - internal balance', () => {
         const senderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
         const recipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
 
-        for (let idx = 1; idx < tokenAddresses.length; idx++) {
-          expect(senderBalances[idx]).to.equal(previousSenderBalances[idx].sub(amounts[idx]));
-          expect(recipientBalances[idx]).to.equal(previousRecipientBalances[idx].add(amounts[idx]));
+        for (let i = 0; i < tokenAddresses.length; i++) {
+          expect(senderBalances[i]).to.equal(previousSenderBalances[i].sub(amounts[i]));
+          expect(recipientBalances[i]).to.equal(previousRecipientBalances[i].add(amounts[i]));
         }
       });
 
@@ -467,8 +468,8 @@ describe('Vault - internal balance', () => {
         const recipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
         const otherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokenAddresses);
 
-        for (let idx = 1; idx < tokenAddresses.length; idx++) {
-          expect(senderBalances[idx]).to.equal(previousSenderBalances[idx].sub(amounts[idx]));
+        for (let i = 0; i < tokenAddresses.length; i++) {
+          expect(senderBalances[i]).to.equal(previousSenderBalances[i].sub(amounts[i]));
         }
 
         expect(recipientBalances[0]).to.equal(previousRecipientBalances[0].add(amounts[0]));
@@ -513,18 +514,28 @@ describe('Vault - internal balance', () => {
           )
         ).wait();
 
-        expectEvent.inReceipt(receipt, 'InternalBalanceTransferred', {
-          from: sender.address,
-          to: recipient.address,
+        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+          user: sender.address,
           token: tokens.DAI.address,
-          amount: transferredAmounts.DAI,
+          balance: initialBalances.DAI.sub(transferredAmounts.DAI),
         });
 
-        expectEvent.inReceipt(receipt, 'InternalBalanceTransferred', {
-          from: sender.address,
-          to: recipient.address,
+        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+          user: sender.address,
           token: tokens.MKR.address,
-          amount: transferredAmounts.MKR,
+          balance: initialBalances.MKR.sub(transferredAmounts.MKR),
+        });
+
+        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+          user: recipient.address,
+          token: tokens.DAI.address,
+          balance: transferredAmounts.DAI,
+        });
+
+        expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+          user: recipient.address,
+          token: tokens.MKR.address,
+          balance: transferredAmounts.MKR,
         });
       });
     }
@@ -568,9 +579,10 @@ describe('Vault - internal balance', () => {
           const transferredAmounts = { DAI: bn(1e16), MKR: bn(2e16) };
 
           context('when the sender holds enough balance', () => {
-            depositInitialBalances({ DAI: bn(1e18), MKR: bn(5e19) });
+            const initialBalances = { DAI: bn(1e18), MKR: bn(5e19) };
 
-            itHandlesTransfersProperly(transferredAmounts);
+            depositInitialBalances(initialBalances);
+            itHandlesTransfersProperly(initialBalances, transferredAmounts);
           });
 
           context('when the sender does not hold said balance', () => {
@@ -601,11 +613,13 @@ describe('Vault - internal balance', () => {
             const initialBalances: Dictionary<BigNumber> = { DAI: bn(1e18), MKR: bn(5e19) };
 
             depositInitialBalances(initialBalances);
-            itHandlesTransfersProperly(transferredAmounts);
+            itHandlesTransfersProperly(initialBalances, transferredAmounts);
           });
 
           context('when the sender does not have any balance', () => {
-            itHandlesTransfersProperly(transferredAmounts);
+            const initialBalances = { DAI: bn(0), MKR: bn(0) };
+
+            itHandlesTransfersProperly(initialBalances, transferredAmounts);
           });
         });
       });
@@ -669,7 +683,7 @@ describe('Vault - internal balance', () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
-          itHandlesTransfersProperly(transferredAmounts);
+          itHandlesTransfersProperly(transferredAmounts, transferredAmounts);
         });
 
         context('when the relayer is not allowed by the user', () => {
