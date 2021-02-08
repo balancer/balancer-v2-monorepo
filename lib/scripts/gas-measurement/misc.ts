@@ -41,7 +41,12 @@ export async function setupEnvironment(): Promise<{
   // deposit internal balance for trader to make it non-zero
   await vault
     .connect(trader)
-    .depositToInternalBalance(tokenAddresses, Array(tokenAddresses.length).fill(bn(1e18)), trader.address);
+    .depositToInternalBalance(
+      trader.address,
+      tokenAddresses,
+      Array(tokenAddresses.length).fill(bn(1e18)),
+      trader.address
+    );
 
   return { vault, tokens, trader };
 }
@@ -88,6 +93,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   await vault.connect(creator).joinPool(
     poolId,
+    creator.address,
     creator.address,
     tokenAddresses,
     tokenAddresses.map(() => initialPoolBalance), // These end up being the actual join amounts

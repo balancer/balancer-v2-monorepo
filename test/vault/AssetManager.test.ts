@@ -63,6 +63,7 @@ describe('Vault - asset manager', function () {
 
       await vault.connect(lp).joinPool(
         poolId,
+        lp.address,
         other.address,
         tokenAddresses,
         tokenAddresses.map(() => MAX_UINT256),
@@ -352,6 +353,7 @@ describe('Vault - asset manager', function () {
           .connect(lp)
           .exitPool(
             poolId,
+            lp.address,
             lp.address,
             poolTokens,
             Array(poolTokens.length).fill(0),

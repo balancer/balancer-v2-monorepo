@@ -69,7 +69,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
-    ) external override returns (int256[] memory) {
+    ) external override authenticateFor(funds.sender) returns (int256[] memory) {
         return _batchSwap(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_IN);
     }
 
@@ -81,7 +81,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
-    ) external override returns (int256[] memory) {
+    ) external override authenticateFor(funds.sender) returns (int256[] memory) {
         return _batchSwap(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_OUT);
     }
 
@@ -181,13 +181,13 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             if (delta > 0) {
                 uint256 toReceive = uint256(delta);
                 if (funds.fromInternalBalance) {
-                    uint256 currentInternalBalance = _getInternalBalance(msg.sender, token);
+                    uint256 currentInternalBalance = _getInternalBalance(funds.sender, token);
                     uint256 toWithdraw = Math.min(currentInternalBalance, toReceive);
-                    _setInternalBalance(msg.sender, token, currentInternalBalance - toWithdraw);
+                    _setInternalBalance(funds.sender, token, currentInternalBalance - toWithdraw);
                     toReceive -= toWithdraw;
                 }
                 if (toReceive > 0) {
-                    token.safeTransferFrom(msg.sender, address(this), toReceive);
+                    token.safeTransferFrom(funds.sender, address(this), toReceive);
                 }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
@@ -301,7 +301,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 tokenIn,
                 tokenOut,
                 swap,
-                msg.sender,
+                funds.sender,
                 funds.recipient,
                 previous,
                 kind

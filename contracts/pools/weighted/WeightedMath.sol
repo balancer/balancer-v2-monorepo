@@ -47,11 +47,18 @@ contract WeightedMath {
         // wO = tokenWeightOut                                                                       //
         **********************************************************************************************/
 
-        uint256 quotient = tokenBalanceIn.div(tokenBalanceIn.add(tokenAmountIn));
-        uint256 weightRatio = tokenWeightIn.div(tokenWeightOut);
-        uint256 ratio = FixedPoint.ONE.sub(LogExpMath.pow(quotient, weightRatio));
+        // Amount out, so we round down overall.
 
-        return tokenBalanceOut.mul(ratio);
+        // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
+        // Because bI / (bI + aI) <= 1, the exponent rounds down.
+
+        uint256 base = tokenBalanceIn.divUp(tokenBalanceIn.add(tokenAmountIn));
+        uint256 exponent = tokenWeightIn.divDown(tokenWeightOut);
+        uint256 power = LogExpMath.powUp(base, exponent);
+
+        uint256 ratio = FixedPoint.ONE.sub(power);
+
+        return tokenBalanceOut.mulDown(ratio);
     }
 
     // Computes how many tokens must be sent to a pool in order to take `tokenAmountOut`, given the
@@ -73,14 +80,20 @@ contract WeightedMath {
         // wO = tokenWeightOut                                                                       //
         **********************************************************************************************/
 
-        uint256 quotient = tokenBalanceOut.div(tokenBalanceOut.sub(tokenAmountOut));
-        uint256 weightRatio = tokenWeightOut.div(tokenWeightIn);
-        uint256 ratio = LogExpMath.pow(quotient, weightRatio).sub(FixedPoint.ONE);
+        // Amount in, so we round up overall.
 
-        return tokenBalanceIn.mul(ratio);
+        // The multiplication rounds up, and the power rounds up (so the base rounds up too).
+        // Because b0 / (b0 - a0) >= 1, the exponent rounds up.
+
+        uint256 base = tokenBalanceOut.divUp(tokenBalanceOut.sub(tokenAmountOut));
+        uint256 exponent = tokenWeightOut.divUp(tokenWeightIn);
+        uint256 power = LogExpMath.powUp(base, exponent);
+
+        uint256 ratio = power.sub(FixedPoint.ONE);
+
+        return tokenBalanceIn.mulUp(ratio);
     }
 
-    // Computes the invariant given the current balances and normalized weights.
     function _invariant(uint256[] memory normalizedWeights, uint256[] memory balances)
         internal
         pure
@@ -170,7 +183,7 @@ contract WeightedMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) internal pure returns (uint256) {
-        // Calculate the factor by which the invariant will increase after minting BPTAmountOut
+        // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
 
         //TODO: review impact of exp math error that increases result
