@@ -3,13 +3,14 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { encodeJoin } from '../helpers/mockPool';
+
 import { fp, bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { MinimalSwapInfoPool } from '../../lib/helpers/pools';
+import { FundManagement, Swap } from '../../lib/helpers/trading';
 import { deploySortedTokens, TokenList } from '../../lib/helpers/tokens';
 import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { FundManagement, Swap, SwapIn, SwapOut, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
-import { encodeJoin } from '../helpers/mockPool';
 
 describe('Vault - swap queries', () => {
   let vault: Contract, funds: FundManagement;
@@ -19,6 +20,11 @@ describe('Vault - swap queries', () => {
   const poolIds: string[] = [];
 
   const MAX_POOLS = 2;
+
+  const SWAP_KIND = {
+    GIVEN_IN: 0,
+    GIVEN_OUT: 1,
+  };
 
   before('setup', async () => {
     [, lp] = await ethers.getSigners();
@@ -73,7 +79,7 @@ describe('Vault - swap queries', () => {
     amount: number;
   };
 
-  function swapsDataToSwaps(swapsData: SwapData[]): Swap[] {
+  function toSwaps(swapsData: SwapData[]): Swap[] {
     return swapsData.map((swapData) => {
       return {
         poolId: poolIds[swapData.poolIdIndex],
@@ -88,9 +94,8 @@ describe('Vault - swap queries', () => {
   describe('given in', () => {
     function assertQueryBatchSwapGivenIn(swapsData: SwapData[], expectedDeltas: number[]) {
       it('returns the expected amounts', async () => {
-        const swaps: SwapIn[] = toSwapIn(swapsDataToSwaps(swapsData));
-
-        const deltas = await vault.callStatic.queryBatchSwapGivenIn(swaps, tokenAddresses, funds);
+        const swaps: Swap[] = toSwaps(swapsData);
+        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds);
         expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
@@ -153,9 +158,9 @@ describe('Vault - swap queries', () => {
   describe('given out', () => {
     function assertQueryBatchSwapGivenOut(swapsData: SwapData[], expectedDeltas: number[]) {
       it('returns the expected amounts', async () => {
-        const swaps: SwapOut[] = toSwapOut(swapsDataToSwaps(swapsData));
+        const swaps: Swap[] = toSwaps(swapsData);
 
-        const deltas = await vault.callStatic.queryBatchSwapGivenOut(swaps, tokenAddresses, funds);
+        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokenAddresses, funds);
         expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
@@ -212,22 +217,6 @@ describe('Vault - swap queries', () => {
         ],
         [0, -20, 5]
       );
-    });
-  });
-
-  describe('helper', () => {
-    it('reverts when called directly', async () => {
-      const swaps: Swap[] = [
-        {
-          poolId: poolIds[0],
-          tokenInIndex: 0,
-          tokenOutIndex: 1,
-          amount: 5,
-          userData: '0x',
-        },
-      ];
-
-      await expect(vault.queryBatchSwapHelper(swaps, tokenAddresses, funds, 0)).to.be.revertedWith('CALLER_NOT_VAULT');
     });
   });
 });

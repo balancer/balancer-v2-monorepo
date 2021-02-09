@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -45,8 +45,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         _vault.registerTokens(_poolId, tokens, assetManagers);
     }
 
-    function unregisterTokens(IERC20[] memory tokens) external {
-        _vault.unregisterTokens(_poolId, tokens);
+    function deregisterTokens(IERC20[] memory tokens) external {
+        _vault.deregisterTokens(_poolId, tokens);
     }
 
     event OnJoinPoolCalled(

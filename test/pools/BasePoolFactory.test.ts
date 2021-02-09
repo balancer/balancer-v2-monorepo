@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -26,27 +25,5 @@ describe('BasePoolFactory', function () {
   it('creates a pool', async () => {
     const receipt = await (await factory.create()).wait();
     expectEvent.inReceipt(receipt, 'PoolCreated');
-  });
-
-  context('with pool', () => {
-    let pool: Contract;
-
-    beforeEach(async () => {
-      const receipt = await (await factory.create()).wait();
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-
-      pool = await ethers.getContractAt('MockFactoryCreatedPool', event.args.pool);
-    });
-
-    it('reports created pools', async () => {
-      expect(await factory.getNumberOfCreatedPools()).to.equal(1);
-      expect(await factory.getCreatedPoolIds(0, 1)).to.deep.equal([await pool.getPoolId()]);
-    });
-
-    it('creates multiple pools pools', async () => {
-      await factory.create();
-
-      expect(await factory.getNumberOfCreatedPools()).to.equal(2);
-    });
   });
 });

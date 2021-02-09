@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 import "../../lib/math/Math.sol";
 
@@ -33,6 +33,9 @@ import "../../lib/math/Math.sol";
 // 112 bit unsigned integers for 'cash' and 'managed'. Since 'total' is also a 112 bit unsigned value, any combination
 // of 'cash' and 'managed' that yields a 'total' that doesn't fit in that range is disallowed.
 //
+// The remaining 32 bits of each storage slot are used to store the most recent block number where a balance was
+// updated. This can be used to implement price oracles that are resilient to 'sandwich' attacks.
+//
 // We could use a Solidity struct to pack these two values together in a single storage slot, but unfortunately Solidity
 // only allows for structs to live in either storage, calldata or memory. Because a memory struct still takes up a
 // slot in the stack (to store its memory location), and because the entire balance fits in a single stack slot (two
@@ -46,7 +49,38 @@ library BalanceAllocation {
     // 'managed' part uses the most significant 112 bits.
 
     /**
-     * @dev Computes the total balance of the Pool tokens.
+     * @dev Returns the total amount of Pool tokens, including those that are not currently in the Vault ('managed').
+     */
+    function total(bytes32 balance) internal pure returns (uint256) {
+        return cash(balance).add(managed(balance));
+    }
+
+    /**
+     * @dev Returns the amount of Pool tokens currently in the Vault.
+     */
+    function cash(bytes32 balance) internal pure returns (uint256) {
+        uint256 mask = 2**(112) - 1;
+        return uint256(balance) & mask;
+    }
+
+    /**
+     * @dev Returns the amount of Pool tokens that have been withdrawn (or reported) by its Asset Manager.
+     */
+    function managed(bytes32 balance) internal pure returns (uint256) {
+        uint256 mask = 2**(112) - 1;
+        return uint256(balance >> 112) & mask;
+    }
+
+    /**
+     * @dev Returns the last block number when a balance was updated.
+     */
+    function blockNumber(bytes32 balance) internal pure returns (uint256) {
+        uint256 mask = 2**(32) - 1;
+        return uint256(balance >> 224) & mask;
+    }
+
+    /**
+     * @dev Returns the total balance for each entry in `balances`.
      */
     function totals(bytes32[] memory balances) internal pure returns (uint256[] memory results) {
         results = new uint256[](balances.length);
@@ -56,7 +90,8 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev Computes the total balance and max block number of the Pool tokens.
+     * @dev Returns the total balance for each entry in `balances`, as well as the latest block number when any of them
+     * was last updated.
      */
     function totalsAndMaxBlockNumber(bytes32[] memory balances)
         internal
@@ -74,50 +109,19 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev The total amount of Pool tokens, including those that are not currently in the Vault ('managed').
+     * @dev Returns true if `balance`'s total balance is zero. Costs less gas than computing the total.
      */
-    function total(bytes32 balance) internal pure returns (uint256) {
-        return cash(balance).add(managed(balance));
+    function isZero(bytes32 balance) internal pure returns (bool) {
+        // We simply need to check the least significant 224 bytes of the word, the block number does not affect this.
+        uint256 mask = 2**(224) - 1;
+        return (uint256(balance) & mask) == 0;
     }
 
     /**
-     * @dev The amount of Pool tokens currently in the Vault.
-     */
-    function cash(bytes32 balance) internal pure returns (uint256) {
-        uint256 mask = 2**(112) - 1;
-        return uint256(balance) & mask;
-    }
-
-    /**
-     * @dev The amount of Pool tokens that have been withdrawn by its Asset Manager.
-     */
-    function managed(bytes32 balance) internal pure returns (uint256) {
-        uint256 mask = 2**(112) - 1;
-        return uint256(balance >> 112) & mask;
-    }
-
-    /**
-     * @dev Last block number when given balance was updated
-     */
-    function blockNumber(bytes32 balance) internal pure returns (uint256) {
-        uint256 mask = 2**(32) - 1;
-        return uint256(balance >> 224) & mask;
-    }
-
-    /**
-     * @dev Tell whether the total amount is not zero
+     * @dev Returns true if `balance`'s total balance is not zero. Costs less gas than computing the total.
      */
     function isNotZero(bytes32 balance) internal pure returns (bool) {
         return !isZero(balance);
-    }
-
-    /**
-     * @dev Tell whether the total amount is zero
-     */
-    function isZero(bytes32 balance) internal pure returns (bool) {
-        // We simply need to compare the least significant 224 bytes of the word, the block number does not affect
-        uint256 mask = 2**(224) - 1;
-        return (uint256(balance) & mask) == 0;
     }
 
     /**
@@ -133,7 +137,7 @@ library BalanceAllocation {
     ) internal pure returns (bytes32) {
         uint256 balance = _cash + _managed;
         require(balance >= _cash && balance < 2**112, "BALANCE_TOTAL_OVERFLOW");
-        // We assume the block number will always fit in an uint32
+        // We assume the block number will fits in an uint32 - this is expected to hold for at least a few decades.
         return _pack(_cash, _managed, _blockNumber);
     }
 
@@ -195,7 +199,7 @@ library BalanceAllocation {
         return toBalance(currentCash, newManaged, newBlockNumber);
     }
 
-    // Alternative mode for two token pools
+    // Alternative mode for Pools with the token token specialization setting
 
     // Instead of storing cash and external for each token in a single storage slot, two token pools store the cash for
     // both tokens in the same slot, and the external for both in another one. This reduces the gas cost for swaps,
@@ -205,6 +209,8 @@ library BalanceAllocation {
     // sharedManaged. These two are collectively called the 'shared' balance fields. In both of these, the portion
     // that corresponds to token A is stored in the least significant 112 bits of a 256 bit word, while token B's part
     // uses the most significant 112 bits.
+    // Becase only cash is written to during a swap, we store the block number there. Typically Pools have a distinct
+    // block number per token: in the case of two token Pools this is not necessary, as both values will be the same.
 
     /**
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token A.

@@ -1,6 +1,4 @@
-<a href="https://circleci.com/gh/balancer-labs/balancer-core-v2">
-  <img src="https://circleci.com/gh/balancer-labs/balancer-core-v2.svg?style=svg&circle-token=7beca30a3a74abfa193c2ec87e6d2ae5594c1c6d" />
-</a>
+[![CI Status](https://github.com/balancer-labs/balancer-core-v2/workflows/CI/badge.svg)](https://github.com/balancer-labs/balancer-core-v2/actions)
 
 # balancer-core-v2
 
