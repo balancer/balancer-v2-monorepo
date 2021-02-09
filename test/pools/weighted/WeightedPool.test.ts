@@ -158,7 +158,7 @@ describe('WeightedPool', function () {
 
         it('sets the asset managers', async () => {
           for (const token of poolTokens) {
-            expect(await vault.getPoolAssetManagers(poolId, [token])).to.deep.equal([ZERO_ADDRESS]);
+            expect((await vault.getPoolTokenInfo(poolId, token)).assetManager).to.equal(ZERO_ADDRESS);
           }
         });
 

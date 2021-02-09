@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./BasePool.sol";
@@ -36,7 +36,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external override returns (uint256) {
+    ) external view override returns (uint256) {
         _validateIndexes(indexIn, indexOut, _totalTokens);
 
         // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
@@ -59,7 +59,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external override returns (uint256) {
+    ) external view override returns (uint256) {
         _validateIndexes(indexIn, indexOut, _totalTokens);
 
         uint256[] memory scalingFactors = _scalingFactors();
@@ -82,14 +82,14 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual returns (uint256);
+    ) internal view virtual returns (uint256);
 
     function _onSwapGivenOut(
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual returns (uint256);
+    ) internal view virtual returns (uint256);
 
     function _validateIndexes(
         uint256 indexIn,

@@ -6,7 +6,7 @@ import 'hardhat-abi-exporter';
 import 'hardhat-local-networks-config-plugin';
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
-import { task, HardhatUserConfig } from 'hardhat/config';
+import { task } from 'hardhat/config';
 
 task('seed', 'Add seed data').setAction(async (args, hre) => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -24,7 +24,7 @@ const CHAIN_IDS = {
   dockerParity: 17,
 };
 
-const config: HardhatUserConfig = {
+export default {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
@@ -60,11 +60,26 @@ const config: HardhatUserConfig = {
     },
   },
   solidity: {
-    version: '0.7.1',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 9999,
+    compilers: [
+      {
+        version: '0.7.1',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 9999,
+          },
+        },
+      },
+    ],
+    overrides: {
+      'contracts/vault/Vault.sol': {
+        version: '0.7.0',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 400,
+          },
+        },
       },
     },
   },
@@ -90,5 +105,3 @@ const config: HardhatUserConfig = {
     deployments: 'deployments/artifacts',
   },
 };
-
-export default config;
