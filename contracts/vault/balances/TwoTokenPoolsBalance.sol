@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -85,14 +85,14 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * @dev Unregisters the tokens of a Two Token Pool.
+     * @dev Deregisters the tokens of a Two Token Pool.
      *
      * Requirements:
      *
      * - `tokenX` and `tokenY` must be the Pool's tokens.
      * - Both tokens must have non balance in the Vault.
      */
-    function _unregisterTwoTokenPoolTokens(
+    function _deregisterTwoTokenPoolTokens(
         bytes32 poolId,
         IERC20 tokenX,
         IERC20 tokenY

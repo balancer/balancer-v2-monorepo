@@ -19,6 +19,11 @@ describe('Vault - swap validation', () => {
 
   let poolIds: string[];
 
+  const SWAP_KIND = {
+    GIVEN_IN: 0,
+    GIVEN_OUT: 1,
+  };
+
   beforeEach('setup', async () => {
     [, lp, trader, other] = await ethers.getSigners();
 
@@ -90,7 +95,7 @@ describe('Vault - swap validation', () => {
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwapGivenIn(toSwapIn(swaps), tokenAddresses, funds);
+      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);
@@ -102,7 +107,7 @@ describe('Vault - swap validation', () => {
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwapGivenOut(toSwapOut(swaps), tokenAddresses, funds);
+      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokenAddresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);

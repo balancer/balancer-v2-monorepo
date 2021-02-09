@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../../lib/math/FixedPoint.sol";
@@ -156,7 +156,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return WeightedMath._invariant(normalizedWeights, balances);
     }
 
-    function getNormalizedWeights() public view returns (uint256[] memory) {
+    function getNormalizedWeights() external view returns (uint256[] memory) {
         return _normalizedWeights();
     }
 

@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../lib/helpers/ReentrancyGuard.sol";
@@ -24,22 +24,6 @@ abstract contract Authorization is IVault, ReentrancyGuard {
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _allowedRelayers;
 
-    /**
-     * @dev Check that the sender has the required permission
-     */
-    modifier authenticate() {
-        _authenticateSender();
-        _;
-    }
-
-    /**
-     * @dev Check that the sender is the user to act on behalf of or someone with the required permission
-     */
-    modifier authenticateFor(address user) {
-        _authenticateSenderFor(user);
-        _;
-    }
-
     constructor(IAuthorizer authorizer) {
         _authorizer = authorizer;
     }
@@ -48,45 +32,57 @@ abstract contract Authorization is IVault, ReentrancyGuard {
         _authorizer = newAuthorizer;
     }
 
-    /**
-     * @dev Changes the allowance for a relayer
-     */
-    function changeRelayerAllowance(address relayer, bool allowed) external override nonReentrant {
-        _allowedRelayers[msg.sender][relayer] = allowed;
-    }
-
     function getAuthorizer() external view override returns (IAuthorizer) {
         return _authorizer;
     }
 
-    /**
-     * @dev Tells whether a user has allowed a specific relayer
-     */
+    function changeRelayerAllowance(address relayer, bool allowed) external override nonReentrant {
+        _allowedRelayers[msg.sender][relayer] = allowed;
+    }
+
     function hasAllowedRelayer(address user, address relayer) external view override returns (bool) {
         return _hasAllowedRelayer(user, relayer);
     }
 
     /**
-     * @dev Ensure that the sender is the user to act on behalf of or someone with the required permission
+     * @dev Reverts unless the caller is allowed by the Authorizer to call this function. Should only be applied to
+     * external functions.
      */
-    function _authenticateSenderFor(address user) internal view {
-        if (msg.sender != user) {
-            _authenticateSender();
-            require(_hasAllowedRelayer(user, msg.sender), "USER_DOESNT_ALLOW_RELAYER");
-        }
+    modifier authenticate() {
+        _authenticateCaller();
+        _;
     }
 
     /**
-     * @dev Ensure that the sender is the user to act on behalf of or someone with the required permission
+     * @dev Reverts unless `user` has allowed the caller as a relayer, and the caller is allowed by the Authorizer to
+     * call this function. Should only be applied to external functions.
      */
-    function _authenticateSender() internal view {
+    modifier authenticateFor(address user) {
+        _authenticateCallerFor(user);
+        _;
+    }
+
+    /**
+     * @dev Reverts unless the caller is allowed by the Authorizer to call the entry point function.
+     */
+    function _authenticateCaller() internal view {
+        // Each external function is dynamically assigned a role ID in the Authorizer as the hash of the Vault's address
+        // and the function selector.
         bytes32 roleId = keccak256(abi.encodePacked(address(this), msg.sig));
         require(_authorizer.hasRole(roleId, msg.sender), "SENDER_NOT_ALLOWED");
     }
 
     /**
-     * @dev Tell whether a user has allowed a relayer or not
+     * @dev Reverts unless  `user` has allowed the caller as a relayer, and the caller is allowed by the Authorizer to
+     * call the entry point function.
      */
+    function _authenticateCallerFor(address user) internal view {
+        if (msg.sender != user) {
+            _authenticateCaller();
+            require(_hasAllowedRelayer(user, msg.sender), "USER_DOESNT_ALLOW_RELAYER");
+        }
+    }
+
     function _hasAllowedRelayer(address user, address relayer) internal view returns (bool) {
         return _allowedRelayers[user][relayer];
     }

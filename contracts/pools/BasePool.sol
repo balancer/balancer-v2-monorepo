@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -28,6 +28,13 @@ import "../vault/interfaces/IBasePool.sol";
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
+/**
+ * @dev Reference implementation for the base layer of a Pool contract that manges a single Pool with an immutable set
+ * of registered tokens, no Asset Managers, and an immutable swap fee.
+ *
+ * Because this contract doesn't implement the swap hooks, derived contracts should likely inherit from BaseGeneralPool
+ * or BaseMinimalSwapInfoPool instead.
+ */
 abstract contract BasePool is IBasePool, BalancerPoolToken {
     using FixedPoint for uint256;
 
@@ -41,7 +48,6 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
     IVault internal immutable _vault;
     bytes32 internal immutable _poolId;
     uint256 internal immutable _swapFee;
-
     uint256 internal immutable _totalTokens;
 
     IERC20 internal immutable _token0;

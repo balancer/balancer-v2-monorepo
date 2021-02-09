@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -55,14 +55,14 @@ contract GeneralPoolsBalance {
     }
 
     /**
-     * @dev Unregisters a list of tokens in a General Pool.
+     * @dev Deregisters a list of tokens in a General Pool.
      *
      * Requirements:
      *
      * - Each token must be registered in the Pool.
      * - Each token must have non balance in the Vault.
      */
-    function _unregisterGeneralPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
+    function _deregisterGeneralPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {

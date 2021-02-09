@@ -267,7 +267,7 @@ describe('Vault - pool registry', () => {
       });
     });
 
-    describe('unregister', () => {
+    describe('deregister', () => {
       const itHandlesTokensDeregistrationProperly = (specialization: PoolSpecializationSetting) => {
         context('when the pool was created', () => {
           beforeEach('create pool', async () => {
@@ -277,7 +277,7 @@ describe('Vault - pool registry', () => {
 
           context('when the sender is the pool', () => {
             context('when the given addresses where registered', () => {
-              const itUnregistersTheTokens = () => {
+              const itDeregistersTheTokens = () => {
                 beforeEach('register tokens', async () => {
                   await pool.registerTokens(tokenAddresses, assetManagers);
                 });
@@ -298,14 +298,14 @@ describe('Vault - pool registry', () => {
                     );
                   });
 
-                  context('when trying to unregister individually', () => {
+                  context('when trying to deregister individually', () => {
                     if (specialization == TwoTokenPool) {
                       it('reverts', async () => {
                         const error = 'TOKENS_LENGTH_MUST_BE_2';
-                        await expect(pool.unregisterTokens([tokenAddresses[0]])).to.be.revertedWith(error);
+                        await expect(pool.deregisterTokens([tokenAddresses[0]])).to.be.revertedWith(error);
                       });
                     } else {
-                      it('can unregister the tokens without balance', async () => {
+                      it('can deregister the tokens without balance', async () => {
                         await vault.connect(lp).exitPool(
                           poolId,
                           lp.address,
@@ -319,7 +319,7 @@ describe('Vault - pool registry', () => {
                           )
                         );
 
-                        await pool.unregisterTokens([tokenAddresses[0]]);
+                        await pool.deregisterTokens([tokenAddresses[0]]);
 
                         const { tokens: poolTokens } = await vault.getPoolTokens(poolId);
                         expect(poolTokens).not.to.have.members([tokenAddresses[0]]);
@@ -327,17 +327,17 @@ describe('Vault - pool registry', () => {
                     }
                   });
 
-                  context('when trying to unregister all tokens at once', () => {
+                  context('when trying to deregister all tokens at once', () => {
                     it('reverts', async () => {
                       const error = 'NONZERO_TOKEN_BALANCE';
-                      await expect(pool.unregisterTokens(tokenAddresses)).to.be.revertedWith(error);
+                      await expect(pool.deregisterTokens(tokenAddresses)).to.be.revertedWith(error);
                     });
                   });
                 });
 
                 context('when all the tokens have no balance', () => {
-                  it('unregisters the requested tokens', async () => {
-                    await pool.unregisterTokens(tokenAddresses);
+                  it('deregisters the requested tokens', async () => {
+                    await pool.deregisterTokens(tokenAddresses);
 
                     const { tokens: poolTokens, balances } = await vault.getPoolTokens(poolId);
                     expect(poolTokens).to.be.empty;
@@ -345,7 +345,7 @@ describe('Vault - pool registry', () => {
                   });
 
                   it('cannot query balances any more', async () => {
-                    await pool.unregisterTokens(tokenAddresses);
+                    await pool.deregisterTokens(tokenAddresses);
 
                     const { tokens, balances } = await vault.getPoolTokens(poolId);
                     expect(tokens).to.be.empty;
@@ -353,8 +353,8 @@ describe('Vault - pool registry', () => {
                   });
 
                   it('emits an event', async () => {
-                    const receipt = await (await pool.unregisterTokens(tokenAddresses)).wait();
-                    expectEvent.inIndirectReceipt(receipt, vault.interface, 'TokensUnregistered', {
+                    const receipt = await (await pool.deregisterTokens(tokenAddresses)).wait();
+                    expectEvent.inIndirectReceipt(receipt, vault.interface, 'TokensDeregistered', {
                       poolId,
                       tokens: tokenAddresses,
                     });
@@ -365,23 +365,23 @@ describe('Vault - pool registry', () => {
               const itRevertsDueToTwoTokens = () => {
                 it('reverts', async () => {
                   const error = 'TOKENS_LENGTH_MUST_BE_2';
-                  await expect(pool.unregisterTokens(tokenAddresses)).to.be.revertedWith(error);
+                  await expect(pool.deregisterTokens(tokenAddresses)).to.be.revertedWith(error);
                 });
               };
 
               context('with one token', () => {
                 setTokensAddresses(1);
-                specialization === TwoTokenPool ? itRevertsDueToTwoTokens() : itUnregistersTheTokens();
+                specialization === TwoTokenPool ? itRevertsDueToTwoTokens() : itDeregistersTheTokens();
               });
 
               context('with two tokens', () => {
                 setTokensAddresses(2);
-                itUnregistersTheTokens();
+                itDeregistersTheTokens();
               });
 
               context('with three tokens', () => {
                 setTokensAddresses(3);
-                specialization === TwoTokenPool ? itRevertsDueToTwoTokens() : itUnregistersTheTokens();
+                specialization === TwoTokenPool ? itRevertsDueToTwoTokens() : itDeregistersTheTokens();
               });
             });
 
@@ -390,14 +390,14 @@ describe('Vault - pool registry', () => {
 
               it('reverts', async () => {
                 const error = 'TOKEN_NOT_REGISTERED';
-                await expect(pool.unregisterTokens(tokenAddresses)).to.be.revertedWith(error);
+                await expect(pool.deregisterTokens(tokenAddresses)).to.be.revertedWith(error);
               });
             });
           });
 
           context('when the sender is not the pool', () => {
             it('reverts', async () => {
-              await expect(vault.connect(other).unregisterTokens(poolId, tokenAddresses)).to.be.revertedWith(
+              await expect(vault.connect(other).deregisterTokens(poolId, tokenAddresses)).to.be.revertedWith(
                 'CALLER_NOT_POOL'
               );
             });
@@ -406,7 +406,7 @@ describe('Vault - pool registry', () => {
 
         context('when the pool was not created', () => {
           it('reverts', async () => {
-            await expect(vault.unregisterTokens(ZERO_BYTES32, tokenAddresses)).to.be.revertedWith('INVALID_POOL_ID');
+            await expect(vault.deregisterTokens(ZERO_BYTES32, tokenAddresses)).to.be.revertedWith('INVALID_POOL_ID');
           });
         });
       };
