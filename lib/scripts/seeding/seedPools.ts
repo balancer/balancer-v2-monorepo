@@ -1,4 +1,5 @@
 import { BigNumber, Contract, Event } from 'ethers';
+import { Dictionary } from 'lodash';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deepEqual } from 'assert';
@@ -19,6 +20,7 @@ let trader: SignerWithAddress;
 //let validator: Contract;
 let assetManager: SignerWithAddress; // This would normally be a contract
 const NUM_POOLS = 5;
+const decimalsByAddress: Dictionary<number> = {};
 
 const INVESTMENT_AMOUNT = 123;
 module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment) {
@@ -47,6 +49,9 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     const token = tokens[symbol];
     const index = symbols.indexOf(symbol);
     const tradingBalance = balances[index];
+
+    decimalsByAddress[token.address] = decimals[index];
+
     console.log(`${symbol}: ${token.address} ${tradingBalance}`);
 
     await token.connect(controller).approve(vault.address, MAX_UINT256);
@@ -90,14 +95,17 @@ async function swapInPool(pool: Contract) {
 
   const vault = await ethers.getContract('Vault');
   const { tokens: tokenAddresses } = await vault.getPoolTokens(poolId);
+  const tokenInIndex = 0
+  const tokenOutIndex = 1
 
-  const amountInDecimals = 2;
+  const tokenInAddress = tokenAddresses[tokenInIndex];
+  const amountInDecimals = decimalsByAddress[tokenInAddress];
   const amountIn = bn(100).mul(bn(10).pow(amountInDecimals));
 
   const swap: SwapIn = {
     poolId,
-    tokenInIndex: 0,
-    tokenOutIndex: 1,
+    tokenInIndex,
+    tokenOutIndex,
     amountIn,
     userData: '0x',
   };
@@ -124,7 +132,7 @@ async function investPool(pool: Contract) {
   const poolId = await pool.getPoolId();
 
   const vault = await ethers.getContract('Vault');
-  const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
+  const { tokens: tokenAddresses } = await vault.getPoolTokens(poolId);
 
   const token = tokenAddresses[0];
 
