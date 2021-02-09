@@ -166,7 +166,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
             // Ignore zeroed deltas
             if (delta > 0) {
-                _receiveTokens(token, uint256(delta), msg.sender, funds.fromInternalBalance);
+                _receiveTokens(token, uint256(delta), funds.sender, funds.fromInternalBalance);
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
 
