@@ -613,7 +613,7 @@ interface IVault {
      * or `depositToPoolBalance`.
      */
     event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
-    
+
     /**
      * @dev Called by a Pool's Asset Manager to withdraw tokens from the Vault. This decreases
      * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
