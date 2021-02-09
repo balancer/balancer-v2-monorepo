@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/Create2.sol";
@@ -23,37 +23,14 @@ import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
 
 abstract contract BasePoolFactory {
-    using Address for address;
-    using EnumerableSet for EnumerableSet.Bytes32Set;
+    IVault public immutable vault;
 
-    IVault internal immutable _vault;
-
-    // Set with Pools created by this factory
-    EnumerableSet.Bytes32Set internal _createdPools;
+    uint256 private _pools;
 
     event PoolCreated(address indexed pool);
 
-    constructor(IVault vault) {
-        _vault = vault;
-    }
-
-    function getVault() external view returns (IVault) {
-        return _vault;
-    }
-
-    function getNumberOfCreatedPools() external view returns (uint256) {
-        return _createdPools.length();
-    }
-
-    function getCreatedPoolIds(uint256 start, uint256 end) external view returns (bytes32[] memory) {
-        require((end >= start) && (end - start) <= _createdPools.length(), "OUT_OF_BOUNDS");
-
-        bytes32[] memory poolIds = new bytes32[](end - start);
-        for (uint256 i = 0; i < poolIds.length; ++i) {
-            poolIds[i] = _createdPools.at(i + start);
-        }
-
-        return poolIds;
+    constructor(IVault _vault) {
+        vault = _vault;
     }
 
     /**
@@ -71,14 +48,8 @@ abstract contract BasePoolFactory {
      * Returns the address of the created contract.
      */
     function _create(bytes memory creationCode) internal returns (address) {
-        address pool = Create2.deploy(0, bytes32(_createdPools.length()), creationCode);
-        bytes32 poolId = IBasePool(pool).getPoolId();
-
-        bool added = _createdPools.add(poolId);
-        require(added, "INVALID_POOL_ID"); // This should never happen, as the Vault assigns unique IDs
-
+        address pool = Create2.deploy(0, bytes32(_pools++), creationCode);
         emit PoolCreated(pool);
-
         return pool;
     }
 }

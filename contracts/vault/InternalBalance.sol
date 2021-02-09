@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -27,7 +27,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
-    // user -> token -> internal balance
+    // Stores all account's Internal Balance for each token.
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
     function getInternalBalance(address user, IERC20[] memory tokens)
@@ -45,7 +45,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     function depositToInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].source;
-            _authenticateSenderFor(sender);
+            _authenticateCallerFor(sender);
 
             IERC20 token = transfers[i].token;
             uint256 amount = transfers[i].amount;
@@ -59,7 +59,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].source;
-            _authenticateSenderFor(sender);
+            _authenticateCallerFor(sender);
 
             IERC20 token = transfers[i].token;
             uint256 amount = transfers[i].amount;
@@ -76,7 +76,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     function transferInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].source;
-            _authenticateSenderFor(sender);
+            _authenticateCallerFor(sender);
 
             IERC20 token = transfers[i].token;
             uint256 amount = transfers[i].amount;
@@ -87,6 +87,9 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         }
     }
 
+    /**
+     * @dev Increases `account`'s Internal Balance for `token` by `amount`.
+     */
     function _increaseInternalBalance(
         address account,
         IERC20 token,
@@ -97,6 +100,9 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         _setInternalBalance(account, token, newBalance);
     }
 
+    /**
+     * @dev Decreases `account`'s Internal Balance for `token` by `amount`.
+     */
     function _decreaseInternalBalance(
         address account,
         IERC20 token,
@@ -108,6 +114,12 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         _setInternalBalance(account, token, newBalance);
     }
 
+    /**
+     * @dev Sets `account`'s Internal Balance for `token` to `balance`.
+     *
+     * This costs less gas than `_increaseInternalBalance` or `_decreaseInternalBalance`, since the current collected
+     * fees do not need to be read.
+     */
     function _setInternalBalance(
         address account,
         IERC20 token,
@@ -117,6 +129,9 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         emit InternalBalanceChanged(account, token, balance);
     }
 
+    /**
+     * @dev Returns `account`'s Internal Balance for `token`.
+     */
     function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
         return _internalTokenBalance[account][token];
     }
