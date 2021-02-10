@@ -52,7 +52,8 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
 
     decimalsByAddress[token.address] = decimals[index];
 
-    console.log(`${symbol}: ${token.address} ${tradingBalance}`);
+    const tradingBalanceScaled = tradingBalance.div(bn(10).pow(decimals[index]));
+    console.log(`${symbol}: ${token.address} ${tradingBalanceScaled}`);
 
     await token.connect(controller).approve(vault.address, MAX_UINT256);
     await token.connect(deployer).mint(controller.address, tradingBalance);
@@ -95,8 +96,8 @@ async function swapInPool(pool: Contract) {
 
   const vault = await ethers.getContract('Vault');
   const { tokens: tokenAddresses } = await vault.getPoolTokens(poolId);
-  const tokenInIndex = 0
-  const tokenOutIndex = 1
+  const tokenInIndex = 0;
+  const tokenOutIndex = 1;
 
   const tokenInAddress = tokenAddresses[tokenInIndex];
   const amountInDecimals = decimalsByAddress[tokenInAddress];
@@ -112,6 +113,7 @@ async function swapInPool(pool: Contract) {
   const swaps: SwapIn[] = [swap];
 
   const funds: FundManagement = {
+    sender: trader.address,
     recipient: trader.address,
     fromInternalBalance: false,
     toInternalBalance: false,
@@ -184,7 +186,10 @@ async function deployStrategyPool(
 
   console.log(`\nNew Pool With ${tokens.length} tokens`);
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
-  tokens.forEach((token, i) => console.log(`${token} - ${initialBalances[i].toString()}`));
+  tokens.forEach((token, i) => {
+    const initialBalanceScaled = initialBalances[i].div(bn(10).pow(decimalsByAddress[token]));
+    console.log(`${token} - ${initialBalanceScaled.toString()}`);
+  });
 
   const name = tokens.length + ' token pool';
   const sym = 'TESTPOOL';
