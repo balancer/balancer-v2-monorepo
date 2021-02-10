@@ -1,4 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 
+pragma solidity ^0.7.1;
 
 contract PropertiesPoolId {
     enum PoolOptimization { STANDARD, SIMPLIFIED_QUOTE, TWO_TOKEN }
@@ -7,7 +9,7 @@ contract PropertiesPoolId {
         address pool,
         PoolOptimization optimization,
         uint80 nonce
-    ) internal returns (bytes32) {
+    ) internal pure returns (bytes32) {
         uint256 serialized;
 
         // | 10 bytes nonce | 2 bytes optimization setting | 20 bytes pool address |
@@ -24,7 +26,7 @@ contract PropertiesPoolId {
 
         return (pool, optimization);
     }
-    function assert_pool_valid(address pool, uint256 opt, uint80 nonce) public {
+    function assert_pool_valid(address pool, uint256 opt, uint80 nonce) public pure {
         require(pool!= address(0));
         PoolOptimization enumOptimization;
 

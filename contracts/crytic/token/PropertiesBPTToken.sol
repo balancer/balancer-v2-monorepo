@@ -1,12 +1,14 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import "./TestBPTToken.sol";
 import "../interfaces.sol";
 
 pragma solidity 0.7.1;
 
 contract PropertiesBPTToken is TestBPTToken, CryticInterface {
-    constructor() TestBPTToken("BPT", "BPT") public { } 
+    constructor() TestBPTToken("BPT", "BPT") { } 
 
-    function echidna_zero_always_empty_ERc20Properties() public returns (bool) {
+    function echidna_zero_always_empty_ERc20Properties() public view returns (bool) {
         return this.balanceOf(address(0x0)) == 0;
     } 
     function echidna_approve_overwrites() public returns(bool){
@@ -17,10 +19,11 @@ contract PropertiesBPTToken is TestBPTToken, CryticInterface {
 		require(approve_return);
 		return this.allowance(msg.sender, crytic_user) == 20;
 	}
-	function echidna_less_than_total_ERC20Properties() public returns(bool){
+	function echidna_less_than_total_ERC20Properties() public view returns(bool){
 		return this.balanceOf(msg.sender) <= this.totalSupply();
 	}
-    function echidna_totalSupply_consistant_ERC20Properties() public returns(bool){
+  
+	function echidna_totalSupply_consistant_ERC20Properties() public view returns(bool){
 		return this.balanceOf(crytic_owner) + this.balanceOf(crytic_user) + this.balanceOf(crytic_attacker) <= this.totalSupply();
 	}
 

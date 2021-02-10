@@ -1,13 +1,14 @@
-import { Contract, BigNumber } from 'ethers';
-import { TokenList } from './tokens';
-import { Dictionary } from 'lodash';
 import { expect } from 'chai';
+import { Dictionary } from 'lodash';
+import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import { TokenList } from '../../lib/helpers/tokens';
+import { BigNumberish, bn } from '../../lib/helpers/numbers';
 
 // Ported from @openzeppelin/test-helpers to use with ERC20 tokens and Ethers
 
 type Account = string | SignerWithAddress | Contract;
-export type BigNumberish = string | number | BigNumber;
 type CompareFunction = 'equal' | 'eq' | 'above' | 'gt' | 'gte' | 'below' | 'lt' | 'lte' | 'least' | 'most' | 'near';
 export type Comparison = [CompareFunction, BigNumberish];
 
@@ -112,7 +113,7 @@ export async function expectBalanceChange(
         expect(delta, `Expected ${delta} ${symbol} to be zero`).to.equal(0);
       } else {
         const compare: CompareFunction = Array.isArray(change) ? change[0] : 'equal';
-        const value = BigNumber.from((Array.isArray(change) ? change[1] : change).toString());
+        const value = bn(Array.isArray(change) ? change[1] : change);
 
         if (compare == 'near') {
           expect(delta).to.be.at.least(value.sub(value.div(10)));

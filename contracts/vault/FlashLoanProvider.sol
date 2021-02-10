@@ -16,20 +16,19 @@
 // implementation and terminology and interfaces are intentionally kept
 // similar
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../vendor/ReentrancyGuard.sol";
 
-import "./interfaces/IFlashLoanReceiver.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
+
 import "./Fees.sol";
-
-import "../math/FixedPoint.sol";
+import "./interfaces/IFlashLoanReceiver.sol";
 
 abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
-    using FixedPoint for uint256;
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     function flashLoan(
@@ -38,29 +37,35 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         bytes calldata receiverData
     ) external override nonReentrant {
-        require(tokens.length == amounts.length, "Tokens and amounts length mismatch");
+        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         uint256[] memory feeAmounts = new uint256[](tokens.length);
         uint256[] memory preLoanBalances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            preLoanBalances[i] = tokens[i].balanceOf(address(this));
-            require(preLoanBalances[i] >= amounts[i], "Insufficient balance to borrow");
+            IERC20 token = tokens[i];
+            uint256 amount = amounts[i];
 
-            feeAmounts[i] = _calculateProtocolFlashLoanFeeAmount(amounts[i]);
+            // Not checking amount against current balance, transfer will revert if it is exceeded
+            preLoanBalances[i] = token.balanceOf(address(this));
+            feeAmounts[i] = _calculateProtocolFlashLoanFeeAmount(amount);
 
-            tokens[i].safeTransfer(address(receiver), amounts[i]);
+            token.safeTransfer(address(receiver), amount);
         }
 
         receiver.receiveFlashLoan(tokens, amounts, feeAmounts, receiverData);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 postLoanBalance = tokens[i].balanceOf(address(this));
+            IERC20 token = tokens[i];
+            uint256 preLoanBalance = preLoanBalances[i];
 
-            uint256 receivedFees = postLoanBalance.sub(preLoanBalances[i]);
-            require(receivedFees >= feeAmounts[i], "Insufficient protocol fees");
+            uint256 postLoanBalance = token.balanceOf(address(this));
+            require(postLoanBalance >= preLoanBalance, "INVALID_POST_LOAN_BALANCE");
 
-            _collectedProtocolFees[tokens[i]] = _collectedProtocolFees[tokens[i]].add(receivedFees);
+            uint256 receivedFees = postLoanBalance - preLoanBalance;
+            require(receivedFees >= feeAmounts[i], "INSUFFICIENT_COLLECTED_FEES");
+
+            _increaseCollectedFees(token, receivedFees);
         }
     }
 }

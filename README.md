@@ -1,6 +1,4 @@
-<a href="https://circleci.com/gh/balancer-labs/balancer-core-v2">
-  <img src="https://circleci.com/gh/balancer-labs/balancer-core-v2.svg?style=svg&circle-token=7beca30a3a74abfa193c2ec87e6d2ae5594c1c6d" />
-</a>
+[![CI Status](https://github.com/balancer-labs/balancer-core-v2/workflows/CI/badge.svg)](https://github.com/balancer-labs/balancer-core-v2/actions)
 
 # balancer-core-v2
 
@@ -26,7 +24,7 @@ Gas measurements of common tasks can be obtained by running `yarn benchmark`.
 ## Directories
 
 - `contracts`: source code for all smart contracts in the system.
-  - `vault` stores the code for the `Vault` contract, which is split accross a number of files to ease development.
+  - `vault` stores the code for the `Vault` contract, which is split across a number of files to ease development.
   - `pools` keeps the code for the different Pool types and related contracts, such as factories.
   - `test` holds contracts that are only used for testing purposes, often with lax access control patterns and other 'unsafe' properties.
 - `test`: unit tests for each smart contract, using [ethers](https://docs.ethers.io/v5/) and [waffle chai matchers](https://ethereum-waffle.readthedocs.io/en/latest/matchers.html). The `helpers` subdirectory holds utilities used to simplify writing assertions, deploying test contracts, etc., with the overall goal of making tests more ergonomic and less verbose.

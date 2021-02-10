@@ -1,5 +1,9 @@
-import "../../math/FixedPoint.sol";
-import "../../math/LogExpMath.sol";
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import "../../lib/math/FixedPoint.sol";
+import "../../lib/math/LogExpMath.sol";
+
+pragma solidity ^0.7.1;
 
 contract PropertiesJoinExit{
     using FixedPoint for uint256;
@@ -27,7 +31,7 @@ contract PropertiesJoinExit{
         uint256 tokenBalance,
         uint256 bptAmountOut,
         uint256 bptTotalSupply
-    ) public {
+    ) public pure {
         uint one = 1;
         uint256 tokenNormalizedWeight = one.div(2);
         require(bptAmountOut>1 ether);
@@ -83,7 +87,7 @@ contract PropertiesJoinExit{
         uint256 amountOut_0,
         uint256 amountOut_1,
         uint256 bptTotalSupply
-    ) public {
+    ) public pure {
         uint256[] memory normalizedWeights = new uint256[](2);
         uint256[] memory balances = new uint256[](2);
         uint256[] memory amountsOut = new uint256[](2);
@@ -112,7 +116,7 @@ contract PropertiesJoinExit{
         require(ratio != 0, "ERR_MATH_APPROX");
         return ratio;
     }
-    function exploit_joinExit(uint256 poolAmountOut, uint poolAmountIn, uint256 pool_initial_supply, uint token_balance) external {
+    function exploit_joinExit(uint256 poolAmountOut, uint poolAmountIn, uint256 pool_initial_supply, uint token_balance) external pure {
 
         // model joinPool
         require(token_balance>1 ether/100);

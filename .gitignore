@@ -37,9 +37,6 @@ bower_components
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 
-# exported abis
-abi
-
 # Dependency directories
 node_modules/
 jspm_packages/
@@ -114,3 +111,11 @@ artifacts/
 *.js
 
 !.eslintrc.js
+
+# Ignore local evm network deployments
+deployments/artifacts/localhost
+deployments/artifacts/dockerParity
+deployments/artifacts/hardhat
+
+# Coverage report
+coverage.json

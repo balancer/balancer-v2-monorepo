@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-import "../../math/FixedPoint.sol";
-import "../../math/LogExpMath.sol";
+import "../../lib/math/FixedPoint.sol";
+import "../../lib/math/LogExpMath.sol";
+
+pragma solidity ^0.7.1;
 
 contract PropertiesSwap{
     using FixedPoint for uint256;
@@ -49,7 +52,7 @@ contract PropertiesSwap{
         uint256 ratio = LogExpMath.pow(quotient, weightRatio).sub(FixedPoint.ONE);
         return tokenBalanceIn.mul(ratio);
     }
-    function exploit_out_given_in(uint sent_token_b) public returns(uint, uint, uint){
+    function exploit_out_given_in(uint sent_token_b) public pure returns(uint, uint, uint){
         uint weight = FixedPoint.ONE.div(2);
         require(sent_token_b < 10 ether);
         uint balance_token_A = 10 ether;
@@ -63,7 +66,7 @@ contract PropertiesSwap{
         assert(sent_token_a<received_token_a);
     }
 
-    function exploit_in_given_out(uint256 tokenBalanceIn, uint256 tokenBalanceOut, uint256 tokenAmountOut) external {
+    function exploit_in_given_out(uint256 tokenBalanceIn, uint256 tokenBalanceOut, uint256 tokenAmountOut) external pure {
         uint one = 1;
         uint weight = one.div(2);
 

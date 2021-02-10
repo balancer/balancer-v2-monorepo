@@ -12,10 +12,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+
+import "../lib/math/Math.sol";
 
 /**
  * @title Highly opinionated token implementation
@@ -31,7 +32,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * - Emits 'Approval' events whenever allowance is changed by `transferFrom`
  */
 contract BalancerPoolToken is IERC20 {
-    using SafeMath for uint256;
+    using Math for uint256;
 
     // State variables
 
@@ -96,15 +97,14 @@ contract BalancerPoolToken is IERC20 {
         address recipient,
         uint256 amount
     ) external override returns (bool) {
-        require(msg.sender == sender || amount <= _allowance[sender][msg.sender], "ERR_BPT_BAD_CALLER");
+        uint256 currentAllowance = _allowance[sender][msg.sender];
+        require(msg.sender == sender || currentAllowance >= amount, "BPT_BAD_CALLER");
 
         _move(sender, recipient, amount);
 
-        // memoize for gas optimization
-        uint256 oldAllowance = _allowance[sender][msg.sender];
-
-        if (msg.sender != sender && oldAllowance != uint256(-1)) {
-            _setAllowance(sender, msg.sender, oldAllowance.sub(amount, "ERR_INSUFFICIENT_ALLOWANCE"));
+        if (msg.sender != sender && currentAllowance != uint256(-1)) {
+            require(currentAllowance >= amount, "INSUFFICIENT_ALLOWANCE");
+            _setAllowance(sender, msg.sender, currentAllowance - amount);
         }
 
         return true;
@@ -142,7 +142,10 @@ contract BalancerPoolToken is IERC20 {
     function _burnPoolTokens(address sender, uint256 amount) internal {
         _move(sender, address(this), amount);
 
-        _balance[address(this)] = _balance[address(this)].sub(amount, "ERR_INSUFFICIENT_BAL");
+        uint256 currentBalance = _balance[address(this)];
+        require(currentBalance >= amount, "INSUFFICIENT_BALANCE");
+
+        _balance[address(this)] = currentBalance - amount;
         _totalSupply = _totalSupply.sub(amount);
 
         emit Transfer(sender, address(0), amount);
@@ -153,7 +156,10 @@ contract BalancerPoolToken is IERC20 {
         address recipient,
         uint256 amount
     ) internal {
-        _balance[sender] = _balance[sender].sub(amount, "ERR_INSUFFICIENT_BAL");
+        uint256 currentBalance = _balance[sender];
+        require(currentBalance >= amount, "INSUFFICIENT_BALANCE");
+
+        _balance[sender] = currentBalance - amount;
         _balance[recipient] = _balance[recipient].add(amount);
 
         emit Transfer(sender, recipient, amount);

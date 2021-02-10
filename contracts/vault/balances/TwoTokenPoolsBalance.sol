@@ -12,57 +12,38 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
-
-import "hardhat/console.sol";
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../../math/FixedPoint.sol";
-
-import "./CashInvested.sol";
+import "./BalanceAllocation.sol";
 
 contract TwoTokenPoolsBalance {
-    using CashInvested for bytes32;
+    using BalanceAllocation for bytes32;
 
     // Data for Pools with Two Tokens
     //
-    // These are similar to the Simplified Quote Pool case (because the Pool only has two tokens, and therefore there
+    // These are similar to the Minimal Swap Info Pool case (because the Pool only has two tokens, and therefore there
     // are only two balances to read), but there's a key difference in how data is stored. Keeping a set makes little
     // sense, as it will only ever hold two tokens, so we can just store those two directly.
     // The gas savings associated with using these Pools come from how token balances are stored: cash for token A and
-    // token B is packed together, as are invested amounts. Because only cash changes in a swap, there's no need to
+    // token B is packed together, as are external amounts. Because only cash changes in a swap, there's no need to
     // write to this second storage slot.
     // This however makes Vault code that interacts with these Pools cumbersome: both balances must be accessed at the
     // same time by using both token addresses, and some logic is needed to differentiate token A from token B. In this
     // case, token A is always the token with the lowest numerical address value. The token X and token Y names are used
     // in functions when it is unknown which one is A and which one is B.
 
-    /**
-     * @dev Sorts two tokens ascendingly, returning them as a (tokenA, tokenB) tuple.
-     */
-    function _sortTwoTokens(IERC20 tokenX, IERC20 tokenY) private pure returns (IERC20, IERC20) {
-        return tokenX < tokenY ? (tokenX, tokenY) : (tokenY, tokenX);
+    struct TwoTokenPoolBalances {
+        bytes32 sharedCash;
+        bytes32 sharedManaged;
     }
 
-    /**
-     * @dev Returns a hash associated with a given token pair.
-     */
-    function _getTwoTokenPairHash(TwoTokenTokens memory poolTokens) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(poolTokens.tokenA, poolTokens.tokenB));
-    }
-
-    struct TwoTokenTokens {
+    struct TwoTokenPoolTokens {
         IERC20 tokenA;
         IERC20 tokenB;
+        mapping(bytes32 => TwoTokenPoolBalances) balances;
     }
-
-    struct TwoTokenSharedBalances {
-        bytes32 sharedCash;
-        bytes32 sharedInvested;
-    }
-
-    mapping(bytes32 => TwoTokenTokens) internal _poolTwoTokenTokens;
 
     // We could just keep a mapping from Pool ID to TwoTokenSharedBalances, but there's an issue: we wouldn't know to
     // which tokens those balances correspond. This would mean having to also check the tokens struct in a swap, to make
@@ -73,84 +54,7 @@ contract TwoTokenPoolsBalance {
     // hash for a mapping entry that was not set, containing zero balances. Non-zero balances are only possible if both
     // tokens in the pair are the Pool's tokens, which means we don't have to check the TwoTokensTokens struct and save
     // storage reads.
-    mapping(bytes32 => mapping(bytes32 => TwoTokenSharedBalances)) internal _poolTwoTokenSharedBalances;
-
-    /**
-     * @dev Returns an array with all the tokens in a Two Token Pool. This array will have either two or zero entries
-     * (if the Pool doesn't have any tokens).
-     */
-    function _getTwoTokenPoolTokens(bytes32 poolId) internal view returns (IERC20[] memory) {
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-
-        IERC20[] memory tokens;
-        // Both tokens will either be zero or non-zero, but we keep the full check for clarity
-        if (poolTokens.tokenA != IERC20(0) && poolTokens.tokenB != IERC20(0)) {
-            tokens = new IERC20[](2);
-            tokens[0] = poolTokens.tokenA;
-            tokens[1] = poolTokens.tokenB;
-        } else {
-            tokens = new IERC20[](0);
-        }
-
-        return tokens;
-    }
-
-    /**
-     * @dev Returns the balance for a token in a Two Token Pool.
-     *
-     * This function is convenient but not particularly gas efficient, and should be avoided during gas-sensitive
-     * operations, such as swaps. For those, _getTwoTokenPoolSharedBalances provides a more flexible interface.
-     *
-     * Requirements:
-     *
-     * - `token` must be in the Pool.
-     */
-    function _getTwoTokenPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
-        // We can't just read the balance of token, because we need to know the full pair in order to compute the pair
-        // hash and access the balance mapping. We therefore also read the TwoTokenTokens struct.
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-        bytes32 pairHash = _getTwoTokenPairHash(poolTokens);
-        TwoTokenSharedBalances storage poolSharedBalance = _poolTwoTokenSharedBalances[poolId][pairHash];
-
-        bytes32 sharedCash = poolSharedBalance.sharedCash;
-        bytes32 sharedInvested = poolSharedBalance.sharedInvested;
-
-        if (token == poolTokens.tokenA) {
-            return CashInvested.fromSharedToBalanceA(sharedCash, sharedInvested);
-        } else if (token == poolTokens.tokenB) {
-            return CashInvested.fromSharedToBalanceB(sharedCash, sharedInvested);
-        } else {
-            revert("ERR_TOKEN_NOT_REGISTERED");
-        }
-    }
-
-    /**
-     * @dev Returns the balance for a token pair in a Two Token Pool. This doesn't check for token existence: if the
-     * tokens are not in the Pool, it will simply return balances of zero (for both tokens, even if one of them is in
-     * the Pool).
-     *
-     * The returned balances are those of token A and token B, where token A is the lowest of token X and token Y, and
-     * token B the other.
-     *
-     * This function also returns a storage pointer to the TwoTokenSharedBalances entry associated with the token pair,
-     * which can be used to update this entry without having to recompute the pair hash and storage slot.
-     */
-    function _getTwoTokenPoolSharedBalances(
-        bytes32 poolId,
-        IERC20 tokenX,
-        IERC20 tokenY
-    )
-        internal
-        view
-        returns (
-            bytes32 tokenABalance,
-            bytes32 tokenBBalance,
-            TwoTokenSharedBalances storage poolSharedBalance
-        )
-    {
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-        return _getTwoTokenPoolSharedBalances(poolTokens, poolId, tokenX, tokenY);
-    }
+    mapping(bytes32 => TwoTokenPoolTokens) private _twoTokenPoolTokens;
 
     /**
      * @dev Registers the tokens of a Two Token Pool.
@@ -166,156 +70,117 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        require(tokenX != tokenY, "ERR_TOKENS_ARE_THE_SAME");
-        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ERR_TOKEN_IS_ZERO");
+        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ZERO_ADDRESS_TOKEN");
 
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "ERR_TOKENS_ALREADY_SET");
+        // Not technically true since we didn't register yet, but this is consistent with the error messages of other
+        // specialization settings.
+        require(tokenX != tokenY, "TOKEN_ALREADY_REGISTERED");
+
+        TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
+        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "TOKENS_ALREADY_SET");
 
         (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
-        _poolTwoTokenTokens[poolId] = TwoTokenTokens({ tokenA: tokenA, tokenB: tokenB });
+        poolTokens.tokenA = tokenA;
+        poolTokens.tokenB = tokenB;
     }
 
     /**
-     * @dev Unregisters the tokens of a Two Token Pool.
+     * @dev Deregisters the tokens of a Two Token Pool.
      *
      * Requirements:
      *
      * - `tokenX` and `tokenY` must be the Pool's tokens.
      * - Both tokens must have non balance in the Vault.
      */
-    function _unregisterTwoTokenPoolTokens(
+    function _deregisterTwoTokenPoolTokens(
         bytes32 poolId,
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        (bytes32 tokenABalance, bytes32 tokenBBalance, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
-        require(tokenABalance.isZero() && tokenBBalance.isZero(), "ERR_TOKEN_BALANCE_IS_NOT_ZERO");
+        (bytes32 balanceA, bytes32 balanceB, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
+        require(balanceA.isZero() && balanceB.isZero(), "NONZERO_TOKEN_BALANCE");
 
-        delete _poolTwoTokenTokens[poolId];
+        delete _twoTokenPoolTokens[poolId];
         // No need to delete the balance entries, since they already are zero
     }
 
     /**
-     * @dev Adds cash to a Two Token Pool.
-     *
-     * Requirements:
-     *
-     * - `tokenX` and `tokenY` must be the Pool's tokens.
+     * @dev This setter is only used when adding/removing liquidity, where tokens are guaranteed to be ordered and
+     * registered. These methods actually fetch the tokens from `_getTwoTokenPoolTokens` first.
      */
-    function _increaseTwoTokenPoolCash(
+    function _setTwoTokenPoolCashBalances(
         bytes32 poolId,
-        IERC20 tokenX,
-        uint128 amountX,
-        IERC20 tokenY,
-        uint128 amountY
+        IERC20 tokenA,
+        bytes32 balanceA,
+        IERC20 tokenB,
+        bytes32 balanceB
     ) internal {
-        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, CashInvested.increaseCash);
+        bytes32 hash = _getTwoTokenPairHash(tokenA, tokenB);
+        TwoTokenPoolBalances storage poolBalances = _twoTokenPoolTokens[poolId].balances[hash];
+        poolBalances.sharedCash = BalanceAllocation.toSharedCash(balanceA, balanceB);
+    }
+
+    function _twoTokenPoolCashToManaged(
+        bytes32 poolId,
+        IERC20 token,
+        uint256 amount
+    ) internal {
+        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.cashToManaged, amount);
+    }
+
+    function _twoTokenPoolManagedToCash(
+        bytes32 poolId,
+        IERC20 token,
+        uint256 amount
+    ) internal {
+        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.managedToCash, amount);
+    }
+
+    function _setTwoTokenPoolManagedBalance(
+        bytes32 poolId,
+        IERC20 token,
+        uint256 amount
+    ) internal {
+        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManaged, amount);
+    }
+
+    function _updateTwoTokenPoolSharedBalance(
+        bytes32 poolId,
+        IERC20 token,
+        function(bytes32, uint256) returns (bytes32) mutation,
+        uint256 amount
+    ) private {
+        (
+            TwoTokenPoolBalances storage balances,
+            IERC20 tokenA,
+            bytes32 balanceA,
+            IERC20 tokenB,
+            bytes32 balanceB
+        ) = _getTwoTokenPoolBalances(poolId);
+
+        if (token == tokenA) {
+            balanceA = mutation(balanceA, amount);
+        } else if (token == tokenB) {
+            balanceB = mutation(balanceB, amount);
+        } else {
+            revert("TOKEN_NOT_REGISTERED");
+        }
+
+        balances.sharedCash = BalanceAllocation.toSharedCash(balanceA, balanceB);
+        balances.sharedManaged = BalanceAllocation.toSharedManaged(balanceA, balanceB);
     }
 
     /**
-     * @dev Removes cash from a Two Token Pool.
+     * @dev Returns the balance for a token pair in a Two Token Pool, reverting if either of the tokens is
+     * not registered by the Pool.
      *
-     * Requirements:
+     * The returned balances are those of token A and token B, where token A is the lowest of token X and token Y, and
+     * token B the other.
      *
-     * - `tokenX` and `tokenY` must be the Pool's tokens.
-     * - `amountX` and `amountY` must be less or equal than the Pool's cash for the respective token.
+     * This function also returns a storage pointer to the TwoTokenSharedBalances entry associated with the token pair,
+     * which can be used to update this entry without having to recompute the pair hash and storage slot.
      */
-    function _decreaseTwoTokenPoolCash(
-        bytes32 poolId,
-        IERC20 tokenX,
-        uint128 amountX,
-        IERC20 tokenY,
-        uint128 amountY
-    ) internal {
-        _updateTwoTokenPoolCashTokenBalance(poolId, tokenX, amountX, tokenY, amountY, CashInvested.decreaseCash);
-    }
-
-    function _investTwoTokenPoolCash(
-        bytes32 poolId,
-        IERC20 token,
-        uint128 amount
-    ) internal {
-        _updateTwoTokenPoolSharedTokenBalance(poolId, token, CashInvested.cashToInvested, amount);
-    }
-
-    function _divestTwoTokenPoolCash(
-        bytes32 poolId,
-        IERC20 token,
-        uint128 amount
-    ) internal {
-        _updateTwoTokenPoolSharedTokenBalance(poolId, token, CashInvested.investedToCash, amount);
-    }
-
-    function _setTwoTokenPoolInvestment(
-        bytes32 poolId,
-        IERC20 token,
-        uint128 amount
-    ) internal {
-        _updateTwoTokenPoolSharedTokenBalance(poolId, token, CashInvested.setInvested, amount);
-    }
-
-    function _updateTwoTokenPoolCashTokenBalance(
-        bytes32 poolId,
-        IERC20 tokenX,
-        uint128 amountX,
-        IERC20 tokenY,
-        uint128 amountY,
-        function(bytes32, uint128) pure returns (bytes32) mutation
-    ) private {
-        (
-            bytes32 tokenABalance,
-            bytes32 tokenBBalance,
-            TwoTokenSharedBalances storage poolSharedBalances
-        ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
-
-        if (tokenX < tokenY) {
-            // X is A, Y is B
-            tokenABalance = mutation(tokenABalance, amountX);
-            tokenBBalance = mutation(tokenBBalance, amountY);
-        } else {
-            // X is B, Y is A
-            tokenABalance = mutation(tokenABalance, amountY);
-            tokenBBalance = mutation(tokenBBalance, amountX);
-        }
-
-        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-        // We don't need to write to the sharedInvested entry
-    }
-
-    function _updateTwoTokenPoolSharedTokenBalance(
-        bytes32 poolId,
-        IERC20 token,
-        function(bytes32, uint128) pure returns (bytes32) mutation,
-        uint128 amount
-    ) private {
-        TwoTokenTokens memory poolTokens = _poolTwoTokenTokens[poolId];
-
-        (
-            bytes32 tokenABalance,
-            bytes32 tokenBBalance,
-            TwoTokenSharedBalances storage poolSharedBalances
-        ) = _getTwoTokenPoolSharedBalances(poolTokens, poolId, poolTokens.tokenA, poolTokens.tokenB);
-
-        if (token == poolTokens.tokenA) {
-            tokenABalance = mutation(tokenABalance, amount);
-        } else if (token == poolTokens.tokenB) {
-            tokenBBalance = mutation(tokenBBalance, amount);
-        } else {
-            revert("ERR_TOKEN_NOT_REGISTERED");
-        }
-
-        poolSharedBalances.sharedCash = CashInvested.toSharedCash(tokenABalance, tokenBBalance);
-        poolSharedBalances.sharedInvested = CashInvested.toSharedInvested(tokenABalance, tokenBBalance);
-    }
-
-    function _isTwoTokenPoolInvested(bytes32 poolId, IERC20 token) internal view returns (bool) {
-        bytes32 currentBalance = _getTwoTokenPoolBalance(poolId, token);
-        return currentBalance.isInvested();
-    }
-
     function _getTwoTokenPoolSharedBalances(
-        TwoTokenTokens memory poolTokens,
         bytes32 poolId,
         IERC20 tokenX,
         IERC20 tokenY
@@ -323,21 +188,129 @@ contract TwoTokenPoolsBalance {
         internal
         view
         returns (
-            bytes32 tokenABalance,
-            bytes32 tokenBBalance,
-            TwoTokenSharedBalances storage poolSharedBalance
+            bytes32 balanceA,
+            bytes32 balanceB,
+            TwoTokenPoolBalances storage poolBalances
         )
     {
         (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
-        require(tokenA == poolTokens.tokenA && tokenB == poolTokens.tokenB, "ERR_TOKEN_NOT_REGISTERED");
+        bytes32 pairHash = _getTwoTokenPairHash(tokenA, tokenB);
+        poolBalances = _twoTokenPoolTokens[poolId].balances[pairHash];
 
-        bytes32 pairHash = _getTwoTokenPairHash(poolTokens);
-        poolSharedBalance = _poolTwoTokenSharedBalances[poolId][pairHash];
+        bytes32 sharedCash = poolBalances.sharedCash;
+        bytes32 sharedManaged = poolBalances.sharedManaged;
 
-        bytes32 sharedCash = poolSharedBalance.sharedCash;
-        bytes32 sharedInvested = poolSharedBalance.sharedInvested;
+        // Only registered tokens can have non-zero balances, so we can use this as a shortcut to avoid the
+        // expensive _hasPoolTwoTokens check.
+        bool exists = sharedCash.isNotZero() || sharedManaged.isNotZero() || _hasPoolTwoTokens(poolId, tokenA, tokenB);
+        require(exists, "TOKEN_NOT_REGISTERED");
 
-        tokenABalance = CashInvested.fromSharedToBalanceA(sharedCash, sharedInvested);
-        tokenBBalance = CashInvested.fromSharedToBalanceB(sharedCash, sharedInvested);
+        balanceA = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
+        balanceB = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
+    }
+
+    /**
+     * @dev Returns an array with all the tokens and balances in a Two Token Pool.
+     * This array will have either two or zero entries (if the Pool doesn't have any tokens).
+     */
+    function _getTwoTokenPoolTokens(bytes32 poolId)
+        internal
+        view
+        returns (IERC20[] memory tokens, bytes32[] memory balances)
+    {
+        (, IERC20 tokenA, bytes32 balanceA, IERC20 tokenB, bytes32 balanceB) = _getTwoTokenPoolBalances(poolId);
+
+        // Both tokens will either be zero or non-zero, but we keep the full check for clarity
+        if (tokenA == IERC20(0) || tokenB == IERC20(0)) {
+            return (new IERC20[](0), new bytes32[](0));
+        }
+
+        // Note that functions relying on this getter expect tokens to be properly ordered, so it's extremely important
+        // to always return (A,B)
+
+        tokens = new IERC20[](2);
+        tokens[0] = tokenA;
+        tokens[1] = tokenB;
+
+        balances = new bytes32[](2);
+        balances[0] = balanceA;
+        balances[1] = balanceB;
+    }
+
+    /**
+     * @dev Returns the balance for a token in a Two Token Pool.
+     *
+     * This function is convenient but not particularly gas efficient, and should be avoided during gas-sensitive
+     * operations, such as swaps. For those, _getTwoTokenPoolSharedBalances provides a more flexible interface.
+     *
+     * Requirements:
+     *
+     * - `token` must be in the Pool.
+     */
+    function _getTwoTokenPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32 balance) {
+        // We can't just read the balance of token, because we need to know the full pair in order to compute the pair
+        // hash and access the balance mapping. We therefore also read the TwoTokenPoolTokens struct.
+        (, IERC20 tokenA, bytes32 balanceA, IERC20 tokenB, bytes32 balanceB) = _getTwoTokenPoolBalances(poolId);
+
+        if (token == tokenA) {
+            return balanceA;
+        } else if (token == tokenB) {
+            return balanceB;
+        } else {
+            revert("TOKEN_NOT_REGISTERED");
+        }
+    }
+
+    function _hasPoolTwoTokens(
+        bytes32 poolId,
+        IERC20 tokenA,
+        IERC20 tokenB
+    ) internal view returns (bool) {
+        TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
+        return poolTokens.tokenA == tokenA && tokenB == poolTokens.tokenB;
+    }
+
+    function _isTwoTokenPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
+        TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
+        return (token == poolTokens.tokenA || token == poolTokens.tokenB) && token != IERC20(0);
+    }
+
+    function _getTwoTokenPoolBalances(bytes32 poolId)
+        private
+        view
+        returns (
+            TwoTokenPoolBalances storage poolBalances,
+            IERC20 tokenA,
+            bytes32 balanceA,
+            IERC20 tokenB,
+            bytes32 balanceB
+        )
+    {
+        TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
+        tokenA = poolTokens.tokenA;
+        tokenB = poolTokens.tokenB;
+
+        bytes32 pairHash = _getTwoTokenPairHash(tokenA, tokenB);
+        poolBalances = poolTokens.balances[pairHash];
+
+        bytes32 sharedCash = poolBalances.sharedCash;
+        bytes32 sharedManaged = poolBalances.sharedManaged;
+
+        balanceA = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
+        balanceB = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
+    }
+
+    /**
+     * @dev Returns a hash associated with a given token pair.
+     */
+    function _getTwoTokenPairHash(IERC20 tokenA, IERC20 tokenB) private pure returns (bytes32) {
+        return keccak256(abi.encodePacked(tokenA, tokenB));
+    }
+
+    /**
+     * @dev Sorts two tokens ascendingly, returning them as a (tokenA, tokenB) tuple.
+     */
+    function _sortTwoTokens(IERC20 tokenX, IERC20 tokenY) private pure returns (IERC20, IERC20) {
+        return tokenX < tokenY ? (tokenX, tokenY) : (tokenY, tokenX);
     }
 }

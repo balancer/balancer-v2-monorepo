@@ -12,12 +12,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "../math/FixedPoint.sol";
+import "../lib/math/Math.sol";
 
 import "../vault/interfaces/IFlashLoanReceiver.sol";
 import "../vault/interfaces/IVault.sol";
@@ -25,7 +25,7 @@ import "../vault/interfaces/IVault.sol";
 import "./TestToken.sol";
 
 contract MockFlashLoanReceiver is IFlashLoanReceiver {
-    using FixedPoint for uint256;
+    using Math for uint256;
     using SafeERC20 for IERC20;
 
     address public immutable vault;
@@ -64,7 +64,7 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
             uint256 amount = amounts[i];
             uint256 feeAmount = feeAmounts[i];
 
-            require(token.balanceOf(address(this)) == amount, "Invalid balance, was the flashLoan successful?");
+            require(token.balanceOf(address(this)) == amount, "INVALID_FLASHLOAN_BALANCE");
 
             if (reenter) {
                 IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), tokens, amounts, receiverData);

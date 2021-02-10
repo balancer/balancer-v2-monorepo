@@ -1,8 +1,11 @@
-import "./arithmetic/TBFixedPoint128.sol";
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import "./arithmetic/TBFixedPoint256.sol";
 import "./arithmetic/TBLogExpMath.sol";
 
-contract TestArithmetic is TBFixedPoint128, TBFixedPoint256, TBLogExpMath{
-    constructor() public {
+pragma solidity ^0.7.1;
+
+contract TestArithmetic is TBFixedPoint256, TBLogExpMath{
+    constructor() {
     }
 }

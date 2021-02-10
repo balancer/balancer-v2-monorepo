@@ -10,7 +10,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { FIXED_POINT_SCALING, toFixedPoint } from '../../scripts/helpers/fixedPoint';
 import { constant } from 'lodash';
 
-describe('ConstantProductPool', function () {
+describe('WeightedPool', function () {
   let admin: SignerWithAddress;
   let creator: SignerWithAddress;
   let lp: SignerWithAddress;

@@ -12,63 +12,105 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "../lib/math/FixedPoint.sol";
 import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IPoolQuote.sol";
-import "../vault/interfaces/IPoolQuoteSimplified.sol";
+import "../vault/interfaces/IGeneralPool.sol";
+import "../vault/interfaces/IMinimalSwapInfoPool.sol";
 
-import "../math/FixedPoint.sol";
-
-contract MockPool is IPoolQuote, IPoolQuoteSimplified {
+contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
     using FixedPoint for uint256;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
 
-    event UpdatedBalances(uint256[] balances);
-
-    constructor(IVault vault, IVault.PoolOptimization optimization) {
-        _poolId = vault.registerPool(optimization);
+    constructor(IVault vault, IVault.PoolSpecialization specialization) {
+        _poolId = vault.registerPool(specialization);
         _vault = vault;
     }
 
-    function getPoolId() external view returns (bytes32) {
+    function getVault() external view override returns (IVault) {
+        return _vault;
+    }
+
+    function getPoolId() external view override returns (bytes32) {
         return _poolId;
     }
 
-    function getNumberOfPools() external view returns (uint256) {
-        _vault.getNumberOfPools();
-    }
-    function addUserAgent(address agent) external {
-        _vault.addUserAgent(agent);
-    }
-    function setPoolInvestmentManager(bytes32 poolId, IERC20 token, address manager) external {
-        _vault.setPoolInvestmentManager(poolId, token, manager);
+    function registerTokens(IERC20[] memory tokens, address[] memory assetManagers) external {
+        _vault.registerTokens(_poolId, tokens, assetManagers);
     }
 
-    function registerTokens(IERC20[] memory tokens) external {
-        _vault.registerTokens(_poolId, tokens);
+    function deregisterTokens(IERC20[] memory tokens) external {
+        _vault.deregisterTokens(_poolId, tokens);
     }
 
-    function unregisterTokens(IERC20[] memory tokens) external {
-        _vault.unregisterTokens(_poolId, tokens);
+    event OnJoinPoolCalled(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] currentBalances,
+        uint256 latestBlockNumberUsed,
+        uint256 protocolSwapFee,
+        bytes userData
+    );
+
+    event OnExitPoolCalled(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] currentBalances,
+        uint256 latestBlockNumberUsed,
+        uint256 protocolSwapFee,
+        bytes userData
+    );
+
+    function onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory currentBalances,
+        uint256 latestBlockNumberUsed,
+        uint256 protocolSwapFee,
+        bytes memory userData
+    ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
+        emit OnJoinPoolCalled(
+            poolId,
+            sender,
+            recipient,
+            currentBalances,
+            latestBlockNumberUsed,
+            protocolSwapFee,
+            userData
+        );
+
+        (amountsIn, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
-    function addLiquidity(IERC20[] memory tokens, uint256[] memory amounts) external {
-        _vault.addLiquidity(_poolId, msg.sender, tokens, amounts, false);
-    }
+    function onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory currentBalances,
+        uint256 latestBlockNumberUsed,
+        uint256 protocolSwapFee,
+        bytes memory userData
+    ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
+        emit OnExitPoolCalled(
+            poolId,
+            sender,
+            recipient,
+            currentBalances,
+            latestBlockNumberUsed,
+            protocolSwapFee,
+            userData
+        );
 
-    function removeLiquidity(IERC20[] memory tokens, uint256[] memory amounts) external {
-        _vault.removeLiquidity(_poolId, msg.sender, tokens, amounts, false);
-    }
-
-    function paySwapProtocolFees(IERC20[] memory tokens, uint256[] memory collectedFees) external {
-        uint256[] memory balances = _vault.paySwapProtocolFees(_poolId, tokens, collectedFees);
-        emit UpdatedBalances(balances);
+        (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
     // Amounts in are multiplied by the multiplier, amounts out divided by it
@@ -78,41 +120,41 @@ contract MockPool is IPoolQuote, IPoolQuoteSimplified {
         _multiplier = newMultiplier;
     }
 
-    // IPoolQuote
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+    // IGeneralPool
+    function onSwapGivenIn(
+        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
         uint256[] calldata,
         uint256,
         uint256
     ) external view override returns (uint256) {
-        return request.amountIn.mul(_multiplier);
+        return swapRequest.amountIn.mul(_multiplier);
     }
 
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+    function onSwapGivenOut(
+        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
         uint256[] calldata,
         uint256,
         uint256
     ) external view override returns (uint256) {
-        uint256 amountIn = request.amountOut.div(_multiplier);
+        uint256 amountIn = swapRequest.amountOut.div(_multiplier);
         return amountIn;
     }
 
-    // IPoolQuoteSimplified
-    function quoteOutGivenIn(
-        IPoolQuoteStructs.QuoteRequestGivenIn calldata request,
+    // IMinimalSwapInfoPool
+    function onSwapGivenIn(
+        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
         uint256,
         uint256
     ) external view override returns (uint256) {
-        return request.amountIn.mul(_multiplier);
+        return swapRequest.amountIn.mul(_multiplier);
     }
 
-    function quoteInGivenOut(
-        IPoolQuoteStructs.QuoteRequestGivenOut calldata request,
+    function onSwapGivenOut(
+        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
         uint256,
         uint256
     ) external view override returns (uint256) {
-        uint256 amountIn = request.amountOut.div(_multiplier);
+        uint256 amountIn = swapRequest.amountOut.div(_multiplier);
         return amountIn;
     }
 }

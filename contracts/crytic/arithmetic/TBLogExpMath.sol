@@ -1,6 +1,8 @@
-pragma solidity ^0.7.1;
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-import "../../math/LogExpMath.sol";
+import "../../lib/math/LogExpMath.sol";
+
+pragma solidity ^0.7.1;
 
 contract TBLogExpMath {
     int256 a = 0;

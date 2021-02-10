@@ -12,26 +12,28 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract TestToken is AccessControl, ERC20 {
+contract TestToken is AccessControl, ERC20, ERC20Burnable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     constructor(
+        address admin,
         string memory name,
         string memory symbol,
         uint8 decimals
     ) ERC20(name, symbol) {
         _setupDecimals(decimals);
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(MINTER_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _setupRole(MINTER_ROLE, admin);
     }
 
     function mint(address destinatary, uint256 amount) external {
-        require(hasRole(MINTER_ROLE, msg.sender), "ERR_MINTER_ROLE");
+        require(hasRole(MINTER_ROLE, msg.sender), "NOT_MINTER");
         _mint(destinatary, amount);
     }
 }
