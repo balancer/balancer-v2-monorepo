@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "../lib/math/Math.sol";
 import "../lib/helpers/InputHelpers.sol";
@@ -42,9 +43,10 @@ abstract contract PoolRegistry is
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
+    using Counters for Counters.Counter;
 
-    // The total number of registered Pools. This is used to ensure Pool IDs are unique.
-    uint256 private _totalPools;
+    // Ensure Pool IDs are unique.
+    Counters.Counter private _poolNonce;
 
     // Pool IDs are stored as `bytes32`.
     mapping(bytes32 => bool) private _isPoolRegistered;
@@ -124,10 +126,10 @@ abstract contract PoolRegistry is
 
     function registerPool(PoolSpecialization specialization) external override nonReentrant returns (bytes32) {
         // Use _totalPools as the Pool ID nonce. uint80 assumes there will never be more than than 2**80 Pools.
-        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_totalPools));
+        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_poolNonce.current()));
         require(!_isPoolRegistered[poolId], "INVALID_POOL_ID"); // Should never happen
 
-        _totalPools++;
+        _poolNonce.increment();
         _isPoolRegistered[poolId] = true;
 
         emit PoolCreated(poolId);
