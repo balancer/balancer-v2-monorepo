@@ -9,13 +9,12 @@ import { fp, bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { MinimalSwapInfoPool } from '../../lib/helpers/pools';
 import { FundManagement, Swap } from '../../lib/helpers/trading';
-import { deploySortedTokens, TokenList } from '../../lib/helpers/tokens';
 import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import TokenList from '../helpers/models/tokens/TokenList';
 
 describe('Vault - swap queries', () => {
   let vault: Contract, funds: FundManagement;
-  let tokens: TokenList, tokenAddresses: string[];
-  let assetManagers: string[];
+  let tokens: TokenList;
   let lp: SignerWithAddress;
   const poolIds: string[] = [];
 
@@ -32,34 +31,29 @@ describe('Vault - swap queries', () => {
     // All of the tests in this suite have no side effects, so we deploy and initially contracts only one to save time
 
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
-    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
-    tokenAddresses = [tokens.DAI.address, tokens.MKR.address, tokens.SNX.address];
-    assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
 
-    for (const symbol in tokens) {
-      await tokens[symbol].mint(lp.address, MAX_UINT112.div(2));
-      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT112);
-    }
+    tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
+    await tokens.mint({ to: lp, amount: MAX_UINT112.div(2) });
+    await tokens.approve({ to: vault, amount: MAX_UINT112, from: lp });
 
     for (let i = 0; i < MAX_POOLS; ++i) {
       const pool = await deploy('MockPool', { args: [vault.address, MinimalSwapInfoPool] });
       const poolId = await pool.getPoolId();
 
       await pool.setMultiplier(fp(2));
-      await pool.registerTokens(tokenAddresses, assetManagers);
+      await pool.registerTokens(tokens.addresses, Array(tokens.length).fill(ZERO_ADDRESS));
 
-      await vault.connect(lp).joinPool(
-        poolId,
-        lp.address,
-        lp.address,
-        tokenAddresses,
-        tokenAddresses.map(() => MAX_UINT256),
-        false,
-        encodeJoin(
-          tokenAddresses.map(() => bn(100e18)),
-          tokenAddresses.map(() => 0)
-        )
-      );
+      await vault
+        .connect(lp)
+        .joinPool(
+          poolId,
+          lp.address,
+          lp.address,
+          tokens.addresses,
+          Array(tokens.length).fill(MAX_UINT256),
+          false,
+          encodeJoin(Array(tokens.length).fill(bn(100e18)), Array(tokens.length).fill(0))
+        );
 
       poolIds.push(poolId);
     }
@@ -95,7 +89,7 @@ describe('Vault - swap queries', () => {
     function assertQueryBatchSwapGivenIn(swapsData: SwapData[], expectedDeltas: number[]) {
       it('returns the expected amounts', async () => {
         const swaps: Swap[] = toSwaps(swapsData);
-        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds);
+        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
         expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
@@ -160,7 +154,7 @@ describe('Vault - swap queries', () => {
       it('returns the expected amounts', async () => {
         const swaps: Swap[] = toSwaps(swapsData);
 
-        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokenAddresses, funds);
+        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
         expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }

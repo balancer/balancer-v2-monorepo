@@ -3,8 +3,9 @@ import { Dictionary } from 'lodash';
 import { Contract, BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { TokenList } from '../../lib/helpers/tokens';
+import TokenList from '../helpers/models/tokens/TokenList';
 import { BigNumberish, bn } from '../../lib/helpers/numbers';
+import Token from './models/tokens/Token';
 
 // Ported from @openzeppelin/test-helpers to use with ERC20 tokens and Ethers
 
@@ -20,7 +21,7 @@ interface BalanceChange {
 class ERC20BalanceTracker {
   private prev: BigNumber | undefined;
 
-  constructor(private address: string, private token: Contract) {}
+  constructor(private address: string, private token: Token) {}
 
   // returns the current token balance
   async get(): Promise<BigNumber> {
@@ -54,7 +55,7 @@ function accountToAddress(account: Account): string {
 
 // Creates an initializes a balance tracker. Constructors cannot be async (and therefore get cannot
 // be called there), so we have this helper method.
-export async function balanceTracker(address: string, token: Contract): Promise<ERC20BalanceTracker> {
+export async function balanceTracker(address: string, token: Token): Promise<ERC20BalanceTracker> {
   const tracker = new ERC20BalanceTracker(address, token);
   await tracker.get();
   return tracker;
@@ -93,10 +94,9 @@ export async function expectBalanceChange(
     const address = accountToAddress(account);
     trackers[address] = {};
 
-    for (const symbol in tokens) {
-      const token = tokens[symbol];
-      trackers[address][symbol] = await balanceTracker(address, token);
-    }
+    await tokens.forEach(async (token) => {
+      trackers[address][token.symbol] = await balanceTracker(address, token);
+    });
   }
 
   await promise();
@@ -105,7 +105,7 @@ export async function expectBalanceChange(
     const address = accountToAddress(account);
     const accountTrackers = trackers[address];
 
-    for (const symbol in tokens) {
+    await tokens.forEach(async ({ symbol }) => {
       const delta = await accountTrackers[symbol].delta();
 
       const change = (changes || {})[symbol];
@@ -123,6 +123,6 @@ export async function expectBalanceChange(
           expect(delta, errorMessage).to[compare](value.toString());
         }
       }
-    }
+    });
   }
 }

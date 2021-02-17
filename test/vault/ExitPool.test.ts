@@ -4,6 +4,8 @@ import { expect } from 'chai';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import Token from '../helpers/models/tokens/Token';
+import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
 import { encodeExit } from '../helpers/mockPool';
 import { expectBalanceChange } from '../helpers/tokenBalance';
@@ -11,7 +13,6 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { bn, BigNumberish, fp, arraySub, arrayAdd, FP_SCALING_FACTOR, divCeil } from '../../lib/helpers/numbers';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 
@@ -19,10 +20,9 @@ describe('Vault - exit pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let recipient: SignerWithAddress, relayer: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
-  let tokens: TokenList = {};
+  let allTokens: TokenList;
 
   const SWAP_FEE = fp(0.1);
-  let TOKEN_ADDRESSES: string[];
 
   before(async () => {
     [, admin, creator, lp, recipient, relayer] = await ethers.getSigners();
@@ -37,31 +37,10 @@ describe('Vault - exit pool', () => {
     await authorizer.connect(admin).grantRole(role, admin.address);
     await vault.connect(admin).setProtocolFees(SWAP_FEE, 0, 0);
 
-    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
-    TOKEN_ADDRESSES = [];
-
-    for (const symbol in tokens) {
-      // Mint tokens for the creator to create the Pool and deposit as Internal Balance
-      await mintTokens(tokens, symbol, creator, bn(100e18));
-      await tokens[symbol].connect(creator).approve(vault.address, MAX_UINT256);
-
-      // Mint tokens for the recipient to set as initial Internal Balance
-      await mintTokens(tokens, symbol, recipient, bn(100e18));
-      await tokens[symbol].connect(recipient).approve(vault.address, MAX_UINT256);
-
-      TOKEN_ADDRESSES.push(tokens[symbol].address);
-    }
+    allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
+    await allTokens.mint({ to: [creator, recipient], amount: bn(100e18) });
+    await allTokens.approve({ to: vault, from: [creator, recipient] });
   });
-
-  function symbol(tokenAddress: string): string {
-    for (const symbol in tokens) {
-      if (tokens[symbol].address === tokenAddress) {
-        return symbol;
-      }
-    }
-
-    throw new Error(`Symbol for token ${tokenAddress} not found`);
-  }
 
   describe('with general pool', () => {
     itExitsSpecializedPoolCorrectly(GeneralPool, 4);
@@ -78,8 +57,7 @@ describe('Vault - exit pool', () => {
   function itExitsSpecializedPoolCorrectly(specialization: PoolSpecializationSetting, tokenAmount: number) {
     let pool: Contract;
     let poolId: string;
-
-    let tokenAddresses: string[];
+    let tokens: TokenList;
 
     let exitAmounts: BigNumber[];
     let dueProtocolFeeAmounts: BigNumber[];
@@ -91,11 +69,11 @@ describe('Vault - exit pool', () => {
     beforeEach('deploy & register pool', async () => {
       pool = await deploy('MockPool', { args: [vault.address, specialization] });
       poolId = await pool.getPoolId();
+      tokens = allTokens.subset(tokenAmount);
 
-      tokenAddresses = TOKEN_ADDRESSES.slice(0, tokenAmount);
-      await pool.registerTokens(tokenAddresses, Array(tokenAmount).fill(ZERO_ADDRESS));
+      await pool.registerTokens(tokens.addresses, Array(tokenAmount).fill(ZERO_ADDRESS));
 
-      exitAmounts = tokenAddresses.map(
+      exitAmounts = tokens.addresses.map(
         (_, i) =>
           bn(1e18)
             .mul(i + 1)
@@ -110,7 +88,7 @@ describe('Vault - exit pool', () => {
           poolId,
           creator.address,
           ZERO_ADDRESS,
-          tokenAddresses,
+          tokens.addresses,
           array(MAX_UINT256),
           false,
           encodeExit(array(50e18), array(0))
@@ -120,7 +98,7 @@ describe('Vault - exit pool', () => {
       // might fail not because the Vault checks its accounting, but because it is out of tokens to send.
       await vault
         .connect(creator)
-        .depositToInternalBalance(creator.address, tokenAddresses, array(50e18), creator.address);
+        .depositToInternalBalance(creator.address, tokens.addresses, array(50e18), creator.address);
     });
 
     type ExitPoolData = {
@@ -140,7 +118,7 @@ describe('Vault - exit pool', () => {
           data.poolId ?? poolId,
           lp.address,
           recipient.address,
-          data.tokenAddresses ?? tokenAddresses,
+          data.tokenAddresses ?? tokens.addresses,
           data.minAmountsOut ?? array(0),
           data.toInternalBalance ?? false,
           encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts)
@@ -155,16 +133,19 @@ describe('Vault - exit pool', () => {
       it('reverts if token array is incorrect', async () => {
         // Missing - token addresses and min amounts out length must match
         await expect(
-          exitPool({ tokenAddresses: tokenAddresses.slice(1), minAmountsOut: array(0).slice(1) })
+          exitPool({ tokenAddresses: tokens.addresses.slice(1), minAmountsOut: array(0).slice(1) })
         ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
         // Extra - token addresses and min amounts out length must match
         await expect(
-          exitPool({ tokenAddresses: tokenAddresses.concat(tokenAddresses[0]), minAmountsOut: array(0).concat(bn(0)) })
+          exitPool({
+            tokenAddresses: tokens.addresses.concat(tokens.first.address),
+            minAmountsOut: array(0).concat(bn(0)),
+          })
         ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
         // Unordered
-        await expect(exitPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
+        await expect(exitPool({ tokenAddresses: tokens.addresses.reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
@@ -322,7 +303,7 @@ describe('Vault - exit pool', () => {
           beforeEach('deposit to internal balance', async () => {
             await vault
               .connect(recipient)
-              .depositToInternalBalance(recipient.address, tokenAddresses, array(1.5e18), recipient.address);
+              .depositToInternalBalance(recipient.address, tokens.addresses, array(1.5e18), recipient.address);
           });
 
           itExitsCorrectly({ toInternalBalance, dueProtocolFeeAmounts, sender });
@@ -340,7 +321,7 @@ describe('Vault - exit pool', () => {
           beforeEach('deposit to internal balance', async () => {
             await vault
               .connect(recipient)
-              .depositToInternalBalance(recipient.address, tokenAddresses, array(1.5e18), recipient.address);
+              .depositToInternalBalance(recipient.address, tokens.addresses, array(1.5e18), recipient.address);
           });
 
           itExitsCorrectly({ toInternalBalance, dueProtocolFeeAmounts, sender });
@@ -375,14 +356,14 @@ describe('Vault - exit pool', () => {
           : arraySub(exitAmounts, expectedProtocolWithdrawFeesToCollect);
 
         // Tokens are sent to the recipient, so the expected change is positive
-        const recipientChanges = tokenAddresses.reduce(
-          (changes, token, i) => ({ ...changes, [symbol(token)]: expectedTransferAmounts[i] }),
+        const recipientChanges = tokens.reduce(
+          (changes, token, i) => ({ ...changes, [token.symbol]: expectedTransferAmounts[i] }),
           {}
         );
 
         // Tokens are sent from the Vault, so the expected change is negative
-        const vaultChanges = tokenAddresses.reduce(
-          (changes, token, i) => ({ ...changes, [symbol(token)]: expectedTransferAmounts[i].mul(-1) }),
+        const vaultChanges = tokens.reduce(
+          (changes, token, i) => ({ ...changes, [token.symbol]: expectedTransferAmounts[i].mul(-1) }),
           {}
         );
 
@@ -393,9 +374,9 @@ describe('Vault - exit pool', () => {
       });
 
       it('assigns internal balance to the caller', async () => {
-        const previousInternalBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
+        const previousInternalBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts, sender });
-        const currentInternalBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
+        const currentInternalBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
 
         // Internal balance is expected to increase: current - previous should equal expected. Protocol withdraw fees
         // are not charged.
@@ -418,7 +399,7 @@ describe('Vault - exit pool', () => {
 
       it('calls the pool with the exit data', async () => {
         const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
-        const { blockNumber: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokenAddresses[0]);
+        const { blockNumber: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
 
         const receipt = await (await exitPool({ toInternalBalance, dueProtocolFeeAmounts, sender })).wait();
 
@@ -438,10 +419,10 @@ describe('Vault - exit pool', () => {
 
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts, sender });
 
-        for (const token of tokenAddresses) {
-          const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token);
+        await tokens.forEach(async (token: Token) => {
+          const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
           expect(newBlockNumber).to.equal(currentBlockNumber + 1);
-        }
+        });
       });
 
       it('emits PoolExited from the vault', async () => {
@@ -456,9 +437,9 @@ describe('Vault - exit pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const previousCollectedFees = await vault.getCollectedFees(tokenAddresses);
+        const previousCollectedFees = await vault.getCollectedFees(tokens.addresses);
         await exitPool({ toInternalBalance, dueProtocolFeeAmounts, sender });
-        const currentCollectedFees = await vault.getCollectedFees(tokenAddresses);
+        const currentCollectedFees = await vault.getCollectedFees(tokens.addresses);
 
         // Fees from both sources are lumped together.
         expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(

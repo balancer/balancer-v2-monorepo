@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, BigNumberish, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import TokenList from '../../helpers/models/tokens/TokenList';
 import * as expectEvent from '../../helpers/expectEvent';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '../../helpers/relativeError';
 import {
@@ -20,11 +21,10 @@ import { deploy } from '../../../lib/helpers/deploy';
 import { bn, fp, decimal, pct } from '../../../lib/helpers/numbers';
 import { ZERO_ADDRESS, MAX_UINT112 } from '../../../lib/helpers/constants';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
-import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';
 
 describe('WeightedPool', function () {
-  let authorizer: Contract, tokenList: TokenList, tokens: Array<Contract>;
+  let authorizer: Contract, allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
@@ -39,18 +39,13 @@ describe('WeightedPool', function () {
   });
 
   beforeEach('deploy tokens', async () => {
-    tokenList = await deploySortedTokens(SYMBOLS, [18, 18, 18, 18]);
-    tokens = Object.values(tokenList);
-
-    for (const token of tokens) {
-      await token.mint(lp.address, bn(100e18));
-      await token.mint(trader.address, bn(100e18));
-    }
+    allTokens = await TokenList.create(SYMBOLS, { sorted: true });
+    await allTokens.mint({ to: [lp, trader], amount: bn(100e18) });
   });
 
   context('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
-      const poolTokens = tokens.map((token) => token.address).slice(0, 1);
+      const poolTokens = allTokens.subset(1).addresses;
       const poolWeights = WEIGHTS.slice(0, 1);
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
@@ -70,24 +65,17 @@ describe('WeightedPool', function () {
   context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 16
-      const manyTokens = await deployTokens(
-        Array(17)
-          .fill('TK')
-          .map((v, i) => `${v}${i}`),
-        Array(17).fill(18)
-      );
-
-      const poolTokens = Object.values(manyTokens).map((token) => token.address);
+      const manyTokens = await TokenList.create(17);
       const poolWeights = new Array(17).fill(fp(1));
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
-      const args = [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE];
+      const args = [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, poolWeights, POOL_SWAP_FEE];
       await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
   function itBehavesAsWeightedPool(numberOfTokens: number) {
-    let pool: Contract, poolId: string, vault: Contract, factory: Contract, poolTokens: string[];
+    let pool: Contract, poolId: string, vault: Contract, factory: Contract, tokens: TokenList;
 
     const ZEROS = Array(numberOfTokens).fill(bn(0));
     const poolWeights = WEIGHTS.slice(0, numberOfTokens);
@@ -99,12 +87,12 @@ describe('WeightedPool', function () {
       swapFee,
       fromFactory,
     }: {
-      tokens?: string[];
+      tokens?: TokenList;
       weights?: BigNumber[];
       swapFee?: BigNumber;
       fromFactory?: boolean;
     } = {}) {
-      tokens = tokens ?? poolTokens;
+      tokens = tokens ?? new TokenList();
       weights = weights ?? poolWeights;
       swapFee = swapFee ?? POOL_SWAP_FEE;
       fromFactory = fromFactory ?? false;
@@ -112,13 +100,13 @@ describe('WeightedPool', function () {
       if (fromFactory) {
         vault = await deploy('Vault', { args: [authorizer.address] });
         factory = await deploy('WeightedPoolFactory', { args: [vault.address] });
-        const tx = await factory.create('Balancer Pool Token', 'BPT', tokens, weights, swapFee);
+        const tx = await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, weights, swapFee);
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
         pool = await ethers.getContractAt('WeightedPool', event.args.pool);
       } else {
         vault = await deploy('MockVault', { args: [] });
-        const args = [vault.address, 'Balancer Pool Token', 'BPT', tokens, weights, swapFee];
+        const args = [vault.address, 'Balancer Pool Token', 'BPT', tokens.addresses, weights, swapFee];
         pool = await deploy('WeightedPool', { args });
       }
 
@@ -126,7 +114,7 @@ describe('WeightedPool', function () {
     }
 
     beforeEach('define pool tokens', () => {
-      poolTokens = tokens.map((token) => token.address).slice(0, numberOfTokens);
+      tokens = tokens.subset(numberOfTokens);
     });
 
     describe('creation', () => {
@@ -148,7 +136,7 @@ describe('WeightedPool', function () {
         it('registers tokens in the vault', async () => {
           const { tokens, balances } = await vault.getPoolTokens(poolId);
 
-          expect(tokens).to.have.members(poolTokens);
+          expect(tokens).to.have.members(tokens);
           expect(balances).to.deep.equal(ZEROS);
         });
 
@@ -157,9 +145,10 @@ describe('WeightedPool', function () {
         });
 
         it('sets the asset managers', async () => {
-          for (const token of poolTokens) {
-            expect((await vault.getPoolTokenInfo(poolId, token)).assetManager).to.equal(ZERO_ADDRESS);
-          }
+          await tokens.forEach(async (token) => {
+            const { assetManager } = await vault.getPoolTokenInfo(poolId, token.address);
+            expect(assetManager).to.equal(ZERO_ADDRESS);
+          });
         });
 
         it('sets token weights', async () => {
@@ -196,9 +185,11 @@ describe('WeightedPool', function () {
         });
 
         it('reverts if there are repeated tokens', async () => {
-          const tokens = new Array(numberOfTokens).fill(poolTokens[0]);
+          const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
 
-          await expect(deployPool({ tokens, fromFactory: true })).to.be.revertedWith('Create2: Failed on deploy');
+          await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith(
+            'Create2: Failed on deploy'
+          );
         });
 
         it('reverts if the swap fee is too high', async () => {
@@ -653,8 +644,8 @@ describe('WeightedPool', function () {
           poolId,
           from: other.address,
           to: other.address,
-          tokenIn: tokenList.DAI.address,
-          tokenOut: tokenList.MKR.address,
+          tokenIn: allTokens.DAI.address,
+          tokenOut: allTokens.MKR.address,
           latestBlockNumberUsed: 0,
           userData: '0x',
         };
@@ -686,7 +677,7 @@ describe('WeightedPool', function () {
         it('reverts if token in is not in the pool', async () => {
           await expect(
             pool.onSwapGivenIn(
-              { ...swapRequestData, tokenIn: tokenList.BAT.address, amountIn: 100 },
+              { ...swapRequestData, tokenIn: allTokens.BAT.address, amountIn: 100 },
               poolInitialBalances[0], // tokenInBalance
               poolInitialBalances[1] // tokenOutBalance
             )
@@ -696,7 +687,7 @@ describe('WeightedPool', function () {
         it('reverts if token out is not in the pool', async () => {
           await expect(
             pool.onSwapGivenIn(
-              { ...swapRequestData, tokenOut: tokenList.BAT.address, amountIn: 100 },
+              { ...swapRequestData, tokenOut: allTokens.BAT.address, amountIn: 100 },
               poolInitialBalances[0], // tokenInBalance
               poolInitialBalances[1] // tokenOutBalance
             )
@@ -728,7 +719,7 @@ describe('WeightedPool', function () {
         it('reverts if token in is not in the pool when given out', async () => {
           await expect(
             pool.onSwapGivenOut(
-              { ...swapRequestData, tokenIn: tokenList.BAT.address, amountOut: 100 },
+              { ...swapRequestData, tokenIn: allTokens.BAT.address, amountOut: 100 },
               poolInitialBalances[0], // tokenInBalance
               poolInitialBalances[1] // tokenOutBalance
             )
@@ -738,7 +729,7 @@ describe('WeightedPool', function () {
         it('reverts if token out is not in the pool', async () => {
           await expect(
             pool.onSwapGivenOut(
-              { ...swapRequestData, tokenOut: tokenList.BAT.address, amountOut: 100 },
+              { ...swapRequestData, tokenOut: allTokens.BAT.address, amountOut: 100 },
               poolInitialBalances[0], // tokenInBalance
               poolInitialBalances[1] // tokenOutBalance
             )
@@ -799,7 +790,7 @@ describe('WeightedPool', function () {
       it('joins and exits do not accumulate fees', async () => {
         let joinUserData = encodeJoinWeightedPool({
           kind: 'ExactTokensInForBPTOut',
-          amountsIn: Array(poolTokens.length).fill(bn(100e18)),
+          amountsIn: Array(tokens.length).fill(bn(100e18)),
           minimumBPT: 0,
         });
         let newBalances = await expectJoinProtocolSwapFeeEqualWithError(poolInitialBalances, ZEROS, joinUserData);
@@ -823,14 +814,14 @@ describe('WeightedPool', function () {
 
         joinUserData = encodeJoinWeightedPool({
           kind: 'ExactTokensInForBPTOut',
-          amountsIn: Array(poolTokens.length).fill(bn(10e18)),
+          amountsIn: Array(tokens.length).fill(bn(10e18)),
           minimumBPT: 0,
         });
         newBalances = await expectJoinProtocolSwapFeeEqualWithError(newBalances, ZEROS, joinUserData);
 
         exitUserData = encodeExitWeightedPool({
           kind: 'BPTInForExactTokensOut',
-          amountsOut: Array(poolTokens.length).fill(bn(10e18)),
+          amountsOut: Array(tokens.length).fill(bn(10e18)),
           maxBPTAmountIn: MAX_UINT112,
         });
         await expectExitProtocolSwapFeeEqualWithError(newBalances, ZEROS, exitUserData);
@@ -857,7 +848,7 @@ describe('WeightedPool', function () {
         it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
           const joinUserData = encodeJoinWeightedPool({
             kind: 'ExactTokensInForBPTOut',
-            amountsIn: Array(poolTokens.length).fill(bn(1e18)),
+            amountsIn: Array(tokens.length).fill(bn(1e18)),
             minimumBPT: 0,
           });
 
@@ -883,7 +874,7 @@ describe('WeightedPool', function () {
         it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
           const exitUserData = encodeExitWeightedPool({
             kind: 'BPTInForExactTokensOut',
-            amountsOut: Array(poolTokens.length).fill(bn(1e18)),
+            amountsOut: Array(tokens.length).fill(bn(1e18)),
             maxBPTAmountIn: MAX_UINT112,
           });
 
