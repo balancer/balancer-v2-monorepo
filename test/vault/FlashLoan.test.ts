@@ -8,6 +8,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
 import { TokenList, deployTokens } from '../../lib/helpers/tokens';
 import { roleId } from '../../lib/helpers/roles';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress;
@@ -24,7 +25,7 @@ describe('Vault - flash loans', () => {
     [, admin, minter, feeSetter, other] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
+  sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
@@ -43,7 +44,7 @@ describe('Vault - flash loans', () => {
   });
 
   context('with no protocol fees', () => {
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFees(0, 0, 0);
     });
 
@@ -77,7 +78,7 @@ describe('Vault - flash loans', () => {
   context('with protocol fees', () => {
     const feePercentage = fp(0.005); // 0.5%
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFees(0, 0, feePercentage);
     });
 

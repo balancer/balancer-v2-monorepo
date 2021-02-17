@@ -1,5 +1,5 @@
 import { times } from 'lodash';
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -14,6 +14,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
@@ -26,7 +27,7 @@ describe('Vault - join pool', () => {
     [, admin, creator, lp, relayer] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
+  sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
@@ -85,7 +86,7 @@ describe('Vault - join pool', () => {
       return Array(tokenAmount).fill(bn(value));
     }
 
-    beforeEach('deploy & register pool', async () => {
+    sharedBeforeEach('deploy & register pool', async () => {
       pool = await deploy('MockPool', { args: [vault.address, specialization] });
       poolId = await pool.getPoolId();
 
@@ -150,7 +151,7 @@ describe('Vault - join pool', () => {
         ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
 
         // Unordered
-        await expect(joinPool({ tokenAddresses: tokenAddresses.reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
+        await expect(joinPool({ tokenAddresses: [...tokenAddresses].reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
@@ -214,13 +215,13 @@ describe('Vault - join pool', () => {
             });
 
             context('when the relayer is whitelisted by the authorizer', () => {
-              beforeEach('grant role to relayer', async () => {
+              sharedBeforeEach('grant role to relayer', async () => {
                 const role = roleId(vault, 'joinPool');
                 await authorizer.connect(admin).grantRole(role, relayer.address);
               });
 
-              context.skip('when the relayer is allowed by the user', () => {
-                beforeEach('allow relayer', async () => {
+              context('when the relayer is allowed by the user', () => {
+                sharedBeforeEach('allow relayer', async () => {
                   await vault.connect(lp).changeRelayerAllowance(relayer.address, true);
                 });
 
@@ -228,7 +229,7 @@ describe('Vault - join pool', () => {
               });
 
               context('when the relayer is not allowed by the user', () => {
-                beforeEach('disallow relayer', async () => {
+                sharedBeforeEach('disallow relayer', async () => {
                   await vault.connect(lp).changeRelayerAllowance(relayer.address, false);
                 });
 
@@ -241,13 +242,13 @@ describe('Vault - join pool', () => {
             });
 
             context('when the relayer is not whitelisted by the authorizer', () => {
-              beforeEach('revoke role from relayer', async () => {
+              sharedBeforeEach('revoke role from relayer', async () => {
                 const role = roleId(vault, 'batchSwapGivenIn');
                 await authorizer.connect(admin).revokeRole(role, relayer.address);
               });
 
               context('when the relayer is allowed by the user', () => {
-                beforeEach('allow relayer', async () => {
+                sharedBeforeEach('allow relayer', async () => {
                   await vault.connect(lp).changeRelayerAllowance(relayer.address, true);
                 });
 
@@ -257,7 +258,7 @@ describe('Vault - join pool', () => {
               });
 
               context('when the relayer is not allowed by the user', () => {
-                beforeEach('disallow relayer', async () => {
+                sharedBeforeEach('disallow relayer', async () => {
                   await vault.connect(lp).changeRelayerAllowance(relayer.address, false);
                 });
 
@@ -292,7 +293,7 @@ describe('Vault - join pool', () => {
         });
 
         context('with some internal balance', () => {
-          beforeEach('deposit to internal balance', async () => {
+          sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).depositToInternalBalance(lp.address, tokenAddresses, array(1.5e18), lp.address);
           });
 
@@ -308,7 +309,7 @@ describe('Vault - join pool', () => {
         });
 
         context('with some internal balance', () => {
-          beforeEach('deposit to internal balance', async () => {
+          sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).depositToInternalBalance(lp.address, tokenAddresses, array(1.5e18), lp.address);
           });
 
@@ -316,7 +317,7 @@ describe('Vault - join pool', () => {
         });
 
         context('with enough internal balance', () => {
-          beforeEach('deposit to internal balance', async () => {
+          sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).depositToInternalBalance(lp.address, tokenAddresses, array(100e18), lp.address);
           });
 
@@ -336,7 +337,7 @@ describe('Vault - join pool', () => {
     }) {
       let expectedInternalBalanceToUse: BigNumber[];
 
-      beforeEach('calculate intermediate values', async () => {
+      sharedBeforeEach('calculate intermediate values', async () => {
         const currentInternalBalances: BigNumber[] = await vault.getInternalBalance(lp.address, tokenAddresses);
 
         expectedInternalBalanceToUse = currentInternalBalances.map((balance, i) =>
@@ -406,7 +407,7 @@ describe('Vault - join pool', () => {
       });
 
       it('updates the latest block number used for all tokens', async () => {
-        const currentBlockNumber = await ethers.provider.getBlockNumber();
+        const currentBlockNumber = Number(await network.provider.send('eth_blockNumber'));
 
         await joinPool({ fromInternalBalance, dueProtocolFeeAmounts, sender });
 

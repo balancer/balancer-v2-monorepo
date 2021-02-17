@@ -11,6 +11,7 @@ import { bn } from '../../lib/helpers/numbers';
 import * as expectEvent from '../helpers/expectEvent';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { expect } from 'chai';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('Vault - swap validation', () => {
   let vault: Contract;
@@ -24,7 +25,7 @@ describe('Vault - swap validation', () => {
     GIVEN_OUT: 1,
   };
 
-  beforeEach('setup', async () => {
+  sharedBeforeEach('setup', async () => {
     [, lp, trader, other] = await ethers.getSigners();
 
     const authorizer = await deploy('Authorizer', { args: [ZERO_ADDRESS] });
@@ -71,7 +72,7 @@ describe('Vault - swap validation', () => {
   });
 
   let swaps: Swap[];
-  beforeEach('create random swaps', async () => {
+  beforeEach('create random swaps', () => {
     const randomInt = (max: number) => Math.floor(Math.random() * Math.floor(max));
 
     const tokenInIndex = randomInt(tokenAddresses.length);
@@ -141,7 +142,7 @@ describe('Vault - swap validation', () => {
     context('with unexpired deadline', () => {
       let deadline: BigNumber;
 
-      beforeEach('set deadline', async () => {
+      sharedBeforeEach('set deadline', async () => {
         const now = bn((await ethers.provider.getBlock('latest')).timestamp);
         deadline = now.add(10);
       });
