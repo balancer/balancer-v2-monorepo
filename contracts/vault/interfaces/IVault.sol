@@ -18,6 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./IAuthorizer.sol";
 import "./IFlashLoanReceiver.sol";
+import "./IERC20ETH.sol";
 
 pragma solidity ^0.7.0;
 
@@ -415,7 +416,7 @@ interface IVault {
      */
     function batchSwapGivenIn(
         SwapIn[] calldata swaps,
-        IERC20[] memory tokens,
+        IERC20ETH[] memory tokens,
         FundManagement calldata funds,
         int256[] memory limits,
         uint256 deadline
@@ -465,7 +466,7 @@ interface IVault {
      */
     function batchSwapGivenOut(
         SwapOut[] calldata swaps,
-        IERC20[] memory tokens,
+        IERC20ETH[] memory tokens,
         FundManagement calldata funds,
         int256[] memory limits,
         uint256 deadline
@@ -537,7 +538,7 @@ interface IVault {
     function queryBatchSwap(
         SwapKind kind,
         SwapRequest[] memory swaps,
-        IERC20[] memory tokens,
+        IERC20ETH[] memory tokens,
         FundManagement memory funds
     ) external returns (int256[] memory tokenDeltas);
 

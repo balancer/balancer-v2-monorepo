@@ -29,11 +29,13 @@ import "./interfaces/IPoolSwapStructs.sol";
 import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./balances/BalanceAllocation.sol";
+import "./IERC20ETHLib.sol";
 
 abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using IERC20ETHLib for IERC20ETH;
 
     using Math for int256;
     using SafeCast for uint256;
@@ -114,7 +116,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     function batchSwapGivenIn(
         SwapIn[] memory swaps,
-        IERC20[] memory tokens,
+        IERC20ETH[] memory tokens,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
@@ -124,7 +126,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     function batchSwapGivenOut(
         SwapOut[] memory swaps,
-        IERC20[] memory tokens,
+        IERC20ETH[] memory tokens,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
@@ -137,7 +139,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      */
     function _batchSwap(
         SwapRequest[] memory swaps,
-        IERC20[] memory tokens,
+        IERC20ETH[] memory tokens,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline,
@@ -155,22 +157,35 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Process token deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
+            IERC20ETH token = tokens[i];
             int256 delta = tokenDeltas[i];
 
             require(delta <= limits[i], "SWAP_LIMIT");
 
             // Ignore zeroed deltas
             if (delta > 0) {
-                _receiveTokens(token, uint256(delta), funds.sender, funds.fromInternalBalance);
+                uint256 toReceive = uint256(delta);
+                if (token.isETH()) {
+                    // deposit eth in weth contract, get WETH in return
+                    // note eth cannot be sent from internal balance
+                    require(msg.value >= toReceive);
+                    IERC20ETHLib.WETH.deposit{ value: msg.value }();
+                } else {
+                    _receiveTokens(IERC20(address(token)), toReceive, funds.sender, funds.fromInternalBalance);
+                }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
 
-                if (funds.toInternalBalance) {
-                    _increaseInternalBalance(funds.recipient, token, toSend);
+                if (token.isETH()) {
+                    IERC20ETHLib.WETH.withdraw(toSend);
+                    IERC20ETHLib.WETH.transfer(funds.recipient, toSend);
                 } else {
-                    // Note protocol withdraw fees are not charged in this transfer
-                    token.safeTransfer(funds.recipient, toSend);
+                    if (funds.toInternalBalance) {
+                        _increaseInternalBalance(funds.recipient, IERC20(address(token)), toSend);
+                    } else {
+                        // Note protocol withdraw fees are not charged in this transfer
+                        IERC20(address(token)).safeTransfer(funds.recipient, toSend);
+                    }
                 }
             }
         }
@@ -234,7 +249,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
      */
     function _swapWithPools(
         SwapRequest[] memory swaps,
-        IERC20[] memory tokens,
+        IERC20ETH[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
     ) private returns (int256[] memory tokenDeltas) {
@@ -252,8 +267,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             _ensureRegisteredPool(swap.poolId);
             require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "OUT_OF_BOUNDS");
 
-            IERC20 tokenIn = tokens[swap.tokenInIndex];
-            IERC20 tokenOut = tokens[swap.tokenOutIndex];
+            IERC20 tokenIn = tokens[swap.tokenInIndex].toIERC20();
+            IERC20 tokenOut = tokens[swap.tokenOutIndex].toIERC20();
             require(tokenIn != tokenOut, "CANNOT_SWAP_SAME_TOKEN");
 
             // Sentinel value for multihop logic
@@ -506,7 +521,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     function queryBatchSwap(
         SwapKind kind,
         SwapRequest[] memory swaps,
-        IERC20[] memory tokens,
+        IERC20ETH[] memory tokens,
         FundManagement memory funds
     ) external override returns (int256[] memory) {
         // In order to accurately 'simulate' swaps, this function actually does perform the swaps, including calling the

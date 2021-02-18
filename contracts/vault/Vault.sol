@@ -55,4 +55,14 @@ contract Vault is Authorization, FlashLoanProvider, Swaps {
     constructor(IAuthorizer authorizer) Authorization(authorizer) {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    /**
+     * @dev Enables the Vault to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
+     * caller.
+     *
+     * Any ETH sent to the Vault outside of the WETH unwrapping mechanism will be forever locked inside the Vault. In
+     * particular, transferring ETH to the Vault directly will not cause for it to be wrapped in WETH, but rather to be
+     * lost. Do not ever send ETH to the Vault directly.
+     */
+    receive() external payable {}
 }
