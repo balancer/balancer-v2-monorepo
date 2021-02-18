@@ -22,7 +22,7 @@ describe('BasePool', function () {
   beforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
-    tokens = await TokenList.create(['DAI', 'MKR', 'SNX']);
+    tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 
   function deployBasePool(

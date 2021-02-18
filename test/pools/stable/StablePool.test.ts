@@ -26,7 +26,6 @@ describe('StablePool', function () {
   let allTokens: TokenList;
 
   const POOL_SWAP_FEE = fp(0.01);
-
   const INITIAL_BALANCES = [bn(10e18), bn(11e18), bn(12e18), bn(13e18)];
 
   before('setup signers', async () => {
@@ -38,7 +37,7 @@ describe('StablePool', function () {
     vault = await deploy('Vault', { args: [authorizer.address] });
     factory = await deploy('StablePoolFactory', { args: [vault.address] });
 
-    allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT']);
+    allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [lp, trader], amount: bn(100e18) });
     await allTokens.approve({ to: vault, from: [lp, trader] });
   });
@@ -76,35 +75,32 @@ describe('StablePool', function () {
     let tokens: TokenList;
 
     const ZEROS = Array(numberOfTokens).fill(bn(0));
-    const poolAmplification = bn(100e18);
+    const amplification = bn(100e18);
     const poolInitialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
-    async function deployPool({
-      tokens,
-      amplification,
-      swapFee,
-      fromFactory,
-    }: {
-      tokens?: TokenList;
-      amplification?: BigNumber;
-      swapFee?: BigNumber;
-      fromFactory?: boolean;
-    }) {
-      tokens = tokens ?? new TokenList();
-      amplification = amplification ?? poolAmplification;
-      swapFee = swapFee ?? POOL_SWAP_FEE;
-      fromFactory = fromFactory ?? false;
+    async function deployPool(
+      params: {
+        tokens?: TokenList;
+        amplification?: BigNumber;
+        swapFee?: BigNumber;
+        fromFactory?: boolean;
+      } = {}
+    ) {
+      const poolTokens = params.tokens ?? tokens;
+      const poolAmplification = params.amplification ?? amplification;
+      const poolSwapFee = params.swapFee ?? POOL_SWAP_FEE;
+      const fromFactory = params.fromFactory ?? false;
 
       if (fromFactory) {
         const receipt = await (
-          await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, amplification, swapFee)
+          await factory.create('Balancer Pool Token', 'BPT', poolTokens.addresses, poolAmplification, poolSwapFee)
         ).wait();
 
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
         return ethers.getContractAt('StablePool', event.args.pool);
       } else {
         return deploy('StablePool', {
-          args: [vault.address, 'Balancer Pool Token', 'BPT', tokens.addresses, amplification, swapFee],
+          args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens.addresses, poolAmplification, poolSwapFee],
         });
       }
     }
@@ -119,7 +115,7 @@ describe('StablePool', function () {
 
         beforeEach('deploy pool from factory', async () => {
           // Deploy from the Pool factory to test that it works properly
-          pool = await deployPool({ tokens, fromFactory: true });
+          pool = await deployPool({ fromFactory: true });
         });
 
         it('sets the vault', async () => {
@@ -153,7 +149,7 @@ describe('StablePool', function () {
         });
 
         it('sets amplification', async () => {
-          expect(await pool.getAmplification()).to.deep.equal(poolAmplification);
+          expect(await pool.getAmplification()).to.deep.equal(amplification);
         });
 
         it('sets swap fee', async () => {
@@ -181,21 +177,21 @@ describe('StablePool', function () {
         });
 
         it('reverts if the swap fee is too high', async () => {
-          const swapFee = fp(0.1).add(1);
+          const badSwapFee = fp(0.1).add(1);
 
-          await expect(deployPool({ tokens, swapFee })).to.be.revertedWith('MAX_SWAP_FEE');
+          await expect(deployPool({ swapFee: badSwapFee })).to.be.revertedWith('MAX_SWAP_FEE');
         });
 
         it('reverts if amplification coefficient is too high', async () => {
           const highAmp = bn(5000).mul(bn(10e18));
 
-          await expect(deployPool({ tokens, amplification: highAmp })).to.be.revertedWith('MAX_AMP');
+          await expect(deployPool({ amplification: highAmp })).to.be.revertedWith('MAX_AMP');
         });
 
         it('reverts if amplification coefficient is too low', async () => {
           const lowAmp = bn(10);
 
-          await expect(deployPool({ tokens, amplification: lowAmp })).to.be.revertedWith('MIN_AMP');
+          await expect(deployPool({ amplification: lowAmp })).to.be.revertedWith('MIN_AMP');
         });
       });
     });
@@ -207,7 +203,7 @@ describe('StablePool', function () {
       beforeEach(async () => {
         //Use a mock vault
         vault = await deploy('MockVault', { args: [] });
-        pool = await deployPool({ tokens });
+        pool = await deployPool();
         poolId = await pool.getPoolId();
       });
 
@@ -249,7 +245,7 @@ describe('StablePool', function () {
         });
 
         it('grants the invariant amount of BPT', async () => {
-          const invariant = bn(calculateInvariant(poolAmplification, poolInitialBalances).toFixed(0));
+          const invariant = bn(calculateInvariant(amplification, poolInitialBalances).toFixed(0));
 
           const receipt = await (
             await vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData)
@@ -330,7 +326,7 @@ describe('StablePool', function () {
       beforeEach(async () => {
         //Use a mock vault
         vault = await deploy('MockVault', { args: [] });
-        pool = await deployPool({ tokens });
+        pool = await deployPool();
         poolId = await pool.getPoolId();
 
         const initialJoinUserData = encodeJoinStablePool({ kind: 'Init', amountsIn: poolInitialBalances });
@@ -435,7 +431,7 @@ describe('StablePool', function () {
       };
 
       beforeEach('set default swapRequest data', async () => {
-        pool = await deployPool({ tokens });
+        pool = await deployPool();
         poolId = await pool.getPoolId();
 
         swapRequestData = {
@@ -460,7 +456,7 @@ describe('StablePool', function () {
             1
           );
 
-          const expectedAmountOut = calcOutGivenIn(poolAmplification, poolInitialBalances, 0, 1, amountIn);
+          const expectedAmountOut = calcOutGivenIn(amplification, poolInitialBalances, 0, 1, amountIn);
           expectEqualWithError(result, bn(expectedAmountOut), 0.1);
         });
 
@@ -486,7 +482,7 @@ describe('StablePool', function () {
             1
           );
 
-          const expectedAmountIn = calcInGivenOut(poolAmplification, poolInitialBalances, 0, 1, amountOut);
+          const expectedAmountIn = calcInGivenOut(amplification, poolInitialBalances, 0, 1, amountOut);
           expectEqualWithError(result, bn(expectedAmountIn), 0.1);
         });
 
@@ -511,7 +507,7 @@ describe('StablePool', function () {
       beforeEach('deploy and join pool', async () => {
         //Use a mock vault
         vault = await deploy('MockVault', { args: [] });
-        pool = await deployPool({ tokens: tokens });
+        pool = await deployPool();
         poolId = await pool.getPoolId();
 
         const initialJoinUserData = encodeJoinStablePool({ kind: 'Init', amountsIn: poolInitialBalances });
@@ -586,11 +582,11 @@ describe('StablePool', function () {
           const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
           const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
 
-          const lastInvariant = calculateInvariant(poolAmplification, poolInitialBalances);
+          const lastInvariant = calculateInvariant(amplification, poolInitialBalances);
           currentBalances = poolInitialBalances.map((balance) => balance.mul(2)); //twice the initial balances
 
           const feeAmount = calculateOneTokenAccumulatedSwapFees(
-            poolAmplification,
+            amplification,
             currentBalances,
             bn(lastInvariant),
             paidTokenIndex
