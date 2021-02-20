@@ -5,6 +5,11 @@
         "internalType": "contract IAuthorizer",
         "name": "authorizer",
         "type": "address"
+      },
+      {
+        "internalType": "contract IWETH",
+        "name": "weth",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -274,7 +279,7 @@
             "type": "bool"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           },
@@ -362,7 +367,7 @@
             "type": "bool"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           },
@@ -897,7 +902,7 @@
             "type": "bool"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           },

@@ -516,7 +516,7 @@ interface IVault {
     struct FundManagement {
         address sender;
         bool fromInternalBalance;
-        address recipient;
+        address payable recipient;
         bool toInternalBalance;
     }
 

@@ -12,6 +12,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+pragma solidity ^0.7.0;
+
 /**
  * @dev This is an empty interface used to represent either either token contracts that adhere to the IERC20 interface,
  * or a sentinel value that represents ETH.

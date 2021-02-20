@@ -16,8 +16,8 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./interfaces/IAuthorizer.sol";
+import "./interfaces/IWETH.sol";
 
-import "./Authorization.sol";
 import "./FlashLoanProvider.sol";
 import "./Swaps.sol";
 
@@ -51,8 +51,8 @@ import "./Swaps.sol";
  * utilization of `internal` functions (particularly inside modifiers), usage of named return arguments, and dedicated
  * storage access methods, to name a few.
  */
-contract Vault is Authorization, FlashLoanProvider, Swaps {
-    constructor(IAuthorizer authorizer) Authorization(authorizer) {
+contract Vault is FlashLoanProvider, Swaps {
+    constructor(IAuthorizer authorizer, IWETH weth) Authorization(authorizer) WETHManager(weth) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

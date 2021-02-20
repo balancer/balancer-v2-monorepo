@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../lib/math/Math.sol";
@@ -29,13 +30,13 @@ import "./interfaces/IPoolSwapStructs.sol";
 import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./balances/BalanceAllocation.sol";
-import "./IERC20ETHLib.sol";
+import "./WETHManager.sol";
 
-abstract contract Swaps is ReentrancyGuard, PoolRegistry {
+abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
-    using IERC20ETHLib for IERC20ETH;
+    using Address for address payable;
 
     using Math for int256;
     using SafeCast for uint256;
@@ -165,26 +166,50 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             // Ignore zeroed deltas
             if (delta > 0) {
                 uint256 toReceive = uint256(delta);
-                if (token.isETH()) {
-                    // deposit eth in weth contract, get WETH in return
-                    // note eth cannot be sent from internal balance
+                if (_isETH(token)) {
+                    // Receiving ETH is special for two reasons.
+                    // First, ETH cannot be withdrawn from Internal Balance (since it also cannot be deposited), so that
+                    // setting is ignored for ETH.
+                    // Second, ETH is not pulled from the sender but rather forwarded by the caller. Because the caller
+                    // might not now exactly how much ETH the swap will require, they may send extra amounts. Any excess
+                    // will be returned *to the caller*, not the sender. If caller and sender are not the same (because
+                    // caller is a relayer for sender), then it is up to the caller to manage this returned ETH.
+
+                    // All IERC20ETH values in the `tokens` array are guaranteed to be unique, so we can safely use
+                    // msg.value directly, as it will only be accessed once in the entire transaction.
                     require(msg.value >= toReceive);
-                    IERC20ETHLib.WETH.deposit{ value: msg.value }();
+
+                    // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
+                    // the Vault at a 1:1 ratio.
+                    WETH.deposit{ value: toReceive }();
+
+                    // Any leftover ETH is sent back to the caller (not the sender!).
+                    uint256 leftover = msg.value - toReceive;
+                    if (leftover > 0) {
+                        msg.sender.sendValue(leftover);
+                    }
                 } else {
-                    _receiveTokens(IERC20(address(token)), toReceive, funds.sender, funds.fromInternalBalance);
+                    _receiveTokens(_asIERC20(token), toReceive, funds.sender, funds.fromInternalBalance);
                 }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
 
-                if (token.isETH()) {
-                    IERC20ETHLib.WETH.withdraw(toSend);
-                    IERC20ETHLib.WETH.transfer(funds.recipient, toSend);
+                if (_isETH(token)) {
+                    // Sending ETH is not as involved as receiving it: the only special behavior it has is ignoring the
+                    // setting to deposit to Internal Balance.
+
+                    // First, the Vault withdraws deposited ETH in the WETH contract, by burning the same amount of WETH
+                    // from the Vault. This receipt will be handled by the Vault's `receive`.
+                    WETH.withdraw(toSend);
+
+                    // Then, the withdrawn ETH is sent to the recipient.
+                    funds.recipient.sendValue(toSend);
                 } else {
                     if (funds.toInternalBalance) {
                         _increaseInternalBalance(funds.recipient, IERC20(address(token)), toSend);
                     } else {
                         // Note protocol withdraw fees are not charged in this transfer
-                        IERC20(address(token)).safeTransfer(funds.recipient, toSend);
+                        _asIERC20(token).safeTransfer(funds.recipient, toSend);
                     }
                 }
             }
@@ -267,8 +292,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             _ensureRegisteredPool(swap.poolId);
             require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "OUT_OF_BOUNDS");
 
-            IERC20 tokenIn = tokens[swap.tokenInIndex].toIERC20();
-            IERC20 tokenOut = tokens[swap.tokenOutIndex].toIERC20();
+            IERC20 tokenIn = _translateToIERC20(tokens[swap.tokenInIndex]);
+            IERC20 tokenOut = _translateToIERC20(tokens[swap.tokenOutIndex]);
             require(tokenIn != tokenOut, "CANNOT_SWAP_SAME_TOKEN");
 
             // Sentinel value for multihop logic
