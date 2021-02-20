@@ -21,6 +21,10 @@ import "./interfaces/IERC20ETH.sol";
 
 abstract contract WETHManager {
     IWETH internal immutable WETH;
+
+    // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
+    // multiple reasons: it is cheap to pass as a calldata argument, it is a known invalid token and non-contract, and
+    // it is an adddress Pools cannot register as a token.
     address internal constant ETH = address(0);
 
     constructor(IWETH weth) {
