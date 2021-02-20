@@ -157,9 +157,16 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
 
         // Process token deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
+        IERC20ETH previousToken = IERC20ETH(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20ETH token = tokens[i];
             int256 delta = tokenDeltas[i];
+
+            // By requiring the tokens to be in strict descending order, we ensure uniqueness. We use descending order
+            // so that the invalid 0xff..ff address can be used as an initial value for `previousToken`: 0x00..00 is the
+            // sentinel value for ETH, making a check for ascending order awkward.
+            require(token < previousToken, "UNSORTED_ARRAY");
+            previousToken = token;
 
             require(delta <= limits[i], "SWAP_LIMIT");
 
