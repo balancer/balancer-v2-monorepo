@@ -149,12 +149,28 @@ describe('Vault - pool registry', () => {
                 beforeEach('update token list to use zero address', () => {
                   tokenAddresses[0] = ZERO_ADDRESS;
                   tokenAddresses[1] = tokens['DAI'].address;
+
+                  assetManagers = tokenAddresses.map(() => ZERO_ADDRESS);
                 });
 
                 it('reverts', async () => {
                   const error = 'ZERO_ADDRESS_TOKEN';
                   await expect(pool.registerTokens(tokenAddresses, assetManagers)).to.be.revertedWith(error);
                   await expect(pool.registerTokens(tokenAddresses.reverse(), assetManagers)).to.be.revertedWith(error);
+                });
+              });
+
+              context('when the number of tokens and asset managers does not match', () => {
+                setTokensAddresses(2);
+
+                it('reverts', async () => {
+                  await expect(pool.registerTokens(tokenAddresses, assetManagers.slice(1))).to.be.revertedWith(
+                    'INPUT_LENGTH_MISMATCH'
+                  );
+
+                  await expect(
+                    pool.registerTokens(tokenAddresses, assetManagers.concat(assetManagers[0]))
+                  ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
                 });
               });
 
