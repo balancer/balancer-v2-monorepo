@@ -140,7 +140,7 @@ describe('Vault - swap validation', () => {
 
       sharedBeforeEach('set deadline', async () => {
         const now = bn((await ethers.provider.getBlock('latest')).timestamp);
-        deadline = now.add(10);
+        deadline = now.add(60);
       });
 
       it('reverts if there are less limits than tokens', async () => {
