@@ -13,8 +13,8 @@ class TokensDeployer {
     const trimmedParams = sorted ? this._trimParamsForSortedDeploy(params) : params;
     const deployments: TokenDeployment[] = TypesConverter.toTokenDeployments(trimmedParams, defaultSender);
     const tokens = await Promise.all(deployments.map(this.deployToken));
-    if (sorted) this._sortTokensDeployment(tokens, params);
-    return new TokenList(tokens);
+    const sortedTokens = sorted ? this._sortTokensDeployment(tokens, params) : tokens;
+    return new TokenList(sortedTokens);
   }
 
   async deployToken(params: RawTokenDeployment): Promise<Token> {
@@ -30,9 +30,9 @@ class TokensDeployer {
   }
 
   private _sortTokensDeployment(tokens: Token[], params: RawTokensDeployment): Token[] {
-    tokens.sort((a, b) => a.compare(b));
+    const sortedTokens = [...tokens].sort((a, b) => a.compare(b));
     return TypesConverter.toTokenDeployments(params).map((param, i) => {
-      const token = tokens[i];
+      const token = sortedTokens[i];
       token.name = param.name;
       token.symbol = param.symbol;
       return token;

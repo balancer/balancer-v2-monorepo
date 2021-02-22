@@ -30,11 +30,16 @@ export default class TokenList {
   }
 
   get first(): Token {
-    return this.tokens[0];
+    return this.get(0);
   }
 
   get second(): Token {
-    return this.tokens[1];
+    return this.get(1);
+  }
+
+  get(index: number): Token {
+    if (index >= this.length) throw Error('Accessing invalid token list index');
+    return this.tokens[index];
   }
 
   get DAI(): Token {
