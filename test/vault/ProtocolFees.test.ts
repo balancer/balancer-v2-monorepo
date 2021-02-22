@@ -3,12 +3,13 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../lib/helpers/deploy';
-import { bn } from '../../lib/helpers/numbers';
-import { MAX_UINT256 } from '../../lib/helpers/constants';
+import TokenList from '../helpers/models/tokens/TokenList';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { TokenList, deployTokens, mintTokens } from '../../lib/helpers/tokens';
+
+import { bn } from '../../lib/helpers/numbers';
 import { roleId } from '../../lib/helpers/roles';
+import { deploy } from '../../lib/helpers/deploy';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
@@ -19,21 +20,19 @@ describe('Vault - protocol fees', () => {
 
   let authorizer: Contract;
   let vault: Contract;
-  let tokens: TokenList = {};
+  let tokens: TokenList;
 
   before('setup', async () => {
     [, admin, user, feeSetter, feeCollector, other] = await ethers.getSigners();
   });
 
-  beforeEach(async () => {
+  sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
-    for (const symbol in tokens) {
-      await mintTokens(tokens, symbol, user, 100e18);
-      await tokens[symbol].connect(user).approve(vault.address, MAX_UINT256);
-    }
+    tokens = await TokenList.create(['DAI', 'MKR']);
+    await tokens.mint({ to: user, amount: bn(100e18) });
+    await tokens.approve({ to: vault, from: user });
   });
 
   it('fees are initially zero', async () => {
@@ -41,22 +40,26 @@ describe('Vault - protocol fees', () => {
   });
 
   context('with collected protocol fees', () => {
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       // Set a non-zero withdraw fee
       const role = roleId(vault, 'setProtocolFees');
       await authorizer.connect(admin).grantRole(role, feeSetter.address);
       await vault.connect(feeSetter).setProtocolFees(0, bn(0.01e18), 0);
 
-      await vault.connect(user).depositToInternalBalance(user.address, [tokens.DAI.address], [bn(20e18)], user.address);
-      await vault.connect(user).depositToInternalBalance(user.address, [tokens.MKR.address], [bn(20e18)], user.address);
+      const transfersIn = [
+        { token: tokens.DAI.address, amount: bn(20e18), sender: user.address, recipient: user.address },
+        { token: tokens.MKR.address, amount: bn(20e18), sender: user.address, recipient: user.address },
+      ];
+
+      await vault.connect(user).depositToInternalBalance(transfersIn);
+
+      const transfersOut = [
+        { token: tokens.DAI.address, amount: bn(5e18), sender: user.address, recipient: user.address },
+        { token: tokens.MKR.address, amount: bn(10e18), sender: user.address, recipient: user.address },
+      ];
 
       // Withdraw internal balance - this will cause withdraw fees to be charged
-      await vault
-        .connect(user)
-        .withdrawFromInternalBalance(user.address, [tokens.DAI.address], [bn(5e18)], user.address);
-      await vault
-        .connect(user)
-        .withdrawFromInternalBalance(user.address, [tokens.MKR.address], [bn(10e18)], user.address);
+      await vault.connect(user).withdrawFromInternalBalance(transfersOut);
     });
 
     it('reports collected fee', async () => {

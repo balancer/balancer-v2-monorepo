@@ -18,7 +18,7 @@ const MAX_RELATIVE_ERROR = 0.001; //Max relative error
 describe('StableMath', function () {
   let mock: Contract;
 
-  beforeEach(async function () {
+  before(async function () {
     mock = await deploy('MockStableMath', { args: [] });
   });
 
