@@ -1,11 +1,14 @@
-import { NAry, Account } from '../types/types';
-import { BigNumberish } from '../../../../lib/helpers/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import { BigNumberish } from '../../../../lib/helpers/numbers';
+
+import { NAry, Account } from '../types/types';
 
 export type RawTokensDeployment = number | NAry<RawTokenDeployment>;
 
-export type TokensDeploymentOptions = TxParams & {
+export type TokensDeploymentOptions = {
   sorted?: boolean;
+  from?: SignerWithAddress;
 };
 
 export type RawTokenDeployment =
@@ -46,8 +49,4 @@ export type TokenApproval = {
   to: Account;
   from?: SignerWithAddress;
   amount?: BigNumberish;
-};
-
-export type TxParams = {
-  from?: SignerWithAddress;
 };

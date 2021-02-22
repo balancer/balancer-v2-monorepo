@@ -222,11 +222,11 @@ describe('StablePool', function () {
           await expect(vault.connect(lp).callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, '0x')).to.be
             .reverted;
 
-          //NOTE
-          //If use `to.be.be.revertedWith('Transaction reverted without a reason'), hardhat throws:
+          // NOTE:
+          // If use `to.be.revertedWith('Transaction reverted without a reason'), hardhat throws:
           // `AssertionError: Expected transaction to be reverted with Transaction reverted
           // without a reason, but other exception was thrown: Error: Transaction reverted
-          //and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat.`
+          // and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat.`
         });
 
         it('fails if wrong user data', async () => {
@@ -280,7 +280,7 @@ describe('StablePool', function () {
                 0,
                 initialJoinUserData
               )
-            ).to.be.be.revertedWith('UNHANDLED_JOIN_KIND');
+            ).to.be.revertedWith('UNHANDLED_JOIN_KIND');
           });
         });
 
@@ -289,7 +289,7 @@ describe('StablePool', function () {
             const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut: 0 });
             await expect(
               vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, joinUserData)
-            ).to.be.be.revertedWith('UNINITIALIZED');
+            ).to.be.revertedWith('UNINITIALIZED');
           });
 
           context('once initialized', () => {
@@ -347,7 +347,7 @@ describe('StablePool', function () {
             vault
               .connect(lp)
               .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, ZEROS, 0, 0, '0x')
-          ).to.be.be.reverted;
+          ).to.be.reverted;
         });
 
         it('fails if wrong user data', async () => {
@@ -357,7 +357,7 @@ describe('StablePool', function () {
             vault
               .connect(lp)
               .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, wrongUserData)
-          ).to.be.be.reverted;
+          ).to.be.reverted;
         });
 
         context('exit exact BPT in for all tokens out', () => {
