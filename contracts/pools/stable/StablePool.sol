@@ -85,6 +85,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         address,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
+        StablePool.JoinKind kind = userData.joinKind();
+        require(kind == StablePool.JoinKind.INIT, "UNINITIALIZED");
+
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
         _upscaleArray(amountsIn, _scalingFactors());
@@ -158,7 +161,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256, uint256[] memory)
     {
-        uint256 bptAmountOut = userData.allTokensInForExactBPTOut();
+        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
 
         uint256[] memory amountsIn = StableMath._allTokensInForExactBPTOut(
             currentBalances,
@@ -230,7 +233,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256, uint256[] memory)
     {
-        uint256 bptAmountIn = userData.exitExactBPTInForAllTokensOut();
+        uint256 bptAmountIn = userData.exactBptInForAllTokensOut();
 
         uint256[] memory amountsOut = StableMath._exactBPTInForAllTokensOut(
             currentBalances,

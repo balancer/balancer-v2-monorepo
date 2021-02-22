@@ -28,16 +28,14 @@ library StablePoolUserDataHelpers {
     }
 
     function initialAmountsIn(bytes memory self) internal pure returns (uint256[] memory amountsIn) {
-        StablePool.JoinKind kind = joinKind(self);
-        require(kind == StablePool.JoinKind.INIT, "UNINITIALIZED");
         (, amountsIn) = abi.decode(self, (StablePool.JoinKind, uint256[]));
     }
 
-    function allTokensInForExactBPTOut(bytes memory self) internal pure returns (uint256 bptAmountOut) {
+    function allTokensInForExactBptOut(bytes memory self) internal pure returns (uint256 bptAmountOut) {
         (, bptAmountOut) = abi.decode(self, (StablePool.JoinKind, uint256));
     }
 
-    function exitExactBPTInForAllTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
+    function exactBptInForAllTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
         (, bptAmountIn) = abi.decode(self, (StablePool.ExitKind, uint256));
     }
 }
