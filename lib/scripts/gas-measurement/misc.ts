@@ -38,14 +38,18 @@ export async function setupEnvironment(): Promise<{
   }
 
   // deposit internal balance for trader to make it non-zero
-  await vault
-    .connect(trader)
-    .depositToInternalBalance(
-      trader.address,
-      tokenAddresses,
-      Array(tokenAddresses.length).fill(bn(1e18)),
-      trader.address
-    );
+  const transfers = [];
+
+  for (let idx = 0; idx < tokenAddresses.length; ++idx) {
+    transfers.push({
+      token: tokenAddresses[idx],
+      amount: bn(1e18),
+      sender: trader.address,
+      recipient: trader.address,
+    });
+  }
+
+  await vault.connect(trader).depositToInternalBalance(transfers);
 
   return { vault, tokens, trader };
 }

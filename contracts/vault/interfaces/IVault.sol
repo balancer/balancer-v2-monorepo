@@ -85,62 +85,47 @@ interface IVault {
     // the same kind (deposit, withdraw or transfer) at once.
 
     /**
+     * @dev Data for internal balance transfers - encompassing deposits, withdrawals, and transfers between accounts.
+     *
+     * This gives aggregators maximum flexibility, and makes it possible for an asset manager to manage multiple tokens
+     * and pools with less gas and fewer calls to the vault.
+     */
+
+    struct BalanceTransfer {
+        IERC20 token;
+        uint256 amount;
+        address sender;
+        address recipient;
+    }
+
+    /**
      * @dev Returns `user`'s Internal Balance for a set of tokens.
      */
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits tokens from `sender` into `recipient`'s Internal Balance.
-     *
-     * If the caller is not `sender`, it must be an authorized relayer for them.
-     *
-     * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
-     * deposit for each token contract.
-     *
-     * Emits `InternalBalanceChanged` events.
+     * @dev Deposits tokens from each `sender` address into Internal Balances of the corresponding `recipient`
+     * accounts specified in the struct. The sources must have allowed the Vault to use their tokens
+     * via `IERC20.approve()`.
+     * Allows aggregators to settle multiple accounts in a single transaction.
      */
-    function depositToInternalBalance(
-        address sender,
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address recipient
-    ) external;
+    function depositToInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Withdraws tokens from `sender`'s Internal Balance, transferring them to `recipient`. This charges protocol
-     * withdrawal fees.
+     * @dev Withdraws tokens from each the internal balance of each `sender` address into the `recipient` accounts
+     * specified in the struct. Allows aggregators to settle multiple accounts in a single transaction.
      *
-     * If the caller is not `sender`, it must be an authorized relayer for them.
-     *
-     * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
-     * withdraw for each token contract.
-     *
-     * Emits `InternalBalanceChanged` events.
+     * This charges protocol withdrawal fees.
      */
-    function withdrawFromInternalBalance(
-        address sender,
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address recipient
-    ) external;
+    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Transfers tokens from `sender`'s Internal Balance, transferring them to a recipient's Internal Balance.
+     * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances
+     * of each `recipient`. Allows aggregators to settle multiple accounts in a single transaction.
+     *
      * This does not charge protocol withdrawal fees.
-     *
-     * If the caller is not `sender`, it must be an authorized relayer for them.
-     *
-     * The `tokens`, `amounts` and `recipients` arrays must have the same length, and each entry in these indicates the
-     * amount to transfer for each token contract to each recipient.
-     *
-     * Emits `InternalBalanceChanged` events.
      */
-    function transferInternalBalance(
-        address sender,
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address[] memory recipients
-    ) external;
+    function transferInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Emitted when a user's Internal Balance changes, either due to calls to the Internal Balance functions, or
@@ -370,66 +355,6 @@ interface IVault {
         uint256[] protocolFees
     );
 
-    // Asset Management
-    //
-    // Each token registered for a Pool can be assigned an Asset Manager, which is able to freely withdraw the Pool's
-    // tokens from the Vault, deposit them, or assign arbitrary values to its `managed` balance (see
-    // `getPoolTokenInfo`). This makes them extremely powerful and dangerous, as they can not only steal a Pool's tokens
-    // but also manipulate its prices. However, a properly designed Asset Manager smart contract can be used to the
-    // Pool's benefit, for example by lending unused tokens at an interest, or using them to participate in voting
-    // protocols.
-
-    /**
-     * @dev Withdraws tokens from a Pool, transferring them to the caller. Must be called by the Pool's token Asset
-     * Manager.
-     *
-     * This decreases the Pool's `cash` balance and increases its `managed` balance by the same amount, leaving the
-     * total balance unchanged (see `getPoolTokenInfo`).
-     *
-     * Emits a `PoolBalanceChanged` event.
-     */
-    function withdrawFromPoolBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) external;
-
-    /**
-     * @dev Deposits tokens to a Pool, transferring them from the caller. Must be called by the Pool's token Asset
-     * Manager.
-     *
-     * This increases the Pool's `cash` balance and decreases its `managed` balance by the same amount, leaving the
-     * total balance unchanged (see `getPoolTokenInfo`).
-     *
-     * Emits a `PoolBalanceChanged` event.
-     */
-    function depositToPoolBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) external;
-
-    /**
-     * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `withdrawFromPoolBalance`
-     * or `depositToPoolBalance`.
-     */
-    event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
-
-    /**
-     * @dev Updates a Pool's `managed` balance, without transferring any tokens. Must be called by the Pool's token
-     * Asset Manager.
-     *
-     * This changes the Pool's `managed` balance but doesn't alter its `cash` balance, causing the total balance to
-     * change (see `getPoolTokenInfo`). Asset Managers can use this function to reflect profits or losses on the Vault,
-     * causing the Pool to use the updated total balance in joins, exits and swaps, without requiring the Manager to
-     * return the tokens.
-     */
-    function updateManagedBalance(
-        bytes32 poolId,
-        IERC20 token,
-        uint256 amount
-    ) external;
-
     // Swaps
     //
     // Users can swap tokens with Pools by calling the `batchSwapGivenIn` and `batchSwapGivenOut` functions. To do this,
@@ -633,7 +558,7 @@ interface IVault {
      * and then reverting unless the tokens plus a protocol fee have been returned.
      *
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
-     * loan for each token contract.
+     * loan for each token contract. `tokens` must be sorted in ascending order.
      *
      * The 'receiverData' field is ignored by the Vault, and forwarded as-is to `receiver` as part of the
      * `receiveFlashLoan` call.
@@ -644,6 +569,58 @@ interface IVault {
         uint256[] calldata amounts,
         bytes calldata receiverData
     ) external;
+
+    // Asset Management
+    //
+    // Each token registered for a Pool can be assigned an Asset Manager, which is able to freely withdraw the Pool's
+    // tokens from the Vault, deposit them, or assign arbitrary values to its `managed` balance (see
+    // `getPoolTokenInfo`). This makes them extremely powerful and dangerous, as they can not only steal a Pool's tokens
+    // but also manipulate its prices. However, a properly designed Asset Manager smart contract can be used to the
+    // Pool's benefit, for example by lending unused tokens at an interest, or using them to participate in voting
+    // protocols.
+
+    struct AssetManagerTransfer {
+        IERC20 token;
+        uint256 amount;
+    }
+
+    /**
+     * @dev Returns the Pool's Asset Managers for the given `tokens`. Asset Managers can manage a Pool's assets
+     * by taking them out of the Vault via `withdrawFromPoolBalance`, `depositToPoolBalance` and `updateManagedBalance`.
+     */
+    function getPoolAssetManagers(bytes32 poolId, IERC20[] memory tokens)
+        external
+        view
+        returns (address[] memory assetManagers);
+
+    /**
+     * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `withdrawFromPoolBalance`
+     * or `depositToPoolBalance`.
+     */
+    event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
+
+    /**
+     * @dev Called by a Pool's Asset Manager to withdraw tokens from the Vault. This decreases
+     * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
+     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
+     */
+    function withdrawFromPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
+
+    /**
+     * @dev Called by a Pool's Asset Manager to deposit tokens into the Vault. This increases the Pool's cash,
+     * but decreases its managed balance, leaving the total balance unchanged. The Asset Manager must have approved
+     * the Vault to use each token. Array input allows asset managers to manage multiple tokens for a pool in a
+     * single transaction.
+     */
+    function depositToPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
+
+    /**
+     * @dev Called by a Pool's Asset Manager for to update the amount held outside the vault. This does not affect
+     * the Pool's cash balance, but because the managed balance changes, it does alter the total. The external
+     * amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
+     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
+     */
+    function updateManagedBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
 
     // Protocol Fees
     //

@@ -3,33 +3,33 @@ import { expect } from 'chai';
 import { BigNumber, BigNumberish, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import TokenList from '../../helpers/models/tokens/TokenList';
 import * as expectEvent from '../../helpers/expectEvent';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '../../helpers/relativeError';
 import {
   calcBptOutGivenExactTokensIn,
-  calcTokenInGivenExactBptOut,
   calcInGivenOut,
+  calcOutGivenIn,
+  calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
-  calcOutGivenIn,
-  toNormalizedWeights,
   calculateOneTokenSwapFee,
+  toNormalizedWeights,
 } from '../../helpers/math/weighted';
 
 import { deploy } from '../../../lib/helpers/deploy';
-import { bn, fp, decimal, pct } from '../../../lib/helpers/numbers';
-import { ZERO_ADDRESS, MAX_UINT112 } from '../../../lib/helpers/constants';
+import { bn, decimal, fp, pct } from '../../../lib/helpers/numbers';
+import { MAX_UINT112, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
-import { deploySortedTokens, deployTokens, TokenList } from '../../../lib/helpers/tokens';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';
+import { sharedBeforeEach } from '../../helpers/lib/sharedBeforeEach';
 
 describe('WeightedPool', function () {
-  let authorizer: Contract, tokenList: TokenList, tokens: Array<Contract>;
+  let authorizer: Contract, allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
   const POOL_SWAP_FEE = fp(0.01);
-  const SYMBOLS = ['DAI', 'MKR', 'SNX', 'BAT'];
   const WEIGHTS = [bn(70e18), bn(30e18), bn(5e18), bn(5e18)];
   const INITIAL_BALANCES = [bn(0.9e18), bn(1.8e18), bn(2.7e18), bn(3.6e18)];
 
@@ -38,19 +38,14 @@ describe('WeightedPool', function () {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
   });
 
-  beforeEach('deploy tokens', async () => {
-    tokenList = await deploySortedTokens(SYMBOLS, [18, 18, 18, 18]);
-    tokens = Object.values(tokenList);
-
-    for (const token of tokens) {
-      await token.mint(lp.address, bn(100e18));
-      await token.mint(trader.address, bn(100e18));
-    }
+  sharedBeforeEach('deploy tokens', async () => {
+    allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
+    await allTokens.mint({ to: [lp, trader], amount: bn(100e18) });
   });
 
   context('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
-      const poolTokens = tokens.map((token) => token.address).slice(0, 1);
+      const poolTokens = allTokens.subset(1).addresses;
       const poolWeights = WEIGHTS.slice(0, 1);
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
@@ -70,55 +65,45 @@ describe('WeightedPool', function () {
   context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 16
-      const manyTokens = await deployTokens(
-        Array(17)
-          .fill('TK')
-          .map((v, i) => `${v}${i}`),
-        Array(17).fill(18)
-      );
-
-      const poolTokens = Object.values(manyTokens).map((token) => token.address);
+      const manyTokens = await TokenList.create(17);
       const poolWeights = new Array(17).fill(fp(1));
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
-      const args = [vault.address, 'Balancer Pool Token', 'BPT', poolTokens, poolWeights, POOL_SWAP_FEE];
+      const args = [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, poolWeights, POOL_SWAP_FEE];
       await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
   function itBehavesAsWeightedPool(numberOfTokens: number) {
-    let pool: Contract, poolId: string, vault: Contract, factory: Contract, poolTokens: string[];
+    let pool: Contract, poolId: string, vault: Contract, factory: Contract, tokens: TokenList;
 
     const ZEROS = Array(numberOfTokens).fill(bn(0));
-    const poolWeights = WEIGHTS.slice(0, numberOfTokens);
-    const poolInitialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
+    const weights = WEIGHTS.slice(0, numberOfTokens);
+    const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
-    async function deployPool({
-      tokens,
-      weights,
-      swapFee,
-      fromFactory,
-    }: {
-      tokens?: string[];
-      weights?: BigNumber[];
-      swapFee?: BigNumber;
-      fromFactory?: boolean;
-    } = {}) {
-      tokens = tokens ?? poolTokens;
-      weights = weights ?? poolWeights;
-      swapFee = swapFee ?? POOL_SWAP_FEE;
-      fromFactory = fromFactory ?? false;
+    async function deployPool(
+      params: {
+        tokens?: TokenList;
+        weights?: BigNumber[];
+        swapFee?: BigNumber;
+        fromFactory?: boolean;
+      } = {}
+    ) {
+      const poolTokens = params.tokens ?? tokens;
+      const poolWeights = params.weights ?? weights;
+      const poolSwapFee = params.swapFee ?? POOL_SWAP_FEE;
+      const fromFactory = params.fromFactory ?? false;
 
       if (fromFactory) {
         vault = await deploy('Vault', { args: [authorizer.address] });
         factory = await deploy('WeightedPoolFactory', { args: [vault.address] });
-        const tx = await factory.create('Balancer Pool Token', 'BPT', tokens, weights, swapFee);
+        const tx = await factory.create('Balancer Pool Token', 'BPT', poolTokens.addresses, poolWeights, poolSwapFee);
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
         pool = await ethers.getContractAt('WeightedPool', event.args.pool);
       } else {
         vault = await deploy('MockVault', { args: [] });
-        const args = [vault.address, 'Balancer Pool Token', 'BPT', tokens, weights, swapFee];
+        const args = [vault.address, 'Balancer Pool Token', 'BPT', poolTokens.addresses, poolWeights, poolSwapFee];
         pool = await deploy('WeightedPool', { args });
       }
 
@@ -126,12 +111,12 @@ describe('WeightedPool', function () {
     }
 
     beforeEach('define pool tokens', () => {
-      poolTokens = tokens.map((token) => token.address).slice(0, numberOfTokens);
+      tokens = allTokens.subset(numberOfTokens);
     });
 
     describe('creation', () => {
       context('when the creation succeeds', () => {
-        beforeEach('deploy pool from factory', async () => {
+        sharedBeforeEach('deploy pool from factory', async () => {
           await deployPool({ fromFactory: true });
         });
 
@@ -148,7 +133,7 @@ describe('WeightedPool', function () {
         it('registers tokens in the vault', async () => {
           const { tokens, balances } = await vault.getPoolTokens(poolId);
 
-          expect(tokens).to.have.members(poolTokens);
+          expect(tokens).to.have.members(tokens);
           expect(balances).to.deep.equal(ZEROS);
         });
 
@@ -157,14 +142,15 @@ describe('WeightedPool', function () {
         });
 
         it('sets the asset managers', async () => {
-          for (const token of poolTokens) {
-            expect((await vault.getPoolTokenInfo(poolId, token)).assetManager).to.equal(ZERO_ADDRESS);
-          }
+          await tokens.asyncEach(async (token) => {
+            const { assetManager } = await vault.getPoolTokenInfo(poolId, token.address);
+            expect(assetManager).to.equal(ZERO_ADDRESS);
+          });
         });
 
         it('sets token weights', async () => {
           const normalizedWeights = await pool.getNormalizedWeights();
-          const expectedNormalizedWeights = toNormalizedWeights(poolWeights).map((w) => bn(w.mul(1e18)));
+          const expectedNormalizedWeights = toNormalizedWeights(weights).map((w) => bn(w.mul(1e18)));
 
           normalizedWeights.map((weight: BigNumber, i: number) => {
             expectEqualWithError(weight, expectedNormalizedWeights[i], 0.0000001);
@@ -190,41 +176,43 @@ describe('WeightedPool', function () {
 
       context('when the creation fails', () => {
         it('reverts if the number of tokens and weights do not match', async () => {
-          const weights = poolWeights.slice(1);
+          const badWeights = weights.slice(1);
 
-          await expect(deployPool({ weights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          await expect(deployPool({ weights: badWeights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if there are repeated tokens', async () => {
-          const tokens = new Array(numberOfTokens).fill(poolTokens[0]);
+          const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
 
-          await expect(deployPool({ tokens, fromFactory: true })).to.be.revertedWith('Create2: Failed on deploy');
+          await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith(
+            'Create2: Failed on deploy'
+          );
         });
 
         it('reverts if the swap fee is too high', async () => {
-          const swapFee = fp(0.1).add(1);
+          const badSwapFee = fp(0.1).add(1);
 
-          await expect(deployPool({ swapFee })).to.be.revertedWith('MAX_SWAP_FEE');
+          await expect(deployPool({ swapFee: badSwapFee })).to.be.revertedWith('MAX_SWAP_FEE');
         });
 
         it('reverts if at least one weight is too high', async () => {
-          const weights = WEIGHTS.slice(0, numberOfTokens);
-          weights[0] = bn(50000).mul(bn(10e18));
+          const badWeights = WEIGHTS.slice(0, numberOfTokens);
+          badWeights[0] = bn(50000).mul(bn(10e18));
 
-          await expect(deployPool({ weights: weights })).to.be.revertedWith('MAX_WEIGHT');
+          await expect(deployPool({ weights: badWeights })).to.be.revertedWith('MAX_WEIGHT');
         });
 
         it('reverts if at least one weight is too low', async () => {
-          const weights = WEIGHTS.slice(0, numberOfTokens);
-          weights[0] = bn(10);
+          const badWeights = WEIGHTS.slice(0, numberOfTokens);
+          badWeights[0] = bn(10);
 
-          await expect(deployPool({ weights: weights })).to.be.revertedWith('MIN_WEIGHT');
+          await expect(deployPool({ weights: badWeights })).to.be.revertedWith('MIN_WEIGHT');
         });
       });
     });
 
     describe('onJoinPool', () => {
-      beforeEach('deploy pool', async () => {
+      sharedBeforeEach('deploy pool', async () => {
         await deployPool();
       });
 
@@ -251,14 +239,10 @@ describe('WeightedPool', function () {
       });
 
       context('initialization', () => {
-        let initialJoinUserData: string;
-
-        beforeEach(async () => {
-          initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
-        });
+        const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
 
         it('grants the n * invariant amount of BPT', async () => {
-          const invariant = calculateInvariant(poolInitialBalances, poolWeights);
+          const invariant = calculateInvariant(initialBalances, weights);
 
           const receipt = await (
             await vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData)
@@ -267,7 +251,7 @@ describe('WeightedPool', function () {
           const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
 
           // Amounts in should be the same as initial ones
-          expect(amountsIn).to.deep.equal(poolInitialBalances);
+          expect(amountsIn).to.deep.equal(initialBalances);
 
           // Protocol fees should be zero
           expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
@@ -281,15 +265,7 @@ describe('WeightedPool', function () {
           await vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
 
           await expect(
-            vault.callJoinPool(
-              pool.address,
-              poolId,
-              beneficiary.address,
-              poolInitialBalances,
-              0,
-              0,
-              initialJoinUserData
-            )
+            vault.callJoinPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, initialJoinUserData)
           ).to.be.be.revertedWith('UNHANDLED_JOIN_KIND');
         });
       });
@@ -298,7 +274,7 @@ describe('WeightedPool', function () {
         it('fails if not initialized', async () => {
           const joinUserData = encodeJoinWeightedPool({
             kind: 'ExactTokensInForBPTOut',
-            amountsIn: poolInitialBalances,
+            amountsIn: initialBalances,
             minimumBPT: 0,
           });
           await expect(
@@ -309,20 +285,20 @@ describe('WeightedPool', function () {
         context('once initialized', () => {
           let exactAmountsIn: BigNumber[], previousBptSupply: BigNumber, expectedBptAmount: BigNumber;
 
-          beforeEach('initialize pool', async () => {
-            const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
+          sharedBeforeEach('initialize pool', async () => {
+            const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
             await vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
           });
 
-          beforeEach('compute expected BPT balances', async () => {
+          sharedBeforeEach('compute expected BPT balances', async () => {
             previousBptSupply = await pool.totalSupply();
 
             exactAmountsIn = [...ZEROS];
             exactAmountsIn[1] = bn(0.1e18);
 
             expectedBptAmount = await calcBptOutGivenExactTokensIn(
-              poolInitialBalances,
-              poolWeights,
+              initialBalances,
+              weights,
               exactAmountsIn,
               previousBptSupply,
               POOL_SWAP_FEE
@@ -342,7 +318,7 @@ describe('WeightedPool', function () {
             const receipt = await (
               await vault
                 .connect(lp)
-                .callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
+                .callJoinPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, joinUserData)
             ).wait();
 
             const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
@@ -370,7 +346,7 @@ describe('WeightedPool', function () {
             await expect(
               vault
                 .connect(lp)
-                .callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
+                .callJoinPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, joinUserData)
             ).to.be.be.revertedWith('BPT_OUT_MIN_AMOUNT');
           });
         });
@@ -391,8 +367,8 @@ describe('WeightedPool', function () {
         });
 
         context('once initialized', () => {
-          beforeEach('initialize pool', async () => {
-            const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
+          sharedBeforeEach('initialize pool', async () => {
+            const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
             await vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
           });
 
@@ -404,8 +380,8 @@ describe('WeightedPool', function () {
             const exactAmountsIn = [...ZEROS];
             exactAmountsIn[enterTokenIndex] = await calcTokenInGivenExactBptOut(
               enterTokenIndex,
-              poolInitialBalances,
-              poolWeights,
+              initialBalances,
+              weights,
               bn(10e18),
               previousBptSupply,
               POOL_SWAP_FEE
@@ -422,7 +398,7 @@ describe('WeightedPool', function () {
             const receipt = await (
               await vault
                 .connect(lp)
-                .callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
+                .callJoinPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, joinUserData)
             ).wait();
 
             const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
@@ -447,10 +423,10 @@ describe('WeightedPool', function () {
     describe('onExitPool', () => {
       let previousBptBalance: BigNumber, previousBptSupply: BigNumber;
 
-      beforeEach('deploy and initialize pool', async () => {
+      sharedBeforeEach('deploy and initialize pool', async () => {
         await deployPool();
 
-        const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
+        const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
         await vault.callJoinPool(pool.address, poolId, lp.address, ZEROS, 0, 0, initialJoinUserData);
 
         previousBptSupply = await pool.totalSupply();
@@ -467,7 +443,7 @@ describe('WeightedPool', function () {
 
       it('fails if no user data', async () => {
         await expect(
-          vault.connect(lp).callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, '0x')
+          vault.connect(lp).callExitPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, '0x')
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -477,7 +453,7 @@ describe('WeightedPool', function () {
         await expect(
           vault
             .connect(lp)
-            .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, wrongUserData)
+            .callExitPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, wrongUserData)
         ).to.be.be.revertedWith('Transaction reverted without a reason');
       });
 
@@ -491,8 +467,8 @@ describe('WeightedPool', function () {
 
           const expectedTokenOut = calcTokenOutGivenExactBptIn(
             exitTokenIndex,
-            poolInitialBalances,
-            poolWeights,
+            initialBalances,
+            weights,
             exactBptIn,
             previousBptSupply,
             POOL_SWAP_FEE
@@ -507,7 +483,7 @@ describe('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
+              .callExitPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, exitUserData)
           ).wait();
 
           const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
@@ -536,7 +512,7 @@ describe('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
+              .callExitPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, exitUserData)
           ).wait();
 
           const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
@@ -545,7 +521,7 @@ describe('WeightedPool', function () {
           expect(dueProtocolFeeAmounts).to.deep.equal(ZEROS);
 
           // Balances are reduced by half because we are returning half of the BPT supply
-          poolInitialBalances.map((balance, i) => expectEqualWithError(amountsOut[i], balance.div(2), 0.001));
+          initialBalances.map((balance, i) => expectEqualWithError(amountsOut[i], balance.div(2), 0.001));
 
           // Current BPT balance should have been reduced by half
           const currentBptBalance = await pool.balanceOf(lp.address);
@@ -556,7 +532,7 @@ describe('WeightedPool', function () {
           const lpBPT = await pool.balanceOf(lp.address);
           const exitUserData = encodeExitWeightedPool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: lpBPT });
 
-          const currentBalances = poolInitialBalances;
+          const currentBalances = initialBalances;
 
           // The LP doesn't own all BPT, since some was locked. They will only be able to exctract a (large) percentage
           // of the Pool's balance: the rest remains there forever.
@@ -587,7 +563,7 @@ describe('WeightedPool', function () {
       context('exit BPT in for exact tokens out', () => {
         it('grants exact tokens for bpt', async () => {
           // Request half of the token balances
-          const exactTokensOut = poolInitialBalances.map((amount: BigNumber) => amount.div(2));
+          const exactTokensOut = initialBalances.map((amount: BigNumber) => amount.div(2));
           const maxBptIn = pct(previousBptBalance.div(2), 1.01);
           const exitUserData = encodeExitWeightedPool({
             kind: 'BPTInForExactTokensOut',
@@ -598,7 +574,7 @@ describe('WeightedPool', function () {
           const receipt = await (
             await vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
+              .callExitPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, exitUserData)
           ).wait();
 
           const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
@@ -616,7 +592,7 @@ describe('WeightedPool', function () {
 
         it('fails if more BTP needed', async () => {
           // Call should fail cause we are requesting a max amount lower than the actual needed
-          const exactTokensOut = poolInitialBalances;
+          const exactTokensOut = initialBalances;
           const maxBptIn = previousBptBalance.div(2);
           const exitUserData = encodeExitWeightedPool({
             kind: 'BPTInForExactTokensOut',
@@ -627,7 +603,7 @@ describe('WeightedPool', function () {
           await expect(
             vault
               .connect(lp)
-              .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
+              .callExitPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, exitUserData)
           ).to.be.be.revertedWith('BPT_IN_MAX_AMOUNT');
         });
       });
@@ -646,15 +622,15 @@ describe('WeightedPool', function () {
         userData: string;
       };
 
-      beforeEach('set default swap request data', async () => {
+      sharedBeforeEach('set default swap request data', async () => {
         await deployPool();
 
         swapRequestData = {
           poolId,
           from: other.address,
           to: other.address,
-          tokenIn: tokenList.DAI.address,
-          tokenOut: tokenList.MKR.address,
+          tokenIn: allTokens.DAI.address,
+          tokenOut: allTokens.MKR.address,
           latestBlockNumberUsed: 0,
           userData: '0x',
         };
@@ -668,15 +644,15 @@ describe('WeightedPool', function () {
 
           const result = await pool.callStatic.onSwapGivenIn(
             { ...swapRequestData, amountIn: AMOUNT_IN_WITH_FEES },
-            poolInitialBalances[0], // tokenInBalance
-            poolInitialBalances[1] // tokenOutBalance
+            initialBalances[0], // tokenInBalance
+            initialBalances[1] // tokenOutBalance
           );
 
           const expectedAmountOut = calcOutGivenIn(
-            poolInitialBalances[0],
-            poolWeights[0],
-            poolInitialBalances[1],
-            poolWeights[1],
+            initialBalances[0],
+            weights[0],
+            initialBalances[1],
+            weights[1],
             AMOUNT_IN_WITH_FEES
           );
 
@@ -686,9 +662,9 @@ describe('WeightedPool', function () {
         it('reverts if token in is not in the pool', async () => {
           await expect(
             pool.onSwapGivenIn(
-              { ...swapRequestData, tokenIn: tokenList.BAT.address, amountIn: 100 },
-              poolInitialBalances[0], // tokenInBalance
-              poolInitialBalances[1] // tokenOutBalance
+              { ...swapRequestData, tokenIn: allTokens.BAT.address, amountIn: 100 },
+              initialBalances[0], // tokenInBalance
+              initialBalances[1] // tokenOutBalance
             )
           ).to.be.revertedWith('INVALID_TOKEN');
         });
@@ -696,9 +672,9 @@ describe('WeightedPool', function () {
         it('reverts if token out is not in the pool', async () => {
           await expect(
             pool.onSwapGivenIn(
-              { ...swapRequestData, tokenOut: tokenList.BAT.address, amountIn: 100 },
-              poolInitialBalances[0], // tokenInBalance
-              poolInitialBalances[1] // tokenOutBalance
+              { ...swapRequestData, tokenOut: allTokens.BAT.address, amountIn: 100 },
+              initialBalances[0], // tokenInBalance
+              initialBalances[1] // tokenOutBalance
             )
           ).to.be.revertedWith('INVALID_TOKEN');
         });
@@ -710,15 +686,15 @@ describe('WeightedPool', function () {
 
           const result = await pool.callStatic.onSwapGivenOut(
             { ...swapRequestData, amountOut: AMOUNT_OUT },
-            poolInitialBalances[0], // tokenInBalance
-            poolInitialBalances[1] // tokenOutBalance
+            initialBalances[0], // tokenInBalance
+            initialBalances[1] // tokenOutBalance
           );
 
           const expectedAmountIn = calcInGivenOut(
-            poolInitialBalances[0],
-            poolWeights[0],
-            poolInitialBalances[1],
-            poolWeights[1],
+            initialBalances[0],
+            weights[0],
+            initialBalances[1],
+            weights[1],
             AMOUNT_OUT
           );
 
@@ -728,9 +704,9 @@ describe('WeightedPool', function () {
         it('reverts if token in is not in the pool when given out', async () => {
           await expect(
             pool.onSwapGivenOut(
-              { ...swapRequestData, tokenIn: tokenList.BAT.address, amountOut: 100 },
-              poolInitialBalances[0], // tokenInBalance
-              poolInitialBalances[1] // tokenOutBalance
+              { ...swapRequestData, tokenIn: allTokens.BAT.address, amountOut: 100 },
+              initialBalances[0], // tokenInBalance
+              initialBalances[1] // tokenOutBalance
             )
           ).to.be.revertedWith('INVALID_TOKEN');
         });
@@ -738,9 +714,9 @@ describe('WeightedPool', function () {
         it('reverts if token out is not in the pool', async () => {
           await expect(
             pool.onSwapGivenOut(
-              { ...swapRequestData, tokenOut: tokenList.BAT.address, amountOut: 100 },
-              poolInitialBalances[0], // tokenInBalance
-              poolInitialBalances[1] // tokenOutBalance
+              { ...swapRequestData, tokenOut: allTokens.BAT.address, amountOut: 100 },
+              initialBalances[0], // tokenInBalance
+              initialBalances[1] // tokenOutBalance
             )
           ).to.be.revertedWith('INVALID_TOKEN');
         });
@@ -750,10 +726,10 @@ describe('WeightedPool', function () {
     describe('protocol swap fees', () => {
       const PROTOCOL_SWAP_FEE = fp(0.1); // 10 %
 
-      beforeEach('deploy and join pool', async () => {
+      sharedBeforeEach('deploy and join pool', async () => {
         await deployPool();
 
-        const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: poolInitialBalances });
+        const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
         await vault.callJoinPool(pool.address, poolId, lp.address, ZEROS, 0, PROTOCOL_SWAP_FEE, initialJoinUserData);
       });
 
@@ -799,10 +775,10 @@ describe('WeightedPool', function () {
       it('joins and exits do not accumulate fees', async () => {
         let joinUserData = encodeJoinWeightedPool({
           kind: 'ExactTokensInForBPTOut',
-          amountsIn: Array(poolTokens.length).fill(bn(100e18)),
+          amountsIn: Array(tokens.length).fill(bn(100e18)),
           minimumBPT: 0,
         });
-        let newBalances = await expectJoinProtocolSwapFeeEqualWithError(poolInitialBalances, ZEROS, joinUserData);
+        let newBalances = await expectJoinProtocolSwapFeeEqualWithError(initialBalances, ZEROS, joinUserData);
 
         joinUserData = encodeJoinWeightedPool({
           kind: 'TokenInForExactBPTOut',
@@ -823,14 +799,14 @@ describe('WeightedPool', function () {
 
         joinUserData = encodeJoinWeightedPool({
           kind: 'ExactTokensInForBPTOut',
-          amountsIn: Array(poolTokens.length).fill(bn(10e18)),
+          amountsIn: Array(tokens.length).fill(bn(10e18)),
           minimumBPT: 0,
         });
         newBalances = await expectJoinProtocolSwapFeeEqualWithError(newBalances, ZEROS, joinUserData);
 
         exitUserData = encodeExitWeightedPool({
           kind: 'BPTInForExactTokensOut',
-          amountsOut: Array(poolTokens.length).fill(bn(10e18)),
+          amountsOut: Array(tokens.length).fill(bn(10e18)),
           maxBPTAmountIn: MAX_UINT112,
         });
         await expectExitProtocolSwapFeeEqualWithError(newBalances, ZEROS, exitUserData);
@@ -840,14 +816,14 @@ describe('WeightedPool', function () {
         let currentBalances: BigNumber[];
         let expectedDueProtocolFeeAmounts: BigNumber[];
 
-        beforeEach('compute expected due protocol fees', async () => {
+        sharedBeforeEach('compute expected due protocol fees', async () => {
           const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
           const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
 
-          const lastInvariant = calculateInvariant(poolInitialBalances, poolWeights);
-          currentBalances = poolInitialBalances.map((balance) => balance.mul(2)); // twice the initial balances
+          const lastInvariant = calculateInvariant(initialBalances, weights);
+          currentBalances = initialBalances.map((balance) => balance.mul(2)); // twice the initial balances
 
-          const feeAmount = calculateOneTokenSwapFee(currentBalances, poolWeights, lastInvariant, paidTokenIndex);
+          const feeAmount = calculateOneTokenSwapFee(currentBalances, weights, lastInvariant, paidTokenIndex);
           const protocolFeeAmount = bn(feeAmount).mul(PROTOCOL_SWAP_FEE).div(bn(1e18));
 
           expectedDueProtocolFeeAmounts = [...ZEROS];
@@ -857,7 +833,7 @@ describe('WeightedPool', function () {
         it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
           const joinUserData = encodeJoinWeightedPool({
             kind: 'ExactTokensInForBPTOut',
-            amountsIn: Array(poolTokens.length).fill(bn(1e18)),
+            amountsIn: Array(tokens.length).fill(bn(1e18)),
             minimumBPT: 0,
           });
 
@@ -883,7 +859,7 @@ describe('WeightedPool', function () {
         it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
           const exitUserData = encodeExitWeightedPool({
             kind: 'BPTInForExactTokensOut',
-            amountsOut: Array(poolTokens.length).fill(bn(1e18)),
+            amountsOut: Array(tokens.length).fill(bn(1e18)),
             maxBPTAmountIn: MAX_UINT112,
           });
 
