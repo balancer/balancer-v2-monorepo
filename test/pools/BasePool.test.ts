@@ -7,6 +7,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { GeneralPool, PoolSpecializationSetting } from '../../lib/helpers/pools';
 import { BigNumberish } from '../../lib/helpers/numbers';
 import { deploySortedTokens, TokenList } from '../../lib/helpers/tokens';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress;
@@ -21,7 +22,7 @@ describe('BasePool', function () {
     [, admin] = await ethers.getSigners();
   });
 
-  beforeEach(async () => {
+  sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 

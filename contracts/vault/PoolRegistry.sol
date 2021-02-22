@@ -273,7 +273,7 @@ abstract contract PoolRegistry is
             require(amountIn <= maxAmountsIn[i], "JOIN_ABOVE_MAX");
 
             // Receive tokens from the caller - possibly from Internal Balance
-            _receiveTokens(tokens[i], amountIn, msg.sender, fromInternalBalance);
+            _receiveTokens(tokens[i], amountIn, sender, fromInternalBalance);
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
 

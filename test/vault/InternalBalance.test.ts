@@ -12,6 +12,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { bn, fp, pct } from '../../lib/helpers/numbers';
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('Vault - internal balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
@@ -23,7 +24,7 @@ describe('Vault - internal balance', () => {
     [, admin, sender, recipient, otherRecipient, relayer] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
+  sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
@@ -77,12 +78,12 @@ describe('Vault - internal balance', () => {
 
       context('when the token is not the zero address', () => {
         context('when the sender does hold enough balance', () => {
-          beforeEach('mint tokens', async () => {
+          sharedBeforeEach('mint tokens', async () => {
             await mintTokens(tokens, 'DAI', sender, initialBalance);
           });
 
           context('when the given amount is approved by the sender', () => {
-            beforeEach('approve tokens', async () => {
+            sharedBeforeEach('approve tokens', async () => {
               await tokens.DAI.connect(sender).approve(vault.address, initialBalance);
             });
 
@@ -149,20 +150,23 @@ describe('Vault - internal balance', () => {
     });
 
     context('when the sender is a relayer', () => {
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(relayer);
+      });
+
+      sharedBeforeEach('mint tokens for sender', async () => {
         await mintTokens(tokens, 'DAI', sender, initialBalance);
         await tokens.DAI.connect(sender).approve(vault.address, initialBalance);
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        beforeEach('grant role to relayer', async () => {
+        sharedBeforeEach('grant role to relayer', async () => {
           const role = roleId(vault, 'depositToInternalBalance');
           await authorizer.connect(admin).grantRole(role, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -180,7 +184,7 @@ describe('Vault - internal balance', () => {
 
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -192,7 +196,7 @@ describe('Vault - internal balance', () => {
         });
 
         context('when the relayer is not allowed by the user', () => {
-          beforeEach('disallow relayer', async () => {
+          sharedBeforeEach('disallow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, false);
           });
 
@@ -248,7 +252,7 @@ describe('Vault - internal balance', () => {
         context('with protocol withdraw fees', () => {
           const withdrawFee = 0.01;
 
-          beforeEach('set fee', async () => {
+          sharedBeforeEach('set fee', async () => {
             const role = await roleId(vault, 'setProtocolFees');
             await authorizer.connect(admin).grantRole(role, admin.address);
             await vault.connect(admin).setProtocolFees(0, fp(withdrawFee), 0);
@@ -289,14 +293,14 @@ describe('Vault - internal balance', () => {
     };
 
     context('when the sender is a user', () => {
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(sender);
       });
 
       context('when the sender has enough internal balance', () => {
         const depositedAmount = bn(10e18);
 
-        beforeEach('deposit internal balance', async () => {
+        sharedBeforeEach('deposit internal balance', async () => {
           await mintTokens(tokens, 'DAI', sender, depositedAmount);
           await tokens.DAI.connect(sender).approve(vault.address, depositedAmount);
           await vault.depositToInternalBalance(sender.address, [tokens.DAI.address], [depositedAmount], sender.address);
@@ -345,9 +349,11 @@ describe('Vault - internal balance', () => {
     context('when the sender is a relayer', () => {
       const depositedAmount = bn(1e18);
 
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(relayer);
+      });
 
+      sharedBeforeEach('mint tokens and deposit to internal balance', async () => {
         await mintTokens(tokens, 'DAI', sender, depositedAmount);
         await tokens.DAI.connect(sender).approve(vault.address, depositedAmount);
         await vault
@@ -356,13 +362,13 @@ describe('Vault - internal balance', () => {
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        beforeEach('grant role to relayer', async () => {
+        sharedBeforeEach('grant role to relayer', async () => {
           const role = roleId(vault, 'withdrawFromInternalBalance');
           await authorizer.connect(admin).grantRole(role, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -385,7 +391,7 @@ describe('Vault - internal balance', () => {
 
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -402,7 +408,7 @@ describe('Vault - internal balance', () => {
         });
 
         context('when the relayer is not allowed by the user', () => {
-          beforeEach('disallow relayer', async () => {
+          sharedBeforeEach('disallow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, false);
           });
 
@@ -541,7 +547,7 @@ describe('Vault - internal balance', () => {
     }
 
     function depositInitialBalances(initialBalances: Dictionary<BigNumber>) {
-      beforeEach('deposit initial balances', async () => {
+      sharedBeforeEach('deposit initial balances', async () => {
         for (const symbol in tokens) {
           const token = tokens[symbol];
           const amount = initialBalances[symbol];
@@ -556,7 +562,7 @@ describe('Vault - internal balance', () => {
     }
 
     context('when the sender is a user', () => {
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(sender);
       });
 
@@ -666,20 +672,20 @@ describe('Vault - internal balance', () => {
     context('when the sender is a relayer', () => {
       const transferredAmounts = { DAI: bn(1e16), MKR: bn(2e16) };
 
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(relayer);
       });
 
       depositInitialBalances(transferredAmounts);
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        beforeEach('grant role to relayer', async () => {
+        sharedBeforeEach('grant role to relayer', async () => {
           const role = roleId(vault, 'transferInternalBalance');
           await authorizer.connect(admin).grantRole(role, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -702,7 +708,7 @@ describe('Vault - internal balance', () => {
 
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -719,7 +725,7 @@ describe('Vault - internal balance', () => {
         });
 
         context('when the relayer is not allowed by the user', () => {
-          beforeEach('disallow relayer', async () => {
+          sharedBeforeEach('disallow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, false);
           });
 

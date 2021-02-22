@@ -3,6 +3,7 @@ import { Contract } from 'ethers';
 import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { shouldBehaveLikeMap } from './EnumerableMap.behavior';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('EnumerableMap', () => {
   describe('EnumerableUintToAddressMap', () => {
@@ -16,7 +17,7 @@ describe('EnumerableMap', () => {
 
     const store: { map?: Contract } = {};
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       store.map = await deploy('EnumerableUintToAddressMapMock', { args: [] });
     });
 
@@ -38,7 +39,7 @@ describe('EnumerableMap', () => {
 
     const store: { map?: Contract } = {};
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       store.map = await deploy('EnumerableIERC20ToBytes32MapMock', { args: [] });
     });
 
