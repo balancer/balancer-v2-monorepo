@@ -3,13 +3,13 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../lib/helpers/deploy';
-import { bn } from '../../lib/helpers/numbers';
-import { MAX_UINT256 } from '../../lib/helpers/constants';
-import { expectBalanceChange } from '../helpers/tokenBalance';
-import { TokenList, deployTokens, mintTokens } from '../../lib/helpers/tokens';
-import { roleId } from '../../lib/helpers/roles';
+import TokenList from '../helpers/models/tokens/TokenList';
 import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+
+import { bn } from '../../lib/helpers/numbers';
+import { roleId } from '../../lib/helpers/roles';
+import { deploy } from '../../lib/helpers/deploy';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
@@ -20,7 +20,7 @@ describe('Vault - protocol fees', () => {
 
   let authorizer: Contract;
   let vault: Contract;
-  let tokens: TokenList = {};
+  let tokens: TokenList;
 
   before('setup', async () => {
     [, admin, user, feeSetter, feeCollector, other] = await ethers.getSigners();
@@ -29,12 +29,10 @@ describe('Vault - protocol fees', () => {
   sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
 
-    for (const symbol in tokens) {
-      await mintTokens(tokens, symbol, user, 100e18);
-      await tokens[symbol].connect(user).approve(vault.address, MAX_UINT256);
-    }
+    tokens = await TokenList.create(['DAI', 'MKR']);
+    await tokens.mint({ to: user, amount: bn(100e18) });
+    await tokens.approve({ to: vault, from: user });
   });
 
   it('fees are initially zero', async () => {

@@ -3,23 +3,18 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../lib/helpers/deploy';
-import { expectBalanceChange } from '../helpers/tokenBalance';
-import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
-import { TokenList, deploySortedTokens } from '../../lib/helpers/tokens';
-import { roleId } from '../../lib/helpers/roles';
+import TokenList from '../helpers/models/tokens/TokenList';
 import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
-describe('Vault - flash loans', () => {
-  let admin: SignerWithAddress;
-  let minter: SignerWithAddress;
-  let feeSetter: SignerWithAddress;
-  let other: SignerWithAddress;
+import { deploy } from '../../lib/helpers/deploy';
+import { roleId } from '../../lib/helpers/roles';
+import { expectBalanceChange } from '../helpers/tokenBalance';
+import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
 
-  let authorizer: Contract;
-  let vault: Contract;
-  let receiver: Contract;
-  let tokens: TokenList = {};
+describe('Vault - flash loans', () => {
+  let admin: SignerWithAddress, minter: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
+  let authorizer: Contract, vault: Contract, receiver: Contract;
+  let tokens: TokenList;
 
   before('setup', async () => {
     [, admin, minter, feeSetter, other] = await ethers.getSigners();
@@ -29,18 +24,16 @@ describe('Vault - flash loans', () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
-    tokens = await deploySortedTokens(['DAI', 'MKR'], [18, 18], minter);
 
-    const role = roleId(vault, 'setProtocolFees');
-    await authorizer.connect(admin).grantRole(role, feeSetter.address);
+    const SET_PROTOCOL_FEES_ROLE = roleId(vault, 'setProtocolFees');
+    await authorizer.connect(admin).grantRole(SET_PROTOCOL_FEES_ROLE, feeSetter.address);
 
-    for (const symbol in tokens) {
-      // Grant token balance to the Vault - typically this would happen by the pool controllers adding liquidity
-      await tokens[symbol].connect(minter).mint(vault.address, bn(100e18));
+    tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
+    await tokens.mint({ to: vault, amount: bn(100e18) });
 
-      // The receiver will mint the fees it
-      await tokens[symbol].connect(minter).grantRole(ethers.utils.id('MINTER_ROLE'), receiver.address);
-    }
+    // The receiver will mint the fees it
+    const MINTER_ROLE = ethers.utils.id('MINTER_ROLE');
+    await tokens.forEach((token) => token.instance.connect(minter).grantRole(MINTER_ROLE, receiver.address));
   });
 
   context('with no protocol fees', () => {

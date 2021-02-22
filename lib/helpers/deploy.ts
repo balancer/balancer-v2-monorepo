@@ -1,25 +1,26 @@
-import { Contract, ContractFactory, Signer } from 'ethers';
 import { ethers } from 'hardhat';
 import { Dictionary } from 'lodash';
+import { Contract, ContractFactory } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+// TODO: Model deployer
 
 const factories: Dictionary<ContractFactory> = {};
 
-export async function deploy(
-  contractName: string,
-  { from, args }: { from?: Signer; args: Array<unknown> }
-): Promise<Contract> {
-  let factory = await getFactory(contractName);
+export type ContractDeploymentParams = {
+  from?: SignerWithAddress;
+  args: Array<unknown>;
+};
 
-  if (from) {
-    factory = factory.connect(from);
-  }
-
+export async function deploy(contract: string, { from, args }: ContractDeploymentParams): Promise<Contract> {
+  if (!from) from = (await ethers.getSigners())[0];
+  const factory = (await getFactory(contract)).connect(from);
   const instance = await factory.deploy(...args);
   return instance.deployed();
 }
 
-// Cache factory creation to avoid processing the compiled artifacts multiple times
 export async function getFactory(contractName: string): Promise<ContractFactory> {
+  // Cache factory creation to avoid processing the compiled artifacts multiple times
   let factory = factories[contractName];
 
   if (factory == undefined) {

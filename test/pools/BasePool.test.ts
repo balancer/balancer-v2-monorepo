@@ -3,20 +3,18 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../lib/helpers/deploy';
-import { GeneralPool, PoolSpecializationSetting } from '../../lib/helpers/pools';
-import { BigNumberish } from '../../lib/helpers/numbers';
-import { deploySortedTokens, TokenList } from '../../lib/helpers/tokens';
+import TokenList from '../helpers/models/tokens/TokenList';
 import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
+
+import { deploy } from '../../lib/helpers/deploy';
+import { BigNumberish } from '../../lib/helpers/numbers';
+import { GeneralPool, PoolSpecializationSetting } from '../../lib/helpers/pools';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress;
-
   let authorizer: Contract;
   let vault: Contract;
-
   let tokens: TokenList;
-  let tokenAddreses: string[];
 
   before(async () => {
     [, admin] = await ethers.getSigners();
@@ -25,13 +23,7 @@ describe('BasePool', function () {
   sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
-
-    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX'], [18, 18, 18]);
-
-    tokenAddreses = [];
-    for (const symbol in tokens) {
-      tokenAddreses.push(tokens[symbol].address);
-    }
+    tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 
   function deployBasePool(
@@ -46,7 +38,7 @@ describe('BasePool', function () {
 
   describe('deployment', () => {
     it('registers a pool in the vault', async () => {
-      const pool = await deployBasePool(GeneralPool, tokenAddreses, 0);
+      const pool = await deployBasePool(GeneralPool, tokens.addresses, 0);
       const poolId = await pool.getPoolId();
 
       const [poolAddress, poolSpecialization] = await vault.getPool(poolId);
@@ -55,7 +47,7 @@ describe('BasePool', function () {
     });
 
     it('reverts if the tokens are not sorted', async () => {
-      await expect(deployBasePool(GeneralPool, tokenAddreses.reverse(), 0)).to.be.revertedWith('UNSORTED_ARRAY');
+      await expect(deployBasePool(GeneralPool, tokens.addresses.reverse(), 0)).to.be.revertedWith('UNSORTED_ARRAY');
     });
   });
 });

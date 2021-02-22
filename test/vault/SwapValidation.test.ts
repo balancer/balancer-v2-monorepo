@@ -1,21 +1,22 @@
+import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../lib/helpers/deploy';
-import { deploySortedTokens, TokenList } from '../../lib/helpers/tokens';
-import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { GeneralPool } from '../../lib/helpers/pools';
-import { encodeJoin } from '../helpers/mockPool';
-import { bn } from '../../lib/helpers/numbers';
+import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
-import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
-import { expect } from 'chai';
+import { encodeJoin } from '../helpers/mockPool';
 import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
+
+import { bn } from '../../lib/helpers/numbers';
+import { deploy } from '../../lib/helpers/deploy';
+import { GeneralPool } from '../../lib/helpers/pools';
+import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 
 describe('Vault - swap validation', () => {
   let vault: Contract;
-  let tokens: TokenList, tokenAddresses: string[];
+  let tokens: TokenList;
   let lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
 
   let poolIds: string[];
@@ -30,28 +31,23 @@ describe('Vault - swap validation', () => {
 
     const authorizer = await deploy('Authorizer', { args: [ZERO_ADDRESS] });
     vault = await deploy('Vault', { args: [authorizer.address] });
-    tokens = await deploySortedTokens(['DAI', 'MKR', 'SNX', 'BAT'], [18, 18, 18, 18]);
+    tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
 
-    const initialBalance = bn(100e18);
     const totalPools = 5;
+    const initialBalance = bn(100e18);
 
-    tokenAddresses = [];
-    for (const symbol in tokens) {
-      tokenAddresses.push(tokens[symbol].address);
+    await tokens.mint([
+      { to: lp, amount: initialBalance.mul(totalPools) },
+      { to: trader, amount: initialBalance },
+    ]);
 
-      // lp tokens are used to seed pools
-      await tokens[symbol].mint(lp.address, initialBalance.mul(totalPools));
-      await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
-
-      await tokens[symbol].mint(trader.address, initialBalance);
-      await tokens[symbol].connect(trader).approve(vault.address, MAX_UINT256);
-    }
+    await tokens.approve({ to: vault, from: [lp, trader] });
 
     poolIds = [];
     for (let i = 0; i < totalPools; ++i) {
       // The Pool specialization setting does not affect validation
       const pool = await deploy('MockPool', { args: [vault.address, GeneralPool] });
-      await pool.registerTokens(tokenAddresses, Array(tokenAddresses.length).fill(ZERO_ADDRESS));
+      await pool.registerTokens(tokens.addresses, Array(tokens.length).fill(ZERO_ADDRESS));
 
       const poolId = await pool.getPoolId();
 
@@ -61,10 +57,10 @@ describe('Vault - swap validation', () => {
           poolId,
           lp.address,
           ZERO_ADDRESS,
-          tokenAddresses,
-          Array(tokenAddresses.length).fill(MAX_UINT256),
+          tokens.addresses,
+          Array(tokens.length).fill(MAX_UINT256),
           false,
-          encodeJoin(Array(tokenAddresses.length).fill(initialBalance), Array(tokenAddresses.length).fill(0))
+          encodeJoin(Array(tokens.length).fill(initialBalance), Array(tokens.length).fill(0))
         );
 
       poolIds.push(poolId);
@@ -75,7 +71,7 @@ describe('Vault - swap validation', () => {
   beforeEach('create random swaps', () => {
     const randomInt = (max: number) => Math.floor(Math.random() * Math.floor(max));
 
-    const tokenInIndex = randomInt(tokenAddresses.length);
+    const tokenInIndex = randomInt(tokens.length);
     const tokenOutIndex = tokenInIndex == 0 ? tokenInIndex + 1 : tokenInIndex - 1; // Must not equal token in index
 
     swaps = [];
@@ -92,11 +88,11 @@ describe('Vault - swap validation', () => {
 
   context('in swaps given in', () => {
     const doSwap = (funds: FundManagement, limits: BigNumber[], deadline: BigNumber): Promise<ContractTransaction> => {
-      return vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokenAddresses, funds, limits, deadline);
+      return vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokens.addresses, funds, limits, deadline);
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds);
+      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);
@@ -104,11 +100,11 @@ describe('Vault - swap validation', () => {
 
   context('in swaps given out', () => {
     const doSwap = (funds: FundManagement, limits: BigNumber[], deadline: BigNumber): Promise<ContractTransaction> => {
-      return vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokenAddresses, funds, limits, deadline);
+      return vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokens.addresses, funds, limits, deadline);
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokenAddresses, funds);
+      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);
@@ -133,7 +129,7 @@ describe('Vault - swap validation', () => {
         const now = bn((await ethers.provider.getBlock('latest')).timestamp);
         const deadline = now.sub(5);
 
-        await expect(doSwap(funds, Array(tokenAddresses.length).fill(MAX_INT256), deadline)).to.be.revertedWith(
+        await expect(doSwap(funds, Array(tokens.length).fill(MAX_INT256), deadline)).to.be.revertedWith(
           'SWAP_DEADLINE'
         );
       });
@@ -148,13 +144,13 @@ describe('Vault - swap validation', () => {
       });
 
       it('reverts if there are less limits than tokens', async () => {
-        await expect(doSwap(funds, Array(tokenAddresses.length - 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
+        await expect(doSwap(funds, Array(tokens.length - 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
           'INPUT_LENGTH_MISMATCH'
         );
       });
 
       it('reverts if there are more limits than tokens', async () => {
-        await expect(doSwap(funds, Array(tokenAddresses.length + 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
+        await expect(doSwap(funds, Array(tokens.length + 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
           'INPUT_LENGTH_MISMATCH'
         );
       });
