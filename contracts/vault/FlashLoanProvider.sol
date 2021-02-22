@@ -42,9 +42,13 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
         uint256[] memory feeAmounts = new uint256[](tokens.length);
         uint256[] memory preLoanBalances = new uint256[](tokens.length);
 
+        IERC20 previousToken = IERC20(0);
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
+
+            require(token > previousToken, "UNSORTED_TOKENS"); // Prevents duplicate tokens
+            previousToken = token;
 
             // Not checking amount against current balance, transfer will revert if it is exceeded
             preLoanBalances[i] = token.balanceOf(address(this));
