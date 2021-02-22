@@ -6,8 +6,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deploy } from '../../lib/helpers/deploy';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
-import { TokenList, deployTokens } from '../../lib/helpers/tokens';
+import { TokenList, deploySortedTokens } from '../../lib/helpers/tokens';
 import { roleId } from '../../lib/helpers/roles';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress;
@@ -24,11 +25,11 @@ describe('Vault - flash loans', () => {
     [, admin, minter, feeSetter, other] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
+  sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18], minter);
+    tokens = await deploySortedTokens(['DAI', 'MKR'], [18, 18], minter);
 
     const role = roleId(vault, 'setProtocolFees');
     await authorizer.connect(admin).grantRole(role, feeSetter.address);
@@ -43,7 +44,7 @@ describe('Vault - flash loans', () => {
   });
 
   context('with no protocol fees', () => {
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFees(0, 0, 0);
     });
 
@@ -77,7 +78,7 @@ describe('Vault - flash loans', () => {
   context('with protocol fees', () => {
     const feePercentage = fp(0.005); // 0.5%
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFees(0, 0, feePercentage);
     });
 
@@ -188,6 +189,22 @@ describe('Vault - flash loans', () => {
         await vault
           .connect(other)
           .flashLoan(receiver.address, [tokens.DAI.address, tokens.MKR.address], [bn(100e18), bn(100e18)], '0x10');
+      });
+
+      it('reverts if tokens are not unique', async () => {
+        await expect(
+          vault
+            .connect(other)
+            .flashLoan(receiver.address, [tokens.DAI.address, tokens.DAI.address], [bn(100e18), bn(100e18)], '0x10')
+        ).to.be.revertedWith('UNSORTED_TOKENS');
+      });
+
+      it('reverts if tokens are not sorted', async () => {
+        await expect(
+          vault
+            .connect(other)
+            .flashLoan(receiver.address, [tokens.MKR.address, tokens.DAI.address], [bn(100e18), bn(100e18)], '0x10')
+        ).to.be.revertedWith('UNSORTED_TOKENS');
       });
     });
   });

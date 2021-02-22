@@ -10,6 +10,7 @@ import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 import { encodeExit, encodeJoin } from '../helpers/mockPool';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 let admin: SignerWithAddress;
 let lp: SignerWithAddress;
@@ -25,7 +26,7 @@ describe('Vault - pool registry', () => {
     [, admin, lp, other] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
+  sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     symbols = ['DAI', 'MKR', 'SNX'];
@@ -57,7 +58,7 @@ describe('Vault - pool registry', () => {
   describe('pool properties', () => {
     let poolId: string;
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -88,7 +89,7 @@ describe('Vault - pool registry', () => {
     function itManagesPoolQueriesCorrectly(specialization: PoolSpecializationSetting) {
       let poolId: string;
 
-      beforeEach(async () => {
+      sharedBeforeEach(async () => {
         const receipt = await (await vault.connect(other).registerPool(specialization)).wait();
 
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -138,7 +139,7 @@ describe('Vault - pool registry', () => {
     describe('register', () => {
       const itHandlesTokensRegistrationProperly = (specialization: PoolSpecializationSetting) => {
         context('when the pool was created', () => {
-          beforeEach('create pool', async () => {
+          sharedBeforeEach('create pool', async () => {
             pool = await deploy('MockPool', { args: [vault.address, specialization] });
             poolId = await pool.getPoolId();
           });
@@ -149,12 +150,28 @@ describe('Vault - pool registry', () => {
                 beforeEach('update token list to use zero address', () => {
                   tokenAddresses[0] = ZERO_ADDRESS;
                   tokenAddresses[1] = tokens['DAI'].address;
+
+                  assetManagers = tokenAddresses.map(() => ZERO_ADDRESS);
                 });
 
                 it('reverts', async () => {
                   const error = 'ZERO_ADDRESS_TOKEN';
                   await expect(pool.registerTokens(tokenAddresses, assetManagers)).to.be.revertedWith(error);
                   await expect(pool.registerTokens(tokenAddresses.reverse(), assetManagers)).to.be.revertedWith(error);
+                });
+              });
+
+              context('when the number of tokens and asset managers does not match', () => {
+                setTokensAddresses(2);
+
+                it('reverts', async () => {
+                  await expect(pool.registerTokens(tokenAddresses, assetManagers.slice(1))).to.be.revertedWith(
+                    'INPUT_LENGTH_MISMATCH'
+                  );
+
+                  await expect(
+                    pool.registerTokens(tokenAddresses, assetManagers.concat(assetManagers[0]))
+                  ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
                 });
               });
 
@@ -225,7 +242,7 @@ describe('Vault - pool registry', () => {
             context('when one of the given tokens was already registered', () => {
               setTokensAddresses(2);
 
-              beforeEach('register tokens', async () => {
+              sharedBeforeEach('register tokens', async () => {
                 await pool.registerTokens(tokenAddresses, assetManagers);
               });
 
@@ -270,7 +287,7 @@ describe('Vault - pool registry', () => {
     describe('deregister', () => {
       const itHandlesTokensDeregistrationProperly = (specialization: PoolSpecializationSetting) => {
         context('when the pool was created', () => {
-          beforeEach('create pool', async () => {
+          sharedBeforeEach('create pool', async () => {
             pool = await deploy('MockPool', { args: [vault.address, specialization] });
             poolId = await pool.getPoolId();
           });
@@ -278,12 +295,12 @@ describe('Vault - pool registry', () => {
           context('when the sender is the pool', () => {
             context('when the given addresses where registered', () => {
               const itDeregistersTheTokens = () => {
-                beforeEach('register tokens', async () => {
+                sharedBeforeEach('register tokens', async () => {
                   await pool.registerTokens(tokenAddresses, assetManagers);
                 });
 
                 context('when some tokens still have some balance', () => {
-                  beforeEach('add some balance', async () => {
+                  sharedBeforeEach('add some balance', async () => {
                     await vault.connect(lp).joinPool(
                       poolId,
                       lp.address,

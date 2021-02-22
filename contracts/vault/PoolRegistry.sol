@@ -15,9 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "../lib/math/Math.sol";
 import "../lib/helpers/InputHelpers.sol";
@@ -42,9 +45,10 @@ abstract contract PoolRegistry is
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
+    using Counters for Counters.Counter;
 
-    // The total number of registered Pools. This is used to ensure Pool IDs are unique.
-    uint256 private _totalPools;
+    // Ensure Pool IDs are unique.
+    Counters.Counter private _poolNonce;
 
     // Pool IDs are stored as `bytes32`.
     mapping(bytes32 => bool) private _isPoolRegistered;
@@ -123,12 +127,11 @@ abstract contract PoolRegistry is
     }
 
     function registerPool(PoolSpecialization specialization) external override nonReentrant returns (bytes32) {
-        // We use the Pool length as the Pool ID creation nonce. Since Pools cannot be deleted, nonces are unique. This
-        // however assumes there will never be more than than 2**80 Pools.
-        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_totalPools));
+        // Use _totalPools as the Pool ID nonce. uint80 assumes there will never be more than than 2**80 Pools.
+        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_poolNonce.current()));
         require(!_isPoolRegistered[poolId], "INVALID_POOL_ID"); // Should never happen
 
-        _totalPools++;
+        _poolNonce.increment();
         _isPoolRegistered[poolId] = true;
 
         emit PoolCreated(poolId);
@@ -191,6 +194,10 @@ abstract contract PoolRegistry is
         IERC20[] calldata tokens,
         address[] calldata assetManagers
     ) external override nonReentrant onlyPool(poolId) {
+        console.log(tokens.length);
+        console.log(assetManagers.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
+
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             require(tokens.length == 2, "TOKENS_LENGTH_MUST_BE_2");
@@ -266,7 +273,7 @@ abstract contract PoolRegistry is
             require(amountIn <= maxAmountsIn[i], "JOIN_ABOVE_MAX");
 
             // Receive tokens from the caller - possibly from Internal Balance
-            _receiveTokens(tokens[i], amountIn, msg.sender, fromInternalBalance);
+            _receiveTokens(tokens[i], amountIn, sender, fromInternalBalance);
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
 

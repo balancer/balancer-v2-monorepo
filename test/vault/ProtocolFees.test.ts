@@ -9,6 +9,7 @@ import { MAX_UINT256 } from '../../lib/helpers/constants';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { TokenList, deployTokens, mintTokens } from '../../lib/helpers/tokens';
 import { roleId } from '../../lib/helpers/roles';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
@@ -25,7 +26,7 @@ describe('Vault - protocol fees', () => {
     [, admin, user, feeSetter, feeCollector, other] = await ethers.getSigners();
   });
 
-  beforeEach(async () => {
+  sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
@@ -41,7 +42,7 @@ describe('Vault - protocol fees', () => {
   });
 
   context('with collected protocol fees', () => {
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       // Set a non-zero withdraw fee
       const role = roleId(vault, 'setProtocolFees');
       await authorizer.connect(admin).grantRole(role, feeSetter.address);
