@@ -163,6 +163,15 @@ contract WeightedMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) internal pure returns (uint256) {
+        /******************************************************************************************
+        // tokenInForExactBPTOut                                                                 //
+        // a = tokenAmountIn                                                                     //
+        // b = tokenBalance                 /  /    totalBPT + bptOut      \    (1 / w)       \  //
+        // bptOut = bptAmountOut   a = b * |  | --------------------------  | ^          - 1  |  //
+        // bpt = totalBPT                   \  \       totalBPT            /                  /  //
+        // w = tokenWeight                                                                       //
+        ******************************************************************************************/
+        
         // Calculate the factor by which the invariant will increase after minting BPTAmountOut
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
 
@@ -181,6 +190,15 @@ contract WeightedMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) internal pure returns (uint256) {
+        /*****************************************************************************************
+        // exactBPTInForTokenOut                                                                //
+        // a = tokenAmountOut                                                                   //
+        // b = tokenBalance                /      /    totalBPT - bptIn       \    (1 / w)  \   //
+        // bptIn = bptAmountIn    a = b * |  1 - | --------------------------  | ^           |  //
+        // bpt = totalBPT                  \      \       totalBPT            /             /   //
+        // w = tokenWeight                                                                      //
+        *****************************************************************************************/
+
         // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
 

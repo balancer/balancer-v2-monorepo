@@ -32,6 +32,8 @@ describe('WeightedPool', function () {
   const SYMBOLS = ['DAI', 'MKR', 'SNX', 'BAT'];
   const WEIGHTS = [bn(70e18), bn(30e18), bn(5e18), bn(5e18)];
   const INITIAL_BALANCES = [bn(0.9e18), bn(1.8e18), bn(2.7e18), bn(3.6e18)];
+  const MAX_IN_RATIO = 0.03;
+  const MAX_OUT_RATIO = 0.03;
 
   before('setup signers', async () => {
     [, admin, lp, trader, beneficiary, other] = await ethers.getSigners();
@@ -697,6 +699,27 @@ describe('WeightedPool', function () {
           await expect(
             pool.onSwapGivenIn(
               { ...swapRequestData, tokenOut: tokenList.BAT.address, amountIn: 100 },
+              poolInitialBalances[0], // tokenInBalance
+              poolInitialBalances[1] // tokenOutBalance
+            )
+          ).to.be.revertedWith('INVALID_TOKEN');
+        });
+
+        it.only('reverts if token in exceeds max in ratio', async () => {
+          const amountIn = poolInitialBalances[0].mul(MAX_IN_RATIO).add(1); //Over max in ratio
+          await expect(
+            pool.onSwapGivenIn(
+              { ...swapRequestData, tokenIn: tokenList.DAI.address, amountIn },
+              poolInitialBalances[0], // tokenInBalance
+              poolInitialBalances[1] // tokenOutBalance
+            )
+          ).to.be.revertedWith('ERR_MAX_IN_RATIO');
+        });
+
+        it('reverts if token out exceeds max in ratio', async () => {
+          await expect(
+            pool.onSwapGivenIn(
+              { ...swapRequestData, tokenOut: tokenList.DAI.address, amountIn: 100 },
               poolInitialBalances[0], // tokenInBalance
               poolInitialBalances[1] // tokenOutBalance
             )

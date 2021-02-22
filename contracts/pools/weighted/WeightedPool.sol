@@ -30,9 +30,11 @@ import "./WeightedMath.sol";
 contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
 
-    //TODO: link info about these limits once they are studied and documented
-    uint256 private constant _MIN_WEIGHT = 100;
-    uint256 private constant _MAX_WEIGHT = 5000 * (10**18);
+    uint256 private constant _MIN_WEIGHT = 10**16; //0.01
+    uint256 private constant _MAX_WEIGHT = 10**18; //1
+
+    uint256 private constant _MAX_IN_RATIO = 3 * 10**17; //30%
+    uint256 private constant _MAX_OUT_RATIO = 3 * 10**17; //30%
 
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
@@ -169,6 +171,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
+        require(swapRequest.amountIn <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), "ERR_MAX_IN_RATIO");
+
         return
             WeightedMath._outGivenIn(
                 currentBalanceTokenIn,
@@ -184,6 +188,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
+        require(swapRequest.amountOut <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), "ERR_MAX_OUT_RATIO");
+
         return
             WeightedMath._inGivenOut(
                 currentBalanceTokenIn,
