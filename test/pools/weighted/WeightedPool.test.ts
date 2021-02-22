@@ -22,6 +22,7 @@ import { bn, decimal, fp, pct } from '../../../lib/helpers/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';
+import { sharedBeforeEach } from '../../helpers/lib/sharedBeforeEach';
 
 describe('WeightedPool', function () {
   let authorizer: Contract, allTokens: TokenList;
@@ -37,7 +38,7 @@ describe('WeightedPool', function () {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
   });
 
-  beforeEach('deploy tokens', async () => {
+  sharedBeforeEach('deploy tokens', async () => {
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [lp, trader], amount: bn(100e18) });
   });
@@ -115,7 +116,7 @@ describe('WeightedPool', function () {
 
     describe('creation', () => {
       context('when the creation succeeds', () => {
-        beforeEach('deploy pool from factory', async () => {
+        sharedBeforeEach('deploy pool from factory', async () => {
           await deployPool({ fromFactory: true });
         });
 
@@ -211,7 +212,7 @@ describe('WeightedPool', function () {
     });
 
     describe('onJoinPool', () => {
-      beforeEach('deploy pool', async () => {
+      sharedBeforeEach('deploy pool', async () => {
         await deployPool();
       });
 
@@ -238,11 +239,7 @@ describe('WeightedPool', function () {
       });
 
       context('initialization', () => {
-        let initialJoinUserData: string;
-
-        beforeEach(async () => {
-          initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
-        });
+        const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
 
         it('grants the n * invariant amount of BPT', async () => {
           const invariant = calculateInvariant(initialBalances, weights);
@@ -288,12 +285,12 @@ describe('WeightedPool', function () {
         context('once initialized', () => {
           let exactAmountsIn: BigNumber[], previousBptSupply: BigNumber, expectedBptAmount: BigNumber;
 
-          beforeEach('initialize pool', async () => {
+          sharedBeforeEach('initialize pool', async () => {
             const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
             await vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
           });
 
-          beforeEach('compute expected BPT balances', async () => {
+          sharedBeforeEach('compute expected BPT balances', async () => {
             previousBptSupply = await pool.totalSupply();
 
             exactAmountsIn = [...ZEROS];
@@ -370,7 +367,7 @@ describe('WeightedPool', function () {
         });
 
         context('once initialized', () => {
-          beforeEach('initialize pool', async () => {
+          sharedBeforeEach('initialize pool', async () => {
             const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
             await vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
           });
@@ -426,7 +423,7 @@ describe('WeightedPool', function () {
     describe('onExitPool', () => {
       let previousBptBalance: BigNumber, previousBptSupply: BigNumber;
 
-      beforeEach('deploy and initialize pool', async () => {
+      sharedBeforeEach('deploy and initialize pool', async () => {
         await deployPool();
 
         const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
@@ -625,7 +622,7 @@ describe('WeightedPool', function () {
         userData: string;
       };
 
-      beforeEach('set default swap request data', async () => {
+      sharedBeforeEach('set default swap request data', async () => {
         await deployPool();
 
         swapRequestData = {
@@ -729,7 +726,7 @@ describe('WeightedPool', function () {
     describe('protocol swap fees', () => {
       const PROTOCOL_SWAP_FEE = fp(0.1); // 10 %
 
-      beforeEach('deploy and join pool', async () => {
+      sharedBeforeEach('deploy and join pool', async () => {
         await deployPool();
 
         const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
@@ -819,7 +816,7 @@ describe('WeightedPool', function () {
         let currentBalances: BigNumber[];
         let expectedDueProtocolFeeAmounts: BigNumber[];
 
-        beforeEach('compute expected due protocol fees', async () => {
+        sharedBeforeEach('compute expected due protocol fees', async () => {
           const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
           const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
 

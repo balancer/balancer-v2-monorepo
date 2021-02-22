@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList from '../helpers/models/tokens/TokenList';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 import { deploy } from '../../lib/helpers/deploy';
 import { roleId } from '../../lib/helpers/roles';
@@ -19,29 +20,24 @@ describe('Vault - flash loans', () => {
     [, admin, minter, feeSetter, other] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
+  sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
 
-    const role = roleId(vault, 'setProtocolFees');
-    await authorizer.connect(admin).grantRole(role, feeSetter.address);
+    const SET_PROTOCOL_FEES_ROLE = roleId(vault, 'setProtocolFees');
+    await authorizer.connect(admin).grantRole(SET_PROTOCOL_FEES_ROLE, feeSetter.address);
 
-    tokens = await TokenList.create([
-      { symbol: 'DAI', from: minter },
-      { symbol: 'MKR', from: minter },
-    ]);
-
+    tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
     await tokens.mint({ to: vault, amount: bn(100e18) });
 
     // The receiver will mint the fees it
-    await tokens.forEach(async (token) => {
-      await token.instance.connect(minter).grantRole(ethers.utils.id('MINTER_ROLE'), receiver.address);
-    });
+    const MINTER_ROLE = ethers.utils.id('MINTER_ROLE');
+    await tokens.forEach((token) => token.instance.connect(minter).grantRole(MINTER_ROLE, receiver.address));
   });
 
   context('with no protocol fees', () => {
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFees(0, 0, 0);
     });
 
@@ -75,7 +71,7 @@ describe('Vault - flash loans', () => {
   context('with protocol fees', () => {
     const feePercentage = fp(0.005); // 0.5%
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFees(0, 0, feePercentage);
     });
 
@@ -186,6 +182,22 @@ describe('Vault - flash loans', () => {
         await vault
           .connect(other)
           .flashLoan(receiver.address, [tokens.DAI.address, tokens.MKR.address], [bn(100e18), bn(100e18)], '0x10');
+      });
+
+      it('reverts if tokens are not unique', async () => {
+        await expect(
+          vault
+            .connect(other)
+            .flashLoan(receiver.address, [tokens.DAI.address, tokens.DAI.address], [bn(100e18), bn(100e18)], '0x10')
+        ).to.be.revertedWith('UNSORTED_TOKENS');
+      });
+
+      it('reverts if tokens are not sorted', async () => {
+        await expect(
+          vault
+            .connect(other)
+            .flashLoan(receiver.address, [tokens.MKR.address, tokens.DAI.address], [bn(100e18), bn(100e18)], '0x10')
+        ).to.be.revertedWith('UNSORTED_TOKENS');
       });
     });
   });

@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList from '../helpers/models/tokens/TokenList';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish } from '../../lib/helpers/numbers';
@@ -19,7 +20,7 @@ describe('BasePool', function () {
     [, admin] = await ethers.getSigners();
   });
 
-  beforeEach(async () => {
+  sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });

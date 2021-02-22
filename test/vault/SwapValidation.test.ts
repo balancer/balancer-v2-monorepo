@@ -6,6 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
 import { encodeJoin } from '../helpers/mockPool';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
@@ -25,7 +26,7 @@ describe('Vault - swap validation', () => {
     GIVEN_OUT: 1,
   };
 
-  beforeEach('setup', async () => {
+  sharedBeforeEach('setup', async () => {
     [, lp, trader, other] = await ethers.getSigners();
 
     const authorizer = await deploy('Authorizer', { args: [ZERO_ADDRESS] });
@@ -67,7 +68,7 @@ describe('Vault - swap validation', () => {
   });
 
   let swaps: Swap[];
-  beforeEach('create random swaps', async () => {
+  beforeEach('create random swaps', () => {
     const randomInt = (max: number) => Math.floor(Math.random() * Math.floor(max));
 
     const tokenInIndex = randomInt(tokens.length);
@@ -137,7 +138,7 @@ describe('Vault - swap validation', () => {
     context('with unexpired deadline', () => {
       let deadline: BigNumber;
 
-      beforeEach('set deadline', async () => {
+      sharedBeforeEach('set deadline', async () => {
         const now = bn((await ethers.provider.getBlock('latest')).timestamp);
         deadline = now.add(10);
       });

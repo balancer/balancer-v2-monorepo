@@ -5,6 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 import { encodeExit, encodeJoin } from '../helpers/mockPool';
 
 import { bn } from '../../lib/helpers/numbers';
@@ -21,7 +22,7 @@ describe('Vault - pool registry', () => {
     [, admin, lp, other] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
+  sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
@@ -49,7 +50,7 @@ describe('Vault - pool registry', () => {
   describe('pool properties', () => {
     let poolId: string;
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
 
       const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -80,7 +81,7 @@ describe('Vault - pool registry', () => {
     function itManagesPoolQueriesCorrectly(specialization: PoolSpecializationSetting) {
       let poolId: string;
 
-      beforeEach(async () => {
+      sharedBeforeEach(async () => {
         const receipt = await (await vault.connect(other).registerPool(specialization)).wait();
 
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');
@@ -128,7 +129,7 @@ describe('Vault - pool registry', () => {
     describe('register', () => {
       const itHandlesTokensRegistrationProperly = (specialization: PoolSpecializationSetting) => {
         context('when the pool was created', () => {
-          beforeEach('create pool', async () => {
+          sharedBeforeEach('create pool', async () => {
             pool = await deploy('MockPool', { args: [vault.address, specialization] });
             poolId = await pool.getPoolId();
           });
@@ -145,6 +146,20 @@ describe('Vault - pool registry', () => {
                   const error = 'ZERO_ADDRESS_TOKEN';
                   await expect(pool.registerTokens(addresses, assetManagers)).to.be.revertedWith(error);
                   await expect(pool.registerTokens(addresses.reverse(), assetManagers)).to.be.revertedWith(error);
+                });
+              });
+
+              context('when the number of tokens and asset managers does not match', () => {
+                setTokensAddresses(2);
+
+                it('reverts', async () => {
+                  await expect(pool.registerTokens(tokens.addresses, assetManagers.slice(1))).to.be.revertedWith(
+                    'INPUT_LENGTH_MISMATCH'
+                  );
+
+                  await expect(
+                    pool.registerTokens(tokens.addresses, assetManagers.concat(assetManagers[0]))
+                  ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
                 });
               });
 
@@ -177,9 +192,7 @@ describe('Vault - pool registry', () => {
                     });
                   } else {
                     it('can be registered individually', async () => {
-                      await tokens.forEach(async (token) => {
-                        await pool.registerTokens([token.address], [ZERO_ADDRESS]);
-                      });
+                      await tokens.forEach((token) => pool.registerTokens([token.address], [ZERO_ADDRESS]));
 
                       const { tokens: poolTokens, balances } = await vault.getPoolTokens(poolId);
                       expect(poolTokens).to.have.members(tokens.addresses);
@@ -215,7 +228,7 @@ describe('Vault - pool registry', () => {
             context('when one of the given tokens was already registered', () => {
               setTokensAddresses(2);
 
-              beforeEach('register tokens', async () => {
+              sharedBeforeEach('register tokens', async () => {
                 await pool.registerTokens(tokens.addresses, assetManagers);
               });
 
@@ -260,7 +273,7 @@ describe('Vault - pool registry', () => {
     describe('deregister', () => {
       const itHandlesTokensDeregistrationProperly = (specialization: PoolSpecializationSetting) => {
         context('when the pool was created', () => {
-          beforeEach('create pool', async () => {
+          sharedBeforeEach('create pool', async () => {
             pool = await deploy('MockPool', { args: [vault.address, specialization] });
             poolId = await pool.getPoolId();
           });
@@ -268,12 +281,12 @@ describe('Vault - pool registry', () => {
           context('when the sender is the pool', () => {
             context('when the given addresses where registered', () => {
               const itDeregistersTheTokens = () => {
-                beforeEach('register tokens', async () => {
+                sharedBeforeEach('register tokens', async () => {
                   await pool.registerTokens(tokens.addresses, assetManagers);
                 });
 
                 context('when some tokens still have some balance', () => {
-                  beforeEach('add some balance', async () => {
+                  sharedBeforeEach('add some balance', async () => {
                     await vault
                       .connect(lp)
                       .joinPool(

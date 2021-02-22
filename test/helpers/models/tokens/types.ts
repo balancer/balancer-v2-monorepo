@@ -4,6 +4,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 export type RawTokensDeployment = number | NAry<RawTokenDeployment>;
 
+export type TokensDeploymentOptions = TxParams & {
+  sorted?: boolean;
+};
+
 export type RawTokenDeployment =
   | string
   | {

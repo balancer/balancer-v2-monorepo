@@ -1,3 +1,5 @@
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
 import { Account } from './types';
 
 import {
@@ -15,14 +17,16 @@ export default {
    * Converts a raw list of token deployments into a consistent deployment request
    * @param params It can be a number specifying the number of tokens to be deployed, a list of strings denoting the
    * token symbols to be used, or a list of token attributes (decimals, symbol, name).
+   * @param from A default signer can be specified as the deployer address of the entire list, otherwise a single
+   * signer per token can be defined.
    */
-  toTokenDeployments(params: RawTokensDeployment): TokenDeployment[] {
+  toTokenDeployments(params: RawTokensDeployment, from?: SignerWithAddress): TokenDeployment[] {
     params = typeof params === 'number' ? Array(params).fill({}) : params;
     if (!Array.isArray(params)) params = [params];
 
     return params.map((param, i) => {
-      if (typeof param === 'string') param = { symbol: param };
-      const args = Object.assign({}, { symbol: `TK${i}`, name: `Token ${i}` }, param);
+      if (typeof param === 'string') param = { symbol: param, from };
+      const args = Object.assign({}, { symbol: `TK${i}`, name: `Token ${i}`, from }, param);
       return this.toTokenDeployment(args);
     });
   },

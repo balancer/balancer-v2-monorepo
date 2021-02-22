@@ -1,13 +1,20 @@
 import Token from './Token';
 import TokensDeployer from './TokensDeployer';
 import TypesConverter from '../types/TypesConverter';
-import { RawTokenApproval, RawTokenMint, RawTokensDeployment, TokenApproval, TokenMint } from './types';
+import {
+  RawTokenApproval,
+  RawTokenMint,
+  RawTokensDeployment,
+  TokenApproval,
+  TokenMint,
+  TokensDeploymentOptions,
+} from './types';
 
 export default class TokenList {
   tokens: Token[];
 
-  static async create(params: RawTokensDeployment, { sorted } = { sorted: false }): Promise<TokenList> {
-    return TokensDeployer.deploy(params, sorted);
+  static async create(params: RawTokensDeployment, options: TokensDeploymentOptions = {}): Promise<TokenList> {
+    return TokensDeployer.deploy(params, options);
   }
 
   constructor(tokens: Token[] = []) {

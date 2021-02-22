@@ -112,27 +112,23 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
     }
 
-    // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
-    // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
     function batchSwapGivenIn(
         SwapIn[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
-    ) external override authenticateFor(funds.sender) returns (int256[] memory) {
+    ) external override nonReentrant authenticateFor(funds.sender) returns (int256[] memory) {
         return _batchSwap(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_IN);
     }
 
-    // This function is not marked non-reentrant to allow the validator to perform any subsequent calls it may need, but
-    // the actual swap is reentrancy-protected by _batchSwap being non-reentrant.
     function batchSwapGivenOut(
         SwapOut[] memory swaps,
         IERC20[] memory tokens,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
-    ) external override authenticateFor(funds.sender) returns (int256[] memory) {
+    ) external override nonReentrant authenticateFor(funds.sender) returns (int256[] memory) {
         return _batchSwap(_toInternalSwap(swaps), tokens, funds, limits, deadline, SwapKind.GIVEN_OUT);
     }
 
@@ -146,7 +142,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         int256[] memory limits,
         uint256 deadline,
         SwapKind kind
-    ) private nonReentrant returns (int256[] memory tokenDeltas) {
+    ) private returns (int256[] memory tokenDeltas) {
         // The deadline is timestamp-based: it should not be relied on having sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp <= deadline, "SWAP_DEADLINE");

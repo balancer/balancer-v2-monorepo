@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList from '../helpers/models/tokens/TokenList';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 import { bn } from '../../lib/helpers/numbers';
@@ -25,7 +26,7 @@ describe('Vault - protocol fees', () => {
     [, admin, user, feeSetter, feeCollector, other] = await ethers.getSigners();
   });
 
-  beforeEach(async () => {
+  sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
@@ -39,7 +40,7 @@ describe('Vault - protocol fees', () => {
   });
 
   context('with collected protocol fees', () => {
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       // Set a non-zero withdraw fee
       const role = roleId(vault, 'setProtocolFees');
       await authorizer.connect(admin).grantRole(role, feeSetter.address);

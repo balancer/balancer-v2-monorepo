@@ -14,6 +14,7 @@ import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
 import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -34,16 +35,14 @@ type SwapInput = {
 describe('Vault - swaps', () => {
   let vault: Contract, authorizer: Contract, funds: FundManagement;
   let tokens: TokenList;
-  let poolIds: string[], poolId: string, anotherPoolId: string;
+  let mainPoolId: string, secondaryPoolId: string;
   let lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress, admin: SignerWithAddress;
 
   before('setup', async () => {
     [, lp, trader, other, admin] = await ethers.getSigners();
+  });
 
-    // This suite contains a very large number of tests, so we don't redeploy all contracts for each single test. This
-    // means tests are not fully independent, and may affect each other (e.g. if they use very large amounts of tokens,
-    // or rely on internal balance).
-
+  sharedBeforeEach('deploy vault and tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
 
@@ -91,7 +90,7 @@ describe('Vault - swaps', () => {
 
   function parseSwap(input: SwapInput): Swap[] {
     return input.swaps.map((data) => ({
-      poolId: poolIds[data.pool ?? 0],
+      poolId: (data.pool ?? 0) == 0 ? mainPoolId : secondaryPoolId,
       amount: data.amount.toString(),
       tokenInIndex: data.in,
       tokenOutIndex: data.out,
@@ -134,16 +133,14 @@ describe('Vault - swaps', () => {
   }
 
   function deployMainPool(specialization: PoolSpecializationSetting, tokenSymbols: string[]) {
-    beforeEach('deploy main pool', async () => {
-      poolId = await deployPool(specialization, tokenSymbols);
-      poolIds = [poolId];
+    sharedBeforeEach('deploy main pool', async () => {
+      mainPoolId = await deployPool(specialization, tokenSymbols);
     });
   }
 
   function deployAnotherPool(specialization: PoolSpecializationSetting, tokenSymbols: string[]) {
-    beforeEach('deploy secondary pool', async () => {
-      anotherPoolId = await deployPool(specialization, tokenSymbols);
-      poolIds.push(anotherPoolId);
+    sharedBeforeEach('deploy secondary pool', async () => {
+      secondaryPoolId = await deployPool(specialization, tokenSymbols);
     });
   }
 
@@ -203,13 +200,13 @@ describe('Vault - swaps', () => {
                         const fromOther = true;
 
                         context('when the relayer is whitelisted by the authorizer', () => {
-                          beforeEach('grant role to relayer', async () => {
+                          sharedBeforeEach('grant role to relayer', async () => {
                             const role = roleId(vault, 'batchSwapGivenIn');
                             await authorizer.connect(admin).grantRole(role, other.address);
                           });
 
                           context('when the relayer is allowed by the user', () => {
-                            beforeEach('allow relayer', async () => {
+                            sharedBeforeEach('allow relayer', async () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, true);
                             });
 
@@ -217,7 +214,7 @@ describe('Vault - swaps', () => {
                           });
 
                           context('when the relayer is not allowed by the user', () => {
-                            beforeEach('disallow relayer', async () => {
+                            sharedBeforeEach('disallow relayer', async () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, false);
                             });
 
@@ -226,13 +223,13 @@ describe('Vault - swaps', () => {
                         });
 
                         context('when the relayer is not whitelisted by the authorizer', () => {
-                          beforeEach('revoke role from relayer', async () => {
+                          sharedBeforeEach('revoke role from relayer', async () => {
                             const role = roleId(vault, 'batchSwapGivenIn');
                             await authorizer.connect(admin).revokeRole(role, other.address);
                           });
 
                           context('when the relayer is allowed by the user', () => {
-                            beforeEach('allow relayer', async () => {
+                            sharedBeforeEach('allow relayer', async () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, true);
                             });
 
@@ -240,7 +237,7 @@ describe('Vault - swaps', () => {
                           });
 
                           context('when the relayer is not allowed by the user', () => {
-                            beforeEach('disallow relayer', async () => {
+                            sharedBeforeEach('disallow relayer', async () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, false);
                             });
 
@@ -251,13 +248,16 @@ describe('Vault - swaps', () => {
                     });
 
                     context('when withdrawing from internal balance', () => {
+                      beforeEach(() => {
+                        funds.fromInternalBalance = true;
+                      });
+
                       context.skip('when using less than available as internal balance', () => {
                         // TODO: add tests where no token transfers are needed and internal balance remains
                       });
 
                       context('when using more than available as internal balance', () => {
-                        beforeEach('deposit to internal balance', async () => {
-                          funds.fromInternalBalance = true;
+                        sharedBeforeEach('deposit to internal balance', async () => {
                           await vault
                             .connect(trader)
                             .depositToInternalBalance(
@@ -273,7 +273,7 @@ describe('Vault - swaps', () => {
                     });
 
                     context('when depositing from internal balance', () => {
-                      beforeEach('deposit to internal balance', async () => {
+                      beforeEach(() => {
                         funds.toInternalBalance = true;
                       });
 
@@ -380,8 +380,8 @@ describe('Vault - swaps', () => {
                   });
 
                   context('when pools do not offer same price', () => {
-                    beforeEach('tweak the main pool to give back as much as it receives', async () => {
-                      const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
+                    sharedBeforeEach('tweak the main pool to give back as much as it receives', async () => {
+                      const [poolAddress] = (await vault.getPool(mainPoolId)) as [string, unknown];
                       const pool = await ethers.getContractAt('MockPool', poolAddress);
                       await pool.setMultiplier(fp(1));
                     });
@@ -597,13 +597,13 @@ describe('Vault - swaps', () => {
                         const fromOther = true;
 
                         context('when the relayer is whitelisted by the authorizer', () => {
-                          beforeEach('grant role to relayer', async () => {
+                          sharedBeforeEach('grant role to relayer', async () => {
                             const role = roleId(vault, 'batchSwapGivenOut');
                             await authorizer.connect(admin).grantRole(role, other.address);
                           });
 
                           context('when the relayer is allowed by the user', () => {
-                            beforeEach('allow relayer', async () => {
+                            sharedBeforeEach('allow relayer', async () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, true);
                             });
 
@@ -611,7 +611,7 @@ describe('Vault - swaps', () => {
                           });
 
                           context('when the relayer is not allowed by the user', () => {
-                            beforeEach('disallow relayer', async () => {
+                            sharedBeforeEach('disallow relayer', async () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, false);
                             });
 
@@ -620,13 +620,13 @@ describe('Vault - swaps', () => {
                         });
 
                         context('when the relayer is not whitelisted by the authorizer', () => {
-                          beforeEach('revoke role from relayer', async () => {
+                          sharedBeforeEach('revoke role from relayer', async () => {
                             const role = roleId(vault, 'batchSwapGivenOut');
                             await authorizer.connect(admin).revokeRole(role, other.address);
                           });
 
                           context('when the relayer is allowed by the user', () => {
-                            beforeEach('allow relayer', async () => {
+                            sharedBeforeEach('allow relayer', async () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, true);
                             });
 
@@ -634,7 +634,7 @@ describe('Vault - swaps', () => {
                           });
 
                           context('when the relayer is not allowed by the user', () => {
-                            beforeEach('disallow relayer', async () => {
+                            sharedBeforeEach('disallow relayer', async () => {
                               await vault.connect(trader).changeRelayerAllowance(other.address, false);
                             });
 
@@ -645,13 +645,16 @@ describe('Vault - swaps', () => {
                     });
 
                     context('when withdrawing from internal balance', () => {
+                      beforeEach(() => {
+                        funds.fromInternalBalance = true;
+                      });
+
                       context.skip('when using less than available as internal balance', () => {
                         // TODO: add tests where no token transfers are needed and internal balance remains
                       });
 
                       context('when using more than available as internal balance', () => {
-                        beforeEach('deposit to internal balance', async () => {
-                          funds.fromInternalBalance = true;
+                        sharedBeforeEach('deposit to internal balance', async () => {
                           await vault
                             .connect(trader)
                             .depositToInternalBalance(
@@ -667,7 +670,7 @@ describe('Vault - swaps', () => {
                     });
 
                     context('when depositing from internal balance', () => {
-                      beforeEach('deposit to internal balance', async () => {
+                      beforeEach(() => {
                         funds.toInternalBalance = true;
                       });
 
@@ -775,7 +778,7 @@ describe('Vault - swaps', () => {
 
                   context('when pools do not offer same price', () => {
                     beforeEach('tweak the main pool to give back as much as it receives', async () => {
-                      const [poolAddress] = (await vault.getPool(poolIds[0])) as [string, unknown];
+                      const [poolAddress] = (await vault.getPool(mainPoolId)) as [string, unknown];
                       const pool = await ethers.getContractAt('MockPool', poolAddress);
                       await pool.setMultiplier(fp(1));
                     });
