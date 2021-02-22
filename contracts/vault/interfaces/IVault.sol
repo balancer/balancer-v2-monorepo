@@ -94,8 +94,8 @@ interface IVault {
     struct BalanceTransfer {
         IERC20 token;
         uint256 amount;
-        address source;
-        address destination;
+        address sender;
+        address recipient;
     }
 
     /**
@@ -104,7 +104,7 @@ interface IVault {
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits tokens from each `source` address into Internal Balances of the corresponding `destination`
+     * @dev Deposits tokens from each `sender` address into Internal Balances of the corresponding `recipient`
      * accounts specified in the struct. The sources must have allowed the Vault to use their tokens
      * via `IERC20.approve()`.
      * Allows aggregators to settle multiple accounts in a single transaction.
@@ -112,7 +112,7 @@ interface IVault {
     function depositToInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Withdraws tokens from each the internal balance of each `source` address into the `destination` accounts
+     * @dev Withdraws tokens from each the internal balance of each `sender` address into the `recipient` accounts
      * specified in the struct. Allows aggregators to settle multiple accounts in a single transaction.
      *
      * This charges protocol withdrawal fees.
@@ -120,8 +120,8 @@ interface IVault {
     function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Transfers tokens from the internal balance of each `source` address to Internal Balances
-     * of each `destination`. Allows aggregators to settle multiple accounts in a single transaction.
+     * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances
+     * of each `recipient`. Allows aggregators to settle multiple accounts in a single transaction.
      *
      * This does not charge protocol withdrawal fees.
      */

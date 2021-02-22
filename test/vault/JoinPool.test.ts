@@ -274,8 +274,8 @@ describe('Vault - join pool', () => {
               tokens.map((token) => ({
                 token: token.address,
                 amount: bn(1.5e18),
-                source: lp.address,
-                destination: lp.address,
+                sender: lp.address,
+                recipient: lp.address,
               }))
             );
           });
@@ -297,8 +297,8 @@ describe('Vault - join pool', () => {
               tokens.map((token) => ({
                 token: token.address,
                 amount: bn(1.5e18),
-                source: lp.address,
-                destination: lp.address,
+                sender: lp.address,
+                recipient: lp.address,
               }))
             );
           });
@@ -312,8 +312,8 @@ describe('Vault - join pool', () => {
               tokens.map((token) => ({
                 token: token.address,
                 amount: bn(1.5e18),
-                source: lp.address,
-                destination: lp.address,
+                sender: lp.address,
+                recipient: lp.address,
               }))
             );
           });

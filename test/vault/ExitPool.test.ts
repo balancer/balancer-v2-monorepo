@@ -101,8 +101,8 @@ describe('Vault - exit pool', () => {
         tokens.map((token) => ({
           token: token.address,
           amount: bn(50e18),
-          source: creator.address,
-          destination: creator.address,
+          sender: creator.address,
+          recipient: creator.address,
         }))
       );
     });
@@ -307,8 +307,8 @@ describe('Vault - exit pool', () => {
               tokens.map((token) => ({
                 token: token.address,
                 amount: bn(1.5e18),
-                source: recipient.address,
-                destination: recipient.address,
+                sender: recipient.address,
+                recipient: recipient.address,
               }))
             );
           });
@@ -330,8 +330,8 @@ describe('Vault - exit pool', () => {
               tokens.map((token) => ({
                 token: token.address,
                 amount: bn(1.5e18),
-                source: recipient.address,
-                destination: recipient.address,
+                sender: recipient.address,
+                recipient: recipient.address,
               }))
             );
           });

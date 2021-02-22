@@ -60,7 +60,7 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     await vault
       .connect(trader)
       .depositToInternalBalance([
-        { token: token.address, amount: depositBalance, source: trader.address, destination: trader.address },
+        { token: token.address, amount: depositBalance, sender: trader.address, recipient: trader.address },
       ]);
   }
 

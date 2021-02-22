@@ -262,8 +262,8 @@ describe('Vault - swaps', () => {
                             {
                               token: tokens.MKR.address,
                               amount: bn(0.3e18),
-                              source: trader.address,
-                              destination: trader.address,
+                              sender: trader.address,
+                              recipient: trader.address,
                             },
                           ]);
                         });
@@ -659,8 +659,8 @@ describe('Vault - swaps', () => {
                             {
                               token: tokens.MKR.address,
                               amount: bn(0.3e18),
-                              source: trader.address,
-                              destination: trader.address,
+                              sender: trader.address,
+                              recipient: trader.address,
                             },
                           ]);
                         });

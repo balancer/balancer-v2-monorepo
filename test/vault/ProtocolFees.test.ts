@@ -47,15 +47,15 @@ describe('Vault - protocol fees', () => {
       await vault.connect(feeSetter).setProtocolFees(0, bn(0.01e18), 0);
 
       const transfersIn = [
-        { token: tokens.DAI.address, amount: bn(20e18), source: user.address, destination: user.address },
-        { token: tokens.MKR.address, amount: bn(20e18), source: user.address, destination: user.address },
+        { token: tokens.DAI.address, amount: bn(20e18), sender: user.address, recipient: user.address },
+        { token: tokens.MKR.address, amount: bn(20e18), sender: user.address, recipient: user.address },
       ];
 
       await vault.connect(user).depositToInternalBalance(transfersIn);
 
       const transfersOut = [
-        { token: tokens.DAI.address, amount: bn(5e18), source: user.address, destination: user.address },
-        { token: tokens.MKR.address, amount: bn(10e18), source: user.address, destination: user.address },
+        { token: tokens.DAI.address, amount: bn(5e18), sender: user.address, recipient: user.address },
+        { token: tokens.MKR.address, amount: bn(10e18), sender: user.address, recipient: user.address },
       ];
 
       // Withdraw internal balance - this will cause withdraw fees to be charged

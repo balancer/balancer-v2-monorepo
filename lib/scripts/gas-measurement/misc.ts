@@ -45,8 +45,8 @@ export async function setupEnvironment(): Promise<{
     transfers.push({
       token: tokenAddresses[idx],
       amount: bn(1e18),
-      source: trader.address,
-      destination: trader.address,
+      sender: trader.address,
+      recipient: trader.address,
     });
   }
 

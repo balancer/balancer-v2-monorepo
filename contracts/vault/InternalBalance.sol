@@ -44,12 +44,12 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
 
     function depositToInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].source;
+            address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
             IERC20 token = transfers[i].token;
             uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].destination;
+            address recipient = transfers[i].recipient;
 
             _increaseInternalBalance(recipient, token, amount);
             token.safeTransferFrom(sender, address(this), amount);
@@ -58,12 +58,12 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
 
     function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].source;
+            address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
             IERC20 token = transfers[i].token;
             uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].destination;
+            address recipient = transfers[i].recipient;
 
             uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
             _increaseCollectedFees(token, feeAmount);
@@ -75,12 +75,12 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
 
     function transferInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].source;
+            address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
             IERC20 token = transfers[i].token;
             uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].destination;
+            address recipient = transfers[i].recipient;
 
             _decreaseInternalBalance(sender, token, amount);
             _increaseInternalBalance(recipient, token, amount);
