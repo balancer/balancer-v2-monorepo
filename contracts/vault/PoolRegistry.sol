@@ -71,15 +71,6 @@ abstract contract PoolRegistry is
     }
 
     /**
-     * @dev Reverts unless `poolId` corresponds to a registered Pool, `token` is registered for that Pool, and the
-     * caller is the Pool's Asset Manager for `token`.
-     */
-    modifier onlyPoolAssetManager(bytes32 poolId, IERC20 token) {
-        _ensurePoolAssetManagerIsSender(poolId, token);
-        _;
-    }
-
-    /**
      * @dev Creates a Pool ID.
      *
      * These are deterministically created by packing into the ID the Pool's contract address and its specialization
@@ -520,7 +511,6 @@ abstract contract PoolRegistry is
             _ensurePoolAssetManagerIsSender(poolId, token);
 
             uint256 amount = transfers[i].amount;
-
             if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
                 _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
             } else if (specialization == PoolSpecialization.TWO_TOKEN) {
@@ -530,7 +520,6 @@ abstract contract PoolRegistry is
             }
 
             token.safeTransfer(msg.sender, amount);
-
             emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
         }
     }
@@ -548,7 +537,6 @@ abstract contract PoolRegistry is
             _ensurePoolAssetManagerIsSender(poolId, token);
 
             uint256 amount = transfers[i].amount;
-
             if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
                 _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
             } else if (specialization == PoolSpecialization.TWO_TOKEN) {
@@ -558,7 +546,6 @@ abstract contract PoolRegistry is
             }
 
             token.safeTransferFrom(msg.sender, address(this), amount);
-
             emit PoolBalanceChanged(poolId, msg.sender, token, -(amount.toInt256()));
         }
     }
@@ -576,7 +563,6 @@ abstract contract PoolRegistry is
             _ensurePoolAssetManagerIsSender(poolId, token);
 
             uint256 amount = transfers[i].amount;
-
             if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
                 _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
             } else if (specialization == PoolSpecialization.TWO_TOKEN) {
