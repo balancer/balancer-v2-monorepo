@@ -17,11 +17,12 @@ const SNAPSHOTS: string[] = [];
  */
 export function sharedBeforeEach(title: string, initializer: Mocha.AsyncFunc, provider?: EthereumProvider): void;
 export function sharedBeforeEach(initializer: Mocha.AsyncFunc, provider?: EthereumProvider): void;
+
 export function sharedBeforeEach(
   titleOrInitializer: string | Mocha.AsyncFunc,
   initializerOrProvider?: Mocha.AsyncFunc | EthereumProvider,
   optionalProvider?: EthereumProvider
-) {
+): void {
   const title = typeof titleOrInitializer === 'string' ? titleOrInitializer : undefined;
 
   let initializer: Mocha.AsyncFunc;
@@ -50,7 +51,8 @@ export function sharedBeforeEach(
       SNAPSHOTS.push(await takeSnapshot(provider));
       initialized = true;
     } else {
-      const snapshotId = SNAPSHOTS.pop()!;
+      const snapshotId = SNAPSHOTS.pop();
+      if (snapshotId === undefined) throw Error('Missing snapshot ID');
       await revert(provider, snapshotId);
       SNAPSHOTS.push(await takeSnapshot(provider));
     }
