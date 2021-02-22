@@ -15,8 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -194,8 +192,6 @@ abstract contract PoolRegistry is
         IERC20[] calldata tokens,
         address[] calldata assetManagers
     ) external override nonReentrant onlyPool(poolId) {
-        console.log(tokens.length);
-        console.log(assetManagers.length);
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
