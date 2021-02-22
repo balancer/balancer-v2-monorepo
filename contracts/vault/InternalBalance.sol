@@ -42,34 +42,28 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         }
     }
 
-    function depositToInternalBalance(
-        address sender,
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address recipient
-    ) external override nonReentrant authenticateFor(sender) {
-        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
+    function depositToInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
+        for (uint256 i = 0; i < transfers.length; i++) {
+            address sender = transfers[i].sender;
+            _authenticateCallerFor(sender);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = tokens[i];
-            uint256 amount = amounts[i];
+            IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
+            address recipient = transfers[i].recipient;
 
             _increaseInternalBalance(recipient, token, amount);
             token.safeTransferFrom(sender, address(this), amount);
         }
     }
 
-    function withdrawFromInternalBalance(
-        address sender,
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address recipient
-    ) external override nonReentrant authenticateFor(sender) {
-        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
+    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
+        for (uint256 i = 0; i < transfers.length; i++) {
+            address sender = transfers[i].sender;
+            _authenticateCallerFor(sender);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = tokens[i];
-            uint256 amount = amounts[i];
+            IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
+            address recipient = transfers[i].recipient;
 
             uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
             _increaseCollectedFees(token, feeAmount);
@@ -79,18 +73,14 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         }
     }
 
-    function transferInternalBalance(
-        address sender,
-        IERC20[] memory tokens,
-        uint256[] memory amounts,
-        address[] memory recipients
-    ) external override nonReentrant authenticateFor(sender) {
-        InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length, recipients.length);
+    function transferInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
+        for (uint256 i = 0; i < transfers.length; i++) {
+            address sender = transfers[i].sender;
+            _authenticateCallerFor(sender);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = tokens[i];
-            uint256 amount = amounts[i];
-            address recipient = recipients[i];
+            IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
+            address recipient = transfers[i].recipient;
 
             _decreaseInternalBalance(sender, token, amount);
             _increaseInternalBalance(recipient, token, amount);

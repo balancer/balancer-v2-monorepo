@@ -192,7 +192,7 @@ describe('Vault - pool registry', () => {
                     });
                   } else {
                     it('can be registered individually', async () => {
-                      await tokens.forEach((token) => pool.registerTokens([token.address], [ZERO_ADDRESS]));
+                      await tokens.asyncEach((token) => pool.registerTokens([token.address], [ZERO_ADDRESS]));
 
                       const { tokens: poolTokens, balances } = await vault.getPoolTokens(poolId);
                       expect(poolTokens).to.have.members(tokens.addresses);

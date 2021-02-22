@@ -94,7 +94,7 @@ export async function expectBalanceChange(
     const address = accountToAddress(account);
     trackers[address] = {};
 
-    await tokens.forEach(async (token) => {
+    await tokens.asyncEach(async (token) => {
       trackers[address][token.symbol] = await balanceTracker(address, token);
     });
   }
@@ -105,7 +105,7 @@ export async function expectBalanceChange(
     const address = accountToAddress(account);
     const accountTrackers = trackers[address];
 
-    await tokens.forEach(async ({ symbol }) => {
+    await tokens.asyncEach(async ({ symbol }) => {
       const delta = await accountTrackers[symbol].delta();
 
       const change = (changes || {})[symbol];

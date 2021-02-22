@@ -97,9 +97,14 @@ describe('Vault - exit pool', () => {
 
       // Deposit to Internal Balance from the creator so that the Vault has some additional tokens. Otherwise, tests
       // might fail not because the Vault checks its accounting, but because it is out of tokens to send.
-      await vault
-        .connect(creator)
-        .depositToInternalBalance(creator.address, tokens.addresses, array(50e18), creator.address);
+      await vault.connect(creator).depositToInternalBalance(
+        tokens.map((token) => ({
+          token: token.address,
+          amount: bn(50e18),
+          sender: creator.address,
+          recipient: creator.address,
+        }))
+      );
     });
 
     type ExitPoolData = {
@@ -298,9 +303,14 @@ describe('Vault - exit pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault
-              .connect(recipient)
-              .depositToInternalBalance(recipient.address, tokens.addresses, array(1.5e18), recipient.address);
+            await vault.connect(recipient).depositToInternalBalance(
+              tokens.map((token) => ({
+                token: token.address,
+                amount: bn(1.5e18),
+                sender: recipient.address,
+                recipient: recipient.address,
+              }))
+            );
           });
 
           itExitsCorrectly(dueProtocolFeeAmounts, fromRelayer, toInternalBalance);
@@ -316,9 +326,14 @@ describe('Vault - exit pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault
-              .connect(recipient)
-              .depositToInternalBalance(recipient.address, tokens.addresses, array(1.5e18), recipient.address);
+            await vault.connect(recipient).depositToInternalBalance(
+              tokens.map((token) => ({
+                token: token.address,
+                amount: bn(1.5e18),
+                sender: recipient.address,
+                recipient: recipient.address,
+              }))
+            );
           });
 
           itExitsCorrectly(dueProtocolFeeAmounts, fromRelayer, toInternalBalance);
@@ -408,7 +423,7 @@ describe('Vault - exit pool', () => {
 
         await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance });
 
-        await tokens.forEach(async (token: Token) => {
+        await tokens.asyncEach(async (token: Token) => {
           const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
           expect(newBlockNumber).to.equal(currentBlockNumber + 1);
         });

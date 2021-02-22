@@ -270,7 +270,14 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(lp.address, tokens.addresses, array(1.5e18), lp.address);
+            await vault.connect(lp).depositToInternalBalance(
+              tokens.map((token) => ({
+                token: token.address,
+                amount: bn(1.5e18),
+                sender: lp.address,
+                recipient: lp.address,
+              }))
+            );
           });
 
           itJoinsCorrectly(dueProtocolFeeAmounts, fromRelayer, fromInternalBalance);
@@ -286,15 +293,29 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(lp.address, tokens.addresses, array(1.5e18), lp.address);
+            await vault.connect(lp).depositToInternalBalance(
+              tokens.map((token) => ({
+                token: token.address,
+                amount: bn(1.5e18),
+                sender: lp.address,
+                recipient: lp.address,
+              }))
+            );
           });
 
           itJoinsCorrectly(dueProtocolFeeAmounts, fromRelayer, fromInternalBalance);
         });
 
         context('with enough internal balance', () => {
-          sharedBeforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(lp.address, tokens.addresses, array(100e18), lp.address);
+          beforeEach('deposit to internal balance', async () => {
+            await vault.connect(lp).depositToInternalBalance(
+              tokens.map((token) => ({
+                token: token.address,
+                amount: bn(1.5e18),
+                sender: lp.address,
+                recipient: lp.address,
+              }))
+            );
           });
 
           itJoinsCorrectly(dueProtocolFeeAmounts, fromRelayer, fromInternalBalance);
@@ -387,7 +408,7 @@ describe('Vault - join pool', () => {
 
         await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
 
-        await tokens.forEach(async (token: Token) => {
+        await tokens.asyncEach(async (token: Token) => {
           const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
           expect(newBlockNumber).to.equal(currentBlockNumber + 1);
         });
@@ -405,9 +426,9 @@ describe('Vault - join pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const previousCollectedFees: BigNumber[] = await tokens.map((token) => vault.getCollectedFees([token.address]));
+        const previousCollectedFees: BigNumber[] = await vault.getCollectedFees(tokens.addresses);
         await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
-        const currentCollectedFees: BigNumber[] = await tokens.map((token) => vault.getCollectedFees([token.address]));
+        const currentCollectedFees: BigNumber[] = await vault.getCollectedFees(tokens.addresses);
 
         expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(dueProtocolFeeAmounts);
       });
@@ -439,7 +460,7 @@ describe('Vault - join pool', () => {
       it('reverts if any of the amounts to transfer is larger than lp balance', async () => {
         const expectedTokensToTransfer = arraySub(joinAmounts, expectedInternalBalanceToUse);
 
-        await tokens.forEach(async (token: Token, i: number) => {
+        await tokens.asyncEach(async (token: Token, i: number) => {
           const amount = expectedTokensToTransfer[i];
           if (amount.gt(0)) {
             // Burn excess balance so that the LP is missing one token to join

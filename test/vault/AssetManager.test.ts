@@ -331,7 +331,7 @@ describe('Vault - asset manager', function () {
         // Deregistering tokens should remove the asset managers
         await pool.deregisterTokens([tokens.DAI.address, tokens.MKR.address]);
 
-        await tokens.forEach(async (token: Token) => {
+        await tokens.asyncEach(async (token: Token) => {
           await expect(vault.getPoolTokenInfo(poolId, token.address)).to.be.revertedWith('TOKEN_NOT_REGISTERED');
         });
 

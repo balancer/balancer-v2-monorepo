@@ -33,7 +33,7 @@ describe('Vault - flash loans', () => {
 
     // The receiver will mint the fees it
     const MINTER_ROLE = ethers.utils.id('MINTER_ROLE');
-    await tokens.forEach((token) => token.instance.connect(minter).grantRole(MINTER_ROLE, receiver.address));
+    await tokens.asyncEach((token) => token.instance.connect(minter).grantRole(MINTER_ROLE, receiver.address));
   });
 
   context('with no protocol fees', () => {
