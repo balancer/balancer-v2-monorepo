@@ -47,12 +47,6 @@ export type OneToOneValidatorData = {
   deadline: BigNumberish;
 };
 
-export type BalanceTransfer = {
-  token: string;
-  amount: BigNumberish;
-  account: string;
-};
-
 export function getTokensSwaps(tokens: TokenList, trades: Array<Trade>): [Array<string>, Array<Swap>] {
   const swaps: Array<Swap> = [];
 

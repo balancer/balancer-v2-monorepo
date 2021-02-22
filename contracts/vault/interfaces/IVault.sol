@@ -618,7 +618,7 @@ interface IVault {
      * and then reverting unless the tokens plus a protocol fee have been returned.
      *
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
-     * loan for each token contract.
+     * loan for each token contract. `tokens` must be sorted in ascending order.
      *
      * The 'receiverData' field is ignored by the Vault, and forwarded as-is to `receiver` as part of the
      * `receiveFlashLoan` call.

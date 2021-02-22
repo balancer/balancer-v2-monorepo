@@ -4,29 +4,31 @@ import { Dictionary } from 'lodash';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import Token from '../helpers/models/tokens/Token';
+import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { bn, fp, pct } from '../../lib/helpers/numbers';
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { deployTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
 
 describe('Vault - internal balance', () => {
-  let admin: SignerWithAddress, sender: SignerWithAddress, otherSender: SignerWithAddress, recipient: SignerWithAddress;
+  let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
   let relayer: SignerWithAddress, otherRecipient: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
-  let tokens: TokenList = {};
+  let tokens: TokenList;
 
   before('setup signers', async () => {
-    [, admin, sender, otherSender, recipient, otherRecipient, relayer] = await ethers.getSigners();
+    [, admin, sender, recipient, otherRecipient, relayer] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
+  sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18]);
+    tokens = await TokenList.create(['DAI', 'MKR']);
   });
 
   describe('deposit', () => {
@@ -84,13 +86,13 @@ describe('Vault - internal balance', () => {
 
       context('when the token is not the zero address', () => {
         context('when the sender does hold enough balance', () => {
-          beforeEach('mint tokens', async () => {
-            await mintTokens(tokens, 'DAI', sender, initialBalance);
+          sharedBeforeEach('mint tokens', async () => {
+            await tokens.DAI.mint(sender, initialBalance);
           });
 
           context('when the given amount is approved by the sender', () => {
-            beforeEach('approve tokens', async () => {
-              await tokens.DAI.connect(sender).approve(vault.address, initialBalance);
+            sharedBeforeEach('approve tokens', async () => {
+              await tokens.DAI.approve(vault.address, initialBalance, { from: sender });
             });
 
             context('when tokens and balances match', () => {
@@ -152,20 +154,23 @@ describe('Vault - internal balance', () => {
     });
 
     context('when the sender is a relayer', () => {
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(relayer);
-        await mintTokens(tokens, 'DAI', sender, initialBalance);
-        await tokens.DAI.connect(sender).approve(vault.address, initialBalance);
+      });
+
+      sharedBeforeEach('mint tokens for sender', async () => {
+        await tokens.DAI.mint(sender, initialBalance);
+        await tokens.DAI.approve(vault, initialBalance, { from: sender });
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        beforeEach('grant role to relayer', async () => {
+        sharedBeforeEach('grant role to relayer', async () => {
           const role = roleId(vault, 'depositToInternalBalance');
           await authorizer.connect(admin).grantRole(role, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -190,7 +195,7 @@ describe('Vault - internal balance', () => {
 
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -209,7 +214,7 @@ describe('Vault - internal balance', () => {
         });
 
         context('when the relayer is not allowed by the user', () => {
-          beforeEach('disallow relayer', async () => {
+          sharedBeforeEach('disallow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, false);
           });
 
@@ -278,7 +283,7 @@ describe('Vault - internal balance', () => {
         context('with protocol withdraw fees', () => {
           const withdrawFee = 0.01;
 
-          beforeEach('set fee', async () => {
+          sharedBeforeEach('set fee', async () => {
             const role = await roleId(vault, 'setProtocolFees');
             await authorizer.connect(admin).grantRole(role, admin.address);
             await vault.connect(admin).setProtocolFees(0, fp(withdrawFee), 0);
@@ -310,18 +315,23 @@ describe('Vault - internal balance', () => {
     };
 
     context('when the sender is a user', () => {
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(sender);
       });
 
       context('when the sender has enough internal balance', () => {
         const depositedAmount = bn(10e18);
 
-        beforeEach('deposit internal balance', async () => {
-          await mintTokens(tokens, 'DAI', sender, depositedAmount);
-          await tokens.DAI.connect(sender).approve(vault.address, depositedAmount);
+        sharedBeforeEach('deposit internal balance', async () => {
+          await tokens.DAI.mint(sender, depositedAmount);
+          await tokens.DAI.approve(vault, depositedAmount, { from: sender });
           await vault.depositToInternalBalance([
-            { token: tokens.DAI.address, amount: depositedAmount, source: sender.address, destination: sender.address },
+            {
+              token: tokens.DAI.address,
+              amount: depositedAmount,
+              source: sender.address,
+              destination: sender.address,
+            },
           ]);
         });
 
@@ -372,11 +382,13 @@ describe('Vault - internal balance', () => {
     context('when the sender is a relayer', () => {
       const depositedAmount = bn(1e18);
 
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(relayer);
+      });
 
-        await mintTokens(tokens, 'DAI', sender, depositedAmount);
-        await tokens.DAI.connect(sender).approve(vault.address, depositedAmount);
+      sharedBeforeEach('mint tokens and deposit to internal balance', async () => {
+        await tokens.DAI.mint(sender, depositedAmount);
+        await tokens.DAI.approve(vault, depositedAmount, { from: sender });
         await vault
           .connect(sender)
           .depositToInternalBalance([
@@ -385,13 +397,13 @@ describe('Vault - internal balance', () => {
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        beforeEach('grant role to relayer', async () => {
+        sharedBeforeEach('grant role to relayer', async () => {
           const role = roleId(vault, 'withdrawFromInternalBalance');
           await authorizer.connect(admin).grantRole(role, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -416,7 +428,7 @@ describe('Vault - internal balance', () => {
 
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -435,7 +447,7 @@ describe('Vault - internal balance', () => {
         });
 
         context('when the relayer is not allowed by the user', () => {
-          beforeEach('disallow relayer', async () => {
+          sharedBeforeEach('disallow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, false);
           });
 
@@ -457,12 +469,6 @@ describe('Vault - internal balance', () => {
   });
 
   describe('transfer', () => {
-    let tokenAddresses: string[];
-
-    beforeEach('set token addresses', async () => {
-      tokenAddresses = Object.values(tokens).map((token) => token.address);
-    });
-
     function itHandlesTransfersProperly(
       initialBalances: Dictionary<BigNumber>,
       transferredAmounts: Dictionary<BigNumber>
@@ -470,46 +476,52 @@ describe('Vault - internal balance', () => {
       const amounts = Object.values(transferredAmounts);
 
       it('transfers the tokens from the sender to a single recipient', async () => {
-        const previousSenderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
-        const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
-        const transfers = [];
+        const previousSenderBalances = await vault.getInternalBalance(sender.address, tokens.addresses);
+        const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
 
-        for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-          transfers.push({
-            token: tokenAddresses[idx],
-            amount: amounts[idx],
+        await vault.transferInternalBalance(
+          tokens.map((token, i) => ({
+            token: token.address,
+            amount: amounts[i],
             source: sender.address,
             destination: recipient.address,
-          });
-        }
+          }))
+        );
 
-        await vault.transferInternalBalance(transfers);
+        const senderBalances = await vault.getInternalBalance(sender.address, tokens.addresses);
+        const recipientBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
 
-        const senderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
-        const recipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
-
-        for (let i = 0; i < tokenAddresses.length; i++) {
+        for (let i = 0; i < tokens.addresses.length; i++) {
           expect(senderBalances[i]).to.equal(previousSenderBalances[i].sub(amounts[i]));
           expect(recipientBalances[i]).to.equal(previousRecipientBalances[i].add(amounts[i]));
         }
       });
 
       it('transfers the tokens from the sender to multiple recipients', async () => {
-        const previousSenderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
-        const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
-        const previousOtherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokenAddresses);
-        const transfers = [
-          { token: tokenAddresses[0], amount: amounts[0], source: sender.address, destination: recipient.address },
-          { token: tokenAddresses[1], amount: amounts[1], source: sender.address, destination: otherRecipient.address },
-        ];
+        const previousSenderBalances = await vault.getInternalBalance(sender.address, tokens.addresses);
+        const previousRecipientBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
+        const previousOtherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokens.addresses);
 
-        await vault.transferInternalBalance(transfers);
+        await vault.transferInternalBalance([
+          {
+            token: tokens.first.address,
+            amount: amounts[0],
+            source: sender.address,
+            destination: recipient.address,
+          },
+          {
+            token: tokens.second.address,
+            amount: amounts[1],
+            source: sender.address,
+            destination: otherRecipient.address,
+          },
+        ]);
 
-        const senderBalances = await vault.getInternalBalance(sender.address, tokenAddresses);
-        const recipientBalances = await vault.getInternalBalance(recipient.address, tokenAddresses);
-        const otherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokenAddresses);
+        const senderBalances = await vault.getInternalBalance(sender.address, tokens.addresses);
+        const recipientBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
+        const otherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokens.addresses);
 
-        for (let i = 0; i < tokenAddresses.length; i++) {
+        for (let i = 0; i < tokens.addresses.length; i++) {
           expect(senderBalances[i]).to.equal(previousSenderBalances[i].sub(amounts[i]));
         }
 
@@ -523,47 +535,41 @@ describe('Vault - internal balance', () => {
       it('does not affect the token balances of the sender nor the recipient', async () => {
         const previousBalances: Dictionary<Dictionary<BigNumber>> = {};
 
-        for (const symbol in tokens) {
-          const senderBalance = await tokens[symbol].balanceOf(sender.address);
-          const recipientBalance = await tokens[symbol].balanceOf(recipient.address);
-          previousBalances[symbol] = { sender: senderBalance, recipient: recipientBalance };
-        }
+        await tokens.asyncEach(async (token: Token) => {
+          const senderBalance = await token.balanceOf(sender.address);
+          const recipientBalance = await token.balanceOf(recipient.address);
+          previousBalances[token.symbol] = { sender: senderBalance, recipient: recipientBalance };
+        });
 
-        const transfers = [];
-
-        for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-          transfers.push({
-            token: tokenAddresses[idx],
-            amount: amounts[idx],
+        await vault.transferInternalBalance(
+          tokens.map((token, i) => ({
+            token: token.address,
+            amount: amounts[i],
             source: sender.address,
             destination: recipient.address,
-          });
-        }
+          }))
+        );
 
-        await vault.transferInternalBalance(transfers);
+        await tokens.asyncEach(async (token: Token) => {
+          const senderBalance = await token.balanceOf(sender.address);
+          expect(senderBalance).to.equal(previousBalances[token.symbol].sender);
 
-        for (const symbol in tokens) {
-          const senderBalance = await tokens[symbol].balanceOf(sender.address);
-          expect(senderBalance).to.equal(previousBalances[symbol].sender);
-
-          const recipientBalance = await tokens[symbol].balanceOf(recipient.address);
-          expect(recipientBalance).to.equal(previousBalances[symbol].recipient);
-        }
+          const recipientBalance = await token.balanceOf(recipient.address);
+          expect(recipientBalance).to.equal(previousBalances[token.symbol].recipient);
+        });
       });
 
       it('emits an event for each transfer', async () => {
-        const transfers = [];
-
-        for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-          transfers.push({
-            token: tokenAddresses[idx],
-            amount: amounts[idx],
-            source: sender.address,
-            destination: recipient.address,
-          });
-        }
-
-        const receipt = await (await vault.transferInternalBalance(transfers)).wait();
+        const receipt = await (
+          await vault.transferInternalBalance(
+            tokens.map((token, i) => ({
+              token: token.address,
+              amount: amounts[i],
+              source: sender.address,
+              destination: recipient.address,
+            }))
+          )
+        ).wait();
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: sender.address,
@@ -592,121 +598,113 @@ describe('Vault - internal balance', () => {
     }
 
     function depositInitialBalances(initialBalances: Dictionary<BigNumber>) {
-      beforeEach('deposit initial balances', async () => {
-        for (const symbol in tokens) {
-          const token = tokens[symbol];
-          const amount = initialBalances[symbol];
-          await mintTokens(tokens, symbol, sender, amount);
-          await token.connect(sender).approve(vault.address, amount);
-        }
+      sharedBeforeEach('deposit initial balances', async () => {
+        const balances = await tokens.asyncMap(async (token: Token) => {
+          const amount = initialBalances[token.symbol];
+          await token.mint(sender, amount);
+          await token.approve(vault, amount, { from: sender });
+          return amount;
+        });
 
-        const balances = Object.values(initialBalances);
-        const transfers = [];
-
-        for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-          transfers.push({
-            token: tokenAddresses[idx],
-            amount: balances[idx],
+        await vault.connect(sender).depositToInternalBalance(
+          tokens.map((token, i) => ({
+            token: token.address,
+            amount: balances[i],
             source: sender.address,
             destination: sender.address,
-          });
-        }
-
-        await vault.connect(sender).depositToInternalBalance(transfers);
+          }))
+        );
       });
     }
 
     context('when the sender is a user', () => {
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(sender);
       });
 
       function itReverts(transferredAmounts: Dictionary<BigNumber>, errorReason = 'INSUFFICIENT_INTERNAL_BALANCE') {
         it('reverts', async () => {
           const amounts = Object.values(transferredAmounts);
-          const transfers = [];
-
-          for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-            transfers.push({
-              token: tokenAddresses[idx],
-              amount: amounts[idx],
-              source: sender.address,
-              destination: recipient.address,
-            });
-          }
-
-          await expect(vault.transferInternalBalance(transfers)).to.be.revertedWith(errorReason);
+          await expect(
+            vault.transferInternalBalance(
+              tokens.map((token, i) => ({
+                token: token.address,
+                amount: amounts[i],
+                source: sender.address,
+                destination: recipient.address,
+              }))
+            )
+          ).to.be.revertedWith(errorReason);
         });
       }
 
-      context('when the given input is correct', () => {
-        context('when the sender specifies some balance', () => {
-          const transferredAmounts = { DAI: bn(1e16), MKR: bn(2e16) };
+      context('when the sender specifies some balance', () => {
+        const transferredAmounts = { DAI: bn(1e16), MKR: bn(2e16) };
 
-          context('when the sender holds enough balance', () => {
-            const initialBalances = { DAI: bn(1e18), MKR: bn(5e19) };
+        context('when the sender holds enough balance', () => {
+          const initialBalances = { DAI: bn(1e18), MKR: bn(5e19) };
 
-            depositInitialBalances(initialBalances);
-            itHandlesTransfersProperly(initialBalances, transferredAmounts);
-          });
-
-          context('when the sender does not hold said balance', () => {
-            context('when the sender does not hold enough balance of one token', () => {
-              depositInitialBalances({ DAI: bn(10), MKR: bn(5e19) });
-
-              itReverts(transferredAmounts);
-            });
-
-            context('when the sender does not hold enough balance of the other token', () => {
-              depositInitialBalances({ DAI: bn(1e18), MKR: bn(5) });
-
-              itReverts(transferredAmounts);
-            });
-
-            context('when the sender does not hold enough balance of both tokens', () => {
-              depositInitialBalances({ DAI: bn(10), MKR: bn(5) });
-
-              itReverts(transferredAmounts);
-            });
-          });
+          depositInitialBalances(initialBalances);
+          itHandlesTransfersProperly(initialBalances, transferredAmounts);
         });
 
-        context('when the sender does not specify any balance', () => {
-          const transferredAmounts = { DAI: bn(0), MKR: bn(0) };
+        context('when the sender does not hold said balance', () => {
+          context('when the sender does not hold enough balance of one token', () => {
+            depositInitialBalances({ DAI: bn(10), MKR: bn(5e19) });
 
-          context('when the sender holds some balance', () => {
-            const initialBalances: Dictionary<BigNumber> = { DAI: bn(1e18), MKR: bn(5e19) };
-
-            depositInitialBalances(initialBalances);
-            itHandlesTransfersProperly(initialBalances, transferredAmounts);
+            itReverts(transferredAmounts);
           });
 
-          context('when the sender does not have any balance', () => {
-            const initialBalances = { DAI: bn(0), MKR: bn(0) };
+          context('when the sender does not hold enough balance of the other token', () => {
+            depositInitialBalances({ DAI: bn(1e18), MKR: bn(5) });
 
-            itHandlesTransfersProperly(initialBalances, transferredAmounts);
+            itReverts(transferredAmounts);
           });
+
+          context('when the sender does not hold enough balance of both tokens', () => {
+            depositInitialBalances({ DAI: bn(10), MKR: bn(5) });
+
+            itReverts(transferredAmounts);
+          });
+        });
+      });
+
+      context('when the sender does not specify any balance', () => {
+        const transferredAmounts = { DAI: bn(0), MKR: bn(0) };
+
+        context('when the sender holds some balance', () => {
+          const initialBalances: Dictionary<BigNumber> = { DAI: bn(1e18), MKR: bn(5e19) };
+
+          depositInitialBalances(initialBalances);
+          itHandlesTransfersProperly(initialBalances, transferredAmounts);
+        });
+
+        context('when the sender does not have any balance', () => {
+          const initialBalances = { DAI: bn(0), MKR: bn(0) };
+
+          itHandlesTransfersProperly(initialBalances, transferredAmounts);
         });
       });
     });
 
     context('when the sender is a relayer', () => {
       const transferredAmounts = { DAI: bn(1e16), MKR: bn(2e16) };
+      const amounts = Object.values(transferredAmounts);
 
-      beforeEach('set sender', async () => {
+      beforeEach('set sender', () => {
         vault = vault.connect(relayer);
       });
 
       depositInitialBalances(transferredAmounts);
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        beforeEach('grant role to relayer', async () => {
+        sharedBeforeEach('grant role to relayer', async () => {
           const role = roleId(vault, 'transferInternalBalance');
           await authorizer.connect(admin).grantRole(role, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
@@ -715,65 +713,56 @@ describe('Vault - internal balance', () => {
 
         context('when the relayer is not allowed by the user', () => {
           it('reverts', async () => {
-            const transfers = [];
-            const amounts = Object.values(transferredAmounts);
-
-            for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({
-                token: tokenAddresses[idx],
-                amount: amounts[idx],
-                source: sender.address,
-                destination: recipient.address,
-              });
-            }
-
-            await expect(vault.transferInternalBalance(transfers)).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+            await expect(
+              vault.transferInternalBalance(
+                tokens.map((token, i) => ({
+                  token: token.address,
+                  amount: amounts[i],
+                  source: sender.address,
+                  destination: recipient.address,
+                }))
+              )
+            ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
           });
         });
       });
 
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
-          beforeEach('allow relayer', async () => {
+          sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
           it('reverts', async () => {
-            const transfers = [];
-            const amounts = Object.values(transferredAmounts);
-
-            for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({
-                token: tokenAddresses[idx],
-                amount: amounts[idx],
-                source: sender.address,
-                destination: recipient.address,
-              });
-            }
-
-            await expect(vault.transferInternalBalance(transfers)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(
+              vault.transferInternalBalance(
+                tokens.map((token, i) => ({
+                  token: token.address,
+                  amount: amounts[i],
+                  source: sender.address,
+                  destination: recipient.address,
+                }))
+              )
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
 
         context('when the relayer is not allowed by the user', () => {
-          beforeEach('disallow relayer', async () => {
+          sharedBeforeEach('disallow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, false);
           });
 
           it('reverts', async () => {
-            const transfers = [];
-            const amounts = Object.values(transferredAmounts);
-
-            for (let idx = 0; idx < tokenAddresses.length; ++idx) {
-              transfers.push({
-                token: tokenAddresses[idx],
-                amount: amounts[idx],
-                source: sender.address,
-                destination: recipient.address,
-              });
-            }
-
-            await expect(vault.transferInternalBalance(transfers)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(
+              vault.transferInternalBalance(
+                tokens.map((token, i) => ({
+                  token: token.address,
+                  amount: amounts[i],
+                  source: sender.address,
+                  destination: recipient.address,
+                }))
+              )
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
       });

@@ -3,47 +3,41 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import TokenList from '../helpers/models/tokens/TokenList';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
+
 import { deploy } from '../../lib/helpers/deploy';
+import { roleId } from '../../lib/helpers/roles';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
-import { TokenList, deployTokens } from '../../lib/helpers/tokens';
-import { roleId } from '../../lib/helpers/roles';
 
 describe('Vault - flash loans', () => {
-  let admin: SignerWithAddress;
-  let minter: SignerWithAddress;
-  let feeSetter: SignerWithAddress;
-  let other: SignerWithAddress;
-
-  let authorizer: Contract;
-  let vault: Contract;
-  let receiver: Contract;
-  let tokens: TokenList = {};
+  let admin: SignerWithAddress, minter: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
+  let authorizer: Contract, vault: Contract, receiver: Contract;
+  let tokens: TokenList;
 
   before('setup', async () => {
     [, admin, minter, feeSetter, other] = await ethers.getSigners();
   });
 
-  beforeEach('deploy vault & tokens', async () => {
+  sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
-    tokens = await deployTokens(['DAI', 'MKR'], [18, 18], minter);
 
-    const role = roleId(vault, 'setProtocolFees');
-    await authorizer.connect(admin).grantRole(role, feeSetter.address);
+    const SET_PROTOCOL_FEES_ROLE = roleId(vault, 'setProtocolFees');
+    await authorizer.connect(admin).grantRole(SET_PROTOCOL_FEES_ROLE, feeSetter.address);
 
-    for (const symbol in tokens) {
-      // Grant token balance to the Vault - typically this would happen by the pool controllers adding liquidity
-      await tokens[symbol].connect(minter).mint(vault.address, bn(100e18));
+    tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
+    await tokens.mint({ to: vault, amount: bn(100e18) });
 
-      // The receiver will mint the fees it
-      await tokens[symbol].connect(minter).grantRole(ethers.utils.id('MINTER_ROLE'), receiver.address);
-    }
+    // The receiver will mint the fees it
+    const MINTER_ROLE = ethers.utils.id('MINTER_ROLE');
+    await tokens.asyncEach((token) => token.instance.connect(minter).grantRole(MINTER_ROLE, receiver.address));
   });
 
   context('with no protocol fees', () => {
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFees(0, 0, 0);
     });
 
@@ -77,7 +71,7 @@ describe('Vault - flash loans', () => {
   context('with protocol fees', () => {
     const feePercentage = fp(0.005); // 0.5%
 
-    beforeEach(async () => {
+    sharedBeforeEach(async () => {
       await vault.connect(feeSetter).setProtocolFees(0, 0, feePercentage);
     });
 
@@ -188,6 +182,22 @@ describe('Vault - flash loans', () => {
         await vault
           .connect(other)
           .flashLoan(receiver.address, [tokens.DAI.address, tokens.MKR.address], [bn(100e18), bn(100e18)], '0x10');
+      });
+
+      it('reverts if tokens are not unique', async () => {
+        await expect(
+          vault
+            .connect(other)
+            .flashLoan(receiver.address, [tokens.DAI.address, tokens.DAI.address], [bn(100e18), bn(100e18)], '0x10')
+        ).to.be.revertedWith('UNSORTED_TOKENS');
+      });
+
+      it('reverts if tokens are not sorted', async () => {
+        await expect(
+          vault
+            .connect(other)
+            .flashLoan(receiver.address, [tokens.MKR.address, tokens.DAI.address], [bn(100e18), bn(100e18)], '0x10')
+        ).to.be.revertedWith('UNSORTED_TOKENS');
       });
     });
   });

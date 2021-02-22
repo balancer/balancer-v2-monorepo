@@ -3,26 +3,29 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn } from '../../lib/helpers/numbers';
-import { deploy } from '../../lib/helpers/deploy';
+import Token from '../helpers/models/tokens/Token';
+import TokenList from '../helpers/models/tokens/TokenList';
+import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { deploySortedTokens, mintTokens, TokenList } from '../../lib/helpers/tokens';
-import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
-import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 import { encodeExit, encodeJoin } from '../helpers/mockPool';
 
+import { bn } from '../../lib/helpers/numbers';
+import { deploy } from '../../lib/helpers/deploy';
+import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
+import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
+
 describe('Vault - asset manager', function () {
-  let tokens: TokenList, otherToken: Contract, vault: Contract;
+  let tokens: TokenList, otherToken: Token, vault: Contract;
   let lp: SignerWithAddress, assetManager: SignerWithAddress, other: SignerWithAddress;
 
   before('deploy base contracts', async () => {
     [, lp, assetManager, other] = await ethers.getSigners();
   });
 
-  beforeEach('set up asset manager', async () => {
+  sharedBeforeEach('set up asset manager', async () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
-    tokens = await deploySortedTokens(['DAI', 'USDT'], [18, 18]);
-    otherToken = await deploy('TestToken', { args: [other.address, 'OTHER', 'OTHER', 18] });
+    tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
+    otherToken = await Token.create('OTHER');
   });
 
   context('with general pool', () => {
@@ -41,36 +44,28 @@ describe('Vault - asset manager', function () {
     let poolId: string;
     const tokenInitialBalance = bn(200e18);
 
-    beforeEach('deploy pool and add liquidity', async () => {
+    sharedBeforeEach('deploy pool and add liquidity', async () => {
       const pool = await deploy('MockPool', { args: [vault.address, specialization] });
       poolId = await pool.getPoolId();
 
-      const tokenAddresses = [];
-      for (const symbol in tokens) {
-        // Mint tokens for the lp to join the Pool with
-        await mintTokens(tokens, symbol, lp, tokenInitialBalance);
-
-        tokenAddresses.push(tokens[symbol].address);
-
-        await tokens[symbol].connect(lp).approve(vault.address, MAX_UINT256);
-        await tokens[symbol].connect(assetManager).approve(vault.address, MAX_UINT256);
-      }
+      await tokens.mint({ to: lp, amount: tokenInitialBalance });
+      await tokens.approve({ to: vault, from: [lp, assetManager] });
 
       // Assign assetManager to the DAI token, and other to the other token
       const assetManagers = [assetManager.address, other.address];
 
-      await pool.registerTokens(tokenAddresses, assetManagers);
+      await pool.registerTokens(tokens.addresses, assetManagers);
 
       await vault.connect(lp).joinPool(
         poolId,
         lp.address,
         other.address,
-        tokenAddresses,
-        tokenAddresses.map(() => MAX_UINT256),
+        tokens.addresses,
+        tokens.addresses.map(() => MAX_UINT256),
         false,
         encodeJoin(
-          tokenAddresses.map(() => tokenInitialBalance),
-          tokenAddresses.map(() => 0)
+          tokens.addresses.map(() => tokenInitialBalance),
+          tokens.addresses.map(() => 0)
         )
       );
     });
@@ -78,7 +73,7 @@ describe('Vault - asset manager', function () {
     describe('setting', () => {
       it('different managers can be set for different tokens', async () => {
         expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).assetManager).to.equal(assetManager.address);
-        expect((await vault.getPoolTokenInfo(poolId, tokens.USDT.address)).assetManager).to.equal(other.address);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).assetManager).to.equal(other.address);
       });
 
       it('reverts when querying the asset manager of an unknown pool', async () => {
@@ -112,13 +107,13 @@ describe('Vault - asset manager', function () {
           });
 
           it('does not affect the balance of the pools', async () => {
-            const [previousBalanceDAI, previousBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
+            const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
 
             await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount);
 
-            const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
+            const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
-            expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
+            expect(currentBalanceMKR).to.equal(previousBalanceMKR);
           });
 
           it('moves the balance from cash to managed', async () => {
@@ -155,7 +150,7 @@ describe('Vault - asset manager', function () {
       context('when the sender is an allowed manager', () => {
         const externalAmount = bn(75e18);
 
-        beforeEach('withdraw funds', async () => {
+        sharedBeforeEach('withdraw funds', async () => {
           await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, externalAmount);
         });
 
@@ -174,13 +169,13 @@ describe('Vault - asset manager', function () {
           });
 
           it('does not affect the balance of the pools', async () => {
-            const [previousBalanceDAI, previousBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
+            const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
 
             await vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount);
 
-            const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
+            const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
-            expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
+            expect(currentBalanceMKR).to.equal(previousBalanceMKR);
           });
 
           it('moves the balance from managed to cash', async () => {
@@ -229,7 +224,7 @@ describe('Vault - asset manager', function () {
       context('when the sender is an allowed manager', () => {
         const externalAmount = bn(10e18);
 
-        beforeEach('transfer to manager', async () => {
+        sharedBeforeEach('transfer to manager', async () => {
           await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, externalAmount);
         });
 
@@ -245,13 +240,13 @@ describe('Vault - asset manager', function () {
           });
 
           it('updates the balance of the pool', async () => {
-            const [previousBalanceDAI, previousBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
+            const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
 
             await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
 
-            const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
+            const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI.add(1));
-            expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
+            expect(currentBalanceMKR).to.equal(previousBalanceMKR);
           });
 
           it('sets the managed balance', async () => {
@@ -280,13 +275,13 @@ describe('Vault - asset manager', function () {
           });
 
           it('updates the balance of the pool', async () => {
-            const [previousBalanceDAI, previousBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
+            const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
 
             await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
 
-            const [currentBalanceDAI, currentBalanceUSDT] = (await vault.getPoolTokens(poolId)).balances;
+            const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI.sub(1));
-            expect(currentBalanceUSDT).to.equal(previousBalanceUSDT);
+            expect(currentBalanceMKR).to.equal(previousBalanceMKR);
           });
 
           it('sets the managed balance', async () => {
@@ -313,7 +308,7 @@ describe('Vault - asset manager', function () {
       it('removes asset managers when deregistering', async () => {
         // First asset the managers are set
         expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).assetManager).to.equal(assetManager.address);
-        expect((await vault.getPoolTokenInfo(poolId, tokens.USDT.address)).assetManager).to.equal(other.address);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).assetManager).to.equal(other.address);
 
         const [poolAddress] = await vault.getPool(poolId);
         const pool = await ethers.getContractAt('MockPool', poolAddress);
@@ -334,19 +329,17 @@ describe('Vault - asset manager', function () {
           );
 
         // Deregistering tokens should remove the asset managers
-        await pool.deregisterTokens([tokens.DAI.address, tokens.USDT.address]);
+        await pool.deregisterTokens([tokens.DAI.address, tokens.MKR.address]);
 
-        for (const symbol in tokens) {
-          const token = tokens[symbol].address;
-          const error = 'TOKEN_NOT_REGISTERED';
-          await expect(vault.getPoolTokenInfo(poolId, token)).to.be.revertedWith(error);
-        }
+        await tokens.asyncEach(async (token: Token) => {
+          await expect(vault.getPoolTokenInfo(poolId, token.address)).to.be.revertedWith('TOKEN_NOT_REGISTERED');
+        });
 
         // Should also be able to re-register (just one in this case)
-        await pool.registerTokens([tokens.DAI.address, tokens.USDT.address], [assetManager.address, ZERO_ADDRESS]);
+        await pool.registerTokens([tokens.DAI.address, tokens.MKR.address], [assetManager.address, ZERO_ADDRESS]);
 
         expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).assetManager).to.equal(assetManager.address);
-        expect((await vault.getPoolTokenInfo(poolId, tokens.USDT.address)).assetManager).to.equal(ZERO_ADDRESS);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).assetManager).to.equal(ZERO_ADDRESS);
       });
     });
   }

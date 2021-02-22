@@ -192,6 +192,8 @@ abstract contract PoolRegistry is
         IERC20[] calldata tokens,
         address[] calldata assetManagers
     ) external override nonReentrant onlyPool(poolId) {
+        InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
+
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             require(tokens.length == 2, "TOKENS_LENGTH_MUST_BE_2");
@@ -267,7 +269,7 @@ abstract contract PoolRegistry is
             require(amountIn <= maxAmountsIn[i], "JOIN_ABOVE_MAX");
 
             // Receive tokens from the caller - possibly from Internal Balance
-            _receiveTokens(tokens[i], amountIn, msg.sender, fromInternalBalance);
+            _receiveTokens(tokens[i], amountIn, sender, fromInternalBalance);
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
 
