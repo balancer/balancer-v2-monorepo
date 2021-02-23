@@ -36,12 +36,8 @@ contract WeightedPoolFactory is BasePoolFactory {
         uint256[] memory weights,
         uint256 swapFee
     ) external returns (address) {
-        return
-            _create(
-                abi.encodePacked(
-                    type(WeightedPool).creationCode,
-                    abi.encode(vault, name, symbol, tokens, weights, swapFee)
-                )
-            );
+        address pool = address(new WeightedPool(vault, name, symbol, tokens, weights, swapFee));
+        _register(pool);
+        return pool;
     }
 }

@@ -184,9 +184,9 @@ async function deployStrategyPool(
 
   const tx = await wpFactoryContract.connect(controller).create(...parameters);
   const receipt = await tx.wait();
-  const event = receipt.events?.find((e: Event) => e.event == 'PoolCreated');
+  const event = receipt.events?.find((e: Event) => e.event == 'PoolRegistered');
   if (event == undefined) {
-    throw new Error('Could not find PoolCreated event');
+    throw new Error('Could not find PoolRegistered event');
   }
   const poolAddress = event.args.pool;
   const pool = await wpFactory.attach(poolAddress);

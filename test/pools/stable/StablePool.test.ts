@@ -96,7 +96,7 @@ describe('StablePool', function () {
             await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, amplification, POOL_SWAP_FEE)
           ).wait();
 
-          const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+          const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
           pool = await ethers.getContractAt('StablePool', event.args.pool);
         });
 

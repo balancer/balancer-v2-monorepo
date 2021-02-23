@@ -99,7 +99,7 @@ describe('WeightedPool', function () {
         factory = await deploy('WeightedPoolFactory', { args: [vault.address] });
         const tx = await factory.create('Balancer Pool Token', 'BPT', poolTokens.addresses, poolWeights, poolSwapFee);
         const receipt = await tx.wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
         pool = await ethers.getContractAt('WeightedPool', event.args.pool);
       } else {
         vault = await deploy('MockVault', { args: [] });
