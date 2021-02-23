@@ -47,10 +47,10 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     // The flash loan fee is charged whenever a flash loan occurs, and is a percentage of the tokens lent.
     uint256 private _protocolFlashLoanFee;
 
-    // Absolute maximum fee percentages.
-    uint256 private constant _MAX_PROTOCOL_WITHDRAW_FEE = 0.02e18; // 2%
-    uint256 private constant _MAX_PROTOCOL_SWAP_FEE = 0.5e18; // 50%
-    uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE = 0.5e18; // 50%
+    // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
+    uint256 private constant _MAX_PROTOCOL_SWAP_FEE = 50e16; // 50%
+    uint256 private constant _MAX_PROTOCOL_WITHDRAW_FEE = 0.5e16; // 0.5%
+    uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE = 1e16; // 1%
 
     function setProtocolFees(
         uint256 newSwapFee,

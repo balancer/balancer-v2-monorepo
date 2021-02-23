@@ -34,7 +34,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     // TODO: link info about these limits once they are studied and documented
     uint256 private constant _MIN_WEIGHT = 100;
-    uint256 private constant _MAX_WEIGHT = 5000 * (10**18);
+    uint256 private constant _MAX_WEIGHT = 5000 * (1e18);
 
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
