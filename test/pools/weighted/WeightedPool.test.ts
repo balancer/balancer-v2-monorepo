@@ -184,9 +184,7 @@ describe('WeightedPool', function () {
         it('reverts if there are repeated tokens', async () => {
           const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
 
-          await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith(
-            'Create2: Failed on deploy'
-          );
+          await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith('UNSORTED_ARRAY');
         });
 
         it('reverts if the swap fee is too high', async () => {
