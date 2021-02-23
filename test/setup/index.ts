@@ -1,8 +1,11 @@
 import chai from 'chai';
+import { AsyncFunc } from 'mocha';
 
-import { NAry } from '../helpers/models/types/types';
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { BigNumberish, bn } from '../../lib/helpers/numbers';
+
+import { NAry } from '../helpers/models/types/types';
+import { sharedBeforeEach } from './sharedBeforeEach';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '../helpers/relativeError';
 
 declare global {
@@ -16,7 +19,14 @@ declare global {
       equalWithError(value: NAry<BigNumberish>, error: BigNumberish): void;
     }
   }
+
+  function sharedBeforeEach(fn: AsyncFunc): void;
+  function sharedBeforeEach(name: string, fn: AsyncFunc): void;
 }
+
+global.sharedBeforeEach = (nameOrFn: string | AsyncFunc, maybeFn?: AsyncFunc): void => {
+  sharedBeforeEach(nameOrFn, maybeFn);
+};
 
 chai.use(function (chai) {
   const { Assertion } = chai;
