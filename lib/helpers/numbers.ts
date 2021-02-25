@@ -14,7 +14,7 @@ export const fromFp = (x: BigNumberish | Decimal): BigNumber => bn(decimal(x).di
 export const bn = (x: BigNumberish | Decimal): BigNumber => {
   if (BigNumber.isBigNumber(x)) return x;
   const stringified = parseScientific(x.toString());
-  const integer = stringified.split('.')[0]
+  const integer = stringified.split('.')[0];
   return BigNumber.from(integer);
 };
 
