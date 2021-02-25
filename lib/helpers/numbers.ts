@@ -5,16 +5,18 @@ const SCALING_FACTOR = 1e18;
 
 export type BigNumberish = string | number | BigNumber;
 
-export const fp = (x: number): BigNumber => bn(x * SCALING_FACTOR);
+export const decimal = (x: BigNumberish | Decimal): Decimal => new Decimal(x.toString());
+
+export const fp = (x: BigNumberish | Decimal): BigNumber => bn(decimal(x).mul(SCALING_FACTOR));
+
+export const fromFp = (x: BigNumberish | Decimal): BigNumber => bn(decimal(x).div(SCALING_FACTOR));
 
 export const bn = (x: BigNumberish | Decimal): BigNumber => {
   if (BigNumber.isBigNumber(x)) return x;
-  const integer = parseInt(parseScientific(x.toString()));
-  const stringified = parseScientific(integer.toString());
-  return BigNumber.from(stringified);
+  const stringified = parseScientific(x.toString());
+  const integer = stringified.split('.')[0]
+  return BigNumber.from(integer);
 };
-
-export const decimal = (x: BigNumberish | Decimal): Decimal => new Decimal(x.toString());
 
 export const maxUint = (e: number): BigNumber => bn(2).pow(e).sub(1);
 
