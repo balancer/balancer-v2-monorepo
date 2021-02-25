@@ -62,13 +62,13 @@ function parseScientific(num: string): string {
   const [coefficient, exponent] = num.toLowerCase().split('e');
   let zeros = Math.abs(Number(exponent));
   const exponentSign = Math.sign(Number(exponent));
-  const [integer, decimals] = coefficient.split('.');
+  const [integer, decimals] = (coefficient.indexOf('.') != -1 ? coefficient : `${coefficient}.`).split('.')
 
   if (exponentSign === -1) {
     zeros -= integer.length;
     num =
       zeros < 0
-        ? integer.slice(0, zeros) + '.' + integer.slice(zeros) + (decimals ? decimals : '')
+        ? integer.slice(0, zeros) + '.' + integer.slice(zeros) + decimals
         : '0.' + '0'.repeat(zeros) + integer + decimals;
   } else {
     if (decimals) zeros -= decimals.length;
