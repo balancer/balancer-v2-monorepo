@@ -171,7 +171,7 @@ contract WeightedMath {
         // bpt = totalBPT                   \  \       totalBPT            /                  /  //
         // w = tokenWeight                                                                       //
         ******************************************************************************************/
-        
+
         // Calculate the factor by which the invariant will increase after minting BPTAmountOut
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
 
