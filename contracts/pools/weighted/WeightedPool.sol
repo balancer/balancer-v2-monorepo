@@ -321,9 +321,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         uint256 bptTotalSupply = totalSupply();
 
-        //Max invariant ratio can be 3
+        //Verifies that invariant ratio is not greater than max
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
-
         require(invariantRatio <= _MAX_INVARIANT_RATIO, "MAX_OUT_BPT_FOR_TOKEN_IN");
 
         uint256[] memory amountsIn = new uint256[](_totalTokens);
@@ -409,7 +408,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         uint256 bptTotalSupply = totalSupply();
 
-        //Max invariant ratio can be 3
+        //Verifies that invariant ratio is not lower than min
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
         require(invariantRatio >= _MIN_INVARIANT_RATIO, "MIN_BPT_IN_FOR_TOKEN_OUT");
 
@@ -482,8 +481,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // multiple joins and exits. This pseudo-randomness being manipulated is not an issue.
         uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
 
-        //Invariant ratio cannot be lower than 0.7 because of solidity exponential math restrictions
-        //If lower than 0.7, protocol fees will charge less fees, as if ratio is 0.7
+        //Verifies that invariant ratio is not lower than min.
+        //If lower than min, protocol fees will charge up to the min ratio allowed.
         uint256 invariantRatio = previousInvariant.divUp(currentInvariant);
         if (invariantRatio <= _MIN_INVARIANT_RATIO) {
             currentInvariant = previousInvariant.divUp(_MIN_INVARIANT_RATIO);
