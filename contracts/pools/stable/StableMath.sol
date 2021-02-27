@@ -97,6 +97,7 @@ contract StableMath {
         uint256 n_pow_n = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
+            n_pow_n = n_pow_n.mul(totalCoins);
             if (i == tokenIndexOut) {
                 x = balances[i].sub(tokenAmountOut);
             } else if (i != tokenIndexIn) {
@@ -105,7 +106,6 @@ contract StableMath {
                 continue;
             }
             sum = sum.add(x);
-            n_pow_n = n_pow_n.mul(totalCoins);
             //Round up p
             p = p.mul(inv).divUp(x);
         }
@@ -143,6 +143,7 @@ contract StableMath {
         uint256 n_pow_n = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
+            n_pow_n = n_pow_n.mul(totalCoins);
             if (i == tokenIndexIn) {
                 x = balances[i].add(tokenAmountIn);
             } else if (i != tokenIndexOut) {
@@ -151,7 +152,6 @@ contract StableMath {
                 continue;
             }
             sum = sum.add(x);
-            n_pow_n = n_pow_n.mul(totalCoins);
             //Round up p
             p = p.mul(inv).divUp(x);
         }
@@ -242,13 +242,13 @@ contract StableMath {
         uint256 n_pow_n = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
+            n_pow_n = n_pow_n.mul(totalCoins);
             if (i != tokenIndex) {
                 x = balances[i];
             } else {
                 continue;
             }
             sum = sum.add(x);
-            n_pow_n = totalCoins.mul(totalCoins);
             //Round up p
             p = p.mul(inv).divUp(x);
         }
