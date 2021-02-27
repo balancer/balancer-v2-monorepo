@@ -94,7 +94,7 @@ contract StableMath {
         uint256 p = inv;
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
-        uint256 nn = 1;
+        uint256 n_pow_n = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
             if (i == tokenIndexOut) {
@@ -105,13 +105,13 @@ contract StableMath {
                 continue;
             }
             sum = sum.add(x);
-            nn = totalCoins.mul(totalCoins);
+            n_pow_n = n_pow_n.mul(totalCoins);
             //Round up p
             p = p.mul(inv).divUp(x);
         }
 
         //Calculate in balance
-        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nn, p);
+        uint256 y = _solveAnalyticalBalance(sum, inv, amp, n_pow_n, p);
 
         //Result is rounded up
         return y.sub(balances[tokenIndexIn]);
@@ -140,7 +140,7 @@ contract StableMath {
         uint256 p = inv;
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
-        uint256 nn = 1;
+        uint256 n_pow_n = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
             if (i == tokenIndexIn) {
@@ -151,13 +151,13 @@ contract StableMath {
                 continue;
             }
             sum = sum.add(x);
-            nn = totalCoins.mul(totalCoins);
+            n_pow_n = n_pow_n.mul(totalCoins);
             //Round up p
             p = p.mul(inv).divUp(x);
         }
 
         //Calculate out balance
-        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nn, p);
+        uint256 y = _solveAnalyticalBalance(sum, inv, amp, n_pow_n, p);
 
         //Result is rounded down
         return balances[tokenIndexOut] > y ? balances[tokenIndexOut].sub(y) : 0;
@@ -239,7 +239,7 @@ contract StableMath {
         uint256 p = inv;
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
-        uint256 nn = 1;
+        uint256 n_pow_n = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
             if (i != tokenIndex) {
@@ -248,13 +248,13 @@ contract StableMath {
                 continue;
             }
             sum = sum.add(x);
-            nn = totalCoins.mul(totalCoins);
+            n_pow_n = totalCoins.mul(totalCoins);
             //Round up p
             p = p.mul(inv).divUp(x);
         }
 
         //Calculate token balance balance
-        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nn, p);
+        uint256 y = _solveAnalyticalBalance(sum, inv, amp, n_pow_n, p);
 
         //Result is rounded down
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] > y ? balances[tokenIndex].sub(y) : 0;
@@ -268,13 +268,13 @@ contract StableMath {
         uint256 sum,
         uint256 inv,
         uint256 amp,
-        uint256 nn,
+        uint256 n_pow_n,
         uint256 p
     ) private pure returns (uint256 y) {
         //Round up p
-        p = p.mul(inv).divUp(amp.mul(nn).mul(nn));
+        p = p.mul(inv).divUp(amp.mul(n_pow_n).mul(n_pow_n));
         //Round down b
-        uint256 b = sum.add(inv.divDown(amp.mul(nn)));
+        uint256 b = sum.add(inv.divDown(amp.mul(n_pow_n)));
         //Round up c
         uint256 c = inv >= b
             ? inv.sub(b).add(Math.sqrtUp(inv.sub(b).mul(inv.sub(b)).add(p.mul(4))))
