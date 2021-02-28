@@ -159,7 +159,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     function _joinExactTokensInForBPTOut(
         uint256[] memory balances,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) private view returns (uint256) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
         _upscaleArray(amountsIn, _scalingFactors());
@@ -174,13 +174,31 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         require(bptAmountOut >= minBPTAmountOut, "BPT_OUT_MIN_AMOUNT");
 
-        return (bptAmountOut, amountsIn);
+        return bptAmountOut;
+    }
+
+    function _joinTokenInForExactBPTOut(
+        uint256[] memory balances,
+        bytes memory userData
+    ) private view returns (uint256) {
+        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
+
+        uint256 amountIn = StableMath._tokenInForExactBPTOut(
+            _amp,
+            balances,
+            tokenIndex,
+            bptAmountOut,
+            totalSupply(),
+            _swapFee
+        );
+
+        return amountIn;
     }
 
     function _joinAllTokensInForExactBPTOut(uint256[] memory balances, bytes memory userData)
         private
         view
-        returns (uint256, uint256[] memory)
+        returns (uint256[] memory)
     {
         uint256 bptAmountOut = userData.allTokensInForExactBptOut();
 
@@ -190,7 +208,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             totalSupply()
         );
 
-        return (bptAmountOut, amountsIn);
+        return amountsIn;
     }
 
     // Exit

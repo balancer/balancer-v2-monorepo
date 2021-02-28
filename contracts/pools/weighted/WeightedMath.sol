@@ -153,6 +153,7 @@ contract WeightedMath {
             invariantRatio = invariantRatio.mul(LogExpMath.pow(tokenBalanceRatio, normalizedWeights[i]));
         }
 
+        // return amountBPTOut
         return bptTotalSupply.mul(invariantRatio.sub(FixedPoint.ONE));
     }
 
@@ -171,6 +172,7 @@ contract WeightedMath {
         uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(tokenNormalizedWeight);
         uint256 amountInAfterFee = tokenBalance.mul(tokenBalanceRatio.sub(FixedPoint.ONE));
 
+        // return amountIn
         return amountInAfterFee.div(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee)));
     }
 
@@ -190,6 +192,7 @@ contract WeightedMath {
         uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(tokenNormalizedWeight);
         uint256 amountOutBeforeFee = tokenBalance.mul(FixedPoint.ONE.sub(tokenBalanceRatio));
 
+        // return amountOut
         return amountOutBeforeFee.mul(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee)));
     }
 
