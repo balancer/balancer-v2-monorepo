@@ -106,7 +106,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         bytes32,
         address,
         address,
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
@@ -122,7 +122,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
         // event and now - the invariant's growth is due exclusively to swap fees.
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-            currentBalances,
+            balances,
             _lastInvariant,
             protocolSwapFeePercentage
         );
@@ -130,19 +130,19 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
         // returns.
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            currentBalances[i] = currentBalances[i].sub(dueProtocolFeeAmounts[i]);
+            balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
         }
 
-        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(currentBalances, userData);
+        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, userData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the due
         // protocol swap fees in future joins and exits.
-        _lastInvariant = _invariantAfterJoin(currentBalances, amountsIn);
+        _lastInvariant = _invariantAfterJoin(balances, amountsIn);
 
         return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
     }
 
-    function _doJoin(uint256[] memory currentBalances, bytes memory userData)
+    function _doJoin(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
@@ -150,13 +150,34 @@ contract StablePool is BaseGeneralPool, StableMath {
         JoinKind kind = userData.joinKind();
 
         if (kind == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return _joinAllTokensInForExactBPTOut(currentBalances, userData);
+            return _joinAllTokensInForExactBPTOut(balances, userData);
         } else {
             revert("UNHANDLED_JOIN_KIND");
         }
     }
 
-    function _joinAllTokensInForExactBPTOut(uint256[] memory currentBalances, bytes memory userData)
+    function _joinExactTokensInForBPTOut(
+        uint256[] memory balances,
+        bytes memory userData
+    ) private view returns (uint256, uint256[] memory) {
+        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
+        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        _upscaleArray(amountsIn, _scalingFactors());
+
+        uint256 bptAmountOut = StableMath._exactTokensInForBPTOut(
+            _amp,
+            balances,
+            amountsIn,
+            totalSupply(),
+            _swapFee
+        );
+
+        require(bptAmountOut >= minBPTAmountOut, "BPT_OUT_MIN_AMOUNT");
+
+        return (bptAmountOut, amountsIn);
+    }
+
+    function _joinAllTokensInForExactBPTOut(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
@@ -164,7 +185,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 bptAmountOut = userData.allTokensInForExactBptOut();
 
         uint256[] memory amountsIn = StableMath._allTokensInForExactBPTOut(
-            currentBalances,
+            balances,
             bptAmountOut,
             totalSupply()
         );
@@ -178,7 +199,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         bytes32,
         address,
         address,
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
@@ -194,7 +215,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
         // event and now - the invariant's growth is due exclusively to swap fees.
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-            currentBalances,
+            balances,
             _lastInvariant,
             protocolSwapFeePercentage
         );
@@ -202,19 +223,19 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
         // returns.
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            currentBalances[i] = currentBalances[i].sub(dueProtocolFeeAmounts[i]);
+            balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
         }
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(currentBalances, userData);
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(balances, userData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the due
         // protocol swap fees in future joins and exits.
-        _lastInvariant = _invariantAfterExit(currentBalances, amountsOut);
+        _lastInvariant = _invariantAfterExit(balances, amountsOut);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
     }
 
-    function _doExit(uint256[] memory currentBalances, bytes memory userData)
+    function _doExit(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
@@ -222,13 +243,13 @@ contract StablePool is BaseGeneralPool, StableMath {
         ExitKind kind = userData.exitKind();
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForAllTokensOut(currentBalances, userData);
+            return _exitExactBPTInForAllTokensOut(balances, userData);
         } else {
             revert("UNHANDLED_EXIT_KIND");
         }
     }
 
-    function _exitExactBPTInForAllTokensOut(uint256[] memory currentBalances, bytes memory userData)
+    function _exitExactBPTInForAllTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
@@ -236,7 +257,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 bptAmountIn = userData.exactBptInForAllTokensOut();
 
         uint256[] memory amountsOut = StableMath._exactBPTInForAllTokensOut(
-            currentBalances,
+            balances,
             bptAmountIn,
             totalSupply()
         );
@@ -247,7 +268,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     // Helpers
 
     function _getDueProtocolFeeAmounts(
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256 previousInvariant,
         uint256 protocolSwapFeePercentage
     ) private view returns (uint256[] memory) {
@@ -264,7 +285,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Set the fee to pay in the selected token
         dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calculateDueTokenProtocolSwapFee(
             _amp,
-            currentBalances,
+            balances,
             previousInvariant,
             chosenTokenIndex,
             protocolSwapFeePercentage
@@ -273,27 +294,39 @@ contract StablePool is BaseGeneralPool, StableMath {
         return dueProtocolFeeAmounts;
     }
 
-    function _invariantAfterJoin(uint256[] memory currentBalances, uint256[] memory amountsIn)
+    function _invariantAfterJoin(uint256[] memory balances, uint256[] memory amountsIn)
         private
         view
         returns (uint256)
     {
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            currentBalances[i] = currentBalances[i].add(amountsIn[i]);
+            balances[i] = balances[i].add(amountsIn[i]);
         }
 
-        return StableMath._invariant(_amp, currentBalances);
+        return StableMath._invariant(_amp, balances);
     }
 
-    function _invariantAfterExit(uint256[] memory currentBalances, uint256[] memory amountsOut)
+    function _invariantAfterExit(uint256[] memory balances, uint256[] memory amountsOut)
         private
         view
         returns (uint256)
     {
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            currentBalances[i] = currentBalances[i].sub(amountsOut[i]);
+            balances[i] = balances[i].sub(amountsOut[i]);
         }
 
-        return StableMath._invariant(_amp, currentBalances);
+        return StableMath._invariant(_amp, balances);
+    }
+
+    // This function returns the relative appreciation of one BPT relative to the 
+    // underlying tokens. This starts at 1 when the pool is created and grows over time
+    // It's the equivalent to Curve's get_virtual_price() function
+    function getBPTAppreciation()
+        public
+        view
+        returns (uint256)
+    {
+        // TODO: We need to get the _balances from the Vault here.
+        return StableMath._invariant(_amp, _balances).div(totalSupply());
     }
 }

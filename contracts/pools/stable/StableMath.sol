@@ -94,10 +94,10 @@ contract StableMath {
         uint256 p = inv;
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
-        uint256 n_pow_n = 1;
+        uint256 nPowN = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
-            n_pow_n = n_pow_n.mul(totalCoins);
+            nPowN = nPowN.mul(totalCoins);
             if (i == tokenIndexOut) {
                 x = balances[i].sub(tokenAmountOut);
             } else if (i != tokenIndexIn) {
@@ -111,7 +111,7 @@ contract StableMath {
         }
 
         //Calculate in balance
-        uint256 y = _solveAnalyticalBalance(sum, inv, amp, n_pow_n, p);
+        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nPowN, p);
 
         //Result is rounded up
         return y.sub(balances[tokenIndexIn]);
@@ -140,10 +140,10 @@ contract StableMath {
         uint256 p = inv;
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
-        uint256 n_pow_n = 1;
+        uint256 nPowN = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
-            n_pow_n = n_pow_n.mul(totalCoins);
+            nPowN = nPowN.mul(totalCoins);
             if (i == tokenIndexIn) {
                 x = balances[i].add(tokenAmountIn);
             } else if (i != tokenIndexOut) {
@@ -157,57 +157,106 @@ contract StableMath {
         }
 
         //Calculate out balance
-        uint256 y = _solveAnalyticalBalance(sum, inv, amp, n_pow_n, p);
+        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nPowN, p);
 
         //Result is rounded down
         return balances[tokenIndexOut] > y ? balances[tokenIndexOut].sub(y) : 0;
     }
 
     function _allTokensInForExactBPTOut(
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256 bptAmountOut,
-        uint256 totalBPT
+        uint256 bptTotalSupply
     ) internal pure returns (uint256[] memory) {
         /**********************************************************************************************
         // allTokensInForExactBPTOut                                                                 //
         // (per token)                                                                               //
         // aI = tokenAmountIn              /        bptOut         \                                 //
         // b = tokenBalance      aI = b * | ---------------------  |                                 //
-        // bptOut = bptAmountOut           \       totalBPT       /                                  //
-        // bpt = totalBPT                                                                            //
+        // bptOut = bptAmountOut           \       bptTotalSupply       /                                  //
+        // bpt = bptTotalSupply                                                                            //
         **********************************************************************************************/
 
         // Since we're computing an amount in, we round up overall. This means rouding up on both the multiplication and
         // division.
 
-        uint256[] memory amountsOut = new uint256[](currentBalances.length);
-        for (uint256 i = 0; i < currentBalances.length; i++) {
-            amountsOut[i] = currentBalances[i].mul(bptAmountOut).divUp(totalBPT);
+        uint256[] memory amountsIn = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            amountsIn[i] = balances[i].mul(bptAmountOut).divUp(bptTotalSupply);
         }
 
-        return amountsOut;
+        return amountsIn;
+    }
+
+    function _exactTokensInForBPTOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256[] memory amountsIn,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) internal pure returns (uint256 memory) {
+        /**********************************************************************************************
+        // TODO                             //
+        **********************************************************************************************/
+
+        // Get current invariant
+        uint256 currentInvariant = _invariant(amp, balances);
+        
+        // Get new invariant without fees
+        uint256[] memory newBalancesWithoutFee = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            newBalancesWithoutFee[i] = balances[i].add(amountsIn[i]);
+        }
+        uint256 newInvariantWithoutFee = _invariant(amp, newBalancesWithoutFee);
+
+        // Calculate the new balances that a proportional add liquidity resulting 
+        // in the same new invariant would require (i.e. _allTokensInForExactBPTOut())
+        uint256[] memory newBalancesProportional = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            newBalancesProportional[i] = balances[i].mul(newInvariantWithoutFee).divDown(currentInvariant);
+        }
+
+        // Charge swap fee for every token when newBalancesWithoutFee > newBalancesProportional 
+        // Then calculate new invariant considering fees
+        uint256[] memory newBalances = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            if(newBalancesWithoutFee[i]>newBalancesProportional[i]){
+                newBalances[i] = newBalancesWithoutFee[i].sub(
+                    newBalancesWithoutFee[i].sub(
+                        newBalancesProportional[i])
+                    .mul(swapFee)
+                );
+            }
+            else{
+                newBalances[i] = newBalancesWithoutFee[i];
+            }
+        }
+        uint256 newInvariant = _invariant(amp, newBalances);
+
+        // return amountBPTOut
+        return bptTotalSupply.divDown(currentInvariant).mul(newInvariant);
     }
 
     function _exactBPTInForAllTokensOut(
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256 bptAmountIn,
-        uint256 totalBPT
+        uint256 bptTotalSupply
     ) internal pure returns (uint256[] memory) {
         /**********************************************************************************************
         // exactBPTInForAllTokensOut                                                                 //
         // (per token)                                                                               //
         // aO = tokenAmountOut             /        bptIn         \                                  //
         // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \       totalBPT       /                                  //
-        // bpt = totalBPT                                                                            //
+        // bptIn = bptAmountIn             \       bptTotalSupply       /                                  //
+        // bpt = bptTotalSupply                                                                            //
         **********************************************************************************************/
 
         // Since we're computing an amount out, we round down overall. This means rouding down on both the
         // multiplication and division.
 
-        uint256[] memory amountsOut = new uint256[](currentBalances.length);
-        for (uint256 i = 0; i < currentBalances.length; i++) {
-            amountsOut[i] = currentBalances[i].mul(bptAmountIn).divDown(totalBPT);
+        uint256[] memory amountsOut = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            amountsOut[i] = balances[i].mul(bptAmountIn).divDown(bptTotalSupply);
         }
 
         return amountsOut;
@@ -239,10 +288,10 @@ contract StableMath {
         uint256 p = inv;
         uint256 sum = 0;
         uint256 totalCoins = balances.length;
-        uint256 n_pow_n = 1;
+        uint256 nPowN = 1;
         uint256 x = 0;
         for (uint256 i = 0; i < totalCoins; i++) {
-            n_pow_n = n_pow_n.mul(totalCoins);
+            nPowN = nPowN.mul(totalCoins);
             if (i != tokenIndex) {
                 x = balances[i];
             } else {
@@ -254,7 +303,7 @@ contract StableMath {
         }
 
         //Calculate token balance balance
-        uint256 y = _solveAnalyticalBalance(sum, inv, amp, n_pow_n, p);
+        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nPowN, p);
 
         //Result is rounded down
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] > y ? balances[tokenIndex].sub(y) : 0;
@@ -268,13 +317,13 @@ contract StableMath {
         uint256 sum,
         uint256 inv,
         uint256 amp,
-        uint256 n_pow_n,
+        uint256 nPowN,
         uint256 p
     ) private pure returns (uint256 y) {
         //Round up p
-        p = p.mul(inv).divUp(amp.mul(n_pow_n).mul(n_pow_n));
+        p = p.mul(inv).divUp(amp.mul(nPowN).mul(nPowN));
         //Round down b
-        uint256 b = sum.add(inv.divDown(amp.mul(n_pow_n)));
+        uint256 b = sum.add(inv.divDown(amp.mul(nPowN)));
         //Round up c
         uint256 c = inv >= b
             ? inv.sub(b).add(Math.sqrtUp(inv.sub(b).mul(inv.sub(b)).add(p.mul(4))))

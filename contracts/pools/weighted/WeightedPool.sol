@@ -286,7 +286,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (uint256[] memory amountsIn, uint256 minBPTAmountIn) = userData.exactTokensInForBptOut();
+        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
         _upscaleArray(amountsIn, _scalingFactors());
 
@@ -298,7 +298,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             _swapFee
         );
 
-        require(bptAmountOut >= minBPTAmountIn, "BPT_OUT_MIN_AMOUNT");
+        require(bptAmountOut >= minBPTAmountOut, "BPT_OUT_MIN_AMOUNT");
 
         return (bptAmountOut, amountsIn);
     }
