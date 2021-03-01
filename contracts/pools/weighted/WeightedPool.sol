@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "hardhat/console.sol";
+
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/helpers/UnsafeRandom.sol";
@@ -33,7 +35,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using WeightedPoolUserDataHelpers for bytes;
 
     uint256 private constant _MIN_WEIGHT = 10**16; //0.01
-    uint256 private constant _MAX_WEIGHT = 10**18; //1
 
     uint256 private constant _MAX_IN_RATIO = 3 * 10**17; //0.03
     uint256 private constant _MAX_OUT_RATIO = 3 * 10**17; //0.03
@@ -80,10 +81,10 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         }
 
         uint256[] memory normalizedWeights = new uint256[](weights.length);
+        
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
             normalizedWeights[i] = weights[i].div(sumWeights);
             require(normalizedWeights[i] >= _MIN_WEIGHT, "MIN_WEIGHT");
-            require(normalizedWeights[i] <= _MAX_WEIGHT, "MAX_WEIGHT");
         }
 
         _normalizedWeight0 = weights.length > 0 ? normalizedWeights[0] : 0;

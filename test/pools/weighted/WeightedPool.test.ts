@@ -200,13 +200,6 @@ describe('WeightedPool', function () {
           await expect(deployPool({ swapFee: badSwapFee })).to.be.revertedWith('MAX_SWAP_FEE');
         });
 
-        it('reverts if at least one weight is too high', async () => {
-          const badWeights = WEIGHTS.slice(0, numberOfTokens);
-          badWeights[0] = bn(50000).mul(bn(10e18));
-
-          await expect(deployPool({ weights: badWeights })).to.be.revertedWith('MAX_WEIGHT');
-        });
-
         it('reverts if at least one weight is too low', async () => {
           const badWeights = WEIGHTS.slice(0, numberOfTokens);
           badWeights[0] = bn(10);
@@ -690,7 +683,7 @@ describe('WeightedPool', function () {
       context('given in', () => {
         it('calculates amount out', async () => {
           // swap the same amount as the initial balance for token #0
-          const AMOUNT_IN = bn(0.9e18);
+          const AMOUNT_IN = bn(0.1e18);
           const AMOUNT_IN_WITH_FEES = AMOUNT_IN.mul(POOL_SWAP_FEE.add(bn(1e18))).div(bn(1e18));
 
           const result = await pool.callStatic.onSwapGivenIn(
@@ -707,7 +700,7 @@ describe('WeightedPool', function () {
             AMOUNT_IN_WITH_FEES
           );
 
-          expectEqualWithError(result, bn(expectedAmountOut), 0.005);
+          expectEqualWithError(result, bn(expectedAmountOut), 0.01);
         });
 
         it('reverts if token in is not in the pool', async () => {
@@ -767,7 +760,7 @@ describe('WeightedPool', function () {
 
       context('given out', () => {
         it('calculates amount in', async () => {
-          const AMOUNT_OUT = bn(1.35e18);
+          const AMOUNT_OUT = bn(0.1e18);
 
           const result = await pool.callStatic.onSwapGivenOut(
             { ...swapRequestData, amountOut: AMOUNT_OUT },
