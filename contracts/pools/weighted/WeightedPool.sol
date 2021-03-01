@@ -34,7 +34,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     // TODO: link info about these limits once they are studied and documented
     uint256 private constant _MIN_WEIGHT = 100;
-    uint256 private constant _MAX_WEIGHT = 5000 * (10**18);
+    uint256 private constant _MAX_WEIGHT = 5000 * (1e18);
 
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
@@ -373,9 +373,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         ExitKind kind = userData.exitKind();
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForOneTokenOut(normalizedWeights, currentBalances, userData);
+            return _exitExactBPTInForTokenOut(normalizedWeights, currentBalances, userData);
         } else if (kind == ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
-            return _exitExactBPTInForAllTokensOut(currentBalances, userData);
+            return _exitExactBPTInForTokensOut(currentBalances, userData);
         } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(normalizedWeights, currentBalances, userData);
         } else {
@@ -383,12 +383,12 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         }
     }
 
-    function _exitExactBPTInForOneTokenOut(
+    function _exitExactBPTInForTokenOut(
         uint256[] memory normalizedWeights,
         uint256[] memory currentBalances,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForOneTokenOut();
+        (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
 
         // We exit in a single token, so we initialize amountsOut with zeros
@@ -406,18 +406,14 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return (bptAmountIn, amountsOut);
     }
 
-    function _exitExactBPTInForAllTokensOut(uint256[] memory currentBalances, bytes memory userData)
+    function _exitExactBPTInForTokensOut(uint256[] memory currentBalances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
     {
-        uint256 bptAmountIn = userData.exactBptInForAllTokensOut();
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
-        uint256[] memory amountsOut = WeightedMath._exactBPTInForAllTokensOut(
-            currentBalances,
-            bptAmountIn,
-            totalSupply()
-        );
+        uint256[] memory amountsOut = WeightedMath._exactBPTInForTokensOut(currentBalances, bptAmountIn, totalSupply());
 
         return (bptAmountIn, amountsOut);
     }

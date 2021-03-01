@@ -281,7 +281,7 @@ describe('Vault - internal balance', () => {
         });
 
         context('with protocol withdraw fees', () => {
-          const withdrawFee = 0.01;
+          const withdrawFee = 0.005;
 
           sharedBeforeEach('set fee', async () => {
             const role = await roleId(vault, 'setProtocolFees');

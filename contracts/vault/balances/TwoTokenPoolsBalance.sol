@@ -64,6 +64,7 @@ contract TwoTokenPoolsBalance {
      * - `tokenX` and `tokenY` cannot be the same.
      * - Both tokens must not be the zero address.
      * - Both tokens must not be registered in the Pool.
+     * - Tokens must be ordered: tokenX < tokenY.
      */
     function _registerTwoTokenPoolTokens(
         bytes32 poolId,
@@ -75,13 +76,13 @@ contract TwoTokenPoolsBalance {
         // Not technically true since we didn't register yet, but this is consistent with the error messages of other
         // specialization settings.
         require(tokenX != tokenY, "TOKEN_ALREADY_REGISTERED");
+        require(tokenX < tokenY, "UNSORTED_TOKENS");
 
         TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
         require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "TOKENS_ALREADY_SET");
 
-        (IERC20 tokenA, IERC20 tokenB) = _sortTwoTokens(tokenX, tokenY);
-        poolTokens.tokenA = tokenA;
-        poolTokens.tokenB = tokenB;
+        poolTokens.tokenA = tokenX;
+        poolTokens.tokenB = tokenY;
     }
 
     /**

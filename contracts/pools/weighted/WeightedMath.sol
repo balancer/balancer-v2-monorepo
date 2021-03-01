@@ -193,7 +193,7 @@ contract WeightedMath {
         return amountOutBeforeFee.mul(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee)));
     }
 
-    function _exactBPTInForAllTokensOut(
+    function _exactBPTInForTokensOut(
         uint256[] memory currentBalances,
         uint256 bptAmountIn,
         uint256 totalBPT

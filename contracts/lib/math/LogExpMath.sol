@@ -25,7 +25,7 @@ pragma solidity ^0.7.0;
  * @author Daniel Fernandez - @dmf7z
  */
 library LogExpMath {
-    int256 constant DECIMALS = 10**18;
+    int256 constant DECIMALS = 1e18;
     int256 constant DOUBLE_DECIMALS = DECIMALS * DECIMALS;
     int256 constant PRECISION = 10**20;
     int256 constant DOUBLE_PRECISION = PRECISION * PRECISION;
