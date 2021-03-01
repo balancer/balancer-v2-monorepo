@@ -288,23 +288,21 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
         
-        require(amountOut >= minAmountOut, "TOKEN_OUT_MIN_AMOUNT");
-        
         return amountOut;
     }
 
-    function _exitBPTInForExactTokenOut(
+    function _exitBPTInForExactTokensOut(
         uint256[] memory balances,
         bytes memory userData
     ) private view returns (uint256) {
-        (uint256[] memory amountsIn, uint256 maxBPTAmountIn) = userData.BPTInForExactTokenOut();
-        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
-        _upscaleArray(amountsIn, _scalingFactors());
+        (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.BPTInForExactTokensOut();
+        require(amountsOut.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        _upscaleArray(amountsOut, _scalingFactors());
 
-        uint256 bptAmountIn = StableMath._BPTInForExactTokenOut(
+        uint256 bptAmountIn = StableMath._BPTInForExactTokensOut(
             _amp,
             balances,
-            amountsIn,
+            amountsOut,
             totalSupply(),
             _swapFee
         );
@@ -326,10 +324,6 @@ contract StablePool is BaseGeneralPool, StableMath {
             bptAmountIn,
             totalSupply()
         );
-
-        for (uint256 i = 0; i < _totalTokens; ++i) {
-            require(amountsOut[i] >= minAmountsOut[i], "TOKEN_OUT_MIN_AMOUNT");
-        }
 
         return (bptAmountIn, amountsOut);
     }
