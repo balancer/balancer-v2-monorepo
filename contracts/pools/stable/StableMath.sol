@@ -105,7 +105,7 @@ contract StableMath {
                 continue;
             }
             sum = sum.add(x);
-            nn = totalCoins.mul(totalCoins);
+            nn = nn.mul(totalCoins);
             //Round up p
             p = p.mul(inv).divUp(x);
         }
@@ -151,7 +151,7 @@ contract StableMath {
                 continue;
             }
             sum = sum.add(x);
-            nn = totalCoins.mul(totalCoins);
+            nn = nn.mul(totalCoins);
             //Round up p
             p = p.mul(inv).divUp(x);
         }
@@ -248,7 +248,7 @@ contract StableMath {
                 continue;
             }
             sum = sum.add(x);
-            nn = totalCoins.mul(totalCoins);
+            nn = nn.mul(totalCoins);
             //Round up p
             p = p.mul(inv).divUp(x);
         }
