@@ -34,13 +34,13 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
 
-    uint256 private constant _MIN_WEIGHT = 10**16; //0.01
+    uint256 private constant _MIN_WEIGHT = 0.01e18;
 
-    uint256 private constant _MAX_IN_RATIO = 3 * 10**17; //0.03
-    uint256 private constant _MAX_OUT_RATIO = 3 * 10**17; //0.03
+    uint256 private constant _MAX_IN_RATIO = 0.3e18;
+    uint256 private constant _MAX_OUT_RATIO = 0.3e18;
 
-    uint256 private constant _MAX_INVARIANT_RATIO = 3 * 10**18; //3
-    uint256 private constant _MIN_INVARIANT_RATIO = 7 * 10**17; //0.7
+    uint256 private constant _MAX_INVARIANT_RATIO = 3e18;
+    uint256 private constant _MIN_INVARIANT_RATIO = 0.7e18;
 
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
