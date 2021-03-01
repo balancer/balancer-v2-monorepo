@@ -148,7 +148,11 @@ describe('Vault - swaps', () => {
     deployMainPool(specialization, tokenSymbols);
 
     describe('swap given in', () => {
-      const assertSwapGivenIn = (input: SwapInput, changes?: Dictionary<BigNumberish | Comparison>) => {
+      const assertSwapGivenIn = (
+        input: SwapInput,
+        changes?: Dictionary<BigNumberish | Comparison>,
+        expectedInternalBalance?: Dictionary<BigNumberish>
+      ) => {
         it('trades the expected amount', async () => {
           const sender = input.fromOther ? other : trader;
           const recipient = input.toOther ? other : trader;
@@ -162,6 +166,14 @@ describe('Vault - swaps', () => {
             tokens,
             [{ account: recipient, changes }]
           );
+
+          if (expectedInternalBalance) {
+            for (const symbol in expectedInternalBalance) {
+              const token = tokens.findBySymbol(symbol);
+              const internalBalance = await vault.getInternalBalance(sender.address, [token.address]);
+              expect(internalBalance[0]).to.be.equal(bn(expectedInternalBalance[symbol]));
+            }
+          }
         });
       };
 
@@ -252,8 +264,25 @@ describe('Vault - swaps', () => {
                         funds.fromInternalBalance = true;
                       });
 
-                      context.skip('when using less than available as internal balance', () => {
-                        // TODO: add tests where no token transfers are needed and internal balance remains
+                      context('when using less than available as internal balance', () => {
+                        sharedBeforeEach('deposit to internal balance', async () => {
+                          await vault.connect(trader).depositToInternalBalance([
+                            {
+                              token: tokens.MKR.address,
+                              amount: bn(1e18),
+                              sender: trader.address,
+                              recipient: trader.address,
+                            },
+                            {
+                              token: tokens.DAI.address,
+                              amount: bn(1e18),
+                              sender: trader.address,
+                              recipient: trader.address,
+                            },
+                          ]);
+                        });
+
+                        assertSwapGivenIn({ swaps }, { DAI: 2e18 }, { MKR: 0, DAI: 1e18 });
                       });
 
                       context('when using more than available as internal balance', () => {
@@ -268,7 +297,7 @@ describe('Vault - swaps', () => {
                           ]);
                         });
 
-                        assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
+                        assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 }, { MKR: 0 });
                       });
                     });
 
@@ -545,7 +574,11 @@ describe('Vault - swaps', () => {
     });
 
     describe('swap given out', () => {
-      const assertSwapGivenOut = (input: SwapInput, changes?: Dictionary<BigNumberish | Comparison>) => {
+      const assertSwapGivenOut = (
+        input: SwapInput,
+        changes?: Dictionary<BigNumberish | Comparison>,
+        expectedInternalBalance?: Dictionary<BigNumberish>
+      ) => {
         it('trades the expected amount', async () => {
           const sender = input.fromOther ? other : trader;
           const recipient = input.toOther ? other : trader;
@@ -559,6 +592,14 @@ describe('Vault - swaps', () => {
             tokens,
             [{ account: recipient, changes }]
           );
+
+          if (expectedInternalBalance) {
+            for (const symbol in expectedInternalBalance) {
+              const token = tokens.findBySymbol(symbol);
+              const internalBalance = await vault.getInternalBalance(sender.address, [token.address]);
+              expect(internalBalance[0]).to.be.equal(bn(expectedInternalBalance[symbol]));
+            }
+          }
         });
       };
 
@@ -649,8 +690,25 @@ describe('Vault - swaps', () => {
                         funds.fromInternalBalance = true;
                       });
 
-                      context.skip('when using less than available as internal balance', () => {
-                        // TODO: add tests where no token transfers are needed and internal balance remains
+                      context('when using less than available as internal balance', () => {
+                        sharedBeforeEach('deposit to internal balance', async () => {
+                          await vault.connect(trader).depositToInternalBalance([
+                            {
+                              token: tokens.MKR.address,
+                              amount: bn(0.5e18),
+                              sender: trader.address,
+                              recipient: trader.address,
+                            },
+                            {
+                              token: tokens.DAI.address,
+                              amount: bn(1e18),
+                              sender: trader.address,
+                              recipient: trader.address,
+                            },
+                          ]);
+                        });
+
+                        assertSwapGivenOut({ swaps }, { DAI: 1e18 }, { MKR: 0, DAI: 1e18 });
                       });
 
                       context('when using more than available as internal balance', () => {
