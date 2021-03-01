@@ -81,7 +81,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         }
 
         uint256[] memory normalizedWeights = new uint256[](weights.length);
-        
+
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
             normalizedWeights[i] = weights[i].div(sumWeights);
             require(normalizedWeights[i] >= _MIN_WEIGHT, "MIN_WEIGHT");

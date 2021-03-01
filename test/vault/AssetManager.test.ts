@@ -96,8 +96,10 @@ describe('Vault - asset manager', function () {
           const amount = bn(10e18);
 
           it('transfers only the requested token from the vault to the manager', async () => {
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+
             await expectBalanceChange(
-              () => vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount),
+              () => vault.connect(assetManager).withdrawFromPoolBalance(poolId, transfers),
               tokens,
               [
                 { account: assetManager, changes: { DAI: amount } },
@@ -109,7 +111,8 @@ describe('Vault - asset manager', function () {
           it('does not affect the balance of the pools', async () => {
             const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
 
-            await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            await vault.connect(assetManager).withdrawFromPoolBalance(poolId, transfers);
 
             const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
@@ -119,7 +122,8 @@ describe('Vault - asset manager', function () {
           it('moves the balance from cash to managed', async () => {
             const previousBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
 
-            await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            await vault.connect(assetManager).withdrawFromPoolBalance(poolId, transfers);
 
             const currentBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
             expect(currentBalance.cash).to.equal(previousBalance.cash.sub(amount));
@@ -132,7 +136,9 @@ describe('Vault - asset manager', function () {
           const amount = tokenInitialBalance.add(1);
 
           it('reverts', async () => {
-            const withdraw = vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            const withdraw = vault.connect(assetManager).withdrawFromPoolBalance(poolId, transfers);
+
             await expect(withdraw).to.be.revertedWith('SUB_OVERFLOW');
           });
         });
@@ -140,7 +146,9 @@ describe('Vault - asset manager', function () {
 
       context('when the sender is not the manager', () => {
         it('reverts', async () => {
-          const withdraw = vault.connect(other).withdrawFromPoolBalance(poolId, tokens.DAI.address, 0);
+          const transfers = [{ token: tokens.DAI.address, amount: bn(0) }];
+          const withdraw = vault.connect(other).withdrawFromPoolBalance(poolId, transfers);
+
           await expect(withdraw).to.be.revertedWith('SENDER_NOT_ASSET_MANAGER');
         });
       });
@@ -151,15 +159,18 @@ describe('Vault - asset manager', function () {
         const externalAmount = bn(75e18);
 
         sharedBeforeEach('withdraw funds', async () => {
-          await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, externalAmount);
+          const transfers = [{ token: tokens.DAI.address, amount: externalAmount }];
+          await vault.connect(assetManager).withdrawFromPoolBalance(poolId, transfers);
         });
 
         context('when trying to move less than the managed balance', () => {
           const amount = externalAmount.div(2);
 
           it('transfers only the requested token from the manager to the vault', async () => {
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+
             await expectBalanceChange(
-              () => vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount),
+              () => vault.connect(assetManager).depositToPoolBalance(poolId, transfers),
               tokens,
               [
                 { account: assetManager, changes: { DAI: -amount } },
@@ -171,7 +182,8 @@ describe('Vault - asset manager', function () {
           it('does not affect the balance of the pools', async () => {
             const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
 
-            await vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            await vault.connect(assetManager).depositToPoolBalance(poolId, transfers);
 
             const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI);
@@ -181,7 +193,8 @@ describe('Vault - asset manager', function () {
           it('moves the balance from managed to cash', async () => {
             const previousBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
 
-            await vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            await vault.connect(assetManager).depositToPoolBalance(poolId, transfers);
 
             const currentBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
             expect(currentBalance.cash).to.equal(previousBalance.cash.add(amount));
@@ -194,7 +207,9 @@ describe('Vault - asset manager', function () {
           const amount = externalAmount.add(2);
 
           it('reverts', async () => {
-            const deposit = vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            const deposit = vault.connect(assetManager).depositToPoolBalance(poolId, transfers);
+
             await expect(deposit).to.be.revertedWith('SUB_OVERFLOW');
           });
         });
@@ -203,8 +218,10 @@ describe('Vault - asset manager', function () {
           const amount = 0;
 
           it('ignores the request', async () => {
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+
             await expectBalanceChange(
-              () => vault.connect(assetManager).depositToPoolBalance(poolId, tokens.DAI.address, amount),
+              () => vault.connect(assetManager).depositToPoolBalance(poolId, transfers),
               tokens,
               { account: vault.address }
             );
@@ -214,7 +231,9 @@ describe('Vault - asset manager', function () {
 
       context('when the sender is not an allowed manager', () => {
         it('reverts', async () => {
-          const deposit = vault.connect(other).depositToPoolBalance(poolId, tokens.DAI.address, 0);
+          const transfers = [{ token: tokens.DAI.address, amount: bn(0) }];
+          const deposit = vault.connect(other).depositToPoolBalance(poolId, transfers);
+
           await expect(deposit).to.be.revertedWith('SENDER_NOT_ASSET_MANAGER');
         });
       });
@@ -225,15 +244,18 @@ describe('Vault - asset manager', function () {
         const externalAmount = bn(10e18);
 
         sharedBeforeEach('transfer to manager', async () => {
-          await vault.connect(assetManager).withdrawFromPoolBalance(poolId, tokens.DAI.address, externalAmount);
+          const transfers = [{ token: tokens.DAI.address, amount: externalAmount }];
+          await vault.connect(assetManager).withdrawFromPoolBalance(poolId, transfers);
         });
 
         context('with gains', () => {
           const amount = externalAmount.add(1);
 
           it('does not affect token balances', async () => {
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+
             await expectBalanceChange(
-              () => vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount),
+              () => vault.connect(assetManager).updateManagedBalance(poolId, transfers),
               tokens,
               [{ account: assetManager }, { account: vault }]
             );
@@ -242,7 +264,8 @@ describe('Vault - asset manager', function () {
           it('updates the balance of the pool', async () => {
             const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
 
-            await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            await vault.connect(assetManager).updateManagedBalance(poolId, transfers);
 
             const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI.add(1));
@@ -252,7 +275,8 @@ describe('Vault - asset manager', function () {
           it('sets the managed balance', async () => {
             const previousBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
 
-            await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            await vault.connect(assetManager).updateManagedBalance(poolId, transfers);
 
             const currentBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
             expect(currentBalance.cash).to.equal(previousBalance.cash);
@@ -267,8 +291,10 @@ describe('Vault - asset manager', function () {
           const amount = externalAmount.sub(1);
 
           it('does not affect token balances', async () => {
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+
             await expectBalanceChange(
-              () => vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount),
+              () => vault.connect(assetManager).updateManagedBalance(poolId, transfers),
               tokens,
               [{ account: assetManager }, { account: vault }]
             );
@@ -277,7 +303,8 @@ describe('Vault - asset manager', function () {
           it('updates the balance of the pool', async () => {
             const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
 
-            await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            await vault.connect(assetManager).updateManagedBalance(poolId, transfers);
 
             const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
             expect(currentBalanceDAI).to.equal(previousBalanceDAI.sub(1));
@@ -287,7 +314,8 @@ describe('Vault - asset manager', function () {
           it('sets the managed balance', async () => {
             const previousBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
 
-            await vault.connect(assetManager).updateManagedBalance(poolId, tokens.DAI.address, amount);
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            await vault.connect(assetManager).updateManagedBalance(poolId, transfers);
 
             const currentBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
             expect(currentBalance.cash).to.equal(previousBalance.cash);
@@ -300,7 +328,8 @@ describe('Vault - asset manager', function () {
       });
 
       it('revert if the sender is not the manager', async () => {
-        await expect(vault.connect(other).updateManagedBalance(poolId, tokens.DAI.address, 0)).to.be.revertedWith(
+        const transfers = [{ token: tokens.DAI.address, amount: bn(0) }];
+        await expect(vault.connect(other).updateManagedBalance(poolId, transfers)).to.be.revertedWith(
           'SENDER_NOT_ASSET_MANAGER'
         );
       });
@@ -331,9 +360,9 @@ describe('Vault - asset manager', function () {
         // Deregistering tokens should remove the asset managers
         await pool.deregisterTokens([tokens.DAI.address, tokens.MKR.address]);
 
-        await tokens.forEach(async (token: Token) => {
-          await expect(vault.getPoolTokenInfo(poolId, token.address)).to.be.revertedWith('TOKEN_NOT_REGISTERED');
-        });
+        await tokens.asyncEach((token: Token) =>
+          expect(vault.getPoolTokenInfo(poolId, token.address)).to.be.revertedWith('TOKEN_NOT_REGISTERED')
+        );
 
         // Should also be able to re-register (just one in this case)
         await pool.registerTokens([tokens.DAI.address, tokens.MKR.address], [assetManager.address, ZERO_ADDRESS]);

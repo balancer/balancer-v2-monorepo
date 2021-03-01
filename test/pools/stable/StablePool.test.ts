@@ -120,7 +120,7 @@ describe('StablePool', function () {
         it('initializes the asset managers', async () => {
           const poolId = await pool.getPoolId();
 
-          await tokens.forEach(async (token) => {
+          await tokens.asyncEach(async (token) => {
             const { assetManager } = await vault.getPoolTokenInfo(poolId, token.address);
             expect(assetManager).to.equal(ZERO_ADDRESS);
           });

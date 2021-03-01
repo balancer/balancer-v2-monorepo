@@ -258,14 +258,14 @@ describe('Vault - swaps', () => {
 
                       context('when using more than available as internal balance', () => {
                         sharedBeforeEach('deposit to internal balance', async () => {
-                          await vault
-                            .connect(trader)
-                            .depositToInternalBalance(
-                              trader.address,
-                              [tokens.MKR.address],
-                              [bn(0.3e18)],
-                              trader.address
-                            );
+                          await vault.connect(trader).depositToInternalBalance([
+                            {
+                              token: tokens.MKR.address,
+                              amount: bn(0.3e18),
+                              sender: trader.address,
+                              recipient: trader.address,
+                            },
+                          ]);
                         });
 
                         assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
@@ -655,14 +655,14 @@ describe('Vault - swaps', () => {
 
                       context('when using more than available as internal balance', () => {
                         sharedBeforeEach('deposit to internal balance', async () => {
-                          await vault
-                            .connect(trader)
-                            .depositToInternalBalance(
-                              trader.address,
-                              [tokens.MKR.address],
-                              [bn(0.3e18)],
-                              trader.address
-                            );
+                          await vault.connect(trader).depositToInternalBalance([
+                            {
+                              token: tokens.MKR.address,
+                              amount: bn(0.3e18),
+                              sender: trader.address,
+                              recipient: trader.address,
+                            },
+                          ]);
                         });
 
                         assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
