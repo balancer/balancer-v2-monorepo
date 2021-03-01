@@ -413,11 +413,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
-        uint256[] memory amountsOut = WeightedMath._exactBPTInForTokensOut(
-            currentBalances,
-            bptAmountIn,
-            totalSupply()
-        );
+        uint256[] memory amountsOut = WeightedMath._exactBPTInForTokensOut(currentBalances, bptAmountIn, totalSupply());
 
         return (bptAmountIn, amountsOut);
     }
