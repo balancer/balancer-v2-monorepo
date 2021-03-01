@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
-import "../../lib/helpers/UnsafeRandom.sol";
 
 import "../BaseMinimalSwapInfoPool.sol";
 
@@ -35,6 +34,10 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     // TODO: link info about these limits once they are studied and documented
     uint256 private constant _MIN_WEIGHT = 100;
     uint256 private constant _MAX_WEIGHT = 5000 * (1e18);
+
+    // The protocol fees will be always charged using the token associated to the max weight in the pool.
+    // Since these Pools will register tokens only once, we can assume this index will be constant.
+    uint256 private immutable _maxWeightedTokenIndex;
 
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
@@ -76,11 +79,20 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             sumWeights = sumWeights.add(weights[i]);
         }
 
+        uint256 previousTokenWeight = 0;
+        uint256 maxWeightedTokenIndex = 0;
         uint256[] memory normalizedWeights = new uint256[](weights.length);
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
-            normalizedWeights[i] = weights[i].div(sumWeights);
+            uint256 currentWeight = weights[i];
+            normalizedWeights[i] = currentWeight.div(sumWeights);
+
+            if (currentWeight > previousTokenWeight) {
+                maxWeightedTokenIndex = i;
+            }
+            previousTokenWeight = currentWeight;
         }
 
+        _maxWeightedTokenIndex = maxWeightedTokenIndex;
         _normalizedWeight0 = weights.length > 0 ? normalizedWeights[0] : 0;
         _normalizedWeight1 = weights.length > 1 ? normalizedWeights[1] : 0;
         _normalizedWeight2 = weights.length > 2 ? normalizedWeights[2] : 0;
@@ -452,21 +464,15 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentInvariant,
         uint256 protocolSwapFeePercentage
     ) private view returns (uint256[] memory) {
-        // Instead of paying the protocol swap fee in all tokens proportionally, we will pay it in a single one. This
-        // will reduce gas costs for single asset joins and exits, as at most only two Pool balances will change (the
-        // token joined/exited, and the token in which fees will be paid).
-
-        // The token fees is paid in is chosen pseudo-randomly, with the hope to achieve a uniform distribution across
-        // multiple joins and exits. This pseudo-randomness being manipulated is not an issue.
-        uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
-
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
 
-        // Set the fee to pay in the selected token
-        dueProtocolFeeAmounts[chosenTokenIndex] = WeightedMath._calculateDueTokenProtocolSwapFee(
-            currentBalances[chosenTokenIndex],
-            normalizedWeights[chosenTokenIndex],
+        // The protocol swap fee are always paid using the token with the largest weight in the pool.
+        // As this is then token that will probably have the largest balance in the pool, we can
+        // make sure this process won't unbalance the pool in a considerable way.
+        dueProtocolFeeAmounts[_maxWeightedTokenIndex] = WeightedMath._calculateDueTokenProtocolSwapFee(
+            currentBalances[_maxWeightedTokenIndex],
+            normalizedWeights[_maxWeightedTokenIndex],
             previousInvariant,
             currentInvariant,
             protocolSwapFeePercentage

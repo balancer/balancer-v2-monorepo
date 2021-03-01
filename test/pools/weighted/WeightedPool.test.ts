@@ -30,7 +30,7 @@ describe('WeightedPool', function () {
   let trader: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
   const POOL_SWAP_FEE = fp(0.01);
-  const WEIGHTS = [bn(70e18), bn(30e18), bn(5e18), bn(5e18)];
+  const WEIGHTS = [bn(30e18), bn(70e18), bn(5e18), bn(5e18)];
   const INITIAL_BALANCES = [bn(0.9e18), bn(1.8e18), bn(2.7e18), bn(3.6e18)];
 
   before('setup signers', async () => {
@@ -39,7 +39,7 @@ describe('WeightedPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
+    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [lp, trader], amount: bn(100e18) });
   });
 
@@ -292,9 +292,7 @@ describe('WeightedPool', function () {
 
           sharedBeforeEach('compute expected BPT balances', async () => {
             previousBptSupply = await pool.totalSupply();
-
-            exactAmountsIn = [...ZEROS];
-            exactAmountsIn[1] = bn(0.1e18);
+            exactAmountsIn = ZEROS.map((n, i) => (i === 1 ? bn(0.1e18) : n));
 
             expectedBptAmount = await calcBptOutGivenExactTokensIn(
               initialBalances,
@@ -644,15 +642,15 @@ describe('WeightedPool', function () {
 
           const result = await pool.callStatic.onSwapGivenIn(
             { ...swapRequestData, amountIn: AMOUNT_IN_WITH_FEES },
-            initialBalances[0], // tokenInBalance
-            initialBalances[1] // tokenOutBalance
+            initialBalances[1], // tokenInBalance
+            initialBalances[0] // tokenOutBalance
           );
 
           const expectedAmountOut = calcOutGivenIn(
-            initialBalances[0],
-            weights[0],
             initialBalances[1],
             weights[1],
+            initialBalances[0],
+            weights[0],
             AMOUNT_IN_WITH_FEES
           );
 
@@ -682,19 +680,19 @@ describe('WeightedPool', function () {
 
       context('given out', () => {
         it('calculates amount in', async () => {
-          const AMOUNT_OUT = bn(1.35e18);
+          const AMOUNT_OUT = bn(0.1e18);
 
           const result = await pool.callStatic.onSwapGivenOut(
             { ...swapRequestData, amountOut: AMOUNT_OUT },
-            initialBalances[0], // tokenInBalance
-            initialBalances[1] // tokenOutBalance
+            initialBalances[1], // tokenInBalance
+            initialBalances[0] // tokenOutBalance
           );
 
           const expectedAmountIn = calcInGivenOut(
-            initialBalances[0],
-            weights[0],
             initialBalances[1],
             weights[1],
+            initialBalances[0],
+            weights[0],
             AMOUNT_OUT
           );
 
@@ -817,17 +815,15 @@ describe('WeightedPool', function () {
         let expectedDueProtocolFeeAmounts: BigNumber[];
 
         sharedBeforeEach('compute expected due protocol fees', async () => {
-          const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
-          const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
+          const maxWeight = weights.reduce((max, weight) => (weight.gt(max) ? weight : max), bn(0));
+          const paidTokenIndex = weights.indexOf(maxWeight);
 
           const lastInvariant = calculateInvariant(initialBalances, weights);
           currentBalances = initialBalances.map((balance) => balance.mul(2)); // twice the initial balances
 
           const feeAmount = calculateOneTokenSwapFee(currentBalances, weights, lastInvariant, paidTokenIndex);
           const protocolFeeAmount = bn(feeAmount).mul(PROTOCOL_SWAP_FEE).div(bn(1e18));
-
-          expectedDueProtocolFeeAmounts = [...ZEROS];
-          expectedDueProtocolFeeAmounts[paidTokenIndex] = protocolFeeAmount;
+          expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? protocolFeeAmount : n));
         });
 
         it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
