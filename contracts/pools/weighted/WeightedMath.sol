@@ -223,7 +223,7 @@ contract WeightedMath {
         return amountsOut;
     }
 
-    function _bptInForExactTokensOut(
+    function _BPTInForExactTokensOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory amountsOut,

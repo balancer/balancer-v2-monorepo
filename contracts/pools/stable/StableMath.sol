@@ -163,13 +163,13 @@ contract StableMath {
         return balances[tokenIndexOut] > y ? balances[tokenIndexOut].sub(y) : 0;
     }
 
-    function _allTokensInForExactBPTOut(
+    function _tokensInForExactBPTOut(
         uint256[] memory balances,
         uint256 bptAmountOut,
         uint256 bptTotalSupply
     ) internal pure returns (uint256[] memory) {
         /**********************************************************************************************
-        // allTokensInForExactBPTOut                                                                 //
+        // tokensInForExactBPTOut                                                                 //
         // (per token)                                                                               //
         // aI = tokenAmountIn              /        bptOut         \                                 //
         // b = tokenBalance      aI = b * | ---------------------  |                                 //
@@ -215,7 +215,7 @@ contract StableMath {
         uint256 newInvariantWithoutFee = _invariant(amp, newBalancesWithoutFee);
 
         // Calculate the amountsIn that a proportional add liquidity resulting 
-        // in the same new invariant would require (i.e. _allTokensInForExactBPTOut())
+        // in the same new invariant would require (i.e. _tokensInForExactBPTOut())
         uint256[] memory amountsInProportional = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             amountsInProportional[i] = balances[i]
@@ -289,113 +289,102 @@ contract StableMath {
             );
     }
 
-    // /* 
-    // Flow of calculations:
-    // amountTokenOut -> newInvariantWithoutFee -> amountsOutProportional ->
-    // amountOutPercentageExcess -> amountOutBeforeFee -> newInvariant -> amountBPTIn
-    // */
-    // function _exactTokenOutForBPTIn(
-    //     uint256 amp,
-    //     uint256[] memory balances,
-    //     uint256 amountOut,
-    //     uint256 bptTotalSupply,
-    //     uint256 swapFee
-    // ) internal pure returns (uint256) {
-    //     /**********************************************************************************************
-    //     // TODO description                            //
-    //     **********************************************************************************************/
+    /* 
+    Flow of calculations:
+    amountTokenOut -> newInvariantWithoutFee -> amountOutProportional ->
+    amountOutPercentageExcess -> amountOutBeforeFee -> newInvariant -> amountBPTIn
+    */
+    function _BPTInForExactTokenOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndex,
+        uint256 amountOut,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) internal pure returns (uint256) {
+        /**********************************************************************************************
+        // TODO description                            //
+        **********************************************************************************************/
 
-    //     // Get current invariant
-    //     uint256 currentInvariant = _invariant(amp, balances);
+        // Get current invariant
+        uint256 currentInvariant = _invariant(amp, balances);
+
+        // Get new invariant without fees but before store current balance of tokenIndex
+        uint256 balanceTokenIndex = balances[tokenIndex];
+        balances[tokenIndex] = balances[tokenIndex].sub(amountOut);
+        uint256 newInvariantWithoutFee = _invariant(amp, balances);
+
+        // Calculate the amountOut that a proportional add liquidity resulting 
+        // in the same new invariant would redeem (i.e. _exactBPTInForTokensOut())
+
+        uint256 amountOutProportional = balanceTokenIndex
+            .mul(FixedPoint.ONE.sub(newInvariantWithoutFee.divDown(currentInvariant)));
+
+        // Calculate amountOutPercentageExcess 
+        uint256 amountOutPercentageExcess = FixedPoint.ONE.sub(
+                    amountOutProportional.divDown(amountOut));
+
+        uint256 amountOutBeforeFee = amountOut.divUp(
+                FixedPoint.ONE.sub(swapFee.mul(amountOutPercentageExcess))
+            );
+
+        // Then calculate new invariant considering fees
+        balances[tokenIndex] = balanceTokenIndex.sub(amountOutBeforeFee);
+        uint256 newInvariant = _invariant(amp, balances);
+
+        // return amountBPTIn
+        return bptTotalSupply.mul(FixedPoint.ONE.sub(newInvariant.divUp(currentInvariant)));
+    }
+
+    /* 
+    Flow of calculations:
+    amountBPTin -> newInvariant -> (amountOutProportional, amountOutBeforeFee) ->
+    amountOutPercentageExcess -> amountOut
+    */
+    function _exactBPTInForTokenOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndex,
+        uint256 bptAmountIn,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) internal pure returns (uint256) {
+        /**********************************************************************************************
+        // TODO description                            //
+        **********************************************************************************************/
+
+        // Get current invariant
+        uint256 currentInvariant = _invariant(amp, balances);
+
+        // Calculate the factor by which the invariant will increase after minting BPTAmountOut
+        uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
+
+        uint256 amountOutProportional = balances[tokenIndex].mul(FixedPoint.ONE.sub(invariantRatio));
         
-    //     // Get new invariant without fees
-    //     uint256[] memory newBalancesWithoutFee = new uint256[](balances.length);
-    //     for (uint256 i = 0; i < balances.length; i++) {
-    //         newBalancesWithoutFee[i] = balances[i].add(amountsIn[i]);
-    //     }
-    //     uint256 newInvariantWithoutFee = _invariant(amp, newBalancesWithoutFee);
+        // get amountOutBeforeFee
+        uint256 amountOutBeforeFee = _getTokenBalanceGivenInvariantAndAllOtherBalances(
+            amp,
+            balances,
+            currentInvariant,
+            tokenIndex);
 
-    //     // Calculate the amountsIn that a proportional add liquidity resulting 
-    //     // in the same new invariant would require (i.e. _allTokensInForExactBPTOut())
-    //     uint256[] memory amountsInProportional = new uint256[](balances.length);
-    //     for (uint256 i = 0; i < balances.length; i++) {
-    //         amountsInProportional[i] = balances[i]
-    //             .mul(newInvariantWithoutFee.divDown(currentInvariant).sub(FixedPoint.ONE));
-    //     }
-
-    //     // Charge swap fee for every token when newBalancesWithoutFee > newBalancesProportional 
-    //     // Then calculate new invariant considering fees
-    //     uint256[] memory newBalances = new uint256[](balances.length);
-    //     for (uint256 i = 0; i < balances.length; i++) {
-    //         // Percentage of the amountIn that should pay the swapFee
-    //         uint256 amountInPercentageExcess;
-    //         uint256 amountInAfterFee;
-    //         if(amountsIn[i]>amountsInProportional[i]){
-    //             amountInPercentageExcess = FixedPoint.ONE.sub(
-    //                 amountsInProportional[i].divDown(amountsIn[i])
-    //             );
-    //             amountInAfterFee = amountsIn[i].mul(
-    //                 FixedPoint.ONE.sub(swapFee.mul(amountInPercentageExcess))
-    //             );
-    //             newBalances[i] = balances[i].add(amountInAfterFee);
-    //         }
-    //         else{
-    //             newBalances[i] = balances[i].add(amountsIn[i]);
-    //         }
-    //     }
-    //     uint256 newInvariant = _invariant(amp, newBalances);
-
-    //     // return amountBPTOut
-    //     return bptTotalSupply.mul(newInvariant.divDown(currentInvariant).sub(FixedPoint.ONE));
-    // }
-
-    // /* 
-    // Flow of calculations:
-    
-    // */
-    // function _tokenOutForExactBPTIn(
-    //     uint256 amp,
-    //     uint256[] memory balances,
-    //     uint256 tokenIndex,
-    //     uint256 bptAmountOut,
-    //     uint256 bptTotalSupply,
-    //     uint256 swapFee
-    // ) internal pure returns (uint256) {
-    //     /**********************************************************************************************
-    //     // TODO description                            //
-    //     **********************************************************************************************/
-
-    //     // Get current invariant
-    //     uint256 currentInvariant = _invariant(amp, balances);
-
-    //     // Calculate the factor by which the invariant will increase after minting BPTAmountOut
-    //     uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).divDown(bptTotalSupply);
-
-    //     uint256 amountInProportional = balances[tokenIndex].mul(invariantRatio.sub(FixedPoint.ONE));
+        // get amountOutPercentageExcess
+        uint256 amountOutPercentageExcess = FixedPoint.ONE.sub(
+                    amountOutProportional.divDown(amountOutBeforeFee));
         
-    //     // get amountInAfterFee
-    //     uint256 amountInAfterFee = _getTokenBalanceGivenInvariantAndAllOtherBalances(
-    //         amp,
-    //         balances,
-    //         currentInvariant,
-    //         tokenIndex);
+        // return amountOut
+        return amountOutBeforeFee.mul(
+                FixedPoint.ONE.sub(swapFee.mul(amountOutPercentageExcess))
+            );
+    }
 
-    //     // get amountInPercentageExcess
-    //     uint256 amountInPercentageExcess = FixedPoint.ONE.sub(
-    //                 amountInProportional.divDown(amountInAfterFee));
-    //     // return amountIn
-    //     return amountInAfterFee.divUp(
-    //             FixedPoint.ONE.sub(swapFee.mul(amountInPercentageExcess))
-    //         );
-    // }
-
-    function _exactBPTInForAllTokensOut(
+    function _exactBPTInForTokensOut(
         uint256[] memory balances,
         uint256 bptAmountIn,
         uint256 bptTotalSupply
     ) internal pure returns (uint256[] memory) {
         /**********************************************************************************************
-        // exactBPTInForAllTokensOut                                                                 //
+        // exactBPTInForTokensOut                                                                 //
         // (per token)                                                                               //
         // aO = tokenAmountOut             /        bptIn         \                                  //
         // b = tokenBalance      a0 = b * | ---------------------  |                                 //

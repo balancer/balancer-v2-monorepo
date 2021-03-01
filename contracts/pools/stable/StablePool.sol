@@ -150,7 +150,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         JoinKind kind = userData.joinKind();
 
         if (kind == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return _joinAllTokensInForExactBPTOut(balances, userData);
+            return _joinTokensInForExactBPTOut(balances, userData);
         } else {
             revert("UNHANDLED_JOIN_KIND");
         }
@@ -160,7 +160,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         bytes memory userData
     ) private view returns (uint256) {
-        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
+        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBPTOut();
         require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
         _upscaleArray(amountsIn, _scalingFactors());
 
@@ -181,7 +181,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         bytes memory userData
     ) private view returns (uint256) {
-        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
+        (uint256 bptAmountOut, uint256 tokenIndex, uint256 maxAmountIn) = userData.tokenInForExactBPTOut();
 
         uint256 amountIn = StableMath._tokenInForExactBPTOut(
             _amp,
@@ -192,21 +192,27 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
 
+        require(amountIn <= maxAmountIn, "TOKEN_IN_MAX_AMOUNT");
+
         return amountIn;
     }
 
-    function _joinAllTokensInForExactBPTOut(uint256[] memory balances, bytes memory userData)
+    function _joinTokensInForExactBPTOut(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256[] memory)
     {
-        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
+        (uint256 bptAmountOut, uint256[] memory maxAmountsIn) = userData.tokensInForExactBPTOut();
 
-        uint256[] memory amountsIn = StableMath._allTokensInForExactBPTOut(
+        uint256[] memory amountsIn = StableMath._tokensInForExactBPTOut(
             balances,
             bptAmountOut,
             totalSupply()
         );
+
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            require(amountsIn[i] <= maxAmountsIn[i], "TOKEN_IN_MAX_AMOUNT");
+        }
 
         return amountsIn;
     }
@@ -261,24 +267,69 @@ contract StablePool is BaseGeneralPool, StableMath {
         ExitKind kind = userData.exitKind();
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForAllTokensOut(balances, userData);
+            return _exitExactBPTInForTokensOut(balances, userData);
         } else {
             revert("UNHANDLED_EXIT_KIND");
         }
     }
 
-    function _exitExactBPTInForAllTokensOut(uint256[] memory balances, bytes memory userData)
+    function _exitExactBPTInForTokenOut(
+        uint256[] memory balances,
+        bytes memory userData
+    ) private view returns (uint256) {
+        (uint256 bptAmountIn, uint256 tokenIndex, uint256 minAmountOut) = userData.exactBPTInForTokenOut();
+
+        uint256 amountOut = StableMath._exactBPTInForTokenOut(
+            _amp,
+            balances,
+            tokenIndex,
+            bptAmountIn,
+            totalSupply(),
+            _swapFee
+        );
+        
+        require(amountOut >= minAmountOut, "TOKEN_OUT_MIN_AMOUNT");
+        
+        return amountOut;
+    }
+
+    function _exitBPTInForExactTokenOut(
+        uint256[] memory balances,
+        bytes memory userData
+    ) private view returns (uint256) {
+        (uint256[] memory amountsIn, uint256 maxBPTAmountIn) = userData.BPTInForExactTokenOut();
+        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        _upscaleArray(amountsIn, _scalingFactors());
+
+        uint256 bptAmountIn = StableMath._BPTInForExactTokenOut(
+            _amp,
+            balances,
+            amountsIn,
+            totalSupply(),
+            _swapFee
+        );
+
+        require(bptAmountIn <= maxBPTAmountIn, "BPT_OUT_MIN_AMOUNT");
+
+        return bptAmountIn;
+    }
+
+    function _exitExactBPTInForTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
     {
-        uint256 bptAmountIn = userData.exactBptInForAllTokensOut();
+        (uint256 bptAmountIn, uint256[] memory minAmountsOut) = userData.exactBPTInForTokensOut();
 
-        uint256[] memory amountsOut = StableMath._exactBPTInForAllTokensOut(
+        uint256[] memory amountsOut = StableMath._exactBPTInForTokensOut(
             balances,
             bptAmountIn,
             totalSupply()
         );
+
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            require(amountsOut[i] >= minAmountsOut[i], "TOKEN_OUT_MIN_AMOUNT");
+        }
 
         return (bptAmountIn, amountsOut);
     }
