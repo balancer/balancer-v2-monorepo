@@ -118,11 +118,11 @@ library FixedPoint {
         if (result == 0) {
             return 0;
         }
-        return result - mulDown(result, MAX_POW_RELATIVE_ERROR) - 1;
+        return sub(sub(result, mulDown(result, MAX_POW_RELATIVE_ERROR)), 1);
     }
 
     function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
         uint256 result = LogExpMath.pow(x, y);
-        return result + mulUp(result, MAX_POW_RELATIVE_ERROR) + 1;
+        return add(add(result, mulUp(result, MAX_POW_RELATIVE_ERROR)), 1);
     }
 }
