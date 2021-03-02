@@ -15,8 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "hardhat/console.sol";
-
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/helpers/UnsafeRandom.sol";
@@ -409,7 +407,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         uint256 bptTotalSupply = totalSupply();
 
-        //Verifies that invariant ratio is not lower than min
+        // Verifies that invariant ratio is not lower than min
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
         require(invariantRatio >= _MIN_INVARIANT_RATIO, "MIN_BPT_IN_FOR_TOKEN_OUT");
 
@@ -478,8 +476,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // multiple joins and exits. This pseudo-randomness being manipulated is not an issue.
         uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
 
-        //Verifies that invariant ratio is not lower than min.
-        //If lower than min, protocol fees will charge up to the min ratio allowed.
+        // Verifies that invariant ratio is not lower than min.
+        // If lower than min, protocol fees will charge up to the min ratio allowed.
         uint256 invariantRatio = previousInvariant.divUp(currentInvariant);
         if (invariantRatio <= _MIN_INVARIANT_RATIO) {
             currentInvariant = previousInvariant.divUp(_MIN_INVARIANT_RATIO);

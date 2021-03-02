@@ -8,7 +8,6 @@ import Token from '../helpers/models/tokens/Token';
 import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';

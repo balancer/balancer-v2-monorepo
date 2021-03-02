@@ -4,7 +4,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import * as expectEvent from '../helpers/expectEvent';
 import { deploy } from '../../lib/helpers/deploy';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('BasePoolFactory', function () {
   let admin: SignerWithAddress;
