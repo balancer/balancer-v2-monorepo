@@ -14,11 +14,12 @@ import {
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
   calculateOneTokenSwapFee,
+  calculateMaxOneTokenSwapFee,
   toNormalizedWeights,
 } from '../../helpers/math/weighted';
 
 import { deploy } from '../../../lib/helpers/deploy';
-import { bn, decimal, fp, pct } from '../../../lib/helpers/numbers';
+import { bn, decimal, fp, fromFp, pct } from '../../../lib/helpers/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../lib/helpers/weightedPoolEncoding';
@@ -32,6 +33,10 @@ describe('WeightedPool', function () {
   const POOL_SWAP_FEE = fp(0.01);
   const WEIGHTS = [bn(70e18), bn(30e18), bn(5e18), bn(5e18)];
   const INITIAL_BALANCES = [bn(0.9e18), bn(1.8e18), bn(2.7e18), bn(3.6e18)];
+  const MAX_IN_RATIO = fp(0.3);
+  const MAX_OUT_RATIO = fp(0.3);
+  const MAX_INVARIANT_RATIO = fp(3);
+  const MIN_INVARIANT_RATIO = fp(0.7);
 
   before('setup signers', async () => {
     [, admin, lp, trader, beneficiary, other] = await ethers.getSigners();
@@ -193,13 +198,6 @@ describe('WeightedPool', function () {
           const badSwapFee = fp(0.1).add(1);
 
           await expect(deployPool({ swapFee: badSwapFee })).to.be.revertedWith('MAX_SWAP_FEE');
-        });
-
-        it('reverts if at least one weight is too high', async () => {
-          const badWeights = WEIGHTS.slice(0, numberOfTokens);
-          badWeights[0] = bn(50000).mul(bn(10e18));
-
-          await expect(deployPool({ weights: badWeights })).to.be.revertedWith('MAX_WEIGHT');
         });
 
         it('reverts if at least one weight is too low', async () => {
@@ -372,17 +370,41 @@ describe('WeightedPool', function () {
             await vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData);
           });
 
+          it('fails if invariant increases more than max allowed', async () => {
+            const previousBptSupply = await pool.totalSupply();
+
+            //Calculate bpt amount out so that the inviarant ratio
+            //((bptTotalSupply + bptAmountOut / bptTotalSupply))
+            //is more than 3
+            const exceededBPTAmountOut = MAX_INVARIANT_RATIO.mul(previousBptSupply)
+              .div(bn(1e18))
+              .sub(previousBptSupply)
+              .add(2);
+
+            const joinUserData = encodeJoinWeightedPool({
+              kind: 'TokenInForExactBPTOut',
+              bptAmountOut: exceededBPTAmountOut,
+              enterTokenIndex,
+            });
+
+            await expect(
+              vault
+                .connect(lp)
+                .callJoinPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, joinUserData)
+            ).to.be.revertedWith('MAX_OUT_BPT_FOR_TOKEN_IN');
+          });
+
           it('grants exact BPT for token in', async () => {
             const previousBptSupply = await pool.totalSupply();
 
-            const bptAmountOut = bn(10e18);
+            const bptAmountOut = bn(2e18);
 
             const exactAmountsIn = [...ZEROS];
             exactAmountsIn[enterTokenIndex] = await calcTokenInGivenExactBptOut(
               enterTokenIndex,
               initialBalances,
               weights,
-              bn(10e18),
+              bn(2e18),
               previousBptSupply,
               POOL_SWAP_FEE
             );
@@ -458,12 +480,34 @@ describe('WeightedPool', function () {
       });
 
       context('exit exact BPT in for one token out', () => {
-        // This fails because the percentual invariant decrease is too large, and causes the exponentiation function to
-        // fail.
-        it.skip('grants one token for exact bpt', async () => {
+        it('fails if invariant increases more than max allowed', async () => {
+          const exitTokenIndex = 0;
+          const previousBptSupply = await pool.totalSupply();
+
+          //Calculate bpt amount in so that the inviarant ratio
+          //((bptTotalSupply - bptAmountIn / bptTotalSupply))
+          //is more than 3
+          const exceededBPTAmountIn = previousBptSupply
+            .sub(MIN_INVARIANT_RATIO.mul(previousBptSupply).div(bn(1e18)))
+            .add(2);
+
+          const exitUserData = encodeExitWeightedPool({
+            kind: 'ExactBPTInForOneTokenOut',
+            bptAmountIn: exceededBPTAmountIn,
+            exitTokenIndex,
+          });
+
+          await expect(
+            vault
+              .connect(lp)
+              .callExitPool(pool.address, poolId, beneficiary.address, initialBalances, 0, 0, exitUserData)
+          ).to.be.revertedWith('MIN_BPT_IN_FOR_TOKEN_OUT');
+        });
+
+        it('grants one token for exact bpt', async () => {
           // Fully exit
           const exitTokenIndex = 0;
-          const exactBptIn = previousBptBalance;
+          const exactBptIn = previousBptBalance.mul(fp(0.2)).div(bn(1e18)); //20% of previous balance
 
           const expectedTokenOut = calcTokenOutGivenExactBptIn(
             exitTokenIndex,
@@ -497,9 +541,9 @@ describe('WeightedPool', function () {
             .filter((_: BigNumber, i: number) => i != exitTokenIndex)
             .forEach((amountOut: BigNumber) => expect(amountOut).to.equal(0));
 
-          // Current BPT balance should be zero
+          // Current BPT balance should be decrease
           const currentBptBalance = await pool.balanceOf(lp.address);
-          expect(currentBptBalance).to.equal(bn(0));
+          expect(currentBptBalance).to.equal(previousBptBalance.sub(exactBptIn));
         });
       });
 
@@ -639,7 +683,7 @@ describe('WeightedPool', function () {
       context('given in', () => {
         it('calculates amount out', async () => {
           // swap the same amount as the initial balance for token #0
-          const AMOUNT_IN = bn(0.9e18);
+          const AMOUNT_IN = bn(0.1e18);
           const AMOUNT_IN_WITH_FEES = AMOUNT_IN.mul(POOL_SWAP_FEE.add(bn(1e18))).div(bn(1e18));
 
           const result = await pool.callStatic.onSwapGivenIn(
@@ -656,7 +700,7 @@ describe('WeightedPool', function () {
             AMOUNT_IN_WITH_FEES
           );
 
-          expectEqualWithError(result, bn(expectedAmountOut), 0.005);
+          expectEqualWithError(result, bn(expectedAmountOut), 0.01);
         });
 
         it('reverts if token in is not in the pool', async () => {
@@ -678,11 +722,45 @@ describe('WeightedPool', function () {
             )
           ).to.be.revertedWith('INVALID_TOKEN');
         });
+
+        it('calculates max amount out', async () => {
+          const MAX_AMOUNT_IN = initialBalances[0].mul(MAX_IN_RATIO).div(bn(1e18)); //Max in ratio
+          const MAX_AMOUNT_IN_WITH_FEES = MAX_AMOUNT_IN.mul(POOL_SWAP_FEE.add(bn(1e18))).div(bn(1e18));
+
+          const result = await pool.callStatic.onSwapGivenIn(
+            { ...swapRequestData, amountIn: MAX_AMOUNT_IN_WITH_FEES },
+            initialBalances[0], // tokenInBalance
+            initialBalances[1] // tokenOutBalance
+          );
+
+          const expectedAmountOut = calcOutGivenIn(
+            initialBalances[0],
+            weights[0],
+            initialBalances[1],
+            weights[1],
+            MAX_AMOUNT_IN_WITH_FEES
+          );
+
+          expectEqualWithError(result, bn(expectedAmountOut), 0.05);
+        });
+
+        it('reverts if token in exceeds max in ratio', async () => {
+          const maxAmountIn = initialBalances[0].mul(MAX_IN_RATIO).div(bn(1e18)); //Max in ratio
+          const maxAmountInWithFee = maxAmountIn.mul(bn(1e18)).div(bn(1e18).sub(POOL_SWAP_FEE));
+
+          await expect(
+            pool.onSwapGivenIn(
+              { ...swapRequestData, amountIn: maxAmountInWithFee.add(bn(2)) },
+              initialBalances[0], // tokenInBalance
+              initialBalances[1] // tokenOutBalance
+            )
+          ).to.be.revertedWith('ERR_MAX_IN_RATIO');
+        });
       });
 
       context('given out', () => {
         it('calculates amount in', async () => {
-          const AMOUNT_OUT = bn(1.35e18);
+          const AMOUNT_OUT = bn(0.1e18);
 
           const result = await pool.callStatic.onSwapGivenOut(
             { ...swapRequestData, amountOut: AMOUNT_OUT },
@@ -719,6 +797,38 @@ describe('WeightedPool', function () {
               initialBalances[1] // tokenOutBalance
             )
           ).to.be.revertedWith('INVALID_TOKEN');
+        });
+
+        it('calculates max amount in', async () => {
+          const MAX_AMOUNT_OUT = initialBalances[1].mul(MAX_OUT_RATIO).div(bn(1e18)); //Max out ratio
+
+          const result = await pool.callStatic.onSwapGivenOut(
+            { ...swapRequestData, amountOut: MAX_AMOUNT_OUT },
+            initialBalances[0], // tokenInBalance
+            initialBalances[1] // tokenOutBalance
+          );
+
+          const expectedAmountIn = calcInGivenOut(
+            initialBalances[0],
+            weights[0],
+            initialBalances[1],
+            weights[1],
+            MAX_AMOUNT_OUT
+          );
+
+          expectEqualWithError(result, bn(expectedAmountIn), 0.1);
+        });
+
+        it('reverts if token in exceeds max out ratio', async () => {
+          const MAX_AMOUNT_OUT = initialBalances[1].mul(MAX_OUT_RATIO).div(bn(1e18)); //Max out ratio
+
+          await expect(
+            pool.onSwapGivenOut(
+              { ...swapRequestData, amountOut: MAX_AMOUNT_OUT.add(bn(2)) },
+              initialBalances[0], // tokenInBalance
+              initialBalances[1] // tokenOutBalance
+            )
+          ).to.be.revertedWith('ERR_MAX_OUT_RATIO');
         });
       });
     });
@@ -821,7 +931,7 @@ describe('WeightedPool', function () {
           const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
 
           const lastInvariant = calculateInvariant(initialBalances, weights);
-          currentBalances = initialBalances.map((balance) => balance.mul(2)); // twice the initial balances
+          currentBalances = initialBalances.map((balance) => balance.mul(4).div(3)); // 4/3 of the initial balances
 
           const feeAmount = calculateOneTokenSwapFee(currentBalances, weights, lastInvariant, paidTokenIndex);
           const protocolFeeAmount = bn(feeAmount).mul(PROTOCOL_SWAP_FEE).div(bn(1e18));
@@ -843,7 +953,67 @@ describe('WeightedPool', function () {
         it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
           const exitUserData = encodeExitWeightedPool({
             kind: 'ExactBPTInForOneTokenOut',
-            bptAmountIn: bn(1e18),
+            bptAmountIn: bn(0.5e18),
+            exitTokenIndex: 0,
+          });
+
+          await expectExitProtocolSwapFeeEqualWithError(currentBalances, expectedDueProtocolFeeAmounts, exitUserData);
+        });
+
+        it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
+          const exitUserData = encodeExitWeightedPool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: bn(1e18) });
+
+          await expectExitProtocolSwapFeeEqualWithError(currentBalances, expectedDueProtocolFeeAmounts, exitUserData);
+        });
+
+        it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
+          const exitUserData = encodeExitWeightedPool({
+            kind: 'BPTInForExactTokensOut',
+            amountsOut: Array(tokens.length).fill(bn(1e18)),
+            maxBPTAmountIn: MAX_UINT112,
+          });
+
+          await expectExitProtocolSwapFeeEqualWithError(currentBalances, expectedDueProtocolFeeAmounts, exitUserData);
+        });
+      });
+
+      context('with swap and exceeded min invariant ratio', () => {
+        let currentBalances: BigNumber[];
+        let expectedDueProtocolFeeAmounts: BigNumber[];
+
+        sharedBeforeEach('compute expected due protocol fees', async () => {
+          const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
+          const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
+          //Current balances are twice the initial balance, forces to charge only swap fees for the min invariant ratio
+          currentBalances = initialBalances.map((balance) => balance.mul(2));
+
+          const feeAmount = calculateMaxOneTokenSwapFee(
+            currentBalances,
+            weights,
+            fromFp(MIN_INVARIANT_RATIO),
+            paidTokenIndex
+          );
+
+          const protocolFeeAmount = bn(feeAmount).mul(PROTOCOL_SWAP_FEE).div(bn(1e18));
+
+          expectedDueProtocolFeeAmounts = [...ZEROS];
+          expectedDueProtocolFeeAmounts[paidTokenIndex] = protocolFeeAmount;
+        });
+
+        it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
+          const joinUserData = encodeJoinWeightedPool({
+            kind: 'ExactTokensInForBPTOut',
+            amountsIn: Array(tokens.length).fill(bn(1e18)),
+            minimumBPT: 0,
+          });
+
+          await expectJoinProtocolSwapFeeEqualWithError(currentBalances, expectedDueProtocolFeeAmounts, joinUserData);
+        });
+
+        it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
+          const exitUserData = encodeExitWeightedPool({
+            kind: 'ExactBPTInForOneTokenOut',
+            bptAmountIn: bn(0.5e18),
             exitTokenIndex: 0,
           });
 

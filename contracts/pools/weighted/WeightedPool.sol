@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "hardhat/console.sol";
+
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/helpers/UnsafeRandom.sol";
@@ -32,9 +34,13 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
 
-    // TODO: link info about these limits once they are studied and documented
-    uint256 private constant _MIN_WEIGHT = 100;
-    uint256 private constant _MAX_WEIGHT = 5000 * (1e18);
+    uint256 private constant _MIN_WEIGHT = 0.01e18;
+
+    uint256 private constant _MAX_IN_RATIO = 0.3e18;
+    uint256 private constant _MAX_OUT_RATIO = 0.3e18;
+
+    uint256 private constant _MAX_INVARIANT_RATIO = 3e18;
+    uint256 private constant _MIN_INVARIANT_RATIO = 0.7e18;
 
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
@@ -71,14 +77,14 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // Check valid weights and compute normalized weights
         uint256 sumWeights = 0;
         for (uint8 i = 0; i < weights.length; i++) {
-            require(weights[i] >= _MIN_WEIGHT, "MIN_WEIGHT");
-            require(weights[i] <= _MAX_WEIGHT, "MAX_WEIGHT");
             sumWeights = sumWeights.add(weights[i]);
         }
 
         uint256[] memory normalizedWeights = new uint256[](weights.length);
+
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
             normalizedWeights[i] = weights[i].div(sumWeights);
+            require(normalizedWeights[i] >= _MIN_WEIGHT, "MIN_WEIGHT");
         }
 
         _normalizedWeight0 = weights.length > 0 ? normalizedWeights[0] : 0;
@@ -171,6 +177,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
+        require(swapRequest.amountIn <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), "ERR_MAX_IN_RATIO");
+
         return
             WeightedMath._outGivenIn(
                 currentBalanceTokenIn,
@@ -186,6 +194,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view override returns (uint256) {
+        require(swapRequest.amountOut <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), "ERR_MAX_OUT_RATIO");
+
         return
             WeightedMath._inGivenOut(
                 currentBalanceTokenIn,
@@ -311,12 +321,18 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     ) private view returns (uint256, uint256[] memory) {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
 
+        uint256 bptTotalSupply = totalSupply();
+
+        //Verifies that invariant ratio is not greater than max
+        uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
+        require(invariantRatio <= _MAX_INVARIANT_RATIO, "MAX_OUT_BPT_FOR_TOKEN_IN");
+
         uint256[] memory amountsIn = new uint256[](_totalTokens);
         amountsIn[tokenIndex] = WeightedMath._tokenInForExactBPTOut(
             currentBalances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
-            totalSupply(),
+            bptTotalSupply,
             _swapFee
         );
 
@@ -392,6 +408,12 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
 
+        uint256 bptTotalSupply = totalSupply();
+
+        //Verifies that invariant ratio is not lower than min
+        uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
+        require(invariantRatio >= _MIN_INVARIANT_RATIO, "MIN_BPT_IN_FOR_TOKEN_OUT");
+
         // We exit in a single token, so we initialize amountsOut with zeros
         uint256[] memory amountsOut = new uint256[](_totalTokens);
 
@@ -456,6 +478,13 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // The token fees is paid in is chosen pseudo-randomly, with the hope to achieve a uniform distribution across
         // multiple joins and exits. This pseudo-randomness being manipulated is not an issue.
         uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
+
+        //Verifies that invariant ratio is not lower than min.
+        //If lower than min, protocol fees will charge up to the min ratio allowed.
+        uint256 invariantRatio = previousInvariant.divUp(currentInvariant);
+        if (invariantRatio <= _MIN_INVARIANT_RATIO) {
+            currentInvariant = previousInvariant.divUp(_MIN_INVARIANT_RATIO);
+        }
 
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
