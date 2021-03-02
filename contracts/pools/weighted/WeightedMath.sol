@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 
 import "../../lib/math/FixedPoint.sol";
-import "../../lib/math/LogExpMath.sol";
 import "../../lib/helpers/InputHelpers.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
@@ -52,7 +51,7 @@ contract WeightedMath {
 
         uint256 base = tokenBalanceIn.divUp(tokenBalanceIn.add(tokenAmountIn));
         uint256 exponent = tokenWeightIn.divDown(tokenWeightOut);
-        uint256 power = LogExpMath.powUp(base, exponent);
+        uint256 power = FixedPoint.powUp(base, exponent);
 
         uint256 ratio = FixedPoint.ONE.sub(power);
 
@@ -85,7 +84,7 @@ contract WeightedMath {
 
         uint256 base = tokenBalanceOut.divUp(tokenBalanceOut.sub(tokenAmountOut));
         uint256 exponent = tokenWeightOut.divUp(tokenWeightIn);
-        uint256 power = LogExpMath.powUp(base, exponent);
+        uint256 power = FixedPoint.powUp(base, exponent);
 
         uint256 ratio = power.sub(FixedPoint.ONE);
 
@@ -107,7 +106,7 @@ contract WeightedMath {
 
         invariant = FixedPoint.ONE;
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
-            invariant = invariant.mul(LogExpMath.pow(balances[i], normalizedWeights[i]));
+            invariant = invariant.mul(FixedPoint.pow(balances[i], normalizedWeights[i]));
         }
     }
 
@@ -150,7 +149,7 @@ contract WeightedMath {
 
             uint256 tokenBalanceRatio = FixedPoint.ONE.add((amountInAfterFee).div(balances[i]));
 
-            invariantRatio = invariantRatio.mul(LogExpMath.pow(tokenBalanceRatio, normalizedWeights[i]));
+            invariantRatio = invariantRatio.mul(FixedPoint.pow(tokenBalanceRatio, normalizedWeights[i]));
         }
 
         return bptTotalSupply.mul(invariantRatio.sub(FixedPoint.ONE));
@@ -167,7 +166,7 @@ contract WeightedMath {
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
 
         // Calculate by how much the token balance has to increase to cause invariantRatio
-        uint256 tokenBalanceRatio = LogExpMath.pow(invariantRatio, FixedPoint.ONE.div(tokenNormalizedWeight));
+        uint256 tokenBalanceRatio = FixedPoint.pow(invariantRatio, FixedPoint.ONE.div(tokenNormalizedWeight));
         uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(tokenNormalizedWeight);
         uint256 amountInAfterFee = tokenBalance.mul(tokenBalanceRatio.sub(FixedPoint.ONE));
 
@@ -186,7 +185,7 @@ contract WeightedMath {
 
         //TODO: review impact of exp math error that increases result
         // Calculate by how much the token balance has to increase to cause invariantRatio
-        uint256 tokenBalanceRatio = LogExpMath.pow(invariantRatio, FixedPoint.ONE.div(tokenNormalizedWeight));
+        uint256 tokenBalanceRatio = FixedPoint.pow(invariantRatio, FixedPoint.ONE.div(tokenNormalizedWeight));
         uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(tokenNormalizedWeight);
         uint256 amountOutBeforeFee = tokenBalance.mul(FixedPoint.ONE.sub(tokenBalanceRatio));
 
@@ -256,7 +255,7 @@ contract WeightedMath {
 
             tokenBalanceRatio = FixedPoint.ONE.sub((amountOutBeforeFee).div(balances[i]));
 
-            invariantRatio = invariantRatio.mul(LogExpMath.pow(tokenBalanceRatio, normalizedWeights[i]));
+            invariantRatio = invariantRatio.mul(FixedPoint.pow(tokenBalanceRatio, normalizedWeights[i]));
         }
 
         return bptTotalSupply.mul(FixedPoint.ONE.sub(invariantRatio));
@@ -288,9 +287,10 @@ contract WeightedMath {
         uint256 base = previousInvariant.divUp(currentInvariant);
         uint256 exponent = FixedPoint.ONE.divDown(normalizedWeight);
 
-        uint256 power = LogExpMath.powUp(base, exponent);
+        uint256 power = FixedPoint.powUp(base, exponent);
 
-        uint256 tokenAccruedFees = balance.mulDown(FixedPoint.ONE.sub(power));
+        //Rounding up can result in a power > 1, so check it does not overflow
+        uint256 tokenAccruedFees = balance.mulDown(power >= FixedPoint.ONE ? 0 : FixedPoint.ONE.sub(power));
         return tokenAccruedFees.mulDown(protocolSwapFeePercentage);
     }
 }

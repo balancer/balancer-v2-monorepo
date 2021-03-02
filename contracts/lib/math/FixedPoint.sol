@@ -14,13 +14,13 @@
 
 pragma solidity ^0.7.0;
 
+import "../../lib/math/LogExpMath.sol";
+
 /* solhint-disable private-vars-leading-underscore */
 
 library FixedPoint {
     uint256 internal constant ONE = 1e18; // 18 decimal places
-    uint256 internal constant MIN_POW_BASE = 1 wei;
-    uint256 internal constant MAX_POW_BASE = (2 * ONE) - 1 wei;
-    uint256 internal constant POW_PRECISION = ONE / 10**10;
+    uint256 internal constant MAX_POW_RELATIVE_ERROR = 10000; // 10^(-14)
 
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
@@ -107,5 +107,22 @@ library FixedPoint {
 
             return ((aInflated - 1) / b) + 1;
         }
+    }
+
+    function pow(uint256 x, uint256 y) internal pure returns (uint256) {
+        return LogExpMath.pow(x, y);
+    }
+
+    function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
+        uint256 result = LogExpMath.pow(x, y);
+        if (result == 0) {
+            return 0;
+        }
+        return result - mulDown(result, MAX_POW_RELATIVE_ERROR) - 1;
+    }
+
+    function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
+        uint256 result = LogExpMath.pow(x, y);
+        return result + mulUp(result, MAX_POW_RELATIVE_ERROR) + 1;
     }
 }
