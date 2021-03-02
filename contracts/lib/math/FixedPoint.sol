@@ -84,10 +84,14 @@ library FixedPoint {
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
         require(b != 0, "ZERO_DIVISION");
 
-        uint256 aInflated = a * ONE;
-        require(aInflated / a == ONE, "DIV_INTERNAL"); // mul overflow
+        if (a == 0) {
+            return 0;
+        } else {
+            uint256 aInflated = a * ONE;
+            require(aInflated / a == ONE, "DIV_INTERNAL"); // mul overflow
 
-        return aInflated / b;
+            return aInflated / b;
+        }
     }
 
     function divUp(uint256 a, uint256 b) internal pure returns (uint256) {
