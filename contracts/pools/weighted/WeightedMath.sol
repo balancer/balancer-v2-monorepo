@@ -53,7 +53,8 @@ contract WeightedMath {
         uint256 exponent = tokenWeightIn.divDown(tokenWeightOut);
         uint256 power = FixedPoint.powUp(base, exponent);
 
-        uint256 ratio = FixedPoint.ONE.sub(power);
+        //Because of rounding up, ratio can be greater than one
+        uint256 ratio = power >= FixedPoint.ONE ? 0 : FixedPoint.ONE.sub(power);
 
         return tokenBalanceOut.mulDown(ratio);
     }
@@ -149,8 +150,11 @@ contract WeightedMath {
                 );
             }
 
+            uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+
+            //Because of rounding up, swapFeeExcess can be greater than one
             uint256 amountInAfterFee = amountsIn[i].mulDown(
-                FixedPoint.ONE.sub(swapFee.mulUp(tokenBalancePercentageExcess))
+                swapFeeExcess >= FixedPoint.ONE ? 0 : FixedPoint.ONE.sub(swapFeeExcess)
             );
 
             uint256 tokenBalanceRatio = FixedPoint.ONE.add((amountInAfterFee).divDown(balances[i]));
@@ -187,7 +191,10 @@ contract WeightedMath {
         uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(tokenNormalizedWeight);
         uint256 amountInAfterFee = tokenBalance.mulUp(tokenBalanceRatio.sub(FixedPoint.ONE));
 
-        return amountInAfterFee.divUp(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mulUp(swapFee)));
+        uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+
+        //Because of rounding up, swapFeeExcess can be greater than one
+        return amountInAfterFee.divUp(swapFeeExcess >= FixedPoint.ONE ? 0 : FixedPoint.ONE.sub(swapFeeExcess));
     }
 
     function _exactBPTInForTokenOut(
@@ -211,13 +218,19 @@ contract WeightedMath {
         // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
 
-        //TODO: review impact of exp math error that increases result
         // Calculate by how much the token balance has to increase to cause invariantRatio
         uint256 tokenBalanceRatio = FixedPoint.powUp(invariantRatio, FixedPoint.ONE.divUp(tokenNormalizedWeight));
         uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(tokenNormalizedWeight);
-        uint256 amountOutBeforeFee = tokenBalance.mulDown(FixedPoint.ONE.sub(tokenBalanceRatio));
 
-        return amountOutBeforeFee.mulDown(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mulUp(swapFee)));
+        //Because of rounding up, tokenBalanceRatio can be greater than one
+        uint256 amountOutBeforeFee = tokenBalance.mulDown(
+            tokenBalanceRatio >= FixedPoint.ONE ? 0 : FixedPoint.ONE.sub(tokenBalanceRatio)
+        );
+
+        uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+
+        //Because of rounding up, swapFeeExcess can be greater than one
+        return amountOutBeforeFee.mulDown(swapFeeExcess >= FixedPoint.ONE ? 0 : FixedPoint.ONE.sub(swapFeeExcess));
     }
 
     function _exactBPTInForTokensOut(
@@ -281,8 +294,11 @@ contract WeightedMath {
                 );
             }
 
+            uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+
+            //Because of rounding up, swapFeeExcess can be greater than one
             uint256 amountOutBeforeFee = amountsOut[i].divUp(
-                FixedPoint.ONE.sub(swapFee.mulUp(tokenBalancePercentageExcess))
+                swapFeeExcess >= FixedPoint.ONE ? 0 : FixedPoint.ONE.sub(swapFeeExcess)
             );
 
             tokenBalanceRatio = FixedPoint.ONE.sub((amountOutBeforeFee).divUp(balances[i]));
