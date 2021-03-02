@@ -5,7 +5,11 @@ const SCALING_FACTOR = 1e18;
 
 export type BigNumberish = string | number | BigNumber;
 
-export const fp = (x: number): BigNumber => bn(x * SCALING_FACTOR);
+export const fp = (x: number): BigNumber => bn(decimal(x).mul(SCALING_FACTOR));
+
+export const toFp = (x: BigNumberish | Decimal): Decimal => decimal(x).mul(SCALING_FACTOR);
+
+export const fromFp = (x: BigNumberish | Decimal): Decimal => decimal(x).div(SCALING_FACTOR);
 
 export const bn = (x: BigNumberish | Decimal): BigNumber => {
   if (BigNumber.isBigNumber(x)) return x;

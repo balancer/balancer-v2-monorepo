@@ -180,3 +180,17 @@ export function calculateOneTokenSwapFee(
     .div(ONE)
     .mul(ONE.sub(invariantRatio.pow(exponent).mul(ONE)));
 }
+
+export function calculateMaxOneTokenSwapFee(
+  rawBalances: BigNumberish[],
+  rawWeights: BigNumberish[],
+  minInvariantRatio: Decimal,
+  tokenIndex: number
+): Decimal {
+  const normalizedWeights = toNormalizedWeights(rawWeights);
+  const exponent = decimal(1).div(normalizedWeights[tokenIndex]);
+
+  return decimal(rawBalances[tokenIndex])
+    .div(ONE)
+    .mul(ONE.sub(minInvariantRatio.pow(exponent).mul(ONE)));
+}

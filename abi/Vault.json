@@ -472,14 +472,21 @@
         "type": "bytes32"
       },
       {
-        "internalType": "contract IERC20",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
+        "components": [
+          {
+            "internalType": "contract IERC20",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IVault.AssetManagerTransfer[]",
+        "name": "transfers",
+        "type": "tuple[]"
       }
     ],
     "name": "depositToPoolBalance",
@@ -651,6 +658,30 @@
         "internalType": "enum IVault.PoolSpecialization",
         "name": "",
         "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "poolId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "contract IERC20[]",
+        "name": "tokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "getPoolAssetManagers",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "assetManagers",
+        "type": "address[]"
       }
     ],
     "stateMutability": "view",
@@ -1000,14 +1031,21 @@
         "type": "bytes32"
       },
       {
-        "internalType": "contract IERC20",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
+        "components": [
+          {
+            "internalType": "contract IERC20",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IVault.AssetManagerTransfer[]",
+        "name": "transfers",
+        "type": "tuple[]"
       }
     ],
     "name": "updateManagedBalance",
@@ -1081,14 +1119,21 @@
         "type": "bytes32"
       },
       {
-        "internalType": "contract IERC20",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
+        "components": [
+          {
+            "internalType": "contract IERC20",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IVault.AssetManagerTransfer[]",
+        "name": "transfers",
+        "type": "tuple[]"
       }
     ],
     "name": "withdrawFromPoolBalance",

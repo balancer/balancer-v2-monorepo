@@ -1,7 +1,7 @@
 import { BigNumber, Contract } from 'ethers';
 
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../../lib/helpers/constants';
-import { BigNumberish, bn } from '../../../../../lib/helpers/numbers';
+import { BigNumberish, bn, fp, fromFp } from '../../../../../lib/helpers/numbers';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../../../lib/helpers/weightedPoolEncoding';
 
 import * as expectEvent from '../../../expectEvent';
@@ -32,7 +32,13 @@ import {
   calcOutGivenIn,
   calculateOneTokenSwapFee,
   calcInGivenOut,
+  calculateMaxOneTokenSwapFee,
 } from '../../../math/weighted';
+
+const MAX_IN_RATIO = fp(0.3);
+const MAX_OUT_RATIO = fp(0.3);
+const MAX_INVARIANT_RATIO = fp(3);
+const MIN_INVARIANT_RATIO = fp(0.7);
 
 export default class WeightedPool {
   instance: Contract;
@@ -107,6 +113,26 @@ export default class WeightedPool {
     return this.instance.getLastInvariant();
   }
 
+  async getMaxInvariantDecrease(): Promise<BigNumber> {
+    const supply = await this.totalSupply();
+    return supply.sub(MIN_INVARIANT_RATIO.mul(supply).div(fp(1)));
+  }
+
+  async getMaxInvariantIncrease(): Promise<BigNumber> {
+    const supply = await this.totalSupply();
+    return MAX_INVARIANT_RATIO.mul(supply).div(fp(1)).sub(supply);
+  }
+
+  async getMaxIn(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
+    if (!currentBalances) currentBalances = await this.getBalances();
+    return currentBalances[tokenIndex].mul(MAX_IN_RATIO).div(fp(1));
+  }
+
+  async getMaxOut(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
+    if (!currentBalances) currentBalances = await this.getBalances();
+    return currentBalances[tokenIndex].mul(MAX_OUT_RATIO).div(fp(1));
+  }
+
   async getSwapFee(): Promise<BigNumber> {
     return this.instance.getSwapFee();
   }
@@ -144,7 +170,19 @@ export default class WeightedPool {
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
     const feeAmount = calculateOneTokenSwapFee(currentBalances, this.weights, lastInvariant, paidTokenIndex);
-    return bn(feeAmount).mul(protocolFeePercentage).div(bn(1e18));
+    return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
+  }
+
+  async estimateMaxSwapFee(
+    paidToken: number | Token,
+    protocolFeePercentage: BigNumberish,
+    currentBalances?: BigNumberish[]
+  ): Promise<BigNumber> {
+    if (!currentBalances) currentBalances = await this.getBalances();
+    const paidTokenIndex = this.tokens.indexOf(paidToken);
+    const minInvariantRatio = fromFp(MIN_INVARIANT_RATIO);
+    const feeAmount = calculateMaxOneTokenSwapFee(currentBalances, this.weights, minInvariantRatio, paidTokenIndex);
+    return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
   }
 
   async estimateGivenIn(params: SwapWeightedPool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {

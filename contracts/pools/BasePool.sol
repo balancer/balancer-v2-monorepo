@@ -41,7 +41,8 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKENS = 16;
 
-    uint256 private constant _MAX_SWAP_FEE = 10 * (10**16); // 10%
+    // 1e16 = 1%, 1e18 = 100%
+    uint256 private constant _MAX_SWAP_FEE = 10e16;
 
     uint256 private constant _MINIMUM_BPT = 10**3;
 
@@ -96,12 +97,15 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
         require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
 
-        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
-
-        // Because these Pools will register tokens only once, if the tokens array is sorted, then the Pool tokens will
-        // have this same order. We rely on this property to make Pools simpler to write, as it lets us assume that the
+        // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
+        // to make the developer experience consistent, we are requiring this condition for all the native pools.
+        // Also, since these Pools will register tokens only once, we can ensure the Pool tokens will follow the same
+        // order. We rely on this property to make Pools simpler to write, as it lets us assume that the
         // order of token-specific parameters (such as token weights) will not change.
         InputHelpers.ensureArrayIsSorted(tokens);
+
+        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
+
         bytes32 poolId = vault.registerPool(specialization);
 
         // Pass in zero addresses for Asset Managers
