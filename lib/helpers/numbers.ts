@@ -5,6 +5,8 @@ const SCALING_FACTOR = 1e18;
 
 export type BigNumberish = string | number | BigNumber;
 
+export const decimal = (x: BigNumberish | Decimal): Decimal => new Decimal(x.toString());
+
 export const fp = (x: number): BigNumber => bn(decimal(x).mul(SCALING_FACTOR));
 
 export const toFp = (x: BigNumberish | Decimal): Decimal => decimal(x).mul(SCALING_FACTOR);
@@ -13,12 +15,10 @@ export const fromFp = (x: BigNumberish | Decimal): Decimal => decimal(x).div(SCA
 
 export const bn = (x: BigNumberish | Decimal): BigNumber => {
   if (BigNumber.isBigNumber(x)) return x;
-  const integer = parseInt(parseScientific(x.toString()));
-  const stringified = parseScientific(integer.toString());
-  return BigNumber.from(stringified);
+  const stringified = parseScientific(x.toString());
+  const integer = stringified.split('.')[0];
+  return BigNumber.from(integer);
 };
-
-export const decimal = (x: BigNumberish | Decimal): Decimal => new Decimal(x.toString());
 
 export const maxUint = (e: number): BigNumber => bn(2).pow(e).sub(1);
 
@@ -66,13 +66,13 @@ function parseScientific(num: string): string {
   const [coefficient, exponent] = num.toLowerCase().split('e');
   let zeros = Math.abs(Number(exponent));
   const exponentSign = Math.sign(Number(exponent));
-  const [integer, decimals] = coefficient.split('.');
+  const [integer, decimals] = (coefficient.indexOf('.') != -1 ? coefficient : `${coefficient}.`).split('.');
 
   if (exponentSign === -1) {
     zeros -= integer.length;
     num =
       zeros < 0
-        ? integer.slice(0, zeros) + '.' + integer.slice(zeros) + (decimals ? decimals : '')
+        ? integer.slice(0, zeros) + '.' + integer.slice(zeros) + decimals
         : '0.' + '0'.repeat(zeros) + integer + decimals;
   } else {
     if (decimals) zeros -= decimals.length;

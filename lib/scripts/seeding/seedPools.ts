@@ -19,10 +19,12 @@ let controller: SignerWithAddress;
 let trader: SignerWithAddress;
 //let validator: Contract;
 let assetManager: SignerWithAddress; // This would normally be a contract
+
 const NUM_POOLS = 5;
+const INVESTMENT_AMOUNT = 123;
+
 const decimalsByAddress: Dictionary<number> = {};
 
-const INVESTMENT_AMOUNT = 123;
 module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment) {
   ethers = hre.ethers;
   [deployer, controller, trader, assetManager] = await ethers.getSigners();
@@ -226,7 +228,7 @@ async function initializeStrategyPool(
   const recipient = controller.address;
   const maxAmountsIn = initialBalances;
   const fromInternalBalance = false;
-  const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init' });
+  const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
 
   const joinTx = await vault
     .connect(controller)

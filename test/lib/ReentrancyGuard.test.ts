@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { deploy } from '../../lib/helpers/deploy';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('ReentrancyGuard', () => {
   let reentrancyMock: Contract;

@@ -10,7 +10,6 @@ import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/types';
-import { sharedBeforeEach } from '../../helpers/lib/sharedBeforeEach';
 
 describe('WeightedPool', function () {
   let authorizer: Contract, allTokens: TokenList;

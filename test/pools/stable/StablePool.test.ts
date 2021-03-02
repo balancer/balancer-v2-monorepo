@@ -5,7 +5,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import TokenList from '../../helpers/models/tokens/TokenList';
 import * as expectEvent from '../../helpers/expectEvent';
-import { sharedBeforeEach } from '../../helpers/lib/sharedBeforeEach';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '../../helpers/relativeError';
 import {
   calcInGivenOut,
@@ -81,7 +80,7 @@ describe('StablePool', function () {
     context('with real vault', () => {
       let vault: Contract;
 
-      sharedBeforeEach(async () => {
+      sharedBeforeEach('deploy vault', async () => {
         // These tests use the real Vault because they test some Vault functionality, such as token registration
         const authorizer = await deploy('Authorizer', { args: [admin.address] });
         vault = await deploy('Vault', { args: [authorizer.address] });
