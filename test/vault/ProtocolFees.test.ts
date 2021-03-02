@@ -4,7 +4,6 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList from '../helpers/models/tokens/TokenList';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 import { bn } from '../../lib/helpers/numbers';

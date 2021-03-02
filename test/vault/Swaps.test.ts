@@ -14,7 +14,6 @@ import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
 import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
