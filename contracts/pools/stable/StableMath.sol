@@ -425,25 +425,13 @@ contract StableMath {
 
         //Last invariant is rounded up
         uint256 inv = lastInvariant;
-        uint256 p = inv;
-        uint256 sum = 0;
-        uint256 totalCoins = balances.length;
-        uint256 nPowN = 1;
-        uint256 x = 0;
-        for (uint256 i = 0; i < totalCoins; i++) {
-            nPowN = nPowN.mul(totalCoins);
-            if (i != tokenIndex) {
-                x = balances[i];
-            } else {
-                continue;
-            }
-            sum = sum.add(x);
-            //Round up p
-            p = p.mul(inv).divUp(x);
-        }
-
         //Calculate token balance
-        uint256 y = _solveAnalyticalBalance(sum, inv, amp, nPowN, p);
+        uint256 y = _getTokenBalanceGivenInvariantAndAllOtherBalances(
+            amp,
+            balances,
+            inv,
+            tokenIndex
+        );
 
         //Result is rounded down
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] > y ? balances[tokenIndex].sub(y) : 0;
