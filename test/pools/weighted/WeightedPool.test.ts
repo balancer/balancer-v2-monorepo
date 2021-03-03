@@ -4,7 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../../lib/helpers/deploy';
-import { BigNumberish, bn, decimal, fp, pct } from '../../../lib/helpers/numbers';
+import { BigNumberish, bn, fp, pct } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 
 import TokenList from '../../helpers/models/tokens/TokenList';
@@ -17,7 +17,7 @@ describe('WeightedPool', function () {
   let trader: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress;
 
   const POOL_SWAP_FEE = fp(0.01);
-  const WEIGHTS = [fp(70), fp(30), fp(5), fp(5)];
+  const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
   before('setup signers', async () => {
@@ -26,7 +26,7 @@ describe('WeightedPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
+    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [lp, trader], amount: fp(100) });
   });
 
@@ -65,7 +65,7 @@ describe('WeightedPool', function () {
     let pool: WeightedPool, tokens: TokenList;
 
     const ZEROS = Array(numberOfTokens).fill(bn(0));
-    const weights = WEIGHTS.slice(0, numberOfTokens);
+    const weights: BigNumberish[] = WEIGHTS.slice(0, numberOfTokens);
     const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
     async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
@@ -285,7 +285,7 @@ describe('WeightedPool', function () {
             // Calculate bpt out so that the invariant ratio
             // ((bptTotalSupply + bptAmountOut / bptTotalSupply))
             // is more than 3
-            const bptOut = (await pool.getMaxInvariantIncrease()).add(2);
+            const bptOut = (await pool.getMaxInvariantIncrease()).add(10);
 
             await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('MAX_OUT_BPT_FOR_TOKEN_IN');
           });
@@ -431,71 +431,71 @@ describe('WeightedPool', function () {
         it('calculates amount out', async () => {
           const amount = fp(0.1);
           const amountWithFees = amount.mul(POOL_SWAP_FEE.add(fp(1))).div(fp(1));
-          const expectedAmountOut = await pool.estimateGivenIn({ in: 0, out: 1, amount: amountWithFees });
+          const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
-          const result = await pool.swapGivenIn({ in: 0, out: 1, amount: amountWithFees });
+          const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
           expect(result).to.be.equalWithError(expectedAmountOut, 0.01);
         });
 
         it('calculates max amount out', async () => {
-          const maxAmountIn = await pool.getMaxIn(0);
+          const maxAmountIn = await pool.getMaxIn(1);
           const maxAmountInWithFees = maxAmountIn.mul(POOL_SWAP_FEE.add(fp(1))).div(fp(1));
-          const expectedAmountOut = await pool.estimateGivenIn({ in: 0, out: 1, amount: maxAmountInWithFees });
+          const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: maxAmountInWithFees });
 
-          const result = await pool.swapGivenIn({ in: 0, out: 1, amount: maxAmountInWithFees });
+          const result = await pool.swapGivenIn({ in: 1, out: 0, amount: maxAmountInWithFees });
 
           expect(result).to.be.equalWithError(expectedAmountOut, 0.05);
         });
 
         it('reverts if token in exceeds max in ratio', async () => {
-          const maxAmountIn = await pool.getMaxIn(0);
+          const maxAmountIn = await pool.getMaxIn(1);
           const maxAmountInWithFees = maxAmountIn.mul(POOL_SWAP_FEE.add(fp(1))).div(fp(1));
 
           const amount = maxAmountInWithFees.add(fp(1));
-          await expect(pool.swapGivenIn({ in: 0, out: 1, amount })).to.be.revertedWith('ERR_MAX_IN_RATIO');
+          await expect(pool.swapGivenIn({ in: 1, out: 0, amount })).to.be.revertedWith('ERR_MAX_IN_RATIO');
         });
 
         it('reverts if token in is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 1, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: 0, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+          await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
       });
 
       context('given out', () => {
         it('calculates amount in', async () => {
           const amount = fp(0.1);
-          const expectedAmountIn = await pool.estimateGivenOut({ in: 0, out: 1, amount });
+          const expectedAmountIn = await pool.estimateGivenOut({ in: 1, out: 0, amount });
 
-          const result = await pool.swapGivenOut({ in: 0, out: 1, amount });
+          const result = await pool.swapGivenOut({ in: 1, out: 0, amount });
 
           expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
         });
 
         it('calculates max amount in', async () => {
-          const amount = await pool.getMaxOut(1);
-          const expectedAmountIn = await pool.estimateGivenOut({ in: 0, out: 1, amount });
+          const amount = await pool.getMaxOut(0);
+          const expectedAmountIn = await pool.estimateGivenOut({ in: 1, out: 0, amount });
 
-          const result = await pool.swapGivenOut({ in: 0, out: 1, amount });
+          const result = await pool.swapGivenOut({ in: 1, out: 0, amount });
 
           expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
         });
 
         it('reverts if token in exceeds max out ratio', async () => {
-          const amount = (await pool.getMaxOut(1)).add(bn(2));
+          const amount = (await pool.getMaxOut(0)).add(2);
 
-          await expect(pool.swapGivenOut({ in: 0, out: 1, amount })).to.be.revertedWith('ERR_MAX_OUT_RATIO');
+          await expect(pool.swapGivenOut({ in: 1, out: 0, amount })).to.be.revertedWith('ERR_MAX_OUT_RATIO');
         });
 
         it('reverts if token in is not in the pool when given out', async () => {
-          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 1, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
         it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenOut({ in: 0, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+          await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
       });
     });
@@ -539,8 +539,7 @@ describe('WeightedPool', function () {
         });
 
         sharedBeforeEach('compute expected due protocol fees', async () => {
-          const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
-          const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
+          const paidTokenIndex = weights.indexOf(pool.maxWeight);
           const protocolFeeAmount = await pool.estimateSwapFee(paidTokenIndex, protocolFeePercentage, currentBalances);
           expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? protocolFeeAmount : n));
         });
@@ -595,8 +594,7 @@ describe('WeightedPool', function () {
         });
 
         sharedBeforeEach('compute expected due protocol fees', async () => {
-          const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
-          const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
+          const paidTokenIndex = weights.indexOf(pool.maxWeight);
           const feeAmount = await pool.estimateMaxSwapFee(paidTokenIndex, protocolFeePercentage, currentBalances);
           expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? feeAmount : n));
         });

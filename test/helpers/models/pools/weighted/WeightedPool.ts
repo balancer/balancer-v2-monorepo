@@ -72,6 +72,10 @@ export default class WeightedPool {
     return this.instance.address;
   }
 
+  get maxWeight(): BigNumberish {
+    return this.weights.reduce((max, weight) => (bn(weight).gt(max) ? weight : max), bn(0));
+  }
+
   get normalizedWeights(): BigNumberish[] {
     return toNormalizedWeights(this.weights).map((w) => bn(w.mul(1e18)));
   }

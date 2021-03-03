@@ -206,7 +206,7 @@ describe('WeightedMath', function () {
         const normalizedWeights = [bn(0.3e18), bn(0.7e18)];
         const balances = [bn(10e18), bn(11e18)];
         const lastInvariant = bn(10e18);
-        const tokenIndex = 0;
+        const tokenIndex = 1;
 
         const currentInvariant = calculateInvariant(balances, normalizedWeights);
         const protocolSwapFee = fp(0.1);
@@ -218,8 +218,8 @@ describe('WeightedMath', function () {
           currentInvariant,
           protocolSwapFee
         );
-        const expectedFeeAmount = calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
 
+        const expectedFeeAmount = calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
         const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
 
         expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
@@ -231,7 +231,7 @@ describe('WeightedMath', function () {
         const normalizedWeights = [bn(0.3e18), bn(0.2e18), bn(0.5e18)];
         const balances = [bn(10e18), bn(11e18), bn(12e18)];
         const lastInvariant = bn(10e18);
-        const tokenIndex = 0;
+        const tokenIndex = 2;
 
         const currentInvariant = calculateInvariant(balances, normalizedWeights);
         const protocolSwapFee = fp(0.1);
@@ -243,8 +243,8 @@ describe('WeightedMath', function () {
           currentInvariant,
           protocolSwapFee
         );
-        const expectedFeeAmount = calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
 
+        const expectedFeeAmount = calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
         const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
 
         expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
