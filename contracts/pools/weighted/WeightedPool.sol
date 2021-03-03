@@ -254,6 +254,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
         // event and now - the invariant's growth is due exclusively to swap fees.
         uint256 invariantBeforeJoin = WeightedMath._invariant(normalizedWeights, currentBalances);
+
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             currentBalances,
             normalizedWeights,
