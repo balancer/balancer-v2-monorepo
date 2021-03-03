@@ -32,23 +32,27 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     uint256 private _lastInvariant;
 
+    bool[] immutable _isStableBPT;
+
     uint256 private constant _MIN_AMP = 50 * (10**18);
     uint256 private constant _MAX_AMP = 2000 * (10**18);
 
-    enum JoinKind { INIT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT }
+    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
+    enum ExitKind { EXACT_BPT_IN_FOR_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
         IVault vault,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
+        bool[] memory isStableBPT,
         uint256 amp,
         uint256 swapFee
     ) BaseGeneralPool(vault, name, symbol, tokens, swapFee) {
         require(amp >= _MIN_AMP, "MIN_AMP");
         require(amp <= _MAX_AMP, "MAX_AMP");
         _amp = amp;
+        _isStableBPT = isStableBPT;
     }
 
     function getAmplification() external view returns (uint256) {
@@ -149,8 +153,10 @@ contract StablePool is BaseGeneralPool, StableMath {
     {
         JoinKind kind = userData.joinKind();
 
-        if (kind == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokensInForExactBPTOut(balances, userData);
+        if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return _joinExactTokensInForBPTOut(balances, userData);
+        } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            return _joinTokenInForExactBPTOut(balances, userData);
         } else {
             revert("UNHANDLED_JOIN_KIND");
         }
@@ -162,8 +168,16 @@ contract StablePool is BaseGeneralPool, StableMath {
     ) private view returns (uint256) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBPTOut();
         require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        
+        uint256[] memory downscaledAmountsIn = amountsIn; // TODO: check that this won't be changed by pointer reference
         _upscaleArray(amountsIn, _scalingFactors());
 
+        // upscale to account for BPT appreciation if applicable
+        uint256[] memory BPTAppreciations = _getBPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(amountsIn, BPTAppreciations);
+        _upscaleByAppreciationArray(balances, BPTAppreciations);
+
+        // No need to downscaleByAppreciation bptAmount
         uint256 bptAmountOut = StableMath._exactTokensInForBPTOut(
             _amp,
             balances,
@@ -174,7 +188,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         require(bptAmountOut >= minBPTAmountOut, "BPT_OUT_MIN_AMOUNT");
 
-        return bptAmountOut;
+        return (bptAmountOut, downscaledAmountsIn);
     }
 
     function _joinTokenInForExactBPTOut(
@@ -182,6 +196,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         bytes memory userData
     ) private view returns (uint256) {
         (uint256 bptAmountOut, uint256 tokenIndex, uint256 maxAmountIn) = userData.tokenInForExactBPTOut();
+        
+        // upscale to account for BPT appreciation if applicable
+        uint256[] memory BPTAppreciations = _getBPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(balances, BPTAppreciations);
 
         uint256 amountIn = StableMath._tokenInForExactBPTOut(
             _amp,
@@ -192,29 +210,15 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
 
-        require(amountIn <= maxAmountIn, "TOKEN_IN_MAX_AMOUNT");
+        // downscale by appreciation
+        uint256 amountInDownscaled = _downscaleByAppreciation(amountIn, BPTAppreciations[tokenIndex]);
 
-        return amountIn;
-    }
+        // We join in a single token, so we initialize downscaledAmountsIn with zeros and 
+        // set only downscaledAmountsIn[tokenIndex]
+        uint256[] memory downscaledAmountsIn = new uint256[](_totalTokens);
+        downscaledAmountsIn[tokenIndex] = amountInDownscaled;
 
-    function _joinTokensInForExactBPTOut(uint256[] memory balances, bytes memory userData)
-        private
-        view
-        returns (uint256[] memory)
-    {
-        (uint256 bptAmountOut, uint256[] memory maxAmountsIn) = userData.tokensInForExactBPTOut();
-
-        uint256[] memory amountsIn = StableMath._tokensInForExactBPTOut(
-            balances,
-            bptAmountOut,
-            totalSupply()
-        );
-
-        for (uint256 i = 0; i < _totalTokens; ++i) {
-            require(amountsIn[i] <= maxAmountsIn[i], "TOKEN_IN_MAX_AMOUNT");
-        }
-
-        return amountsIn;
+        return (bptAmountOut, downscaledAmountsIn);
     }
 
     // Exit
@@ -266,8 +270,12 @@ contract StablePool is BaseGeneralPool, StableMath {
     {
         ExitKind kind = userData.exitKind();
 
-        if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKEN_OUT) {
+            return _exitExactBPTInForTokenOut(balances, userData);
+        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
+        } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+            return _exitBPTInForExactTokensOut(balances, userData);
         } else {
             revert("UNHANDLED_EXIT_KIND");
         }
@@ -277,7 +285,12 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         bytes memory userData
     ) private view returns (uint256) {
-        (uint256 bptAmountIn, uint256 tokenIndex, uint256 minAmountOut) = userData.exactBPTInForTokenOut();
+        (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBPTInForTokenOut();
+        require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
+
+        // upscale to account for BPT appreciation if applicable
+        uint256[] memory BPTAppreciations = _getBPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(balances, BPTAppreciations);
 
         uint256 amountOut = StableMath._exactBPTInForTokenOut(
             _amp,
@@ -288,7 +301,15 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
         
-        return amountOut;
+        // downscale by appreciation
+        uint256 amountOutDownscaled = _downscaleByAppreciation(amountOut, BPTAppreciations[tokenIndex]);
+
+        // We exit in a single token, so we initialize downscaledAmountsOut with zeros and 
+        // set only downscaledAmountsOut[tokenIndex]
+        uint256[] memory downscaledAmountsOut = new uint256[](_totalTokens);
+        downscaledAmountsOut[tokenIndex] = amountOutDownscaled;
+        
+        return (bptAmountIn, downscaledAmountsOut);
     }
 
     function _exitBPTInForExactTokensOut(
@@ -297,8 +318,17 @@ contract StablePool is BaseGeneralPool, StableMath {
     ) private view returns (uint256) {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.BPTInForExactTokensOut();
         require(amountsOut.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        
+        // TODO: check that this won't be changed by pointer reference
+        uint256[] memory downscaledAmountsOut = amountsOut; 
         _upscaleArray(amountsOut, _scalingFactors());
 
+        // upscale to account for BPT appreciation if applicable
+        uint256[] memory BPTAppreciations = _getBPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(amountsOut, BPTAppreciations);
+        _upscaleByAppreciationArray(balances, BPTAppreciations);
+
+        // No need to downscaleByAppreciation bptAmount
         uint256 bptAmountIn = StableMath._BPTInForExactTokensOut(
             _amp,
             balances,
@@ -309,9 +339,10 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         require(bptAmountIn <= maxBPTAmountIn, "BPT_OUT_MIN_AMOUNT");
 
-        return bptAmountIn;
+        return (bptAmountIn, downscaledAmountsOut);
     }
 
+    // No need for scaling by BPTAppreciation as all is proportional
     function _exitExactBPTInForTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
@@ -389,7 +420,63 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256)
     {
-        // TODO: We need to get the _balances from the Vault here.
-        return StableMath._invariant(_amp, _balances).div(totalSupply());
+        (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
+        return StableMath._invariant(_amp, balances).div(totalSupply());
     }
+
+    // This function returns a list with the BPTappreciations of all underlying tokens,
+    // if the token is not a BPT (_isStableBPT == false) it's set to 1
+    function _getBPTAppreciationsUnderlyingTokens()
+        internal
+        view
+        returns (uint256[] memory BPTAppreciations)
+    {
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            if (_isStableBPT[i]){
+                // TODO double check how we can access the function getBPTAppreciation()
+                // of an underlying BPT 
+                BPTAppreciations[i] = _tokens[i].getBPTAppreciation();
+            }
+            else{
+                BPTAppreciations[i] = FixedPoint.ONE;
+            }
+        }
+    }
+
+    // Down and upscale by BPTAppreciation do not need rounding up or down since BPTAppreciation is
+    // always going to be in the order of magnitude of 1
+    function _upscaleByAppreciation(uint256 amount, uint256 BPTAppreciation) 
+        internal 
+        pure 
+        returns (uint256)
+    {
+        return Math.mul(amount, BPTAppreciation);
+    }
+
+    function _upscaleByAppreciationArray(uint256[] memory amounts, uint256[] memory BPTAppreciations) 
+        internal 
+        view 
+    {
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            amounts[i] = Math.mul(amounts[i], BPTAppreciations[i]);
+        }
+    }
+
+    function _downscaleByAppreciationArray(uint256[] memory amounts, uint256[] memory BPTAppreciations) 
+        internal 
+        view 
+    {
+        for (uint256 i = 0; i < _totalTokens; ++i) {
+            amounts[i] = Math.div(amounts[i], BPTAppreciations[i]);
+        }
+    }
+
+    function _downscaleByAppreciation(uint256 amount, uint256 BPTAppreciation) 
+        internal 
+        pure 
+        returns (uint256)
+    {
+        return Math.div(amount, BPTAppreciation);
+    }
+    
 }

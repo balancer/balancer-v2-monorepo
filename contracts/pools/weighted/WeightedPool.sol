@@ -32,9 +32,13 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
 
-    // TODO: link info about these limits once they are studied and documented
-    uint256 private constant _MIN_WEIGHT = 100;
-    uint256 private constant _MAX_WEIGHT = 5000 * (10**18);
+    uint256 private constant _MIN_WEIGHT = 0.01e18;
+
+    uint256 private constant _MAX_IN_RATIO = 0.3e18;
+    uint256 private constant _MAX_OUT_RATIO = 0.3e18;
+
+    uint256 private constant _MAX_INVARIANT_RATIO = 3e18;
+    uint256 private constant _MIN_INVARIANT_RATIO = 0.7e18;
 
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
@@ -55,8 +59,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     uint256 private _lastInvariant;
 
+
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
+    enum ExitKind { EXACT_BPT_IN_FOR_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
         IVault vault,
@@ -273,9 +278,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         JoinKind kind = userData.joinKind();
 
         if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData);
+            return _joinExactTokensInForBPTOut(normalizedWeights, balances, userData);
         } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
+            return _joinTokenInForExactBPTOut(normalizedWeights, balances, userData);
         } else {
             revert("UNHANDLED_JOIN_KIND");
         }
@@ -308,7 +313,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountOut, uint256 tokenIndex, uint256 maxAmountIn) = userData.tokenInForExactBPTOut();
+        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBPTOut();
 
         uint256 amountIn = WeightedMath._tokenInForExactBPTOut(
             balances[tokenIndex],
@@ -318,9 +323,11 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             _swapFee
         );
 
-        require(amountIn <= maxAmountIn, "TOKEN_IN_MAX_AMOUNT");
-
-        return amountIn;
+        // We join in a single token, so we initialize amountsIn with zeros and 
+        // set only amountsIn[tokenIndex]
+        uint256[] memory amountsIn = new uint256[](_totalTokens);
+        amountsIn[tokenIndex] = amountIn;
+        return (bptAmountOut, amountsIn);
     }
 
     // Exit
@@ -373,9 +380,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     ) private view returns (uint256, uint256[] memory) {
         ExitKind kind = userData.exitKind();
 
-        if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(normalizedWeights, balances, userData);
-        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
         } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(normalizedWeights, balances, userData);
@@ -389,8 +396,14 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory balances,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256 tokenIndex, uint256 minAmountOut) = userData.exactBPTInForTokenOut();
+        (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBPTInForTokenOut();
         require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
+
+        uint256 bptTotalSupply = totalSupply();
+
+        // Verifies that invariant ratio is not lower than min
+        uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
+        require(invariantRatio >= _MIN_INVARIANT_RATIO, "MIN_BPT_IN_FOR_TOKEN_OUT");
 
         // We exit in a single token, so we initialize amountsOut with zeros
         uint256[] memory amountsOut = new uint256[](_totalTokens);
@@ -403,8 +416,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             totalSupply(),
             _swapFee
         );
-        
-        require(amountsOut[tokenIndex] >= minAmountOut, "TOKEN_OUT_MIN_AMOUNT");
 
         return (bptAmountIn, amountsOut);
     }
@@ -421,10 +432,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             bptAmountIn,
             totalSupply()
         );
-
-        for (uint256 i = 0; i < _totalTokens; ++i) {
-            require(amountsOut[i] >= minAmountsOut[i], "TOKEN_OUT_MIN_AMOUNT");
-        }
 
         return (bptAmountIn, amountsOut);
     }
@@ -507,5 +514,17 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         for (uint256 i = 0; i < _totalTokens; ++i) {
             balances[i] = balances[i].sub(amounts[i]);
         }
+    }
+
+    // This function returns the relative appreciation of one BPT relative to the 
+    // underlying tokens. This starts at 1 when the pool is created and grows over time
+    // It's the equivalent to Curve's get_virtual_price() function
+    function getBPTAppreciation()
+        public
+        view
+        returns (uint256)
+    {
+        (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
+        return WeightedMath._invariant(_normalizedWeights(), balances).times(balances.length).div(totalSupply()); 
     }
 }
