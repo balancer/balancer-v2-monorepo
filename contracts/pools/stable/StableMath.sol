@@ -163,31 +163,6 @@ contract StableMath {
         return balances[tokenIndexOut] > y ? balances[tokenIndexOut].sub(y) : 0;
     }
 
-    function _tokensInForExactBPTOut(
-        uint256[] memory balances,
-        uint256 bptAmountOut,
-        uint256 bptTotalSupply
-    ) internal pure returns (uint256[] memory) {
-        /**********************************************************************************************
-        // tokensInForExactBPTOut                                                                 //
-        // (per token)                                                                               //
-        // aI = tokenAmountIn              /        bptOut         \                                 //
-        // b = tokenBalance      aI = b * | ---------------------  |                                 //
-        // bptOut = bptAmountOut           \       bptTotalSupply       /                                  //
-        // bpt = bptTotalSupply                                                                            //
-        **********************************************************************************************/
-
-        // Since we're computing an amount in, we round up overall. This means rouding up on both the multiplication and
-        // division.
-
-        uint256[] memory amountsIn = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            amountsIn[i] = balances[i].mul(bptAmountOut).divUp(bptTotalSupply);
-        }
-
-        return amountsIn;
-    }
-
     /* 
     Flow of calculations:
     amountsTokenIn -> amountsInProportional ->
