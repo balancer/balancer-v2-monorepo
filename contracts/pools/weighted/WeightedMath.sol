@@ -301,7 +301,7 @@ contract WeightedMath {
                 swapFeeExcess >= FixedPoint.ONE ? 0 : FixedPoint.ONE.sub(swapFeeExcess)
             );
 
-            tokenBalanceRatio = FixedPoint.ONE.sub((amountOutBeforeFee).divUp(balances[i]));
+            tokenBalanceRatio = FixedPoint.ONE.sub(amountOutBeforeFee.divUp(balances[i]));
 
             invariantRatio = invariantRatio.mulDown(FixedPoint.powDown(tokenBalanceRatio, normalizedWeights[i]));
         }
