@@ -194,7 +194,7 @@ contract WeightedMath {
         uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
 
         //Because of rounding up, swapFeeExcess can be greater than one
-        return amountInAfterFee.divUp(swapFeeExcess >= FixedPoint.ONE ? 0 : FixedPoint.ONE.sub(swapFeeExcess));
+        return amountInAfterFee.divUp(FixedPoint.ONE.sub(swapFeeExcess));
     }
 
     function _exactBPTInForTokenOut(
