@@ -129,4 +129,11 @@ library FixedPoint {
         uint256 result = LogExpMath.pow(x, y);
         return add(add(result, mulUp(result, MAX_POW_RELATIVE_ERROR)), 1);
     }
+
+    /**
+     * @dev Tells the complement of a given value capped to zero to avoid overflow
+     */
+    function complement(uint256 x) internal pure returns (uint256) {
+        return x >= ONE ? 0 : sub(ONE, x);
+    }
 }
