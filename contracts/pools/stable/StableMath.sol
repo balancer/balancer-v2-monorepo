@@ -224,7 +224,7 @@ contract StableMath {
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = balances[i].divDown(sumBalances);
-            tokenBalanceRatiosWithoutFee[i] = balances[i].add(amountsIn[i]).div(balances[i]);
+            tokenBalanceRatiosWithoutFee[i] = balances[i].add(amountsIn[i]).divDown(balances[i]);
             weightedBalanceRatio = weightedBalanceRatio.add(tokenBalanceRatiosWithoutFee[i].mul(currentWeight));
         }
 
@@ -238,7 +238,7 @@ contract StableMath {
             if (weightedBalanceRatio >= tokenBalanceRatiosWithoutFee[i]) {
                 tokenBalancePercentageExcess = 0;
             } else {
-                tokenBalancePercentageExcess = tokenBalanceRatiosWithoutFee[i].sub(weightedBalanceRatio).div(
+                tokenBalancePercentageExcess = tokenBalanceRatiosWithoutFee[i].sub(weightedBalanceRatio).divUp(
                     tokenBalanceRatiosWithoutFee[i].sub(FixedPoint.ONE)
                 );
             }
@@ -297,7 +297,7 @@ contract StableMath {
         uint256 tokenBalancePercentageExcess = FixedPoint.ONE.sub(currentWeight);
 
         // return amountIn
-        return amountInAfterFee.div(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee)));
+        return amountInAfterFee.divUp(FixedPoint.ONE.sub(tokenBalancePercentageExcess.mul(swapFee)));
     }
 
     /* 
@@ -328,24 +328,23 @@ contract StableMath {
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = balances[i].divDown(sumBalances);
-            tokenBalanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).div(balances[i]);
+            tokenBalanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).divUp(balances[i]);
             weightedBalanceRatio = weightedBalanceRatio.add(tokenBalanceRatiosWithoutFee[i].mul(currentWeight));
         }
 
         // Second loop to calculate new amounts in taking into account the fee on the % excess
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 tokenBalancePercentageExcess;
-            uint256 tokenBalanceRatio;
             // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
             // decrease the fee from what goes above it
             if (weightedBalanceRatio <= tokenBalanceRatiosWithoutFee[i]) {
                 tokenBalancePercentageExcess = 0;
             } else {
-                tokenBalancePercentageExcess = weightedBalanceRatio.sub(tokenBalanceRatiosWithoutFee[i]).div(
+                tokenBalancePercentageExcess = weightedBalanceRatio.sub(tokenBalanceRatiosWithoutFee[i]).divUp(
                     FixedPoint.ONE.sub(tokenBalanceRatiosWithoutFee[i])
                 );
             }
-            uint256 amountOutBeforeFee = amountsOut[i].div(
+            uint256 amountOutBeforeFee = amountsOut[i].divUp(
                 FixedPoint.ONE.sub(swapFee.mul(tokenBalancePercentageExcess))
             );
             balances[i] = balances[i].sub(amountOutBeforeFee);
