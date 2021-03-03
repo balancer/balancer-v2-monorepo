@@ -41,7 +41,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     // The protocol fees will be always charged using the token associated to the max weight in the pool.
     // Since these Pools will register tokens only once, we can assume this index will be constant.
-    uint256 private immutable _maxWeightedTokenIndex;
+    uint256 private immutable _maxWeightTokenIndex;
 
     uint256 private immutable _normalizedWeight0;
     uint256 private immutable _normalizedWeight1;
@@ -81,23 +81,22 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             sumWeights = sumWeights.add(weights[i]);
         }
 
-        uint256 previousTokenWeight = 0;
-        uint256 maxWeightedTokenIndex = 0;
+        uint256 maxWeightTokenIndex = 0;
+        uint256 previousNormalizedWeight = 0;
         uint256[] memory normalizedWeights = new uint256[](weights.length);
 
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
-            uint256 currentWeight = weights[i];
-            uint256 normalizedWeight = currentWeight.div(sumWeights);
+            uint256 normalizedWeight = weights[i].div(sumWeights);
             require(normalizedWeight >= _MIN_WEIGHT, "MIN_WEIGHT");
             normalizedWeights[i] = normalizedWeight;
 
-            if (currentWeight > previousTokenWeight) {
-                maxWeightedTokenIndex = i;
+            if (normalizedWeight > previousNormalizedWeight) {
+                maxWeightTokenIndex = i;
             }
-            previousTokenWeight = currentWeight;
+            previousNormalizedWeight = normalizedWeight;
         }
 
-        _maxWeightedTokenIndex = maxWeightedTokenIndex;
+        _maxWeightTokenIndex = maxWeightTokenIndex;
         _normalizedWeight0 = weights.length > 0 ? normalizedWeights[0] : 0;
         _normalizedWeight1 = weights.length > 1 ? normalizedWeights[1] : 0;
         _normalizedWeight2 = weights.length > 2 ? normalizedWeights[2] : 0;
@@ -494,9 +493,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // The protocol swap fee are always paid using the token with the largest weight in the pool.
         // As this is then token that will probably have the largest balance in the pool, we can
         // make sure this process won't unbalance the pool in a considerable way.
-        dueProtocolFeeAmounts[_maxWeightedTokenIndex] = WeightedMath._calculateDueTokenProtocolSwapFee(
-            currentBalances[_maxWeightedTokenIndex],
-            normalizedWeights[_maxWeightedTokenIndex],
+        dueProtocolFeeAmounts[_maxWeightTokenIndex] = WeightedMath._calculateDueTokenProtocolSwapFee(
+            currentBalances[_maxWeightTokenIndex],
+            normalizedWeights[_maxWeightTokenIndex],
             previousInvariant,
             currentInvariant,
             protocolSwapFeePercentage
