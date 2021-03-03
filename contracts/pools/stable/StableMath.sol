@@ -246,9 +246,6 @@ contract StableMath {
         // TODO description                            //
         **********************************************************************************************/
 
-        // Get current invariant
-        uint256 currentInvariant = _invariant(amp, balances);
-
         // Calculate new invariant
         uint256 newInvariant = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply);
 
