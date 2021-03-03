@@ -324,7 +324,6 @@ contract WeightedMath {
 
         uint256 power = FixedPoint.powUp(base, exponent);
 
-        //Rounding up can result in a power > 1, so check it does not overflow
         uint256 tokenAccruedFees = balance.mulDown(power.complement());
         return tokenAccruedFees.mulDown(protocolSwapFeePercentage);
     }
