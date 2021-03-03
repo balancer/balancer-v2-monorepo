@@ -3,7 +3,6 @@ import { Contract } from 'ethers';
 import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { shouldBehaveLikeMap } from './EnumerableMap.behavior';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('EnumerableMap', () => {
   describe('EnumerableUintToAddressMap', () => {

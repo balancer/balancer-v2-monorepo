@@ -37,11 +37,6 @@ export default class TokenList {
     return this.get(1);
   }
 
-  get(index: number): Token {
-    if (index >= this.length) throw Error('Accessing invalid token list index');
-    return this.tokens[index];
-  }
-
   get DAI(): Token {
     return this.findBySymbol('DAI');
   }
@@ -56,6 +51,20 @@ export default class TokenList {
 
   get BAT(): Token {
     return this.findBySymbol('BAT');
+  }
+
+  get(index: number | Token): Token {
+    if (typeof index !== 'number') return index;
+    if (index >= this.length) throw Error('Accessing invalid token list index');
+    return this.tokens[index];
+  }
+
+  indexOf(token: number | Token): number {
+    return typeof token === 'number' ? token : this.tokens.indexOf(token);
+  }
+
+  indicesOf(token: number | Token, anotherToken: number | Token): number[] {
+    return [this.indexOf(token), this.indexOf(anotherToken)];
   }
 
   subset(length: number): TokenList {
