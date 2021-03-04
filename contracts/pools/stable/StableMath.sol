@@ -246,8 +246,11 @@ contract StableMath {
         // TODO description                            //
         **********************************************************************************************/
 
+        // Get current invariant
+        uint256 currentInvariant = _invariant(amp, balances);
+
         // Calculate new invariant
-        uint256 newInvariant = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply);
+        uint256 newInvariant = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply).mul(currentInvariant);
 
         // First calculate the sum of all token balances which will be used to calculate 
         // the current weight of token
@@ -349,7 +352,7 @@ contract StableMath {
         // Get current invariant
         uint256 currentInvariant = _invariant(amp, balances);
         // Calculate new invariant
-        uint256 newInvariant = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
+        uint256 newInvariant = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply).mul(currentInvariant);
 
         // First calculate the sum of all token balances which will be used to calculate 
         // the current weight of token
