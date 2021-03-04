@@ -2,26 +2,26 @@ import { expect } from 'chai';
 import { Decimal } from 'decimal.js';
 import { BigNumberish, bn, pct } from '../../lib/helpers/numbers';
 
-export function expectEqualWithError(actualValue: BigNumberish, expectedValue: BigNumberish, error = 0.001): void {
-  actualValue = bn(actualValue);
-  expectedValue = bn(expectedValue);
-  const acceptedError = pct(expectedValue, error);
+export function expectEqualWithError(actual: BigNumberish, expected: BigNumberish, error: BigNumberish = 0.001): void {
+  actual = bn(actual);
+  expected = bn(expected);
+  const acceptedError = pct(expected, error);
 
-  expect(actualValue).to.be.at.least(expectedValue.sub(acceptedError));
-  expect(actualValue).to.be.at.most(expectedValue.add(acceptedError));
+  expect(actual).to.be.at.least(expected.sub(acceptedError));
+  expect(actual).to.be.at.most(expected.add(acceptedError));
 }
 
 export function expectLessThanOrEqualWithError(
-  actualValue: BigNumberish,
-  expectedValue: BigNumberish,
-  error = 0.001
+  actual: BigNumberish,
+  expected: BigNumberish,
+  error: BigNumberish = 0.001
 ): void {
-  actualValue = bn(actualValue);
-  expectedValue = bn(expectedValue);
-  const minimumValue = expectedValue.sub(pct(expectedValue, error));
+  actual = bn(actual);
+  expected = bn(expected);
+  const minimumValue = expected.sub(pct(expected, error));
 
-  expect(actualValue).to.be.at.most(expectedValue);
-  expect(actualValue).to.be.at.least(minimumValue);
+  expect(actual).to.be.at.most(expected);
+  expect(actual).to.be.at.least(minimumValue);
 }
 
 export function expectRelativeError(actual: Decimal, expected: Decimal, maxRelativeError: Decimal): void {

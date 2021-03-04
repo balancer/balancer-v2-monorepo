@@ -5,15 +5,20 @@ const SCALING_FACTOR = 1e18;
 
 export type BigNumberish = string | number | BigNumber;
 
-export const fp = (x: number): BigNumber => bn(x * SCALING_FACTOR);
-
-export const bn = (x: BigNumberish | Decimal): BigNumber =>
-  BigNumber.isBigNumber(x) ? x : BigNumber.from(parseInt(x.toString()).toString());
-
 export const decimal = (x: BigNumberish | Decimal): Decimal => new Decimal(x.toString());
 
-export const fromFp = (x: BigNumberish): Decimal => decimal(x).div(SCALING_FACTOR);
-export const toFp = (x: Decimal): BigNumber => bn(x.mul(SCALING_FACTOR));
+export const fp = (x: number): BigNumber => bn(decimal(x).mul(SCALING_FACTOR));
+
+export const toFp = (x: BigNumberish | Decimal): Decimal => decimal(x).mul(SCALING_FACTOR);
+
+export const fromFp = (x: BigNumberish | Decimal): Decimal => decimal(x).div(SCALING_FACTOR);
+
+export const bn = (x: BigNumberish | Decimal): BigNumber => {
+  if (BigNumber.isBigNumber(x)) return x;
+  const stringified = parseScientific(x.toString());
+  const integer = stringified.split('.')[0];
+  return BigNumber.from(integer);
+};
 
 export const maxUint = (e: number): BigNumber => bn(2).pow(e).sub(1);
 
@@ -21,7 +26,7 @@ export const maxInt = (e: number): BigNumber => bn(2).pow(bn(e).sub(1)).sub(1);
 
 export const minInt = (e: number): BigNumber => bn(2).pow(bn(e).sub(1)).mul(-1);
 
-export const pct = (x: BigNumberish, pct: number | Decimal): BigNumber => bn(decimal(x).mul(decimal(pct)));
+export const pct = (x: BigNumberish, pct: BigNumberish): BigNumber => bn(decimal(x).mul(decimal(pct)));
 
 export const max = (a: BigNumberish, b: BigNumberish): BigNumber => {
   a = bn(a);
@@ -48,3 +53,34 @@ export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
   x.add(y).sub(1).div(y);
 
 export const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
+
+function parseScientific(num: string): string {
+  // If the number is not in scientific notation return it as it is
+  if (!/\d+\.?\d*e[+-]*\d+/i.test(num)) return num;
+
+  // Remove the sign
+  const numberSign = Math.sign(Number(num));
+  num = Math.abs(Number(num)).toString();
+
+  // Parse into coefficient and exponent
+  const [coefficient, exponent] = num.toLowerCase().split('e');
+  let zeros = Math.abs(Number(exponent));
+  const exponentSign = Math.sign(Number(exponent));
+  const [integer, decimals] = (coefficient.indexOf('.') != -1 ? coefficient : `${coefficient}.`).split('.');
+
+  if (exponentSign === -1) {
+    zeros -= integer.length;
+    num =
+      zeros < 0
+        ? integer.slice(0, zeros) + '.' + integer.slice(zeros) + decimals
+        : '0.' + '0'.repeat(zeros) + integer + decimals;
+  } else {
+    if (decimals) zeros -= decimals.length;
+    num =
+      zeros < 0
+        ? integer + decimals.slice(0, zeros) + '.' + decimals.slice(zeros)
+        : integer + decimals + '0'.repeat(zeros);
+  }
+
+  return numberSign < 0 ? '-' + num : num;
+}

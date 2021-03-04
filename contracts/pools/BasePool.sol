@@ -299,7 +299,7 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
 
     function _addSwapFee(uint256 amount) internal view returns (uint256) {
         // This returns amount + fees, so we round up (favoring fees).
-        return amount.divUp(FixedPoint.ONE.sub(_swapFee));
+        return amount.divUp(_swapFee.complement());
     }
 
     function _subtractSwapFee(uint256 amount) internal view returns (uint256) {

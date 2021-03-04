@@ -4,9 +4,9 @@ import { MAX_UINT256 } from '../../../../lib/helpers/constants';
 import { BigNumberish } from '../../../../lib/helpers/numbers';
 
 import TokensDeployer from './TokensDeployer';
-import { Account } from '../types/types';
 import TypesConverter from '../types/TypesConverter';
-import { RawTokenDeployment, TxParams } from './types';
+import { Account, TxParams } from '../types/types';
+import { RawTokenDeployment } from './types';
 
 export default class Token {
   name: string;
