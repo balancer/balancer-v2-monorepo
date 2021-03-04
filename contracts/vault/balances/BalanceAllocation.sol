@@ -209,7 +209,7 @@ library BalanceAllocation {
     // sharedManaged. These two are collectively called the 'shared' balance fields. In both of these, the portion
     // that corresponds to token A is stored in the least significant 112 bits of a 256 bit word, while token B's part
     // uses the most significant 112 bits.
-    // Becase only cash is written to during a swap, we store the block number there. Typically Pools have a distinct
+    // Because only cash is written to during a swap, we store the block number there. Typically Pools have a distinct
     // block number per token: in the case of two token Pools this is not necessary, as both values will be the same.
 
     /**

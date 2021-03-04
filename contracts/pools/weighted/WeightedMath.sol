@@ -225,7 +225,7 @@ contract WeightedMath {
         // bpt = totalBPT                                                                            //
         **********************************************************************************************/
 
-        // Since we're computing an amount out, we round down overall. This means rouding down on both the
+        // Since we're computing an amount out, we round down overall. This means rounding down on both the
         // multiplication and division.
 
         uint256 bptRatio = bptAmountIn.divDown(totalBPT);
