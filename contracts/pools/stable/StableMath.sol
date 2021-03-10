@@ -496,16 +496,22 @@ contract StableMath {
             sum = sum.add(balances[j]);
         }
         sum = sum.sub(balances[tokenIndex]);
+
         uint256 c = invariant.mul(invariant).divUp(ampTimesTotal.mul(P_D));
+        //We remove the balance fromm c by multiplying it
         c = c.mul(balances[tokenIndex]);
+
         uint256 b = sum.add(invariant.divDown(ampTimesTotal));
-        uint256 x_prev = 0;
-        uint256 x = invariant.mul(invariant).add(c).divUp(invariant.add(b));
+
+        //We iterate to find the balance
+        uint256 prevTokenBalance = 0;
+        //We apply first iteration outside the loop with the invariant as the starting aproximation value.
+        tokenBalance = invariant.mul(invariant).add(c).divUp(invariant.add(b));
         for (uint256 i = 0; i < 255; i++) {
-            x_prev = x;
-            x = x.mul(x).add(c).divUp(x.mul(2).add(b).sub(invariant));
-            if (x_prev <= x.add(1)) break;
+            prevTokenBalance = tokenBalance;
+            tokenBalance = tokenBalance.mul(tokenBalance).add(c).divUp(tokenBalance.mul(2).add(b).sub(invariant));
+            if (prevTokenBalance <= tokenBalance.add(1)) break;
         }
-        return x;
+        return tokenBalance;
     }
 }
