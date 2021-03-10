@@ -144,7 +144,11 @@ contract StableMath {
                 numTokens.add(1).mul(invariant).add((ampTimesTotal.sub(1).mul(P_D)))
             );
 
-            if (prevInvariant <= invariant.add(1)) {
+            if (invariant > prevInvariant) {
+                if (invariant.sub(prevInvariant) <= 1) {
+                    break;
+                }
+            } else if (prevInvariant.sub(invariant) <= 1) {
                 break;
             }
         }
@@ -485,7 +489,7 @@ contract StableMath {
         uint256[] memory balances,
         uint256 invariant,
         uint256 tokenIndex
-    ) private pure returns (uint256 tokenBalance) {
+    ) private pure returns (uint256) {
         //Rounds result up overall
 
         uint256 ampTimesTotal = amplificationParameter.mul(balances.length);
@@ -506,11 +510,18 @@ contract StableMath {
         //We iterate to find the balance
         uint256 prevTokenBalance = 0;
         //We apply first iteration outside the loop with the invariant as the starting aproximation value.
-        tokenBalance = invariant.mul(invariant).add(c).divUp(invariant.add(b));
+        uint256 tokenBalance = invariant.mul(invariant).add(c).divUp(invariant.add(b));
         for (uint256 i = 0; i < 255; i++) {
             prevTokenBalance = tokenBalance;
             tokenBalance = tokenBalance.mul(tokenBalance).add(c).divUp(tokenBalance.mul(2).add(b).sub(invariant));
-            if (prevTokenBalance <= tokenBalance.add(1)) break;
+
+            if (tokenBalance > prevTokenBalance) {
+                if (tokenBalance.sub(prevTokenBalance) <= 1) {
+                    break;
+                }
+            } else if (prevTokenBalance.sub(tokenBalance) <= 1) {
+                break;
+            }
         }
         return tokenBalance;
     }
