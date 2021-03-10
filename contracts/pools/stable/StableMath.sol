@@ -172,12 +172,12 @@ contract StableMath {
         // Since we're computing an amount in, we round up overall. This means rouding up on both the multiplication and
         // division.
 
-        uint256[] memory amountsOut = new uint256[](balances.length);
+        uint256[] memory amountsIn = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mul(bptAmountOut).divUp(bptTotalSupply);
+            amountsIn[i] = balances[i].mul(bptAmountOut).divUp(bptTotalSupply);
         }
 
-        return amountsOut;
+        return amountsIn;
     }
 
     function _exactBPTInForAllTokensOut(
