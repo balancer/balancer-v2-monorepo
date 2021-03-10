@@ -11,8 +11,8 @@ import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
-import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
+import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 
 type SwapData = {
@@ -89,7 +89,7 @@ describe('Vault - swaps', () => {
 
   function parseSwap(input: SwapInput): Swap[] {
     return input.swaps.map((data) => ({
-      poolId: (data.pool ?? 0) == 0 ? mainPoolId : secondaryPoolId,
+      poolId: ((data.pool ?? 0) == 0 ? mainPoolId : secondaryPoolId) || ZERO_BYTES32,
       amount: data.amount.toString(),
       tokenInIndex: data.in,
       tokenOutIndex: data.out,
@@ -179,160 +179,168 @@ describe('Vault - swaps', () => {
       };
 
       context('for a single swap', () => {
-        context('when an amount is specified', () => {
-          context('when the given indexes are valid', () => {
-            context('when the given token is in the pool', () => {
-              context('when the requested token is in the pool', () => {
-                context('when requesting another token', () => {
-                  context('when requesting a reasonable amount', () => {
-                    // Send 1 MKR, get 2 DAI back
-                    const swaps = [{ in: 1, out: 0, amount: 1e18 }];
+        context('when the pool is registered', () => {
+          context('when an amount is specified', () => {
+            context('when the given indexes are valid', () => {
+              context('when the given token is in the pool', () => {
+                context('when the requested token is in the pool', () => {
+                  context('when requesting another token', () => {
+                    context('when requesting a reasonable amount', () => {
+                      // Send 1 MKR, get 2 DAI back
+                      const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
-                    context('when using managed balance', () => {
-                      context('when the sender is the user', () => {
-                        const fromOther = false;
+                      context('when using managed balance', () => {
+                        context('when the sender is the user', () => {
+                          const fromOther = false;
 
-                        assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
+                          assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
+                        });
+
+                        context('when the sender is a relayer', () => {
+                          const fromOther = true;
+
+                          context('when the relayer is whitelisted by the authorizer', () => {
+                            sharedBeforeEach('grant role to relayer', async () => {
+                              const role = roleId(vault, 'batchSwapGivenIn');
+                              await authorizer.connect(admin).grantRole(role, other.address);
+                            });
+
+                            context('when the relayer is allowed by the user', () => {
+                              sharedBeforeEach('allow relayer', async () => {
+                                await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                              });
+
+                              assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
+                            });
+
+                            context('when the relayer is not allowed by the user', () => {
+                              sharedBeforeEach('disallow relayer', async () => {
+                                await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                              });
+
+                              assertSwapGivenInReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
+                            });
+                          });
+
+                          context('when the relayer is not whitelisted by the authorizer', () => {
+                            sharedBeforeEach('revoke role from relayer', async () => {
+                              const role = roleId(vault, 'batchSwapGivenIn');
+                              await authorizer.connect(admin).revokeRole(role, other.address);
+                            });
+
+                            context('when the relayer is allowed by the user', () => {
+                              sharedBeforeEach('allow relayer', async () => {
+                                await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                              });
+
+                              assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                            });
+
+                            context('when the relayer is not allowed by the user', () => {
+                              sharedBeforeEach('disallow relayer', async () => {
+                                await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                              });
+
+                              assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                            });
+                          });
+                        });
                       });
 
-                      context('when the sender is a relayer', () => {
-                        const fromOther = true;
-
-                        context('when the relayer is whitelisted by the authorizer', () => {
-                          sharedBeforeEach('grant role to relayer', async () => {
-                            const role = roleId(vault, 'batchSwapGivenIn');
-                            await authorizer.connect(admin).grantRole(role, other.address);
-                          });
-
-                          context('when the relayer is allowed by the user', () => {
-                            sharedBeforeEach('allow relayer', async () => {
-                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
-                            });
-
-                            assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
-                          });
-
-                          context('when the relayer is not allowed by the user', () => {
-                            sharedBeforeEach('disallow relayer', async () => {
-                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
-                            });
-
-                            assertSwapGivenInReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
-                          });
+                      context('when withdrawing from internal balance', () => {
+                        beforeEach(() => {
+                          funds.fromInternalBalance = true;
                         });
 
-                        context('when the relayer is not whitelisted by the authorizer', () => {
-                          sharedBeforeEach('revoke role from relayer', async () => {
-                            const role = roleId(vault, 'batchSwapGivenIn');
-                            await authorizer.connect(admin).revokeRole(role, other.address);
-                          });
-
-                          context('when the relayer is allowed by the user', () => {
-                            sharedBeforeEach('allow relayer', async () => {
-                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
-                            });
-
-                            assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
-                          });
-
-                          context('when the relayer is not allowed by the user', () => {
-                            sharedBeforeEach('disallow relayer', async () => {
-                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
-                            });
-
-                            assertSwapGivenInReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
-                          });
+                        context.skip('when using less than available as internal balance', () => {
+                          // TODO: add tests where no token transfers are needed and internal balance remains
                         });
+
+                        context('when using more than available as internal balance', () => {
+                          sharedBeforeEach('deposit to internal balance', async () => {
+                            await vault.connect(trader).depositToInternalBalance([
+                              {
+                                token: tokens.MKR.address,
+                                amount: bn(0.3e18),
+                                sender: trader.address,
+                                recipient: trader.address,
+                              },
+                            ]);
+                          });
+
+                          assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
+                        });
+                      });
+
+                      context('when depositing from internal balance', () => {
+                        beforeEach(() => {
+                          funds.toInternalBalance = true;
+                        });
+
+                        assertSwapGivenIn({ swaps }, { MKR: -1e18 });
                       });
                     });
 
-                    context('when withdrawing from internal balance', () => {
-                      beforeEach(() => {
-                        funds.fromInternalBalance = true;
-                      });
+                    context('when draining the pool', () => {
+                      const swaps = [{ in: 1, out: 0, amount: 50e18 }];
 
-                      context.skip('when using less than available as internal balance', () => {
-                        // TODO: add tests where no token transfers are needed and internal balance remains
-                      });
-
-                      context('when using more than available as internal balance', () => {
-                        sharedBeforeEach('deposit to internal balance', async () => {
-                          await vault.connect(trader).depositToInternalBalance([
-                            {
-                              token: tokens.MKR.address,
-                              amount: bn(0.3e18),
-                              sender: trader.address,
-                              recipient: trader.address,
-                            },
-                          ]);
-                        });
-
-                        assertSwapGivenIn({ swaps }, { DAI: 2e18, MKR: -0.7e18 });
-                      });
+                      assertSwapGivenIn({ swaps }, { DAI: 100e18, MKR: -50e18 });
                     });
 
-                    context('when depositing from internal balance', () => {
-                      beforeEach(() => {
-                        funds.toInternalBalance = true;
-                      });
+                    context('when requesting more than the available balance', () => {
+                      const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                      assertSwapGivenIn({ swaps }, { MKR: -1e18 });
+                      assertSwapGivenInReverts({ swaps }, 'SUB_OVERFLOW');
                     });
                   });
 
-                  context('when draining the pool', () => {
-                    const swaps = [{ in: 1, out: 0, amount: 50e18 }];
+                  context('when the requesting the same token', () => {
+                    const swaps = [{ in: 1, out: 1, amount: 1e18 }];
 
-                    assertSwapGivenIn({ swaps }, { DAI: 100e18, MKR: -50e18 });
-                  });
-
-                  context('when requesting more than the available balance', () => {
-                    const swaps = [{ in: 1, out: 0, amount: 100e18 }];
-
-                    assertSwapGivenInReverts({ swaps }, 'SUB_OVERFLOW');
+                    assertSwapGivenInReverts({ swaps }, 'CANNOT_SWAP_SAME_TOKEN');
                   });
                 });
 
-                context('when the requesting the same token', () => {
-                  const swaps = [{ in: 1, out: 1, amount: 1e18 }];
+                context('when the requested token is not in the pool', () => {
+                  const swaps = [{ in: 1, out: 3, amount: 1e18 }];
 
-                  assertSwapGivenInReverts({ swaps }, 'CANNOT_SWAP_SAME_TOKEN');
+                  assertSwapGivenInReverts({ swaps });
                 });
               });
 
-              context('when the requested token is not in the pool', () => {
-                const swaps = [{ in: 1, out: 3, amount: 1e18 }];
+              context('when the given token is not in the pool', () => {
+                const swaps = [{ in: 3, out: 1, amount: 1e18 }];
 
                 assertSwapGivenInReverts({ swaps });
               });
             });
 
-            context('when the given token is not in the pool', () => {
-              const swaps = [{ in: 3, out: 1, amount: 1e18 }];
+            context('when the given indexes are not valid', () => {
+              context('when the token index in is not valid', () => {
+                const swaps = [{ in: 30, out: 1, amount: 1e18 }];
 
-              assertSwapGivenInReverts({ swaps });
+                assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS');
+              });
+
+              context('when the token index out is not valid', () => {
+                const swaps = [{ in: 0, out: 10, amount: 1e18 }];
+
+                assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS');
+              });
             });
           });
 
-          context('when the given indexes are not valid', () => {
-            context('when the token index in is not valid', () => {
-              const swaps = [{ in: 30, out: 1, amount: 1e18 }];
+          context('when no amount is specified', () => {
+            const swaps = [{ in: 1, out: 0, amount: 0 }];
 
-              assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS');
-            });
-
-            context('when the token index out is not valid', () => {
-              const swaps = [{ in: 0, out: 10, amount: 1e18 }];
-
-              assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS');
-            });
+            assertSwapGivenInReverts({ swaps }, 'UNKNOWN_AMOUNT_IN_FIRST_SWAP');
           });
         });
 
-        context('when no amount is specified', () => {
-          const swaps = [{ in: 1, out: 0, amount: 0 }];
+        context('when the pool is not registered', () => {
+          const swaps = [{ pool: 1000, in: 1, out: 0, amount: 1e18 }];
 
-          assertSwapGivenInReverts({ swaps }, 'UNKNOWN_AMOUNT_IN_FIRST_SWAP');
+          assertSwapGivenInReverts({ swaps }, 'INVALID_POOL_ID');
         });
       });
 
@@ -576,160 +584,168 @@ describe('Vault - swaps', () => {
       };
 
       context('for a single swap', () => {
-        context('when an amount is specified', () => {
-          context('when the given indexes are valid', () => {
-            context('when the given token is in the pool', () => {
-              context('when the requested token is in the pool', () => {
-                context('when the requesting another token', () => {
-                  context('when requesting a reasonable amount', () => {
-                    // Get 1e18 DAI by sending 0.5e18 MKR
-                    const swaps = [{ in: 1, out: 0, amount: 1e18 }];
+        context('when the pool is registered', () => {
+          context('when an amount is specified', () => {
+            context('when the given indexes are valid', () => {
+              context('when the given token is in the pool', () => {
+                context('when the requested token is in the pool', () => {
+                  context('when the requesting another token', () => {
+                    context('when requesting a reasonable amount', () => {
+                      // Get 1e18 DAI by sending 0.5e18 MKR
+                      const swaps = [{ in: 1, out: 0, amount: 1e18 }];
 
-                    context('when using managed balance', () => {
-                      context('when the sender is the user', () => {
-                        const fromOther = false;
+                      context('when using managed balance', () => {
+                        context('when the sender is the user', () => {
+                          const fromOther = false;
 
-                        assertSwapGivenOut({ swaps, fromOther }, { DAI: 1e18, MKR: -0.5e18 });
+                          assertSwapGivenOut({ swaps, fromOther }, { DAI: 1e18, MKR: -0.5e18 });
+                        });
+
+                        context('when the sender is a relayer', () => {
+                          const fromOther = true;
+
+                          context('when the relayer is whitelisted by the authorizer', () => {
+                            sharedBeforeEach('grant role to relayer', async () => {
+                              const role = roleId(vault, 'batchSwapGivenOut');
+                              await authorizer.connect(admin).grantRole(role, other.address);
+                            });
+
+                            context('when the relayer is allowed by the user', () => {
+                              sharedBeforeEach('allow relayer', async () => {
+                                await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                              });
+
+                              assertSwapGivenOut({ swaps, fromOther }, { DAI: 1e18, MKR: -0.5e18 });
+                            });
+
+                            context('when the relayer is not allowed by the user', () => {
+                              sharedBeforeEach('disallow relayer', async () => {
+                                await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                              });
+
+                              assertSwapGivenOutReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
+                            });
+                          });
+
+                          context('when the relayer is not whitelisted by the authorizer', () => {
+                            sharedBeforeEach('revoke role from relayer', async () => {
+                              const role = roleId(vault, 'batchSwapGivenOut');
+                              await authorizer.connect(admin).revokeRole(role, other.address);
+                            });
+
+                            context('when the relayer is allowed by the user', () => {
+                              sharedBeforeEach('allow relayer', async () => {
+                                await vault.connect(trader).changeRelayerAllowance(other.address, true);
+                              });
+
+                              assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                            });
+
+                            context('when the relayer is not allowed by the user', () => {
+                              sharedBeforeEach('disallow relayer', async () => {
+                                await vault.connect(trader).changeRelayerAllowance(other.address, false);
+                              });
+
+                              assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
+                            });
+                          });
+                        });
                       });
 
-                      context('when the sender is a relayer', () => {
-                        const fromOther = true;
-
-                        context('when the relayer is whitelisted by the authorizer', () => {
-                          sharedBeforeEach('grant role to relayer', async () => {
-                            const role = roleId(vault, 'batchSwapGivenOut');
-                            await authorizer.connect(admin).grantRole(role, other.address);
-                          });
-
-                          context('when the relayer is allowed by the user', () => {
-                            sharedBeforeEach('allow relayer', async () => {
-                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
-                            });
-
-                            assertSwapGivenOut({ swaps, fromOther }, { DAI: 1e18, MKR: -0.5e18 });
-                          });
-
-                          context('when the relayer is not allowed by the user', () => {
-                            sharedBeforeEach('disallow relayer', async () => {
-                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
-                            });
-
-                            assertSwapGivenOutReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
-                          });
+                      context('when withdrawing from internal balance', () => {
+                        beforeEach(() => {
+                          funds.fromInternalBalance = true;
                         });
 
-                        context('when the relayer is not whitelisted by the authorizer', () => {
-                          sharedBeforeEach('revoke role from relayer', async () => {
-                            const role = roleId(vault, 'batchSwapGivenOut');
-                            await authorizer.connect(admin).revokeRole(role, other.address);
-                          });
-
-                          context('when the relayer is allowed by the user', () => {
-                            sharedBeforeEach('allow relayer', async () => {
-                              await vault.connect(trader).changeRelayerAllowance(other.address, true);
-                            });
-
-                            assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
-                          });
-
-                          context('when the relayer is not allowed by the user', () => {
-                            sharedBeforeEach('disallow relayer', async () => {
-                              await vault.connect(trader).changeRelayerAllowance(other.address, false);
-                            });
-
-                            assertSwapGivenOutReverts({ swaps, fromOther }, 'SENDER_NOT_ALLOWED');
-                          });
+                        context.skip('when using less than available as internal balance', () => {
+                          // TODO: add tests where no token transfers are needed and internal balance remains
                         });
+
+                        context('when using more than available as internal balance', () => {
+                          sharedBeforeEach('deposit to internal balance', async () => {
+                            await vault.connect(trader).depositToInternalBalance([
+                              {
+                                token: tokens.MKR.address,
+                                amount: bn(0.3e18),
+                                sender: trader.address,
+                                recipient: trader.address,
+                              },
+                            ]);
+                          });
+
+                          assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
+                        });
+                      });
+
+                      context('when depositing from internal balance', () => {
+                        beforeEach(() => {
+                          funds.toInternalBalance = true;
+                        });
+
+                        assertSwapGivenOut({ swaps }, { MKR: -0.5e18 });
                       });
                     });
 
-                    context('when withdrawing from internal balance', () => {
-                      beforeEach(() => {
-                        funds.fromInternalBalance = true;
-                      });
+                    context('when draining the pool', () => {
+                      const swaps = [{ in: 1, out: 0, amount: 100e18 }];
 
-                      context.skip('when using less than available as internal balance', () => {
-                        // TODO: add tests where no token transfers are needed and internal balance remains
-                      });
-
-                      context('when using more than available as internal balance', () => {
-                        sharedBeforeEach('deposit to internal balance', async () => {
-                          await vault.connect(trader).depositToInternalBalance([
-                            {
-                              token: tokens.MKR.address,
-                              amount: bn(0.3e18),
-                              sender: trader.address,
-                              recipient: trader.address,
-                            },
-                          ]);
-                        });
-
-                        assertSwapGivenOut({ swaps }, { DAI: 1e18, MKR: -0.2e18 });
-                      });
+                      assertSwapGivenOut({ swaps }, { DAI: 100e18, MKR: -50e18 });
                     });
 
-                    context('when depositing from internal balance', () => {
-                      beforeEach(() => {
-                        funds.toInternalBalance = true;
-                      });
+                    context('when requesting more than the available balance', () => {
+                      const swaps = [{ in: 1, out: 0, amount: 200e18 }];
 
-                      assertSwapGivenOut({ swaps }, { MKR: -0.5e18 });
+                      assertSwapGivenOutReverts({ swaps }, 'SUB_OVERFLOW');
                     });
                   });
 
-                  context('when draining the pool', () => {
-                    const swaps = [{ in: 1, out: 0, amount: 100e18 }];
+                  context('when the requesting the same token', () => {
+                    const swaps = [{ in: 1, out: 1, amount: 1e18 }];
 
-                    assertSwapGivenOut({ swaps }, { DAI: 100e18, MKR: -50e18 });
-                  });
-
-                  context('when requesting more than the available balance', () => {
-                    const swaps = [{ in: 1, out: 0, amount: 200e18 }];
-
-                    assertSwapGivenOutReverts({ swaps }, 'SUB_OVERFLOW');
+                    assertSwapGivenOutReverts({ swaps }, 'CANNOT_SWAP_SAME_TOKEN');
                   });
                 });
 
-                context('when the requesting the same token', () => {
-                  const swaps = [{ in: 1, out: 1, amount: 1e18 }];
+                context('when the requested token is not in the pool', () => {
+                  const swaps = [{ in: 1, out: 3, amount: 1e18 }];
 
-                  assertSwapGivenOutReverts({ swaps }, 'CANNOT_SWAP_SAME_TOKEN');
+                  assertSwapGivenOutReverts({ swaps });
                 });
               });
 
-              context('when the requested token is not in the pool', () => {
-                const swaps = [{ in: 1, out: 3, amount: 1e18 }];
+              context('when the given token is not in the pool', () => {
+                const swaps = [{ in: 3, out: 1, amount: 1e18 }];
 
                 assertSwapGivenOutReverts({ swaps });
               });
             });
 
-            context('when the given token is not in the pool', () => {
-              const swaps = [{ in: 3, out: 1, amount: 1e18 }];
+            context('when the given indexes are not valid', () => {
+              context('when the token index in is not valid', () => {
+                const swaps = [{ in: 30, out: 1, amount: 1e18 }];
 
-              assertSwapGivenOutReverts({ swaps });
+                assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS');
+              });
+
+              context('when the token index out is not valid', () => {
+                const swaps = [{ in: 0, out: 10, amount: 1e18 }];
+
+                assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS');
+              });
             });
           });
 
-          context('when the given indexes are not valid', () => {
-            context('when the token index in is not valid', () => {
-              const swaps = [{ in: 30, out: 1, amount: 1e18 }];
+          context('when no amount is specified', () => {
+            const swaps = [{ in: 1, out: 0, amount: 0 }];
 
-              assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS');
-            });
-
-            context('when the token index out is not valid', () => {
-              const swaps = [{ in: 0, out: 10, amount: 1e18 }];
-
-              assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS');
-            });
+            assertSwapGivenOutReverts({ swaps }, 'UNKNOWN_AMOUNT_IN_FIRST_SWAP');
           });
         });
 
-        context('when no amount is specified', () => {
-          const swaps = [{ in: 1, out: 0, amount: 0 }];
+        context('when the pool is not registered', () => {
+          const swaps = [{ pool: 1000, in: 1, out: 0, amount: 1e18 }];
 
-          assertSwapGivenOutReverts({ swaps }, 'UNKNOWN_AMOUNT_IN_FIRST_SWAP');
+          assertSwapGivenOutReverts({ swaps }, 'INVALID_POOL_ID');
         });
       });
 
