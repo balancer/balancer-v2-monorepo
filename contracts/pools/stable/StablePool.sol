@@ -35,8 +35,8 @@ contract StablePool is BaseGeneralPool, StableMath {
     uint256 private constant _MIN_AMP = 50 * (1e18);
     uint256 private constant _MAX_AMP = 2000 * (1e18);
 
-    enum JoinKind { INIT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT }
+    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
         IVault vault,
@@ -149,27 +149,13 @@ contract StablePool is BaseGeneralPool, StableMath {
     {
         JoinKind kind = userData.joinKind();
 
-        if (kind == JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return _joinAllTokensInForExactBPTOut(currentBalances, userData);
+        if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return _joinExactTokensInForBPTOut(currentBalances, userData);
+        } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            return _joinTokenInForExactBPTOut(currentBalances, userData);
         } else {
             revert("UNHANDLED_JOIN_KIND");
         }
-    }
-
-    function _joinAllTokensInForExactBPTOut(uint256[] memory currentBalances, bytes memory userData)
-        private
-        view
-        returns (uint256, uint256[] memory)
-    {
-        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
-
-        uint256[] memory amountsIn = StableMath._allTokensInForExactBPTOut(
-            currentBalances,
-            bptAmountOut,
-            totalSupply()
-        );
-
-        return (bptAmountOut, amountsIn);
     }
 
     // Exit
@@ -222,13 +208,17 @@ contract StablePool is BaseGeneralPool, StableMath {
         ExitKind kind = userData.exitKind();
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForAllTokensOut(currentBalances, userData);
+            return _exitExactBPTInForTokenOut(currentBalances, userData);
+        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+            return _exitExactBPTInForTokensOut(currentBalances, userData);
+        } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+            return _exitBPTInForExactTokensOut(currentBalances, userData);
         } else {
             revert("UNHANDLED_EXIT_KIND");
         }
     }
 
-    function _exitExactBPTInForAllTokensOut(uint256[] memory currentBalances, bytes memory userData)
+    function _exitExactBPTInForTokensOut(uint256[] memory currentBalances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
