@@ -160,8 +160,8 @@ contract StableMath {
         // allTokensInForExactBPTOut                                                                 //
         // (per token)                                                                               //
         // aI = tokenAmountIn              /        bptOut         \                                 //
-        // b = tokenBalance      aI = b * | ---------------------  |                                 //
-        // bptOut = bptAmountOut           \       bptTotalSupply       /                            //
+        // b = tokenBalance      aI = b * | ----------------------- |                                //
+        // bptOut = bptAmountOut           \     bptTotalSupply    /                                 //
         // bpt = bptTotalSupply                                                                      //
         **********************************************************************************************/
 
@@ -185,8 +185,8 @@ contract StableMath {
         // exactBPTInForAllTokensOut                                                                 //
         // (per token)                                                                               //
         // aO = tokenAmountOut             /        bptIn         \                                  //
-        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \       bptTotalSupply       /                            //
+        // b = tokenBalance      a0 = b * | ---------------------- |                                 //
+        // bptIn = bptAmountIn             \    bptTotalSupply    /                                  //
         // bpt = bptTotalSupply                                                                      //
         **********************************************************************************************/
 
