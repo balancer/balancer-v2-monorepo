@@ -223,9 +223,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256, uint256[] memory)
     {
-        uint256 bptAmountIn = userData.exactBptInForAllTokensOut();
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
-        uint256[] memory amountsOut = StableMath._exactBPTInForAllTokensOut(
+        uint256[] memory amountsOut = StableMath._exactBPTInForTokensOut(
             currentBalances,
             bptAmountIn,
             totalSupply()
