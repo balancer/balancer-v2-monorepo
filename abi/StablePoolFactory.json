@@ -41,8 +41,13 @@
         "type": "address[]"
       },
       {
+        "internalType": "bool[]",
+        "name": "stableBPTTokens",
+        "type": "bool[]"
+      },
+      {
         "internalType": "uint256",
-        "name": "amp",
+        "name": "amplificationParameter",
         "type": "uint256"
       },
       {

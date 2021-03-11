@@ -33,12 +33,16 @@ contract StablePoolFactory is BasePoolFactory {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 amp,
+        bool[] memory stableBPTTokens,
+        uint256 amplificationParameter,
         uint256 swapFee
     ) external returns (address) {
         return
             _create(
-                abi.encodePacked(type(StablePool).creationCode, abi.encode(vault, name, symbol, tokens, amp, swapFee))
+                abi.encodePacked(
+                    type(StablePool).creationCode,
+                    abi.encode(vault, name, symbol, tokens, stableBPTTokens, amplificationParameter, swapFee)
+                )
             );
     }
 }
