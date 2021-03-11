@@ -50,7 +50,6 @@ contract GeneralPoolsBalance {
             require(token != IERC20(0), "ZERO_ADDRESS_TOKEN");
             bool added = poolBalances.set(token, 0);
             require(added, "TOKEN_ALREADY_REGISTERED");
-            // No need to delete the balance entries, since they already are zero
         }
     }
 
