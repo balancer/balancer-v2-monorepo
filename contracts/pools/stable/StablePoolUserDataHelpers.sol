@@ -31,11 +31,31 @@ library StablePoolUserDataHelpers {
         (, amountsIn) = abi.decode(self, (StablePool.JoinKind, uint256[]));
     }
 
-    function allTokensInForExactBptOut(bytes memory self) internal pure returns (uint256 bptAmountOut) {
-        (, bptAmountOut) = abi.decode(self, (StablePool.JoinKind, uint256));
+    function exactTokensInForBptOut(bytes memory self)
+        internal
+        pure
+        returns (uint256[] memory amountsIn, uint256 minBPTAmountIn)
+    {
+        (, amountsIn, minBPTAmountIn) = abi.decode(self, (StablePool.JoinKind, uint256[], uint256));
     }
 
-    function exactBptInForAllTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
+    function tokenInForExactBptOut(bytes memory self) internal pure returns (uint256 bptAmountOut, uint256 tokenIndex) {
+        (, bptAmountOut, tokenIndex) = abi.decode(self, (StablePool.JoinKind, uint256, uint256));
+    }
+
+    function exactBptInForTokenOut(bytes memory self) internal pure returns (uint256 bptAmountIn, uint256 tokenIndex) {
+        (, bptAmountIn, tokenIndex) = abi.decode(self, (StablePool.ExitKind, uint256, uint256));
+    }
+
+    function exactBptInForTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
         (, bptAmountIn) = abi.decode(self, (StablePool.ExitKind, uint256));
+    }
+
+    function bptInForExactTokensOut(bytes memory self)
+        internal
+        pure
+        returns (uint256[] memory amountsOut, uint256 maxBPTAmountIn)
+    {
+        (, amountsOut, maxBPTAmountIn) = abi.decode(self, (StablePool.ExitKind, uint256[], uint256));
     }
 }

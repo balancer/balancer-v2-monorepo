@@ -22,8 +22,13 @@
         "type": "address[]"
       },
       {
+        "internalType": "bool[]",
+        "name": "isStableBPT",
+        "type": "bool[]"
+      },
+      {
         "internalType": "uint256",
-        "name": "amp",
+        "name": "amplificationParameter",
         "type": "uint256"
       },
       {
@@ -191,7 +196,20 @@
   },
   {
     "inputs": [],
-    "name": "getAmplification",
+    "name": "getAmplificationParameter",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getBPTAppreciation",
     "outputs": [
       {
         "internalType": "uint256",
