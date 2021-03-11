@@ -7,7 +7,6 @@ import * as expectEvent from '../helpers/expectEvent';
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish, bn } from '../../lib/helpers/numbers';
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('BalancerPoolToken', () => {
   let token: Contract;

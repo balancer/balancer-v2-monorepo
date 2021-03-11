@@ -15,7 +15,6 @@ import { roleId } from '../../lib/helpers/roles';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;

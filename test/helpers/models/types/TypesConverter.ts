@@ -1,7 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { Account } from './types';
+import { bn } from '../../../../lib/helpers/numbers';
 
+import TokenList from '../tokens/TokenList';
+import { Account } from './types';
+import { RawWeightedPoolDeployment, WeightedPoolDeployment } from '../pools/weighted/types';
 import {
   RawTokenApproval,
   RawTokenMint,
@@ -13,6 +16,13 @@ import {
 } from '../tokens/types';
 
 export default {
+  toWeightedPoolDeployment({ tokens, weights, swapFee }: RawWeightedPoolDeployment): WeightedPoolDeployment {
+    if (!tokens) tokens = new TokenList();
+    if (!weights) weights = [];
+    if (!swapFee) swapFee = bn(0);
+    return { tokens, weights, swapFee };
+  },
+
   /***
    * Converts a raw list of token deployments into a consistent deployment request
    * @param params It can be a number specifying the number of tokens to be deployed, a list of strings denoting the

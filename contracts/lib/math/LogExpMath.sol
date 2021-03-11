@@ -25,7 +25,7 @@ pragma solidity ^0.7.0;
  * @author Daniel Fernandez - @dmf7z
  */
 library LogExpMath {
-    int256 constant DECIMALS = 10**18;
+    int256 constant DECIMALS = 1e18;
     int256 constant DOUBLE_DECIMALS = DECIMALS * DECIMALS;
     int256 constant PRECISION = 10**20;
     int256 constant DOUBLE_PRECISION = PRECISION * PRECISION;
@@ -250,14 +250,6 @@ library LogExpMath {
         );
         logx_times_y /= DECIMALS;
         return uint256(n_exp(logx_times_y));
-    }
-
-    function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
-        return pow(x, y);
-    }
-
-    function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
-        return pow(x, y);
     }
 
     /**

@@ -5,7 +5,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 import { encodeExit, encodeJoin } from '../helpers/mockPool';
 
 import { bn } from '../../lib/helpers/numbers';

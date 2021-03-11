@@ -8,7 +8,6 @@ import Token from '../helpers/models/tokens/Token';
 import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
 import { encodeExit } from '../helpers/mockPool';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 import { roleId } from '../../lib/helpers/roles';
@@ -202,10 +201,12 @@ describe('Vault - exit pool', () => {
         });
 
         context('with protocol withdraw fee', () => {
+          const WITHDRAW_FEE = fp(0.002); // 0.2%
+
           sharedBeforeEach('set protocol withdraw fee', async () => {
             const role = roleId(vault, 'setProtocolFees');
             await authorizer.connect(admin).grantRole(role, admin.address);
-            await vault.connect(admin).setProtocolFees(SWAP_FEE, fp(0.02), 0);
+            await vault.connect(admin).setProtocolFees(SWAP_FEE, WITHDRAW_FEE, 0);
           });
 
           itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance();
