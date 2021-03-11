@@ -177,8 +177,8 @@ contract StableMath {
         // bpt = totalBPT                                                                            //
         **********************************************************************************************/
 
-        // Since we're computing an amount in, we round up overall. This means rouding up on both the multiplication and
-        // division.
+        // Since we're computing an amount in, we round up overall. This means rounding up on both the multiplication
+        // and division.
 
         uint256[] memory amountsOut = new uint256[](currentBalances.length);
         for (uint256 i = 0; i < currentBalances.length; i++) {
@@ -202,7 +202,7 @@ contract StableMath {
         // bpt = totalBPT                                                                            //
         **********************************************************************************************/
 
-        // Since we're computing an amount out, we round down overall. This means rouding down on both the
+        // Since we're computing an amount out, we round down overall. This means rounding down on both the
         // multiplication and division.
 
         uint256[] memory amountsOut = new uint256[](currentBalances.length);
@@ -263,7 +263,7 @@ contract StableMath {
 
     //Private functions
 
-    //This function calcuates the analytical solution to find the balance required
+    //This function calculates the analytical solution to find the balance required
     function _solveAnalyticalBalance(
         uint256 sum,
         uint256 inv,

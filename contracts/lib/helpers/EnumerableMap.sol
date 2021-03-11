@@ -121,7 +121,7 @@ library EnumerableMap {
      * should be noted that key indices may change when calling {add} or {remove}. O(1).
      *
      * This function performs one less storage read than {set}, but it should only be used when `index` is known to be
-     * whithin bounds.
+     * within bounds.
      */
     function _unchecked_setAt(
         Map storage map,
@@ -284,7 +284,7 @@ library EnumerableMap {
      * should be noted that key indices may change when calling {add} or {remove}. O(1).
      *
      * This function performs one less storage read than {set}, but it should only be used when `index` is known to be
-     * whithin bounds.
+     * within bounds.
      */
     function unchecked_setAt(
         UintToAddressMap storage map,
@@ -422,7 +422,7 @@ library EnumerableMap {
      * should be noted that key indices may change when calling {add} or {remove}. O(1).
      *
      * This function performs one less storage read than {set}, but it should only be used when `index` is known to be
-     * whithin bounds.
+     * within bounds.
      */
     function unchecked_setAt(
         IERC20ToBytes32Map storage map,

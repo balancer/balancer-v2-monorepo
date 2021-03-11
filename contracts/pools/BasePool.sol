@@ -195,7 +195,7 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
             // On initialization, we lock _MINIMUM_BPT by minting it for the zero address. This BPT acts as a minimum
             // as it will never be burned, which reduces potential issues with rounding, and also prevents the Pool from
             // ever being fully drained.
-            require(bptAmountOut >= _MINIMUM_BPT, "MINUMUM_BPT");
+            require(bptAmountOut >= _MINIMUM_BPT, "MINIMUM_BPT");
             _mintPoolTokens(address(0), _MINIMUM_BPT);
             _mintPoolTokens(recipient, bptAmountOut - _MINIMUM_BPT);
 
