@@ -116,7 +116,7 @@ interface IVault {
      * in the struct, passing through the vault (like an internal balance deposit, but without recording it, since
      * it is immediately transferred out). The sources must have allowed the Vault to use their tokens
      * via `IERC20.approve()`.
-     * This will allow relayers to leverage the allowance given to the vault by each sender, to transfer tokens to 
+     * This will allow relayers to leverage the allowance given to the vault by each sender, to transfer tokens to
      * external accounts
      */
     function transferToExternalBalanceOfOtherUser(BalanceTransfer[] memory transfers) external;
