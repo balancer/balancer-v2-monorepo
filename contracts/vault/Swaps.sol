@@ -152,21 +152,27 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
 
         InputHelpers.ensureInputLengthMatch(tokens.length, limits.length);
 
+        // Scope for IERC20Tokens, avoiding stack-too-deep issues
+        {
+            // Cast tokens into IERC20 with no runtime cost
+            IERC20[] memory IERC20Tokens;
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                IERC20Tokens := tokens
+            }
+
+            // By ensuring the tokens are sorted, we know they are unique
+            InputHelpers.ensureArrayIsSorted(IERC20Tokens);
+        }
+
         // Perform the swaps, updating the Pool token balances and computing the net Vault token deltas.
         tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
         // Process token deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
-        IERC20ETH previousToken = IERC20ETH(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20ETH token = tokens[i];
             int256 delta = tokenDeltas[i];
-
-            // By requiring the tokens to be in strict descending order, we ensure uniqueness. We use descending order
-            // so that the invalid 0xff..ff address can be used as an initial value for `previousToken`: 0x00..00 is the
-            // sentinel value for ETH, making a check for ascending order awkward.
-            require(token < previousToken, "UNSORTED_ARRAY");
-            previousToken = token;
 
             require(delta <= limits[i], "SWAP_LIMIT");
 
