@@ -46,7 +46,7 @@ library BalanceAllocation {
     using Math for uint256;
 
     // The 'cash' portion of the balance is stored in the least significant 112 bits of a 256 bit word, while the
-    // 'managed' part uses the most significant 112 bits.
+    // 'managed' part uses the following 112 bits. The remaining 32 bits are used to store the block number.
 
     /**
      * @dev Returns the total amount of Pool tokens, including those that are not currently in the Vault ('managed').
@@ -126,7 +126,6 @@ library BalanceAllocation {
 
     /**
      * @dev Packs together cash and managed amounts with a block number to create a balance value.
-     *
      * Critically, this also checks the sum of cash and external doesn't overflow, that is, that `total()` can be
      * computed.
      */
@@ -209,7 +208,7 @@ library BalanceAllocation {
     // sharedManaged. These two are collectively called the 'shared' balance fields. In both of these, the portion
     // that corresponds to token A is stored in the least significant 112 bits of a 256 bit word, while token B's part
     // uses the most significant 112 bits.
-    // Becase only cash is written to during a swap, we store the block number there. Typically Pools have a distinct
+    // Because only cash is written to during a swap, we store the block number there. Typically Pools have a distinct
     // block number per token: in the case of two token Pools this is not necessary, as both values will be the same.
 
     /**

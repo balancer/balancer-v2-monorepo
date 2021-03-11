@@ -49,7 +49,8 @@ contract WeightedMath {
         // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
         // Because bI / (bI + aI) <= 1, the exponent rounds down.
 
-        uint256 base = tokenBalanceIn.divUp(tokenBalanceIn.add(tokenAmountIn));
+        uint256 newBalance = tokenBalanceIn.add(tokenAmountIn);
+        uint256 base = tokenBalanceIn.divUp(newBalance);
         uint256 exponent = tokenWeightIn.divDown(tokenWeightOut);
         uint256 power = FixedPoint.powUp(base, exponent);
 
@@ -237,7 +238,7 @@ contract WeightedMath {
         // bpt = totalBPT                                                                            //
         **********************************************************************************************/
 
-        // Since we're computing an amount out, we round down overall. This means rouding down on both the
+        // Since we're computing an amount out, we round down overall. This means rounding down on both the
         // multiplication and division.
 
         uint256 bptRatio = bptAmountIn.divDown(totalBPT);
