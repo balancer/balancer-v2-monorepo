@@ -46,6 +46,8 @@ contract StablePool is BaseGeneralPool, StableMath {
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
+    enum RoundDirection { UP, DOWN }
+
     constructor(
         IVault vault,
         string memory name,
@@ -60,7 +62,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         require(tokens.length <= _MAX_STABLE_TOKENS, "MAX_STABLE_TOKENS");
 
-        require(tokens.length == stableBPTTokens.length, "INVALID_STABLE_BPT_ARRAY");
+        require(stableBPTTokens.length == tokens.length, "INVALID_STABLE_BPT_ARRAY");
 
         _amplificationParameter = amplificationParameter;
 
@@ -85,7 +87,19 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 indexIn,
         uint256 indexOut
     ) internal view override returns (uint256) {
-        return StableMath._outGivenIn(_amplificationParameter, balances, indexIn, indexOut, swapRequest.amountIn);
+        // upscale to account for BPT appreciation if applicable
+        uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(balances, bptAppreciations, RoundDirection.UP);
+
+        uint256 amountOut = StableMath._outGivenIn(
+            _amplificationParameter,
+            balances,
+            indexIn,
+            indexOut,
+            swapRequest.amountIn
+        );
+
+        return _downscaleByAppreciation(amountOut, bptAppreciations[indexOut], RoundDirection.DOWN);
     }
 
     function _onSwapGivenOut(
@@ -94,7 +108,19 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 indexIn,
         uint256 indexOut
     ) internal view override returns (uint256) {
-        return StableMath._inGivenOut(_amplificationParameter, balances, indexIn, indexOut, swapRequest.amountOut);
+        // upscale to account for BPT appreciation if applicable
+        uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(balances, bptAppreciations, RoundDirection.UP);
+
+        uint256 amountIn = StableMath._inGivenOut(
+            _amplificationParameter,
+            balances,
+            indexIn,
+            indexOut,
+            swapRequest.amountOut
+        );
+
+        return _downscaleByAppreciation(amountIn, bptAppreciations[indexIn], RoundDirection.UP);
     }
 
     // Initialize
@@ -191,8 +217,8 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // upscale to account for BPT appreciation if applicable
         uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
-        _upscaleByAppreciationArray(amountsIn, bptAppreciations);
-        _upscaleByAppreciationArray(balances, bptAppreciations);
+        _upscaleByAppreciationArray(amountsIn, bptAppreciations, RoundDirection.DOWN);
+        _upscaleByAppreciationArray(balances, bptAppreciations, RoundDirection.UP);
 
         // No need to downscaleByAppreciation bptAmount
         uint256 bptAmountOut = StableMath._exactTokensInForBPTOut(
@@ -217,7 +243,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // upscale to account for BPT appreciation if applicable
         uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
-        _upscaleByAppreciationArray(balances, bptAppreciations);
+        _upscaleByAppreciationArray(balances, bptAppreciations, RoundDirection.UP);
 
         uint256 amountIn = StableMath._tokenInForExactBPTOut(
             _amplificationParameter,
@@ -229,7 +255,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         );
 
         // downscale by appreciation
-        uint256 amountInDownscaled = _downscaleByAppreciation(amountIn, bptAppreciations[tokenIndex]);
+        uint256 amountInDownscaled = _downscaleByAppreciation(
+            amountIn,
+            bptAppreciations[tokenIndex],
+            RoundDirection.UP
+        );
 
         // We join in a single token, so we initialize downscaledAmountsIn with zeros and
         // set only downscaledAmountsIn[tokenIndex]
@@ -321,7 +351,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // upscale to account for BPT appreciation if applicable
         uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
-        _upscaleByAppreciationArray(balances, bptAppreciations);
+        _upscaleByAppreciationArray(balances, bptAppreciations, RoundDirection.UP);
 
         uint256 amountOut = StableMath._exactBPTInForTokenOut(
             _amplificationParameter,
@@ -333,7 +363,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         );
 
         // downscale by appreciation
-        uint256 amountOutDownscaled = _downscaleByAppreciation(amountOut, bptAppreciations[tokenIndex]);
+        uint256 amountOutDownscaled = _downscaleByAppreciation(
+            amountOut,
+            bptAppreciations[tokenIndex],
+            RoundDirection.DOWN
+        );
 
         // We exit in a single token, so we initialize downscaledAmountsOut with zeros and
         // set only downscaledAmountsOut[tokenIndex]
@@ -357,11 +391,11 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         // upscale to account for BPT appreciation if applicable
         uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
-        _upscaleByAppreciationArray(amountsOut, bptAppreciations);
-        _upscaleByAppreciationArray(balances, bptAppreciations);
+        _upscaleByAppreciationArray(amountsOut, bptAppreciations, RoundDirection.UP);
+        _upscaleByAppreciationArray(balances, bptAppreciations, RoundDirection.UP);
 
         // No need to downscaleByAppreciation bptAmount
-        uint256 bptAmountIn = StableMath._BPTInForExactTokensOut(
+        uint256 bptAmountIn = StableMath._bptInForExactTokensOut(
             _amplificationParameter,
             balances,
             amountsOut,
@@ -463,25 +497,43 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     // Down and upscale by BPTAppreciation do not need rounding up or down since bptAppreciation is
     // always going to be in the order of magnitude of 1
-    function _upscaleByAppreciation(uint256 amount, uint256 bptAppreciation) internal pure returns (uint256) {
-        return Math.mul(amount, bptAppreciation);
+    function _upscaleByAppreciation(
+        uint256 amount,
+        uint256 bptAppreciation,
+        RoundDirection roundDirection
+    ) internal pure returns (uint256) {
+        return roundDirection == RoundDirection.UP ? amount.mulUp(bptAppreciation) : amount.mulDown(bptAppreciation);
     }
 
-    function _upscaleByAppreciationArray(uint256[] memory amounts, uint256[] memory bptAppreciations) internal view {
+    function _upscaleByAppreciationArray(
+        uint256[] memory amounts,
+        uint256[] memory bptAppreciations,
+        RoundDirection roundDirection
+    ) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            amounts[i] = Math.mul(amounts[i], bptAppreciations[i]);
+            amounts[i] = roundDirection == RoundDirection.UP
+                ? amounts[i].mulUp(bptAppreciations[i])
+                : amounts[i].mulDown(bptAppreciations[i]);
         }
     }
 
-    function _downscaleByAppreciationArray(uint256[] memory amounts, uint256[] memory bptAppreciations) internal view {
+    function _downscaleByAppreciationArray(
+        uint256[] memory amounts,
+        uint256[] memory bptAppreciations,
+        RoundDirection roundDirection
+    ) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            //TODO: is divDown
-            amounts[i] = Math.divDown(amounts[i], bptAppreciations[i]);
+            amounts[i] = roundDirection == RoundDirection.UP
+                ? amounts[i].divUp(bptAppreciations[i])
+                : amounts[i].divDown(bptAppreciations[i]);
         }
     }
 
-    function _downscaleByAppreciation(uint256 amount, uint256 bptAppreciation) internal pure returns (uint256) {
-        //TODO: is divDown
-        return Math.divDown(amount, bptAppreciation);
+    function _downscaleByAppreciation(
+        uint256 amount,
+        uint256 bptAppreciation,
+        RoundDirection roundDirection
+    ) internal pure returns (uint256) {
+        return roundDirection == RoundDirection.UP ? amount.divUp(bptAppreciation) : amount.divDown(bptAppreciation);
     }
 }
