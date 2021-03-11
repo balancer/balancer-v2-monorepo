@@ -87,6 +87,13 @@ export function inIndirectReceipt(
   return event;
 }
 
+export function notEmitted(receipt: ContractReceipt, eventName: string) {
+  if (receipt.events != undefined) {
+    const events = receipt.events.filter((e) => e.event === eventName);
+    expect(events.length > 0).to.equal(false, `'${eventName}' event found`);
+  }
+}
+
 function contains(args: { [key: string]: any | undefined }, key: string, value: any) {
   expect(key in args).to.equal(true, `Event argument '${key}' not found`);
 
