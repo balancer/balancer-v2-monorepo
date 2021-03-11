@@ -23,7 +23,7 @@
       },
       {
         "internalType": "bool[]",
-        "name": "isStableBPT",
+        "name": "stableBPTTokens",
         "type": "bool[]"
       },
       {

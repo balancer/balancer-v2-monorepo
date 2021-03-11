@@ -51,21 +51,24 @@ contract StablePool is BaseGeneralPool, StableMath {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        bool[] memory isStableBPT,
+        bool[] memory stableBPTTokens,
         uint256 amplificationParameter,
         uint256 swapFee
     ) BaseGeneralPool(vault, name, symbol, tokens, swapFee) {
         require(amplificationParameter >= _MIN_AMP, "MIN_AMP");
         require(amplificationParameter <= _MAX_AMP, "MAX_AMP");
+
         require(tokens.length <= _MAX_STABLE_TOKENS, "MAX_STABLE_TOKENS");
+
+        require(tokens.length == stableBPTTokens.length, "INVALID_STABLE_BPT_ARRAY");
 
         _amplificationParameter = amplificationParameter;
 
-        _isStableBPT0 = tokens.length > 0 ? isStableBPT[0] : false;
-        _isStableBPT1 = tokens.length > 1 ? isStableBPT[1] : false;
-        _isStableBPT2 = tokens.length > 2 ? isStableBPT[2] : false;
-        _isStableBPT3 = tokens.length > 3 ? isStableBPT[3] : false;
-        _isStableBPT4 = tokens.length > 4 ? isStableBPT[4] : false;
+        _isStableBPT0 = tokens.length > 0 ? stableBPTTokens[0] : false;
+        _isStableBPT1 = tokens.length > 1 ? stableBPTTokens[1] : false;
+        _isStableBPT2 = tokens.length > 2 ? stableBPTTokens[2] : false;
+        _isStableBPT3 = tokens.length > 3 ? stableBPTTokens[3] : false;
+        _isStableBPT4 = tokens.length > 4 ? stableBPTTokens[4] : false;
     }
 
     function getAmplificationParameter() external view returns (uint256) {
@@ -187,9 +190,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         _upscaleArray(amountsIn, _scalingFactors());
 
         // upscale to account for BPT appreciation if applicable
-        uint256[] memory BPTAppreciations = _getBPTAppreciationsUnderlyingTokens();
-        _upscaleByAppreciationArray(amountsIn, BPTAppreciations);
-        _upscaleByAppreciationArray(balances, BPTAppreciations);
+        uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(amountsIn, bptAppreciations);
+        _upscaleByAppreciationArray(balances, bptAppreciations);
 
         // No need to downscaleByAppreciation bptAmount
         uint256 bptAmountOut = StableMath._exactTokensInForBPTOut(
@@ -213,8 +216,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
 
         // upscale to account for BPT appreciation if applicable
-        uint256[] memory BPTAppreciations = _getBPTAppreciationsUnderlyingTokens();
-        _upscaleByAppreciationArray(balances, BPTAppreciations);
+        uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(balances, bptAppreciations);
 
         uint256 amountIn = StableMath._tokenInForExactBPTOut(
             _amplificationParameter,
@@ -226,7 +229,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         );
 
         // downscale by appreciation
-        uint256 amountInDownscaled = _downscaleByAppreciation(amountIn, BPTAppreciations[tokenIndex]);
+        uint256 amountInDownscaled = _downscaleByAppreciation(amountIn, bptAppreciations[tokenIndex]);
 
         // We join in a single token, so we initialize downscaledAmountsIn with zeros and
         // set only downscaledAmountsIn[tokenIndex]
@@ -317,8 +320,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
 
         // upscale to account for BPT appreciation if applicable
-        uint256[] memory BPTAppreciations = _getBPTAppreciationsUnderlyingTokens();
-        _upscaleByAppreciationArray(balances, BPTAppreciations);
+        uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(balances, bptAppreciations);
 
         uint256 amountOut = StableMath._exactBPTInForTokenOut(
             _amplificationParameter,
@@ -330,7 +333,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         );
 
         // downscale by appreciation
-        uint256 amountOutDownscaled = _downscaleByAppreciation(amountOut, BPTAppreciations[tokenIndex]);
+        uint256 amountOutDownscaled = _downscaleByAppreciation(amountOut, bptAppreciations[tokenIndex]);
 
         // We exit in a single token, so we initialize downscaledAmountsOut with zeros and
         // set only downscaledAmountsOut[tokenIndex]
@@ -353,9 +356,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         _upscaleArray(amountsOut, _scalingFactors());
 
         // upscale to account for BPT appreciation if applicable
-        uint256[] memory BPTAppreciations = _getBPTAppreciationsUnderlyingTokens();
-        _upscaleByAppreciationArray(amountsOut, BPTAppreciations);
-        _upscaleByAppreciationArray(balances, BPTAppreciations);
+        uint256[] memory bptAppreciations = _getbPTAppreciationsUnderlyingTokens();
+        _upscaleByAppreciationArray(amountsOut, bptAppreciations);
+        _upscaleByAppreciationArray(balances, bptAppreciations);
 
         // No need to downscaleByAppreciation bptAmount
         uint256 bptAmountIn = StableMath._BPTInForExactTokensOut(
@@ -441,12 +444,12 @@ contract StablePool is BaseGeneralPool, StableMath {
         return StableMath._invariant(_amplificationParameter, balances).div(totalSupply());
     }
 
-    // This function returns a list with the BPTappreciations of all underlying tokens,
+    // This function returns a list with the bpt appreciations of all underlying tokens,
     // if the token is not a BPT (_isStableBPT == false) it's set to 1
-    function _getBPTAppreciationsUnderlyingTokens() internal view returns (uint256[] memory bptAppreciations) {
+    function _getbPTAppreciationsUnderlyingTokens() internal view returns (uint256[] memory bptAppreciations) {
         bptAppreciations = new uint256[](_totalTokens);
 
-        // prettier-ignore
+        //prettier-ignore
         {
             if (_totalTokens > 0) { bptAppreciations[0] = _isStableBPT0?  StablePool(address(_token0)).getBPTAppreciation() : FixedPoint.ONE; } else { return bptAppreciations; }
             if (_totalTokens > 1) { bptAppreciations[1] = _isStableBPT1?  StablePool(address(_token1)).getBPTAppreciation() : FixedPoint.ONE; } else { return bptAppreciations; }
@@ -458,27 +461,27 @@ contract StablePool is BaseGeneralPool, StableMath {
         return bptAppreciations;
     }
 
-    // Down and upscale by BPTAppreciation do not need rounding up or down since BPTAppreciation is
+    // Down and upscale by BPTAppreciation do not need rounding up or down since bptAppreciation is
     // always going to be in the order of magnitude of 1
-    function _upscaleByAppreciation(uint256 amount, uint256 BPTAppreciation) internal pure returns (uint256) {
-        return Math.mul(amount, BPTAppreciation);
+    function _upscaleByAppreciation(uint256 amount, uint256 bptAppreciation) internal pure returns (uint256) {
+        return Math.mul(amount, bptAppreciation);
     }
 
-    function _upscaleByAppreciationArray(uint256[] memory amounts, uint256[] memory BPTAppreciations) internal view {
+    function _upscaleByAppreciationArray(uint256[] memory amounts, uint256[] memory bptAppreciations) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
-            amounts[i] = Math.mul(amounts[i], BPTAppreciations[i]);
+            amounts[i] = Math.mul(amounts[i], bptAppreciations[i]);
         }
     }
 
-    function _downscaleByAppreciationArray(uint256[] memory amounts, uint256[] memory BPTAppreciations) internal view {
+    function _downscaleByAppreciationArray(uint256[] memory amounts, uint256[] memory bptAppreciations) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
             //TODO: is divDown
-            amounts[i] = Math.divDown(amounts[i], BPTAppreciations[i]);
+            amounts[i] = Math.divDown(amounts[i], bptAppreciations[i]);
         }
     }
 
-    function _downscaleByAppreciation(uint256 amount, uint256 BPTAppreciation) internal pure returns (uint256) {
+    function _downscaleByAppreciation(uint256 amount, uint256 bptAppreciation) internal pure returns (uint256) {
         //TODO: is divDown
-        return Math.divDown(amount, BPTAppreciation);
+        return Math.divDown(amount, bptAppreciation);
     }
 }

@@ -55,14 +55,19 @@ describe('StablePool', function () {
 
   context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
-      // The maximum number of tokens is 16
-      const manyTokens = await TokenList.create(17);
+      // The maximum number of tokens is 6
+      const manyTokens = await TokenList.create(6, { sorted: true });
+
+      const stableBPTTokens = manyTokens.map(() => false);
+      const amplification = bn(100e18);
 
       const vault = await deploy('MockVault', { args: [] });
 
       await expect(
-        deploy('StablePool', { args: [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0] })
-      ).to.be.revertedWith('MAX_TOKENS');
+        deploy('StablePool', {
+          args: [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, stableBPTTokens, amplification, 0],
+        })
+      ).to.be.revertedWith('MAX_STABLE_TOKENS');
     });
   });
 
@@ -161,16 +166,26 @@ describe('StablePool', function () {
       async function deployPool(
         params: {
           tokens?: TokenList;
+          stableBPTTokens?: boolean[];
           amplification?: BigNumber;
           swapFee?: BigNumber;
         } = {}
       ) {
         const poolTokens = params.tokens ?? tokens;
+        const stableBPTTokens = params.stableBPTTokens ?? poolTokens.map(() => false);
         const poolAmplification = params.amplification ?? amplification;
         const poolSwapFee = params.swapFee ?? POOL_SWAP_FEE;
 
         return deploy('StablePool', {
-          args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens.addresses, poolAmplification, poolSwapFee],
+          args: [
+            vault.address,
+            'Balancer Pool Token',
+            'BPT',
+            poolTokens.addresses,
+            stableBPTTokens,
+            poolAmplification,
+            poolSwapFee,
+          ],
         });
       }
 
@@ -181,6 +196,14 @@ describe('StablePool', function () {
           await expect(deployPool({ tokens: badTokens })).to.be.revertedWith('UNSORTED_ARRAY');
         });
 
+        it('reverts if the number of tokens and stable bpt array do not match', async () => {
+          const badStableBPTTokens = tokens.map(() => false).slice(1);
+
+          await expect(deployPool({ stableBPTTokens: badStableBPTTokens })).to.be.revertedWith(
+            'INVALID_STABLE_BPT_ARRAY'
+          );
+        });
+
         it('reverts if the swap fee is too high', async () => {
           const badSwapFee = fp(0.1).add(1);
 
@@ -188,7 +211,7 @@ describe('StablePool', function () {
         });
 
         it('reverts if amplification coefficient is too high', async () => {
-          const highAmp = bn(5000).mul(bn(10e18));
+          const highAmp = bn(6000).mul(bn(1e18));
 
           await expect(deployPool({ amplification: highAmp })).to.be.revertedWith('MAX_AMP');
         });
