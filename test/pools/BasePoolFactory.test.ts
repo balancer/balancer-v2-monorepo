@@ -24,6 +24,6 @@ describe('BasePoolFactory', function () {
 
   it('creates a pool', async () => {
     const receipt = await (await factory.create()).wait();
-    expectEvent.inReceipt(receipt, 'PoolCreated');
+    expectEvent.inReceipt(receipt, 'PoolRegistered');
   });
 });

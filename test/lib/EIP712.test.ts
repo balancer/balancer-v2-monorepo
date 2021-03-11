@@ -18,7 +18,7 @@ describe('EIP712', function () {
     [mailTo] = await ethers.getSigners();
 
     eip712 = await deploy('MockBalancerPoolToken', {
-      args: [name, symbol, mailTo.address, BigNumber.from((100e18).toString())],
+      args: [name, symbol],
     });
 
     chainId = await eip712.getChainId();

@@ -33,7 +33,7 @@ describe('ERC20Permit', function () {
   });
 
   beforeEach('set up asset manager', async () => {
-    token = await deploy('MockBalancerPoolToken', { args: [name, symbol, initialHolder.address, initialSupply] });
+    token = await deploy('MockBalancerPoolToken', { args: [name, symbol] });
 
     // We get the chain id from the contract because Ganache (used for coverage) does not return the same chain id
     // from within the EVM as from the JSON RPC interface.

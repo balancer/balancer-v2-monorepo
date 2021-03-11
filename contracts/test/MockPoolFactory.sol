@@ -26,10 +26,13 @@ contract MockFactoryCreatedPool {
 }
 
 contract MockPoolFactory is BasePoolFactory {
-    // solhint-disable-next-line no-empty-blocks
-    constructor(IVault _vault) BasePoolFactory(_vault) {}
+    constructor(IVault _vault) BasePoolFactory(_vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function create() external returns (address) {
-        return _create(abi.encodePacked(type(MockFactoryCreatedPool).creationCode));
+        address pool = address(new MockFactoryCreatedPool());
+        _register(pool);
+        return pool;
     }
 }
