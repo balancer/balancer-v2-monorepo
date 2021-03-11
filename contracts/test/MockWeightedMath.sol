@@ -45,6 +45,54 @@ contract MockWeightedMath is WeightedMath {
         return _inGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut);
     }
 
+    function exactTokensInForBPTOut(
+        uint256[] calldata balances,
+        uint256[] calldata normalizedWeights,
+        uint256[] calldata amountsIn,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) external pure returns (uint256) {
+        return _exactTokensInForBPTOut(balances, normalizedWeights, amountsIn, bptTotalSupply, swapFee);
+    }
+
+    function tokenInForExactBPTOut(
+        uint256 tokenBalance,
+        uint256 tokenNormalizedWeight,
+        uint256 bptAmountOut,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) external pure returns (uint256) {
+        return _tokenInForExactBPTOut(tokenBalance, tokenNormalizedWeight, bptAmountOut, bptTotalSupply, swapFee);
+    }
+
+    function exactBPTInForTokenOut(
+        uint256 tokenBalance,
+        uint256 tokenNormalizedWeight,
+        uint256 bptAmountIn,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) external pure returns (uint256) {
+        return _exactBPTInForTokenOut(tokenBalance, tokenNormalizedWeight, bptAmountIn, bptTotalSupply, swapFee);
+    }
+
+    function exactBPTInForTokensOut(
+        uint256[] calldata currentBalances,
+        uint256 bptAmountIn,
+        uint256 totalBPT
+    ) external pure returns (uint256[] memory) {
+        return _exactBPTInForTokensOut(currentBalances, bptAmountIn, totalBPT);
+    }
+
+    function bptInForExactTokensOut(
+        uint256[] calldata balances,
+        uint256[] calldata normalizedWeights,
+        uint256[] calldata amountsOut,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) external pure returns (uint256) {
+        return _bptInForExactTokensOut(balances, normalizedWeights, amountsOut, bptTotalSupply, swapFee);
+    }
+
     function calculateDueTokenProtocolSwapFee(
         uint256 balance,
         uint256 normalizedWeight,
