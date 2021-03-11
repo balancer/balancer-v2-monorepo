@@ -66,7 +66,7 @@ describe('BalancerPoolToken', () => {
     context('when the requested account has some tokens', () => {
       const balance = bn(10e18);
 
-      beforeEach('mint tokens', async () => {
+      sharedBeforeEach('mint tokens', async () => {
         await token.mint(holder.address, balance);
       });
 
@@ -132,7 +132,7 @@ describe('BalancerPoolToken', () => {
         });
 
         context('when the sender has enough balance', () => {
-          beforeEach('mint tokens', async () => {
+          sharedBeforeEach('mint tokens', async () => {
             await token.mint(holder.address, amount);
           });
 
@@ -162,12 +162,12 @@ describe('BalancerPoolToken', () => {
         });
 
         describe('when the spender has enough approved balance', () => {
-          beforeEach('approve allowance', async () => {
+          sharedBeforeEach('approve allowance', async () => {
             await token.connect(holder).approve(spender.address, amount);
           });
 
           describe('when the token holder has enough balance', () => {
-            beforeEach('mint tokens', async () => {
+            sharedBeforeEach('mint tokens', async () => {
               await token.mint(holder.address, amount);
             });
 
@@ -240,12 +240,12 @@ describe('BalancerPoolToken', () => {
         });
 
         describe('when the spender does not have enough approved balance', () => {
-          beforeEach('approve some allowance', async () => {
+          sharedBeforeEach('approve some allowance', async () => {
             await token.connect(holder).approve(spender.address, amount.sub(1));
           });
 
           describe('when the token holder has enough balance', () => {
-            beforeEach('mint tokens', async () => {
+            sharedBeforeEach('mint tokens', async () => {
               await token.mint(holder.address, amount);
             });
 
@@ -314,7 +314,7 @@ describe('BalancerPoolToken', () => {
 
     const itHandlesApprovalsProperly = (spenderAddress?: string) => {
       describe('when the sender has enough balance', () => {
-        beforeEach('mint tokens', async () => {
+        sharedBeforeEach('mint tokens', async () => {
           await token.mint(holder.address, amount);
         });
 
@@ -323,7 +323,7 @@ describe('BalancerPoolToken', () => {
         });
 
         describe('when the spender had an approved amount', () => {
-          beforeEach('approve allowance', async () => {
+          sharedBeforeEach('approve allowance', async () => {
             await token.connect(holder).approve(spenderAddress || spender.address, amount.mul(2));
           });
 
@@ -337,7 +337,7 @@ describe('BalancerPoolToken', () => {
         });
 
         describe('when the spender had an approved amount', () => {
-          beforeEach('approve allowance', async () => {
+          sharedBeforeEach('approve allowance', async () => {
             await token.connect(holder).approve(spenderAddress || spender.address, amount.mul(2));
           });
 
@@ -454,7 +454,7 @@ describe('BalancerPoolToken', () => {
       });
 
       context('when the sender has enough balance', () => {
-        beforeEach('mint tokens', async () => {
+        sharedBeforeEach('mint tokens', async () => {
           await token.mint(holder.address, amount);
         });
 
