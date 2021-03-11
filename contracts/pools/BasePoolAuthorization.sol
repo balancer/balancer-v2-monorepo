@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../vault/interfaces/IAuthorizer.sol";
+import "../authorizer/IAuthorizer.sol";
 
 /**
  * @dev Base authorization layer implementation for pools. It shares the same concept as the one defined for the Vault.

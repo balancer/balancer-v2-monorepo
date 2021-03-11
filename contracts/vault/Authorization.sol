@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
-import "./interfaces/IAuthorizer.sol";
+import "../authorizer/IAuthorizer.sol";
 
 abstract contract Authorization is IVault, ReentrancyGuard {
     IAuthorizer private _authorizer;
