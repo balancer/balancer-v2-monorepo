@@ -123,7 +123,7 @@ abstract contract PoolRegistry is
         _poolNonce.increment();
         _isPoolRegistered[poolId] = true;
 
-        emit PoolCreated(poolId);
+        emit PoolRegistered(poolId);
         return poolId;
     }
 

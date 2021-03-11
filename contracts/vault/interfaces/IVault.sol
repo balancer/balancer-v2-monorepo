@@ -160,14 +160,14 @@ interface IVault {
      * This contract is known as the Pool's contract. Note that the same caller may register itself as multiple Pools
      * with unique Pool IDs, or in other words, multiple Pools may have the same contract.
      *
-     * Emits a `PoolCreated` event.
+     * Emits a `PoolRegistered` event.
      */
     function registerPool(PoolSpecialization specialization) external returns (bytes32);
 
     /**
      * @dev Emitted when a Pool is registered by calling `registerPool`.
      */
-    event PoolCreated(bytes32 poolId);
+    event PoolRegistered(bytes32 poolId);
 
     /**
      * @dev Returns a Pool's contract address and specialization setting.

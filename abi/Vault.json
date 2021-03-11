@@ -70,19 +70,6 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "PoolCreated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "internalType": "bytes32",
         "name": "poolId",
@@ -139,6 +126,19 @@
       }
     ],
     "name": "PoolJoined",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "poolId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "PoolRegistered",
     "type": "event"
   },
   {

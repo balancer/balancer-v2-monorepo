@@ -15,41 +15,22 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/utils/Create2.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
-
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
 
 abstract contract BasePoolFactory {
     IVault public immutable vault;
 
-    uint256 private _pools;
-
-    event PoolCreated(address indexed pool);
+    event PoolRegistered(address indexed pool);
 
     constructor(IVault _vault) {
         vault = _vault;
     }
 
     /**
-     * @dev Deploys a pool contract defined by `creationCode`.
-     *
-     * The creation code for a Solidity contract can be constructed by concatenating the `creationCode` property of the
-     * contract type with the ABI-encoded constructor arguments. Note that the compiler doesn't perform any type
-     * checking here: all factory-created contracts should be subject to at least basic testing.
-     *
-     * Sample usage using abi.encodePacked to concatenate the `bytes` arrays:
-     *   _create(abi.encodePacked(type(ERC20).creationCode, abi.encode("My Token", "TKN", 18)));
-     *
-     * Emits a `PoolCreated` event.
-     *
-     * Returns the address of the created contract.
+     * @dev Registers a new created pool. Emits a `PoolRegistered` event.
      */
-    function _create(bytes memory creationCode) internal returns (address) {
-        address pool = Create2.deploy(0, bytes32(_pools++), creationCode);
-        emit PoolCreated(pool);
-        return pool;
+    function _register(address pool) internal {
+        emit PoolRegistered(pool);
     }
 }
