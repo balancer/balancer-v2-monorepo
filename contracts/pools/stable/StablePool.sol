@@ -39,13 +39,14 @@ contract StablePool is BaseGeneralPool, StableMath {
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT }
 
     constructor(
+        IAuthorizer authorizer,
         IVault vault,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
         uint256 amp,
         uint256 swapFee
-    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee) {
+    ) BaseGeneralPool(authorizer, vault, name, symbol, tokens, swapFee) {
         require(amp >= _MIN_AMP, "MIN_AMP");
         require(amp <= _MAX_AMP, "MAX_AMP");
         _amp = amp;

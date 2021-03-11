@@ -30,7 +30,7 @@ describe('BasePool', function () {
     swapFee: BigNumberish
   ): Promise<Contract> {
     return deploy('MockBasePool', {
-      args: [vault.address, specialization, 'Balancer Pool Token', 'BPT', addresses, swapFee],
+      args: [authorizer.address, vault.address, specialization, 'Balancer Pool Token', 'BPT', addresses, swapFee],
     });
   }
 

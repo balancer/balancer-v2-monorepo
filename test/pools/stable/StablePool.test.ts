@@ -37,11 +37,8 @@ describe('StablePool', function () {
   context('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
       const vault = await deploy('MockVault', { args: [] });
-      await expect(
-        deploy('StablePool', {
-          args: [vault.address, 'Balancer Pool Token', 'BPT', allTokens.subset(1).addresses, 0, 0],
-        })
-      ).to.be.revertedWith('MIN_TOKENS');
+      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', allTokens.subset(1).addresses, 0, 0];
+      await expect(deploy('StablePool', { args })).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
@@ -57,12 +54,9 @@ describe('StablePool', function () {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 16
       const manyTokens = await TokenList.create(17);
-
       const vault = await deploy('MockVault', { args: [] });
-
-      await expect(
-        deploy('StablePool', { args: [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0] })
-      ).to.be.revertedWith('MAX_TOKENS');
+      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0];
+      await expect(deploy('StablePool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
@@ -90,7 +84,7 @@ describe('StablePool', function () {
         let pool: Contract;
 
         sharedBeforeEach('deploy pool from factory', async () => {
-          const factory = await deploy('StablePoolFactory', { args: [vault.address] });
+          const factory = await deploy('StablePoolFactory', { args: [ZERO_ADDRESS, vault.address] });
           const receipt = await (
             await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, amplification, POOL_SWAP_FEE)
           ).wait();
@@ -170,7 +164,15 @@ describe('StablePool', function () {
         const poolSwapFee = params.swapFee ?? POOL_SWAP_FEE;
 
         return deploy('StablePool', {
-          args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens.addresses, poolAmplification, poolSwapFee],
+          args: [
+            ZERO_ADDRESS,
+            vault.address,
+            'Balancer Pool Token',
+            'BPT',
+            poolTokens.addresses,
+            poolAmplification,
+            poolSwapFee,
+          ],
         });
       }
 

@@ -1,6 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn } from '../../../../lib/helpers/numbers';
+import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
 
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
@@ -16,11 +17,13 @@ import {
 } from '../tokens/types';
 
 export default {
-  toWeightedPoolDeployment({ tokens, weights, swapFee }: RawWeightedPoolDeployment): WeightedPoolDeployment {
+  toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
+    let { authorizer, tokens, weights, swapFee } = params;
+    if (!authorizer) authorizer = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = [];
     if (!swapFee) swapFee = bn(0);
-    return { tokens, weights, swapFee };
+    return { authorizer, tokens, weights, swapFee };
   },
 
   /***

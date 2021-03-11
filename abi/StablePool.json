@@ -2,6 +2,11 @@
   {
     "inputs": [
       {
+        "internalType": "contract IAuthorizer",
+        "name": "authorizer",
+        "type": "address"
+      },
+      {
         "internalType": "contract IVault",
         "name": "vault",
         "type": "address"
@@ -86,6 +91,19 @@
     "type": "event"
   },
   {
+    "inputs": [],
+    "name": "CHANGE_POOL_AUTHORIZER_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -153,6 +171,38 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "canChangeAuthorizer",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IAuthorizer",
+        "name": "newAuthorizer",
+        "type": "address"
+      }
+    ],
+    "name": "changeAuthorizer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "decimals",
     "outputs": [
@@ -197,6 +247,19 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAuthorizer",
+    "outputs": [
+      {
+        "internalType": "contract IAuthorizer",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",

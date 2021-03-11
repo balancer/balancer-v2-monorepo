@@ -66,13 +66,14 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
+        IAuthorizer authorizer,
         IVault vault,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory weights,
         uint256 swapFee
-    ) BaseMinimalSwapInfoPool(vault, name, symbol, tokens, swapFee) {
+    ) BaseMinimalSwapInfoPool(authorizer, vault, name, symbol, tokens, swapFee) {
         InputHelpers.ensureInputLengthMatch(weights.length, tokens.length);
 
         // Check valid weights and compute normalized weights
