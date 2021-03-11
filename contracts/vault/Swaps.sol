@@ -249,6 +249,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapRequest memory swap;
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
+            _ensureRegisteredPool(swap.poolId);
             require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "OUT_OF_BOUNDS");
 
             IERC20 tokenIn = tokens[swap.tokenInIndex];

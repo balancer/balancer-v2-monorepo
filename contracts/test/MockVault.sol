@@ -15,33 +15,46 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
 
 contract MockVault {
+    struct Pool {
+        IERC20[] tokens;
+        mapping(IERC20 => uint256) balances;
+    }
+
+    mapping (bytes32 => Pool) private pools;
+
     event PoolJoined(uint256[] amountsIn, uint256[] dueProtocolFeeAmounts);
     event PoolExited(uint256[] amountsOut, uint256[] dueProtocolFeeAmounts);
+
+    function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory tokens, uint256[] memory balances) {
+        Pool storage pool = pools[poolId];
+        tokens = new IERC20[](pool.tokens.length);
+        balances = new uint256[](pool.tokens.length);
+
+        for (uint256 i = 0; i < pool.tokens.length; i++) {
+            tokens[i] = pool.tokens[i];
+            balances[i] = pool.balances[tokens[i]];
+        }
+    }
 
     function registerPool(IVault.PoolSpecialization) external view returns (bytes32) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     function registerTokens(
-        bytes32,
+        bytes32 poolId,
         IERC20[] calldata tokens,
         address[] calldata
     ) external {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function addLiquidity(
-        bytes32,
-        address,
-        IERC20[] calldata,
-        uint256[] calldata,
-        bool
-    ) external {
-        // solhint-disable-previous-line no-empty-blocks
+        Pool storage pool = pools[poolId];
+        for (uint256 i = 0; i < tokens.length; i++) {
+            pool.tokens.push(tokens[i]);
+        }
     }
 
     function callJoinPool(
@@ -62,6 +75,12 @@ contract MockVault {
             protocolFeePercentage,
             userData
         );
+
+        Pool storage pool = pools[poolId];
+        for (uint256 i = 0; i < pool.tokens.length; i++) {
+            pool.balances[pool.tokens[i]] += amountsIn[i];
+        }
+
         emit PoolJoined(amountsIn, dueProtocolFeeAmounts);
     }
 
@@ -83,6 +102,12 @@ contract MockVault {
             protocolFeePercentage,
             userData
         );
+
+        Pool storage pool = pools[poolId];
+        for (uint256 i = 0; i < pool.tokens.length; i++) {
+            pool.balances[pool.tokens[i]] -= amountsOut[i];
+        }
+
         emit PoolExited(amountsOut, dueProtocolFeeAmounts);
     }
 }
