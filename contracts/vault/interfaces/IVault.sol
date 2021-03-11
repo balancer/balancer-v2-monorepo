@@ -160,14 +160,14 @@ interface IVault {
      * This contract is known as the Pool's contract. Note that the same caller may register itself as multiple Pools
      * with unique Pool IDs, or in other words, multiple Pools may have the same contract.
      *
-     * Emits a `PoolCreated` event.
+     * Emits a `PoolRegistered` event.
      */
     function registerPool(PoolSpecialization specialization) external returns (bytes32);
 
     /**
      * @dev Emitted when a Pool is registered by calling `registerPool`.
      */
-    event PoolCreated(bytes32 poolId);
+    event PoolRegistered(bytes32 poolId);
 
     /**
      * @dev Returns a Pool's contract address and specialization setting.
@@ -227,9 +227,10 @@ interface IVault {
      * @dev Returns a Pool's registered tokens and total balance for each.
      *
      * The order of the `tokens` array is the same order that will be used in `joinPool`, `exitPool`, as well as in all
-     * Pool hooks (where applicable). Calls to `registerTokens` and `deregisterTokens` may change this order. If a Pool
-     * only registers tokens once, and these are sorted in ascending order, they will be stored in the same order as
-     * passed to `registerTokens`.
+     * Pool hooks (where applicable). Calls to `registerTokens` and `deregisterTokens` may change this order.
+     *
+     * If a Pool only registers tokens once, and these are sorted in ascending order, they will be stored in the same
+     * order as passed to `registerTokens`.
      *
      * Total balances include both tokens held by the Vault and those withdrawn by the Pool's Asset Managers. These are
      * the amounts used by joins, exits and swaps.
@@ -346,7 +347,7 @@ interface IVault {
     ) external;
 
     /**
-     * @dev Emitted when a Pool deregisters tokens by calling `deregisterTokens`.
+     * @dev Emitted when a user exits a pool by calling `exitPool`.
      */
     event PoolExited(
         bytes32 indexed poolId,

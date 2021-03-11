@@ -5,7 +5,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 import { encodeExit, encodeJoin } from '../helpers/mockPool';
 
 import { bn } from '../../lib/helpers/numbers';
@@ -35,7 +34,7 @@ describe('Vault - pool registry', () => {
     it('any account can create pools', async () => {
       const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
 
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
       const poolId = event.args.poolId;
 
       expect(poolId).to.not.be.undefined;
@@ -53,7 +52,7 @@ describe('Vault - pool registry', () => {
     sharedBeforeEach(async () => {
       const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
 
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
       poolId = event.args.poolId;
     });
 
@@ -70,7 +69,7 @@ describe('Vault - pool registry', () => {
     it('gets a new id', async () => {
       const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
 
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
       const otherPoolId = event.args.poolId;
 
       expect(poolId).to.not.equal(otherPoolId);
@@ -84,7 +83,7 @@ describe('Vault - pool registry', () => {
       sharedBeforeEach(async () => {
         const receipt = await (await vault.connect(other).registerPool(specialization)).wait();
 
-        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+        const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
         poolId = event.args.poolId;
 
         const assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS];

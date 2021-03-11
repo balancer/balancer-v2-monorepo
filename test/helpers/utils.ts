@@ -13,19 +13,7 @@ export async function revert(provider: EthereumProvider, snapshotId: string): Pr
   });
 }
 
-export async function getProvider(provider?: EthereumProvider): Promise<EthereumProvider> {
-  if (provider !== undefined) {
-    return provider;
-  }
-
+export async function getProvider(): Promise<EthereumProvider> {
   const hre = await import('hardhat');
   return hre.network.provider;
-}
-
-export function wrapWithTitle(title: string | undefined, str: string): string {
-  if (title === undefined) {
-    return str;
-  }
-
-  return `${title} at step "${str}"`;
 }

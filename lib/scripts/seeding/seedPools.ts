@@ -1,4 +1,5 @@
 import { BigNumber, Contract, Event } from 'ethers';
+import { Dictionary } from 'lodash';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deepEqual } from 'assert';
@@ -18,9 +19,12 @@ let controller: SignerWithAddress;
 let trader: SignerWithAddress;
 //let validator: Contract;
 let assetManager: SignerWithAddress; // This would normally be a contract
-const NUM_POOLS = 5;
 
+const NUM_POOLS = 5;
 const INVESTMENT_AMOUNT = 123;
+
+const decimalsByAddress: Dictionary<number> = {};
+
 module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment) {
   ethers = hre.ethers;
   [deployer, controller, trader, assetManager] = await ethers.getSigners();
@@ -47,7 +51,11 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     const token = tokens[symbol];
     const index = symbols.indexOf(symbol);
     const tradingBalance = balances[index];
-    console.log(`${symbol}: ${token.address} ${tradingBalance}`);
+
+    decimalsByAddress[token.address] = decimals[index];
+
+    const tradingBalanceScaled = tradingBalance.div(bn(10).pow(decimals[index]));
+    console.log(`${symbol}: ${token.address} ${tradingBalanceScaled}`);
 
     await token.connect(controller).approve(vault.address, MAX_UINT256);
     await token.connect(deployer).mint(controller.address, tradingBalance);
@@ -90,20 +98,24 @@ async function swapInPool(pool: Contract) {
 
   const vault = await ethers.getContract('Vault');
   const { tokens: tokenAddresses } = await vault.getPoolTokens(poolId);
+  const tokenInIndex = 0;
+  const tokenOutIndex = 1;
 
-  const amountInDecimals = 2;
+  const tokenInAddress = tokenAddresses[tokenInIndex];
+  const amountInDecimals = decimalsByAddress[tokenInAddress];
   const amountIn = bn(100).mul(bn(10).pow(amountInDecimals));
 
   const swap: SwapIn = {
     poolId,
-    tokenInIndex: 0,
-    tokenOutIndex: 1,
+    tokenInIndex,
+    tokenOutIndex,
     amountIn,
     userData: '0x',
   };
   const swaps: SwapIn[] = [swap];
 
   const funds: FundManagement = {
+    sender: trader.address,
     recipient: trader.address,
     fromInternalBalance: false,
     toInternalBalance: false,
@@ -124,7 +136,7 @@ async function investPool(pool: Contract) {
   const poolId = await pool.getPoolId();
 
   const vault = await ethers.getContract('Vault');
-  const tokenAddresses: string[] = await vault.getPoolTokens(poolId);
+  const { tokens: tokenAddresses } = await vault.getPoolTokens(poolId);
 
   const token = tokenAddresses[0];
 
@@ -176,7 +188,10 @@ async function deployStrategyPool(
 
   console.log(`\nNew Pool With ${tokens.length} tokens`);
   console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
-  tokens.forEach((token, i) => console.log(`${token} - ${initialBalances[i].toString()}`));
+  tokens.forEach((token, i) => {
+    const initialBalanceScaled = initialBalances[i].div(bn(10).pow(decimalsByAddress[token]));
+    console.log(`${token} - ${initialBalanceScaled.toString()}`);
+  });
 
   const name = tokens.length + ' token pool';
   const sym = 'TESTPOOL';
@@ -213,7 +228,7 @@ async function initializeStrategyPool(
   const recipient = controller.address;
   const maxAmountsIn = initialBalances;
   const fromInternalBalance = false;
-  const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init' });
+  const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
 
   const joinTx = await vault
     .connect(controller)

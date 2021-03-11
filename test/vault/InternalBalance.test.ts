@@ -8,7 +8,6 @@ import Token from '../helpers/models/tokens/Token';
 import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { sharedBeforeEach } from '../helpers/lib/sharedBeforeEach';
 
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
@@ -281,7 +280,7 @@ describe('Vault - internal balance', () => {
         });
 
         context('with protocol withdraw fees', () => {
-          const withdrawFee = 0.01;
+          const withdrawFee = 0.005;
 
           sharedBeforeEach('set fee', async () => {
             const role = await roleId(vault, 'setProtocolFees');
