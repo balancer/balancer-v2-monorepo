@@ -45,7 +45,7 @@ describe('BasePool', function () {
   });
 
   describe('swap fee', () => {
-    it('has an initial authorizer', async () => {
+    it('has an initial swap fee', async () => {
       const swapFee = fp(0.003);
       const pool = await deployBasePool(tokens.addresses, swapFee);
 
@@ -94,7 +94,7 @@ describe('BasePool', function () {
           expect(await pool.getSwapFee()).to.equal(newSwapFee);
         });
 
-        it('can not change the authorizer if the role was revoked', async () => {
+        it('can not change the swap fee if the role was revoked', async () => {
           await authorizer.connect(admin).revokeRole(roleId, admin.address);
 
           expect(await pool.canChangeSwapFee(admin.address)).to.be.false;
