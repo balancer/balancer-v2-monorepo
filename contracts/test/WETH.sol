@@ -18,7 +18,7 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract WETH9 is AccessControl {
+contract WETH is AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     string public name = "Wrapped Ether";
@@ -33,9 +33,8 @@ contract WETH9 is AccessControl {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
-    constructor(address _admin) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
-        _setupRole(MINTER_ROLE, _admin);
+    constructor(address minter) {
+        _setupRole(MINTER_ROLE, minter);
     }
 
     receive() external payable {
