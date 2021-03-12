@@ -1,4 +1,5 @@
 import { BigNumber, Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../../lib/helpers/constants';
 import { BigNumberish, bn, fp, fromFp } from '../../../../../lib/helpers/numbers';
@@ -47,6 +48,8 @@ export default class WeightedPool {
   weights: BigNumberish[];
   swapFee: BigNumberish;
   vault: Contract;
+  authorizer: Contract;
+  admin: SignerWithAddress;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -56,6 +59,8 @@ export default class WeightedPool {
     instance: Contract,
     poolId: string,
     vault: Contract,
+    authorizer: Contract,
+    admin: SignerWithAddress,
     tokens: TokenList,
     weights: BigNumberish[],
     swapFee: BigNumberish
@@ -63,6 +68,8 @@ export default class WeightedPool {
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
+    this.authorizer = authorizer;
+    this.admin = admin;
     this.tokens = tokens;
     this.weights = weights;
     this.swapFee = swapFee;
@@ -420,5 +427,11 @@ export default class WeightedPool {
     const receipt = await (await tx).wait();
     const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
     return { amountsOut, dueProtocolFeeAmounts };
+  }
+
+  async activateEmergencyPeriod(): Promise<void> {
+    const roleId = await this.instance.CHANGE_POOL_EMERGENCY_PERIOD_ROLE();
+    await this.authorizer.connect(this.admin).grantRole(roleId, this.admin.address);
+    await this.instance.connect(this.admin).setEmergencyPeriod(true);
   }
 }

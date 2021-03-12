@@ -13,6 +13,7 @@ import {
   calculateOneTokenAccumulatedSwapFees,
 } from '../../helpers/math/stable';
 
+import { MONTH } from '../../../lib/helpers/time';
 import { deploy } from '../../../lib/helpers/deploy';
 import { GeneralPool } from '../../../lib/helpers/pools';
 import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
@@ -23,6 +24,7 @@ describe('StablePool', function () {
   let allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
+  const EMERGENCY_PERIOD = MONTH;
   const POOL_SWAP_FEE = fp(0.01);
   const INITIAL_BALANCES = [bn(10e18), bn(11e18), bn(12e18), bn(13e18)];
 
@@ -146,10 +148,11 @@ describe('StablePool', function () {
     });
 
     context('with mock vault', () => {
-      let vault: Contract;
+      let vault: Contract, authorizer: Contract;
 
-      sharedBeforeEach(async () => {
+      sharedBeforeEach('deploy vault and authorizer', async () => {
         vault = await deploy('MockVault', { args: [] });
+        authorizer = await deploy('Authorizer', { args: [admin.address] });
       });
 
       async function deployPool(
@@ -165,17 +168,23 @@ describe('StablePool', function () {
 
         return deploy('StablePool', {
           args: [
-            ZERO_ADDRESS,
+            authorizer.address,
             vault.address,
             'Balancer Pool Token',
             'BPT',
             poolTokens.addresses,
             poolAmplification,
             poolSwapFee,
-            0,
+            EMERGENCY_PERIOD,
           ],
         });
       }
+
+      const activateEmergencyPeriod = async (pool: Contract): Promise<void> => {
+        const roleId = await pool.CHANGE_POOL_EMERGENCY_PERIOD_ROLE();
+        await authorizer.connect(admin).grantRole(roleId, admin.address);
+        await pool.connect(admin).setEmergencyPeriod(true);
+      };
 
       describe('failed creation', () => {
         it('reverts if there are repeated tokens', async () => {
@@ -284,6 +293,14 @@ describe('StablePool', function () {
               )
             ).to.be.revertedWith('UNHANDLED_JOIN_KIND');
           });
+
+          it('fails if the emergency period active', async () => {
+            await activateEmergencyPeriod(pool);
+
+            await expect(
+              vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData)
+            ).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+          });
         });
 
         context('join exact tokens in for BPT out', () => {
@@ -319,6 +336,15 @@ describe('StablePool', function () {
 
               const newBPT = await pool.balanceOf(beneficiary.address);
               expect(newBPT.sub(previousBPT)).to.equal(bptAmountOut);
+            });
+
+            it('fails if the emergency period active', async () => {
+              await activateEmergencyPeriod(pool);
+
+              const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut: 10 });
+              await expect(
+                vault.callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
+              ).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
             });
           });
         });
@@ -419,6 +445,19 @@ describe('StablePool', function () {
 
             expect(await pool.balanceOf(lp.address)).to.equal(0);
           });
+
+          it('does not revert if the emergency period active', async () => {
+            await activateEmergencyPeriod(pool);
+
+            const lpBPT = await pool.balanceOf(lp.address);
+            const exitUserData = encodeExitStablePool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: lpBPT });
+
+            await expect(
+              vault
+                .connect(lp)
+                .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
+            ).not.to.be.reverted;
+          });
         });
       });
 
@@ -475,6 +514,14 @@ describe('StablePool', function () {
               pool.onSwapGivenIn({ ...swapRequestData, amountIn: bn(1e18) }, poolInitialBalances, 0, 10)
             ).to.be.revertedWith('OUT_OF_BOUNDS');
           });
+
+          it('fails if the emergency period active', async () => {
+            await activateEmergencyPeriod(pool);
+
+            await expect(
+              pool.onSwapGivenIn({ ...swapRequestData, amountIn: bn(1e18) }, poolInitialBalances, 0, 1)
+            ).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+          });
         });
 
         context('given out', () => {
@@ -500,6 +547,14 @@ describe('StablePool', function () {
             await expect(
               pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 0, 10)
             ).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+
+          it('fails if the emergency period active', async () => {
+            await activateEmergencyPeriod(pool);
+
+            await expect(
+              pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 0, 1)
+            ).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
           });
         });
       });
