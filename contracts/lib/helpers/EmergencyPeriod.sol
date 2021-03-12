@@ -14,8 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-
-// solhint-disable no-rely-on-time
+// solhint-disable not-rely-on-time
 contract EmergencyPeriod {
     uint256 private constant _MAX_EMERGENCY_PERIOD = 90 days;
     uint256 private constant _MAX_EMERGENCY_PERIOD_CHECK_EXT = 30 days;
@@ -31,7 +30,7 @@ contract EmergencyPeriod {
         _;
     }
 
-    constructor (uint256 emergencyPeriod, uint256 emergencyPeriodCheckExtension) {
+    constructor(uint256 emergencyPeriod, uint256 emergencyPeriodCheckExtension) {
         require(emergencyPeriod <= _MAX_EMERGENCY_PERIOD, "MAX_EMERGENCY_PERIOD");
         require(emergencyPeriodCheckExtension <= _MAX_EMERGENCY_PERIOD_CHECK_EXT, "MAX_EMERGENCY_PERIOD_CHECK_EXT");
 

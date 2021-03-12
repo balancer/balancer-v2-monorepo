@@ -116,7 +116,11 @@ abstract contract PoolRegistry is
     }
 
     function registerPool(PoolSpecialization specialization)
-        external override nonReentrant noEmergencyPeriod returns (bytes32)
+        external
+        override
+        nonReentrant
+        noEmergencyPeriod
+        returns (bytes32)
     {
         // Use _totalPools as the Pool ID nonce. uint80 assumes there will never be more than than 2**80 Pools.
         bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_poolNonce.current()));

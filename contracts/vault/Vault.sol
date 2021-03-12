@@ -53,10 +53,11 @@ import "./Swaps.sol";
  * storage access methods, to name a few.
  */
 contract Vault is VaultAuthorization, EmergencyPeriod, FlashLoanProvider, Swaps {
-    constructor(IAuthorizer authorizer, uint256 emergencyPeriod, uint256 emergencyPeriodCheckExtension)
-        VaultAuthorization(authorizer)
-        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
-    {
+    constructor(
+        IAuthorizer authorizer,
+        uint256 emergencyPeriod,
+        uint256 emergencyPeriodCheckExtension
+    ) VaultAuthorization(authorizer) EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

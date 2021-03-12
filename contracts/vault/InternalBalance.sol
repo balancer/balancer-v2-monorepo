@@ -43,7 +43,10 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     }
 
     function depositToInternalBalance(BalanceTransfer[] memory transfers)
-        external override nonReentrant noEmergencyPeriod
+        external
+        override
+        nonReentrant
+        noEmergencyPeriod
     {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
@@ -90,7 +93,10 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     }
 
     function transferInternalBalance(BalanceTransfer[] memory transfers)
-        external override nonReentrant noEmergencyPeriod
+        external
+        override
+        nonReentrant
+        noEmergencyPeriod
     {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
