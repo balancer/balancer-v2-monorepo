@@ -459,11 +459,26 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
 
         // prettier-ignore
         {
-            if (_totalTokens > 0) { externalRates[0] = _externalRateProvider0 == address(0)?  FixedPoint.ONE : IExternalRate(_externalRateProvider0).getRate(); } else { return externalRates; }
-            if (_totalTokens > 1) { externalRates[1] = _externalRateProvider1 == address(0)?  FixedPoint.ONE : IExternalRate(_externalRateProvider1).getRate(); } else { return externalRates; }
-            if (_totalTokens > 2) { externalRates[2] = _externalRateProvider2 == address(0)?  FixedPoint.ONE : IExternalRate(_externalRateProvider2).getRate(); } else { return externalRates; }
-            if (_totalTokens > 3) { externalRates[3] = _externalRateProvider3 == address(0)?  FixedPoint.ONE : IExternalRate(_externalRateProvider3).getRate(); } else { return externalRates; }
-            if (_totalTokens > 4) { externalRates[4] = _externalRateProvider4 == address(0)?  FixedPoint.ONE : IExternalRate(_externalRateProvider4).getRate(); } else { return externalRates; }
+            if (_totalTokens > 0) { 
+                externalRates[0] = _externalRateProvider0 == address(0)?  
+                FixedPoint.ONE : IExternalRate(_externalRateProvider0).getRate(); 
+            } else { return externalRates; }
+            if (_totalTokens > 1) { 
+                externalRates[1] = _externalRateProvider1 == address(0)?  
+                FixedPoint.ONE : IExternalRate(_externalRateProvider1).getRate(); 
+            } else { return externalRates; }
+            if (_totalTokens > 2) { 
+                externalRates[2] = _externalRateProvider2 == address(0)?  
+                FixedPoint.ONE : IExternalRate(_externalRateProvider2).getRate(); 
+            } else { return externalRates; }
+            if (_totalTokens > 3) { 
+                externalRates[3] = _externalRateProvider3 == address(0)?  
+                FixedPoint.ONE : IExternalRate(_externalRateProvider3).getRate(); 
+            } else { return externalRates; }
+            if (_totalTokens > 4) { 
+                externalRates[4] = _externalRateProvider4 == address(0)?  
+                FixedPoint.ONE : IExternalRate(_externalRateProvider4).getRate(); 
+            } else { return externalRates; }
         }
 
         return externalRates;

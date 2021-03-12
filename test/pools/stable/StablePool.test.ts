@@ -19,7 +19,7 @@ import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 
-describe.only('StablePool', function () {
+describe('StablePool', function () {
   let allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
