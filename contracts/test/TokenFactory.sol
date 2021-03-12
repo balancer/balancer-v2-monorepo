@@ -28,8 +28,9 @@ contract TokenFactory {
 
     event TokenCreated(address indexed token);
 
-    // solhint-disable-next-line no-empty-blocks
-    constructor() {}
+    constructor() {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function getTotalTokens() external view returns (uint256) {
         return _tokens.length();

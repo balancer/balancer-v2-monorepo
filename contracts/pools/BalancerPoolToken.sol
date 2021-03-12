@@ -98,7 +98,7 @@ contract BalancerPoolToken is IERC20 {
         uint256 amount
     ) external override returns (bool) {
         uint256 currentAllowance = _allowance[sender][msg.sender];
-        require(msg.sender == sender || currentAllowance >= amount, "BPT_BAD_CALLER");
+        require(msg.sender == sender || currentAllowance >= amount, "INSUFFICIENT_ALLOWANCE");
 
         _move(sender, recipient, amount);
 
@@ -131,23 +131,17 @@ contract BalancerPoolToken is IERC20 {
     // Internal functions
 
     function _mintPoolTokens(address recipient, uint256 amount) internal {
-        _balance[address(this)] = _balance[address(this)].add(amount);
+        _balance[recipient] = _balance[recipient].add(amount);
         _totalSupply = _totalSupply.add(amount);
-
-        _move(address(this), recipient, amount);
-
         emit Transfer(address(0), recipient, amount);
     }
 
     function _burnPoolTokens(address sender, uint256 amount) internal {
-        _move(sender, address(this), amount);
-
-        uint256 currentBalance = _balance[address(this)];
+        uint256 currentBalance = _balance[sender];
         require(currentBalance >= amount, "INSUFFICIENT_BALANCE");
 
-        _balance[address(this)] = currentBalance - amount;
+        _balance[sender] = currentBalance - amount;
         _totalSupply = _totalSupply.sub(amount);
-
         emit Transfer(sender, address(0), amount);
     }
 
@@ -173,7 +167,6 @@ contract BalancerPoolToken is IERC20 {
         uint256 amount
     ) private {
         _allowance[owner][spender] = amount;
-
         emit Approval(owner, spender, amount);
     }
 }

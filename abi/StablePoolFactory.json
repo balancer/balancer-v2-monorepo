@@ -20,7 +20,7 @@
         "type": "address"
       }
     ],
-    "name": "PoolCreated",
+    "name": "PoolRegistered",
     "type": "event"
   },
   {
@@ -41,9 +41,9 @@
         "type": "address[]"
       },
       {
-        "internalType": "bool[]",
+        "internalType": "address[]",
         "name": "externalRates",
-        "type": "bool[]"
+        "type": "address[]"
       },
       {
         "internalType": "uint256",

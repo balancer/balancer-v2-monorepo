@@ -142,7 +142,7 @@ interface IVault {
     // balance of all tokens in the Pool. These Pools have the largest swap costs (because of the extra storage reads),
     // and these increase with the number of registered tokens.
     //
-    //  - minimal swap info: IMinimalSwapInfoPool is used instead of IGeneeralPool, which saves gas by only passing the
+    //  - minimal swap info: IMinimalSwapInfoPool is used instead of IGeneralPool, which saves gas by only passing the
     // balance of the two tokens involved in the swap. This is suitable for some pricing algorithms, like the weighted
     // constant product one popularized by Balancer v1. Swap costs are smaller compared to general Pools, and are
     // independent of the number of registered tokens.
@@ -160,14 +160,14 @@ interface IVault {
      * This contract is known as the Pool's contract. Note that the same caller may register itself as multiple Pools
      * with unique Pool IDs, or in other words, multiple Pools may have the same contract.
      *
-     * Emits a `PoolCreated` event.
+     * Emits a `PoolRegistered` event.
      */
     function registerPool(PoolSpecialization specialization) external returns (bytes32);
 
     /**
      * @dev Emitted when a Pool is registered by calling `registerPool`.
      */
-    event PoolCreated(bytes32 poolId);
+    event PoolRegistered(bytes32 poolId);
 
     /**
      * @dev Returns a Pool's contract address and specialization setting.
@@ -187,7 +187,7 @@ interface IVault {
      * Manager for each token. Asset Managers can manage a Pool's tokens by withdrawing and depositing them directly
      * (via `withdrawFromPoolBalance` and `depositToPoolBalance`), and even set them to arbitrary amounts
      * (`updateManagedBalance`). They are therefore expected to be highly secured smart contracts with sound design
-     * principles, and the decision to add an Asset Mananager should not be made lightly.
+     * principles, and the decision to add an Asset Manager should not be made lightly.
      *
      * Pools can not set an Asset Manager by setting them to the zero address. Once an Asset Manager is set, it cannot
      * be changed, except by deregistering the associated token and registering again with a different Manager.
@@ -228,6 +228,9 @@ interface IVault {
      *
      * The order of the `tokens` array is the same order that will be used in `joinPool`, `exitPool`, as well as in all
      * Pool hooks (where applicable). Calls to `registerTokens` and `deregisterTokens` may change this order.
+     *
+     * If a Pool only registers tokens once, and these are sorted in ascending order, they will be stored in the same
+     * order as passed to `registerTokens`.
      *
      * Total balances include both tokens held by the Vault and those withdrawn by the Pool's Asset Managers. These are
      * the amounts used by joins, exits and swaps.
@@ -422,7 +425,7 @@ interface IVault {
      * @dev Data for each individual swap executed by `batchSwapGivenIn`. The tokens in and out are indexed in the
      * `tokens` array passed to that function.
      *
-     * If `amountIn` is zero, the multihop mechanism is used to determine the actual amount based on the amout out from
+     * If `amountIn` is zero, the multihop mechanism is used to determine the actual amount based on the amount out from
      * the previous swap.
      *
      * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwapGivenIn` hook, and may be
@@ -472,7 +475,7 @@ interface IVault {
      * @dev Data for each individual swap executed by `batchSwapGivenOut`. The tokens in and out are indexed in the
      * `tokens` array passed to that function.
      *
-     * If `amountOut` is zero, the multihop mechanism is used to determine the actual amount based on the amout in from
+     * If `amountOut` is zero, the multihop mechanism is used to determine the actual amount based on the amount in from
      * the previous swap.
      *
      * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwapGivenOut` hook, and may be
@@ -506,7 +509,7 @@ interface IVault {
      * transfer for the difference between the requested amount and the User's Internal Balance (if any). The `sender`
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
      * `joinPool`.
-     *     * If `tointernalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
+     *     * If `toInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
      * transferred. This matches the behavior of `exitPool`.
      */
     struct FundManagement {
@@ -520,7 +523,7 @@ interface IVault {
      * @dev Simulates a call to `batchSwapGivenIn` or `batchSwapGivenOut`, returning an array of Vault token deltas.
      * Each element in the array corresponds to the token at the same index, and indicates the number of tokens the
      * Vault would take from the sender (if positive) or send to the recipient (if negative). The arguments it receives
-     * are the same that an equivalent `batchSwapGivenOut` or `batchSwapGivenOut` call would receive, except the
+     * are the same that an equivalent `batchSwapGivenIn` or `batchSwapGivenOut` call would receive, except the
      * `SwapRequest` struct is used instead, and the `kind` argument specifies whether the swap is given in or given
      * out.
      *

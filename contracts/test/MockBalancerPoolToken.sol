@@ -13,26 +13,17 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "../vault/interfaces/IVault.sol";
+import "../pools/BalancerPoolToken.sol";
 
-import "../pools/BasePoolFactory.sol";
+contract MockBalancerPoolToken is BalancerPoolToken {
+    constructor(string memory name, string memory symbol) BalancerPoolToken(name, symbol) {}
 
-contract MockFactoryCreatedPool {
-    function getPoolId() external view returns (bytes32) {
-        return bytes32(uint256(address(this)));
-    }
-}
-
-contract MockPoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
-        // solhint-disable-previous-line no-empty-blocks
+    function mint(address recipient, uint256 amount) external {
+        _mintPoolTokens(recipient, amount);
     }
 
-    function create() external returns (address) {
-        address pool = address(new MockFactoryCreatedPool());
-        _register(pool);
-        return pool;
+    function burn(address sender, uint256 amount) external {
+        _burnPoolTokens(sender, amount);
     }
 }

@@ -249,6 +249,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapRequest memory swap;
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
+            _ensureRegisteredPool(swap.poolId);
             require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "OUT_OF_BOUNDS");
 
             IERC20 tokenIn = tokens[swap.tokenInIndex];
@@ -543,7 +544,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                         // so the smallest value we can use is 32 for the data to be located immediately after it.
                         mstore(0, 32)
 
-                        // We nnow copy the raw memory array from returndata into memory. Since the offset takes up 32
+                        // We now copy the raw memory array from returndata into memory. Since the offset takes up 32
                         // bytes, we start copying at address 0x20.
                         returndatacopy(0x20, 0, returndatasize())
 

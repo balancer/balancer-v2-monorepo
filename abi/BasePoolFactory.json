@@ -9,7 +9,7 @@
         "type": "address"
       }
     ],
-    "name": "PoolCreated",
+    "name": "PoolRegistered",
     "type": "event"
   },
   {

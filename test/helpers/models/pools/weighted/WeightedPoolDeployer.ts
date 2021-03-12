@@ -28,7 +28,7 @@ export default {
     const factory = await deploy('WeightedPoolFactory', { args: [vault.address] });
     const tx = await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, weights, swapFee);
     const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+    const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
     return ethers.getContractAt('WeightedPool', event.args.pool);
   },
 };

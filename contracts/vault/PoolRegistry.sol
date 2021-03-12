@@ -123,7 +123,7 @@ abstract contract PoolRegistry is
         _poolNonce.increment();
         _isPoolRegistered[poolId] = true;
 
-        emit PoolCreated(poolId);
+        emit PoolRegistered(poolId);
         return poolId;
     }
 
@@ -590,7 +590,7 @@ abstract contract PoolRegistry is
     /**
      * @dev Reverts unless `poolId` corresponds to a registered Pool.
      */
-    function _ensureRegisteredPool(bytes32 poolId) private view {
+    function _ensureRegisteredPool(bytes32 poolId) internal view {
         require(_isPoolRegistered[poolId], "INVALID_POOL_ID");
     }
 
