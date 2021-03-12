@@ -17,7 +17,7 @@ export default {
   },
 
   async _deployMocked({ from }: VaultDeployment): Promise<Contract> {
-    return deploy('MockVault', { args: [], from });
+    return deploy('MockVault', { from });
   },
 
   async _deployAuthorizer({ admin, from }: VaultDeployment): Promise<Contract> {

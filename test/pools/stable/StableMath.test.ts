@@ -19,7 +19,7 @@ describe('StableMath', function () {
   let mock: Contract;
 
   before(async function () {
-    mock = await deploy('MockStableMath', { args: [] });
+    mock = await deploy('MockStableMath');
   });
 
   context('invariant', () => {

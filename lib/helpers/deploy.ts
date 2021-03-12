@@ -9,10 +9,11 @@ const factories: Dictionary<ContractFactory> = {};
 
 export type ContractDeploymentParams = {
   from?: SignerWithAddress;
-  args: Array<unknown>;
+  args?: Array<unknown>;
 };
 
-export async function deploy(contract: string, { from, args }: ContractDeploymentParams): Promise<Contract> {
+export async function deploy(contract: string, { from, args }: ContractDeploymentParams = {}): Promise<Contract> {
+  if (!args) args = [];
   if (!from) from = (await ethers.getSigners())[0];
   const factory = (await getFactory(contract)).connect(from);
   const instance = await factory.deploy(...args);
