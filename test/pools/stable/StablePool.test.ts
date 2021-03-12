@@ -40,7 +40,7 @@ describe.only('StablePool', function () {
       const tokens = allTokens.subset(1);
       await expect(
         deploy('StablePool', {
-          args: [vault.address, 'Balancer Pool Token', 'BPT', tokens.addresses, tokens.map(() => false), 0, 0],
+          args: [vault.address, 'Balancer Pool Token', 'BPT', tokens.addresses, tokens.map(() => ZERO_ADDRESS), 0, 0],
         })
       ).to.be.revertedWith('MIN_TOKENS');
     });
@@ -59,14 +59,14 @@ describe.only('StablePool', function () {
       // The maximum number of tokens is 6
       const manyTokens = await TokenList.create(6, { sorted: true });
 
-      const stableBPTTokens = manyTokens.map(() => false);
+      const externalRates = manyTokens.map(() => ZERO_ADDRESS);
       const amplification = bn(100e18);
 
       const vault = await deploy('MockVault', { args: [] });
 
       await expect(
         deploy('StablePool', {
-          args: [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, stableBPTTokens, amplification, 0],
+          args: [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, externalRates, amplification, 0],
         })
       ).to.be.revertedWith('MAX_STABLE_TOKENS');
     });
@@ -75,7 +75,7 @@ describe.only('StablePool', function () {
   function itBehavesAsStablePool(numberOfTokens: number) {
     let tokens: TokenList;
 
-    const stableBPTTokens = Array(numberOfTokens).map(() => false);
+    const externalRates = Array(numberOfTokens).map(() => ZERO_ADDRESS);
     const ZEROS = Array(numberOfTokens).fill(bn(0));
     const amplification = bn(100e18);
     const poolInitialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
@@ -103,7 +103,7 @@ describe.only('StablePool', function () {
               'Balancer Pool Token',
               'BPT',
               tokens.addresses,
-              stableBPTTokens,
+              externalRates,
               amplification,
               POOL_SWAP_FEE
             )
@@ -175,13 +175,13 @@ describe.only('StablePool', function () {
       async function deployPool(
         params: {
           tokens?: TokenList;
-          stableBPTTokens?: boolean[];
+          externalRates?: string[];
           amplification?: BigNumber;
           swapFee?: BigNumber;
         } = {}
       ) {
         const poolTokens = params.tokens ?? tokens;
-        const stableBPTTokens = params.stableBPTTokens ?? poolTokens.map(() => false);
+        const externalRates = params.externalRates ?? poolTokens.map(() => ZERO_ADDRESS);
         const poolAmplification = params.amplification ?? amplification;
         const poolSwapFee = params.swapFee ?? POOL_SWAP_FEE;
 
@@ -191,7 +191,7 @@ describe.only('StablePool', function () {
             'Balancer Pool Token',
             'BPT',
             poolTokens.addresses,
-            stableBPTTokens,
+            externalRates,
             poolAmplification,
             poolSwapFee,
           ],
@@ -206,11 +206,9 @@ describe.only('StablePool', function () {
         });
 
         it('reverts if the number of tokens and stable bpt array do not match', async () => {
-          const badStableBPTTokens = tokens.map(() => false).slice(1);
+          const badexternalRates = tokens.map(() => ZERO_ADDRESS).slice(1);
 
-          await expect(deployPool({ stableBPTTokens: badStableBPTTokens })).to.be.revertedWith(
-            'INVALID_STABLE_BPT_ARRAY'
-          );
+          await expect(deployPool({ externalRates: badexternalRates })).to.be.revertedWith('INVALID_STABLE_BPT_ARRAY');
         });
 
         it('reverts if the swap fee is too high', async () => {

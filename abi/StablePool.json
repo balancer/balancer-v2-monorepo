@@ -22,9 +22,9 @@
         "type": "address[]"
       },
       {
-        "internalType": "bool[]",
-        "name": "stableBPTTokens",
-        "type": "bool[]"
+        "internalType": "address[]",
+        "name": "externalRates",
+        "type": "address[]"
       },
       {
         "internalType": "uint256",
@@ -209,12 +209,12 @@
   },
   {
     "inputs": [],
-    "name": "getBPTAppreciation",
+    "name": "getPoolId",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "bytes32",
         "name": "",
-        "type": "uint256"
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -222,12 +222,12 @@
   },
   {
     "inputs": [],
-    "name": "getPoolId",
+    "name": "getRate",
     "outputs": [
       {
-        "internalType": "bytes32",
+        "internalType": "uint256",
         "name": "",
-        "type": "bytes32"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",

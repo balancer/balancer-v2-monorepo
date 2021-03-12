@@ -42,7 +42,7 @@
       },
       {
         "internalType": "bool[]",
-        "name": "stableBPTTokens",
+        "name": "externalRates",
         "type": "bool[]"
       },
       {
