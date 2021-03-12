@@ -36,7 +36,7 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard {
         return _authorizer;
     }
 
-    function changeRelayerAllowance(address relayer, bool allowed) external override nonReentrant {
+    function changeRelayerAllowance(address relayer, bool allowed) external override nonReentrant noEmergencyPeriod {
         _allowedRelayers[msg.sender][relayer] = allowed;
     }
 

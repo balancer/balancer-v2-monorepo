@@ -115,7 +115,9 @@ abstract contract PoolRegistry is
         return PoolSpecialization(uint256(poolId >> (10 * 8)) & (2**(2 * 8) - 1));
     }
 
-    function registerPool(PoolSpecialization specialization) external override nonReentrant returns (bytes32) {
+    function registerPool(PoolSpecialization specialization)
+        external override nonReentrant noEmergencyPeriod returns (bytes32)
+    {
         // Use _totalPools as the Pool ID nonce. uint80 assumes there will never be more than than 2**80 Pools.
         bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_poolNonce.current()));
         require(!_isPoolRegistered[poolId], "INVALID_POOL_ID"); // Should never happen
@@ -182,7 +184,7 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         IERC20[] calldata tokens,
         address[] calldata assetManagers
-    ) external override nonReentrant onlyPool(poolId) {
+    ) external override nonReentrant noEmergencyPeriod onlyPool(poolId) {
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -210,6 +212,7 @@ abstract contract PoolRegistry is
         external
         override
         nonReentrant
+        noEmergencyPeriod
         onlyPool(poolId)
     {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -239,7 +242,7 @@ abstract contract PoolRegistry is
         uint256[] memory maxAmountsIn,
         bool fromInternalBalance,
         bytes memory userData
-    ) external override nonReentrant withRegisteredPool(poolId) authenticateFor(sender) {
+    ) external override nonReentrant noEmergencyPeriod withRegisteredPool(poolId) authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
 
         bytes32[] memory balances = _validateTokensAndGetBalances(poolId, tokens);
@@ -502,6 +505,7 @@ abstract contract PoolRegistry is
         external
         override
         nonReentrant
+        noEmergencyPeriod
     {
         _ensureRegisteredPool(poolId);
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -528,6 +532,7 @@ abstract contract PoolRegistry is
         external
         override
         nonReentrant
+        noEmergencyPeriod
     {
         _ensureRegisteredPool(poolId);
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -554,6 +559,7 @@ abstract contract PoolRegistry is
         external
         override
         nonReentrant
+        noEmergencyPeriod
     {
         _ensureRegisteredPool(poolId);
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
