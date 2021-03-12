@@ -7,7 +7,7 @@ import TokenList from '../helpers/models/tokens/TokenList';
 import { deploy } from '../../lib/helpers/deploy';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { BigNumberish, fp } from '../../lib/helpers/numbers';
-import { advanceTime, currentTimestamp, fromNow, DAY, MONTH, WEEK } from '../../lib/helpers/time';
+import { advanceTime, currentTimestamp, fromNow, DAY, MONTH } from '../../lib/helpers/time';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress, other: SignerWithAddress;
@@ -28,11 +28,13 @@ describe('BasePool', function () {
     tokens?: TokenList | string[];
     swapFee?: BigNumberish;
     emergencyPeriod?: number;
+    emergencyPeriodCheckExtension?: number;
   }): Promise<Contract> {
-    let { tokens: poolTokens, swapFee, emergencyPeriod } = params;
+    let { tokens: poolTokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
     if (!poolTokens) poolTokens = tokens;
     if (!swapFee) swapFee = 0;
     if (!emergencyPeriod) emergencyPeriod = 0;
+    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = 0;
 
     return deploy('MockBasePool', {
       args: [
@@ -44,6 +46,7 @@ describe('BasePool', function () {
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
         swapFee,
         emergencyPeriod,
+        emergencyPeriodCheckExtension,
       ],
     });
   }
@@ -141,18 +144,24 @@ describe('BasePool', function () {
   describe('emergency period', () => {
     let pool: Contract;
 
-    const assertEmergencyPeriod = async (expectedStatus: boolean, expectedEndDate?: BigNumberish): Promise<void> => {
-      const { active, endDate } = await pool.getEmergencyPeriod();
+    const assertEmergencyPeriod = async (
+      expectedStatus: boolean,
+      expectedEndDate?: BigNumberish,
+      expectedCheckExtension?: BigNumberish
+    ): Promise<void> => {
+      const { active, endDate, checkEndDate } = await pool.getEmergencyPeriod();
       expect(active).to.equal(expectedStatus);
       if (expectedEndDate) expect(endDate).to.equal(expectedEndDate);
+      if (expectedCheckExtension) expect(checkEndDate).to.equal(endDate.add(expectedCheckExtension));
     };
 
     context('initialization', () => {
       it('can be initialized with an emergency period', async () => {
         const emergencyPeriod = MONTH;
-        pool = await deployBasePool({ emergencyPeriod });
+        const emergencyPeriodCheckExtension = MONTH;
+        pool = await deployBasePool({ emergencyPeriod, emergencyPeriodCheckExtension });
 
-        await assertEmergencyPeriod(false, await fromNow(emergencyPeriod));
+        await assertEmergencyPeriod(false, await fromNow(emergencyPeriod), emergencyPeriodCheckExtension);
       });
 
       it('can be initialized without emergency period', async () => {
@@ -162,17 +171,29 @@ describe('BasePool', function () {
         await assertEmergencyPeriod(false, await currentTimestamp());
       });
 
-      it('cannot be initialized with an emergency period greater to 90 days', async () => {
+      it('cannot be initialized with an emergency period greater than 90 days', async () => {
         const emergencyPeriod = DAY * 91;
         await expect(deployBasePool({ emergencyPeriod })).to.be.revertedWith('MAX_EMERGENCY_PERIOD');
+      });
+
+      it('cannot be initialized with an emergency period check extension greater than 30 days', async () => {
+        const emergencyPeriod = MONTH;
+        const emergencyPeriodCheckExtension = DAY * 31;
+        await expect(deployBasePool({ emergencyPeriod, emergencyPeriodCheckExtension })).to.be.revertedWith(
+          'MAX_EMERGENCY_PERIOD_CHECK_EXT'
+        );
       });
     });
 
     context('setting the emergency period', () => {
       const EMERGENCY_PERIOD = MONTH * 3;
+      const EMERGENCY_PERIOD_CHECK_EXTENSION = MONTH;
 
       sharedBeforeEach('deploy pool', async () => {
-        pool = await deployBasePool({ emergencyPeriod: EMERGENCY_PERIOD });
+        pool = await deployBasePool({
+          emergencyPeriod: EMERGENCY_PERIOD,
+          emergencyPeriodCheckExtension: EMERGENCY_PERIOD_CHECK_EXTENSION,
+        });
       });
 
       context('when the sender is has the role to do it', () => {
@@ -194,19 +215,19 @@ describe('BasePool', function () {
 
             await pool.connect(admin).setEmergencyPeriod(true);
 
-            await assertEmergencyPeriod(true, previousEndDate);
+            await assertEmergencyPeriod(true, previousEndDate, EMERGENCY_PERIOD_CHECK_EXTENSION);
           });
 
           it('can change the emergency period status multiple times', async () => {
             const { endDate: previousEndDate } = await pool.getEmergencyPeriod();
 
             await pool.connect(admin).setEmergencyPeriod(true);
-            await assertEmergencyPeriod(true, previousEndDate);
+            await assertEmergencyPeriod(true, previousEndDate, EMERGENCY_PERIOD_CHECK_EXTENSION);
 
             await advanceTime(EMERGENCY_PERIOD / 4);
 
             await pool.connect(admin).setEmergencyPeriod(false);
-            await assertEmergencyPeriod(false, previousEndDate);
+            await assertEmergencyPeriod(false, previousEndDate, EMERGENCY_PERIOD_CHECK_EXTENSION);
           });
 
           it('can not change the emergency period if the role was revoked', async () => {
@@ -226,14 +247,32 @@ describe('BasePool', function () {
               await advanceTime(EMERGENCY_PERIOD);
             });
 
-            it('considers the emergency period off', async () => {
-              await assertEmergencyPeriod(false);
+            function itCannotChangeTheEmergencyPeriod() {
+              it('considers the emergency period off', async () => {
+                await assertEmergencyPeriod(false);
+              });
+
+              it('cannot change the emergency period', async () => {
+                await expect(pool.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith(
+                  'EMERGENCY_PERIOD_FINISHED'
+                );
+              });
+            }
+
+            context('before the check extension', () => {
+              sharedBeforeEach('advance some time', async () => {
+                await advanceTime(EMERGENCY_PERIOD_CHECK_EXTENSION / 2);
+              });
+
+              itCannotChangeTheEmergencyPeriod();
             });
 
-            it('cannot change the emergency period', async () => {
-              await expect(pool.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith(
-                'EMERGENCY_PERIOD_FINISHED'
-              );
+            context('after the check extension', () => {
+              sharedBeforeEach('reach the check extension', async () => {
+                await advanceTime(EMERGENCY_PERIOD_CHECK_EXTENSION);
+              });
+
+              itCannotChangeTheEmergencyPeriod();
             });
           });
 
@@ -243,14 +282,36 @@ describe('BasePool', function () {
               await advanceTime(EMERGENCY_PERIOD);
             });
 
-            it('considers the emergency period off', async () => {
-              await assertEmergencyPeriod(false);
+            context('before the check extension', () => {
+              sharedBeforeEach('advance some time', async () => {
+                await advanceTime(EMERGENCY_PERIOD_CHECK_EXTENSION / 2);
+              });
+
+              it('considers the emergency period on', async () => {
+                await assertEmergencyPeriod(true);
+              });
+
+              it('cannot change the emergency period', async () => {
+                await expect(pool.connect(admin).setEmergencyPeriod(false)).to.be.revertedWith(
+                  'EMERGENCY_PERIOD_FINISHED'
+                );
+              });
             });
 
-            it('cannot change the emergency period', async () => {
-              await expect(pool.connect(admin).setEmergencyPeriod(false)).to.be.revertedWith(
-                'EMERGENCY_PERIOD_FINISHED'
-              );
+            context('after the check extension', () => {
+              sharedBeforeEach('reach the check extension', async () => {
+                await advanceTime(EMERGENCY_PERIOD_CHECK_EXTENSION);
+              });
+
+              it('considers the emergency period off', async () => {
+                await assertEmergencyPeriod(false);
+              });
+
+              it('cannot change the emergency period', async () => {
+                await expect(pool.connect(admin).setEmergencyPeriod(false)).to.be.revertedWith(
+                  'EMERGENCY_PERIOD_FINISHED'
+                );
+              });
             });
           });
         });

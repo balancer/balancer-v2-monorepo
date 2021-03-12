@@ -35,10 +35,21 @@ contract WeightedPoolFactory is BasePoolFactory {
         IERC20[] memory tokens,
         uint256[] memory weights,
         uint256 swapFee,
-        uint256 emergencyPeriod
+        uint256 emergencyPeriod,
+        uint256 emergencyPeriodCheckExtension
     ) external returns (address) {
         address pool = address(
-            new WeightedPool(authorizer, vault, name, symbol, tokens, weights, swapFee, emergencyPeriod)
+            new WeightedPool(
+                authorizer,
+                vault,
+                name,
+                symbol,
+                tokens,
+                weights,
+                swapFee,
+                emergencyPeriod,
+                emergencyPeriodCheckExtension
+            )
         );
         _register(pool);
         return pool;

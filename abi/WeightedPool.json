@@ -40,6 +40,11 @@
         "internalType": "uint256",
         "name": "emergencyPeriod",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "emergencyPeriodCheckExtension",
+        "type": "uint256"
       }
     ],
     "stateMutability": "nonpayable",
@@ -333,6 +338,11 @@
       {
         "internalType": "uint256",
         "name": "endDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "checkEndDate",
         "type": "uint256"
       }
     ],
@@ -708,7 +718,7 @@
     "inputs": [
       {
         "internalType": "bool",
-        "name": "on",
+        "name": "active",
         "type": "bool"
       }
     ],

@@ -26,15 +26,34 @@ export default {
   },
 
   async _deployStandalone(params: WeightedPoolDeployment, vault: Contract, authorizer: Contract): Promise<Contract> {
-    const { tokens, weights, swapFee, emergencyPeriod } = params;
-    const args = [authorizer.address, vault.address, NAME, SYMBOL, tokens.addresses, weights, swapFee, emergencyPeriod];
-    return deploy('WeightedPool', { args });
+    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    return deploy('WeightedPool', {
+      args: [
+        authorizer.address,
+        vault.address,
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        weights,
+        swapFee,
+        emergencyPeriod,
+        emergencyPeriodCheckExtension,
+      ],
+    });
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Contract, authorizer: Contract): Promise<Contract> {
-    const { tokens, weights, swapFee, emergencyPeriod } = params;
+    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
     const factory = await deploy('WeightedPoolFactory', { args: [authorizer.address, vault.address] });
-    const tx = await factory.create(NAME, SYMBOL, tokens.addresses, weights, swapFee, emergencyPeriod);
+    const tx = await factory.create(
+      NAME,
+      SYMBOL,
+      tokens.addresses,
+      weights,
+      swapFee,
+      emergencyPeriod,
+      emergencyPeriodCheckExtension
+    );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
     return ethers.getContractAt('WeightedPool', event.args.pool);

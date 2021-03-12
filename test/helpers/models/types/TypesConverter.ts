@@ -18,12 +18,13 @@ import {
 
 export default {
   toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
-    let { tokens, weights, swapFee, emergencyPeriod } = params;
+    let { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = [];
     if (!swapFee) swapFee = bn(0);
     if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
-    return { tokens, weights, swapFee, emergencyPeriod };
+    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
+    return { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
   },
 
   /***

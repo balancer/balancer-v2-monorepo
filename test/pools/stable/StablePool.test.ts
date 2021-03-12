@@ -39,7 +39,8 @@ describe('StablePool', function () {
   context('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
       const vault = await deploy('MockVault', { args: [] });
-      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', allTokens.subset(1).addresses, 0, 0, 0];
+      const tokens = allTokens.subset(1).addresses;
+      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', tokens, 0, 0, 0, 0];
       await expect(deploy('StablePool', { args })).to.be.revertedWith('MIN_TOKENS');
     });
   });
@@ -57,7 +58,7 @@ describe('StablePool', function () {
       // The maximum number of tokens is 16
       const manyTokens = await TokenList.create(17);
       const vault = await deploy('MockVault', { args: [] });
-      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0, 0];
+      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0, 0, 0];
       await expect(deploy('StablePool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
   });
@@ -88,7 +89,7 @@ describe('StablePool', function () {
         sharedBeforeEach('deploy pool from factory', async () => {
           const factory = await deploy('StablePoolFactory', { args: [ZERO_ADDRESS, vault.address] });
           const receipt = await (
-            await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, amplification, POOL_SWAP_FEE, 0)
+            await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, amplification, POOL_SWAP_FEE, 0, 0)
           ).wait();
 
           const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
@@ -176,6 +177,7 @@ describe('StablePool', function () {
             poolAmplification,
             poolSwapFee,
             EMERGENCY_PERIOD,
+            0,
           ],
         });
       }

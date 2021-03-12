@@ -46,8 +46,20 @@ contract StablePool is BaseGeneralPool, StableMath {
         IERC20[] memory tokens,
         uint256 amp,
         uint256 swapFee,
-        uint256 emergencyPeriod
-    ) BaseGeneralPool(authorizer, vault, name, symbol, tokens, swapFee, emergencyPeriod) {
+        uint256 emergencyPeriod,
+        uint256 emergencyPeriodCheckExtension
+    )
+        BaseGeneralPool(
+            authorizer,
+            vault,
+            name,
+            symbol,
+            tokens,
+            swapFee,
+            emergencyPeriod,
+            emergencyPeriodCheckExtension
+        )
+    {
         require(amp >= _MIN_AMP, "MIN_AMP");
         require(amp <= _MAX_AMP, "MAX_AMP");
         _amp = amp;
