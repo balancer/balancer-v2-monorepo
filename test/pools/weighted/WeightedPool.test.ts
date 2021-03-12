@@ -40,7 +40,7 @@ describe('WeightedPool', function () {
       const weights = WEIGHTS.slice(0, 1);
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
-      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', tokens, weights, POOL_SWAP_FEE];
+      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', tokens, weights, POOL_SWAP_FEE, 0];
       await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MIN_TOKENS');
     });
   });
@@ -63,7 +63,7 @@ describe('WeightedPool', function () {
       const weights = new Array(17).fill(fp(1));
       const vault = await deploy('Vault', { args: [authorizer.address] });
 
-      const args = [ZERO_ADDRESS, vault.address, 'Balancer Token', 'BPT', tokens.addresses, weights, POOL_SWAP_FEE];
+      const args = [ZERO_ADDRESS, vault.address, 'Balancer Token', 'BPT', tokens.addresses, weights, POOL_SWAP_FEE, 0];
       await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
   });

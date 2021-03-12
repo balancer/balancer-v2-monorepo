@@ -25,8 +25,9 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee
-    ) BasePool(authorizer, vault, IVault.PoolSpecialization.GENERAL, name, symbol, tokens, swapFee) {
+        uint256 swapFee,
+        uint256 emergencyPeriod
+    ) BasePool(authorizer, vault, IVault.PoolSpecialization.GENERAL, name, symbol, tokens, swapFee, emergencyPeriod) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

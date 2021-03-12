@@ -9,6 +9,9 @@ import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
 import { RawWeightedPoolDeployment, WeightedPoolDeployment } from './types';
 
+const NAME = 'Balancer Pool Token';
+const SYMBOL = 'BPT';
+
 export default {
   async deploy(params: RawWeightedPoolDeployment): Promise<WeightedPool> {
     const deployment = TypesConverter.toWeightedPoolDeployment(params);
@@ -20,15 +23,15 @@ export default {
   },
 
   async _deployStandalone(params: WeightedPoolDeployment, vault: Contract): Promise<Contract> {
-    const { authorizer, tokens, weights, swapFee } = params;
-    const args = [authorizer, vault.address, 'Balancer Pool Token', 'BPT', tokens.addresses, weights, swapFee];
+    const { authorizer, tokens, weights, swapFee, emergencyPeriod } = params;
+    const args = [authorizer, vault.address, NAME, SYMBOL, tokens.addresses, weights, swapFee, emergencyPeriod];
     return deploy('WeightedPool', { args });
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Contract): Promise<Contract> {
-    const { authorizer, tokens, weights, swapFee } = params;
+    const { authorizer, tokens, weights, swapFee, emergencyPeriod } = params;
     const factory = await deploy('WeightedPoolFactory', { args: [authorizer, vault.address] });
-    const tx = await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, weights, swapFee);
+    const tx = await factory.create(NAME, SYMBOL, tokens.addresses, weights, swapFee, emergencyPeriod);
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
     return ethers.getContractAt('WeightedPool', event.args.pool);

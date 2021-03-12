@@ -18,12 +18,13 @@ import {
 
 export default {
   toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
-    let { authorizer, tokens, weights, swapFee } = params;
+    let { authorizer, tokens, weights, swapFee, emergencyPeriod } = params;
     if (!authorizer) authorizer = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = [];
     if (!swapFee) swapFee = bn(0);
-    return { authorizer, tokens, weights, swapFee };
+    if (!emergencyPeriod) emergencyPeriod = bn(0);
+    return { authorizer, tokens, weights, swapFee, emergencyPeriod };
   },
 
   /***

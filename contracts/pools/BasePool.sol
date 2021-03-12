@@ -42,16 +42,20 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKENS = 16;
 
+    uint256 private constant _MAX_EMERGENCY_PERIOD = 90 days;
+
     // 1e16 = 1%, 1e18 = 100%
     uint256 private constant _MAX_SWAP_FEE = 10e16;
 
     uint256 private constant _MINIMUM_BPT = 10**3;
 
     uint256 internal _swapFee;
+    bool private _emergencyPeriodActive;
 
     IVault internal immutable _vault;
     bytes32 internal immutable _poolId;
     uint256 internal immutable _totalTokens;
+    uint256 internal immutable _emergencyPeriodEndDate;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
@@ -88,6 +92,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor14;
     uint256 internal immutable _scalingFactor15;
 
+    modifier noEmergencyPeriod() {
+        _ensureInactiveEmergencyPeriod();
+        _;
+    }
+
     constructor(
         IAuthorizer authorizer,
         IVault vault,
@@ -95,7 +104,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee
+        uint256 swapFee,
+        uint256 emergencyPeriod
     ) BasePoolAuthorization(authorizer) BalancerPoolToken(name, symbol) {
         require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
@@ -108,6 +118,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         InputHelpers.ensureArrayIsSorted(tokens);
 
         require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
+        require(emergencyPeriod <= _MAX_EMERGENCY_PERIOD, "MAX_EMERGENCY_PERIOD");
 
         bytes32 poolId = vault.registerPool(specialization);
 
@@ -120,6 +131,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _poolId = poolId;
         _swapFee = swapFee;
         _totalTokens = tokens.length;
+
+        // solhint-disable-next-line no-rely-on-time
+        _emergencyPeriodEndDate = block.timestamp + emergencyPeriod;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
 
@@ -172,11 +186,23 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _swapFee;
     }
 
+    function getEmergencyPeriod() external view returns (bool active, uint256 endDate) {
+        return (!_isEmergencyPeriodInactive(), _emergencyPeriodEndDate);
+    }
+
     function setSwapFee(uint256 swapFee) external {
         require(canChangeSwapFee(msg.sender), "SENDER_CANNOT_CHANGE_SWAP_FEE");
 
         require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
         _swapFee = swapFee;
+    }
+
+    function setEmergencyPeriod(bool on) external {
+        require(canChangeEmergencyPeriod(msg.sender), "CANNOT_CHANGE_EMERGENCY_PER");
+
+        // solhint-disable-next-line no-rely-on-time
+        require(block.timestamp < _emergencyPeriodEndDate, "EMERGENCY_PERIOD_FINISHED");
+        _emergencyPeriodActive = on;
     }
 
     // Join / Exit Hooks
@@ -408,5 +434,14 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         for (uint256 i = 0; i < _totalTokens; ++i) {
             amount[i] = Math.divUp(amount[i], scalingFactors[i]);
         }
+    }
+
+    function _ensureInactiveEmergencyPeriod() internal view {
+        require(_isEmergencyPeriodInactive(), "POOL_EMERGENCY_PERIOD_ON");
+    }
+
+    function _isEmergencyPeriodInactive() internal view returns (bool) {
+        // solhint-disable-next-line no-rely-on-time
+        return block.timestamp >= _emergencyPeriodEndDate || !_emergencyPeriodActive;
     }
 }

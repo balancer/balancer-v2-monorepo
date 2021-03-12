@@ -7,6 +7,7 @@ import TokenList from '../helpers/models/tokens/TokenList';
 import { deploy } from '../../lib/helpers/deploy';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { BigNumberish, fp } from '../../lib/helpers/numbers';
+import { advanceTime, currentTimestamp, fromNow, DAY, MONTH, WEEK } from '../../lib/helpers/time';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress, other: SignerWithAddress;
@@ -23,15 +24,33 @@ describe('BasePool', function () {
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 
-  function deployBasePool(tokens: string[], swapFee: BigNumberish): Promise<Contract> {
+  function deployBasePool(params: {
+    tokens?: TokenList | string[];
+    swapFee?: BigNumberish;
+    emergencyPeriod?: number;
+  }): Promise<Contract> {
+    let { tokens: poolTokens, swapFee, emergencyPeriod } = params;
+    if (!poolTokens) poolTokens = tokens;
+    if (!swapFee) swapFee = 0;
+    if (!emergencyPeriod) emergencyPeriod = 0;
+
     return deploy('MockBasePool', {
-      args: [authorizer.address, vault.address, GeneralPool, 'Balancer Pool Token', 'BPT', tokens, swapFee],
+      args: [
+        authorizer.address,
+        vault.address,
+        GeneralPool,
+        'Balancer Pool Token',
+        'BPT',
+        Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
+        swapFee,
+        emergencyPeriod,
+      ],
     });
   }
 
   describe('deployment', () => {
     it('registers a pool in the vault', async () => {
-      const pool = await deployBasePool(tokens.addresses, 0);
+      const pool = await deployBasePool({ tokens });
       const poolId = await pool.getPoolId();
 
       const [poolAddress, poolSpecialization] = await vault.getPool(poolId);
@@ -40,21 +59,21 @@ describe('BasePool', function () {
     });
 
     it('reverts if the tokens are not sorted', async () => {
-      await expect(deployBasePool(tokens.addresses.reverse(), 0)).to.be.revertedWith('UNSORTED_ARRAY');
+      await expect(deployBasePool({ tokens: tokens.addresses.reverse() })).to.be.revertedWith('UNSORTED_ARRAY');
     });
   });
 
   describe('swap fee', () => {
     it('has an initial swap fee', async () => {
       const swapFee = fp(0.003);
-      const pool = await deployBasePool(tokens.addresses, swapFee);
+      const pool = await deployBasePool({ swapFee });
 
       expect(await pool.getSwapFee()).to.equal(swapFee);
     });
 
     it('can be initialized to the zero address', async () => {
       const swapFee = 0;
-      const pool = await deployBasePool(tokens.addresses, swapFee);
+      const pool = await deployBasePool({ swapFee });
 
       expect(await pool.getSwapFee()).to.equal(swapFee);
     });
@@ -64,7 +83,7 @@ describe('BasePool', function () {
     let pool: Contract;
 
     sharedBeforeEach('deploy pool', async () => {
-      pool = await deployBasePool(tokens.addresses, fp(0.01));
+      pool = await deployBasePool({ swapFee: fp(0.01) });
     });
 
     context('when the sender is has the role to do it', () => {
@@ -115,6 +134,132 @@ describe('BasePool', function () {
     context('when the sender does not have the role to do it', () => {
       it('reverts', async () => {
         await expect(pool.connect(other).setSwapFee(0)).to.be.revertedWith('SENDER_CANNOT_CHANGE_SWAP_FEE');
+      });
+    });
+  });
+
+  describe('emergency period', () => {
+    let pool: Contract;
+
+    const assertEmergencyPeriod = async (expectedStatus: boolean, expectedEndDate?: BigNumberish): Promise<void> => {
+      const { active, endDate } = await pool.getEmergencyPeriod();
+      expect(active).to.equal(expectedStatus);
+      if (expectedEndDate) expect(endDate).to.equal(expectedEndDate);
+    };
+
+    context('initialization', () => {
+      it('can be initialized with an emergency period', async () => {
+        const emergencyPeriod = MONTH;
+        pool = await deployBasePool({ emergencyPeriod });
+
+        await assertEmergencyPeriod(false, await fromNow(emergencyPeriod));
+      });
+
+      it('can be initialized without emergency period', async () => {
+        const emergencyPeriod = 0;
+        pool = await deployBasePool({ emergencyPeriod });
+
+        await assertEmergencyPeriod(false, await currentTimestamp());
+      });
+
+      it('cannot be initialized with an emergency period greater to 90 days', async () => {
+        const emergencyPeriod = DAY * 91;
+        await expect(deployBasePool({ emergencyPeriod })).to.be.revertedWith('MAX_EMERGENCY_PERIOD');
+      });
+    });
+
+    context('setting the emergency period', () => {
+      const EMERGENCY_PERIOD = MONTH * 3;
+
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployBasePool({ emergencyPeriod: EMERGENCY_PERIOD });
+      });
+
+      context('when the sender is has the role to do it', () => {
+        let roleId: string;
+
+        sharedBeforeEach('grant permission', async () => {
+          roleId = await pool.CHANGE_POOL_EMERGENCY_PERIOD_ROLE();
+          await authorizer.connect(admin).grantRole(roleId, admin.address);
+        });
+
+        context('before the emergency period end date', () => {
+          sharedBeforeEach('advance some time', async () => {
+            await advanceTime(EMERGENCY_PERIOD / 2);
+          });
+
+          it('can change the emergency period status', async () => {
+            const { endDate: previousEndDate } = await pool.getEmergencyPeriod();
+            expect(await pool.canChangeEmergencyPeriod(admin.address)).to.be.true;
+
+            await pool.connect(admin).setEmergencyPeriod(true);
+
+            await assertEmergencyPeriod(true, previousEndDate);
+          });
+
+          it('can change the emergency period status multiple times', async () => {
+            const { endDate: previousEndDate } = await pool.getEmergencyPeriod();
+
+            await pool.connect(admin).setEmergencyPeriod(true);
+            await assertEmergencyPeriod(true, previousEndDate);
+
+            await advanceTime(EMERGENCY_PERIOD / 4);
+
+            await pool.connect(admin).setEmergencyPeriod(false);
+            await assertEmergencyPeriod(false, previousEndDate);
+          });
+
+          it('can not change the emergency period if the role was revoked', async () => {
+            await authorizer.connect(admin).revokeRole(roleId, admin.address);
+
+            expect(await pool.canChangeEmergencyPeriod(admin.address)).to.be.false;
+
+            await expect(pool.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith(
+              'CANNOT_CHANGE_EMERGENCY_PER'
+            );
+          });
+        });
+
+        context('when the emergency period end date has been reached', () => {
+          context('when the emergency period was off', () => {
+            sharedBeforeEach('advance time', async () => {
+              await advanceTime(EMERGENCY_PERIOD);
+            });
+
+            it('considers the emergency period off', async () => {
+              await assertEmergencyPeriod(false);
+            });
+
+            it('cannot change the emergency period', async () => {
+              await expect(pool.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith(
+                'EMERGENCY_PERIOD_FINISHED'
+              );
+            });
+          });
+
+          context('when the emergency period was on', () => {
+            sharedBeforeEach('turn on and advance time', async () => {
+              await pool.connect(admin).setEmergencyPeriod(true);
+              await advanceTime(EMERGENCY_PERIOD);
+            });
+
+            it('considers the emergency period off', async () => {
+              await assertEmergencyPeriod(false);
+            });
+
+            it('cannot change the emergency period', async () => {
+              await expect(pool.connect(admin).setEmergencyPeriod(false)).to.be.revertedWith(
+                'EMERGENCY_PERIOD_FINISHED'
+              );
+            });
+          });
+        });
+      });
+
+      context('when the sender does not have the role to do it', () => {
+        it('reverts', async () => {
+          await expect(pool.connect(other).setEmergencyPeriod(true)).to.be.revertedWith('CANNOT_CHANGE_EMERGENCY_PER');
+        });
       });
     });
   });

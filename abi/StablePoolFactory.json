@@ -67,6 +67,11 @@
         "internalType": "uint256",
         "name": "swapFee",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "emergencyPeriod",
+        "type": "uint256"
       }
     ],
     "name": "create",

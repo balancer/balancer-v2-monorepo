@@ -25,6 +25,7 @@ contract BasePoolAuthorization {
     // solhint-disable var-name-mixedcase
     bytes32 public immutable CHANGE_POOL_SWAP_FEE_ROLE = keccak256("CHANGE_POOL_SWAP_FEE_ROLE");
     bytes32 public immutable CHANGE_POOL_AUTHORIZER_ROLE = keccak256("CHANGE_POOL_AUTHORIZER_ROLE");
+    bytes32 public immutable CHANGE_POOL_EMERGENCY_PERIOD_ROLE = keccak256("CHANGE_POOL_EMERGENCY_PERIOD_ROLE");
 
     IAuthorizer private _authorizer;
 
@@ -47,6 +48,10 @@ contract BasePoolAuthorization {
 
     function canChangeSwapFee(address account) public view returns (bool) {
         return _hasRole(CHANGE_POOL_SWAP_FEE_ROLE, account);
+    }
+
+    function canChangeEmergencyPeriod(address account) public view returns (bool) {
+        return _hasRole(CHANGE_POOL_EMERGENCY_PERIOD_ROLE, account);
     }
 
     function _hasRole(bytes32 roleId, address account) internal view returns (bool) {
