@@ -30,7 +30,7 @@ describe('Vault - swap validation', () => {
     [, lp, trader, other] = await ethers.getSigners();
 
     const authorizer = await deploy('Authorizer', { args: [ZERO_ADDRESS] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
 
     const totalPools = 5;

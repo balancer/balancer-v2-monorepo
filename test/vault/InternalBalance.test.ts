@@ -26,7 +26,7 @@ describe('Vault - internal balance', () => {
 
   sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
     tokens = await TokenList.create(['DAI', 'MKR']);
   });
 

@@ -22,7 +22,7 @@ export async function setupEnvironment(): Promise<{
   const { admin, creator, trader } = await getSigners();
 
   const authorizer = await deploy('Authorizer', { args: [admin.address] });
-  const vault = await deploy('Vault', { args: [authorizer.address] });
+  const vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
 
   const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 

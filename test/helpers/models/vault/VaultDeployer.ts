@@ -13,7 +13,8 @@ export default {
 
   async _deployReal(deployment: VaultDeployment): Promise<Contract> {
     const authorizer = await this._deployAuthorizer(deployment);
-    return deploy('Vault', { args: [authorizer.address], from: deployment.from });
+    const { from, emergencyPeriod, emergencyPeriodCheckExtension } = deployment;
+    return deploy('Vault', { args: [authorizer.address, emergencyPeriod, emergencyPeriodCheckExtension], from });
   },
 
   async _deployMocked({ from }: VaultDeployment): Promise<Contract> {
