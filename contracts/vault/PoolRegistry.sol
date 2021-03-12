@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "../lib/math/Math.sol";
@@ -30,10 +31,12 @@ import "./balances/BalanceAllocation.sol";
 import "./balances/GeneralPoolsBalance.sol";
 import "./balances/MinimalSwapInfoPoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
+import "./WETHManager.sol";
 
 abstract contract PoolRegistry is
     ReentrancyGuard,
     InternalBalance,
+    WETHManager,
     GeneralPoolsBalance,
     MinimalSwapInfoPoolsBalance,
     TwoTokenPoolsBalance
@@ -43,6 +46,7 @@ abstract contract PoolRegistry is
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
+    using Address for address payable;
     using Counters for Counters.Counter;
 
     // Ensure Pool IDs are unique.
@@ -374,6 +378,57 @@ abstract contract PoolRegistry is
         }
     }
 
+    function _receiveFunds(
+        IERC20ETH tokenOrEth,
+        uint256 amount,
+        address sender,
+        bool fromInternalBalance
+    ) internal {
+        if (amount == 0) {
+            return;
+        }
+
+        if (_isETH(tokenOrEth)) {
+            // Receiving ETH is special for two reasons.
+            // First, ETH cannot be withdrawn from Internal Balance (since it also cannot be deposited), so that
+            // setting is ignored for ETH.
+            // Second, ETH is not pulled from the sender but rather forwarded by the caller. Because the caller
+            // might not now exactly how much ETH the swap will require, they may send extra amounts. Any excess
+            // will be returned *to the caller*, not the sender. If caller and sender are not the same (because
+            // caller is a relayer for sender), then it is up to the caller to manage this returned ETH.
+
+            // All IERC20ETH values in the `tokens` array are guaranteed to be unique, so we can safely use
+            // msg.value directly, as it will only be accessed once in the entire transaction.
+            require(msg.value >= amount);
+
+            // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
+            // the Vault at a 1:1 ratio.
+            WETH.deposit{ value: amount }();
+
+            // Any leftover ETH is sent back to the caller (not the sender!).
+            uint256 leftover = msg.value - amount;
+            if (leftover > 0) {
+                msg.sender.sendValue(leftover);
+            }
+        } else {
+            IERC20 token = _asIERC20(tokenOrEth);
+
+            if (fromInternalBalance) {
+                uint256 currentInternalBalance = _getInternalBalance(sender, token);
+                uint256 toWithdraw = Math.min(currentInternalBalance, amount);
+
+                // toWithdraw is by construction smaller or equal than currentInternalBalance and toReceive, so we don't
+                // need checked arithmetic.
+                _setInternalBalance(sender, token, currentInternalBalance - toWithdraw);
+                amount -= toWithdraw;
+            }
+
+            if (amount > 0) {
+                token.safeTransferFrom(sender, address(this), amount);
+            }
+        }
+    }
+
     /**
      * @dev Grants `amount` tokens of `token` to `recipient`.
      *
@@ -399,6 +454,44 @@ abstract contract PoolRegistry is
             uint256 withdrawFee = _calculateProtocolWithdrawFeeAmount(amount);
             token.safeTransfer(recipient, amount.sub(withdrawFee));
             return withdrawFee;
+        }
+    }
+
+    function _sendFunds(
+        IERC20ETH tokenOrEth,
+        uint256 amount,
+        address payable recipient,
+        bool toInternalBalance,
+        bool chargeWithdrawFee
+    ) internal returns (uint256) {
+        if (amount == 0) {
+            return 0;
+        }
+
+        uint256 withdrawFee = chargeWithdrawFee ? _calculateProtocolWithdrawFeeAmount(amount) : 0;
+        uint256 toSend = amount.sub(withdrawFee);
+
+        if (_isETH(tokenOrEth)) {
+            // Sending ETH is not as involved as receiving it: the only special behavior it has is ignoring the
+            // setting to deposit to Internal Balance.
+
+            // First, the Vault withdraws deposited ETH in the WETH contract, by burning the same amount of WETH
+            // from the Vault. This receipt will be handled by the Vault's `receive`.
+            WETH.withdraw(toSend);
+
+            // Then, the withdrawn ETH is sent to the recipient.
+            recipient.sendValue(toSend);
+
+            return withdrawFee;
+        } else {
+            IERC20 token = _asIERC20(tokenOrEth);
+            if (toInternalBalance) {
+                _increaseInternalBalance(recipient, token, amount);
+                return 0;
+            } else {
+                token.safeTransfer(recipient, toSend);
+                return withdrawFee;
+            }
         }
     }
 
