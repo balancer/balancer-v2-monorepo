@@ -38,7 +38,7 @@ describe('StablePool', function () {
 
   context('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
-      const vault = await deploy('MockVault', { args: [] });
+      const vault = await deploy('MockVault');
       const tokens = allTokens.subset(1).addresses;
       const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', tokens, 0, 0, 0, 0];
       await expect(deploy('StablePool', { args })).to.be.revertedWith('MIN_TOKENS');
@@ -57,7 +57,7 @@ describe('StablePool', function () {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 16
       const manyTokens = await TokenList.create(17);
-      const vault = await deploy('MockVault', { args: [] });
+      const vault = await deploy('MockVault');
       const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0, 0, 0];
       await expect(deploy('StablePool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
@@ -80,7 +80,7 @@ describe('StablePool', function () {
       sharedBeforeEach('deploy vault', async () => {
         // These tests use the real Vault because they test some Vault functionality, such as token registration
         const authorizer = await deploy('Authorizer', { args: [admin.address] });
-        vault = await deploy('Vault', { args: [authorizer.address] });
+        vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
       });
 
       describe('successful creation', () => {
@@ -152,7 +152,7 @@ describe('StablePool', function () {
       let vault: Contract, authorizer: Contract;
 
       sharedBeforeEach('deploy vault and authorizer', async () => {
-        vault = await deploy('MockVault', { args: [] });
+        vault = await deploy('MockVault');
         authorizer = await deploy('Authorizer', { args: [admin.address] });
       });
 
@@ -301,7 +301,7 @@ describe('StablePool', function () {
 
             await expect(
               vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData)
-            ).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+            ).to.be.revertedWith('EMERGENCY_PERIOD');
           });
         });
 
@@ -346,7 +346,7 @@ describe('StablePool', function () {
               const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut: 10 });
               await expect(
                 vault.callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
-              ).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+              ).to.be.revertedWith('EMERGENCY_PERIOD');
             });
           });
         });
@@ -522,7 +522,7 @@ describe('StablePool', function () {
 
             await expect(
               pool.onSwapGivenIn({ ...swapRequestData, amountIn: bn(1e18) }, poolInitialBalances, 0, 1)
-            ).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+            ).to.be.revertedWith('EMERGENCY_PERIOD');
           });
         });
 
@@ -556,7 +556,7 @@ describe('StablePool', function () {
 
             await expect(
               pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 0, 1)
-            ).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+            ).to.be.revertedWith('EMERGENCY_PERIOD');
           });
         });
       });

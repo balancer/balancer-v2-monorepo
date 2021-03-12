@@ -24,11 +24,11 @@ import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
+import "../lib/helpers/EmergencyPeriod.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
-// solhint-disable no-rely-on-time
 
 /**
  * @dev Reference implementation for the base layer of a Pool contract that manges a single Pool with an immutable set
@@ -37,14 +37,11 @@ import "../vault/interfaces/IBasePool.sol";
  * Because this contract doesn't implement the swap hooks, derived contracts should likely inherit from BaseGeneralPool
  * or BaseMinimalSwapInfoPool instead.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken {
+abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, EmergencyPeriod {
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKENS = 16;
-
-    uint256 private constant _MAX_EMERGENCY_PERIOD = 90 days;
-    uint256 private constant _MAX_EMERGENCY_PERIOD_CHECK_EXT = 30 days;
 
     // 1e16 = 1%, 1e18 = 100%
     uint256 private constant _MAX_SWAP_FEE = 10e16;
@@ -52,13 +49,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _MINIMUM_BPT = 10**3;
 
     uint256 internal _swapFee;
-    bool private _emergencyPeriodActive;
 
     IVault internal immutable _vault;
     bytes32 internal immutable _poolId;
     uint256 internal immutable _totalTokens;
-    uint256 internal immutable _emergencyPeriodEndDate;
-    uint256 internal immutable _emergencyPeriodCheckEndDate;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
@@ -95,11 +89,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor14;
     uint256 internal immutable _scalingFactor15;
 
-    modifier noEmergencyPeriod() {
-        _ensureInactiveEmergencyPeriod();
-        _;
-    }
-
     constructor(
         IAuthorizer authorizer,
         IVault vault,
@@ -110,7 +99,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 swapFee,
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
-    ) BasePoolAuthorization(authorizer) BalancerPoolToken(name, symbol) {
+    )
+        BasePoolAuthorization(authorizer)
+        BalancerPoolToken(name, symbol)
+        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
+    {
         require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
 
@@ -122,8 +115,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         InputHelpers.ensureArrayIsSorted(tokens);
 
         require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
-        require(emergencyPeriod <= _MAX_EMERGENCY_PERIOD, "MAX_EMERGENCY_PERIOD");
-        require(emergencyPeriodCheckExtension <= _MAX_EMERGENCY_PERIOD_CHECK_EXT, "MAX_EMERGENCY_PERIOD_CHECK_EXT");
 
         bytes32 poolId = vault.registerPool(specialization);
 
@@ -136,8 +127,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _poolId = poolId;
         _swapFee = swapFee;
         _totalTokens = tokens.length;
-        _emergencyPeriodEndDate = block.timestamp + emergencyPeriod;
-        _emergencyPeriodCheckEndDate = block.timestamp + emergencyPeriod + emergencyPeriodCheckExtension;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
 
@@ -190,18 +179,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _swapFee;
     }
 
-    function getEmergencyPeriod()
-        external
-        view
-        returns (
-            bool active,
-            uint256 endDate,
-            uint256 checkEndDate
-        )
-    {
-        return (!_isEmergencyPeriodInactive(), _emergencyPeriodEndDate, _emergencyPeriodCheckEndDate);
-    }
-
     function setSwapFee(uint256 swapFee) external {
         require(canChangeSwapFee(msg.sender), "SENDER_CANNOT_CHANGE_SWAP_FEE");
 
@@ -211,9 +188,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function setEmergencyPeriod(bool active) external {
         require(canChangeEmergencyPeriod(msg.sender), "CANNOT_CHANGE_EMERGENCY_PER");
-
-        require(block.timestamp < _emergencyPeriodEndDate, "EMERGENCY_PERIOD_FINISHED");
-        _emergencyPeriodActive = active;
+        _setEmergencyPeriod(active);
     }
 
     // Join / Exit Hooks
@@ -445,13 +420,5 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         for (uint256 i = 0; i < _totalTokens; ++i) {
             amount[i] = Math.divUp(amount[i], scalingFactors[i]);
         }
-    }
-
-    function _ensureInactiveEmergencyPeriod() internal view {
-        require(_isEmergencyPeriodInactive(), "POOL_EMERGENCY_PERIOD_ON");
-    }
-
-    function _isEmergencyPeriodInactive() internal view returns (bool) {
-        return (block.timestamp >= _emergencyPeriodCheckEndDate) || !_emergencyPeriodActive;
     }
 }
