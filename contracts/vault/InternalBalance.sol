@@ -56,7 +56,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         }
     }
 
-    function transferToExternalBalanceOfOtherUser(BalanceTransfer[] memory transfers) external override nonReentrant {
+    function transferToExternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
@@ -65,9 +65,8 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            // Do not charge withdrawal fee, since it's just passing through the vault
-            token.safeTransferFrom(sender, address(this), amount);
-            token.safeTransfer(recipient, amount);
+            // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
+            token.safeTransferFrom(sender, recipient, amount);
         }
     }
 

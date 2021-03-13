@@ -1053,7 +1053,7 @@
         "type": "tuple[]"
       }
     ],
-    "name": "transferToExternalBalanceOfOtherUser",
+    "name": "transferToExternalBalance",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
