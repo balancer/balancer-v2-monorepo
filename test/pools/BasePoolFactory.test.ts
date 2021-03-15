@@ -19,7 +19,7 @@ describe('BasePoolFactory', function () {
   sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address] });
-    factory = await deploy('MockPoolFactory', { args: [vault.address] });
+    factory = await deploy('MockPoolFactory', { args: [authorizer.address, vault.address] });
   });
 
   it('creates a pool', async () => {

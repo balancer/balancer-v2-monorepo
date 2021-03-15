@@ -24,9 +24,9 @@ import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
-import "./Authorization.sol";
+import "./VaultAuthorization.sol";
 
-abstract contract Fees is IVault, ReentrancyGuard, Authorization {
+abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
     using Math for uint256;
     using SafeERC20 for IERC20;
 

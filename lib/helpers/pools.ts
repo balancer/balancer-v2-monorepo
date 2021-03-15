@@ -1,7 +1,9 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { Contract, ContractReceipt, Signer } from 'ethers';
 import { ethers } from 'hardhat';
+import { Contract, ContractReceipt, Signer } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
 import { deploy } from './deploy';
+import { ZERO_ADDRESS } from './constants';
 
 export const GeneralPool = 0;
 export const MinimalSwapInfoPool = 1;
@@ -25,7 +27,8 @@ export async function deployPoolFromFactory(
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
-  const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
+  const authorizer = ZERO_ADDRESS;
+  const factory = await deploy(`${poolName}Factory`, { args: [authorizer, vault.address] });
   // We could reuse this factory if we saved it across pool deployments
 
   const name = 'Balancer Pool Token';

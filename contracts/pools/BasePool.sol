@@ -21,6 +21,7 @@ import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/InputHelpers.sol";
 
 import "./BalancerPoolToken.sol";
+import "./BasePoolAuthorization.sol";
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
 
@@ -35,7 +36,7 @@ import "../vault/interfaces/IBasePool.sol";
  * Because this contract doesn't implement the swap hooks, derived contracts should likely inherit from BaseGeneralPool
  * or BaseMinimalSwapInfoPool instead.
  */
-abstract contract BasePool is IBasePool, BalancerPoolToken {
+abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken {
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
@@ -87,13 +88,14 @@ abstract contract BasePool is IBasePool, BalancerPoolToken {
     uint256 internal immutable _scalingFactor15;
 
     constructor(
+        IAuthorizer authorizer,
         IVault vault,
         IVault.PoolSpecialization specialization,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFee
-    ) BalancerPoolToken(name, symbol) {
+    ) BasePoolAuthorization(authorizer) BalancerPoolToken(name, symbol) {
         require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
         require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
 

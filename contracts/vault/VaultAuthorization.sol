@@ -18,9 +18,9 @@ pragma experimental ABIEncoderV2;
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
-import "./interfaces/IAuthorizer.sol";
+import "../authorizer/IAuthorizer.sol";
 
-abstract contract Authorization is IVault, ReentrancyGuard {
+abstract contract VaultAuthorization is IVault, ReentrancyGuard {
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _allowedRelayers;
 

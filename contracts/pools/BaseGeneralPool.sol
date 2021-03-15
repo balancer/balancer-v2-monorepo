@@ -20,12 +20,13 @@ import "../vault/interfaces/IGeneralPool.sol";
 
 abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     constructor(
+        IAuthorizer authorizer,
         IVault vault,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFee
-    ) BasePool(vault, IVault.PoolSpecialization.GENERAL, name, symbol, tokens, swapFee) {
+    ) BasePool(authorizer, vault, IVault.PoolSpecialization.GENERAL, name, symbol, tokens, swapFee) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

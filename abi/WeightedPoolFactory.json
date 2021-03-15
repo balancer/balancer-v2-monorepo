@@ -2,6 +2,11 @@
   {
     "inputs": [
       {
+        "internalType": "contract IAuthorizer",
+        "name": "_authorizer",
+        "type": "address"
+      },
+      {
         "internalType": "contract IVault",
         "name": "_vault",
         "type": "address"
@@ -22,6 +27,19 @@
     ],
     "name": "PoolRegistered",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "authorizer",
+    "outputs": [
+      {
+        "internalType": "contract IAuthorizer",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [

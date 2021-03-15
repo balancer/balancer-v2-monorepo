@@ -19,13 +19,14 @@ import "../pools/BasePool.sol";
 
 contract MockBasePool is BasePool {
     constructor(
+        IAuthorizer authorizer,
         IVault vault,
         IVault.PoolSpecialization specialization,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFee
-    ) BasePool(vault, specialization, name, symbol, tokens, swapFee) {}
+    ) BasePool(authorizer, vault, specialization, name, symbol, tokens, swapFee) {}
 
     function _onInitializePool(
         bytes32 poolId,
