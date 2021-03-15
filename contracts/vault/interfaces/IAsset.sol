@@ -18,6 +18,6 @@ pragma solidity ^0.7.0;
  * @dev This is an empty interface used to represent either either token contracts that adhere to the IERC20 interface,
  * or a sentinel value that represents ETH.
  */
-interface IERC20ETH {
+interface IAsset {
 
 }

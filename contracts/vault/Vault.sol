@@ -52,7 +52,7 @@ import "./Swaps.sol";
  * storage access methods, to name a few.
  */
 contract Vault is FlashLoanProvider, Swaps {
-    constructor(IAuthorizer authorizer, IWETH weth) Authorization(authorizer) WETHManager(weth) {
+    constructor(IAuthorizer authorizer, IWETH weth) Authorization(authorizer) AssetTransfer(weth) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

@@ -22,8 +22,9 @@ import "../lib/math/Math.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./Fees.sol";
+import "./AssetTransfer.sol";
 
-abstract contract InternalBalance is ReentrancyGuard, Fees {
+abstract contract InternalBalance is ReentrancyGuard, Fees, AssetTransfer {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
@@ -94,7 +95,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         address account,
         IERC20 token,
         uint256 amount
-    ) internal {
+    ) internal override {
         uint256 currentInternalBalance = _getInternalBalance(account, token);
         uint256 newBalance = currentInternalBalance.add(amount);
         _setInternalBalance(account, token, newBalance);
@@ -124,7 +125,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         address account,
         IERC20 token,
         uint256 balance
-    ) internal {
+    ) internal override {
         _internalTokenBalance[account][token] = balance;
         emit InternalBalanceChanged(account, token, balance);
     }
@@ -132,7 +133,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
     /**
      * @dev Returns `account`'s Internal Balance for `token`.
      */
-    function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
+    function _getInternalBalance(address account, IERC20 token) internal view override returns (uint256) {
         return _internalTokenBalance[account][token];
     }
 }

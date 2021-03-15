@@ -30,9 +30,9 @@ import "./interfaces/IPoolSwapStructs.sol";
 import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./balances/BalanceAllocation.sol";
-import "./WETHManager.sol";
+import "./AssetTransfer.sol";
 
-abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
+abstract contract Swaps is ReentrancyGuard, AssetTransfer, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -117,7 +117,7 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
 
     function batchSwapGivenIn(
         SwapIn[] memory swaps,
-        IERC20ETH[] memory tokens,
+        IERC20[] memory tokens,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
@@ -127,7 +127,7 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
 
     function batchSwapGivenOut(
         SwapOut[] memory swaps,
-        IERC20ETH[] memory tokens,
+        IERC20[] memory tokens,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
@@ -140,7 +140,7 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
      */
     function _batchSwap(
         SwapRequest[] memory swaps,
-        IERC20ETH[] memory tokens,
+        IERC20[] memory tokens,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline,
@@ -171,7 +171,7 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
         // Process token deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20ETH token = tokens[i];
+            IERC20 token = tokens[i];
             int256 delta = tokenDeltas[i];
 
             require(delta <= limits[i], "SWAP_LIMIT");
@@ -179,11 +179,11 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
             // Ignore zeroed deltas
             if (delta > 0) {
                 uint256 toReceive = uint256(delta);
-                _receiveFunds(token, toReceive, funds.sender, funds.fromInternalBalance);
+                _receiveTokens(token, toReceive, funds.sender, funds.fromInternalBalance);
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
                 // Withdraw fees are not charged when sending funds as part of a swap
-                _sendFunds(token, toSend, funds.recipient, funds.toInternalBalance, false);
+                _sendTokens(token, toSend, funds.recipient, funds.toInternalBalance);
             }
         }
     }
@@ -246,7 +246,7 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
      */
     function _swapWithPools(
         SwapRequest[] memory swaps,
-        IERC20ETH[] memory tokens,
+        IERC20[] memory tokens,
         FundManagement memory funds,
         SwapKind kind
     ) private returns (int256[] memory tokenDeltas) {
@@ -264,8 +264,8 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
             _ensureRegisteredPool(swap.poolId);
             require(swap.tokenInIndex < tokens.length && swap.tokenOutIndex < tokens.length, "OUT_OF_BOUNDS");
 
-            IERC20 tokenIn = _translateToIERC20(tokens[swap.tokenInIndex]);
-            IERC20 tokenOut = _translateToIERC20(tokens[swap.tokenOutIndex]);
+            IERC20 tokenIn = tokens[swap.tokenInIndex];
+            IERC20 tokenOut = tokens[swap.tokenOutIndex];
             require(tokenIn != tokenOut, "CANNOT_SWAP_SAME_TOKEN");
 
             // Sentinel value for multihop logic
@@ -518,7 +518,7 @@ abstract contract Swaps is ReentrancyGuard, WETHManager, PoolRegistry {
     function queryBatchSwap(
         SwapKind kind,
         SwapRequest[] memory swaps,
-        IERC20ETH[] memory tokens,
+        IERC20[] memory tokens,
         FundManagement memory funds
     ) external override returns (int256[] memory) {
         // In order to accurately 'simulate' swaps, this function actually does perform the swaps, including calling the
