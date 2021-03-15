@@ -9,7 +9,7 @@ async function main() {
 
   const authorizer = await deploy('Authorizer', { args: [admin.address] });
 
-  const vault = await measureDeployment('Vault', [authorizer.address]);
+  const vault = await measureDeployment('Vault', [authorizer.address, 0, 0]);
 
   await measureDeployment('WeightedPoolFactory', [authorizer.address, vault.address]);
 

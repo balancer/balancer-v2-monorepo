@@ -19,8 +19,9 @@ import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
 import "../authorizer/IAuthorizer.sol";
+import "../lib/helpers/EmergencyPeriod.sol";
 
-abstract contract VaultAuthorization is IVault, ReentrancyGuard {
+abstract contract VaultAuthorization is IVault, ReentrancyGuard, EmergencyPeriod {
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _allowedRelayers;
 

@@ -52,7 +52,7 @@ import "./Swaps.sol";
  * utilization of `internal` functions (particularly inside modifiers), usage of named return arguments, and dedicated
  * storage access methods, to name a few.
  */
-contract Vault is VaultAuthorization, EmergencyPeriod, FlashLoanProvider, Swaps {
+contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
     constructor(
         IAuthorizer authorizer,
         uint256 emergencyPeriod,
