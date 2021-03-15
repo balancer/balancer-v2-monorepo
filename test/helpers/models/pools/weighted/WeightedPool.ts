@@ -35,6 +35,7 @@ import {
   calcInGivenOut,
   calculateMaxOneTokenSwapFee,
 } from '../../../math/weighted';
+import {roleId} from "../../../../../lib/helpers/roles";
 
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
@@ -423,8 +424,8 @@ export default class WeightedPool {
   }
 
   async activateEmergencyPeriod(): Promise<void> {
-    const roleId = await this.instance.CHANGE_POOL_EMERGENCY_PERIOD_ROLE();
-    await this.vault.grantRole(roleId);
+    const role = roleId(this.instance, 'setEmergencyPeriod');
+    await this.vault.grantRole(role);
     await this.instance.setEmergencyPeriod(true);
   }
 }

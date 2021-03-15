@@ -15,8 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../authorizer/IAuthorizer.sol";
-import "../lib/helpers/EmergencyPeriod.sol";
+import "./interfaces/IAuthorizer.sol";
 
 import "./VaultAuthorization.sol";
 import "./FlashLoanProvider.sol";

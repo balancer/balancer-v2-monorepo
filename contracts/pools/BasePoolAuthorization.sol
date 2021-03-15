@@ -14,38 +14,20 @@
 
 pragma solidity ^0.7.0;
 
-import "../authorizer/IAuthorizer.sol";
+import "../lib/helpers/Authentication.sol";
+import "../vault/interfaces/IAuthorizer.sol";
 
 /**
  * @dev Base authorization layer implementation for pools. It shares the same concept as the one defined for the Vault.
  * It's built on top of OpenZeppelin's Access Control, which allows to define specific roles to control the access of
  * external accounts to the different functionalities of the contract.
  */
-abstract contract BasePoolAuthorization {
-    /**
-     * @dev Reverts unless the caller is allowed by the Authorizer to call this function. Should only be applied to
-     * external functions.
-     */
-    modifier authenticate() {
-        _authenticate();
-        _;
-    }
-
+abstract contract BasePoolAuthorization is Authentication {
     function getAuthorizer() external view returns (IAuthorizer) {
         return _getAuthorizer();
     }
 
-    /**
-     * @dev Reverts unless the caller is allowed by the Authorizer to call the entry point function.
-     */
-    function _authenticate() internal view {
-        // Each external function is dynamically assigned a role ID in the Authorizer as the hash of the Pool's address
-        // and the function selector.
-        bytes32 roleId = keccak256(abi.encodePacked(address(this), msg.sig));
-        require(_getAuthorizer().hasRole(roleId, msg.sender), "SENDER_NOT_ALLOWED");
-    }
-
-    function _hasRole(bytes32 roleId, address account) internal view returns (bool) {
+    function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
         return _getAuthorizer().hasRole(roleId, account);
     }
 

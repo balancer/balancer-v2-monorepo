@@ -19,6 +19,7 @@ import { GeneralPool } from '../../../lib/helpers/pools';
 import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
+import {roleId} from "../../../lib/helpers/roles";
 
 describe('StablePool', function () {
   let allTokens: TokenList;
@@ -182,8 +183,8 @@ describe('StablePool', function () {
       }
 
       const activateEmergencyPeriod = async (pool: Contract): Promise<void> => {
-        const roleId = await pool.CHANGE_POOL_EMERGENCY_PERIOD_ROLE();
-        await authorizer.connect(admin).grantRole(roleId, admin.address);
+        const role = roleId(pool, 'setEmergencyPeriod');
+        await authorizer.connect(admin).grantRole(role, admin.address);
         await pool.connect(admin).setEmergencyPeriod(true);
       };
 
