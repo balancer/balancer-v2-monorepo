@@ -21,7 +21,7 @@ export default {
   },
 
   async _deployReal(deployment: VaultDeployment, authorizer: Contract): Promise<Contract> {
-    const { from, emergencyPeriod, emergencyPeriodCheckExtension, } = deployment;
+    const { from, emergencyPeriod, emergencyPeriodCheckExtension } = deployment;
     const args = [authorizer.address, emergencyPeriod, emergencyPeriodCheckExtension];
     return deploy('Vault', { args, from });
   },

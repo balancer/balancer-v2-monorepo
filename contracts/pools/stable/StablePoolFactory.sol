@@ -39,16 +39,7 @@ contract StablePoolFactory is BasePoolFactory {
         uint256 emergencyPeriodCheckExtension
     ) external returns (address) {
         address pool = address(
-            new StablePool(
-                vault,
-                name,
-                symbol,
-                tokens,
-                amp,
-                swapFee,
-                emergencyPeriod,
-                emergencyPeriodCheckExtension
-            )
+            new StablePool(vault, name, symbol, tokens, amp, swapFee, emergencyPeriod, emergencyPeriodCheckExtension)
         );
         _register(pool);
         return pool;

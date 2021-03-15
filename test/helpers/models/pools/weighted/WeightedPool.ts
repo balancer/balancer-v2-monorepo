@@ -1,5 +1,6 @@
 import { BigNumber, Contract } from 'ethers';
 
+import { roleId } from '../../../../../lib/helpers/roles';
 import { BigNumberish, bn, fp } from '../../../../../lib/helpers/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../../lib/helpers/constants';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../../../lib/helpers/weightedPoolEncoding';
@@ -35,7 +36,6 @@ import {
   calcInGivenOut,
   calculateMaxOneTokenSwapFee,
 } from '../../../math/weighted';
-import {roleId} from "../../../../../lib/helpers/roles";
 
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);

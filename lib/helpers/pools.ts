@@ -3,7 +3,6 @@ import { Contract, ContractReceipt, Signer } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from './deploy';
-import { ZERO_ADDRESS } from './constants';
 
 export const GeneralPool = 0;
 export const MinimalSwapInfoPool = 1;

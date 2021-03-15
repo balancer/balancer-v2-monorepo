@@ -19,7 +19,7 @@ import { GeneralPool } from '../../../lib/helpers/pools';
 import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
-import {roleId} from "../../../lib/helpers/roles";
+import { roleId } from '../../../lib/helpers/roles';
 
 describe('StablePool', function () {
   let allTokens: TokenList;

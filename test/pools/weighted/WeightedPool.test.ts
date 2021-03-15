@@ -12,15 +12,14 @@ import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/t
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
-  let admin: SignerWithAddress, lp: SignerWithAddress;
-  let trader: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress;
+  let trader: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
 
   const POOL_SWAP_FEE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
   before('setup signers', async () => {
-    [, admin, lp, trader, recipient, other] = await ethers.getSigners();
+    [, lp, trader, recipient, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {

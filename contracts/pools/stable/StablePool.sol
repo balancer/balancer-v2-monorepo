@@ -47,17 +47,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 swapFee,
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
-    )
-        BaseGeneralPool(
-            vault,
-            name,
-            symbol,
-            tokens,
-            swapFee,
-            emergencyPeriod,
-            emergencyPeriodCheckExtension
-        )
-    {
+    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {
         require(amp >= _MIN_AMP, "MIN_AMP");
         require(amp <= _MAX_AMP, "MAX_AMP");
         _amp = amp;
