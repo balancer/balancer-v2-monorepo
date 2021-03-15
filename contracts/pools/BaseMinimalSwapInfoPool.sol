@@ -20,7 +20,6 @@ import "../vault/interfaces/IMinimalSwapInfoPool.sol";
 
 abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
     constructor(
-        IAuthorizer authorizer,
         IVault vault,
         string memory name,
         string memory symbol,
@@ -30,7 +29,6 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 emergencyPeriodCheckExtension
     )
         BasePool(
-            authorizer,
             vault,
             tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,

@@ -66,7 +66,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
-        IAuthorizer authorizer,
         IVault vault,
         string memory name,
         string memory symbol,
@@ -77,7 +76,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 emergencyPeriodCheckExtension
     )
         BaseMinimalSwapInfoPool(
-            authorizer,
             vault,
             name,
             symbol,

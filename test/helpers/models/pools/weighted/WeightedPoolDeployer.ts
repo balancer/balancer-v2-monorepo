@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 import * as expectEvent from '../../../expectEvent';
 import { deploy } from '../../../../../lib/helpers/deploy';
 
+import Vault from '../../vault/Vault';
 import WeightedPool from './WeightedPool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
@@ -15,25 +16,18 @@ const SYMBOL = 'BPT';
 export default {
   async deploy(params: RawWeightedPoolDeployment): Promise<WeightedPool> {
     const deployment = TypesConverter.toWeightedPoolDeployment(params);
-    const mocked = !params.fromFactory;
-    const { emergencyPeriod, emergencyPeriodCheckExtension } = deployment;
-
-    const vault = await VaultDeployer.deploy({ mocked, emergencyPeriod, emergencyPeriodCheckExtension });
-    const admin = deployment.from || (await ethers.getSigners())[0];
-    const authorizer = await deploy('Authorizer', { args: [admin.address] });
-    const deployFn = params.fromFactory ? this._deployFromFactory : this._deployStandalone;
-    const pool = await deployFn(deployment, vault, authorizer);
+    const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
+    const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
     const { tokens, weights, swapFee } = deployment;
     const poolId = await pool.getPoolId();
-    return new WeightedPool(pool, poolId, vault, authorizer, admin, tokens, weights, swapFee);
+    return new WeightedPool(pool, poolId, vault, tokens, weights, swapFee);
   },
 
-  async _deployStandalone(params: WeightedPoolDeployment, vault: Contract, authorizer: Contract): Promise<Contract> {
-    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+  async _deployStandalone(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
+    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
     return deploy('WeightedPool', {
       args: [
-        authorizer.address,
         vault.address,
         NAME,
         SYMBOL,
@@ -43,12 +37,13 @@ export default {
         emergencyPeriod,
         emergencyPeriodCheckExtension,
       ],
+      from,
     });
   },
 
-  async _deployFromFactory(params: WeightedPoolDeployment, vault: Contract, authorizer: Contract): Promise<Contract> {
-    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
-    const factory = await deploy('WeightedPoolFactory', { args: [authorizer.address, vault.address] });
+  async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
+    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
+    const factory = await deploy('WeightedPoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
       SYMBOL,

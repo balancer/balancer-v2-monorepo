@@ -39,7 +39,6 @@ contract StablePool is BaseGeneralPool, StableMath {
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT }
 
     constructor(
-        IAuthorizer authorizer,
         IVault vault,
         string memory name,
         string memory symbol,
@@ -50,7 +49,6 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 emergencyPeriodCheckExtension
     )
         BaseGeneralPool(
-            authorizer,
             vault,
             name,
             symbol,

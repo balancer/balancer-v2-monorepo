@@ -1,11 +1,11 @@
 import { BigNumber, Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { BigNumberish, bn, fp } from '../../../../../lib/helpers/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../../lib/helpers/constants';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../../../lib/helpers/weightedPoolEncoding';
 
 import * as expectEvent from '../../../expectEvent';
+import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
@@ -47,9 +47,7 @@ export default class WeightedPool {
   tokens: TokenList;
   weights: BigNumberish[];
   swapFee: BigNumberish;
-  vault: Contract;
-  authorizer: Contract;
-  admin: SignerWithAddress;
+  vault: Vault;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -58,9 +56,7 @@ export default class WeightedPool {
   constructor(
     instance: Contract,
     poolId: string,
-    vault: Contract,
-    authorizer: Contract,
-    admin: SignerWithAddress,
+    vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
     swapFee: BigNumberish
@@ -68,8 +64,6 @@ export default class WeightedPool {
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
-    this.authorizer = authorizer;
-    this.admin = admin;
     this.tokens = tokens;
     this.weights = weights;
     this.swapFee = swapFee;
@@ -112,8 +106,7 @@ export default class WeightedPool {
   }
 
   async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
-    const [address, specialization] = await this.vault.getPool(this.poolId);
-    return { address, specialization };
+    return this.vault.getPool(this.poolId);
   }
 
   async getPoolId(): Promise<string> {
@@ -164,7 +157,7 @@ export default class WeightedPool {
   async getTokenInfo(
     token: Token
   ): Promise<{ cash: BigNumber; managed: BigNumber; blockNumber: BigNumber; assetManager: string }> {
-    return this.vault.getPoolTokenInfo(this.poolId, token.address);
+    return this.vault.getPoolTokenInfo(this.poolId, token);
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
@@ -390,19 +383,19 @@ export default class WeightedPool {
   }
 
   async join(params: JoinExitWeightedPool): Promise<JoinResult> {
-    const vault = params.from ? this.vault.connect(params.from) : this.vault;
-    const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+    const currentBalances = params.currentBalances || (await this.getBalances());
 
-    const tx = vault.callJoinPool(
-      this.address,
-      this.poolId,
-      to,
+    const tx = this.vault.joinPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
       currentBalances,
-      params.latestBlockNumberUsed ?? 0,
-      params.protocolFeePercentage ?? 0,
-      params.data ?? '0x'
-    );
+      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: params.data ?? '0x',
+      from: params.from,
+    });
 
     const receipt = await (await tx).wait();
     const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
@@ -410,19 +403,19 @@ export default class WeightedPool {
   }
 
   async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
-    const vault = params.from ? this.vault.connect(params.from) : this.vault;
     const currentBalances = params.currentBalances || (await this.getBalances());
-    const recipient = params.recipient ? TypesConverter.toAddress(params.recipient) : ZERO_ADDRESS;
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
-    const tx = vault.callExitPool(
-      this.address,
-      this.poolId,
-      recipient,
+    const tx = await this.vault.exitPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
       currentBalances,
-      params.latestBlockNumberUsed ?? 0,
-      params.protocolFeePercentage ?? 0,
-      params.data ?? '0x'
-    );
+      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: params.data ?? '0x',
+      from: params.from,
+    });
 
     const receipt = await (await tx).wait();
     const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
@@ -431,7 +424,7 @@ export default class WeightedPool {
 
   async activateEmergencyPeriod(): Promise<void> {
     const roleId = await this.instance.CHANGE_POOL_EMERGENCY_PERIOD_ROLE();
-    await this.authorizer.connect(this.admin).grantRole(roleId, this.admin.address);
-    await this.instance.connect(this.admin).setEmergencyPeriod(true);
+    await this.vault.grantRole(roleId);
+    await this.instance.setEmergencyPeriod(true);
   }
 }

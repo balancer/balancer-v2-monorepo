@@ -1,10 +1,8 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '../../../lib/helpers/deploy';
-import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { BigNumberish, bn, fp, pct } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 
@@ -13,7 +11,7 @@ import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/types';
 
 describe('WeightedPool', function () {
-  let authorizer: Contract, allTokens: TokenList;
+  let allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress;
   let trader: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress;
 
@@ -23,7 +21,6 @@ describe('WeightedPool', function () {
 
   before('setup signers', async () => {
     [, admin, lp, trader, recipient, other] = await ethers.getSigners();
-    authorizer = await deploy('Authorizer', { args: [admin.address] });
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -36,12 +33,10 @@ describe('WeightedPool', function () {
   // Error: Transaction reverted and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat
   context.skip('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
-      const tokens = allTokens.subset(1).addresses;
-      const weights = WEIGHTS.slice(0, 1);
-      const vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
+      const tokens = await TokenList.create(1);
+      const weights = [fp(1)];
 
-      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', tokens, weights, POOL_SWAP_FEE, 0];
-      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MIN_TOKENS');
+      await expect(WeightedPool.create({ tokens, weights })).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
@@ -61,10 +56,8 @@ describe('WeightedPool', function () {
       // The maximum number of tokens is 16
       const tokens = await TokenList.create(17);
       const weights = new Array(17).fill(fp(1));
-      const vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
 
-      const args = [ZERO_ADDRESS, vault.address, 'Balancer Token', 'BPT', tokens.addresses, weights, POOL_SWAP_FEE, 0];
-      await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MAX_TOKENS');
+      await expect(WeightedPool.create({ tokens, weights })).to.be.revertedWith('MAX_TOKENS');
     });
   });
 

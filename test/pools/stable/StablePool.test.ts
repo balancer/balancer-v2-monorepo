@@ -38,9 +38,9 @@ describe('StablePool', function () {
 
   context('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
-      const vault = await deploy('MockVault');
+      const vault = await deploy('MockVault', { args: [ZERO_ADDRESS] });
       const tokens = allTokens.subset(1).addresses;
-      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', tokens, 0, 0, 0, 0];
+      const args = [vault.address, 'Balancer Pool Token', 'BPT', tokens, 0, 0, 0, 0];
       await expect(deploy('StablePool', { args })).to.be.revertedWith('MIN_TOKENS');
     });
   });
@@ -57,8 +57,8 @@ describe('StablePool', function () {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 16
       const manyTokens = await TokenList.create(17);
-      const vault = await deploy('MockVault');
-      const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0, 0, 0];
+      const vault = await deploy('MockVault', { args: [ZERO_ADDRESS] });
+      const args = [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0, 0, 0];
       await expect(deploy('StablePool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
   });
@@ -87,7 +87,7 @@ describe('StablePool', function () {
         let pool: Contract;
 
         sharedBeforeEach('deploy pool from factory', async () => {
-          const factory = await deploy('StablePoolFactory', { args: [ZERO_ADDRESS, vault.address] });
+          const factory = await deploy('StablePoolFactory', { args: [vault.address] });
           const receipt = await (
             await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, amplification, POOL_SWAP_FEE, 0, 0)
           ).wait();
@@ -152,8 +152,8 @@ describe('StablePool', function () {
       let vault: Contract, authorizer: Contract;
 
       sharedBeforeEach('deploy vault and authorizer', async () => {
-        vault = await deploy('MockVault');
         authorizer = await deploy('Authorizer', { args: [admin.address] });
+        vault = await deploy('MockVault', { args: [authorizer.address] });
       });
 
       async function deployPool(
@@ -169,7 +169,6 @@ describe('StablePool', function () {
 
         return deploy('StablePool', {
           args: [
-            authorizer.address,
             vault.address,
             'Balancer Pool Token',
             'BPT',

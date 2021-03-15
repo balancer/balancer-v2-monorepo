@@ -26,10 +26,19 @@ contract MockVault {
         mapping(IERC20 => uint256) balances;
     }
 
+    IAuthorizer private _authorizer;
     mapping (bytes32 => Pool) private pools;
 
     event PoolJoined(uint256[] amountsIn, uint256[] dueProtocolFeeAmounts);
     event PoolExited(uint256[] amountsOut, uint256[] dueProtocolFeeAmounts);
+
+    constructor(IAuthorizer authorizer) {
+        _authorizer = authorizer;
+    }
+
+    function getAuthorizer() external view returns (IAuthorizer) {
+        return _authorizer;
+    }
 
     function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory tokens, uint256[] memory balances) {
         Pool storage pool = pools[poolId];

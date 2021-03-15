@@ -20,7 +20,6 @@ import "../vault/interfaces/IGeneralPool.sol";
 
 abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     constructor(
-        IAuthorizer authorizer,
         IVault vault,
         string memory name,
         string memory symbol,
@@ -30,7 +29,6 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 emergencyPeriodCheckExtension
     )
         BasePool(
-            authorizer,
             vault,
             IVault.PoolSpecialization.GENERAL,
             name,

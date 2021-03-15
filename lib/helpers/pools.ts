@@ -27,8 +27,7 @@ export async function deployPoolFromFactory(
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
-  const authorizer = ZERO_ADDRESS;
-  const factory = await deploy(`${poolName}Factory`, { args: [authorizer, vault.address] });
+  const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
   // We could reuse this factory if we saved it across pool deployments
 
   const name = 'Balancer Pool Token';

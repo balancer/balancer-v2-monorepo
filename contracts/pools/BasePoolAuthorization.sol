@@ -21,40 +21,33 @@ import "../authorizer/IAuthorizer.sol";
  * It's built on top of OpenZeppelin's Access Control, which allows to define specific roles to control the access of
  * external accounts to the different functionalities of the contract.
  */
-contract BasePoolAuthorization {
-    // solhint-disable var-name-mixedcase
-    bytes32 public immutable CHANGE_POOL_SWAP_FEE_ROLE = keccak256("CHANGE_POOL_SWAP_FEE_ROLE");
-    bytes32 public immutable CHANGE_POOL_AUTHORIZER_ROLE = keccak256("CHANGE_POOL_AUTHORIZER_ROLE");
-    bytes32 public immutable CHANGE_POOL_EMERGENCY_PERIOD_ROLE = keccak256("CHANGE_POOL_EMERGENCY_PERIOD_ROLE");
-
-    IAuthorizer private _authorizer;
-
-    constructor(IAuthorizer authorizer) {
-        _authorizer = authorizer;
-    }
-
-    function changeAuthorizer(IAuthorizer newAuthorizer) external {
-        require(canChangeAuthorizer(msg.sender), "SENDER_CANNOT_CHANGE_AUTHORIZER");
-        _authorizer = newAuthorizer;
+abstract contract BasePoolAuthorization {
+    /**
+     * @dev Reverts unless the caller is allowed by the Authorizer to call this function. Should only be applied to
+     * external functions.
+     */
+    modifier authenticate() {
+        _authenticate();
+        _;
     }
 
     function getAuthorizer() external view returns (IAuthorizer) {
-        return _authorizer;
+        return _getAuthorizer();
     }
 
-    function canChangeAuthorizer(address account) public view returns (bool) {
-        return _hasRole(CHANGE_POOL_AUTHORIZER_ROLE, account);
-    }
-
-    function canChangeSwapFee(address account) public view returns (bool) {
-        return _hasRole(CHANGE_POOL_SWAP_FEE_ROLE, account);
-    }
-
-    function canChangeEmergencyPeriod(address account) public view returns (bool) {
-        return _hasRole(CHANGE_POOL_EMERGENCY_PERIOD_ROLE, account);
+    /**
+     * @dev Reverts unless the caller is allowed by the Authorizer to call the entry point function.
+     */
+    function _authenticate() internal view {
+        // Each external function is dynamically assigned a role ID in the Authorizer as the hash of the Pool's address
+        // and the function selector.
+        bytes32 roleId = keccak256(abi.encodePacked(address(this), msg.sig));
+        require(_getAuthorizer().hasRole(roleId, msg.sender), "SENDER_NOT_ALLOWED");
     }
 
     function _hasRole(bytes32 roleId, address account) internal view returns (bool) {
-        return _authorizer.hasRole(roleId, account);
+        return _getAuthorizer().hasRole(roleId, account);
     }
+
+    function _getAuthorizer() internal view virtual returns (IAuthorizer);
 }
