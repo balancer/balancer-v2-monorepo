@@ -47,9 +47,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     uint256 private constant _MINIMUM_BPT = 10**3;
 
+    uint256 internal _swapFee;
+
     IVault internal immutable _vault;
     bytes32 internal immutable _poolId;
-    uint256 internal immutable _swapFee;
     uint256 internal immutable _totalTokens;
 
     IERC20 internal immutable _token0;
@@ -157,7 +158,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _scalingFactor15 = tokens.length > 15 ? _computeScalingFactor(tokens[15]) : 0;
     }
 
-    // Getters
+    // Getters / Setters
 
     function getVault() external view override returns (IVault) {
         return _vault;
@@ -169,6 +170,13 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function getSwapFee() external view returns (uint256) {
         return _swapFee;
+    }
+
+    function setSwapFee(uint256 swapFee) external {
+        require(canChangeSwapFee(msg.sender), "SENDER_CANNOT_CHANGE_SWAP_FEE");
+
+        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
+        _swapFee = swapFee;
     }
 
     // Join / Exit Hooks
