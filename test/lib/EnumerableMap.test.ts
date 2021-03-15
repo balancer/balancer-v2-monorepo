@@ -17,7 +17,7 @@ describe('EnumerableMap', () => {
     const store: { map?: Contract } = {};
 
     sharedBeforeEach(async () => {
-      store.map = await deploy('EnumerableUintToAddressMapMock', { args: [] });
+      store.map = await deploy('EnumerableUintToAddressMapMock');
     });
 
     shouldBehaveLikeMap(store as { map: Contract }, keys, values);
@@ -39,7 +39,7 @@ describe('EnumerableMap', () => {
     const store: { map?: Contract } = {};
 
     sharedBeforeEach(async () => {
-      store.map = await deploy('EnumerableIERC20ToBytes32MapMock', { args: [] });
+      store.map = await deploy('EnumerableIERC20ToBytes32MapMock');
     });
 
     shouldBehaveLikeMap(store as { map: Contract }, keys, values);

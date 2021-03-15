@@ -24,9 +24,9 @@ import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
-import "./Authorization.sol";
+import "./VaultAuthorization.sol";
 
-abstract contract Fees is IVault, ReentrancyGuard, Authorization {
+abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
@@ -112,7 +112,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
-    ) external override nonReentrant authenticate {
+    ) external override nonReentrant noEmergencyPeriod authenticate {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {

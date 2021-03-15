@@ -6,12 +6,12 @@ describe('ReentrancyGuard', () => {
   let reentrancyMock: Contract;
 
   sharedBeforeEach(async function () {
-    reentrancyMock = await deploy('ReentrancyMock', { args: [] });
+    reentrancyMock = await deploy('ReentrancyMock');
     expect(await reentrancyMock.counter()).to.equal('0');
   });
 
   it('does not allow remote callback', async function () {
-    const attacker = await deploy('ReentrancyAttack', { args: [] });
+    const attacker = await deploy('ReentrancyAttack');
     await expect(reentrancyMock.countAndCall(attacker.address)).to.be.revertedWith('REENTRANCY_ATTACK');
   });
 

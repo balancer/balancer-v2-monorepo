@@ -30,6 +30,16 @@
         "internalType": "uint256",
         "name": "swapFee",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "emergencyPeriod",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "emergencyPeriodCheckExtension",
+        "type": "uint256"
       }
     ],
     "stateMutability": "nonpayable",
@@ -58,6 +68,19 @@
       }
     ],
     "name": "Approval",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
+    ],
+    "name": "EmergencyPeriodChanged",
     "type": "event"
   },
   {
@@ -209,6 +232,42 @@
       {
         "internalType": "uint256",
         "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAuthorizer",
+    "outputs": [
+      {
+        "internalType": "contract IAuthorizer",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getEmergencyPeriod",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "endDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "checkEndDate",
         "type": "uint256"
       }
     ],
@@ -609,6 +668,32 @@
       }
     ],
     "name": "permit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
+    ],
+    "name": "setEmergencyPeriod",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "swapFee",
+        "type": "uint256"
+      }
+    ],
+    "name": "setSwapFee",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

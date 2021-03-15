@@ -27,7 +27,7 @@ describe('Vault - join pool', () => {
 
   sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
 
     const role = roleId(vault, 'setProtocolFees');
     await authorizer.connect(admin).grantRole(role, admin.address);
