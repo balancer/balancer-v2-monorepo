@@ -78,6 +78,48 @@ describe('Vault - internal balance', () => {
       });
     };
 
+    const itHandlesExternalTransfersProperly = (amount: BigNumber) => {
+      it('transfers the tokens from the sender to the recipient, using the vault allowance of the sender', async () => {
+        await expectBalanceChange(
+          () =>
+            vault.transferToExternalBalance([
+              { token: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+            ]),
+          tokens,
+          [
+            { account: sender.address, changes: { DAI: -amount } },
+            { account: vault.address, changes: { DAI: 0 } },
+            { account: recipient.address, changes: { DAI: amount } },
+          ]
+        );
+      });
+
+      it('does not change the internal balances of the accounts', async () => {
+        const previousSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
+        const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
+
+        await vault.transferToExternalBalance([
+          { token: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+        ]);
+
+        const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
+        expect(currentSenderBalance[0]).to.be.equal(previousSenderBalance[0]);
+
+        const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
+        expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0]);
+      });
+
+      it('does not emit an event', async () => {
+        const receipt = await (
+          await vault.transferToExternalBalance([
+            { token: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+          ])
+        ).wait();
+
+        expectEvent.notEmitted(receipt, 'InternalBalanceChanged');
+      });
+    };
+
     context('when the sender is the user', () => {
       beforeEach('set sender', () => {
         vault = vault.connect(sender);
@@ -162,13 +204,13 @@ describe('Vault - internal balance', () => {
         await tokens.DAI.approve(vault, initialBalance, { from: sender });
       });
 
-      context('when the relayer is whitelisted by the authorizer', () => {
+      context('when the relayer is whitelisted by the authorizer for deposit', () => {
         sharedBeforeEach('grant role to relayer', async () => {
           const role = roleId(vault, 'depositToInternalBalance');
           await authorizer.connect(admin).grantRole(role, relayer.address);
         });
 
-        context('when the relayer is allowed by the user', () => {
+        context('when the relayer is allowed to deposit by the user', () => {
           sharedBeforeEach('allow relayer', async () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
@@ -180,6 +222,36 @@ describe('Vault - internal balance', () => {
           it('reverts', async () => {
             await expect(
               vault.depositToInternalBalance([
+                {
+                  token: tokens.DAI.address,
+                  amount: initialBalance,
+                  sender: sender.address,
+                  recipient: recipient.address,
+                },
+              ])
+            ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+          });
+        });
+      });
+
+      context('when the relayer is whitelisted by the authorizer for transfer', () => {
+        sharedBeforeEach('grant role to relayer', async () => {
+          const role = roleId(vault, 'transferToExternalBalance');
+          await authorizer.connect(admin).grantRole(role, relayer.address);
+        });
+
+        context('when the relayer is allowed to transfer by the user', () => {
+          sharedBeforeEach('allow relayer', async () => {
+            await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
+          });
+
+          itHandlesExternalTransfersProperly(initialBalance);
+        });
+
+        context('when the relayer is not allowed by the user', () => {
+          it('reverts', async () => {
+            await expect(
+              vault.transferToExternalBalance([
                 {
                   token: tokens.DAI.address,
                   amount: initialBalance,

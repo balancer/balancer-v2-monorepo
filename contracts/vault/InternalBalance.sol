@@ -56,6 +56,20 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         }
     }
 
+    function transferToExternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
+        for (uint256 i = 0; i < transfers.length; i++) {
+            address sender = transfers[i].sender;
+            _authenticateCallerFor(sender);
+
+            IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
+            address recipient = transfers[i].recipient;
+
+            // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
+            token.safeTransferFrom(sender, recipient, amount);
+        }
+    }
+
     function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
