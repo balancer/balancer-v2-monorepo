@@ -112,7 +112,7 @@ abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
-    ) external override nonReentrant authenticate {
+    ) external override nonReentrant noEmergencyPeriod authenticate {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
