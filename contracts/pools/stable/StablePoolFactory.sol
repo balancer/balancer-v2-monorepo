@@ -22,7 +22,7 @@ import "../BasePoolFactory.sol";
 import "./StablePool.sol";
 
 contract StablePoolFactory is BasePoolFactory {
-    constructor(IAuthorizer _authorizer, IVault _vault) BasePoolFactory(_authorizer, _vault) {
+    constructor(IVault _vault) BasePoolFactory(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -39,17 +39,7 @@ contract StablePoolFactory is BasePoolFactory {
         uint256 emergencyPeriodCheckExtension
     ) external returns (address) {
         address pool = address(
-            new StablePool(
-                authorizer,
-                vault,
-                name,
-                symbol,
-                tokens,
-                amp,
-                swapFee,
-                emergencyPeriod,
-                emergencyPeriodCheckExtension
-            )
+            new StablePool(vault, name, symbol, tokens, amp, swapFee, emergencyPeriod, emergencyPeriodCheckExtension)
         );
         _register(pool);
         return pool;

@@ -90,7 +90,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor15;
 
     constructor(
-        IAuthorizer authorizer,
         IVault vault,
         IVault.PoolSpecialization specialization,
         string memory name,
@@ -100,7 +99,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
     )
-        BasePoolAuthorization(authorizer)
+        BasePoolAuthorization()
         BalancerPoolToken(name, symbol)
         EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
     {
@@ -179,15 +178,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _swapFee;
     }
 
-    function setSwapFee(uint256 swapFee) external {
-        require(canChangeSwapFee(msg.sender), "SENDER_CANNOT_CHANGE_SWAP_FEE");
-
+    function setSwapFee(uint256 swapFee) external authenticate {
         require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
         _swapFee = swapFee;
     }
 
-    function setEmergencyPeriod(bool active) external {
-        require(canChangeEmergencyPeriod(msg.sender), "CANNOT_CHANGE_EMERGENCY_PER");
+    function setEmergencyPeriod(bool active) external authenticate {
         _setEmergencyPeriod(active);
     }
 
@@ -420,5 +416,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         for (uint256 i = 0; i < _totalTokens; ++i) {
             amount[i] = Math.divUp(amount[i], scalingFactors[i]);
         }
+    }
+
+    function _getAuthorizer() internal view override returns (IAuthorizer) {
+        return _vault.getAuthorizer();
     }
 }

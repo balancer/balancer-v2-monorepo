@@ -15,15 +15,25 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "../lib/helpers/Authentication.sol";
+import "../lib/helpers/EmergencyPeriod.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
-import "../authorizer/IAuthorizer.sol";
-import "../lib/helpers/EmergencyPeriod.sol";
+import "./interfaces/IAuthorizer.sol";
 
-abstract contract VaultAuthorization is IVault, ReentrancyGuard, EmergencyPeriod {
+abstract contract VaultAuthorization is IVault, Authentication, EmergencyPeriod, ReentrancyGuard {
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _allowedRelayers;
+
+    /**
+     * @dev Reverts unless `user` has allowed the caller as a relayer, and the caller is allowed by the Authorizer to
+     * call this function. Should only be applied to external functions.
+     */
+    modifier authenticateFor(address user) {
+        _authenticateCallerFor(user);
+        _;
+    }
 
     constructor(IAuthorizer authorizer) {
         _authorizer = authorizer;
@@ -46,34 +56,6 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, EmergencyPeriod
     }
 
     /**
-     * @dev Reverts unless the caller is allowed by the Authorizer to call this function. Should only be applied to
-     * external functions.
-     */
-    modifier authenticate() {
-        _authenticateCaller();
-        _;
-    }
-
-    /**
-     * @dev Reverts unless `user` has allowed the caller as a relayer, and the caller is allowed by the Authorizer to
-     * call this function. Should only be applied to external functions.
-     */
-    modifier authenticateFor(address user) {
-        _authenticateCallerFor(user);
-        _;
-    }
-
-    /**
-     * @dev Reverts unless the caller is allowed by the Authorizer to call the entry point function.
-     */
-    function _authenticateCaller() internal view {
-        // Each external function is dynamically assigned a role ID in the Authorizer as the hash of the Vault's address
-        // and the function selector.
-        bytes32 roleId = keccak256(abi.encodePacked(address(this), msg.sig));
-        require(_authorizer.hasRole(roleId, msg.sender), "SENDER_NOT_ALLOWED");
-    }
-
-    /**
      * @dev Reverts unless  `user` has allowed the caller as a relayer, and the caller is allowed by the Authorizer to
      * call the entry point function.
      */
@@ -86,5 +68,9 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, EmergencyPeriod
 
     function _hasAllowedRelayer(address user, address relayer) internal view returns (bool) {
         return _allowedRelayers[user][relayer];
+    }
+
+    function _canPerform(bytes32 roleId, address user) internal view override returns (bool) {
+        return _authorizer.hasRole(roleId, user);
     }
 }

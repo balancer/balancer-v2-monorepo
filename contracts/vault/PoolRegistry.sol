@@ -134,7 +134,7 @@ abstract contract PoolRegistry is
     }
 
     function getPoolTokens(bytes32 poolId)
-        public
+        external
         view
         override
         withRegisteredPool(poolId)

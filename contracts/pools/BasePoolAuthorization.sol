@@ -14,47 +14,22 @@
 
 pragma solidity ^0.7.0;
 
-import "../authorizer/IAuthorizer.sol";
+import "../lib/helpers/Authentication.sol";
+import "../vault/interfaces/IAuthorizer.sol";
 
 /**
  * @dev Base authorization layer implementation for pools. It shares the same concept as the one defined for the Vault.
  * It's built on top of OpenZeppelin's Access Control, which allows to define specific roles to control the access of
  * external accounts to the different functionalities of the contract.
  */
-contract BasePoolAuthorization {
-    // solhint-disable var-name-mixedcase
-    bytes32 public immutable CHANGE_POOL_SWAP_FEE_ROLE = keccak256("CHANGE_POOL_SWAP_FEE_ROLE");
-    bytes32 public immutable CHANGE_POOL_AUTHORIZER_ROLE = keccak256("CHANGE_POOL_AUTHORIZER_ROLE");
-    bytes32 public immutable CHANGE_POOL_EMERGENCY_PERIOD_ROLE = keccak256("CHANGE_POOL_EMERGENCY_PERIOD_ROLE");
-
-    IAuthorizer private _authorizer;
-
-    constructor(IAuthorizer authorizer) {
-        _authorizer = authorizer;
-    }
-
-    function changeAuthorizer(IAuthorizer newAuthorizer) external {
-        require(canChangeAuthorizer(msg.sender), "SENDER_CANNOT_CHANGE_AUTHORIZER");
-        _authorizer = newAuthorizer;
-    }
-
+abstract contract BasePoolAuthorization is Authentication {
     function getAuthorizer() external view returns (IAuthorizer) {
-        return _authorizer;
+        return _getAuthorizer();
     }
 
-    function canChangeAuthorizer(address account) public view returns (bool) {
-        return _hasRole(CHANGE_POOL_AUTHORIZER_ROLE, account);
+    function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
+        return _getAuthorizer().hasRole(roleId, account);
     }
 
-    function canChangeSwapFee(address account) public view returns (bool) {
-        return _hasRole(CHANGE_POOL_SWAP_FEE_ROLE, account);
-    }
-
-    function canChangeEmergencyPeriod(address account) public view returns (bool) {
-        return _hasRole(CHANGE_POOL_EMERGENCY_PERIOD_ROLE, account);
-    }
-
-    function _hasRole(bytes32 roleId, address account) internal view returns (bool) {
-        return _authorizer.hasRole(roleId, account);
-    }
+    function _getAuthorizer() internal view virtual returns (IAuthorizer);
 }

@@ -20,13 +20,11 @@ import "../vault/interfaces/IBasePool.sol";
 
 abstract contract BasePoolFactory {
     IVault public immutable vault;
-    IAuthorizer public immutable authorizer;
 
     event PoolRegistered(address indexed pool);
 
-    constructor(IAuthorizer _authorizer, IVault _vault) {
+    constructor(IVault _vault) {
         vault = _vault;
-        authorizer = _authorizer;
     }
 
     /**

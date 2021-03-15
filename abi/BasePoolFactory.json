@@ -14,19 +14,6 @@
   },
   {
     "inputs": [],
-    "name": "authorizer",
-    "outputs": [
-      {
-        "internalType": "contract IAuthorizer",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "vault",
     "outputs": [
       {

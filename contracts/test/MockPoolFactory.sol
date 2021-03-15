@@ -26,7 +26,7 @@ contract MockFactoryCreatedPool {
 }
 
 contract MockPoolFactory is BasePoolFactory {
-    constructor(IAuthorizer _authorizer, IVault _vault) BasePoolFactory(_authorizer, _vault) {
+    constructor(IVault _vault) BasePoolFactory(_vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
