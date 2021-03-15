@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../authorizer/IAuthorizer.sol";
+import "../lib/helpers/EmergencyPeriod.sol";
 
 import "./VaultAuthorization.sol";
 import "./FlashLoanProvider.sol";
@@ -52,7 +53,15 @@ import "./Swaps.sol";
  * storage access methods, to name a few.
  */
 contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
-    constructor(IAuthorizer authorizer) VaultAuthorization(authorizer) {
+    constructor(
+        IAuthorizer authorizer,
+        uint256 emergencyPeriod,
+        uint256 emergencyPeriodCheckExtension
+    ) VaultAuthorization(authorizer) EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension) {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function setEmergencyPeriod(bool active) external authenticate {
+        _setEmergencyPeriod(active);
     }
 }

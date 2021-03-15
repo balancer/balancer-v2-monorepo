@@ -15,11 +15,15 @@ const SYMBOL = 'BPT';
 export default {
   async deploy(params: RawWeightedPoolDeployment): Promise<WeightedPool> {
     const deployment = TypesConverter.toWeightedPoolDeployment(params);
-    const vault = await VaultDeployer.deploy({ mocked: !params.fromFactory });
+    const mocked = !params.fromFactory;
+    const { emergencyPeriod, emergencyPeriodCheckExtension } = deployment;
+
+    const vault = await VaultDeployer.deploy({ mocked, emergencyPeriod, emergencyPeriodCheckExtension });
     const admin = deployment.from || (await ethers.getSigners())[0];
     const authorizer = await deploy('Authorizer', { args: [admin.address] });
     const deployFn = params.fromFactory ? this._deployFromFactory : this._deployStandalone;
     const pool = await deployFn(deployment, vault, authorizer);
+
     const { tokens, weights, swapFee } = deployment;
     const poolId = await pool.getPoolId();
     return new WeightedPool(pool, poolId, vault, authorizer, admin, tokens, weights, swapFee);

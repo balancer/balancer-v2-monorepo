@@ -30,7 +30,7 @@ describe('Vault - exit pool', () => {
 
   sharedBeforeEach('deploy vault & tokens', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
     vault = vault.connect(lp);
 
     const role = roleId(vault, 'setProtocolFees');

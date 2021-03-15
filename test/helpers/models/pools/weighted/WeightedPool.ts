@@ -1,8 +1,8 @@
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { BigNumberish, bn, fp } from '../../../../../lib/helpers/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../../lib/helpers/constants';
-import { BigNumberish, bn, fp, fromFp } from '../../../../../lib/helpers/numbers';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../../../lib/helpers/weightedPoolEncoding';
 
 import * as expectEvent from '../../../expectEvent';

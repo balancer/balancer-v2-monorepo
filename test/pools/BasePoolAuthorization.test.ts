@@ -22,7 +22,7 @@ describe('BasePoolAuthorization', function () {
   });
 
   async function deployBasePool(specialization: PoolSpecializationSetting, authorizer: string): Promise<Contract> {
-    const vault = await deploy('Vault', { args: [authorizer] });
+    const vault = await deploy('Vault', { args: [authorizer, 0, 0] });
     const tokens = await TokenList.create(specialization === TwoTokenPool ? 2 : 3, { sorted: true });
     const args = [authorizer, vault.address, specialization, 'Balancer Pool Token', 'BPT', tokens.addresses, 0, 0, 0];
     return deploy('MockBasePool', { args });

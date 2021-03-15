@@ -11,7 +11,7 @@ describe('Vault - balance allocation', () => {
   const BLOCK_NUMBER = 10;
 
   before(async () => {
-    library = await deploy('BalanceAllocationMock', { args: [] });
+    library = await deploy('BalanceAllocationMock');
   });
 
   describe('cash, managed & block number', () => {

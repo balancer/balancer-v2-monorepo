@@ -38,7 +38,7 @@ describe('WeightedPool', function () {
     it('reverts if there is a single token', async () => {
       const tokens = allTokens.subset(1).addresses;
       const weights = WEIGHTS.slice(0, 1);
-      const vault = await deploy('Vault', { args: [authorizer.address] });
+      const vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
 
       const args = [ZERO_ADDRESS, vault.address, 'Balancer Pool Token', 'BPT', tokens, weights, POOL_SWAP_FEE, 0];
       await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MIN_TOKENS');
@@ -61,7 +61,7 @@ describe('WeightedPool', function () {
       // The maximum number of tokens is 16
       const tokens = await TokenList.create(17);
       const weights = new Array(17).fill(fp(1));
-      const vault = await deploy('Vault', { args: [authorizer.address] });
+      const vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
 
       const args = [ZERO_ADDRESS, vault.address, 'Balancer Token', 'BPT', tokens.addresses, weights, POOL_SWAP_FEE, 0];
       await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MAX_TOKENS');
@@ -220,7 +220,7 @@ describe('WeightedPool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.init({ initialBalances })).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+          await expect(pool.init({ initialBalances })).to.be.revertedWith('EMERGENCY_PERIOD');
         });
       });
 
@@ -265,7 +265,7 @@ describe('WeightedPool', function () {
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();
 
-            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('EMERGENCY_PERIOD');
           });
         });
       });
@@ -316,7 +316,7 @@ describe('WeightedPool', function () {
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();
 
-            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('EMERGENCY_PERIOD');
           });
         });
       });
@@ -382,7 +382,7 @@ describe('WeightedPool', function () {
           await pool.activateEmergencyPeriod();
 
           const bptIn = await pool.getMaxInvariantDecrease();
-          await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+          await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('EMERGENCY_PERIOD');
         });
       });
 
@@ -463,7 +463,7 @@ describe('WeightedPool', function () {
           await pool.activateEmergencyPeriod();
 
           const amountsOut = initialBalances;
-          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('EMERGENCY_PERIOD');
         });
       });
     });
@@ -514,7 +514,7 @@ describe('WeightedPool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD');
         });
       });
 
@@ -554,7 +554,7 @@ describe('WeightedPool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('POOL_EMERGENCY_PERIOD');
+          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD');
         });
       });
     });
