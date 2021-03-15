@@ -243,6 +243,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         }
     }
 
+    /**
+    * @dev Note we are not tagging this function with `noEmergencyPeriod` to allow users exit in a proportional
+    * manner in case there is an emergency in the pool. This operation should never be restricted.
+    */
     function _exitExactBPTInForAllTokensOut(uint256[] memory currentBalances, bytes memory userData)
         private
         view

@@ -452,6 +452,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     function _isEmergencyPeriodInactive() internal view returns (bool) {
-        return block.timestamp >= _emergencyPeriodCheckEndDate || !_emergencyPeriodActive;
+        return (block.timestamp >= _emergencyPeriodCheckEndDate) || !_emergencyPeriodActive;
     }
 }

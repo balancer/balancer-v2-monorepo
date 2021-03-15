@@ -1,10 +1,10 @@
-import { ethers } from 'hardhat';
 import { BigNumber } from 'ethers';
+import { ethers, network } from 'hardhat';
 
 import { BigNumberish, bn } from './numbers';
 
 export const currentTimestamp = async (): Promise<BigNumber> => {
-  const { timestamp } = await ethers.provider.getBlock('latest');
+  const { timestamp } = await network.provider.send('eth_getBlockByNumber', ['latest', true]);
   return bn(timestamp);
 };
 
