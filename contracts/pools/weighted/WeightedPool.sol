@@ -82,7 +82,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         }
 
         uint256 maxWeightTokenIndex = 0;
-        uint256 previousNormalizedWeight = 0;
+        uint256 maxNormalizedWeight = 0;
         uint256[] memory normalizedWeights = new uint256[](weights.length);
 
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
@@ -90,10 +90,10 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             require(normalizedWeight >= _MIN_WEIGHT, "MIN_WEIGHT");
             normalizedWeights[i] = normalizedWeight;
 
-            if (normalizedWeight > previousNormalizedWeight) {
+            if (normalizedWeight > maxNormalizedWeight) {
                 maxWeightTokenIndex = i;
+                maxNormalizedWeight = normalizedWeight;
             }
-            previousNormalizedWeight = normalizedWeight;
         }
 
         _maxWeightTokenIndex = maxWeightTokenIndex;
