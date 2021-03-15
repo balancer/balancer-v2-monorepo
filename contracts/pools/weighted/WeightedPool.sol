@@ -72,8 +72,21 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory weights,
-        uint256 swapFee
-    ) BaseMinimalSwapInfoPool(authorizer, vault, name, symbol, tokens, swapFee) {
+        uint256 swapFee,
+        uint256 emergencyPeriod,
+        uint256 emergencyPeriodCheckExtension
+    )
+        BaseMinimalSwapInfoPool(
+            authorizer,
+            vault,
+            name,
+            symbol,
+            tokens,
+            swapFee,
+            emergencyPeriod,
+            emergencyPeriodCheckExtension
+        )
+    {
         InputHelpers.ensureInputLengthMatch(weights.length, tokens.length);
 
         // Check valid weights and compute normalized weights
@@ -187,7 +200,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
+    ) internal view override noEmergencyPeriod returns (uint256) {
         require(swapRequest.amountIn <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), "ERR_MAX_IN_RATIO");
 
         return
@@ -204,7 +217,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override returns (uint256) {
+    ) internal view override noEmergencyPeriod returns (uint256) {
         require(swapRequest.amountOut <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), "ERR_MAX_OUT_RATIO");
 
         return
@@ -224,7 +237,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         address,
         address,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
+    ) internal override noEmergencyPeriod returns (uint256, uint256[] memory) {
         WeightedPool.JoinKind kind = userData.joinKind();
         require(kind == WeightedPool.JoinKind.INIT, "UNINITIALIZED");
 
@@ -256,6 +269,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     )
         internal
         override
+        noEmergencyPeriod
         returns (
             uint256,
             uint256[] memory,
@@ -415,7 +429,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory currentBalances,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) private view noEmergencyPeriod returns (uint256, uint256[] memory) {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
 
@@ -440,6 +454,10 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return (bptAmountIn, amountsOut);
     }
 
+    /**
+    * @dev Note we are not tagging this function with `noEmergencyPeriod` to allow users exit in a proportional
+    * manner in case there is an emergency in the pool. This operation should never be restricted.
+    */
     function _exitExactBPTInForTokensOut(uint256[] memory currentBalances, bytes memory userData)
         private
         view
@@ -456,7 +474,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         uint256[] memory currentBalances,
         bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
+    ) private view noEmergencyPeriod returns (uint256, uint256[] memory) {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _totalTokens);
         _upscaleArray(amountsOut, _scalingFactors());

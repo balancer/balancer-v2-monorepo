@@ -35,6 +35,16 @@
         "internalType": "uint256",
         "name": "swapFee",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "emergencyPeriod",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "emergencyPeriodCheckExtension",
+        "type": "uint256"
       }
     ],
     "stateMutability": "nonpayable",
@@ -93,6 +103,19 @@
   {
     "inputs": [],
     "name": "CHANGE_POOL_AUTHORIZER_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "CHANGE_POOL_EMERGENCY_PERIOD_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
@@ -210,6 +233,25 @@
         "type": "address"
       }
     ],
+    "name": "canChangeEmergencyPeriod",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
     "name": "canChangeSwapFee",
     "outputs": [
       {
@@ -292,6 +334,29 @@
         "internalType": "contract IAuthorizer",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getEmergencyPeriod",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "endDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "checkEndDate",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -631,6 +696,19 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
+    ],
+    "name": "setEmergencyPeriod",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

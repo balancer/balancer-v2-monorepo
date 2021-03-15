@@ -8,19 +8,21 @@ import TokenList from '../../tokens/TokenList';
 import { Account, NAry } from '../../types/types';
 
 export type RawWeightedPoolDeployment = {
-  authorizer?: Account;
   tokens?: TokenList;
   weights?: BigNumberish[];
   swapFee?: BigNumberish;
+  emergencyPeriod?: BigNumberish;
+  emergencyPeriodCheckExtension?: BigNumberish;
   from?: SignerWithAddress;
   fromFactory?: boolean;
 };
 
 export type WeightedPoolDeployment = {
-  authorizer: Account;
   tokens: TokenList;
   weights: BigNumberish[];
   swapFee: BigNumberish;
+  emergencyPeriod: BigNumberish;
+  emergencyPeriodCheckExtension: BigNumberish;
   from?: SignerWithAddress;
 };
 

@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn } from '../../../../lib/helpers/numbers';
-import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
+import { MONTH } from '../../../../lib/helpers/time';
 
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
@@ -18,12 +18,13 @@ import {
 
 export default {
   toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
-    let { authorizer, tokens, weights, swapFee } = params;
-    if (!authorizer) authorizer = ZERO_ADDRESS;
+    let { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = [];
     if (!swapFee) swapFee = bn(0);
-    return { authorizer, tokens, weights, swapFee };
+    if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
+    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
+    return { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
   },
 
   /***

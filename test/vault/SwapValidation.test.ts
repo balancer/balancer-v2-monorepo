@@ -9,6 +9,7 @@ import { encodeJoin } from '../helpers/mockPool';
 
 import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
+import { fromNow } from '../../lib/helpers/time';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
@@ -125,8 +126,7 @@ describe('Vault - swap validation', () => {
 
     context('with expired deadline', () => {
       it('reverts', async () => {
-        const now = bn((await ethers.provider.getBlock('latest')).timestamp);
-        const deadline = now.sub(5);
+        const deadline = await fromNow(-5);
 
         await expect(doSwap(funds, Array(tokens.length).fill(MAX_INT256), deadline)).to.be.revertedWith(
           'SWAP_DEADLINE'
@@ -138,8 +138,7 @@ describe('Vault - swap validation', () => {
       let deadline: BigNumber;
 
       sharedBeforeEach('set deadline', async () => {
-        const now = bn((await ethers.provider.getBlock('latest')).timestamp);
-        deadline = now.add(60);
+        deadline = await fromNow(60);
       });
 
       it('reverts if there are less limits than tokens', async () => {

@@ -33,8 +33,13 @@ export async function deployPoolFromFactory(
 
   const name = 'Balancer Pool Token';
   const symbol = 'BPT';
+  const emergencyPeriod = 0;
+  const emergencyPeriodCheckExtension = 0;
+
   const receipt: ContractReceipt = await (
-    await factory.connect(args.from).create(name, symbol, ...args.parameters)
+    await factory
+      .connect(args.from)
+      .create(name, symbol, ...args.parameters, emergencyPeriod, emergencyPeriodCheckExtension)
   ).wait();
 
   const event = receipt.events?.find((e) => e.event == 'PoolRegistered');

@@ -45,8 +45,21 @@ contract StablePool is BaseGeneralPool, StableMath {
         string memory symbol,
         IERC20[] memory tokens,
         uint256 amp,
-        uint256 swapFee
-    ) BaseGeneralPool(authorizer, vault, name, symbol, tokens, swapFee) {
+        uint256 swapFee,
+        uint256 emergencyPeriod,
+        uint256 emergencyPeriodCheckExtension
+    )
+        BaseGeneralPool(
+            authorizer,
+            vault,
+            name,
+            symbol,
+            tokens,
+            swapFee,
+            emergencyPeriod,
+            emergencyPeriodCheckExtension
+        )
+    {
         require(amp >= _MIN_AMP, "MIN_AMP");
         require(amp <= _MAX_AMP, "MAX_AMP");
         _amp = amp;
@@ -65,7 +78,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override returns (uint256) {
+    ) internal view override noEmergencyPeriod returns (uint256) {
         return StableMath._outGivenIn(_amp, balances, indexIn, indexOut, swapRequest.amountIn);
     }
 
@@ -74,7 +87,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override returns (uint256) {
+    ) internal view override noEmergencyPeriod returns (uint256) {
         return StableMath._inGivenOut(_amp, balances, indexIn, indexOut, swapRequest.amountOut);
     }
 
@@ -85,7 +98,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         address,
         address,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
+    ) internal override noEmergencyPeriod returns (uint256, uint256[] memory) {
         StablePool.JoinKind kind = userData.joinKind();
         require(kind == StablePool.JoinKind.INIT, "UNINITIALIZED");
 
@@ -114,6 +127,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     )
         internal
         override
+        noEmergencyPeriod
         returns (
             uint256,
             uint256[] memory,
@@ -229,6 +243,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         }
     }
 
+    /**
+    * @dev Note we are not tagging this function with `noEmergencyPeriod` to allow users exit in a proportional
+    * manner in case there is an emergency in the pool. This operation should never be restricted.
+    */
     function _exitExactBPTInForAllTokensOut(uint256[] memory currentBalances, bytes memory userData)
         private
         view
