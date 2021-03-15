@@ -16,8 +16,7 @@ pragma solidity ^0.7.0;
 
 abstract contract Authentication {
     /**
-     * @dev Reverts unless the caller is allowed by the Authorizer to call this function. Should only be applied to
-     * external functions.
+     * @dev Reverts unless the caller is allowed to call this function. Should only be applied to external functions.
      */
     modifier authenticate() {
         _authenticateCaller();
@@ -25,10 +24,10 @@ abstract contract Authentication {
     }
 
     /**
-     * @dev Reverts unless the caller is allowed by the Authorizer to call the entry point function.
+     * @dev Reverts unless the caller is allowed to call the entry point function.
      */
     function _authenticateCaller() internal view {
-        // Each external function is dynamically assigned a role ID in the Authorizer as the hash of the Vault's address
+        // Each external function is dynamically assigned a role ID as the hash of the contract address
         // and the function selector.
         bytes32 roleId = keccak256(abi.encodePacked(address(this), msg.sig));
         require(_canPerform(roleId, msg.sender), "SENDER_NOT_ALLOWED");
