@@ -184,8 +184,7 @@ export default class WeightedPool {
   ): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const minInvariantRatio = fromFp(MIN_INVARIANT_RATIO);
-    const feeAmount = calculateMaxOneTokenSwapFee(currentBalances, this.weights, minInvariantRatio, paidTokenIndex);
+    const feeAmount = calculateMaxOneTokenSwapFee(currentBalances, this.weights, MIN_INVARIANT_RATIO, paidTokenIndex);
     return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
   }
 
