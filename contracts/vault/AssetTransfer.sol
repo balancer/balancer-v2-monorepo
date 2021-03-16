@@ -66,6 +66,17 @@ abstract contract AssetTransfer {
         return IERC20(address(asset));
     }
 
+    /**
+     * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, as much as possible is first
+     * withdrawn from Internal Balance, and the transfer is performed on the remaining amount, if any.
+     *
+     * If `asset` is ETH, `fromInternalBalance` is ignored (as ETH cannot be held as internal balance), and the funds
+     * are first taken from ETH forwarded along with the call and then wrapped into WETH. Any leftover amount is sent
+     * back to the caller (and not the sender!), supporting use cases with relayers.
+     *
+     * WARNING: this function must never be called more than once per transaction for each asset, as it relies in
+     * `msg.value` to check how much ETH was received, which is an immutable property.
+     */
     function _receiveAsset(
         IAsset asset,
         uint256 amount,
@@ -85,11 +96,7 @@ abstract contract AssetTransfer {
             // will be returned *to the caller*, not the sender. If caller and sender are not the same (because
             // caller is a relayer for sender), then it is up to the caller to manage this returned ETH.
 
-            // !!!!!
-            //
-            // Must be called only once per transaction!
-            //
-            // !!!!!
+            // We check msg.value
             require(msg.value >= amount, "INSUFFICIENT_ETH");
 
             // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
@@ -120,6 +127,16 @@ abstract contract AssetTransfer {
         }
     }
 
+    /**
+     * @dev Sends `amount` of `asset` to `recipient`. If `toInternalBalance` is true, the asset is deposited as Internal
+     * Balance instead of being transferred.
+     *
+     * If `asset` is ETH, `toInternalBalance` is ignored (as ETH cannot be held as internal balance), and the funds
+     * are instead sent directly after unwrapping WETH.
+     *
+     * If `chargeWithdrawFee` is true, an appropiate withdrawal fee will be applied and deducted from `amount`. In all
+     * cases, the charged amount is returned (and is zero when `chargeWithdrawFee` is false).
+     */
     function _sendAsset(
         IAsset asset,
         uint256 amount,
@@ -159,6 +176,20 @@ abstract contract AssetTransfer {
         return withdrawFee;
     }
 
+    /**
+     * @dev Enables the Vault to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
+     * caller.
+     *
+     * Any ETH sent to the Vault outside of the WETH unwrapping mechanism will be forever locked inside the Vault. In
+     * particular, transferring ETH to the Vault directly will not cause for it to be wrapped in WETH, but rather to be
+     * lost. Do not ever send ETH to the Vault directly.
+     */
+    receive() external payable {}
+
+    // This contract has uses virtual internal functions instead of inheriting from the modules that implement them (in
+    // this case, Fees and InternalBalance) in order to decouple it from the rest of the system and enable standalone
+    // testing by implementing these with mocks.
+
     function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view virtual returns (uint256);
 
     function _getInternalBalance(address account, IERC20 token) internal view virtual returns (uint256);
@@ -174,14 +205,4 @@ abstract contract AssetTransfer {
         IERC20 token,
         uint256 balance
     ) internal virtual;
-
-    /**
-     * @dev Enables the Vault to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
-     * caller.
-     *
-     * Any ETH sent to the Vault outside of the WETH unwrapping mechanism will be forever locked inside the Vault. In
-     * particular, transferring ETH to the Vault directly will not cause for it to be wrapped in WETH, but rather to be
-     * lost. Do not ever send ETH to the Vault directly.
-     */
-    receive() external payable {}
 }
