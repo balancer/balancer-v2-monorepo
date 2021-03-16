@@ -24,9 +24,7 @@ import "../BaseGeneralPool.sol";
 import "./StableMath.sol";
 import "./StablePoolUserDataHelpers.sol";
 
-import "../IExternalRate.sol";
-
-contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
+contract StablePool is BaseGeneralPool, StableMath {
     using FixedPoint for uint256;
     using StablePoolUserDataHelpers for bytes;
 
@@ -39,11 +37,11 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
 
     uint256 private constant _MAX_STABLE_TOKENS = 5;
 
-    address private immutable _externalRateProvider0;
-    address private immutable _externalRateProvider1;
-    address private immutable _externalRateProvider2;
-    address private immutable _externalRateProvider3;
-    address private immutable _externalRateProvider4;
+    bool private immutable _isBPT0;
+    bool private immutable _isBPT1;
+    bool private immutable _isBPT2;
+    bool private immutable _isBPT3;
+    bool private immutable _isBPT4;
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
@@ -55,7 +53,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        address[] memory externalRates,
+        bool[] memory isBPTArray,
         uint256 amplificationParameter,
         uint256 swapFee,
         uint256 emergencyPeriod,
@@ -66,15 +64,15 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
 
         require(tokens.length <= _MAX_STABLE_TOKENS, "MAX_STABLE_TOKENS");
 
-        require(externalRates.length == tokens.length, "INVALID_STABLE_BPT_ARRAY");
+        require(isBPTArray.length == tokens.length, "INVALID_IS_BPT_ARRAY");
 
         _amplificationParameter = amplificationParameter;
 
-        _externalRateProvider0 = tokens.length > 0 ? externalRates[0] : address(0);
-        _externalRateProvider1 = tokens.length > 1 ? externalRates[1] : address(0);
-        _externalRateProvider2 = tokens.length > 2 ? externalRates[2] : address(0);
-        _externalRateProvider3 = tokens.length > 3 ? externalRates[3] : address(0);
-        _externalRateProvider4 = tokens.length > 4 ? externalRates[4] : address(0);
+        _isBPT0 = tokens.length > 0 ? isBPTArray[0] : false;
+        _isBPT1 = tokens.length > 1 ? isBPTArray[1] : false;
+        _isBPT2 = tokens.length > 2 ? isBPTArray[2] : false;
+        _isBPT3 = tokens.length > 3 ? isBPTArray[3] : false;
+        _isBPT4 = tokens.length > 4 ? isBPTArray[4] : false;
     }
 
     function getAmplificationParameter() external view returns (uint256) {
@@ -91,9 +89,9 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         uint256 indexIn,
         uint256 indexOut
     ) internal view override noEmergencyPeriod returns (uint256) {
-        // apply external rates if applicable
-        uint256[] memory externalRates = _getExternalRates();
-        _applyRates(balances, externalRates, RoundDirection.UP);
+        // apply appreciations if applicable
+        uint256[] memory appreciations = _getUnderlyingTokensAppreciations();
+        _applyAppreciations(balances, appreciations, RoundDirection.UP);
 
         uint256 amountOut = StableMath._outGivenIn(
             _amplificationParameter,
@@ -103,7 +101,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
             swapRequest.amountIn
         );
 
-        return _unApplyRate(amountOut, externalRates[indexOut], RoundDirection.DOWN);
+        return _unApplyAppreciation(amountOut, appreciations[indexOut], RoundDirection.DOWN);
     }
 
     function _onSwapGivenOut(
@@ -112,9 +110,9 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         uint256 indexIn,
         uint256 indexOut
     ) internal view override noEmergencyPeriod returns (uint256) {
-        // apply external rates if applicable
-        uint256[] memory externalRates = _getExternalRates();
-        _applyRates(balances, externalRates, RoundDirection.UP);
+        // apply appreciations if applicable
+        uint256[] memory appreciations = _getUnderlyingTokensAppreciations();
+        _applyAppreciations(balances, appreciations, RoundDirection.UP);
 
         uint256 amountIn = StableMath._inGivenOut(
             _amplificationParameter,
@@ -124,7 +122,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
             swapRequest.amountOut
         );
 
-        return _unApplyRate(amountIn, externalRates[indexIn], RoundDirection.UP);
+        return _unApplyAppreciation(amountIn, appreciations[indexIn], RoundDirection.UP);
     }
 
     // Initialize
@@ -220,12 +218,12 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         uint256[] memory downscaledAmountsIn = amountsIn; // TODO: check that this won't be changed by pointer reference
         _upscaleArray(amountsIn, _scalingFactors());
 
-        // apply external rates if applicable
-        uint256[] memory externalRates = _getExternalRates();
-        _applyRates(amountsIn, externalRates, RoundDirection.DOWN);
-        _applyRates(balances, externalRates, RoundDirection.UP);
+        // apply appreciations if applicable
+        uint256[] memory appreciations = _getUnderlyingTokensAppreciations();
+        _applyAppreciations(amountsIn, appreciations, RoundDirection.DOWN);
+        _applyAppreciations(balances, appreciations, RoundDirection.UP);
 
-        // No need to unapply external rate for bptAmount
+        // No need to unapply appreciation for bptAmount
         uint256 bptAmountOut = StableMath._exactTokensInForBPTOut(
             _amplificationParameter,
             balances,
@@ -246,9 +244,9 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
     {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
 
-        // apply external rates if applicable
-        uint256[] memory externalRates = _getExternalRates();
-        _applyRates(balances, externalRates, RoundDirection.UP);
+        // apply appreciations if applicable
+        uint256[] memory appreciations = _getUnderlyingTokensAppreciations();
+        _applyAppreciations(balances, appreciations, RoundDirection.UP);
 
         uint256 amountIn = StableMath._tokenInForExactBPTOut(
             _amplificationParameter,
@@ -259,8 +257,8 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
             _swapFee
         );
 
-        // unapply external rate
-        uint256 amountInDownscaled = _unApplyRate(amountIn, externalRates[tokenIndex], RoundDirection.UP);
+        // unapply appreciation
+        uint256 amountInDownscaled = _unApplyAppreciation(amountIn, appreciations[tokenIndex], RoundDirection.UP);
 
         // We join in a single token, so we initialize downscaledAmountsIn with zeros and
         // set only downscaledAmountsIn[tokenIndex]
@@ -341,9 +339,9 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
 
-        // apply external rates if applicable
-        uint256[] memory externalRates = _getExternalRates();
-        _applyRates(balances, externalRates, RoundDirection.UP);
+        // apply appreciations if applicable
+        uint256[] memory appreciations = _getUnderlyingTokensAppreciations();
+        _applyAppreciations(balances, appreciations, RoundDirection.UP);
 
         uint256 amountOut = StableMath._exactBPTInForTokenOut(
             _amplificationParameter,
@@ -354,8 +352,8 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
             _swapFee
         );
 
-        // unapply external rate
-        uint256 amountOutDownscaled = _unApplyRate(amountOut, externalRates[tokenIndex], RoundDirection.DOWN);
+        // unapply appreciation
+        uint256 amountOutDownscaled = _unApplyAppreciation(amountOut, appreciations[tokenIndex], RoundDirection.DOWN);
 
         // We exit in a single token, so we initialize downscaledAmountsOut with zeros and
         // set only downscaledAmountsOut[tokenIndex]
@@ -378,12 +376,12 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         uint256[] memory downscaledAmountsOut = amountsOut;
         _upscaleArray(amountsOut, _scalingFactors());
 
-        // apply external rates if applicable
-        uint256[] memory externalRates = _getExternalRates();
-        _applyRates(amountsOut, externalRates, RoundDirection.UP);
-        _applyRates(balances, externalRates, RoundDirection.UP);
+        // apply appreciations if applicable
+        uint256[] memory appreciations = _getUnderlyingTokensAppreciations();
+        _applyAppreciations(amountsOut, appreciations, RoundDirection.UP);
+        _applyAppreciations(balances, appreciations, RoundDirection.UP);
 
-        // No need to unapply external rate for bptAmount
+        // No need to unapply appreciation for bptAmount
         uint256 bptAmountIn = StableMath._bptInForExactTokensOut(
             _amplificationParameter,
             balances,
@@ -408,7 +406,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
     {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
-        // No need to apply external rates as all is proportional
+        // No need to apply appreciations as all is proportional
 
         uint256[] memory amountsOut = StableMath._exactBPTInForTokensOut(balances, bptAmountIn, totalSupply());
 
@@ -464,85 +462,85 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         return StableMath._invariant(_amplificationParameter, balances);
     }
 
-    // This function returns a list with the externalRate of all underlying tokens,
-    // if the token has not an external rate, it's set to 1
-    function _getExternalRates() internal view returns (uint256[] memory externalRates) {
-        externalRates = new uint256[](_totalTokens);
+    // This function returns a list with the appreciation of all underlying tokens,
+    // if the token has not an appreciation, it's set to 1
+    function _getUnderlyingTokensAppreciations() internal view returns (uint256[] memory appreciations) {
+        appreciations = new uint256[](_totalTokens);
 
         // prettier-ignore
         {
             if (_totalTokens > 0) { 
-                externalRates[0] = _externalRateProvider0 == address(0)?  
-                FixedPoint.ONE : IExternalRate(_externalRateProvider0).getRate(); 
-            } else { return externalRates; }
+                appreciations[0] = _isBPT0?  
+                FixedPoint.ONE : BaseGeneralPool(address(_token0)).getBPTAppreciation(); 
+            } else { return appreciations; }
             if (_totalTokens > 1) { 
-                externalRates[1] = _externalRateProvider1 == address(0)?  
-                FixedPoint.ONE : IExternalRate(_externalRateProvider1).getRate(); 
-            } else { return externalRates; }
+                appreciations[1] = _isBPT1?  
+                FixedPoint.ONE : BaseGeneralPool(address(_token1)).getBPTAppreciation(); 
+            } else { return appreciations; }
             if (_totalTokens > 2) { 
-                externalRates[2] = _externalRateProvider2 == address(0)?  
-                FixedPoint.ONE : IExternalRate(_externalRateProvider2).getRate(); 
-            } else { return externalRates; }
+                appreciations[2] = _isBPT2?  
+                FixedPoint.ONE : BaseGeneralPool(address(_token2)).getBPTAppreciation(); 
+            } else { return appreciations; }
             if (_totalTokens > 3) { 
-                externalRates[3] = _externalRateProvider3 == address(0)?  
-                FixedPoint.ONE : IExternalRate(_externalRateProvider3).getRate(); 
-            } else { return externalRates; }
+                appreciations[3] = _isBPT3?  
+                FixedPoint.ONE : BaseGeneralPool(address(_token3)).getBPTAppreciation(); 
+            } else { return appreciations; }
             if (_totalTokens > 4) { 
-                externalRates[4] = _externalRateProvider4 == address(0)?  
-                FixedPoint.ONE : IExternalRate(_externalRateProvider4).getRate(); 
-            } else { return externalRates; }
+                appreciations[4] = _isBPT4?  
+                FixedPoint.ONE : BaseGeneralPool(address(_token4)).getBPTAppreciation(); 
+            } else { return appreciations; }
         }
 
-        return externalRates;
+        return appreciations;
     }
 
-    //TODO: does it need rounding? it may do not need rounding up or down since external rate is
+    //TODO: does it need rounding? it may do not need rounding up or down since appreciation is
     // always going to be in the order of magnitude of 1
 
-    function _applyRate(
+    function _applyAppreciation(
         uint256 amount,
-        uint256 rate,
+        uint256 appreciation,
         RoundDirection roundDirection
     ) internal pure returns (uint256) {
-        return roundDirection == RoundDirection.UP ? amount.mulUp(rate) : amount.mulDown(rate);
+        return roundDirection == RoundDirection.UP ? amount.mulUp(appreciation) : amount.mulDown(appreciation);
     }
 
-    function _applyRates(
+    function _applyAppreciations(
         uint256[] memory amounts,
-        uint256[] memory rates,
+        uint256[] memory appreciations,
         RoundDirection roundDirection
     ) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
             amounts[i] = roundDirection == RoundDirection.UP
-                ? amounts[i].mulUp(rates[i])
-                : amounts[i].mulDown(rates[i]);
+                ? amounts[i].mulUp(appreciations[i])
+                : amounts[i].mulDown(appreciations[i]);
         }
     }
 
-    function _unApplyRates(
+    function _unApplyAppreciations(
         uint256[] memory amounts,
-        uint256[] memory rates,
+        uint256[] memory appreciations,
         RoundDirection roundDirection
     ) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
             amounts[i] = roundDirection == RoundDirection.UP
-                ? amounts[i].divUp(rates[i])
-                : amounts[i].divDown(rates[i]);
+                ? amounts[i].divUp(appreciations[i])
+                : amounts[i].divDown(appreciations[i]);
         }
     }
 
-    function _unApplyRate(
+    function _unApplyAppreciation(
         uint256 amount,
-        uint256 rate,
+        uint256 appreciation,
         RoundDirection roundDirection
     ) internal pure returns (uint256) {
-        return roundDirection == RoundDirection.UP ? amount.divUp(rate) : amount.divDown(rate);
+        return roundDirection == RoundDirection.UP ? amount.divUp(appreciation) : amount.divDown(appreciation);
     }
 
-    // This function returns the BPT rate, which is the appreciation of one BPT relative to the
+    // This function returns the appreciation of one BPT relative to the
     // underlying tokens. This starts at 1 when the pool is created and grows over time
     // It's the equivalent to Curve's get_virtual_price() function
-    function getRate() public view override returns (uint256) {
+    function getBPTAppreciation() public view override returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
         return StableMath._invariant(_amplificationParameter, balances).div(totalSupply());
     }

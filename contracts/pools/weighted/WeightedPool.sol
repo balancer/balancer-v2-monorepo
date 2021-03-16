@@ -23,13 +23,11 @@ import "../BaseMinimalSwapInfoPool.sol";
 import "./WeightedMath.sol";
 import "./WeightedPoolUserDataHelpers.sol";
 
-import "../IExternalRate.sol";
-
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
 // solhint-disable max-states-count
 
-contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath, IExternalRate {
+contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
 
@@ -541,10 +539,10 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath, IExternalRate {
         }
     }
 
-    // This function returns the BPT rate, which is the appreciation of one BPT relative to the
+    // This function returns the appreciation of one BPT relative to the
     // underlying tokens. This starts at 1 when the pool is created and grows over time
     // It's the equivalent to Curve's get_virtual_price() function
-    function getRate() public view override returns (uint256) {
+    function getBPTAppreciation() public view override returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
         return Math.mul(WeightedMath._invariant(_normalizedWeights(), balances), balances.length).div(totalSupply());
     }

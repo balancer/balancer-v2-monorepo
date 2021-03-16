@@ -91,4 +91,11 @@ interface IBasePool {
      * multiple Pools.
      */
     function getPoolId() external view returns (bytes32);
+
+    /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time
+     * It's the equivalent to Curve's get_virtual_price() function
+     */
+    function getBPTAppreciation() external view returns (uint256);
 }

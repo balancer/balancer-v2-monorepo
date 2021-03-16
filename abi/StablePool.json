@@ -22,9 +22,9 @@
         "type": "address[]"
       },
       {
-        "internalType": "address[]",
-        "name": "externalRates",
-        "type": "address[]"
+        "internalType": "bool[]",
+        "name": "isBPTArray",
+        "type": "bool[]"
       },
       {
         "internalType": "uint256",
@@ -245,6 +245,19 @@
   },
   {
     "inputs": [],
+    "name": "getBPTAppreciation",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getEmergencyPeriod",
     "outputs": [
       {
@@ -274,19 +287,6 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getRate",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",

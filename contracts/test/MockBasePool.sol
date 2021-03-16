@@ -71,4 +71,6 @@ contract MockBasePool is BasePool {
             uint256[] memory
         )
     {}
+
+    function getBPTAppreciation() external pure override returns (uint256) {}
 }

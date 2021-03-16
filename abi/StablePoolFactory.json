@@ -41,9 +41,9 @@
         "type": "address[]"
       },
       {
-        "internalType": "address[]",
-        "name": "externalRates",
-        "type": "address[]"
+        "internalType": "bool[]",
+        "name": "isBPTArray",
+        "type": "bool[]"
       },
       {
         "internalType": "uint256",
