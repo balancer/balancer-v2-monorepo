@@ -14,6 +14,7 @@ import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
@@ -42,10 +43,12 @@ describe('Vault - swaps', () => {
   });
 
   sharedBeforeEach('deploy vault and tokens', async () => {
-    authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
-    tokens = await TokenList.create(['DAI', 'MKR', 'SNX']);
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address] });
+
+    tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
     await tokens.mint({ to: [lp, trader], amount: MAX_UINT112.div(2) });
     await tokens.approve({ to: vault, from: [lp, trader], amount: MAX_UINT112 });
   });

@@ -13,6 +13,7 @@ import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { bn, fp, pct } from '../../lib/helpers/numbers';
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - internal balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
@@ -25,9 +26,11 @@ describe('Vault - internal balance', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
-    authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
     tokens = await TokenList.create(['DAI', 'MKR']);
+    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address] });
   });
 
   describe('deposit', () => {

@@ -7,6 +7,7 @@ import TokenList from '../helpers/models/tokens/TokenList';
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish } from '../../lib/helpers/numbers';
 import { GeneralPool, PoolSpecializationSetting } from '../../lib/helpers/pools';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress;
@@ -20,7 +21,7 @@ describe('BasePool', function () {
 
   sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 

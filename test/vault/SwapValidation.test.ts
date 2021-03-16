@@ -12,6 +12,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - swap validation', () => {
   let vault: Contract;
@@ -25,11 +26,15 @@ describe('Vault - swap validation', () => {
     GIVEN_OUT: 1,
   };
 
-  sharedBeforeEach('setup', async () => {
+  before(async () => {
     [, lp, trader, other] = await ethers.getSigners();
+  });
+
+  sharedBeforeEach('setup', async () => {
+    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     const authorizer = await deploy('Authorizer', { args: [ZERO_ADDRESS] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
 
     const totalPools = 5;

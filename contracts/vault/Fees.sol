@@ -25,8 +25,9 @@ import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
 import "./Authorization.sol";
+import "./AssetTransfer.sol";
 
-abstract contract Fees is IVault, ReentrancyGuard, Authorization {
+abstract contract Fees is IVault, ReentrancyGuard, Authorization, AssetTransfer {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
@@ -89,7 +90,7 @@ abstract contract Fees is IVault, ReentrancyGuard, Authorization {
     /**
      * @dev Returns the protocol fee to charge for a withdrawal of `amount`.
      */
-    function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view returns (uint256) {
+    function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view override returns (uint256) {
         // Fixed point multiplication introduces error: we round up, which means in certain scenarios the charged
         // percentage can be slightly higher than intended.
         return FixedPoint.mulUp(amount, _protocolWithdrawFee);

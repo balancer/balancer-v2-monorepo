@@ -10,6 +10,7 @@ import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/types';
+import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
 
 describe('WeightedPool', function () {
   let authorizer: Contract, allTokens: TokenList;
@@ -34,7 +35,7 @@ describe('WeightedPool', function () {
     it('reverts if there is a single token', async () => {
       const tokens = allTokens.subset(1).addresses;
       const weights = WEIGHTS.slice(0, 1);
-      const vault = await deploy('Vault', { args: [authorizer.address] });
+      const vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS] });
 
       const args = [vault.address, 'Balancer Pool Token', 'BPT', tokens, weights, POOL_SWAP_FEE];
       await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MIN_TOKENS');
@@ -54,7 +55,7 @@ describe('WeightedPool', function () {
       // The maximum number of tokens is 16
       const tokens = await TokenList.create(17);
       const weights = new Array(17).fill(fp(1));
-      const vault = await deploy('Vault', { args: [authorizer.address] });
+      const vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS] });
 
       const args = [vault.address, 'Balancer Pool Token', 'BPT', tokens.addresses, weights, POOL_SWAP_FEE];
       await expect(deploy('WeightedPool', { args })).to.be.revertedWith('MAX_TOKENS');

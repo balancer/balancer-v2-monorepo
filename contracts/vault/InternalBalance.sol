@@ -21,10 +21,10 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../lib/math/Math.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
-import "./Fees.sol";
 import "./AssetTransfer.sol";
+import "./Fees.sol";
 
-abstract contract InternalBalance is ReentrancyGuard, Fees, AssetTransfer {
+abstract contract InternalBalance is ReentrancyGuard, AssetTransfer, Fees {
     using Math for uint256;
     using SafeERC20 for IERC20;
 

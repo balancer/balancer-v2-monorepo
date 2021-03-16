@@ -12,8 +12,9 @@ export default {
   },
 
   async _deployReal(deployment: VaultDeployment): Promise<Contract> {
+    const weth = await this._deployWETH(deployment);
     const authorizer = await this._deployAuthorizer(deployment);
-    return deploy('Vault', { args: [authorizer.address], from: deployment.from });
+    return deploy('Vault', { args: [authorizer.address, weth.address], from: deployment.from });
   },
 
   async _deployMocked({ from }: VaultDeployment): Promise<Contract> {
@@ -23,5 +24,10 @@ export default {
   async _deployAuthorizer({ admin, from }: VaultDeployment): Promise<Contract> {
     const adminAddress = admin ? TypesConverter.toAddress(admin) : ZERO_ADDRESS;
     return deploy('Authorizer', { args: [adminAddress], from });
+  },
+
+  async _deployWETH({ admin, from }: VaultDeployment): Promise<Contract> {
+    const adminAddress = admin ? TypesConverter.toAddress(admin) : ZERO_ADDRESS;
+    return deploy('WETH', { args: [adminAddress], from });
   },
 };

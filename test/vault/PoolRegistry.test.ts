@@ -11,6 +11,7 @@ import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - pool registry', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;
@@ -22,8 +23,10 @@ describe('Vault - pool registry', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
+    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address] });
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
     await allTokens.mint({ to: lp, amount: 50000 });

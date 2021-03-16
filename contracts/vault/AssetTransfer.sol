@@ -66,7 +66,7 @@ abstract contract AssetTransfer {
         return IERC20(address(asset));
     }
 
-    function _receiveAssets(
+    function _receiveAsset(
         IAsset asset,
         uint256 amount,
         address sender,
@@ -90,7 +90,7 @@ abstract contract AssetTransfer {
             // Must be called only once per transaction!
             //
             // !!!!!
-            require(msg.value >= amount);
+            require(msg.value >= amount, "INSUFFICIENT_ETH");
 
             // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
             // the Vault at a 1:1 ratio.
@@ -120,17 +120,21 @@ abstract contract AssetTransfer {
         }
     }
 
-    function _sendAssets(
+    function _sendAsset(
         IAsset asset,
         uint256 amount,
         address payable recipient,
         bool toInternalBalance,
-        uint256 withdrawFee
+        bool chargeWithdrawFee
     ) internal returns (uint256) {
         if (amount == 0) {
             return 0;
         }
 
+        bool isEth = _isETH(asset);
+        uint256 withdrawFee = (chargeWithdrawFee && (!toInternalBalance || isEth))
+            ? _calculateProtocolWithdrawFeeAmount(amount)
+            : 0;
         uint256 toSend = amount.sub(withdrawFee);
 
         if (_isETH(asset)) {
@@ -143,19 +147,19 @@ abstract contract AssetTransfer {
 
             // Then, the withdrawn ETH is sent to the recipient.
             recipient.sendValue(toSend);
-
-            return withdrawFee;
         } else {
             IERC20 token = _asIERC20(asset);
             if (toInternalBalance) {
-                _increaseInternalBalance(recipient, token, amount);
-                return 0;
+                _increaseInternalBalance(recipient, token, toSend);
             } else {
                 token.safeTransfer(recipient, toSend);
-                return withdrawFee;
             }
         }
+
+        return withdrawFee;
     }
+
+    function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view virtual returns (uint256);
 
     function _getInternalBalance(address account, IERC20 token) internal view virtual returns (uint256);
 
@@ -170,4 +174,14 @@ abstract contract AssetTransfer {
         IERC20 token,
         uint256 balance
     ) internal virtual;
+
+    /**
+     * @dev Enables the Vault to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
+     * caller.
+     *
+     * Any ETH sent to the Vault outside of the WETH unwrapping mechanism will be forever locked inside the Vault. In
+     * particular, transferring ETH to the Vault directly will not cause for it to be wrapped in WETH, but rather to be
+     * lost. Do not ever send ETH to the Vault directly.
+     */
+    receive() external payable {}
 }

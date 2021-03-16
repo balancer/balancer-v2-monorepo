@@ -4,6 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import * as expectEvent from '../helpers/expectEvent';
 import { deploy } from '../../lib/helpers/deploy';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 
 describe('BasePoolFactory', function () {
   let admin: SignerWithAddress;
@@ -18,7 +19,7 @@ describe('BasePoolFactory', function () {
 
   sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS] });
     factory = await deploy('MockPoolFactory', { args: [vault.address] });
   });
 
