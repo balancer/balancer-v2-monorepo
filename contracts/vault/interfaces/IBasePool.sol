@@ -77,18 +77,4 @@ interface IBasePool {
         uint256 protocolSwapFee,
         bytes calldata userData
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
-
-    // Optional methods - these are not required by the Vault as they are not called, but Pool contracts are encouraged
-    // to implement these or similar getters.
-
-    /**
-     * @dev Returns the address of the Vault.
-     */
-    function getVault() external view returns (IVault);
-
-    /**
-     * @dev Returns the Pool ID of the Pool. Note that this may not be feasible for Pool contracts that register
-     * multiple Pools.
-     */
-    function getPoolId() external view returns (bytes32);
 }

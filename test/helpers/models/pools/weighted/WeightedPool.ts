@@ -1,4 +1,4 @@
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractFunction } from 'ethers';
 
 import { roleId } from '../../../../../lib/helpers/roles';
 import { BigNumberish, bn, fp } from '../../../../../lib/helpers/numbers';
@@ -24,6 +24,9 @@ import {
   MultiExitGivenInWeightedPool,
   ExitGivenOutWeightedPool,
   SwapWeightedPool,
+  ExitQueryResult,
+  JoinQueryResult,
+  PoolQueryResult,
 } from './types';
 import {
   calculateInvariant,
@@ -294,104 +297,64 @@ export default class WeightedPool {
   }
 
   async init(params: InitWeightedPool): Promise<JoinResult> {
-    const { initialBalances: balances } = params;
-    const amountsIn = Array.isArray(balances) ? balances : Array(this.tokens.length).fill(balances);
-
-    return this.join({
-      from: params.from,
-      recipient: params.recipient,
-      protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeJoinWeightedPool({
-        kind: 'Init',
-        amountsIn,
-      }),
-    });
+    return this.join(this._buildInitParams(params));
   }
 
   async joinGivenIn(params: JoinGivenInWeightedPool): Promise<JoinResult> {
-    const { amountsIn: amounts } = params;
-    const amountsIn = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
+    return this.join(this._buildJoinGivenInParams(params));
+  }
 
-    return this.join({
-      from: params.from,
-      recipient: params.recipient,
-      currentBalances: params.currentBalances,
-      protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeJoinWeightedPool({
-        kind: 'ExactTokensInForBPTOut',
-        amountsIn,
-        minimumBPT: params.minimumBptOut ?? 0,
-      }),
-    });
+  async queryJoinGivenIn(params: JoinGivenInWeightedPool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildJoinGivenInParams(params));
   }
 
   async joinGivenOut(params: JoinGivenOutWeightedPool): Promise<JoinResult> {
-    return this.join({
-      from: params.from,
-      recipient: params.recipient,
-      currentBalances: params.currentBalances,
-      protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeJoinWeightedPool({
-        kind: 'TokenInForExactBPTOut',
-        bptAmountOut: params.bptOut,
-        enterTokenIndex: this.tokens.indexOf(params.token),
-      }),
-    });
+    return this.join(this._buildJoinGivenOutParams(params));
+  }
+
+  async queryJoinGivenOut(params: JoinGivenOutWeightedPool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildJoinGivenOutParams(params));
   }
 
   async exitGivenOut(params: ExitGivenOutWeightedPool): Promise<ExitResult> {
-    const { amountsOut: amounts } = params;
-    const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
+    return this.exit(this._buildExitGivenOutParams(params));
+  }
 
-    return this.exit({
-      from: params.from,
-      recipient: params.recipient,
-      currentBalances: params.currentBalances,
-      protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeExitWeightedPool({
-        kind: 'BPTInForExactTokensOut',
-        amountsOut,
-        maxBPTAmountIn: params.maximumBptIn ?? MAX_UINT256,
-      }),
-    });
+  async queryExitGivenOut(params: ExitGivenOutWeightedPool): Promise<ExitQueryResult> {
+    return this.queryExit(this._buildExitGivenOutParams(params));
   }
 
   async singleExitGivenIn(params: SingleExitGivenInWeightedPool): Promise<ExitResult> {
-    return this.exit({
-      from: params.from,
-      recipient: params.recipient,
-      currentBalances: params.currentBalances,
-      protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeExitWeightedPool({
-        kind: 'ExactBPTInForOneTokenOut',
-        bptAmountIn: params.bptIn,
-        exitTokenIndex: this.tokens.indexOf(params.token),
-      }),
-    });
+    return this.exit(this._buildSingleExitGivenInParams(params));
+  }
+
+  async querySingleExitGivenIn(params: SingleExitGivenInWeightedPool): Promise<ExitQueryResult> {
+    return this.queryExit(this._buildSingleExitGivenInParams(params));
   }
 
   async multiExitGivenIn(params: MultiExitGivenInWeightedPool): Promise<ExitResult> {
-    return this.exit({
-      from: params.from,
-      recipient: params.recipient,
-      currentBalances: params.currentBalances,
-      protocolFeePercentage: params.protocolFeePercentage,
-      data: encodeExitWeightedPool({
-        kind: 'ExactBPTInForAllTokensOut',
-        bptAmountIn: params.bptIn,
-      }),
-    });
+    return this.exit(this._buildMultiExitGivenInParams(params));
+  }
+
+  async queryMultiExitGivenIn(params: MultiExitGivenInWeightedPool): Promise<ExitQueryResult> {
+    return this.queryExit(this._buildMultiExitGivenInParams(params));
+  }
+
+  async queryJoin(params: JoinExitWeightedPool): Promise<JoinQueryResult> {
+    const fn = this.instance.callStatic.queryJoin;
+    return (await this._executeQuery(params, fn)) as JoinQueryResult;
   }
 
   async join(params: JoinExitWeightedPool): Promise<JoinResult> {
-    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
     const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
     const tx = this.vault.joinPool({
       poolAddress: this.address,
       poolId: this.poolId,
       recipient: to,
       currentBalances,
+      tokens: this.tokens.addresses,
       latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
@@ -403,6 +366,11 @@ export default class WeightedPool {
     return { amountsIn, dueProtocolFeeAmounts };
   }
 
+  async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
+    const fn = this.instance.callStatic.queryExit;
+    return (await this._executeQuery(params, fn)) as ExitQueryResult;
+  }
+
   async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
@@ -412,6 +380,7 @@ export default class WeightedPool {
       poolId: this.poolId,
       recipient: to,
       currentBalances,
+      tokens: this.tokens.addresses,
       latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
@@ -421,6 +390,110 @@ export default class WeightedPool {
     const receipt = await (await tx).wait();
     const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
     return { amountsOut, dueProtocolFeeAmounts };
+  }
+
+  private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+
+    return fn(
+      this.poolId,
+      params.from?.address || ZERO_ADDRESS,
+      to,
+      currentBalances,
+      params.latestBlockNumberUsed ?? 0,
+      params.protocolFeePercentage ?? 0,
+      params.data ?? '0x'
+    );
+  }
+
+  private _buildInitParams(params: InitWeightedPool): JoinExitWeightedPool {
+    const { initialBalances: balances } = params;
+    const amountsIn = Array.isArray(balances) ? balances : Array(this.tokens.length).fill(balances);
+
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: encodeJoinWeightedPool({
+        kind: 'Init',
+        amountsIn,
+      }),
+    };
+  }
+
+  private _buildJoinGivenInParams(params: JoinGivenInWeightedPool): JoinExitWeightedPool {
+    const { amountsIn: amounts } = params;
+    const amountsIn = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
+
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: encodeJoinWeightedPool({
+        kind: 'ExactTokensInForBPTOut',
+        amountsIn,
+        minimumBPT: params.minimumBptOut ?? 0,
+      }),
+    };
+  }
+
+  private _buildJoinGivenOutParams(params: JoinGivenOutWeightedPool): JoinExitWeightedPool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: encodeJoinWeightedPool({
+        kind: 'TokenInForExactBPTOut',
+        bptAmountOut: params.bptOut,
+        enterTokenIndex: this.tokens.indexOf(params.token),
+      }),
+    };
+  }
+
+  private _buildExitGivenOutParams(params: ExitGivenOutWeightedPool): JoinExitWeightedPool {
+    const { amountsOut: amounts } = params;
+    const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: encodeExitWeightedPool({
+        kind: 'BPTInForExactTokensOut',
+        amountsOut,
+        maxBPTAmountIn: params.maximumBptIn ?? MAX_UINT256,
+      }),
+    };
+  }
+
+  private _buildSingleExitGivenInParams(params: SingleExitGivenInWeightedPool): JoinExitWeightedPool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: encodeExitWeightedPool({
+        kind: 'ExactBPTInForOneTokenOut',
+        bptAmountIn: params.bptIn,
+        exitTokenIndex: this.tokens.indexOf(params.token),
+      }),
+    };
+  }
+
+  private _buildMultiExitGivenInParams(params: MultiExitGivenInWeightedPool): JoinExitWeightedPool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: encodeExitWeightedPool({
+        kind: 'ExactBPTInForAllTokensOut',
+        bptAmountIn: params.bptIn,
+      }),
+    };
   }
 
   async activateEmergencyPeriod(): Promise<void> {
