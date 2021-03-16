@@ -261,7 +261,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 latestBlockNumberUsed,
                 protocolSwapFeePercentage,
                 userData,
-                _onJoinPool
+                _onJoinPool,
+                _downscaleUpArray
             );
     }
 
@@ -314,7 +315,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 latestBlockNumberUsed,
                 protocolSwapFeePercentage,
                 userData,
-                _onExitPool
+                _onExitPool,
+                _downscaleDownArray
             );
     }
 
@@ -475,7 +477,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 protocolSwapFeePercentage,
         bytes memory userData,
         function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
-            returns (uint256, uint256[] memory, uint256[] memory) action
+            internal
+            returns (uint256, uint256[] memory, uint256[] memory) _action,
+        function(uint256[] memory, uint256[] memory) internal view _downscaleArray
     ) private returns (uint256, uint256[] memory) {
         if (msg.sender != address(this)) {
             // We perform an external call to ourselves, forwarding the same calldata.
@@ -526,7 +530,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                     }
             }
         } else {
-            (uint256 bptAmount, uint256[] memory tokenAmounts, ) = action(
+            uint256[] memory scalingFactors = _scalingFactors();
+            _upscaleArray(currentBalances, scalingFactors);
+
+            (uint256 bptAmount, uint256[] memory tokenAmounts, ) = _action(
                 poolId,
                 sender,
                 recipient,
@@ -535,6 +542,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 protocolSwapFeePercentage,
                 userData
             );
+
+            _downscaleArray(tokenAmounts, scalingFactors);
 
             // solhint-disable-next-line no-inline-assembly
             assembly {
