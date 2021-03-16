@@ -1,4 +1,4 @@
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
 
 import { roleId } from '../../../../../lib/helpers/roles';
 import { BigNumberish, bn, fp } from '../../../../../lib/helpers/numbers';
@@ -24,6 +24,9 @@ import {
   MultiExitGivenInWeightedPool,
   ExitGivenOutWeightedPool,
   SwapWeightedPool,
+  ExitQueryResult,
+  JoinQueryResult,
+  PoolQueryResult,
 } from './types';
 import {
   calculateInvariant,
@@ -294,10 +297,109 @@ export default class WeightedPool {
   }
 
   async init(params: InitWeightedPool): Promise<JoinResult> {
+    return this.join(this._buildInitParams(params));
+  }
+
+  async joinGivenIn(params: JoinGivenInWeightedPool): Promise<JoinResult> {
+    return this.join(this._buildJoinGivenInParams(params));
+  }
+
+  async queryJoinGivenIn(params: JoinGivenInWeightedPool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildJoinGivenInParams(params));
+  }
+
+  async joinGivenOut(params: JoinGivenOutWeightedPool): Promise<JoinResult> {
+    return this.join(this._buildJoinGivenOutParams(params));
+  }
+
+  async queryJoinGivenOut(params: JoinGivenOutWeightedPool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildJoinGivenOutParams(params));
+  }
+
+  async exitGivenOut(params: ExitGivenOutWeightedPool): Promise<ExitResult> {
+    return this.exit(this._buildExitGivenOutParams(params));
+  }
+
+  async queryExitGivenOut(params: ExitGivenOutWeightedPool): Promise<ExitQueryResult> {
+    return this.queryExit(this._buildExitGivenOutParams(params));
+  }
+
+  async singleExitGivenIn(params: SingleExitGivenInWeightedPool): Promise<ExitResult> {
+    return this.exit(this._buildSingleExitGivenInParams(params));
+  }
+
+  async querySingleExitGivenIn(params: SingleExitGivenInWeightedPool): Promise<ExitQueryResult> {
+    return this.queryExit(this._buildSingleExitGivenInParams(params));
+  }
+
+  async multiExitGivenIn(params: MultiExitGivenInWeightedPool): Promise<ExitResult> {
+    return this.exit(this._buildMultiExitGivenInParams(params));
+  }
+
+  async queryMultiExitGivenIn(params: MultiExitGivenInWeightedPool): Promise<ExitQueryResult> {
+    return this.queryExit(this._buildMultiExitGivenInParams(params));
+  }
+
+  async join(params: JoinExitWeightedPool): Promise<JoinResult> {
+    const tx = await this._executeAction(params, this.vault.joinPool);
+    const receipt = await tx.wait();
+    const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
+    return { amountsIn, dueProtocolFeeAmounts };
+  }
+
+  async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
+    const tx = await this._executeAction(params, this.vault.exitPool);
+    const receipt = await tx.wait();
+    const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
+    return { amountsOut, dueProtocolFeeAmounts };
+  }
+
+  async queryJoin(params: JoinExitWeightedPool): Promise<JoinQueryResult> {
+    const fn = this.instance.callStatic.queryJoin;
+    return (await this._executeQuery(params, fn)) as JoinQueryResult;
+  }
+
+  async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
+    const fn = this.instance.callStatic.queryExit;
+    return (await this._executeQuery(params, fn)) as ExitQueryResult;
+  }
+
+  private async _executeAction(params: JoinExitWeightedPool, fn: ContractFunction): Promise<ContractTransaction> {
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+
+    return fn({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
+      currentBalances,
+      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: params.data ?? '0x',
+      from: params.from,
+    });
+  }
+
+  private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+
+    return fn(
+      this.poolId,
+      params.from?.address || ZERO_ADDRESS,
+      to,
+      currentBalances,
+      params.latestBlockNumberUsed ?? 0,
+      params.protocolFeePercentage ?? 0,
+      params.data ?? '0x'
+    );
+  }
+
+  private _buildInitParams(params: InitWeightedPool): JoinExitWeightedPool {
     const { initialBalances: balances } = params;
     const amountsIn = Array.isArray(balances) ? balances : Array(this.tokens.length).fill(balances);
 
-    return this.join({
+    return {
       from: params.from,
       recipient: params.recipient,
       protocolFeePercentage: params.protocolFeePercentage,
@@ -305,14 +407,14 @@ export default class WeightedPool {
         kind: 'Init',
         amountsIn,
       }),
-    });
+    };
   }
 
-  async joinGivenIn(params: JoinGivenInWeightedPool): Promise<JoinResult> {
+  private _buildJoinGivenInParams(params: JoinGivenInWeightedPool): JoinExitWeightedPool {
     const { amountsIn: amounts } = params;
     const amountsIn = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
 
-    return this.join({
+    return {
       from: params.from,
       recipient: params.recipient,
       currentBalances: params.currentBalances,
@@ -322,11 +424,11 @@ export default class WeightedPool {
         amountsIn,
         minimumBPT: params.minimumBptOut ?? 0,
       }),
-    });
+    };
   }
 
-  async joinGivenOut(params: JoinGivenOutWeightedPool): Promise<JoinResult> {
-    return this.join({
+  private _buildJoinGivenOutParams(params: JoinGivenOutWeightedPool): JoinExitWeightedPool {
+    return {
       from: params.from,
       recipient: params.recipient,
       currentBalances: params.currentBalances,
@@ -336,14 +438,13 @@ export default class WeightedPool {
         bptAmountOut: params.bptOut,
         enterTokenIndex: this.tokens.indexOf(params.token),
       }),
-    });
+    };
   }
 
-  async exitGivenOut(params: ExitGivenOutWeightedPool): Promise<ExitResult> {
+  private _buildExitGivenOutParams(params: ExitGivenOutWeightedPool): JoinExitWeightedPool {
     const { amountsOut: amounts } = params;
     const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
-
-    return this.exit({
+    return {
       from: params.from,
       recipient: params.recipient,
       currentBalances: params.currentBalances,
@@ -353,11 +454,11 @@ export default class WeightedPool {
         amountsOut,
         maxBPTAmountIn: params.maximumBptIn ?? MAX_UINT256,
       }),
-    });
+    };
   }
 
-  async singleExitGivenIn(params: SingleExitGivenInWeightedPool): Promise<ExitResult> {
-    return this.exit({
+  private _buildSingleExitGivenInParams(params: SingleExitGivenInWeightedPool): JoinExitWeightedPool {
+    return {
       from: params.from,
       recipient: params.recipient,
       currentBalances: params.currentBalances,
@@ -367,11 +468,11 @@ export default class WeightedPool {
         bptAmountIn: params.bptIn,
         exitTokenIndex: this.tokens.indexOf(params.token),
       }),
-    });
+    };
   }
 
-  async multiExitGivenIn(params: MultiExitGivenInWeightedPool): Promise<ExitResult> {
-    return this.exit({
+  private _buildMultiExitGivenInParams(params: MultiExitGivenInWeightedPool): JoinExitWeightedPool {
+    return {
       from: params.from,
       recipient: params.recipient,
       currentBalances: params.currentBalances,
@@ -380,47 +481,7 @@ export default class WeightedPool {
         kind: 'ExactBPTInForAllTokensOut',
         bptAmountIn: params.bptIn,
       }),
-    });
-  }
-
-  async join(params: JoinExitWeightedPool): Promise<JoinResult> {
-    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
-    const currentBalances = params.currentBalances || (await this.getBalances());
-
-    const tx = this.vault.joinPool({
-      poolAddress: this.address,
-      poolId: this.poolId,
-      recipient: to,
-      currentBalances,
-      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
-      protocolFeePercentage: params.protocolFeePercentage ?? 0,
-      data: params.data ?? '0x',
-      from: params.from,
-    });
-
-    const receipt = await (await tx).wait();
-    const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
-    return { amountsIn, dueProtocolFeeAmounts };
-  }
-
-  async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
-    const currentBalances = params.currentBalances || (await this.getBalances());
-    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
-
-    const tx = await this.vault.exitPool({
-      poolAddress: this.address,
-      poolId: this.poolId,
-      recipient: to,
-      currentBalances,
-      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
-      protocolFeePercentage: params.protocolFeePercentage ?? 0,
-      data: params.data ?? '0x',
-      from: params.from,
-    });
-
-    const receipt = await (await tx).wait();
-    const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
-    return { amountsOut, dueProtocolFeeAmounts };
+    };
   }
 
   async activateEmergencyPeriod(): Promise<void> {
