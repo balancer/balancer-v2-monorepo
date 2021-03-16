@@ -6,7 +6,8 @@ import Token from '../tokens/Token';
 import VaultDeployer from './VaultDeployer';
 import TypesConverter from '../types/TypesConverter';
 import { Account } from '../types/types';
-import { JoinExitPool, RawVaultDeployment } from './types';
+import { ExitPool, JoinPool, RawVaultDeployment } from './types';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../../../lib/helpers/constants';
 
 export default class Vault {
   mocked: boolean;
@@ -45,30 +46,50 @@ export default class Vault {
     return this.instance.getPoolTokenInfo(poolId, token.address);
   }
 
-  async joinPool(params: JoinExitPool): Promise<ContractTransaction> {
+  async joinPool(params: JoinPool): Promise<ContractTransaction> {
     const vault = params.from ? this.instance.connect(params.from) : this.instance;
-    return vault.callJoinPool(
-      params.poolAddress,
-      params.poolId,
-      params.recipient,
-      params.currentBalances,
-      params.latestBlockNumberUsed,
-      params.protocolFeePercentage,
-      params.data
-    );
+    return this.mocked
+      ? vault.callJoinPool(
+          params.poolAddress,
+          params.poolId,
+          params.recipient,
+          params.currentBalances,
+          params.latestBlockNumberUsed,
+          params.protocolFeePercentage,
+          params.data
+        )
+      : vault.joinPool(
+          params.poolId,
+          params.from?.address || ZERO_ADDRESS,
+          params.recipient,
+          params.tokens,
+          params.maxAmountsIn ?? Array(params.tokens.length).fill(MAX_UINT256),
+          params.fromInternalBalance ?? false,
+          params.data
+        );
   }
 
-  async exitPool(params: JoinExitPool): Promise<ContractTransaction> {
+  async exitPool(params: ExitPool): Promise<ContractTransaction> {
     const vault = params.from ? this.instance.connect(params.from) : this.instance;
-    return vault.callExitPool(
-      params.poolAddress,
-      params.poolId,
-      params.recipient,
-      params.currentBalances,
-      params.latestBlockNumberUsed,
-      params.protocolFeePercentage,
-      params.data
-    );
+    return this.mocked
+      ? vault.callExitPool(
+          params.poolAddress,
+          params.poolId,
+          params.recipient,
+          params.currentBalances,
+          params.latestBlockNumberUsed,
+          params.protocolFeePercentage,
+          params.data
+        )
+      : vault.exitPool(
+          params.poolId,
+          params.from?.address || ZERO_ADDRESS,
+          params.recipient,
+          params.tokens,
+          params.minAmountsOut ?? Array(params.tokens.length).fill(0),
+          params.toInternalBalance ?? false,
+          params.data
+        );
   }
 
   async grantRole(roleId: string, to?: Account): Promise<ContractTransaction> {

@@ -18,13 +18,30 @@ export type VaultDeployment = {
   from?: SignerWithAddress;
 };
 
-export type JoinExitPool = {
+export type JoinPool = {
   poolAddress: string;
   poolId: string;
   recipient: string;
   currentBalances: BigNumberish[];
+  tokens: string[];
   latestBlockNumberUsed: BigNumberish;
   protocolFeePercentage: BigNumberish;
   data: string;
+  maxAmountsIn?: BigNumberish[];
+  fromInternalBalance?: boolean;
+  from?: SignerWithAddress;
+};
+
+export type ExitPool = {
+  poolAddress: string;
+  poolId: string;
+  recipient: string;
+  currentBalances: BigNumberish[];
+  tokens: string[];
+  latestBlockNumberUsed: BigNumberish;
+  protocolFeePercentage: BigNumberish;
+  data: string;
+  minAmountsOut?: BigNumberish[];
+  toInternalBalance?: boolean;
   from?: SignerWithAddress;
 };

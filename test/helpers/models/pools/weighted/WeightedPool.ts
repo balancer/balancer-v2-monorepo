@@ -1,4 +1,4 @@
-import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
+import { BigNumber, Contract, ContractFunction } from 'ethers';
 
 import { roleId } from '../../../../../lib/helpers/roles';
 import { BigNumberish, bn, fp } from '../../../../../lib/helpers/numbers';
@@ -340,23 +340,30 @@ export default class WeightedPool {
     return this.queryExit(this._buildMultiExitGivenInParams(params));
   }
 
-  async join(params: JoinExitWeightedPool): Promise<JoinResult> {
-    const tx = await this._executeAction(params, this.vault.joinPool);
-    const receipt = await tx.wait();
-    const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
-    return { amountsIn, dueProtocolFeeAmounts };
-  }
-
-  async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
-    const tx = await this._executeAction(params, this.vault.exitPool);
-    const receipt = await tx.wait();
-    const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
-    return { amountsOut, dueProtocolFeeAmounts };
-  }
-
   async queryJoin(params: JoinExitWeightedPool): Promise<JoinQueryResult> {
     const fn = this.instance.callStatic.queryJoin;
     return (await this._executeQuery(params, fn)) as JoinQueryResult;
+  }
+
+  async join(params: JoinExitWeightedPool): Promise<JoinResult> {
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+
+    const tx = this.vault.joinPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
+      currentBalances,
+      tokens: this.tokens.addresses,
+      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: params.data ?? '0x',
+      from: params.from,
+    });
+
+    const receipt = await (await tx).wait();
+    const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
+    return { amountsIn, dueProtocolFeeAmounts };
   }
 
   async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
@@ -364,20 +371,25 @@ export default class WeightedPool {
     return (await this._executeQuery(params, fn)) as ExitQueryResult;
   }
 
-  private async _executeAction(params: JoinExitWeightedPool, fn: ContractFunction): Promise<ContractTransaction> {
+  async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
-    return fn({
+    const tx = await this.vault.exitPool({
       poolAddress: this.address,
       poolId: this.poolId,
       recipient: to,
       currentBalances,
+      tokens: this.tokens.addresses,
       latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
     });
+
+    const receipt = await (await tx).wait();
+    const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
+    return { amountsOut, dueProtocolFeeAmounts };
   }
 
   private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {
