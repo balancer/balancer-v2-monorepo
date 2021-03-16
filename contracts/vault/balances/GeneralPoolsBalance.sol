@@ -68,6 +68,9 @@ contract GeneralPoolsBalance {
             IERC20 token = tokens[i];
             bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
             require(currentBalance.isZero(), "NONZERO_TOKEN_BALANCE");
+
+            // We don't need to check remove's return value, since _getGeneralPoolBalance already checks that the token
+            // was registered.
             poolBalances.remove(token);
         }
     }
