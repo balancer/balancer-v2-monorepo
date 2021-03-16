@@ -115,22 +115,27 @@ describe('Vault - join pool', () => {
         await expect(joinPool({ poolId: ethers.utils.id('invalid') })).to.be.revertedWith('INVALID_POOL_ID');
       });
 
-      it('reverts if token array is incorrect', async () => {
-        // Missing - token addresses and max amounts min length must match
+      it('reverts if a token is missing in the array', async () => {
         await expect(
           joinPool({ tokenAddresses: tokens.addresses.slice(1), maxAmountsIn: array(0).slice(1) })
         ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
 
-        // Extra  - token addresses and max amounts min length must match
+      it('reverts if there is one extra token', async () => {
         await expect(
           joinPool({
             tokenAddresses: tokens.addresses.concat(tokens.first.address),
             maxAmountsIn: array(0).concat(bn(0)),
           })
         ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
 
-        // Unordered
+      it('reverts if the tokens list is not sorted', async () => {
         await expect(joinPool({ tokenAddresses: tokens.addresses.reverse() })).to.be.revertedWith('TOKENS_MISMATCH');
+      });
+
+      it('reverts if token array is empty', async () => {
+        await expect(joinPool({ tokenAddresses: [], maxAmountsIn: [] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
       });
 
       it('reverts if tokens and amounts length do not match', async () => {
