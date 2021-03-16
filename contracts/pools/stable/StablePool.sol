@@ -57,8 +57,10 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         IERC20[] memory tokens,
         address[] memory externalRates,
         uint256 amplificationParameter,
-        uint256 swapFee
-    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee) {
+        uint256 swapFee,
+        uint256 emergencyPeriod,
+        uint256 emergencyPeriodCheckExtension
+    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {
         require(amplificationParameter >= _MIN_AMP, "MIN_AMP");
         require(amplificationParameter <= _MAX_AMP, "MAX_AMP");
 
@@ -88,7 +90,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override returns (uint256) {
+    ) internal view override noEmergencyPeriod returns (uint256) {
         // apply external rates if applicable
         uint256[] memory externalRates = _getExternalRates();
         _applyRates(balances, externalRates, RoundDirection.UP);
@@ -109,7 +111,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override returns (uint256) {
+    ) internal view override noEmergencyPeriod returns (uint256) {
         // apply external rates if applicable
         uint256[] memory externalRates = _getExternalRates();
         _applyRates(balances, externalRates, RoundDirection.UP);
@@ -132,7 +134,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         address,
         address,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
+    ) internal override noEmergencyPeriod returns (uint256, uint256[] memory) {
         StablePool.JoinKind kind = userData.joinKind();
         require(kind == StablePool.JoinKind.INIT, "UNINITIALIZED");
 
@@ -161,6 +163,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
     )
         internal
         override
+        noEmergencyPeriod
         returns (
             uint256,
             uint256[] memory,
@@ -287,7 +290,9 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         )
     {
         // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
-        // event and now - the invariant's growth is due exclusively to swap fees.
+        // event and now - the invariant's growth is due exclusively to swap fees.\
+
+        //TODO: do not charge fees on emercency period
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             balances,
             _lastInvariant,
@@ -330,6 +335,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
     function _exitExactBPTInForTokenOut(uint256[] memory balances, bytes memory userData)
         private
         view
+        noEmergencyPeriod
         returns (uint256, uint256[] memory)
     {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
@@ -362,6 +368,7 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
     function _exitBPTInForExactTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
+        noEmergencyPeriod
         returns (uint256, uint256[] memory)
     {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
@@ -390,13 +397,18 @@ contract StablePool is BaseGeneralPool, StableMath, IExternalRate {
         return (bptAmountIn, downscaledAmountsOut);
     }
 
-    // No need to apply external rates as all is proportional
+    /**
+     * @dev Note we are not tagging this function with `noEmergencyPeriod` to allow users exit in a proportional
+     * manner in case there is an emergency in the pool. This operation should never be restricted.
+     */
     function _exitExactBPTInForTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
     {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
+
+        // No need to apply external rates as all is proportional
 
         uint256[] memory amountsOut = StableMath._exactBPTInForTokensOut(balances, bptAmountIn, totalSupply());
 

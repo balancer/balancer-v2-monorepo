@@ -1,9 +1,30 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { Account } from '../types/types';
+import { BigNumberish } from '../../../../lib/helpers/numbers';
+
+export type RawVaultDeployment = {
+  mocked?: boolean;
+  admin?: SignerWithAddress;
+  emergencyPeriod?: BigNumberish;
+  emergencyPeriodCheckExtension?: BigNumberish;
+  from?: SignerWithAddress;
+};
 
 export type VaultDeployment = {
-  admin?: Account;
+  mocked: boolean;
+  emergencyPeriod: BigNumberish;
+  emergencyPeriodCheckExtension: BigNumberish;
+  admin?: SignerWithAddress;
   from?: SignerWithAddress;
-  mocked?: boolean;
+};
+
+export type JoinExitPool = {
+  poolAddress: string;
+  poolId: string;
+  recipient: string;
+  currentBalances: BigNumberish[];
+  latestBlockNumberUsed: BigNumberish;
+  protocolFeePercentage: BigNumberish;
+  data: string;
+  from?: SignerWithAddress;
 };

@@ -22,7 +22,7 @@ describe('Vault - asset manager', function () {
   });
 
   sharedBeforeEach('set up asset manager', async () => {
-    vault = await deploy('Vault', { args: [ZERO_ADDRESS] });
+    vault = await deploy('Vault', { args: [ZERO_ADDRESS, 0, 0] });
     tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
     otherToken = await Token.create('OTHER');
   });
