@@ -485,7 +485,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
             // solhint-disable-next-line no-inline-assembly
             assembly {
-                // This call should always revert to decode the actual token deltas from the revert reason
+                // This call should always revert to decode the bpt and token amounts from the revert reason
                 switch success
                     case 0 {
                         // The returndata now contains the raw memory representation of the `bptAmount` and
@@ -495,7 +495,17 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
                         // An ABI-encoded response will include one additional field to indicate the starting offset
                         // of the `tokenAmounts` array. The `bptAmount` will be laid out in the first word of the
-                        // returndata. We now copy 32 bytes for the `bptAmount` from returndata into memory.
+                        // returndata.
+
+                        // In returndata:
+                        // [ bptAmount ][ tokenAmounts length ][ tokenAmounts values ]
+                        // [  32 bytes ][       32 bytes      ][ (32 * length) bytes ]
+                        //
+                        // We now need to return (ABI-encoded values):
+                        // [ bptAmount ][ tokeAmounts offset ][ tokenAmounts length ][ tokenAmounts values ]
+                        // [  32 bytes ][       32 bytes     ][       32 bytes      ][ (32 * length) bytes ]
+
+                        // We copy 32 bytes for the `bptAmount` from returndata into memory.
                         returndatacopy(0x00, 0, 32)
 
                         // The offsets are 32-bytes long, so the array of `tokenAmounts` will start after
@@ -503,12 +513,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                         mstore(0x20, 64)
 
                         // We now copy the raw memory array for the `tokenAmounts` from returndata into memory.
-                        // Since the offset takes up 64 bytes, we start copying at address 0x40.
+                        // Since the offset takes up 32 bytes, we start copying at address 0x40.
                         returndatacopy(0x40, 32, sub(returndatasize(), 32))
 
-                        // We finally return the ABI-encoded array, which has a total length equal to that of the array
-                        // (returndata), plus the 64 bytes for the offsets.
-                        return(0, add(returndatasize(), 64))
+                        // We finally return the ABI-encoded uint256 and the array, which has a total length equal to
+                        // the size of returndata, plus the 32 bytes of the offset.
+                        return(0, add(returndatasize(), 32))
                     }
                     default {
                         // This call should always revert, but we fail nonetheless if that didn't happen
