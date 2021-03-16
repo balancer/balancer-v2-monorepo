@@ -93,10 +93,10 @@ interface IVault {
      */
 
     struct BalanceTransfer {
-        IERC20 token;
+        IAsset asset;
         uint256 amount;
         address sender;
-        address recipient;
+        address payable recipient;
     }
 
     /**

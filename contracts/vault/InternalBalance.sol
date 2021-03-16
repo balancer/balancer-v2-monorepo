@@ -19,6 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./AssetTransfersHandler.sol";
@@ -53,12 +54,12 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
-            IERC20 token = transfers[i].token;
+            IAsset asset = transfers[i].asset;
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            _increaseInternalBalance(recipient, token, amount);
-            token.safeTransferFrom(sender, address(this), amount);
+            _receiveAsset(asset, amount, sender, false);
+            _increaseInternalBalance(recipient, _translateToIERC20(asset), amount);
         }
     }
 
@@ -81,15 +82,15 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
-            IERC20 token = transfers[i].token;
+            IAsset asset = transfers[i].asset;
             uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
+            address payable recipient = transfers[i].recipient;
 
-            uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
-            _increaseCollectedFees(token, feeAmount);
+            uint256 feeAmount = _sendAsset(asset, amount, recipient, false, true);
 
+            IERC20 token = _translateToIERC20(asset);
             _decreaseInternalBalance(sender, token, amount);
-            token.safeTransfer(recipient, amount.sub(feeAmount));
+            _increaseCollectedFees(token, feeAmount);
         }
     }
 
@@ -103,10 +104,13 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
-            IERC20 token = transfers[i].token;
+            IAsset asset = transfers[i].asset;
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
+            require(!_isETH(asset), "INVALID_ETH_TRANSFER");
+
+            IERC20 token = _asIERC20(asset);
             _decreaseInternalBalance(sender, token, amount);
             _increaseInternalBalance(recipient, token, amount);
         }
