@@ -93,6 +93,7 @@ export default {
       'BalancerPoolToken',
       'BasePoolFactory',
       'ERC20',
+      'BalancerHelpers',
     ],
     flat: true,
   },
