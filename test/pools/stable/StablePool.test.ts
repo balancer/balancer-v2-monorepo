@@ -21,7 +21,7 @@ import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { roleId } from '../../../lib/helpers/roles';
 
-describe('StablePool', function () {
+describe.only('StablePool', function () {
   let allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
@@ -186,7 +186,7 @@ describe('StablePool', function () {
             poolTokens.addresses,
             poolAmplification,
             poolSwapFee,
-            0,
+            EMERGENCY_PERIOD,
             0,
           ],
         });
