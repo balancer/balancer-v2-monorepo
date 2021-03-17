@@ -195,7 +195,6 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory downscaledAmountsIn = amountsIn; // TODO: check that this won't be changed by pointer reference
         _upscaleArray(amountsIn, _scalingFactors());
 
-        // No need to unapply appreciation for bptAmount
         uint256 bptAmountOut = StableMath._exactTokensInForBPTOut(
             _amplificationParameter,
             balances,
@@ -334,7 +333,6 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory downscaledAmountsOut = amountsOut;
         _upscaleArray(amountsOut, _scalingFactors());
 
-        // No need to unapply appreciation for bptAmount
         uint256 bptAmountIn = StableMath._bptInForExactTokensOut(
             _amplificationParameter,
             balances,
@@ -358,8 +356,6 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256, uint256[] memory)
     {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
-
-        // No need to apply appreciations as all is proportional
 
         uint256[] memory amountsOut = StableMath._exactBPTInForTokensOut(balances, bptAmountIn, totalSupply());
 
