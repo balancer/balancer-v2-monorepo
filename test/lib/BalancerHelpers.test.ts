@@ -35,13 +35,17 @@ describe('BalancerHelpers', function () {
     helper = await deploy('BalancerHelpers', { args: [pool.vault.address] });
   });
 
+  const query = async ({ fn, data, internalBalance }: { fn: string; data: string; internalBalance?: boolean }) => {
+    return helper.callStatic[fn](pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, tokens.addresses, [], internalBalance, data);
+  };
+
   describe('queryJoin', () => {
     it('can query join results', async () => {
       const amountsIn = [fp(1), fp(0)];
       const expectedBptOut = await pool.estimateBptOut(amountsIn, initialBalances);
 
       const data = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', amountsIn, minimumBPT: 0 });
-      const result = await helper.callStatic.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, tokens.addresses, data);
+      const result = await query({ fn: 'queryJoin', data });
 
       expect(result.amountsIn).to.deep.equal(amountsIn);
       expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
@@ -58,17 +62,10 @@ describe('BalancerHelpers', function () {
     });
 
     context('when depositing into internal balance', () => {
-      const toInternalBalance = true;
+      const internalBalance = true;
 
       it('tells the exit results without considering the withdraw fees', async () => {
-        const result = await helper.callStatic.queryExit(
-          pool.poolId,
-          ZERO_ADDRESS,
-          ZERO_ADDRESS,
-          tokens.addresses,
-          toInternalBalance,
-          data
-        );
+        const result = await query({ fn: 'queryExit', data, internalBalance });
 
         expect(result.bptIn).to.equal(bptIn);
         expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
@@ -77,22 +74,14 @@ describe('BalancerHelpers', function () {
 
     context('when withdrawing the tokens from the vault', () => {
       const withdrawFee = 0.002; // 0.2%
-      const toInternalBalance = false;
+      const internalBalance = false;
 
       sharedBeforeEach('set withdraw fees', async () => {
         await pool.vault.setWithdrawFee(fp(withdrawFee));
       });
 
       it('tells the exit results considering the withdraw fees', async () => {
-        const result = await helper.callStatic.queryExit(
-          pool.poolId,
-          ZERO_ADDRESS,
-          ZERO_ADDRESS,
-          tokens.addresses,
-          toInternalBalance,
-          data
-        );
-
+        const result = await query({ fn: 'queryExit', data, internalBalance });
         expect(result.bptIn).to.equal(bptIn);
 
         const expectedAmountsOutWithFees = expectedAmountsOut.map((amount) => amount.sub(pct(amount, withdrawFee)));

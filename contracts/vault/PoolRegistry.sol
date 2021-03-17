@@ -291,7 +291,7 @@ abstract contract PoolRegistry is
             _setGeneralPoolBalances(poolId, balances);
         }
 
-        emit PoolJoined(poolId, sender, amountsIn, dueProtocolFeeAmounts);
+        emit PoolJoined(poolId, sender, tokens, amountsIn, dueProtocolFeeAmounts);
     }
 
     function exitPool(
@@ -345,7 +345,7 @@ abstract contract PoolRegistry is
             _setGeneralPoolBalances(poolId, balances);
         }
 
-        emit PoolExited(poolId, sender, amountsOut, dueProtocolFeeAmounts);
+        emit PoolExited(poolId, sender, tokens, amountsOut, dueProtocolFeeAmounts);
     }
 
     /**
@@ -528,7 +528,7 @@ abstract contract PoolRegistry is
             }
 
             token.safeTransfer(msg.sender, amount);
-            emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
+            emit PoolBalanceChanged(poolId, msg.sender, token, -(amount.toInt256()));
         }
     }
 
@@ -555,7 +555,7 @@ abstract contract PoolRegistry is
             }
 
             token.safeTransferFrom(msg.sender, address(this), amount);
-            emit PoolBalanceChanged(poolId, msg.sender, token, -(amount.toInt256()));
+            emit PoolBalanceChanged(poolId, msg.sender, token, amount.toInt256());
         }
     }
 

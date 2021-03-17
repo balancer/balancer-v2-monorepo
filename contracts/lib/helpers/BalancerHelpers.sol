@@ -43,6 +43,8 @@ contract BalancerHelpers {
         address sender,
         address recipient,
         IERC20[] memory tokens,
+        uint256[] memory,
+        bool,
         bytes memory userData
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
         (address pool, ) = vault.getPool(poolId);
@@ -54,6 +56,7 @@ contract BalancerHelpers {
         address sender,
         address recipient,
         IERC20[] memory tokens,
+        uint256[] memory,
         bool toInternalBalance,
         bytes memory userData
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
