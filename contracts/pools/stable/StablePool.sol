@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
-import "../../lib/helpers/UnsafeRandom.sol";
 
 import "../BaseGeneralPool.sol";
 
@@ -262,9 +261,16 @@ contract StablePool is BaseGeneralPool, StableMath {
         // will reduce gas costs for single asset joins and exits, as at most only two Pool balances will change (the
         // token joined/exited, and the token in which fees will be paid).
 
-        // The token fees is paid in is chosen pseudo-randomly, with the hope to achieve a uniform distribution across
-        // multiple joins and exits. This pseudo-randomness being manipulated is not an issue.
-        uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
+        // The protocol fees is charged using the token with max balance in the pool.
+        uint256 chosenTokenIndex = 0;
+        uint256 maxBalance = currentBalances[0];
+        for (uint256 i = 1; i < _totalTokens; ++i) {
+            uint256 currentBalance = currentBalances[i];
+            if (currentBalance > maxBalance) {
+                chosenTokenIndex = i;
+                maxBalance = currentBalance;
+            }
+        }
 
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
