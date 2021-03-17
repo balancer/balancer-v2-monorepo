@@ -29,9 +29,8 @@ import "./interfaces/IPoolSwapStructs.sol";
 import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./balances/BalanceAllocation.sol";
-import "./AssetTransfer.sol";
 
-abstract contract Swaps is ReentrancyGuard, AssetTransfer, PoolRegistry {
+abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;

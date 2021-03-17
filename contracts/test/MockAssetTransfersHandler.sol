@@ -19,15 +19,15 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/FixedPoint.sol";
 
-import "../vault/AssetTransfer.sol";
+import "../vault/AssetTransfersHandler.sol";
 
-contract MockAssetTransfer is AssetTransfer {
+contract MockAssetTransfersHandler is AssetTransfersHandler {
     using SafeERC20 for IERC20;
 
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
     uint256 private _fee;
 
-    constructor(IWETH weth) AssetTransfer(weth) {}
+    constructor(IWETH weth) AssetTransfersHandler(weth) {}
 
     function receiveAsset(
         IAsset asset,

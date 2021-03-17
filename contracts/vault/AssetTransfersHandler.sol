@@ -23,7 +23,7 @@ import "../lib/math/Math.sol";
 import "./interfaces/IWETH.sol";
 import "./interfaces/IAsset.sol";
 
-abstract contract AssetTransfer {
+abstract contract AssetTransfersHandler {
     using SafeERC20 for IERC20;
     using Address for address payable;
     using Math for uint256;
