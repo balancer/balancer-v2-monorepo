@@ -481,8 +481,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             returns (uint256, uint256[] memory, uint256[] memory) _action,
         function(uint256[] memory, uint256[] memory) internal view _downscaleArray
     ) private returns (uint256, uint256[] memory) {
+        // This uses the same technique used by the Vault in queryBatchSwap. Refer to that function for a detailed
+        // explanation.
+
         if (msg.sender != address(this)) {
-            // We perform an external call to ourselves, forwarding the same calldata.
+            // We perform an external call to ourselves, forwarding the same calldata. In this call, the else clause of
+            // the preceding if statement will be executed instead.
 
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = address(this).call(msg.data);
@@ -492,37 +496,52 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 // This call should always revert to decode the bpt and token amounts from the revert reason
                 switch success
                     case 0 {
-                        // The returndata now contains the raw memory representation of the `bptAmount` and
-                        // `tokenAmounts` (array: length + data). We need to return an ABI-encoded representation of
-                        // these, which we manually create at address 0 in memory. We can safely overwrite whatever
-                        // is stored there as we take full control of the execution and then immediately return.
+                        // Note we are manually writing the memory slot 0. We can safely overwrite whatever is
+                        // stored there as we take full control of the execution and then immediately return.
 
-                        // An ABI-encoded response will include one additional field to indicate the starting offset
-                        // of the `tokenAmounts` array. The `bptAmount` will be laid out in the first word of the
+                        // We copy the first 4 bytes to check if it matches with the expected signature, otherwise
+                        // there was another revert reason and we should forward it.
+                        returndatacopy(0, 0, 0x04)
+                        let error := and(mload(0), 0xffffffff00000000000000000000000000000000000000000000000000000000)
+
+                        // If the first 4 bytes don't match with the expected signature, we forward the revert reason.
+                        if eq(eq(error, 0x43adbafb00000000000000000000000000000000000000000000000000000000), 0) {
+                            returndatacopy(0, 0, returndatasize())
+                            revert(0, returndatasize())
+                        }
+
+                        // The returndata contains the signature, followed by the raw memory representation of the
+                        // `bptAmount` and `tokenAmounts` (array: length + data). We need to return an ABI-encoded
+                        // representation of these.
+                        // An ABI-encoded response will include one additional field to indicate the starting offset of
+                        // the `tokenAmounts` array. The `bptAmount` will be laid out in the first word of the
                         // returndata.
-
+                        //
                         // In returndata:
-                        // [ bptAmount ][ tokenAmounts length ][ tokenAmounts values ]
-                        // [  32 bytes ][       32 bytes      ][ (32 * length) bytes ]
+                        // [ signature ][ bptAmount ][ tokenAmounts length ][ tokenAmounts values ]
+                        // [  4 bytes  ][  32 bytes ][       32 bytes      ][ (32 * length) bytes ]
                         //
                         // We now need to return (ABI-encoded values):
                         // [ bptAmount ][ tokeAmounts offset ][ tokenAmounts length ][ tokenAmounts values ]
                         // [  32 bytes ][       32 bytes     ][       32 bytes      ][ (32 * length) bytes ]
 
                         // We copy 32 bytes for the `bptAmount` from returndata into memory.
-                        returndatacopy(0x00, 0, 32)
+                        // Note that we skip the first 4 bytes for the error signature
+                        returndatacopy(0, 0x04, 32)
 
                         // The offsets are 32-bytes long, so the array of `tokenAmounts` will start after
                         // the initial 64 bytes.
                         mstore(0x20, 64)
 
                         // We now copy the raw memory array for the `tokenAmounts` from returndata into memory.
-                        // Since the offset takes up 32 bytes, we start copying at address 0x40.
-                        returndatacopy(0x40, 32, sub(returndatasize(), 32))
+                        // Since bpt amount and offset take up 64 bytes, we start copying at address 0x40. We also
+                        // skip the first 36 bytes from returndata, which correspond to the signature plus bpt amount.
+                        returndatacopy(0x40, 0x24, sub(returndatasize(), 36))
 
                         // We finally return the ABI-encoded uint256 and the array, which has a total length equal to
-                        // the size of returndata, plus the 32 bytes of the offset.
-                        return(0, add(returndatasize(), 32))
+                        // the size of returndata, plus the 32 bytes of the offset but without the 4 bytes of the
+                        // error signature.
+                        return(0, add(returndatasize(), 28))
                     }
                     default {
                         // This call should always revert, but we fail nonetheless if that didn't happen
@@ -553,14 +572,19 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 let size := mul(mload(tokenAmounts), 32)
 
                 // We store the `bptAmount` in the previous slot to the `tokenAmounts` array. We can make sure there
-                // will be a slot due to how the memory scratch space works. We can safely overwrite whatever
-                // is stored in this slot as we will revert immediately after that.
+                // will be at least one available slot due to how the memory scratch space works.
+                // We can safely overwrite whatever is stored in this slot as we will revert immediately after that.
                 let start := sub(tokenAmounts, 0x20)
                 mstore(start, bptAmount)
 
-                // When copying from `tokenAmounts` into returndata, we copy the additional 64 bytes to also return
-                // the `bptAmount` and the array 's length.
-                revert(start, add(size, 64))
+                // We send one extra value for the error signature "QueryError(uint256,uint256[])" which is 0x43adbafb
+                // We use the previous slot to `bptAmount`.
+                mstore(sub(start, 0x20), 0x0000000000000000000000000000000000000000000000000000000043adbafb)
+                start := sub(start, 0x04)
+
+                // When copying from `tokenAmounts` into returndata, we copy the additional 68 bytes to also return
+                // the `bptAmount`, the array 's length, and the error signature.
+                revert(start, add(size, 68))
             }
         }
     }

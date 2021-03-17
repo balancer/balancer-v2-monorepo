@@ -50,6 +50,13 @@ describe('BalancerHelpers', function () {
       expect(result.amountsIn).to.deep.equal(amountsIn);
       expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
     });
+
+    it('bubbles up revert reasons', async () => {
+      const data = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
+      const tx = helper.callStatic.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, tokens.addresses, data);
+
+      await expect(tx).to.be.revertedWith('UNHANDLED_JOIN_KIND');
+    });
   });
 
   describe('queryExit', () => {
@@ -59,6 +66,13 @@ describe('BalancerHelpers', function () {
       bptIn = (await pool.totalSupply()).div(2);
       expectedAmountsOut = initialBalances.map((balance) => balance.div(2));
       data = encodeExitWeightedPool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: bptIn });
+    });
+
+    it('bubbles up revert reasons', async () => {
+      const data = encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: bptIn, exitTokenIndex: 90 });
+      const tx = helper.callStatic.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, tokens.addresses, false, data);
+
+      await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
     });
 
     context('when depositing into internal balance', () => {
