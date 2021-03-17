@@ -600,6 +600,114 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "poolId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "currentBalances",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "latestBlockNumberUsed",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "protocolSwapFeePercentage",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "userData",
+        "type": "bytes"
+      }
+    ],
+    "name": "queryExit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "bptIn",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "amountsOut",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "poolId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "currentBalances",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256",
+        "name": "latestBlockNumberUsed",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "protocolSwapFeePercentage",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "userData",
+        "type": "bytes"
+      }
+    ],
+    "name": "queryJoin",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "bptOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "amountsIn",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bool",
         "name": "active",
         "type": "bool"

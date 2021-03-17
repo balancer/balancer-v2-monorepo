@@ -212,7 +212,7 @@ describe('WeightedPool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.init({ initialBalances })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.init({ initialBalances })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
 
@@ -247,6 +247,15 @@ describe('WeightedPool', function () {
             expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
           });
 
+          it('can tell how much BPT it will give in return', async () => {
+            const minimumBptOut = pct(expectedBptOut, 0.99);
+
+            const result = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut });
+
+            expect(result.amountsIn).to.deep.equal(amountsIn);
+            expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
+          });
+
           it('fails if not enough BPT', async () => {
             // This call should fail cause we are requesting minimum 1% more
             const minimumBptOut = pct(expectedBptOut, 1.01);
@@ -257,7 +266,7 @@ describe('WeightedPool', function () {
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();
 
-            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('EMERGENCY_PERIOD');
+            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
           });
         });
       });
@@ -290,7 +299,17 @@ describe('WeightedPool', function () {
 
             // Make sure received BPT is closed to what we expect
             const currentBptBalance = await pool.balanceOf(recipient);
-            expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(bptOut, 0.001);
+            expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
+          });
+
+          it('can tell how many token amounts it will have to receive', async () => {
+            const expectedAmountIn = await pool.estimateTokenIn(token, bptOut, initialBalances);
+
+            const result = await pool.queryJoinGivenOut({ bptOut, token });
+
+            expect(result.bptOut).to.be.equal(bptOut);
+            expect(result.amountsIn[token]).to.be.equalWithError(expectedAmountIn, 0.001);
+            expect(result.amountsIn.filter((_, i) => i != token)).to.be.zeros;
           });
 
           it('fails if invariant increases more than max allowed', async () => {
@@ -308,7 +327,7 @@ describe('WeightedPool', function () {
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();
 
-            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('EMERGENCY_PERIOD');
+            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
           });
         });
       });
@@ -361,6 +380,17 @@ describe('WeightedPool', function () {
           expect(await pool.balanceOf(lp)).to.equal(previousBptBalance.sub(bptIn));
         });
 
+        it('can tell how many tokens it will give in return', async () => {
+          const bptIn = pct(await pool.balanceOf(lp), 0.2);
+          const expectedTokenOut = await pool.estimateTokenOut(token, bptIn);
+
+          const result = await pool.querySingleExitGivenIn({ bptIn, token });
+
+          expect(result.bptIn).to.equal(bptIn);
+          expect(result.amountsOut.filter((_, i) => i != token)).to.be.zeros;
+          expect(result.amountsOut[token]).to.be.equalWithError(expectedTokenOut, 0.0001);
+        });
+
         it('fails if invariant decreases more than max allowed', async () => {
           // Calculate bpt amount in so that the invariant ratio
           // ((bptTotalSupply - bptAmountIn / bptTotalSupply))
@@ -374,7 +404,7 @@ describe('WeightedPool', function () {
           await pool.activateEmergencyPeriod();
 
           const bptIn = await pool.getMaxInvariantDecrease();
-          await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
 
@@ -414,6 +444,16 @@ describe('WeightedPool', function () {
           expect(await pool.balanceOf(lp)).to.equal(0);
         });
 
+        it('can tell how many token amounts it will give in return', async () => {
+          const totalBPT = await pool.totalSupply();
+          const expectedAmountsOut = initialBalances.map((balance) => balance.mul(previousBptBalance).div(totalBPT));
+
+          const result = await pool.queryMultiExitGivenIn({ bptIn: previousBptBalance });
+
+          expect(result.bptIn).to.equal(previousBptBalance);
+          expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
+        });
+
         it('does not revert if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
@@ -441,6 +481,17 @@ describe('WeightedPool', function () {
           expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.div(2), 0.001);
         });
 
+        it('can tell how much BPT it will have to receive', async () => {
+          const amountsOut = initialBalances.map((balance) => balance.div(2));
+          const expectedBptIn = previousBptBalance.div(2);
+          const maximumBptIn = pct(expectedBptIn, 1.01);
+
+          const result = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
+
+          expect(result.amountsOut).to.deep.equal(amountsOut);
+          expect(result.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+        });
+
         it('fails if more BTP needed', async () => {
           // Call should fail cause we are requesting a max amount lower than the actual needed
           const amountsOut = initialBalances;
@@ -455,7 +506,7 @@ describe('WeightedPool', function () {
           await pool.activateEmergencyPeriod();
 
           const amountsOut = initialBalances;
-          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
     });
@@ -506,7 +557,7 @@ describe('WeightedPool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
 
@@ -546,7 +597,7 @@ describe('WeightedPool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
     });

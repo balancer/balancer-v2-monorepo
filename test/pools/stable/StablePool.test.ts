@@ -301,7 +301,7 @@ describe('StablePool', function () {
 
             await expect(
               vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData)
-            ).to.be.revertedWith('EMERGENCY_PERIOD');
+            ).to.be.revertedWith('EMERGENCY_PERIOD_ON');
           });
         });
 
@@ -346,7 +346,7 @@ describe('StablePool', function () {
               const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut: 10 });
               await expect(
                 vault.callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
-              ).to.be.revertedWith('EMERGENCY_PERIOD');
+              ).to.be.revertedWith('EMERGENCY_PERIOD_ON');
             });
           });
         });
@@ -522,7 +522,7 @@ describe('StablePool', function () {
 
             await expect(
               pool.onSwapGivenIn({ ...swapRequestData, amountIn: bn(1e18) }, poolInitialBalances, 0, 1)
-            ).to.be.revertedWith('EMERGENCY_PERIOD');
+            ).to.be.revertedWith('EMERGENCY_PERIOD_ON');
           });
         });
 
@@ -556,7 +556,7 @@ describe('StablePool', function () {
 
             await expect(
               pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 0, 1)
-            ).to.be.revertedWith('EMERGENCY_PERIOD');
+            ).to.be.revertedWith('EMERGENCY_PERIOD_ON');
           });
         });
       });

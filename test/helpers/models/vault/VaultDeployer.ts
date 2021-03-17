@@ -13,12 +13,12 @@ export default {
     const deployment = TypesConverter.toVaultDeployment(params);
 
     let { admin } = deployment;
-    const { from } = deployment;
+    const { from, mocked } = deployment;
     if (!admin) admin = from || (await ethers.getSigners())[0];
 
     const authorizer = await this._deployAuthorizer(admin, from);
-    const instance = await (deployment.mocked ? this._deployMocked : this._deployReal)(deployment, authorizer);
-    return new Vault(false, instance, authorizer, admin);
+    const instance = await (mocked ? this._deployMocked : this._deployReal)(deployment, authorizer);
+    return new Vault(mocked, instance, authorizer, admin);
   },
 
   async _deployReal(deployment: VaultDeployment, authorizer: Contract): Promise<Contract> {

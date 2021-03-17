@@ -311,6 +311,7 @@ interface IVault {
     event PoolJoined(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
+        IERC20[] tokens,
         uint256[] amountsIn,
         uint256[] protocolFees
     );
@@ -363,6 +364,7 @@ interface IVault {
     event PoolExited(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
+        IERC20[] tokens,
         uint256[] amountsOut,
         uint256[] protocolFees
     );

@@ -107,3 +107,15 @@ export type ExitResult = {
   amountsOut: BigNumber[];
   dueProtocolFeeAmounts: BigNumber[];
 };
+
+export type JoinQueryResult = {
+  bptOut: BigNumber;
+  amountsIn: BigNumber[];
+};
+
+export type ExitQueryResult = {
+  bptIn: BigNumber;
+  amountsOut: BigNumber[];
+};
+
+export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
