@@ -212,7 +212,7 @@ describe('WeightedPool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.init({ initialBalances })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.init({ initialBalances })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
 
@@ -266,7 +266,7 @@ describe('WeightedPool', function () {
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();
 
-            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('EMERGENCY_PERIOD');
+            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
           });
         });
       });
@@ -327,7 +327,7 @@ describe('WeightedPool', function () {
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();
 
-            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('EMERGENCY_PERIOD');
+            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
           });
         });
       });
@@ -404,7 +404,7 @@ describe('WeightedPool', function () {
           await pool.activateEmergencyPeriod();
 
           const bptIn = await pool.getMaxInvariantDecrease();
-          await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
 
@@ -506,7 +506,7 @@ describe('WeightedPool', function () {
           await pool.activateEmergencyPeriod();
 
           const amountsOut = initialBalances;
-          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
     });
@@ -557,7 +557,7 @@ describe('WeightedPool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
 
@@ -597,7 +597,7 @@ describe('WeightedPool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD');
+          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
     });
