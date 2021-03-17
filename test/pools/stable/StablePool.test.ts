@@ -21,7 +21,7 @@ import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { roleId } from '../../../lib/helpers/roles';
 
-describe('StablePool', function () {
+describe.only('StablePool', function () {
   let allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
@@ -43,17 +43,7 @@ describe('StablePool', function () {
       const tokens = allTokens.subset(1);
       await expect(
         deploy('StablePool', {
-          args: [
-            vault.address,
-            'Balancer Pool Token',
-            'BPT',
-            tokens.addresses,
-            Array(tokens.length).fill(ZERO_ADDRESS),
-            0,
-            0,
-            0,
-            0,
-          ],
+          args: [vault.address, 'Balancer Pool Token', 'BPT', tokens.addresses, 0, 0, 0, 0],
         })
       ).to.be.revertedWith('MIN_TOKENS');
     });
@@ -72,24 +62,13 @@ describe('StablePool', function () {
       // The maximum number of tokens is 6
       const manyTokens = await TokenList.create(6, { sorted: true });
 
-      const externalRates = Array(manyTokens.length).fill(ZERO_ADDRESS);
       const amplification = bn(100e18);
 
       const vault = await deploy('MockVault', { args: [ZERO_ADDRESS] });
 
       await expect(
         deploy('StablePool', {
-          args: [
-            vault.address,
-            'Balancer Pool Token',
-            'BPT',
-            manyTokens.addresses,
-            externalRates,
-            amplification,
-            0,
-            0,
-            0,
-          ],
+          args: [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, amplification, 0, 0, 0],
         })
       ).to.be.revertedWith('MAX_STABLE_TOKENS');
     });
@@ -98,7 +77,6 @@ describe('StablePool', function () {
   function itBehavesAsStablePool(numberOfTokens: number) {
     let tokens: TokenList;
 
-    const externalRates = Array(numberOfTokens).fill(ZERO_ADDRESS);
     const ZEROS = Array(numberOfTokens).fill(bn(0));
     const amplification = bn(100e18);
     const poolInitialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
@@ -122,16 +100,7 @@ describe('StablePool', function () {
         sharedBeforeEach('deploy pool from factory', async () => {
           const factory = await deploy('StablePoolFactory', { args: [vault.address] });
           const receipt = await (
-            await factory.create(
-              'Balancer Pool Token',
-              'BPT',
-              tokens.addresses,
-              externalRates,
-              amplification,
-              POOL_SWAP_FEE,
-              0,
-              0
-            )
+            await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, amplification, POOL_SWAP_FEE, 0, 0)
           ).wait();
 
           const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
@@ -201,13 +170,11 @@ describe('StablePool', function () {
       async function deployPool(
         params: {
           tokens?: TokenList;
-          externalRates?: string[];
           amplification?: BigNumber;
           swapFee?: BigNumber;
         } = {}
       ) {
         const poolTokens = params.tokens ?? tokens;
-        const externalRates = params.externalRates ?? Array(poolTokens.length).fill(ZERO_ADDRESS);
         const poolAmplification = params.amplification ?? amplification;
         const poolSwapFee = params.swapFee ?? POOL_SWAP_FEE;
 
@@ -217,7 +184,6 @@ describe('StablePool', function () {
             'Balancer Pool Token',
             'BPT',
             poolTokens.addresses,
-            externalRates,
             poolAmplification,
             poolSwapFee,
             0,
@@ -237,12 +203,6 @@ describe('StablePool', function () {
           const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
 
           await expect(deployPool({ tokens: badTokens })).to.be.revertedWith('UNSORTED_ARRAY');
-        });
-
-        it('reverts if the number of tokens and stable bpt array do not match', async () => {
-          const badexternalRates = Array(tokens.length).fill(ZERO_ADDRESS).slice(1);
-
-          await expect(deployPool({ externalRates: badexternalRates })).to.be.revertedWith('INVALID_STABLE_BPT_ARRAY');
         });
 
         it('reverts if the swap fee is too high', async () => {
@@ -606,7 +566,7 @@ describe('StablePool', function () {
 
             await expect(
               pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 0, 1)
-            ).to.be.revertedWith('EMERGENCY_PERIOD_FINISHED');
+            ).to.be.revertedWith('EMERGENCY_PERIOD');
           });
         });
       });

@@ -22,11 +22,6 @@
         "type": "address[]"
       },
       {
-        "internalType": "bool[]",
-        "name": "isBPTArray",
-        "type": "bool[]"
-      },
-      {
         "internalType": "uint256",
         "name": "amplificationParameter",
         "type": "uint256"
