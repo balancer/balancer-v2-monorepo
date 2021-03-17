@@ -31,14 +31,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
 
-    uint256 private constant _MIN_WEIGHT = 0.01e18;
-
-    uint256 private constant _MAX_IN_RATIO = 0.3e18;
-    uint256 private constant _MAX_OUT_RATIO = 0.3e18;
-
-    uint256 private constant _MAX_INVARIANT_RATIO = 3e18;
-    uint256 private constant _MIN_INVARIANT_RATIO = 0.7e18;
-
     // The protocol fees will be always charged using the token associated to the max weight in the pool.
     // Since these Pools will register tokens only once, we can assume this index will be constant.
     uint256 private immutable _maxWeightTokenIndex;
@@ -117,7 +109,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         _normalizedWeight15 = weights.length > 15 ? normalizedWeights[15] : 0;
     }
 
-    function _normalizedWeight(IERC20 token) internal view returns (uint256) {
+    function _normalizedWeight(IERC20 token) internal view virtual returns (uint256) {
         // prettier-ignore
         if (token == _token0) { return _normalizedWeight0; }
         else if (token == _token1) { return _normalizedWeight1; }
@@ -140,7 +132,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         }
     }
 
-    function _normalizedWeights() internal view returns (uint256[] memory) {
+    function _normalizedWeights() internal view virtual returns (uint256[] memory) {
         uint256[] memory normalizedWeights = new uint256[](_totalTokens);
 
         // prettier-ignore
@@ -188,7 +180,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override noEmergencyPeriod returns (uint256) {
         require(swapRequest.amountIn <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), "ERR_MAX_IN_RATIO");
 
         return
@@ -205,7 +197,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override noEmergencyPeriod returns (uint256) {
         require(swapRequest.amountOut <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), "ERR_MAX_OUT_RATIO");
 
         return
@@ -225,7 +217,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         address,
         address,
         bytes memory userData
-    ) internal override noEmergencyPeriod returns (uint256, uint256[] memory) {
+    ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
         WeightedPool.JoinKind kind = userData.joinKind();
         require(kind == WeightedPool.JoinKind.INIT, "UNINITIALIZED");
 
@@ -256,6 +248,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     )
         internal
+        virtual
         override
         noEmergencyPeriod
         returns (
@@ -364,6 +357,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     )
         internal
+        virtual
         override
         returns (
             uint256,

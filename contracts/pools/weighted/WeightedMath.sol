@@ -25,6 +25,15 @@ import "../../lib/helpers/InputHelpers.sol";
 contract WeightedMath {
     using FixedPoint for uint256;
 
+    // Pool limits that arise from this math (and the imposed 100/1 maximum weight ratio)
+    uint256 internal constant _MIN_WEIGHT = 0.01e18;
+
+    uint256 internal constant _MAX_IN_RATIO = 0.3e18;
+    uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
+
+    uint256 internal constant _MAX_INVARIANT_RATIO = 3e18;
+    uint256 internal constant _MIN_INVARIANT_RATIO = 0.7e18;
+
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
     // current balances and weights.
     function _outGivenIn(
