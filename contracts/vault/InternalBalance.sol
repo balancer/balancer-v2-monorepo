@@ -68,7 +68,9 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
-            IERC20 token = transfers[i].token;
+            require(!_isETH(transfers[i].asset), "INVALID_ETH_EXTERNAL_TRANSFER");
+
+            IERC20 token = _asIERC20(transfers[i].asset);
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 

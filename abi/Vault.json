@@ -1104,8 +1104,8 @@
       {
         "components": [
           {
-            "internalType": "contract IERC20",
-            "name": "token",
+            "internalType": "contract IAsset",
+            "name": "asset",
             "type": "address"
           },
           {
@@ -1119,7 +1119,7 @@
             "type": "address"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           }
