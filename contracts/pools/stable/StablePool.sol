@@ -74,7 +74,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 indexIn,
         uint256 indexOut
     ) internal view override noEmergencyPeriod returns (uint256) {
-        uint256 amountOut = StableMath._outGivenIn(
+        uint256 amountOut = StableMath._calcOutGivenIn(
             _amplificationParameter,
             balances,
             indexIn,
@@ -91,7 +91,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 indexIn,
         uint256 indexOut
     ) internal view override noEmergencyPeriod returns (uint256) {
-        uint256 amountIn = StableMath._inGivenOut(
+        uint256 amountIn = StableMath._calcInGivenOut(
             _amplificationParameter,
             balances,
             indexIn,
@@ -117,7 +117,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
         _upscaleArray(amountsIn, _scalingFactors());
 
-        uint256 invariantAfterJoin = StableMath._invariant(_amplificationParameter, amountsIn);
+        uint256 invariantAfterJoin = StableMath._calculateInvariant(_amplificationParameter, amountsIn);
         uint256 bptAmountOut = invariantAfterJoin;
 
         _lastInvariant = invariantAfterJoin;
@@ -195,7 +195,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory downscaledAmountsIn = amountsIn; // TODO: check that this won't be changed by pointer reference
         _upscaleArray(amountsIn, _scalingFactors());
 
-        uint256 bptAmountOut = StableMath._exactTokensInForBPTOut(
+        uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
             _amplificationParameter,
             balances,
             amountsIn,
@@ -215,7 +215,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
 
-        uint256 amountIn = StableMath._tokenInForExactBPTOut(
+        uint256 amountIn = StableMath._calcTokenInGivenExactBptOut(
             _amplificationParameter,
             balances,
             tokenIndex,
@@ -303,7 +303,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
 
-        uint256 amountOut = StableMath._exactBPTInForTokenOut(
+        uint256 amountOut = StableMath._calcTokenOutGivenExactBptIn(
             _amplificationParameter,
             balances,
             tokenIndex,
@@ -333,7 +333,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory downscaledAmountsOut = amountsOut;
         _upscaleArray(amountsOut, _scalingFactors());
 
-        uint256 bptAmountIn = StableMath._bptInForExactTokensOut(
+        uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
             _amplificationParameter,
             balances,
             amountsOut,
@@ -357,7 +357,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
-        uint256[] memory amountsOut = StableMath._exactBPTInForTokensOut(balances, bptAmountIn, totalSupply());
+        uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply());
 
         return (bptAmountIn, amountsOut);
     }
@@ -380,7 +380,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
         // Set the fee to pay in the selected token
-        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calculateDueTokenProtocolSwapFee(
+        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFee(
             _amplificationParameter,
             balances,
             previousInvariant,
@@ -396,7 +396,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             balances[i] = balances[i].add(amountsIn[i]);
         }
 
-        return StableMath._invariant(_amplificationParameter, balances);
+        return StableMath._calculateInvariant(_amplificationParameter, balances);
     }
 
     function _invariantAfterExit(uint256[] memory balances, uint256[] memory amountsOut)
@@ -408,7 +408,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             balances[i] = balances[i].sub(amountsOut[i]);
         }
 
-        return StableMath._invariant(_amplificationParameter, balances);
+        return StableMath._calculateInvariant(_amplificationParameter, balances);
     }
 
     // This function returns the appreciation of one BPT relative to the
@@ -417,6 +417,6 @@ contract StablePool is BaseGeneralPool, StableMath {
     function getRate() public view override returns (uint256) {
         //TODO: add cache
         (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
-        return StableMath._invariant(_amplificationParameter, balances).div(totalSupply());
+        return StableMath._calculateInvariant(_amplificationParameter, balances).div(totalSupply());
     }
 }

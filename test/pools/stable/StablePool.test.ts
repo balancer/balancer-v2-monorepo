@@ -10,7 +10,7 @@ import {
   calcInGivenOut,
   calcOutGivenIn,
   calculateInvariant,
-  calculateOneTokenAccumulatedSwapFees,
+  calculateOneTokenSwapFee,
 } from '../../helpers/math/stable';
 
 import { MONTH } from '../../../lib/helpers/time';
@@ -21,7 +21,7 @@ import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { roleId } from '../../../lib/helpers/roles';
 
-describe.only('StablePool', function () {
+describe('StablePool', function () {
   let allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
