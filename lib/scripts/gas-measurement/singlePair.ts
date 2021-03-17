@@ -55,7 +55,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
     poolIds.push(await getPoolId());
   }
 
-  // Trade token 0 for token 1, putting 500 of 0 into each pool
+  // Trade token 0 for token 1, putting 0.1e18 of 0 into each pool
   const tokenIn = tokenSymbols[0];
   const tokenOut = tokenSymbols[1];
 
@@ -63,7 +63,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
     const [tokenAddresses, swaps] = getTokensSwaps(
       tokens,
       poolIds.slice(0, poolAmount).map((poolId) => {
-        return { poolId, tokenIn, tokenOut, amount: fp(5).toString() };
+        return { poolId, tokenIn, tokenOut, amount: fp(0.1).toString() };
       })
     );
 
