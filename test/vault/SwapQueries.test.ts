@@ -147,6 +147,14 @@ describe('Vault - swap queries', () => {
         [5, 0, -20]
       );
     });
+
+    describe('error', () => {
+      it('bubbles up revert reasons', async () => {
+        const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
+        const tx = vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, invalidSwap, tokens.addresses, funds);
+        await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+    });
   });
 
   describe('given out', () => {
@@ -211,6 +219,14 @@ describe('Vault - swap queries', () => {
         ],
         [0, -20, 5]
       );
+    });
+
+    describe('error', () => {
+      it('bubbles up revert reasons', async () => {
+        const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
+        const tx = vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, invalidSwap, tokens.addresses, funds);
+        await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
     });
   });
 });
