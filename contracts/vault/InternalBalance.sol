@@ -44,12 +44,15 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         }
     }
 
-    function depositToInternalBalance(BalanceTransfer[] memory transfers)
+    function depositToInternalBalance(AssetBalanceTransfer[] memory transfers)
         external
+        payable
         override
         nonReentrant
         noEmergencyPeriod
     {
+        _ensureBalanceTransferArrayIsSortedByAsset(transfers);
+
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
@@ -58,28 +61,14 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            _receiveAsset(asset, amount, sender, false);
             _increaseInternalBalance(recipient, _translateToIERC20(asset), amount);
+            // Because the transfers array is sorted by asset, each asset is unique. This means we can safely call
+            // _receiveAsset.
+            _receiveAsset(asset, amount, sender, false);
         }
     }
 
-    function transferToExternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
-        for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
-
-            require(!_isETH(transfers[i].asset), "INVALID_ETH_EXTERNAL_TRANSFER");
-
-            IERC20 token = _asIERC20(transfers[i].asset);
-            uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
-
-            // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
-            token.safeTransferFrom(sender, recipient, amount);
-        }
-    }
-
-    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
+    function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
@@ -87,16 +76,16 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             IAsset asset = transfers[i].asset;
             uint256 amount = transfers[i].amount;
             address payable recipient = transfers[i].recipient;
+            IERC20 token = _translateToIERC20(asset);
+
+            _decreaseInternalBalance(sender, token, amount);
 
             uint256 feeAmount = _sendAsset(asset, amount, recipient, false, true);
-
-            IERC20 token = _translateToIERC20(asset);
-            _decreaseInternalBalance(sender, token, amount);
             _increaseCollectedFees(token, feeAmount);
         }
     }
 
-    function transferInternalBalance(BalanceTransfer[] memory transfers)
+    function transferInternalBalance(TokenBalanceTransfer[] memory transfers)
         external
         override
         nonReentrant
@@ -106,15 +95,26 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
-            IAsset asset = transfers[i].asset;
+            IERC20 token = transfers[i].token;
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            require(!_isETH(asset), "INVALID_ETH_TRANSFER");
-
-            IERC20 token = _asIERC20(asset);
             _decreaseInternalBalance(sender, token, amount);
             _increaseInternalBalance(recipient, token, amount);
+        }
+    }
+
+    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external override nonReentrant {
+        for (uint256 i = 0; i < transfers.length; i++) {
+            address sender = transfers[i].sender;
+            _authenticateCallerFor(sender);
+
+            IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
+            address recipient = transfers[i].recipient;
+
+            // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
+            token.safeTransferFrom(sender, recipient, amount);
         }
     }
 
@@ -186,5 +186,18 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
      */
     function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
         return _internalTokenBalance[account][token];
+    }
+
+    function _ensureBalanceTransferArrayIsSortedByAsset(AssetBalanceTransfer[] memory array) private pure {
+        if (array.length < 2) {
+            return;
+        }
+
+        IAsset previous = array[0].asset;
+        for (uint256 i = 1; i < array.length; ++i) {
+            IAsset current = array[i].asset;
+            require(previous < current, "UNSORTED_ARRAY");
+            previous = current;
+        }
     }
 }

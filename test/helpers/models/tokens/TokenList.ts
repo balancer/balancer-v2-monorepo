@@ -10,6 +10,7 @@ import {
   TokensDeploymentOptions,
 } from './types';
 import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
+import WETH from './WETH';
 
 export const ETH_TOKEN_ADDRESS = ZERO_ADDRESS;
 
@@ -40,8 +41,8 @@ export default class TokenList {
     return this.get(1);
   }
 
-  get WETH(): Token {
-    return this.findBySymbol('WETH');
+  get WETH(): WETH {
+    return this.findBySymbol('WETH') as WETH;
   }
 
   get DAI(): Token {

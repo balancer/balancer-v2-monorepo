@@ -26,11 +26,7 @@ describe('Vault - asset transfers handler', function () {
     await tokens.mint({ to: [sender, recipient, handler], amount: bn(100e18) });
     await tokens.approve({ to: handler, from: [sender, recipient] });
 
-    // WETH tokens are special as they need to be properly minted in the WETH contract in order to be fully usable:
-    // otherwise, the withdraw function will fail due to a lack of ETH.
-    const weth = await ethers.getContractAt('WETH', tokens.WETH.address);
-    await weth.connect(other).deposit({ value: bn(100e18) });
-    await weth.connect(other).transfer(handler.address, bn(100e18));
+    await tokens.WETH.mintWETH({ to: handler, from: other, amount: bn(100e18) });
   });
 
   const amount = bn(1e18);
