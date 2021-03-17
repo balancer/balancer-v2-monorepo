@@ -46,7 +46,7 @@ describe('Vault - swaps', () => {
     const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
 
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
     await tokens.mint({ to: [lp, trader], amount: MAX_UINT112.div(2) });

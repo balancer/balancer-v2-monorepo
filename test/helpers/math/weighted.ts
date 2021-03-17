@@ -1,9 +1,7 @@
 import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
-import { bn, decimal, BigNumberish, fromFp, toFp } from '../../../lib/helpers/numbers';
-
-const ONE = decimal(1e18);
+import { BigNumberish, bn, decimal, fp, fromFp, toFp } from '../../../lib/helpers/numbers';
 
 export function calculateInvariant(rawBalances: BigNumberish[], rawWeights: BigNumberish[]): BigNumber {
   const normalizedWeights = toNormalizedWeights(rawWeights);
@@ -13,31 +11,31 @@ export function calculateInvariant(rawBalances: BigNumberish[], rawWeights: BigN
 }
 
 export function calcOutGivenIn(
-  tokenBalanceIn: BigNumberish,
-  tokenWeightIn: BigNumberish,
-  tokenBalanceOut: BigNumberish,
-  tokenWeightOut: BigNumberish,
-  tokenAmountIn: BigNumberish
+  fpBalanceIn: BigNumberish,
+  fpWeightIn: BigNumberish,
+  fpBalanceOut: BigNumberish,
+  fpWeightOut: BigNumberish,
+  fpAmountIn: BigNumberish
 ): Decimal {
-  const newBalance = fromFp(tokenBalanceIn).add(fromFp(tokenAmountIn));
-  const base = fromFp(tokenBalanceIn).div(newBalance);
-  const exponent = fromFp(tokenWeightIn).div(fromFp(tokenWeightOut));
+  const newBalance = fromFp(fpBalanceIn).add(fromFp(fpAmountIn));
+  const base = fromFp(fpBalanceIn).div(newBalance);
+  const exponent = fromFp(fpWeightIn).div(fromFp(fpWeightOut));
   const ratio = decimal(1).sub(base.pow(exponent));
-  return toFp(fromFp(tokenBalanceOut).mul(ratio));
+  return toFp(fromFp(fpBalanceOut).mul(ratio));
 }
 
 export function calcInGivenOut(
-  tokenBalanceIn: BigNumberish,
-  tokenWeightIn: BigNumberish,
-  tokenBalanceOut: BigNumberish,
-  tokenWeightOut: BigNumberish,
-  tokenAmountOut: BigNumberish
+  fpBalanceIn: BigNumberish,
+  fpWeightIn: BigNumberish,
+  fpBalanceOut: BigNumberish,
+  fpWeightOut: BigNumberish,
+  fpAmountOut: BigNumberish
 ): Decimal {
-  const newBalance = fromFp(tokenBalanceOut).sub(fromFp(tokenAmountOut));
-  const base = fromFp(tokenBalanceOut).div(newBalance);
-  const exponent = fromFp(tokenWeightOut).div(fromFp(tokenWeightIn));
+  const newBalance = fromFp(fpBalanceOut).sub(fromFp(fpAmountOut));
+  const base = fromFp(fpBalanceOut).div(newBalance);
+  const exponent = fromFp(fpWeightOut).div(fromFp(fpWeightIn));
   const ratio = base.pow(exponent).sub(1);
-  return toFp(fromFp(tokenBalanceIn).mul(ratio));
+  return toFp(fromFp(fpBalanceIn).mul(ratio));
 }
 
 export function calcBptOutGivenExactTokensIn(
@@ -47,10 +45,10 @@ export function calcBptOutGivenExactTokensIn(
   fpBptTotalSupply: BigNumberish,
   fpSwapFee: BigNumberish
 ): BigNumberish {
-  const swapFee = fromFp(fpSwapFee);
   const weights = toNormalizedWeights(fpWeights);
   const balances = fpBalances.map(fromFp);
   const amountsIn = fpAmountsIn.map(fromFp);
+  const bptTotalSupply = fromFp(fpBptTotalSupply);
 
   const balanceRatiosWithoutFee = [];
   let weightedBalanceRatio = decimal(0);
@@ -67,13 +65,13 @@ export function calcBptOutGivenExactTokensIn(
         ? decimal(0)
         : balanceRatiosWithoutFee[i].sub(weightedBalanceRatio).div(balanceRatiosWithoutFee[i].sub(1));
 
-    const amountInAfterFee = amountsIn[i].mul(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+    const amountInAfterFee = amountsIn[i].mul(decimal(1).sub(tokenBalancePercentageExcess.mul(fromFp(fpSwapFee))));
     const tokenBalanceRatio = amountInAfterFee.div(balances[i]).add(1);
     invariantRatio = invariantRatio.mul(tokenBalanceRatio.pow(weights[i]));
   }
 
-  const bptOut = decimal(fpBptTotalSupply).mul(invariantRatio.sub(1));
-  return bn(bptOut);
+  const bptOut = bptTotalSupply.mul(invariantRatio.sub(1));
+  return fp(bptOut);
 }
 
 export function calcTokenInGivenExactBptOut(
@@ -84,32 +82,33 @@ export function calcTokenInGivenExactBptOut(
   fpBptTotalSupply: BigNumberish,
   fpSwapFee: BigNumberish
 ): BigNumberish {
-  const bptAmountOut = decimal(fpBptAmountOut);
-  const bptTotalSupply = decimal(fpBptTotalSupply);
+  const bptAmountOut = fromFp(fpBptAmountOut);
+  const bptTotalSupply = fromFp(fpBptTotalSupply);
+  const weight = toNormalizedWeights(fpWeights)[tokenIndex];
+  const balance = fpBalances.map(fromFp)[tokenIndex];
   const swapFee = fromFp(fpSwapFee);
-  const weights = toNormalizedWeights(fpWeights);
-  const balances = fpBalances.map(fromFp);
 
   const invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
-  const tokenBalanceRatio = invariantRatio.pow(decimal(1).div(weights[tokenIndex]));
-  const tokenBalancePercentageExcess = decimal(1).sub(weights[tokenIndex]);
-  const amountInAfterFee = balances[tokenIndex].mul(tokenBalanceRatio.sub(decimal(1)));
+  const tokenBalanceRatio = invariantRatio.pow(decimal(1).div(weight));
+  const tokenBalancePercentageExcess = decimal(1).sub(weight);
+  const amountInAfterFee = balance.mul(tokenBalanceRatio.sub(decimal(1)));
 
-  const amountIn = amountInAfterFee.mul(ONE).div(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
-  return bn(amountIn);
+  const amountIn = amountInAfterFee.div(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+  return fp(amountIn);
 }
 
 export function calcBptInGivenExactTokensOut(
-  rawBalances: BigNumber[],
-  rawWeights: BigNumber[],
-  rawAmountsOut: BigNumber[],
-  rawBptTotalSupply: BigNumber,
-  rawSwapFee: BigNumber
+  fpBalances: BigNumber[],
+  fpWeights: BigNumber[],
+  fpAmountsOut: BigNumber[],
+  fpBptTotalSupply: BigNumber,
+  fpSwapFee: BigNumber
 ): BigNumber {
-  const swapFee = decimal(rawSwapFee).div(ONE);
-  const weights = toNormalizedWeights(rawWeights);
-  const balances = rawBalances.map((b) => decimal(b).div(ONE));
-  const amountsOut = rawAmountsOut.map((a) => decimal(a).div(ONE));
+  const swapFee = fromFp(fpSwapFee);
+  const weights = toNormalizedWeights(fpWeights);
+  const balances = fpBalances.map(fromFp);
+  const amountsOut = fpAmountsOut.map(fromFp);
+  const bptTotalSupply = fromFp(fpBptTotalSupply);
 
   const balanceRatiosWithoutFee = [];
   let weightedBalanceRatio = decimal(0);
@@ -131,65 +130,67 @@ export function calcBptInGivenExactTokensOut(
     invariantRatio = invariantRatio.mul(tokenBalanceRatio.pow(weights[i]));
   }
 
-  const bptIn = decimal(rawBptTotalSupply).mul(decimal(1).sub(invariantRatio));
-  return bn(bptIn);
+  const bptIn = bptTotalSupply.mul(decimal(1).sub(invariantRatio));
+  return fp(bptIn);
 }
 
 export function calcTokenOutGivenExactBptIn(
   tokenIndex: number,
-  rawBalances: BigNumberish[],
-  rawWeights: BigNumberish[],
-  rawBptAmountIn: BigNumberish,
-  rawBptTotalSupply: BigNumberish,
-  rawSwapFee: BigNumberish
+  fpBalances: BigNumberish[],
+  fpWeights: BigNumberish[],
+  fpBptAmountIn: BigNumberish,
+  fpBptTotalSupply: BigNumberish,
+  fpSwapFee: BigNumberish
 ): BigNumberish {
-  const bptAmountIn = decimal(rawBptAmountIn);
-  const bptTotalSupply = decimal(rawBptTotalSupply);
-  const swapFee = decimal(rawSwapFee).div(ONE);
-  const weights = toNormalizedWeights(rawWeights);
-  const balances = rawBalances.map((b) => decimal(b).div(ONE));
+  const bptAmountIn = fromFp(fpBptAmountIn);
+  const bptTotalSupply = fromFp(fpBptTotalSupply);
+  const swapFee = fromFp(fpSwapFee);
+  const weight = toNormalizedWeights(fpWeights)[tokenIndex];
+  const balance = fpBalances.map(fromFp)[tokenIndex];
 
   const invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
-  const tokenBalanceRatio = invariantRatio.pow(decimal(1).div(weights[tokenIndex]));
-  const tokenBalancePercentageExcess = decimal(1).sub(weights[tokenIndex]);
-  const amountOutBeforeFee = balances[tokenIndex].mul(decimal(1).sub(tokenBalanceRatio));
+  const tokenBalanceRatio = invariantRatio.pow(decimal(1).div(weight));
+  const tokenBalancePercentageExcess = decimal(1).sub(weight);
+  const amountOutBeforeFee = balance.mul(decimal(1).sub(tokenBalanceRatio));
 
-  const amountOut = amountOutBeforeFee.mul(ONE).mul(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
-  return bn(amountOut);
+  const amountOut = amountOutBeforeFee.mul(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+  return fp(amountOut);
+}
+
+export function calculateOneTokenSwapFee(
+  fpBalances: BigNumberish[],
+  fpWeights: BigNumberish[],
+  lastInvariant: BigNumberish,
+  tokenIndex: number
+): Decimal {
+  const balance = fpBalances.map(fromFp)[tokenIndex];
+  const weight = toNormalizedWeights(fpWeights)[tokenIndex];
+
+  const exponent = decimal(1).div(weight);
+  const currentInvariant = calculateInvariant(fpBalances, fpWeights);
+  const invariantRatio = decimal(lastInvariant).div(decimal(currentInvariant));
+  const accruedFees = balance.mul(decimal(1).sub(invariantRatio.pow(exponent)));
+
+  return toFp(accruedFees);
+}
+
+export function calculateMaxOneTokenSwapFee(
+  fpBalances: BigNumberish[],
+  fpWeights: BigNumberish[],
+  fpMinInvariantRatio: BigNumberish,
+  tokenIndex: number
+): Decimal {
+  const balance = fpBalances.map(fromFp)[tokenIndex];
+  const weight = toNormalizedWeights(fpWeights)[tokenIndex];
+
+  const exponent = decimal(1).div(weight);
+  const maxAccruedFees = balance.mul(decimal(1).sub(fromFp(fpMinInvariantRatio).pow(exponent)));
+
+  return toFp(maxAccruedFees);
 }
 
 export function toNormalizedWeights(rawWeights: BigNumberish[]): Decimal[] {
   const weights = rawWeights.map(decimal);
   const sum = weights.reduce((total, weight) => total.add(weight), decimal(0));
   return weights.map((weight) => weight.div(sum));
-}
-
-export function calculateOneTokenSwapFee(
-  rawBalances: BigNumberish[],
-  rawWeights: BigNumberish[],
-  lastInvariant: BigNumberish,
-  tokenIndex: number
-): Decimal {
-  const normalizedWeights = toNormalizedWeights(rawWeights);
-  const exponent = decimal(1).div(normalizedWeights[tokenIndex]);
-  const currentInvariant = calculateInvariant(rawBalances, rawWeights);
-  const invariantRatio = decimal(lastInvariant).div(decimal(currentInvariant));
-
-  return decimal(rawBalances[tokenIndex])
-    .div(ONE)
-    .mul(ONE.sub(invariantRatio.pow(exponent).mul(ONE)));
-}
-
-export function calculateMaxOneTokenSwapFee(
-  rawBalances: BigNumberish[],
-  rawWeights: BigNumberish[],
-  minInvariantRatio: Decimal,
-  tokenIndex: number
-): Decimal {
-  const normalizedWeights = toNormalizedWeights(rawWeights);
-  const exponent = decimal(1).div(normalizedWeights[tokenIndex]);
-
-  return decimal(rawBalances[tokenIndex])
-    .div(ONE)
-    .mul(ONE.sub(minInvariantRatio.pow(exponent).mul(ONE)));
 }

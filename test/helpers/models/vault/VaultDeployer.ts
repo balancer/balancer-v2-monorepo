@@ -1,29 +1,42 @@
+import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import Vault from './Vault';
+import TypesConverter from '../types/TypesConverter';
 import { deploy } from '../../../../lib/helpers/deploy';
+import { RawVaultDeployment, VaultDeployment } from './types';
 import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
 
-import TypesConverter from '../types/TypesConverter';
-import { VaultDeployment } from './types';
+const VaultDeployer = {
+  async deploy(params: RawVaultDeployment): Promise<Vault> {
+    const deployment = TypesConverter.toVaultDeployment(params);
 
-export default {
-  async deploy(deployment: VaultDeployment): Promise<Contract> {
-    return deployment.mocked ? this._deployMocked(deployment) : this._deployReal(deployment);
+    let { admin } = deployment;
+    const { from } = deployment;
+    if (!admin) admin = from || (await ethers.getSigners())[0];
+
+    const authorizer = await VaultDeployer._deployAuthorizer(admin, from);
+    const instance = await (deployment.mocked ? VaultDeployer._deployMocked : VaultDeployer._deployReal)(
+      deployment,
+      authorizer
+    );
+    return new Vault(false, instance, authorizer, admin);
   },
 
-  async _deployReal(deployment: VaultDeployment): Promise<Contract> {
-    const weth = await this._deployWETH(deployment);
-    const authorizer = await this._deployAuthorizer(deployment);
-    return deploy('Vault', { args: [authorizer.address, weth.address], from: deployment.from });
+  async _deployReal(deployment: VaultDeployment, authorizer: Contract): Promise<Contract> {
+    const { from, emergencyPeriod, emergencyPeriodCheckExtension } = deployment;
+    const weth = await VaultDeployer._deployWETH(deployment);
+    const args = [authorizer.address, weth.address, emergencyPeriod, emergencyPeriodCheckExtension];
+    return deploy('Vault', { args, from });
   },
 
-  async _deployMocked({ from }: VaultDeployment): Promise<Contract> {
-    return deploy('MockVault', { args: [], from });
+  async _deployMocked({ from }: VaultDeployment, authorizer: Contract): Promise<Contract> {
+    return deploy('MockVault', { from, args: [authorizer.address] });
   },
 
-  async _deployAuthorizer({ admin, from }: VaultDeployment): Promise<Contract> {
-    const adminAddress = admin ? TypesConverter.toAddress(admin) : ZERO_ADDRESS;
-    return deploy('Authorizer', { args: [adminAddress], from });
+  async _deployAuthorizer(admin: SignerWithAddress, from?: SignerWithAddress): Promise<Contract> {
+    return deploy('Authorizer', { args: [admin.address], from });
   },
 
   async _deployWETH({ admin, from }: VaultDeployment): Promise<Contract> {
@@ -31,3 +44,5 @@ export default {
     return deploy('WETH', { args: [adminAddress], from });
   },
 };
+
+export default VaultDeployer;

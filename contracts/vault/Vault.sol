@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/IAuthorizer.sol";
 import "./interfaces/IWETH.sol";
 
+import "./VaultAuthorization.sol";
 import "./FlashLoanProvider.sol";
 import "./Swaps.sol";
 
@@ -51,8 +52,21 @@ import "./Swaps.sol";
  * utilization of `internal` functions (particularly inside modifiers), usage of named return arguments, and dedicated
  * storage access methods, to name a few.
  */
-contract Vault is FlashLoanProvider, Swaps {
-    constructor(IAuthorizer authorizer, IWETH weth) Authorization(authorizer) AssetTransfer(weth) {
+contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
+    constructor(
+        IAuthorizer authorizer,
+        IWETH weth,
+        uint256 emergencyPeriod,
+        uint256 emergencyPeriodCheckExtension
+    )
+        VaultAuthorization(authorizer)
+        AssetTransfer(weth)
+        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
+    {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function setEmergencyPeriod(bool active) external authenticate {
+        _setEmergencyPeriod(active);
     }
 }

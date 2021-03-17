@@ -24,7 +24,7 @@ describe('Vault - flash loans', () => {
     const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
 
     const SET_PROTOCOL_FEES_ROLE = roleId(vault, 'setProtocolFees');

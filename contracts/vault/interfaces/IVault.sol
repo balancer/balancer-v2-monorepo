@@ -113,6 +113,16 @@ interface IVault {
     function depositToInternalBalance(BalanceTransfer[] memory transfers) external;
 
     /**
+     * @dev Transfers tokens from each `sender` address to the corresponding `recipient` accounts specified
+     * in the struct, making use of the Vault's allowance (like an internal balance deposit, but without recording it,
+     * since it is really just transferred directly between the sender and receiver). The sources must have allowed
+     * the Vault to use their tokens via `IERC20.approve()`.
+     * This will allow relayers to leverage the allowance given to the vault by each sender, to transfer tokens to
+     * external accounts
+     */
+    function transferToExternalBalance(BalanceTransfer[] memory transfers) external;
+
+    /**
      * @dev Withdraws tokens from each the internal balance of each `sender` address into the `recipient` accounts
      * specified in the struct. Allows aggregators to settle multiple accounts in a single transaction.
      *

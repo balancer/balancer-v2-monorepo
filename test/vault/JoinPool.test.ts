@@ -30,7 +30,7 @@ describe('Vault - join pool', () => {
     const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
 
     const role = roleId(vault, 'setProtocolFees');
     await authorizer.connect(admin).grantRole(role, admin.address);

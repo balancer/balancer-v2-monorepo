@@ -16,7 +16,7 @@ describe('WeightedMath', function () {
   let mock: Contract;
 
   before(async function () {
-    mock = await deploy('MockWeightedMath', { args: [] });
+    mock = await deploy('MockWeightedMath');
   });
 
   context('invariant', () => {

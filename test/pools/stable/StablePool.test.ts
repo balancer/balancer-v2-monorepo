@@ -13,16 +13,19 @@ import {
   calculateOneTokenAccumulatedSwapFees,
 } from '../../helpers/math/stable';
 
+import { MONTH } from '../../../lib/helpers/time';
 import { deploy } from '../../../lib/helpers/deploy';
 import { GeneralPool } from '../../../lib/helpers/pools';
 import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
+import { roleId } from '../../../lib/helpers/roles';
 
 describe('StablePool', function () {
   let allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
+  const EMERGENCY_PERIOD = MONTH;
   const POOL_SWAP_FEE = fp(0.01);
   const INITIAL_BALANCES = [bn(10e18), bn(11e18), bn(12e18), bn(13e18)];
 
@@ -36,12 +39,10 @@ describe('StablePool', function () {
 
   context('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
-      const vault = await deploy('MockVault', { args: [] });
-      await expect(
-        deploy('StablePool', {
-          args: [vault.address, 'Balancer Pool Token', 'BPT', allTokens.subset(1).addresses, 0, 0],
-        })
-      ).to.be.revertedWith('MIN_TOKENS');
+      const vault = await deploy('MockVault', { args: [ZERO_ADDRESS] });
+      const tokens = allTokens.subset(1).addresses;
+      const args = [vault.address, 'Balancer Pool Token', 'BPT', tokens, 0, 0, 0, 0];
+      await expect(deploy('StablePool', { args })).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
@@ -57,12 +58,9 @@ describe('StablePool', function () {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 16
       const manyTokens = await TokenList.create(17);
-
-      const vault = await deploy('MockVault', { args: [] });
-
-      await expect(
-        deploy('StablePool', { args: [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0] })
-      ).to.be.revertedWith('MAX_TOKENS');
+      const vault = await deploy('MockVault', { args: [ZERO_ADDRESS] });
+      const args = [vault.address, 'Balancer Pool Token', 'BPT', manyTokens.addresses, 0, 0, 0, 0];
+      await expect(deploy('StablePool', { args })).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
@@ -83,7 +81,7 @@ describe('StablePool', function () {
       sharedBeforeEach('deploy vault', async () => {
         // These tests use the real Vault because they test some Vault functionality, such as token registration
         const authorizer = await deploy('Authorizer', { args: [admin.address] });
-        vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS] });
+        vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
       });
 
       describe('successful creation', () => {
@@ -92,7 +90,7 @@ describe('StablePool', function () {
         sharedBeforeEach('deploy pool from factory', async () => {
           const factory = await deploy('StablePoolFactory', { args: [vault.address] });
           const receipt = await (
-            await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, amplification, POOL_SWAP_FEE)
+            await factory.create('Balancer Pool Token', 'BPT', tokens.addresses, amplification, POOL_SWAP_FEE, 0, 0)
           ).wait();
 
           const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
@@ -152,10 +150,11 @@ describe('StablePool', function () {
     });
 
     context('with mock vault', () => {
-      let vault: Contract;
+      let vault: Contract, authorizer: Contract;
 
-      sharedBeforeEach(async () => {
-        vault = await deploy('MockVault', { args: [] });
+      sharedBeforeEach('deploy vault and authorizer', async () => {
+        authorizer = await deploy('Authorizer', { args: [admin.address] });
+        vault = await deploy('MockVault', { args: [authorizer.address] });
       });
 
       async function deployPool(
@@ -170,9 +169,24 @@ describe('StablePool', function () {
         const poolSwapFee = params.swapFee ?? POOL_SWAP_FEE;
 
         return deploy('StablePool', {
-          args: [vault.address, 'Balancer Pool Token', 'BPT', poolTokens.addresses, poolAmplification, poolSwapFee],
+          args: [
+            vault.address,
+            'Balancer Pool Token',
+            'BPT',
+            poolTokens.addresses,
+            poolAmplification,
+            poolSwapFee,
+            EMERGENCY_PERIOD,
+            0,
+          ],
         });
       }
+
+      const activateEmergencyPeriod = async (pool: Contract): Promise<void> => {
+        const role = roleId(pool, 'setEmergencyPeriod');
+        await authorizer.connect(admin).grantRole(role, admin.address);
+        await pool.connect(admin).setEmergencyPeriod(true);
+      };
 
       describe('failed creation', () => {
         it('reverts if there are repeated tokens', async () => {
@@ -281,6 +295,14 @@ describe('StablePool', function () {
               )
             ).to.be.revertedWith('UNHANDLED_JOIN_KIND');
           });
+
+          it('fails if the emergency period active', async () => {
+            await activateEmergencyPeriod(pool);
+
+            await expect(
+              vault.callJoinPool(pool.address, poolId, beneficiary.address, ZEROS, 0, 0, initialJoinUserData)
+            ).to.be.revertedWith('EMERGENCY_PERIOD');
+          });
         });
 
         context('join exact tokens in for BPT out', () => {
@@ -316,6 +338,15 @@ describe('StablePool', function () {
 
               const newBPT = await pool.balanceOf(beneficiary.address);
               expect(newBPT.sub(previousBPT)).to.equal(bptAmountOut);
+            });
+
+            it('fails if the emergency period active', async () => {
+              await activateEmergencyPeriod(pool);
+
+              const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut: 10 });
+              await expect(
+                vault.callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
+              ).to.be.revertedWith('EMERGENCY_PERIOD');
             });
           });
         });
@@ -416,6 +447,19 @@ describe('StablePool', function () {
 
             expect(await pool.balanceOf(lp.address)).to.equal(0);
           });
+
+          it('does not revert if the emergency period active', async () => {
+            await activateEmergencyPeriod(pool);
+
+            const lpBPT = await pool.balanceOf(lp.address);
+            const exitUserData = encodeExitStablePool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: lpBPT });
+
+            await expect(
+              vault
+                .connect(lp)
+                .callExitPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, exitUserData)
+            ).not.to.be.reverted;
+          });
         });
       });
 
@@ -472,6 +516,14 @@ describe('StablePool', function () {
               pool.onSwapGivenIn({ ...swapRequestData, amountIn: bn(1e18) }, poolInitialBalances, 0, 10)
             ).to.be.revertedWith('OUT_OF_BOUNDS');
           });
+
+          it('fails if the emergency period active', async () => {
+            await activateEmergencyPeriod(pool);
+
+            await expect(
+              pool.onSwapGivenIn({ ...swapRequestData, amountIn: bn(1e18) }, poolInitialBalances, 0, 1)
+            ).to.be.revertedWith('EMERGENCY_PERIOD');
+          });
         });
 
         context('given out', () => {
@@ -497,6 +549,14 @@ describe('StablePool', function () {
             await expect(
               pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 0, 10)
             ).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+
+          it('fails if the emergency period active', async () => {
+            await activateEmergencyPeriod(pool);
+
+            await expect(
+              pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 0, 1)
+            ).to.be.revertedWith('EMERGENCY_PERIOD');
           });
         });
       });

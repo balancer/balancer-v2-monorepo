@@ -28,7 +28,7 @@ describe('Vault - protocol fees', () => {
 
   sharedBeforeEach('deploy vault', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS] });
+    vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
 
     const SET_PROTOCOL_FEES_ROLE = roleId(vault, 'setProtocolFees');
     await authorizer.connect(admin).grantRole(SET_PROTOCOL_FEES_ROLE, feeSetter.address);

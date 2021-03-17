@@ -33,7 +33,7 @@ describe('Vault - exit pool', () => {
     const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
     vault = vault.connect(lp);
 
     const role = roleId(vault, 'setProtocolFees');

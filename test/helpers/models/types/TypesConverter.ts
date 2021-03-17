@@ -1,9 +1,11 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn } from '../../../../lib/helpers/numbers';
+import { MONTH } from '../../../../lib/helpers/time';
 
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
+import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawWeightedPoolDeployment, WeightedPoolDeployment } from '../pools/weighted/types';
 import {
   RawTokenApproval,
@@ -16,11 +18,33 @@ import {
 } from '../tokens/types';
 
 export default {
-  toWeightedPoolDeployment({ tokens, weights, swapFee }: RawWeightedPoolDeployment): WeightedPoolDeployment {
+  toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
+    let { mocked, admin, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    if (!mocked) mocked = false;
+    if (!admin) admin = params.from;
+    if (!emergencyPeriod) emergencyPeriod = 0;
+    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = 0;
+    return { mocked, admin, emergencyPeriod, emergencyPeriodCheckExtension };
+  },
+
+  toRawVaultDeployment(params: RawWeightedPoolDeployment): RawVaultDeployment {
+    let { admin, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    if (!admin) admin = params.from;
+    if (!emergencyPeriod) emergencyPeriod = 0;
+    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = 0;
+
+    const mocked = params.fromFactory !== undefined ? !params.fromFactory : true;
+    return { mocked, admin, emergencyPeriod, emergencyPeriodCheckExtension };
+  },
+
+  toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
+    let { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = [];
     if (!swapFee) swapFee = bn(0);
-    return { tokens, weights, swapFee };
+    if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
+    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
+    return { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
   },
 
   /***
