@@ -21,7 +21,7 @@ import { bn, decimal, fp } from '../../../lib/helpers/numbers';
 import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 import { roleId } from '../../../lib/helpers/roles';
 
-describe.only('StablePool', function () {
+describe('StablePool', function () {
   let allTokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress, beneficiary: SignerWithAddress, other: SignerWithAddress;
 
@@ -356,7 +356,7 @@ describe.only('StablePool', function () {
         //   const joinUserData = encodeJoinStablePool({ kind: 'AllTokensInForExactBPTOut', bptAmountOut: 10 });
         //   await expect(
         //     vault.callJoinPool(pool.address, poolId, beneficiary.address, poolInitialBalances, 0, 0, joinUserData)
-        //   ).to.be.revertedWith('EMERGENCY_PERIOD_FINISHED');
+        //   ).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         // });
         //   });
         // });
@@ -566,7 +566,7 @@ describe.only('StablePool', function () {
 
             await expect(
               pool.onSwapGivenOut({ ...swapRequestData, amountOut: bn(1e18) }, poolInitialBalances, 0, 1)
-            ).to.be.revertedWith('EMERGENCY_PERIOD');
+            ).to.be.revertedWith('EMERGENCY_PERIOD_ON');
           });
         });
       });

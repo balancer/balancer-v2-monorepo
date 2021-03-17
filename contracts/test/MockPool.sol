@@ -33,11 +33,11 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         _vault = vault;
     }
 
-    function getVault() external view override returns (IVault) {
+    function getVault() external view returns (IVault) {
         return _vault;
     }
 
-    function getPoolId() external view override returns (bytes32) {
+    function getPoolId() external view returns (bytes32) {
         return _poolId;
     }
 
@@ -158,7 +158,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         return amountIn;
     }
 
-    function getBPTAppreciation() external pure override returns (uint256) {
+    function getRate() external pure override returns (uint256) {
         return FixedPoint.ONE;
     }
 }

@@ -542,7 +542,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     // This function returns the appreciation of one BPT relative to the
     // underlying tokens. This starts at 1 when the pool is created and grows over time
     // It's the equivalent to Curve's get_virtual_price() function
-    function getBPTAppreciation() public view override returns (uint256) {
+    function getRate() public view override returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
         return Math.mul(WeightedMath._invariant(_normalizedWeights(), balances), balances.length).div(totalSupply());
     }

@@ -78,24 +78,10 @@ interface IBasePool {
         bytes calldata userData
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
 
-    // Optional methods - these are not required by the Vault as they are not called, but Pool contracts are encouraged
-    // to implement these or similar getters.
-
-    /**
-     * @dev Returns the address of the Vault.
-     */
-    function getVault() external view returns (IVault);
-
-    /**
-     * @dev Returns the Pool ID of the Pool. Note that this may not be feasible for Pool contracts that register
-     * multiple Pools.
-     */
-    function getPoolId() external view returns (bytes32);
-
     /**
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
      * It's the equivalent to Curve's get_virtual_price() function
      */
-    function getBPTAppreciation() external view returns (uint256);
+    function getRate() external view returns (uint256);
 }
