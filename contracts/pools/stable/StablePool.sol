@@ -258,9 +258,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 chosenTokenIndex = 0;
         uint256 maxBalance = currentBalances[0];
         for (uint256 i = 1; i < _totalTokens; ++i) {
-            if (currentBalances[i] > maxBalance) {
+            uint256 currentBalance = currentBalances[i];
+            if (currentBalance > maxBalance) {
                 chosenTokenIndex = i;
-                maxBalance = currentBalances[i];
+                maxBalance = currentBalance;
             }
         }
 
