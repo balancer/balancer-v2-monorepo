@@ -28,22 +28,22 @@ abstract contract AssetTransfer {
     using Address for address payable;
     using Math for uint256;
 
-    IWETH internal immutable WETH;
+    IWETH private immutable _WETH;
 
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
     // multiple reasons: it is cheap to pass as a calldata argument, it is a known invalid token and non-contract, and
     // it is an adddress Pools cannot register as a token.
-    address internal constant ETH = address(0);
+    address private constant _ETH = address(0);
 
     constructor(IWETH weth) {
-        WETH = weth;
+        _WETH = weth;
     }
 
     /**
      * @dev Returns true if `asset` is the sentinel value that stands for ETH.
      */
     function _isETH(IAsset asset) internal pure returns (bool) {
-        return address(asset) == ETH;
+        return address(asset) == _ETH;
     }
 
     /**
@@ -51,11 +51,7 @@ abstract contract AssetTransfer {
      * into the WETH contract.
      */
     function _translateToIERC20(IAsset asset) internal view returns (IERC20) {
-        if (_isETH(asset)) {
-            return WETH;
-        } else {
-            return _asIERC20(asset);
-        }
+        return _isETH(asset) ? _WETH : _asIERC20(asset);
     }
 
     /**
@@ -101,7 +97,7 @@ abstract contract AssetTransfer {
 
             // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
             // the Vault at a 1:1 ratio.
-            WETH.deposit{ value: amount }();
+            _WETH.deposit{ value: amount }();
 
             // Any leftover ETH is sent back to the caller (not the sender!).
             uint256 leftover = msg.value - amount;
@@ -112,13 +108,8 @@ abstract contract AssetTransfer {
             IERC20 token = _asIERC20(asset);
 
             if (fromInternalBalance) {
-                uint256 currentInternalBalance = _getInternalBalance(sender, token);
-                uint256 toWithdraw = Math.min(currentInternalBalance, amount);
-
-                // toWithdraw is by construction smaller or equal than currentInternalBalance and toReceive, so we don't
-                // need checked arithmetic.
-                _setInternalBalance(sender, token, currentInternalBalance - toWithdraw);
-                amount -= toWithdraw;
+                uint256 receivedFromInternalBalance = _decreaseRemainingInternalBalance(sender, token, amount);
+                amount -= receivedFromInternalBalance;
             }
 
             if (amount > 0) {
@@ -149,6 +140,10 @@ abstract contract AssetTransfer {
         }
 
         bool isEth = _isETH(asset);
+
+        // Sending an asset may have a withdraw fee applied, reducing the amount sent. This fee is only applied if
+        // requested (as e.g. swaps don't charge this fee), unless depositing to internal balance (which is exempt).
+        // Additionally, sending ETH overrides the internal balance setting, resulting in fees.
         uint256 withdrawFee = (chargeWithdrawFee && (!toInternalBalance || isEth))
             ? _calculateProtocolWithdrawFeeAmount(amount)
             : 0;
@@ -160,7 +155,7 @@ abstract contract AssetTransfer {
 
             // First, the Vault withdraws deposited ETH in the WETH contract, by burning the same amount of WETH
             // from the Vault. This receipt will be handled by the Vault's `receive`.
-            WETH.withdraw(toSend);
+            _WETH.withdraw(toSend);
 
             // Then, the withdrawn ETH is sent to the recipient.
             recipient.sendValue(toSend);
@@ -180,11 +175,14 @@ abstract contract AssetTransfer {
      * @dev Enables the Vault to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
      * caller.
      *
-     * Any ETH sent to the Vault outside of the WETH unwrapping mechanism will be forever locked inside the Vault. In
-     * particular, transferring ETH to the Vault directly will not cause for it to be wrapped in WETH, but rather to be
-     * lost. Do not ever send ETH to the Vault directly.
+     * Any ETH sent to the Vault outside of the WETH unwrapping mechanism would be forever locked inside the Vault, so
+     * we prevent that from happening. Other mechanisms used to send ETH to the Vault (such as selfdestruct, or have it
+     * be the recipient of the block mining reward) will result in locked funds, but are not otherwise a security or
+     * soundness issue. This check only exists as an attempt to prevent user error.
      */
-    receive() external payable {}
+    receive() external payable {
+        require(msg.sender == address(_WETH), "ETH_TRANSFER");
+    }
 
     // This contract has uses virtual internal functions instead of inheriting from the modules that implement them (in
     // this case, Fees and InternalBalance) in order to decouple it from the rest of the system and enable standalone
@@ -192,17 +190,15 @@ abstract contract AssetTransfer {
 
     function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view virtual returns (uint256);
 
-    function _getInternalBalance(address account, IERC20 token) internal view virtual returns (uint256);
-
     function _increaseInternalBalance(
         address account,
         IERC20 token,
         uint256 amount
     ) internal virtual;
 
-    function _setInternalBalance(
+    function _decreaseRemainingInternalBalance(
         address account,
         IERC20 token,
-        uint256 balance
-    ) internal virtual;
+        uint256 amount
+    ) internal virtual returns (uint256);
 }

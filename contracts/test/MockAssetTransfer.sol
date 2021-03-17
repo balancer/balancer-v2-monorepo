@@ -49,7 +49,7 @@ contract MockAssetTransfer is AssetTransfer {
     }
 
     function getInternalBalance(address account, IERC20 token) external view returns (uint256) {
-        return _getInternalBalance(account, token);
+        return _internalTokenBalance[account][token];
     }
 
     function depositToInternalBalance(
@@ -61,10 +61,6 @@ contract MockAssetTransfer is AssetTransfer {
         _increaseInternalBalance(account, token, amount);
     }
 
-    function _getInternalBalance(address account, IERC20 token) internal view override returns (uint256) {
-        return _internalTokenBalance[account][token];
-    }
-
     function _increaseInternalBalance(
         address account,
         IERC20 token,
@@ -73,12 +69,17 @@ contract MockAssetTransfer is AssetTransfer {
         _internalTokenBalance[account][token] += amount;
     }
 
-    function _setInternalBalance(
+    function _decreaseRemainingInternalBalance(
         address account,
         IERC20 token,
-        uint256 balance
-    ) internal override {
-        _internalTokenBalance[account][token] = balance;
+        uint256 amount
+    ) internal override returns (uint256) {
+        uint256 currentBalance = _internalTokenBalance[account][token];
+        uint256 toDeduct = Math.min(currentBalance, amount);
+
+        _internalTokenBalance[account][token] -= toDeduct;
+
+        return toDeduct;
     }
 
     function calculateProtocolWithdrawFeeAmount(uint256 amount) external view returns (uint256) {

@@ -140,6 +140,27 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfer, Fees {
     }
 
     /**
+     * @dev Same as _decreaseInternalBalance, except it doesn't revert of `account` doesn't have enough balance, and
+     * instead decreases it by as much as possible.
+     *
+     * Returns the amount of Internal Balance deducted.
+     */
+    function _decreaseRemainingInternalBalance(
+        address account,
+        IERC20 token,
+        uint256 amount
+    ) internal override returns (uint256) {
+        uint256 currentInternalBalance = _getInternalBalance(account, token);
+        uint256 toDeduct = Math.min(currentInternalBalance, amount);
+
+        // toDeduct is by construction smaller or equal than currentInternalBalance, so we don't need checked
+        // arithmetic.
+        _setInternalBalance(account, token, currentInternalBalance - toDeduct);
+
+        return toDeduct;
+    }
+
+    /**
      * @dev Sets `account`'s Internal Balance for `token` to `balance`.
      *
      * This costs less gas than `_increaseInternalBalance` or `_decreaseInternalBalance`, since the current collected
@@ -149,7 +170,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfer, Fees {
         address account,
         IERC20 token,
         uint256 balance
-    ) internal override {
+    ) internal {
         _internalTokenBalance[account][token] = balance;
         emit InternalBalanceChanged(account, token, balance);
     }
@@ -157,7 +178,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfer, Fees {
     /**
      * @dev Returns `account`'s Internal Balance for `token`.
      */
-    function _getInternalBalance(address account, IERC20 token) internal view override returns (uint256) {
+    function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
         return _internalTokenBalance[account][token];
     }
 }

@@ -20,5 +20,5 @@ pragma solidity ^0.7.0;
  * address-like types.
  */
 interface IAsset {
-
+    // solhint-disable-previous-line no-empty-blocks
 }

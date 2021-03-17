@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../lib/math/Math.sol";
@@ -36,7 +35,6 @@ abstract contract Swaps is ReentrancyGuard, AssetTransfer, PoolRegistry {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
-    using Address for address payable;
 
     using Math for int256;
     using SafeCast for uint256;

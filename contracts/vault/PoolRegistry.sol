@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "../lib/math/Math.sol";
@@ -44,7 +43,6 @@ abstract contract PoolRegistry is
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
-    using Address for address payable;
     using Counters for Counters.Counter;
 
     // Ensure Pool IDs are unique.

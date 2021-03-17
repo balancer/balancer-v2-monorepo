@@ -6,9 +6,9 @@ import Vault from './Vault';
 import TypesConverter from '../types/TypesConverter';
 import { deploy } from '../../../../lib/helpers/deploy';
 import { RawVaultDeployment, VaultDeployment } from './types';
-import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
+import TokensDeployer from '../tokens/TokensDeployer';
 
-const VaultDeployer = {
+export default {
   async deploy(params: RawVaultDeployment): Promise<Vault> {
     const deployment = TypesConverter.toVaultDeployment(params);
 
@@ -16,17 +16,14 @@ const VaultDeployer = {
     const { from } = deployment;
     if (!admin) admin = from || (await ethers.getSigners())[0];
 
-    const authorizer = await VaultDeployer._deployAuthorizer(admin, from);
-    const instance = await (deployment.mocked ? VaultDeployer._deployMocked : VaultDeployer._deployReal)(
-      deployment,
-      authorizer
-    );
+    const authorizer = await this._deployAuthorizer(admin, from);
+    const instance = await (deployment.mocked ? this._deployMocked : this._deployReal)(deployment, authorizer);
     return new Vault(false, instance, authorizer, admin);
   },
 
   async _deployReal(deployment: VaultDeployment, authorizer: Contract): Promise<Contract> {
     const { from, emergencyPeriod, emergencyPeriodCheckExtension } = deployment;
-    const weth = await VaultDeployer._deployWETH(deployment);
+    const weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
     const args = [authorizer.address, weth.address, emergencyPeriod, emergencyPeriodCheckExtension];
     return deploy('Vault', { args, from });
   },
@@ -38,11 +35,4 @@ const VaultDeployer = {
   async _deployAuthorizer(admin: SignerWithAddress, from?: SignerWithAddress): Promise<Contract> {
     return deploy('Authorizer', { args: [admin.address], from });
   },
-
-  async _deployWETH({ admin, from }: VaultDeployment): Promise<Contract> {
-    const adminAddress = admin ? TypesConverter.toAddress(admin) : ZERO_ADDRESS;
-    return deploy('WETH', { args: [adminAddress], from });
-  },
 };
-
-export default VaultDeployer;
