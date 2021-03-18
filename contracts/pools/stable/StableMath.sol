@@ -26,10 +26,10 @@ import "../../lib/math/FixedPoint.sol";
 contract StableMath {
     using FixedPoint for uint256;
 
-    uint256 private constant _MIN_AMP = 1e18;
-    uint256 private constant _MAX_AMP = 5000 * (1e18);
+    uint256 internal constant _MIN_AMP = 1e18;
+    uint256 internal constant _MAX_AMP = 5000 * (1e18);
 
-    uint256 private constant _MAX_STABLE_TOKENS = 5;
+    uint256 internal constant _MAX_STABLE_TOKENS = 5;
 
     // Computes the invariant given the current balances using Newton-Raphson approximation.
     // The amplification parameter equals to: A n^(n-1)
