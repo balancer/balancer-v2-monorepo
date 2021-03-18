@@ -481,10 +481,7 @@ contract StableMath {
 
         for (uint256 i = 0; i < 255; i++) {
             prevTokenBalance = tokenBalance;
-            // tokenBalance = Math.divUp(
-            //     Math.mul(tokenBalance, tokenBalance).add(c),
-            //     Math.mul(tokenBalance, 2).add(b).sub(invariant)
-            // );
+
             tokenBalance = tokenBalance.mul(tokenBalance).add(c).divUp(Math.mul(tokenBalance, 2).add(b).sub(invariant));
 
             if (tokenBalance > prevTokenBalance) {
