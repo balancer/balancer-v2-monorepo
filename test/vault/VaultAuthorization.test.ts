@@ -20,7 +20,7 @@ describe('VaultAuthorization', function () {
   });
 
   async function deployVault(authorizer: string): Promise<Contract> {
-    return deploy('Vault', { args: [authorizer, 0, 0] });
+    return deploy('Vault', { args: [authorizer, ZERO_ADDRESS, 0, 0] });
   }
 
   describe('authorizer', () => {

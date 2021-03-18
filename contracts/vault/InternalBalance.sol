@@ -21,9 +21,10 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../lib/math/Math.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
+import "./AssetTransfersHandler.sol";
 import "./Fees.sol";
 
-abstract contract InternalBalance is ReentrancyGuard, Fees {
+abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fees {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
@@ -118,7 +119,7 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         address account,
         IERC20 token,
         uint256 amount
-    ) internal {
+    ) internal override {
         uint256 currentInternalBalance = _getInternalBalance(account, token);
         uint256 newBalance = currentInternalBalance.add(amount);
         _setInternalBalance(account, token, newBalance);
@@ -136,6 +137,27 @@ abstract contract InternalBalance is ReentrancyGuard, Fees {
         require(currentInternalBalance >= amount, "INSUFFICIENT_INTERNAL_BALANCE");
         uint256 newBalance = currentInternalBalance - amount;
         _setInternalBalance(account, token, newBalance);
+    }
+
+    /**
+     * @dev Same as _decreaseInternalBalance, except it doesn't revert of `account` doesn't have enough balance, and
+     * instead decreases it by as much as possible.
+     *
+     * Returns the amount of Internal Balance deducted.
+     */
+    function _decreaseRemainingInternalBalance(
+        address account,
+        IERC20 token,
+        uint256 amount
+    ) internal override returns (uint256) {
+        uint256 currentInternalBalance = _getInternalBalance(account, token);
+        uint256 toDeduct = Math.min(currentInternalBalance, amount);
+
+        // toDeduct is by construction smaller or equal than currentInternalBalance, so we don't need checked
+        // arithmetic.
+        _setInternalBalance(account, token, currentInternalBalance - toDeduct);
+
+        return toDeduct;
     }
 
     /**

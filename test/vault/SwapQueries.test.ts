@@ -29,8 +29,7 @@ describe('Vault - swap queries', () => {
     [, lp] = await ethers.getSigners();
 
     // All of the tests in this suite have no side effects, so we deploy and initially contracts only one to save time
-
-    vault = await deploy('Vault', { args: [ZERO_ADDRESS, 0, 0] });
+    vault = await deploy('Vault', { args: [ZERO_ADDRESS, ZERO_ADDRESS, 0, 0] });
 
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
     await tokens.mint({ to: lp, amount: MAX_UINT112.div(2) });

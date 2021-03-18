@@ -18,6 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./IAuthorizer.sol";
 import "./IFlashLoanReceiver.sol";
+import "./IAsset.sol";
 
 pragma solidity ^0.7.0;
 
@@ -419,7 +420,8 @@ interface IVault {
      * previous swap's `tokenOut`.
      *
      * The `tokens` array contains the addresses of all tokens involved in the swaps. Each entry in the `swaps` array
-     * specifies tokens in and out by referencing an index in `tokens`.
+     * specifies tokens in and out by referencing an index in `tokens`.`tokens` must be sorted in ascending order,
+     * which ensures all entries are unique.
      *
      * Internal Balance usage and recipient are determined by the `funds` struct.
      *
@@ -469,7 +471,8 @@ interface IVault {
      * the previous swap's `tokenIn`.
      *
      * The `tokens` array contains the addresses of all tokens involved in the swaps. Each entry in the `swaps` array
-     * specifies tokens in and out by referencing an index in `tokens`.
+     * specifies tokens in and out by referencing an index in `tokens`. `tokens` must be sorted in ascending order,
+     * which ensures all entries are unique.
      *
      * Internal Balance usage and recipient are determined by the `funds` struct.
      *
@@ -521,13 +524,14 @@ interface IVault {
      * transfer for the difference between the requested amount and the User's Internal Balance (if any). The `sender`
      * must have allowed the Vault to use their tokens via `IERC20.approve()`. This matches the behavior of
      * `joinPool`.
-     *     * If `toInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
+     *
+     * If `toInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
      * transferred. This matches the behavior of `exitPool`.
      */
     struct FundManagement {
         address sender;
         bool fromInternalBalance;
-        address recipient;
+        address payable recipient;
         bool toInternalBalance;
     }
 

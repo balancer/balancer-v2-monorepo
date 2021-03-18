@@ -149,6 +149,19 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         InputHelpers.ensureInputLengthMatch(tokens.length, limits.length);
 
+        // Scope for erc20Tokens, avoiding stack-too-deep issues
+        {
+            // Cast tokens into IERC20 with no runtime cost
+            IERC20[] memory erc20Tokens;
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                erc20Tokens := tokens
+            }
+
+            // By ensuring the tokens are sorted, we know they are unique
+            InputHelpers.ensureArrayIsSorted(erc20Tokens);
+        }
+
         // Perform the swaps, updating the Pool token balances and computing the net Vault token deltas.
         tokenDeltas = _swapWithPools(swaps, tokens, funds, kind);
 
@@ -162,16 +175,12 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
             // Ignore zeroed deltas
             if (delta > 0) {
-                _receiveTokens(token, uint256(delta), funds.sender, funds.fromInternalBalance);
+                uint256 toReceive = uint256(delta);
+                _receiveTokens(token, toReceive, funds.sender, funds.fromInternalBalance);
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
-
-                if (funds.toInternalBalance) {
-                    _increaseInternalBalance(funds.recipient, token, toSend);
-                } else {
-                    // Note protocol withdraw fees are not charged in this transfer
-                    token.safeTransfer(funds.recipient, toSend);
-                }
+                // Withdraw fees are not charged when sending funds as part of a swap
+                _sendTokens(token, toSend, funds.recipient, funds.toInternalBalance);
             }
         }
     }
