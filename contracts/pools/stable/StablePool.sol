@@ -246,7 +246,6 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
         // event and now - the invariant's growth is due exclusively to swap fees.\
 
-        //TODO: do not charge fees on emercency period
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             balances,
             _lastInvariant,
@@ -410,7 +409,6 @@ contract StablePool is BaseGeneralPool, StableMath {
     // underlying tokens. This starts at 1 when the pool is initialized and grows over time
     // It's the equivalent to Curve's get_virtual_price() function
     function getRate() public view override returns (uint256) {
-        //TODO: add cache
         (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
         return StableMath._calculateInvariant(_amplificationParameter, balances).div(totalSupply());
     }
