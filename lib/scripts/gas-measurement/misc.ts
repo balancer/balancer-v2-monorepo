@@ -86,7 +86,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
       from: creator,
-      parameters: [tokenAddresses, externalRates, amplificationParameter, swapFee],
+      parameters: [tokenAddresses, amplificationParameter, swapFee],
     });
 
     joinUserData = encodeJoinStablePool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
