@@ -31,11 +31,6 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     uint256 private _lastInvariant;
 
-    uint256 private constant _MIN_AMP = 1e18;
-    uint256 private constant _MAX_AMP = 5000 * (1e18);
-
-    uint256 private constant _MAX_STABLE_TOKENS = 5;
-
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 

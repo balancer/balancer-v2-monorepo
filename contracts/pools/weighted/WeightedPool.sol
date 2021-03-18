@@ -54,15 +54,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     uint256 private _lastInvariant;
 
-    // Pool limits that arise from this math (and the imposed 100/1 maximum weight ratio)
-    uint256 internal constant _MIN_WEIGHT = 0.01e18;
-
-    uint256 internal constant _MAX_IN_RATIO = 0.3e18;
-    uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
-
-    uint256 internal constant _MAX_INVARIANT_RATIO = 3e18;
-    uint256 internal constant _MIN_INVARIANT_RATIO = 0.7e18;
-
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
