@@ -23,7 +23,7 @@ class TokensDeployer {
 
     const instance =
       symbol === 'WETH'
-        ? await deploy('WETH9', { from: sender, args: [sender.address] })
+        ? await deploy('WETH', { from: sender, args: [sender.address] })
         : await deploy('TestToken', { from: sender, args: [sender.address, 'Token', 'TKN', decimals] });
 
     return new Token(name, symbol, decimals, instance);

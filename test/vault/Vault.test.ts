@@ -6,6 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { MONTH } from '../../lib/helpers/time';
 import { deploy } from '../../lib/helpers/deploy';
 import { roleId } from '../../lib/helpers/roles';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 
 describe('Vault', function () {
   let authorizer: Contract, vault: Contract;
@@ -21,7 +22,9 @@ describe('Vault', function () {
 
     sharedBeforeEach(async () => {
       authorizer = await deploy('Authorizer', { args: [admin.address] });
-      vault = await deploy('Vault', { args: [authorizer.address, EMERGENCY_PERIOD, EMERGENCY_PERIOD_CHECK_EXTENSION] });
+      vault = await deploy('Vault', {
+        args: [authorizer.address, ZERO_ADDRESS, EMERGENCY_PERIOD, EMERGENCY_PERIOD_CHECK_EXTENSION],
+      });
     });
 
     context('when the sender is has the role to do it', () => {

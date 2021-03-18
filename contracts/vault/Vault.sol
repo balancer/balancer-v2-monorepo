@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./interfaces/IAuthorizer.sol";
+import "./interfaces/IWETH.sol";
 
 import "./VaultAuthorization.sol";
 import "./FlashLoanProvider.sol";
@@ -54,9 +55,14 @@ import "./Swaps.sol";
 contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
     constructor(
         IAuthorizer authorizer,
+        IWETH weth,
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
-    ) VaultAuthorization(authorizer) EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension) {
+    )
+        VaultAuthorization(authorizer)
+        AssetTransfersHandler(weth)
+        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 

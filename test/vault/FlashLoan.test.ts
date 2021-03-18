@@ -9,6 +9,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { roleId } from '../../lib/helpers/roles';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress, minter: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
@@ -20,8 +21,10 @@ describe('Vault - flash loans', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
+    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
 
     const SET_PROTOCOL_FEES_ROLE = roleId(vault, 'setProtocolFees');

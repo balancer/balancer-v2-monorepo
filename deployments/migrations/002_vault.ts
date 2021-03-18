@@ -6,10 +6,11 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
   const { deployer } = await getNamedAccounts();
 
   const authorizer = await deployments.get('Authorizer');
+  const weth = await deployments.get('WETH');
 
   const vault = await deploy('Vault', {
     from: deployer,
-    args: [authorizer.address, 0, 0],
+    args: [authorizer.address, weth.address, 0, 0],
     log: true,
   });
 

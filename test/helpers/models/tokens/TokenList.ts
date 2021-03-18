@@ -9,6 +9,9 @@ import {
   TokenMint,
   TokensDeploymentOptions,
 } from './types';
+import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
+
+export const ETH_TOKEN_ADDRESS = ZERO_ADDRESS;
 
 export default class TokenList {
   tokens: Token[];
@@ -35,6 +38,10 @@ export default class TokenList {
 
   get second(): Token {
     return this.get(1);
+  }
+
+  get WETH(): Token {
+    return this.findBySymbol('WETH');
   }
 
   get DAI(): Token {

@@ -15,6 +15,7 @@ import { roleId } from '../../lib/helpers/roles';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
@@ -26,8 +27,10 @@ describe('Vault - join pool', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
+    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
 
     const role = roleId(vault, 'setProtocolFees');
     await authorizer.connect(admin).grantRole(role, admin.address);

@@ -81,7 +81,7 @@ describe('StablePool', function () {
       sharedBeforeEach('deploy vault', async () => {
         // These tests use the real Vault because they test some Vault functionality, such as token registration
         const authorizer = await deploy('Authorizer', { args: [admin.address] });
-        vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
+        vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
       });
 
       describe('successful creation', () => {

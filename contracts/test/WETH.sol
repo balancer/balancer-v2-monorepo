@@ -18,36 +18,35 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract WETH9 is AccessControl {
+import "../vault/interfaces/IWETH.sol";
+
+contract WETH is AccessControl, IWETH {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     string public name = "Wrapped Ether";
     string public symbol = "WETH";
     uint8 public decimals = 18;
 
-    event Approval(address indexed src, address indexed guy, uint256 wad);
-    event Transfer(address indexed src, address indexed dst, uint256 wad);
     event Deposit(address indexed dst, uint256 wad);
     event Withdrawal(address indexed src, uint256 wad);
 
-    mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => uint256) public override balanceOf;
+    mapping(address => mapping(address => uint256)) public override allowance;
 
-    constructor(address _admin) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
-        _setupRole(MINTER_ROLE, _admin);
+    constructor(address minter) {
+        _setupRole(MINTER_ROLE, minter);
     }
 
     receive() external payable {
         deposit();
     }
 
-    function deposit() public payable {
+    function deposit() public payable override {
         balanceOf[msg.sender] += msg.value;
         emit Deposit(msg.sender, msg.value);
     }
 
-    function withdraw(uint256 wad) public {
+    function withdraw(uint256 wad) public override {
         require(balanceOf[msg.sender] >= wad, "INSUFFICIENT_BALANCE");
         balanceOf[msg.sender] -= wad;
         msg.sender.transfer(wad);
@@ -61,17 +60,17 @@ contract WETH9 is AccessControl {
         emit Deposit(destinatary, amount);
     }
 
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() public view override returns (uint256) {
         return address(this).balance;
     }
 
-    function approve(address guy, uint256 wad) public returns (bool) {
+    function approve(address guy, uint256 wad) public override returns (bool) {
         allowance[msg.sender][guy] = wad;
         emit Approval(msg.sender, guy, wad);
         return true;
     }
 
-    function transfer(address dst, uint256 wad) public returns (bool) {
+    function transfer(address dst, uint256 wad) public override returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
 
@@ -79,7 +78,7 @@ contract WETH9 is AccessControl {
         address src,
         address dst,
         uint256 wad
-    ) public returns (bool) {
+    ) public override returns (bool) {
         require(balanceOf[src] >= wad, "INSUFFICIENT_BALANCE");
 
         if (src != msg.sender && allowance[src][msg.sender] != uint256(-1)) {
