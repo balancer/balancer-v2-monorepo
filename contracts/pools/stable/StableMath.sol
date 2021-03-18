@@ -26,6 +26,10 @@ import "../../lib/math/FixedPoint.sol";
 contract StableMath {
     using Math for uint256;
 
+    // Pool limits that arise from this math
+    uint256 internal constant _MIN_AMP = 50 * (1e18);
+    uint256 internal constant _MAX_AMP = 2000 * (1e18);
+
     /**********************************************************************************************
     // invariant                                                                                 //
     // D = invariant to compute                                                                  //

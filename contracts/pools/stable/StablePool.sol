@@ -31,9 +31,6 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     uint256 private _lastInvariant;
 
-    uint256 private constant _MIN_AMP = 50 * (1e18);
-    uint256 private constant _MAX_AMP = 2000 * (1e18);
-
     enum JoinKind { INIT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT }
 
@@ -65,7 +62,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override noEmergencyPeriod returns (uint256) {
         return StableMath._outGivenIn(_amp, balances, indexIn, indexOut, swapRequest.amountIn);
     }
 
@@ -74,7 +71,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override noEmergencyPeriod returns (uint256) {
         return StableMath._inGivenOut(_amp, balances, indexIn, indexOut, swapRequest.amountOut);
     }
 
@@ -85,7 +82,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         address,
         address,
         bytes memory userData
-    ) internal override noEmergencyPeriod returns (uint256, uint256[] memory) {
+    ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
         StablePool.JoinKind kind = userData.joinKind();
         require(kind == StablePool.JoinKind.INIT, "UNINITIALIZED");
 
@@ -113,6 +110,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         bytes memory userData
     )
         internal
+        virtual
         override
         noEmergencyPeriod
         returns (
@@ -186,6 +184,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         bytes memory userData
     )
         internal
+        virtual
         override
         returns (
             uint256,
