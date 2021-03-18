@@ -367,13 +367,11 @@ abstract contract PoolRegistry is
 
         uint256 toReceive = amount;
         if (fromInternalBalance) {
-            uint256 currentInternalBalance = _getInternalBalance(sender, token);
-            uint256 toWithdraw = Math.min(currentInternalBalance, amount);
-
-            // toWithdraw is by construction smaller or equal than currentInternalBalance and toReceive, so we don't
-            // need checked arithmetic.
-            _setInternalBalance(sender, token, currentInternalBalance - toWithdraw);
-            toReceive -= toWithdraw;
+            (, uint256 decreasedAmount) = _decreaseInternalBalance(sender, token, amount, true);
+            // Note that we ignore the taxable amount here since these are assets being "transferred" to the Vault.
+            // Also, `decreasedAmount` will be always the minimum between the current internal balance and
+            // the amount to decrease. Therefore, it will be always safe to avoid the arithmetic check.
+            toReceive -= decreasedAmount;
         }
 
         if (toReceive > 0) {

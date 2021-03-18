@@ -5,21 +5,16 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import TokenList from '../../helpers/models/tokens/TokenList';
 import * as expectEvent from '../../helpers/expectEvent';
-import { expectEqualWithError, expectLessThanOrEqualWithError } from '../../helpers/relativeError';
-import {
-  calcInGivenOut,
-  calcOutGivenIn,
-  calculateInvariant,
-  calculateOneTokenSwapFee,
-} from '../../helpers/math/stable';
+import { expectEqualWithError } from '../../helpers/relativeError';
+import { calcInGivenOut, calcOutGivenIn, calculateInvariant } from '../../helpers/math/stable';
 
 import { MONTH } from '../../../lib/helpers/time';
 import { deploy } from '../../../lib/helpers/deploy';
+import { roleId } from '../../../lib/helpers/roles';
+import { bn, fp } from '../../../lib/helpers/numbers';
 import { GeneralPool } from '../../../lib/helpers/pools';
 import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
-import { bn, decimal, fp } from '../../../lib/helpers/numbers';
-import { encodeExitStablePool, encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
-import { roleId } from '../../../lib/helpers/roles';
+import { encodeJoinStablePool } from '../../../lib/helpers/stablePoolEncoding';
 
 describe('StablePool', function () {
   let allTokens: TokenList;

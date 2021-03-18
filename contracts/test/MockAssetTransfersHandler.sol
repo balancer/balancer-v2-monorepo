@@ -69,17 +69,16 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         _internalTokenBalance[account][token] += amount;
     }
 
-    function _decreaseRemainingInternalBalance(
+    function _decreaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
-    ) internal override returns (uint256) {
+        uint256 amount,
+        bool capped
+    ) internal override returns (uint256, uint256) {
         uint256 currentBalance = _internalTokenBalance[account][token];
-        uint256 toDeduct = Math.min(currentBalance, amount);
-
+        uint256 toDeduct = capped ? Math.min(currentBalance, amount) : amount;
         _internalTokenBalance[account][token] -= toDeduct;
-
-        return toDeduct;
+        return (toDeduct, toDeduct);
     }
 
     function calculateProtocolWithdrawFeeAmount(uint256 amount) external view returns (uint256) {
