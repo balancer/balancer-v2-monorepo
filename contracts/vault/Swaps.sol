@@ -149,17 +149,17 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         InputHelpers.ensureInputLengthMatch(tokens.length, limits.length);
 
-        // Scope for IERC20Tokens, avoiding stack-too-deep issues
+        // Scope for erc20Tokens, avoiding stack-too-deep issues
         {
             // Cast tokens into IERC20 with no runtime cost
-            IERC20[] memory IERC20Tokens;
+            IERC20[] memory erc20Tokens;
             // solhint-disable-next-line no-inline-assembly
             assembly {
-                IERC20Tokens := tokens
+                erc20Tokens := tokens
             }
 
             // By ensuring the tokens are sorted, we know they are unique
-            InputHelpers.ensureArrayIsSorted(IERC20Tokens);
+            InputHelpers.ensureArrayIsSorted(erc20Tokens);
         }
 
         // Perform the swaps, updating the Pool token balances and computing the net Vault token deltas.
