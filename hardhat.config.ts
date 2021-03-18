@@ -43,6 +43,30 @@ export default {
       allowUnlimitedContractSize: true,
       saveDeployments: true,
     },
+    ropsten: {
+      chainId: CHAIN_IDS.ropsten,
+      url: `https://ropsten.infura.io/v3/${process.env.INFURA_KEY}`,
+      accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`], // Using private key instead of mnemonic for vanity deploy
+      saveDeployments: true,
+    },
+    kovan: {
+      chainId: CHAIN_IDS.kovan,
+      url: `https://kovan.infura.io/v3/${process.env.INFURA_KEY}`,
+      accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`], // Using private key instead of mnemonic for vanity deploy
+      saveDeployments: true,
+    },
+    rinkeby: {
+      chainId: CHAIN_IDS.rinkeby,
+      url: `https://rinkeby.infura.io/v3/${process.env.INFURA_KEY}`,
+      accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`], // Using private key instead of mnemonic for vanity deploy
+      saveDeployments: true,
+    },
+    goerli: {
+      chainId: CHAIN_IDS.goerli,
+      url: `https://goerli.infura.io/v3/${process.env.INFURA_KEY}`,
+      accounts: [`0x${process.env.DEPLOYER_PRIVATE_KEY}`], // Using private key instead of mnemonic for vanity deploy
+      saveDeployments: true,
+    },
   },
   namedAccounts: {
     deployer: {

@@ -20,7 +20,6 @@ let trader: SignerWithAddress;
 let assetManager: SignerWithAddress; // This would normally be a contract
 
 const NUM_POOLS = 5;
-const INVESTMENT_AMOUNT = 123;
 
 const decimalsByAddress: Dictionary<number> = {};
 
