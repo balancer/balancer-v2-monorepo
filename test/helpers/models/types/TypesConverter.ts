@@ -7,6 +7,7 @@ import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawWeightedPoolDeployment, WeightedPoolDeployment } from '../pools/weighted/types';
+import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import {
   RawTokenApproval,
   RawTokenMint,
@@ -45,6 +46,16 @@ export default {
     if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
     if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
     return { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
+  },
+
+  toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
+    let { tokens, amplificationParammeter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    if (!tokens) tokens = new TokenList();
+    if (!amplificationParammeter) amplificationParammeter = 200 * 1e18;
+    if (!swapFee) swapFee = bn(0);
+    if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
+    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
+    return { tokens, amplificationParammeter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
   },
 
   /***
