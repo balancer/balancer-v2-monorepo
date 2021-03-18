@@ -260,7 +260,7 @@ export default class WeightedPool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.callStatic.onSwapGivenIn(
+    return this.instance.onSwapGivenIn(
       {
         poolId: this.poolId,
         from: params.from ?? ZERO_ADDRESS,
@@ -280,7 +280,7 @@ export default class WeightedPool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.callStatic.onSwapGivenOut(
+    return this.instance.onSwapGivenOut(
       {
         poolId: this.poolId,
         from: params.from ?? ZERO_ADDRESS,
@@ -341,7 +341,7 @@ export default class WeightedPool {
   }
 
   async queryJoin(params: JoinExitWeightedPool): Promise<JoinQueryResult> {
-    const fn = this.instance.callStatic.queryJoin;
+    const fn = this.instance.queryJoin;
     return (await this._executeQuery(params, fn)) as JoinQueryResult;
   }
 
@@ -367,7 +367,7 @@ export default class WeightedPool {
   }
 
   async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
-    const fn = this.instance.callStatic.queryExit;
+    const fn = this.instance.queryExit;
     return (await this._executeQuery(params, fn)) as ExitQueryResult;
   }
 

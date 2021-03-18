@@ -506,7 +506,7 @@ describe('StablePool', function () {
           it('calculates amount out', async () => {
             const amountIn = bn(1e18);
 
-            const result = await pool.callStatic.onSwapGivenIn(
+            const result = await pool.onSwapGivenIn(
               { ...swapRequestData, amountIn },
               poolInitialBalances,
               0,
@@ -540,7 +540,7 @@ describe('StablePool', function () {
           it('calculates amount in', async () => {
             const amountOut = bn(1e18);
 
-            const result = await pool.callStatic.onSwapGivenOut(
+            const result = await pool.onSwapGivenOut(
               { ...swapRequestData, amountOut },
               poolInitialBalances,
               0,

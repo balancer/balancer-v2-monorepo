@@ -97,7 +97,7 @@ describe('Vault - swap validation', () => {
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
+      return vault.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);
@@ -109,7 +109,7 @@ describe('Vault - swap validation', () => {
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
+      return vault.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);

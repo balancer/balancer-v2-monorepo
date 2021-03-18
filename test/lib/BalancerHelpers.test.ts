@@ -36,7 +36,7 @@ describe('BalancerHelpers', function () {
   });
 
   const query = async ({ fn, data, internalBalance }: { fn: string; data: string; internalBalance?: boolean }) => {
-    return helper.callStatic[fn](pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, tokens.addresses, [], internalBalance, data);
+    return helper[fn](pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, tokens.addresses, [], internalBalance, data);
   };
 
   describe('queryJoin', () => {
@@ -57,7 +57,7 @@ describe('BalancerHelpers', function () {
 
     it('bubbles up revert reasons', async () => {
       const data = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
-      const tx = helper.callStatic.queryJoin(
+      const tx = helper.queryJoin(
         pool.poolId,
         ZERO_ADDRESS,
         ZERO_ADDRESS,
@@ -85,7 +85,7 @@ describe('BalancerHelpers', function () {
 
     it('bubbles up revert reasons', async () => {
       const data = encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: bptIn, exitTokenIndex: 90 });
-      const tx = helper.callStatic.queryExit(
+      const tx = helper.queryExit(
         pool.poolId,
         ZERO_ADDRESS,
         ZERO_ADDRESS,

@@ -327,7 +327,7 @@ describe('Vault - asset transfers handler', function () {
 
         it('returns the withdraw fee', async () => {
           expect(
-            await handler.callStatic.sendAsset(eth, amount, recipient.address, toInternalBalance, chargeWithdrawFee)
+            await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, chargeWithdrawFee)
           ).to.equal(amount.sub(amountMinusFees));
         });
       }
@@ -396,7 +396,7 @@ describe('Vault - asset transfers handler', function () {
 
             it('returns the withdraw fee', async () => {
               expect(
-                await handler.callStatic.sendAsset(
+                await handler.sendAsset(
                   token.address,
                   amount,
                   recipient.address,
@@ -431,7 +431,7 @@ describe('Vault - asset transfers handler', function () {
 
             it('returns a zero withdraw fee', async () => {
               expect(
-                await handler.callStatic.sendAsset(
+                await handler.sendAsset(
                   token.address,
                   amount,
                   recipient.address,

@@ -88,7 +88,7 @@ describe('Vault - swap queries', () => {
     function assertQueryBatchSwapGivenIn(swapsData: SwapData[], expectedDeltas: number[]) {
       it('returns the expected amounts', async () => {
         const swaps: Swap[] = toSwaps(swapsData);
-        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
+        const deltas = await vault.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
         expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
@@ -150,7 +150,7 @@ describe('Vault - swap queries', () => {
     describe('error', () => {
       it('bubbles up revert reasons', async () => {
         const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
-        const tx = vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, invalidSwap, tokens.addresses, funds);
+        const tx = vault.queryBatchSwap(SWAP_KIND.GIVEN_IN, invalidSwap, tokens.addresses, funds);
         await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
       });
     });
@@ -161,7 +161,7 @@ describe('Vault - swap queries', () => {
       it('returns the expected amounts', async () => {
         const swaps: Swap[] = toSwaps(swapsData);
 
-        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
+        const deltas = await vault.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
         expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
@@ -223,7 +223,7 @@ describe('Vault - swap queries', () => {
     describe('error', () => {
       it('bubbles up revert reasons', async () => {
         const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
-        const tx = vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, invalidSwap, tokens.addresses, funds);
+        const tx = vault.queryBatchSwap(SWAP_KIND.GIVEN_OUT, invalidSwap, tokens.addresses, funds);
         await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
       });
     });
