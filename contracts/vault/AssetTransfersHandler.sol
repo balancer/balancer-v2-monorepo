@@ -66,7 +66,7 @@ abstract contract AssetTransfersHandler {
      * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, as much as possible is first
      * withdrawn from Internal Balance, and the transfer is performed on the remaining amount, if any.
      *
-     * If `asset` is ETH, `fromInternalBalance` is ignored (as ETH cannot be held as internal balance), and the funds
+     * If `asset` is ETH, `fromInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
      * are first taken from ETH forwarded along with the call and then wrapped into WETH. Any leftover amount is sent
      * back to the caller (and not the sender!), supporting use cases with relayers.
      *
@@ -85,14 +85,15 @@ abstract contract AssetTransfersHandler {
 
         if (_isETH(asset)) {
             // Receiving ETH is special for two reasons.
-            // First, ETH cannot be withdrawn from Internal Balance (since it also cannot be deposited), so that
-            // setting is ignored for ETH.
+
+            // First, ETH cannot be withdrawn from Internal Balance (since it also cannot be deposited), so we revert if
+            // that has been requested.
             // Second, ETH is not pulled from the sender but rather forwarded by the caller. Because the caller
             // might not now exactly how much ETH the swap will require, they may send extra amounts. Any excess
             // will be returned *to the caller*, not the sender. If caller and sender are not the same (because
             // caller is a relayer for sender), then it is up to the caller to manage this returned ETH.
 
-            // We check msg.value
+            require(!fromInternalBalance, "INVALID_ETH_INTERNAL_BALANCE");
             require(msg.value >= amount, "INSUFFICIENT_ETH");
 
             // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
@@ -122,7 +123,7 @@ abstract contract AssetTransfersHandler {
      * @dev Sends `amount` of `asset` to `recipient`. If `toInternalBalance` is true, the asset is deposited as Internal
      * Balance instead of being transferred.
      *
-     * If `asset` is ETH, `toInternalBalance` is ignored (as ETH cannot be held as internal balance), and the funds
+     * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
      * are instead sent directly after unwrapping WETH.
      *
      * If `chargeWithdrawFee` is true, an appropiate withdrawal fee will be applied and deducted from `amount`. In all
@@ -139,19 +140,15 @@ abstract contract AssetTransfersHandler {
             return 0;
         }
 
-        bool isEth = _isETH(asset);
-
         // Sending an asset may have a withdraw fee applied, reducing the amount sent. This fee is only applied if
         // requested (as e.g. swaps don't charge this fee), unless depositing to internal balance (which is exempt).
-        // Additionally, sending ETH overrides the internal balance setting, resulting in fees.
-        uint256 withdrawFee = (chargeWithdrawFee && (!toInternalBalance || isEth))
-            ? _calculateProtocolWithdrawFeeAmount(amount)
-            : 0;
+        uint256 withdrawFee = chargeWithdrawFee && !toInternalBalance ? _calculateProtocolWithdrawFeeAmount(amount) : 0;
         uint256 toSend = amount.sub(withdrawFee);
 
         if (_isETH(asset)) {
-            // Sending ETH is not as involved as receiving it: the only special behavior it has is ignoring the
-            // setting to deposit to Internal Balance.
+            // Sending ETH is not as involved as receiving it: the only special behavior it has is it cannot be
+            // deposited to Internal Balance.
+            require(!toInternalBalance, "INVALID_ETH_INTERNAL_BALANCE");
 
             // First, the Vault withdraws deposited ETH in the WETH contract, by burning the same amount of WETH
             // from the Vault. This receipt will be handled by the Vault's `receive`.

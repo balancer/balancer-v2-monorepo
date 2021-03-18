@@ -43,15 +43,23 @@ describe('Vault - asset transfers handler', function () {
           await handler.depositToInternalBalance(sender.address, tokens.WETH.address, amount.div(2));
         });
 
-        context('when receiving from internal balance', () => {
-          itReceivesEtherCorrectly(true);
-        });
-
         context('when not receiving from internal balance', () => {
-          itReceivesEtherCorrectly(false);
+          itReceivesEtherCorrectly();
         });
 
-        function itReceivesEtherCorrectly(fromInternalBalance: boolean) {
+        context('when receiving from internal balance', () => {
+          const fromInternalBalance = true;
+
+          it('reverts', async () => {
+            await expect(
+              handler.connect(other).receiveAsset(eth, amount, sender.address, fromInternalBalance, { value: amount })
+            ).to.be.revertedWith('INVALID_ETH_INTERNAL_BALANCE');
+          });
+        });
+
+        function itReceivesEtherCorrectly() {
+          const fromInternalBalance = false;
+
           it('takes ETH from the caller', async () => {
             const callerBalanceBefore = await ethers.provider.getBalance(other.address);
 
@@ -249,14 +257,22 @@ describe('Vault - asset transfers handler', function () {
       const eth = ETH_TOKEN_ADDRESS;
 
       context('when not sending to internal balance', () => {
-        itSendsEtherCorrectlyUsingOrNotInternalBalance(false);
+        itSendsEtherCorrectly();
       });
 
       context('when sending to internal balance', () => {
-        itSendsEtherCorrectlyUsingOrNotInternalBalance(true);
+        const toInternalBalance = true;
+
+        it('reverts', async () => {
+          await expect(handler.sendAsset(eth, amount, recipient.address, toInternalBalance, false)).to.be.revertedWith(
+            'INVALID_ETH_INTERNAL_BALANCE'
+          );
+        });
       });
 
-      function itSendsEtherCorrectlyUsingOrNotInternalBalance(toInternalBalance: boolean) {
+      function itSendsEtherCorrectly() {
+        const toInternalBalance = false;
+
         context('when not charging withdraw fees', () => {
           itSendsEtherCorrectlyChargingOrNotWithdrawFees(toInternalBalance, false);
         });
