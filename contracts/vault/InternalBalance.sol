@@ -51,7 +51,8 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         nonReentrant
         noEmergencyPeriod
     {
-        _ensureBalanceTransferArrayIsSortedByAsset(transfers);
+        uint256 totalWrappedETH = 0;
+        bool wrappedETH = false;
 
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
@@ -62,15 +63,26 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             address recipient = transfers[i].recipient;
 
             _increaseInternalBalance(recipient, _translateToIERC20(asset), amount);
-            // Because the transfers array is sorted by asset, each asset is unique. This means we can safely call
-            // _receiveAsset.
+
+            // _receiveAsset does not check if the caller sent enough ETH, so we keep track of it independently (as
+            // multiple deposits may have all deposited ETH).
             _receiveAsset(asset, amount, sender, false);
+            if (_isETH(asset)) {
+                wrappedETH = true;
+                totalWrappedETH = totalWrappedETH.add(amount);
+            }
         }
+
+        // We prevent user error by reverting if ETH was sent but not allocated to any deposit.
+        if (msg.value > 0) {
+            require(wrappedETH, "UNALLOCATED_ETH");
+        }
+
+        // By returning the excess ETH, we also check that at least totalWrappedETH has been received.
+        _returnExcessEthToCaller(totalWrappedETH);
     }
 
     function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override nonReentrant {
-        _ensureBalanceTransferArrayIsSortedByAsset(transfers);
-
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
@@ -188,18 +200,5 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
      */
     function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
         return _internalTokenBalance[account][token];
-    }
-
-    function _ensureBalanceTransferArrayIsSortedByAsset(AssetBalanceTransfer[] memory array) private pure {
-        if (array.length < 2) {
-            return;
-        }
-
-        IAsset previous = array[0].asset;
-        for (uint256 i = 1; i < array.length; ++i) {
-            IAsset current = array[i].asset;
-            require(previous < current, "UNSORTED_ARRAY");
-            previous = current;
-        }
     }
 }

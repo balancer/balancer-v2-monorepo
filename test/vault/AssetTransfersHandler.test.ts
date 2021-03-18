@@ -9,6 +9,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn, FP_SCALING_FACTOR, min } from '../../lib/helpers/numbers';
 import { expect } from 'chai';
 import Token from '../helpers/models/tokens/Token';
+import { forceSendEth } from '../helpers/eth';
 
 describe('Vault - asset transfers handler', function () {
   let handler: Contract;
@@ -90,7 +91,7 @@ describe('Vault - asset transfers handler', function () {
             );
           });
 
-          it('returns extra ETH to the caller', async () => {
+          it('does not return extra ETH to the caller', async () => {
             const callerBalanceBefore = await ethers.provider.getBalance(other.address);
 
             const gasPrice = 1;
@@ -103,7 +104,21 @@ describe('Vault - asset transfers handler', function () {
 
             const callerBalanceAfter = await ethers.provider.getBalance(other.address);
 
-            expect(callerBalanceBefore.sub(callerBalanceAfter)).to.equal(amount.add(txETH));
+            const ethSent = txETH.add(amount.mul(2));
+            expect(callerBalanceBefore.sub(callerBalanceAfter)).to.equal(ethSent);
+          });
+
+          it('does not check if any ETH was supplied', async () => {
+            // Regular ETH transfers are rejected, so we use forceSendEth to get the handler to hold some ETH for it to
+            // use.
+            await forceSendEth(handler.address, amount);
+
+            // Despite the caller not sending any ETH, the transaction goes through (using the handler's own balance).
+            await expectBalanceChange(
+              () => handler.receiveAsset(eth, amount, sender.address, fromInternalBalance, { value: 0 }),
+              tokens,
+              { account: handler.address, changes: { WETH: amount } }
+            );
           });
 
           it('does take WETH from internal balance', async () => {

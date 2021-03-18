@@ -112,23 +112,34 @@ interface IVault {
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits tokens from each `sender` address into Internal Balances of the corresponding `recipient`
-     * accounts specified in the struct. The sources must have allowed the Vault to use their tokens
-     * via `IERC20.approve()`.
+     * @dev Deposits `amount` assets from each `sender` address into Internal Balances of the corresponding `recipient`
+     * accounts. The senders must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     *
+     * If any of the senders doesn't match the contract caller, then it must be a relayer for them.
+     *
+     * ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call. It will be
+     * wrapped into WETH and deposited as that token. Any ETH amount remaining will be sent back to the caller.
+     *
+     * Reverts if ETH was forwarded but not used in any transfer.
      */
     function depositToInternalBalance(AssetBalanceTransfer[] memory transfers) external payable;
 
     /**
-     * @dev Withdraws tokens from each the internal balance of each `sender` address into the `recipient` accounts
-     * specified in the struct.
+     * @dev Withdraws `amount` assets from each `sender` address' Internal Balance to the corresponding `recipient`
+     * accounts. The senders must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     *
+     * If any of the senders doesn't match the contract caller, then it must be a relayer for them.
+     *
+     * ETH can be used by passing the ETH sentinel value as the asset. This will deduct WETH instead, unwrap it and send
+     * it to the recipient.
      *
      * This charges protocol withdrawal fees.
      */
     function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances
-     * of each `recipient`. Allows aggregators to settle multiple accounts in a single transaction.
+     * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances of each
+     * `recipient`.
      *
      * This does not charge protocol withdrawal fees.
      */

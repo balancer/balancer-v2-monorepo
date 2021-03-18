@@ -66,6 +66,15 @@ describe('Vault - internal balance', () => {
         expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0].add(amount));
       });
 
+      it('reverts if ETH is sent', async () => {
+        await expect(
+          vault.depositToInternalBalance(
+            [{ asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address }],
+            { value: 1 }
+          )
+        ).to.be.revertedWith('UNALLOCATED_ETH');
+      });
+
       it('emits an event', async () => {
         const receipt = await (
           await vault.depositToInternalBalance([
@@ -252,13 +261,20 @@ describe('Vault - internal balance', () => {
           expect(currentRecipientBalance[0].sub(previousRecipientBalance[0])).to.equal(amount.mul(2));
         });
 
-        it('reverts if ETH is included twice', async () => {
-          await expect(
-            vault.depositToInternalBalance([
-              { asset: ETH_TOKEN_ADDRESS, amount: 0, sender: sender.address, recipient: recipient.address },
-              { asset: ETH_TOKEN_ADDRESS, amount: 0, sender: sender.address, recipient: recipient.address },
-            ])
-          ).to.be.revertedWith('UNSORTED_ARRAY');
+        it('accepts multiple ETH deposits', async () => {
+          const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [weth.address]);
+
+          await vault.depositToInternalBalance(
+            [
+              { asset: ETH_TOKEN_ADDRESS, amount: amount.div(2), sender: sender.address, recipient: recipient.address },
+              { asset: ETH_TOKEN_ADDRESS, amount: amount.div(2), sender: sender.address, recipient: recipient.address },
+            ],
+            { value: amount }
+          );
+
+          const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [weth.address]);
+
+          expect(currentRecipientBalance[0].sub(previousRecipientBalance[0])).to.equal(amount);
         });
       });
     });
@@ -285,6 +301,35 @@ describe('Vault - internal balance', () => {
           });
 
           itHandlesDepositsProperly(initialBalance);
+
+          context('when the asset is ETH', () => {
+            it('returns excess ETH to the relayer', async () => {
+              const amount = bn(100e18);
+
+              const relayerBalanceBefore = await ethers.provider.getBalance(relayer.address);
+
+              const gasPrice = 1;
+              const receipt: ContractReceipt = await (
+                await vault.depositToInternalBalance(
+                  [
+                    {
+                      asset: ETH_TOKEN_ADDRESS,
+                      amount: amount.sub(42),
+                      sender: sender.address,
+                      recipient: recipient.address,
+                    },
+                  ],
+                  { value: amount, gasPrice }
+                )
+              ).wait();
+              const txETH = receipt.gasUsed.mul(gasPrice);
+
+              const relayerBalanceAfter = await ethers.provider.getBalance(relayer.address);
+
+              const ethSpent = txETH.add(amount).sub(42);
+              expect(relayerBalanceBefore.sub(relayerBalanceAfter)).to.equal(ethSpent);
+            });
+          });
         });
 
         context('when the relayer is not allowed by the user', () => {
@@ -587,15 +632,6 @@ describe('Vault - internal balance', () => {
           const currentSenderBalance = await vault.getInternalBalance(sender.address, [weth.address]);
 
           expect(previousSenderBalance[0].sub(currentSenderBalance[0])).to.equal(amount);
-        });
-
-        it('reverts if ETH is included twice', async () => {
-          await expect(
-            vault.withdrawFromInternalBalance([
-              { asset: ETH_TOKEN_ADDRESS, amount: 0, sender: sender.address, recipient: recipient.address },
-              { asset: ETH_TOKEN_ADDRESS, amount: 0, sender: sender.address, recipient: recipient.address },
-            ])
-          ).to.be.revertedWith('UNSORTED_ARRAY');
         });
 
         context('with protocol withdraw fees', () => {
