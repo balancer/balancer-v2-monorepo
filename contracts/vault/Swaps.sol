@@ -50,7 +50,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     /**
      * @dev Converts an array of `SwapIn` into an array of `SwapRequest`, with no runtime cost.
      */
-
     function _toInternalSwap(SwapIn[] memory swapsIn) private pure returns (SwapRequest[] memory internalSwapRequests) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
@@ -143,17 +142,17 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         int256[] memory limits,
         uint256 deadline,
         SwapKind kind
-    ) private returns (int256[] memory tokenDeltas) {
+    ) private returns (int256[] memory assetDeltas) {
         // The deadline is timestamp-based: it should not be relied on having sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp <= deadline, "SWAP_DEADLINE");
 
         InputHelpers.ensureInputLengthMatch(assets.length, limits.length);
 
-        // Perform the swaps, updating the Pool token balances and computing the net Vault token deltas.
-        tokenDeltas = _swapWithPools(swaps, assets, funds, kind);
+        // Perform the swaps, updating the Pool token balances and computing the net Vault asset deltas.
+        assetDeltas = _swapWithPools(swaps, assets, funds, kind);
 
-        // Process token deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
+        // Process asset deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
 
         bool ethAssetSeen = false;
@@ -161,18 +160,21 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         for (uint256 i = 0; i < assets.length; ++i) {
             IAsset asset = assets[i];
-            int256 delta = tokenDeltas[i];
+            int256 delta = assetDeltas[i];
 
             require(delta <= limits[i], "SWAP_LIMIT");
 
-            // Ignore zeroed deltas
+            bool isETH = _isETH(asset);
+            if (isETH) {
+                ethAssetSeen = true;
+            }
+
             if (delta > 0) {
                 uint256 toReceive = uint256(delta);
                 _receiveAsset(asset, toReceive, funds.sender, funds.fromInternalBalance);
 
-                if (_isETH(asset)) {
+                if (isETH) {
                     wrappedETH = wrappedETH.add(toReceive);
-                    ethAssetSeen = true;
                 }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
@@ -180,10 +182,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 // Withdraw fees are not charged when sending funds as part of a swap.
                 // Deposits to Internal Balance are also exempt of this fee during the current block.
                 _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance, false);
-
-                if (_isETH(asset)) {
-                    ethAssetSeen = true;
-                }
             }
         }
 

@@ -92,6 +92,8 @@ describe('Vault - swaps', () => {
   });
 
   context('when one of the assets is ETH', () => {
+    // We only do givenIn tests, as givenIn and givenOut are presumed to be identical as they relate to this feature
+
     const symbols = ['DAI', 'WETH'];
     let tokenAddresses: string[];
 

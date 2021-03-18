@@ -118,7 +118,8 @@ interface IVault {
      * If any of the senders doesn't match the contract caller, then it must be a relayer for them.
      *
      * ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call. It will be
-     * wrapped into WETH and deposited as that token. Any ETH amount remaining will be sent back to the caller.
+     * wrapped into WETH and deposited as that token. Any ETH amount remaining will be sent back to the caller (not the
+     * sender, which is relevant for relayers).
      *
      * Reverts if ETH was forwarded but not used in any transfer.
      */
@@ -420,6 +421,11 @@ interface IVault {
     // Additionally, a 'deadline' timestamp can also be provided, forcing the swap to fail if it occurs after
     // this point in time (e.g. if the transaction failed to be included in a block promptly).
     //
+    // If interacting with Pools that hold WETH, it is possible to both send and receive ETH directly: the Vault will do
+    // the wrapping and unwrapping. To enable this mecanism, the IAsset sentinel value (the zero address) must be passed
+    // in the `assets` array instead of the WETH address. Note that it is possible to combine ETH and WETH in the same
+    // swap. Any excess ETH will be sent back to the caller (not the sender, which is relevant for relayers).
+    //
     // Finally, Internal Balance can be used both when sending and receiving tokens.
 
     /**
@@ -427,9 +433,9 @@ interface IVault {
      * the Pool is determined by the caller. For swaps where the amount of tokens received from the Pool is instead
      * determined, see `batchSwapGivenOut`.
      *
-     * Returns an array with the net Vault token balance deltas. Positive amounts represent tokens sent to the Vault,
-     * and negative amounts tokens sent by the Vault. Each delta corresponds to the token at the same index in the
-     * `tokens` array.
+     * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
+     * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
+     * index in the `assets` array.
      *
      * Swaps are executed sequentially, in the order specified by the `swaps` array. Each array element describes a
      * Pool, the token and amount to send to this Pool, and the token to receive from it (but not the amount). This will
@@ -439,8 +445,10 @@ interface IVault {
      * of the previous swap to be used as the amount in of the current one. In such a scenario, `tokenIn` must equal the
      * previous swap's `tokenOut`.
      *
-     * The `tokens` array contains the addresses of all tokens involved in the swaps. Each entry in the `swaps` array
-     * specifies tokens in and out by referencing an index in `tokens`.
+     * The `assets` array contains the addresses of all assets involved in the swaps. These are either token addresses,
+     * or the IAsset sentinel value (the zero address) for ETH. Each entry in the `swaps` array specifies tokens in and
+     * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
+     * unwrapped using WETH by the Vault.
      *
      * Internal Balance usage and recipient are determined by the `funds` struct.
      *
@@ -456,7 +464,7 @@ interface IVault {
 
     /**
      * @dev Data for each individual swap executed by `batchSwapGivenIn`. The tokens in and out are indexed in the
-     * `tokens` array passed to that function.
+     * `assets` array passed to that function, where an ETH asset is translated into WETH.
      *
      * If `amountIn` is zero, the multihop mechanism is used to determine the actual amount based on the amount out from
      * the previous swap.
@@ -477,9 +485,9 @@ interface IVault {
      * received from the Pool is determined by the caller. For swaps where the amount of tokens sent to the Pool is
      * instead determined, see `batchSwapGivenIn`.
      *
-     * Returns an array with the net Vault token balance deltas. Positive amounts represent tokens sent to the Vault,
-     * and negative amounts tokens sent by the Vault. Each delta corresponds to the token at the same index in the
-     * `tokens` array.
+     * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
+     * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
+     * index in the `assets` array.
      *
      * Swaps are executed sequentially, in the order specified by the `swaps` array. Each array element describes a
      * Pool, the token and amount to receive from this Pool, and the token to send to it (but not the amount). This will
@@ -489,8 +497,10 @@ interface IVault {
      * of the previous swap to be used as the amount out of the current one. In such a scenario, `tokenOut` must equal
      * the previous swap's `tokenIn`.
      *
-     * The `tokens` array contains the addresses of all tokens involved in the swaps. Each entry in the `swaps` array
-     * specifies tokens in and out by referencing an index in `tokens`.
+     * The `assets` array contains the addresses of all assets involved in the swaps. These are either token addresses,
+     * or the IAsset sentinel value (the zero address) for ETH. Each entry in the `swaps` array specifies tokens in and
+     * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
+     * unwrapped using WETH by the Vault.
      *
      * Internal Balance usage and recipient are determined by the `funds` struct.
      *
@@ -506,7 +516,7 @@ interface IVault {
 
     /**
      * @dev Data for each individual swap executed by `batchSwapGivenOut`. The tokens in and out are indexed in the
-     * `tokens` array passed to that function.
+     * `assets` array passed to that function, where an ETH asset is translated into WETH.
      *
      * If `amountOut` is zero, the multihop mechanism is used to determine the actual amount based on the amount in from
      * the previous swap.
@@ -545,6 +555,9 @@ interface IVault {
      *
      * If `toInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
      * transferred. This matches the behavior of `exitPool`.
+     *
+     * Note that ETH cannot be deposited to or withdrawn from Internal Balance: attempting to do so with trigger a
+     * revert.
      */
     struct FundManagement {
         address sender;
@@ -554,10 +567,10 @@ interface IVault {
     }
 
     /**
-     * @dev Simulates a call to `batchSwapGivenIn` or `batchSwapGivenOut`, returning an array of Vault token deltas.
-     * Each element in the array corresponds to the token at the same index, and indicates the number of tokens the
-     * Vault would take from the sender (if positive) or send to the recipient (if negative). The arguments it receives
-     * are the same that an equivalent `batchSwapGivenIn` or `batchSwapGivenOut` call would receive, except the
+     * @dev Simulates a call to `batchSwapGivenIn` or `batchSwapGivenOut`, returning an array of Vault asset deltas.
+     * Each element in the array corresponds to the asset at the same index, and indicates the number of tokens (or ETH)
+     * the Vault would take from the sender (if positive) or send to the recipient (if negative). The arguments it
+     * receives are the same that an equivalent `batchSwapGivenIn` or `batchSwapGivenOut` call would receive, except the
      * `SwapRequest` struct is used instead, and the `kind` argument specifies whether the swap is given in or given
      * out.
      *
@@ -573,7 +586,7 @@ interface IVault {
         SwapRequest[] memory swaps,
         IAsset[] memory assets,
         FundManagement memory funds
-    ) external returns (int256[] memory tokenDeltas);
+    ) external returns (int256[] memory assetDeltas);
 
     enum SwapKind { GIVEN_IN, GIVEN_OUT }
 
