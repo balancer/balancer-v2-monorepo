@@ -543,7 +543,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     function getRate() public view override returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
         return
-            Math.mul(WeightedMath._calculateInvariant(_normalizedWeights(), balances), balances.length).div(
+            Math.mul(WeightedMath._calculateInvariant(_normalizedWeights(), balances), _totalTokens).div(
                 totalSupply()
             );
     }
