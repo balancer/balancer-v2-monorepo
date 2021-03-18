@@ -12,20 +12,17 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
     await deploy('TokenFactory', {
       from: deployer,
       log: true,
-      deterministicDeployment: true,
     });
 
     await deploy('WETH9', {
       from: deployer,
       args: [deployer],
       log: true,
-      deterministicDeployment: true,
     });
 
     await deploy('Multicall', {
       from: deployer,
       log: true,
-      deterministicDeployment: true,
     });
   }
 }

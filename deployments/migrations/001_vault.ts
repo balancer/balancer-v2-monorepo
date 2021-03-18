@@ -11,7 +11,6 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
     from: deployer,
     args: [authorizer.address, 0, 0],
     log: true,
-    deterministicDeployment: true,
   });
 
   if (hre.network.live && vault.newlyDeployed) {
