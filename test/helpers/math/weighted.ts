@@ -163,8 +163,8 @@ export function calcTokensOutGivenExactBptIn(
   fpBptTotalSupply: BigNumberish
 ): BigNumber[] {
   const balances = fpBalances.map(fromFp);
-  const bptRatio = fromFp(fpBptAmountIn).div(fromFp(fpBptTotalSupply))
-  const amountsOut = balances.map((balance) => balance.mul(bptRatio))
+  const bptRatio = fromFp(fpBptAmountIn).div(fromFp(fpBptTotalSupply));
+  const amountsOut = balances.map((balance) => balance.mul(bptRatio));
   return amountsOut.map(fp);
 }
 export function calculateOneTokenSwapFee(

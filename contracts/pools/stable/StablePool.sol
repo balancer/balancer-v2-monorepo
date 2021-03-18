@@ -184,8 +184,6 @@ contract StablePool is BaseGeneralPool, StableMath {
     {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
-
-        uint256[] memory downscaledAmountsIn = amountsIn;
         _upscaleArray(amountsIn, _scalingFactors());
 
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
@@ -198,7 +196,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         require(bptAmountOut >= minBPTAmountOut, "BPT_OUT_MIN_AMOUNT");
 
-        return (bptAmountOut, downscaledAmountsIn);
+        return (bptAmountOut, amountsIn);
     }
 
     function _joinTokenInForExactBPTOut(uint256[] memory balances, bytes memory userData)
@@ -297,7 +295,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
 
-        uint256 amountOut = StableMath._calcTokenOutGivenExactBptIn(
+        // We exit in a single token, so we initialize amountsOut with zeros
+        uint256[] memory amountsOut = new uint256[](_totalTokens);
+
+        amountsOut[tokenIndex] = StableMath._calcTokenOutGivenExactBptIn(
             _amplificationParameter,
             balances,
             tokenIndex,
@@ -306,37 +307,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
 
-        // We exit in a single token, so we initialize downscaledAmountsOut with zeros and
-        // set only downscaledAmountsOut[tokenIndex]
-        uint256[] memory downscaledAmountsOut = new uint256[](_totalTokens);
-        downscaledAmountsOut[tokenIndex] = amountOut;
-
-        return (bptAmountIn, downscaledAmountsOut);
-    }
-
-    function _exitBPTInForExactTokensOut(uint256[] memory balances, bytes memory userData)
-        private
-        view
-        noEmergencyPeriod
-        returns (uint256, uint256[] memory)
-    {
-        (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
-        require(amountsOut.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
-
-        uint256[] memory downscaledAmountsOut = amountsOut;
-        _upscaleArray(amountsOut, _scalingFactors());
-
-        uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
-            _amplificationParameter,
-            balances,
-            amountsOut,
-            totalSupply(),
-            _swapFee
-        );
-
-        require(bptAmountIn <= maxBPTAmountIn, "BPT_OUT_MIN_AMOUNT");
-
-        return (bptAmountIn, downscaledAmountsOut);
+        return (bptAmountIn, amountsOut);
     }
 
     /**
@@ -351,6 +322,30 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
         uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply());
+
+        return (bptAmountIn, amountsOut);
+    }
+
+    function _exitBPTInForExactTokensOut(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        noEmergencyPeriod
+        returns (uint256, uint256[] memory)
+    {
+        (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, _totalTokens);
+
+        _upscaleArray(amountsOut, _scalingFactors());
+
+        uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
+            _amplificationParameter,
+            balances,
+            amountsOut,
+            totalSupply(),
+            _swapFee
+        );
+
+        require(bptAmountIn <= maxBPTAmountIn, "BPT_OUT_MIN_AMOUNT");
 
         return (bptAmountIn, amountsOut);
     }
