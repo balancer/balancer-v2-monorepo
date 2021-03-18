@@ -3,9 +3,9 @@ import { BigNumber } from 'ethers';
 
 import { BigNumberish, bn, decimal, fp, fromFp, toFp } from '../../../lib/helpers/numbers';
 
-export function calculateInvariant(rawBalances: BigNumberish[], rawWeights: BigNumberish[]): BigNumber {
-  const normalizedWeights = toNormalizedWeights(rawWeights);
-  const balances = rawBalances.map(decimal);
+export function calculateInvariant(fpRawBalances: BigNumberish[], fpRawWeights: BigNumberish[]): BigNumber {
+  const normalizedWeights = toNormalizedWeights(fpRawWeights);
+  const balances = fpRawBalances.map(decimal);
   const invariant = balances.reduce((inv, balance, i) => inv.mul(balance.pow(normalizedWeights[i])), decimal(1));
   return bn(invariant);
 }
@@ -157,6 +157,16 @@ export function calcTokenOutGivenExactBptIn(
   return fp(amountOut);
 }
 
+export function calcTokensOutGivenExactBptIn(
+  fpBalances: BigNumberish[],
+  fpBptAmountIn: BigNumberish,
+  fpBptTotalSupply: BigNumberish
+): BigNumber[] {
+  const balances = fpBalances.map(fromFp);
+  const bptRatio = fromFp(fpBptAmountIn).div(fromFp(fpBptTotalSupply));
+  const amountsOut = balances.map((balance) => balance.mul(bptRatio));
+  return amountsOut.map(fp);
+}
 export function calculateOneTokenSwapFee(
   fpBalances: BigNumberish[],
   fpWeights: BigNumberish[],

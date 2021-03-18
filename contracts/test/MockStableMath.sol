@@ -18,7 +18,7 @@ import "../pools/stable/StableMath.sol";
 
 contract MockStableMath is StableMath {
     function invariant(uint256 amp, uint256[] calldata balances) external pure returns (uint256) {
-        return _invariant(amp, balances);
+        return _calculateInvariant(amp, balances);
     }
 
     function outGivenIn(
@@ -28,7 +28,7 @@ contract MockStableMath is StableMath {
         uint256 tokenIndexOut,
         uint256 tokenAmountIn
     ) external pure returns (uint256) {
-        return _outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
+        return _calcOutGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
     }
 
     function inGivenOut(
@@ -38,7 +38,7 @@ contract MockStableMath is StableMath {
         uint256 tokenIndexOut,
         uint256 tokenAmountOut
     ) external pure returns (uint256) {
-        return _inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
+        return _calcInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
     }
 
     function calculateDueTokenProtocolSwapFee(
@@ -48,6 +48,6 @@ contract MockStableMath is StableMath {
         uint256 tokenIndex,
         uint256 protocolSwapFeePercentage
     ) external pure returns (uint256) {
-        return _calculateDueTokenProtocolSwapFee(amp, balances, lastInvariant, tokenIndex, protocolSwapFeePercentage);
+        return _calcDueTokenProtocolSwapFee(amp, balances, lastInvariant, tokenIndex, protocolSwapFeePercentage);
     }
 }

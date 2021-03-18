@@ -4,7 +4,7 @@ import {
   calculateInvariant,
   calcInGivenOut,
   calcOutGivenIn,
-  calculateOneTokenAccumulatedSwapFees,
+  calculateOneTokenSwapFee,
 } from '../../helpers/math/stable';
 import { expectEqualWithError } from '../../helpers/relativeError';
 import { bn, decimal, fp } from '../../../lib/helpers/numbers';
@@ -136,7 +136,7 @@ describe('StableMath', function () {
           protocolSwapFee
         );
 
-        const expectedFeeAmount = calculateOneTokenAccumulatedSwapFees(amp, balances, lastInvariant, tokenIndex);
+        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
         const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
 
         expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
@@ -158,7 +158,7 @@ describe('StableMath', function () {
           tokenIndex,
           protocolSwapFee
         );
-        const expectedFeeAmount = calculateOneTokenAccumulatedSwapFees(amp, balances, lastInvariant, tokenIndex);
+        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
 
         const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
 
