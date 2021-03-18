@@ -36,6 +36,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
     using Math for int256;
+    using Math for uint256;
     using SafeCast for uint256;
     using BalanceAllocation for bytes32;
 
@@ -149,14 +150,15 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         InputHelpers.ensureInputLengthMatch(assets.length, limits.length);
 
-        // By ensuring the assets are sorted, we know they are unique
-        InputHelpers.ensureArrayIsSorted(assets);
-
         // Perform the swaps, updating the Pool token balances and computing the net Vault token deltas.
         tokenDeltas = _swapWithPools(swaps, assets, funds, kind);
 
         // Process token deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
+
+        bool ethAssetSeen = false;
+        uint256 wrappedETH = 0;
+
         for (uint256 i = 0; i < assets.length; ++i) {
             IAsset asset = assets[i];
             int256 delta = tokenDeltas[i];
@@ -167,14 +169,29 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             if (delta > 0) {
                 uint256 toReceive = uint256(delta);
                 _receiveAsset(asset, toReceive, funds.sender, funds.fromInternalBalance);
+
+                if (_isETH(asset)) {
+                    wrappedETH = wrappedETH.add(toReceive);
+                    ethAssetSeen = true;
+                }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
 
                 // Withdraw fees are not charged when sending funds as part of a swap.
                 // Deposits to Internal Balance are also exempt of this fee during the current block.
                 _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance, false);
+
+                if (_isETH(asset)) {
+                    ethAssetSeen = true;
+                }
             }
         }
+
+        // We prevent user error by reverting if ETH was sent but not referenced by any asset.
+        _ensureNoUnallocatedETH(ethAssetSeen);
+
+        // By returning the excess ETH, we also check that at least wrappedETH has been received.
+        _returnExcessEthToCaller(wrappedETH);
     }
 
     // For `_swapWithPools` to handle both given in and given out swaps, it internally tracks the 'given' amount

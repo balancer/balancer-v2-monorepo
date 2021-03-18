@@ -170,6 +170,16 @@ abstract contract AssetTransfersHandler {
     }
 
     /**
+     * @dev Reverts in transactions where a user sent ETH, but didn't specify usage of it as an asset. `ethAssetSeen`
+     * should be true if any asset held the sentinel value for ETH, and false otherwise.
+     */
+    function _ensureNoUnallocatedETH(bool ethAssetSeen) internal view {
+        if (msg.value > 0) {
+            require(ethAssetSeen, "UNALLOCATED_ETH");
+        }
+    }
+
+    /**
      * @dev Enables the Vault to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
      * caller.
      *

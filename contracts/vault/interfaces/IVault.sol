@@ -440,8 +440,7 @@ interface IVault {
      * previous swap's `tokenOut`.
      *
      * The `tokens` array contains the addresses of all tokens involved in the swaps. Each entry in the `swaps` array
-     * specifies tokens in and out by referencing an index in `tokens`.`tokens` must be sorted in ascending order,
-     * which ensures all entries are unique.
+     * specifies tokens in and out by referencing an index in `tokens`.
      *
      * Internal Balance usage and recipient are determined by the `funds` struct.
      *
@@ -491,8 +490,7 @@ interface IVault {
      * the previous swap's `tokenIn`.
      *
      * The `tokens` array contains the addresses of all tokens involved in the swaps. Each entry in the `swaps` array
-     * specifies tokens in and out by referencing an index in `tokens`. `tokens` must be sorted in ascending order,
-     * which ensures all entries are unique.
+     * specifies tokens in and out by referencing an index in `tokens`.
      *
      * Internal Balance usage and recipient are determined by the `funds` struct.
      *

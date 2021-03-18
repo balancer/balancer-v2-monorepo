@@ -53,8 +53,8 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         nonReentrant
         noEmergencyPeriod
     {
-        uint256 totalWrappedETH = 0;
-        bool wrappedETH = false;
+        bool ethAssetSeen = false;
+        uint256 wrappedETH = 0;
 
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
@@ -70,18 +70,16 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             // multiple deposits may have all deposited ETH).
             _receiveAsset(asset, amount, sender, false);
             if (_isETH(asset)) {
-                wrappedETH = true;
-                totalWrappedETH = totalWrappedETH.add(amount);
+                ethAssetSeen = true;
+                wrappedETH = wrappedETH.add(amount);
             }
         }
 
         // We prevent user error by reverting if ETH was sent but not allocated to any deposit.
-        if (msg.value > 0) {
-            require(wrappedETH, "UNALLOCATED_ETH");
-        }
+        _ensureNoUnallocatedETH(ethAssetSeen);
 
-        // By returning the excess ETH, we also check that at least totalWrappedETH has been received.
-        _returnExcessEthToCaller(totalWrappedETH);
+        // By returning the excess ETH, we also check that at least wrappedETH has been received.
+        _returnExcessEthToCaller(wrappedETH);
     }
 
     function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override nonReentrant {
