@@ -14,6 +14,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { bn, fp, pct } from '../../lib/helpers/numbers';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 import WETH from '../helpers/models/tokens/WETH';
+import { forceSendEth } from '../helpers/eth';
 
 describe('Vault - internal balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
@@ -275,6 +276,32 @@ describe('Vault - internal balance', () => {
           const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [weth.address]);
 
           expect(currentRecipientBalance[0].sub(previousRecipientBalance[0])).to.equal(amount);
+        });
+
+        it('reverts if not enough ETH was supplied', async () => {
+          // Send ETH to the Vault to make sure that the test fails because of the supplied ETH, even if the Vault holds
+          // enough to mint the WETH using its own.
+          await forceSendEth(vault, amount);
+
+          await expect(
+            vault.depositToInternalBalance(
+              [
+                {
+                  asset: ETH_TOKEN_ADDRESS,
+                  amount: amount.div(2),
+                  sender: sender.address,
+                  recipient: recipient.address,
+                },
+                {
+                  asset: ETH_TOKEN_ADDRESS,
+                  amount: amount.div(2),
+                  sender: sender.address,
+                  recipient: recipient.address,
+                },
+              ],
+              { value: amount.sub(1) }
+            )
+          ).to.be.revertedWith('INSUFFICIENT_ETH');
         });
       });
     });
