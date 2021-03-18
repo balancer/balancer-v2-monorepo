@@ -9,7 +9,7 @@ import { Account, NAry } from '../../types/types';
 
 export type RawStablePoolDeployment = {
   tokens?: TokenList;
-  amplificationParammeter?: BigNumberish;
+  amplificationParameter?: BigNumberish;
   swapFee?: BigNumberish;
   emergencyPeriod?: BigNumberish;
   emergencyPeriodCheckExtension?: BigNumberish;
@@ -20,7 +20,7 @@ export type RawStablePoolDeployment = {
 
 export type StablePoolDeployment = {
   tokens: TokenList;
-  amplificationParammeter: BigNumberish;
+  amplificationParameter: BigNumberish;
   swapFee: BigNumberish;
   emergencyPeriod: BigNumberish;
   emergencyPeriodCheckExtension: BigNumberish;

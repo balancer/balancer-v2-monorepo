@@ -49,13 +49,13 @@ export default {
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let { tokens, amplificationParammeter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    let { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
     if (!tokens) tokens = new TokenList();
-    if (!amplificationParammeter) amplificationParammeter = 200 * 1e18;
+    if (!amplificationParameter) amplificationParameter = bn(200 * 1e18);
     if (!swapFee) swapFee = bn(0);
     if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
     if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
-    return { tokens, amplificationParammeter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
+    return { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
   },
 
   /***

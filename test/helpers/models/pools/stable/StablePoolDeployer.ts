@@ -25,14 +25,14 @@ export default {
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParammeter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
+    const { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
     return deploy('StablePool', {
       args: [
         vault.address,
         NAME,
         SYMBOL,
         tokens.addresses,
-        amplificationParammeter,
+        amplificationParameter,
         swapFee,
         emergencyPeriod,
         emergencyPeriodCheckExtension,
@@ -42,13 +42,13 @@ export default {
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParammeter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
+    const { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
     const factory = await deploy('StablePoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
       SYMBOL,
       tokens.addresses,
-      amplificationParammeter,
+      amplificationParameter,
       swapFee,
       emergencyPeriod,
       emergencyPeriodCheckExtension

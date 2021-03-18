@@ -35,7 +35,7 @@ contract StableMath {
     // The amplification parameter equals to: A n^(n-1)
     function _calculateInvariant(uint256 amplificationParameter, uint256[] memory balances)
         internal
-        pure
+        view
         returns (uint256)
     {
         /**********************************************************************************************
@@ -92,7 +92,7 @@ contract StableMath {
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenAmountIn
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         /**************************************************************************************************************
         // outGivenIn token x for y - polynomial equation to solve                                                   //
         // ay = amount out to calculate                                                                              //
@@ -118,7 +118,6 @@ contract StableMath {
             tokenIndexOut
         );
 
-        //TODO: revert balance changes?
         balances[tokenIndexIn] = balances[tokenIndexIn].sub(tokenAmountIn);
 
         return balances[tokenIndexOut].sub(finalBalanceOut).sub(1);
@@ -133,7 +132,7 @@ contract StableMath {
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenAmountOut
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         /**************************************************************************************************************
         // inGivenOut token x for y - polynomial equation to solve                                                   //
         // ax = amount in to calculate                                                                               //
@@ -159,7 +158,6 @@ contract StableMath {
             tokenIndexIn
         );
 
-        //TODO: revert balance changes?
         balances[tokenIndexOut] = balances[tokenIndexOut].add(tokenAmountOut);
 
         return finalBalanceIn.sub(balances[tokenIndexIn]).add(1);
@@ -185,7 +183,7 @@ contract StableMath {
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         // BPT out, so we round down overall.
 
         // Get current invariant
@@ -209,6 +207,7 @@ contract StableMath {
         }
 
         // Second loop to calculate new amounts in taking into account the fee on the % excess
+        uint256[] memory newBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             // Percentage of the amount supplied that will be implicitly swapped for other tokens in the pool
             uint256 tokenBalancePercentageExcess;
@@ -227,11 +226,11 @@ contract StableMath {
 
             uint256 amountInAfterFee = amountsIn[i].mulDown(swapFeeExcess.complement());
 
-            balances[i] = balances[i].add(amountInAfterFee);
+            newBalances[i] = balances[i].add(amountInAfterFee);
         }
 
         // get new invariant taking into account swap fees
-        uint256 newInvariant = _calculateInvariant(amp, balances);
+        uint256 newInvariant = _calculateInvariant(amp, newBalances);
 
         // return amountBPTOut
         return bptTotalSupply.mulDown(newInvariant.divDown(currentInvariant).sub(FixedPoint.ONE));
@@ -250,7 +249,7 @@ contract StableMath {
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         // Token in, so we round up overall.
 
         // Get current invariant
@@ -295,7 +294,9 @@ contract StableMath {
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
+        // BPT in, so we round up overall.
+
         // Get current invariant
         uint256 currentInvariant = _calculateInvariant(amp, balances);
 
@@ -316,6 +317,7 @@ contract StableMath {
         }
 
         // Second loop to calculate new amounts in taking into account the fee on the % excess
+        uint256[] memory newBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 tokenBalancePercentageExcess;
             // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
@@ -332,14 +334,14 @@ contract StableMath {
 
             uint256 amountOutBeforeFee = amountsOut[i].divUp(swapFeeExcess.complement());
 
-            balances[i] = balances[i].sub(amountOutBeforeFee);
+            newBalances[i] = balances[i].sub(amountOutBeforeFee);
         }
 
         // get new invariant taking into account swap fees
-        uint256 newInvariant = _calculateInvariant(amp, balances);
+        uint256 newInvariant = _calculateInvariant(amp, newBalances);
 
         // return amountBPTIn
-        return bptTotalSupply.mulUp(newInvariant.divUp(currentInvariant).complement());
+        return bptTotalSupply.mulUp(newInvariant.divDown(currentInvariant).complement());
     }
 
     /* 
@@ -355,7 +357,7 @@ contract StableMath {
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         // Get current invariant
         uint256 currentInvariant = _calculateInvariant(amp, balances);
         // Calculate new invariant
@@ -390,7 +392,7 @@ contract StableMath {
         uint256[] memory balances,
         uint256 bptAmountIn,
         uint256 bptTotalSupply
-    ) internal pure returns (uint256[] memory) {
+    ) internal view returns (uint256[] memory) {
         /**********************************************************************************************
         // exactBPTInForTokensOut                                                                 //
         // (per token)                                                                               //
@@ -418,7 +420,7 @@ contract StableMath {
         uint256 lastInvariant,
         uint256 tokenIndex,
         uint256 protocolSwapFeePercentage
-    ) internal pure returns (uint256) {
+    ) internal view returns (uint256) {
         /**************************************************************************************************************
         // oneTokenSwapFee - polynomial equation to solve                                                            //
         // af = fee amount to calculate in one token                                                                 //
@@ -456,7 +458,7 @@ contract StableMath {
         uint256[] memory balances,
         uint256 invariant,
         uint256 tokenIndex
-    ) private pure returns (uint256) {
+    ) private view returns (uint256) {
         //Rounds result up overall
 
         uint256 ampTimesTotal = Math.mul(amplificationParameter, balances.length);

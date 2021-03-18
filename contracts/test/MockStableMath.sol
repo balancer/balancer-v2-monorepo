@@ -17,7 +17,7 @@ pragma solidity ^0.7.0;
 import "../pools/stable/StableMath.sol";
 
 contract MockStableMath is StableMath {
-    function invariant(uint256 amp, uint256[] calldata balances) external pure returns (uint256) {
+    function invariant(uint256 amp, uint256[] calldata balances) external view returns (uint256) {
         return _calculateInvariant(amp, balances);
     }
 
@@ -27,7 +27,7 @@ contract MockStableMath is StableMath {
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenAmountIn
-    ) external pure returns (uint256) {
+    ) external view returns (uint256) {
         return _calcOutGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountIn);
     }
 
@@ -37,7 +37,7 @@ contract MockStableMath is StableMath {
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenAmountOut
-    ) external pure returns (uint256) {
+    ) external view returns (uint256) {
         return _calcInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
     }
 
@@ -47,7 +47,7 @@ contract MockStableMath is StableMath {
         uint256 lastInvariant,
         uint256 tokenIndex,
         uint256 protocolSwapFeePercentage
-    ) external pure returns (uint256) {
+    ) external view returns (uint256) {
         return _calcDueTokenProtocolSwapFee(amp, balances, lastInvariant, tokenIndex, protocolSwapFeePercentage);
     }
 }

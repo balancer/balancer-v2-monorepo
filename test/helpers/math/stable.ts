@@ -44,7 +44,7 @@ export function calculateInvariant(fpRawBalances: BigNumberish[], fpAmplificatio
 export function calculateAnalyticalInvariantForTwoTokens(
   fpRawBalances: BigNumberish[],
   fpAmplificationParameter: BigNumberish
-): Decimal {
+): BigNumber {
   if (fpRawBalances.length !== 2) {
     throw 'Analytical invariant is solved only for 2 balances';
   }
@@ -81,7 +81,7 @@ export function calculateAnalyticalInvariantForTwoTokens(
 
   //Invariant
   const invariant = c.minus(p.div(c.mul(3)));
-  return invariant;
+  return bn(invariant);
 }
 
 export function calcOutGivenIn(

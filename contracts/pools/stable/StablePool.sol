@@ -344,7 +344,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
 
-        require(bptAmountIn <= maxBPTAmountIn, "BPT_OUT_MIN_AMOUNT");
+        require(bptAmountIn <= maxBPTAmountIn, "BPT_IN_MAX_AMOUNT");
 
         return (bptAmountIn, amountsOut);
     }
