@@ -2,6 +2,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { TokenList } from '../../helpers/tokens';
+import { fp } from '../../helpers/numbers';
 import { MAX_INT256, MAX_UINT256 } from '../../helpers/constants';
 import { FundManagement, getTokensSwaps, toSwapIn } from '../../helpers/trading';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
@@ -54,7 +55,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
     poolIds.push(await getPoolId());
   }
 
-  // Trade token 0 for token 1, putting 500 of 0 into each pool
+  // Trade token 0 for token 1, putting 0.1e18 of 0 into each pool
   const tokenIn = tokenSymbols[0];
   const tokenOut = tokenSymbols[1];
 
@@ -62,7 +63,7 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
     const [tokenAddresses, swaps] = getTokensSwaps(
       tokens,
       poolIds.slice(0, poolAmount).map((poolId) => {
-        return { poolId, tokenIn, tokenOut, amount: 500 };
+        return { poolId, tokenIn, tokenOut, amount: fp(0.1).toString() };
       })
     );
 

@@ -33,6 +33,11 @@
         "type": "address[]"
       },
       {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      },
+      {
         "internalType": "bool",
         "name": "toInternalBalance",
         "type": "bool"
@@ -80,6 +85,16 @@
         "internalType": "contract IERC20[]",
         "name": "tokens",
         "type": "address[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       },
       {
         "internalType": "bytes",

@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
-import "../../lib/helpers/UnsafeRandom.sol";
 
 import "../BaseGeneralPool.sol";
 
@@ -39,8 +38,6 @@ contract StablePool is BaseGeneralPool, StableMath {
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
     enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
-
-    enum RoundDirection { UP, DOWN }
 
     constructor(
         IVault vault,
@@ -73,7 +70,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override noEmergencyPeriod returns (uint256) {
         uint256 amountOut = StableMath._calcOutGivenIn(
             _amplificationParameter,
             balances,
@@ -90,7 +87,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override noEmergencyPeriod returns (uint256) {
         uint256 amountIn = StableMath._calcInGivenOut(
             _amplificationParameter,
             balances,
@@ -109,7 +106,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         address,
         address,
         bytes memory userData
-    ) internal override noEmergencyPeriod returns (uint256, uint256[] memory) {
+    ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
         StablePool.JoinKind kind = userData.joinKind();
         require(kind == StablePool.JoinKind.INIT, "UNINITIALIZED");
 
@@ -137,6 +134,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         bytes memory userData
     )
         internal
+        virtual
         override
         noEmergencyPeriod
         returns (
@@ -192,7 +190,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
 
-        uint256[] memory downscaledAmountsIn = amountsIn; // TODO: check that this won't be changed by pointer reference
+        uint256[] memory downscaledAmountsIn = amountsIn;
         _upscaleArray(amountsIn, _scalingFactors());
 
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
@@ -244,6 +242,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         bytes memory userData
     )
         internal
+        virtual
         override
         returns (
             uint256,
@@ -329,7 +328,6 @@ contract StablePool is BaseGeneralPool, StableMath {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         require(amountsOut.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
 
-        // TODO: check that this won't be changed by pointer reference
         uint256[] memory downscaledAmountsOut = amountsOut;
         _upscaleArray(amountsOut, _scalingFactors());
 
@@ -373,9 +371,16 @@ contract StablePool is BaseGeneralPool, StableMath {
         // will reduce gas costs for single asset joins and exits, as at most only two Pool balances will change (the
         // token joined/exited, and the token in which fees will be paid).
 
-        // The token fees is paid in is chosen pseudo-randomly, with the hope to achieve a uniform distribution across
-        // multiple joins and exits. This pseudo-randomness being manipulated is not an issue.
-        uint256 chosenTokenIndex = UnsafeRandom.rand(_totalTokens);
+        // The protocol fees is charged using the token with max balance in the pool.
+        uint256 chosenTokenIndex = 0;
+        uint256 maxBalance = balances[0];
+        for (uint256 i = 1; i < _totalTokens; ++i) {
+            uint256 currentBalance = balances[i];
+            if (currentBalance > maxBalance) {
+                chosenTokenIndex = i;
+                maxBalance = currentBalance;
+            }
+        }
 
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);

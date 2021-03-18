@@ -649,9 +649,10 @@ describe('StablePool', function () {
       //       let currentBalances: BigNumber[];
       //       let expectedDueProtocolFeeAmounts: BigNumber[];
 
-      //       sharedBeforeEach(async () => {
-      //         const previousBlockHash = (await ethers.provider.getBlock('latest')).hash;
-      //         const paidTokenIndex = decimal(previousBlockHash).mod(numberOfTokens).toNumber();
+      // sharedBeforeEach(async () => {
+      //   // The protocol fees is charged using the token with max balance in the pool.
+      //   const maxBalance = poolInitialBalances.reduce((max, balance) => (balance.gt(max) ? balance : max), bn(0));
+      //   const paidTokenIndex = poolInitialBalances.indexOf(maxBalance);
 
       //         const lastInvariant = calculateInvariant(amplification, poolInitialBalances);
       //         currentBalances = poolInitialBalances.map((balance) => balance.mul(2)); //twice the initial balances

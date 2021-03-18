@@ -35,21 +35,47 @@ describe('BalancerHelpers', function () {
     helper = await deploy('BalancerHelpers', { args: [pool.vault.address] });
   });
 
+  const query = async ({ fn, data, internalBalance }: { fn: string; data: string; internalBalance?: boolean }) => {
+    return helper.callStatic[fn](pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, tokens.addresses, [], internalBalance, data);
+  };
+
   describe('queryJoin', () => {
+    // These two values are superfluous, as they are not used by the helper
+    const fromInternalBalance = false;
+    const maxAmountsIn: BigNumber[] = [];
+
     it('can query join results', async () => {
       const amountsIn = [fp(1), fp(0)];
       const expectedBptOut = await pool.estimateBptOut(amountsIn, initialBalances);
 
       const data = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', amountsIn, minimumBPT: 0 });
-      const result = await helper.callStatic.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, tokens.addresses, data);
+      const result = await query({ fn: 'queryJoin', data });
 
       expect(result.amountsIn).to.deep.equal(amountsIn);
       expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
+    });
+
+    it('bubbles up revert reasons', async () => {
+      const data = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
+      const tx = helper.callStatic.queryJoin(
+        pool.poolId,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        tokens.addresses,
+        maxAmountsIn,
+        fromInternalBalance,
+        data
+      );
+
+      await expect(tx).to.be.revertedWith('UNHANDLED_JOIN_KIND');
     });
   });
 
   describe('queryExit', () => {
     let bptIn: BigNumber, expectedAmountsOut: BigNumber[], data: string;
+
+    // This value is superfluous, as it is not used by the helper
+    const minAmountsOut: BigNumber[] = [];
 
     sharedBeforeEach('estimate expected amounts out', async () => {
       bptIn = (await pool.totalSupply()).div(2);
@@ -57,18 +83,26 @@ describe('BalancerHelpers', function () {
       data = encodeExitWeightedPool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: bptIn });
     });
 
+    it('bubbles up revert reasons', async () => {
+      const data = encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: bptIn, exitTokenIndex: 90 });
+      const tx = helper.callStatic.queryExit(
+        pool.poolId,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        tokens.addresses,
+        minAmountsOut,
+        false,
+        data
+      );
+
+      await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
+    });
+
     context('when depositing into internal balance', () => {
-      const toInternalBalance = true;
+      const internalBalance = true;
 
       it('tells the exit results without considering the withdraw fees', async () => {
-        const result = await helper.callStatic.queryExit(
-          pool.poolId,
-          ZERO_ADDRESS,
-          ZERO_ADDRESS,
-          tokens.addresses,
-          toInternalBalance,
-          data
-        );
+        const result = await query({ fn: 'queryExit', data, internalBalance });
 
         expect(result.bptIn).to.equal(bptIn);
         expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
@@ -77,22 +111,14 @@ describe('BalancerHelpers', function () {
 
     context('when withdrawing the tokens from the vault', () => {
       const withdrawFee = 0.002; // 0.2%
-      const toInternalBalance = false;
+      const internalBalance = false;
 
       sharedBeforeEach('set withdraw fees', async () => {
         await pool.vault.setWithdrawFee(fp(withdrawFee));
       });
 
       it('tells the exit results considering the withdraw fees', async () => {
-        const result = await helper.callStatic.queryExit(
-          pool.poolId,
-          ZERO_ADDRESS,
-          ZERO_ADDRESS,
-          tokens.addresses,
-          toInternalBalance,
-          data
-        );
-
+        const result = await query({ fn: 'queryExit', data, internalBalance });
         expect(result.bptIn).to.equal(bptIn);
 
         const expectedAmountsOutWithFees = expectedAmountsOut.map((amount) => amount.sub(pct(amount, withdrawFee)));

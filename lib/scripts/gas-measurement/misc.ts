@@ -44,7 +44,7 @@ export async function setupEnvironment(): Promise<{
   for (let idx = 0; idx < tokenAddresses.length; ++idx) {
     transfers.push({
       token: tokenAddresses[idx],
-      amount: bn(1e18),
+      amount: bn(100e18),
       sender: trader.address,
       recipient: trader.address,
     });
