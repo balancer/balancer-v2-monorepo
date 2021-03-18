@@ -506,12 +506,7 @@ describe('StablePool', function () {
           it('calculates amount out', async () => {
             const amountIn = bn(1e18);
 
-            const result = await pool.onSwapGivenIn(
-              { ...swapRequestData, amountIn },
-              poolInitialBalances,
-              0,
-              1
-            );
+            const result = await pool.onSwapGivenIn({ ...swapRequestData, amountIn }, poolInitialBalances, 0, 1);
 
             const expectedAmountOut = calcOutGivenIn(amplification, poolInitialBalances, 0, 1, amountIn);
             expectEqualWithError(result, bn(expectedAmountOut), 0.1);
@@ -540,12 +535,7 @@ describe('StablePool', function () {
           it('calculates amount in', async () => {
             const amountOut = bn(1e18);
 
-            const result = await pool.onSwapGivenOut(
-              { ...swapRequestData, amountOut },
-              poolInitialBalances,
-              0,
-              1
-            );
+            const result = await pool.onSwapGivenOut({ ...swapRequestData, amountOut }, poolInitialBalances, 0, 1);
 
             const expectedAmountIn = calcInGivenOut(amplification, poolInitialBalances, 0, 1, amountOut);
             expectEqualWithError(result, bn(expectedAmountIn), 0.1);
