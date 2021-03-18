@@ -297,8 +297,8 @@
         "type": "tuple[]"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
+        "internalType": "contract IAsset[]",
+        "name": "assets",
         "type": "address[]"
       },
       {
@@ -385,8 +385,8 @@
         "type": "tuple[]"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
+        "internalType": "contract IAsset[]",
+        "name": "assets",
         "type": "address[]"
       },
       {
@@ -943,8 +943,8 @@
         "type": "tuple[]"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
+        "internalType": "contract IAsset[]",
+        "name": "assets",
         "type": "address[]"
       },
       {

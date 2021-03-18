@@ -449,7 +449,7 @@ interface IVault {
      */
     function batchSwapGivenIn(
         SwapIn[] calldata swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement calldata funds,
         int256[] memory limits,
         uint256 deadline
@@ -500,7 +500,7 @@ interface IVault {
      */
     function batchSwapGivenOut(
         SwapOut[] calldata swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement calldata funds,
         int256[] memory limits,
         uint256 deadline
@@ -573,7 +573,7 @@ interface IVault {
     function queryBatchSwap(
         SwapKind kind,
         SwapRequest[] memory swaps,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         FundManagement memory funds
     ) external returns (int256[] memory tokenDeltas);
 
