@@ -28,6 +28,7 @@ abstract contract AssetTransfersHandler {
     using Address for address payable;
     using Math for uint256;
 
+    // solhint-disable-next-line func-name-mixedcase
     IWETH private immutable _WETH;
 
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
