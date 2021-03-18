@@ -14,17 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-library UnsafeRandom {
-    function rand(uint256 mod) internal view returns (uint256) {
-        uint256 previousBlockNumber = block.number - 1;
-        bytes32 seed = blockhash(previousBlockNumber);
-        return uint256(seed) % mod;
-    }
-
-    function rand(IERC20[] memory list) internal view returns (IERC20, uint256) {
-        uint256 randomIndex = rand(list.length);
-        return (list[randomIndex], randomIndex);
-    }
+/**
+ * @dev This is an empty interface used to represent either either token contracts that adhere to the IERC20 interface,
+ * or a sentinel value that represents ETH. We're just relying on the fact that `interface` can be used to declare new
+ * address-like types.
+ */
+interface IAsset {
+    // solhint-disable-previous-line no-empty-blocks
 }

@@ -3,13 +3,14 @@ import { printGas } from './misc';
 import { Contract } from 'ethers';
 
 import { deploy } from '../../helpers/deploy';
+import { ZERO_ADDRESS } from '../../helpers/constants';
 
 async function main() {
   const [, admin] = await ethers.getSigners();
 
   const authorizer = await deploy('Authorizer', { args: [admin.address] });
 
-  const vault = await measureDeployment('Vault', [authorizer.address, 0, 0]);
+  const vault = await measureDeployment('Vault', [authorizer.address, ZERO_ADDRESS, 0, 0]);
 
   await measureDeployment('WeightedPoolFactory', [vault.address]);
 

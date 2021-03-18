@@ -7,6 +7,11 @@
         "type": "address"
       },
       {
+        "internalType": "contract IWETH",
+        "name": "weth",
+        "type": "address"
+      },
+      {
         "internalType": "uint256",
         "name": "emergencyPeriod",
         "type": "uint256"
@@ -309,7 +314,7 @@
             "type": "bool"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           },
@@ -397,7 +402,7 @@
             "type": "bool"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           },
@@ -955,7 +960,7 @@
             "type": "bool"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           },
@@ -1246,5 +1251,9 @@
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "stateMutability": "payable",
+    "type": "receive"
   }
 ]

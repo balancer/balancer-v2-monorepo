@@ -6,6 +6,7 @@ import Vault from './Vault';
 import TypesConverter from '../types/TypesConverter';
 import { deploy } from '../../../../lib/helpers/deploy';
 import { RawVaultDeployment, VaultDeployment } from './types';
+import TokensDeployer from '../tokens/TokensDeployer';
 
 export default {
   async deploy(params: RawVaultDeployment): Promise<Vault> {
@@ -22,7 +23,8 @@ export default {
 
   async _deployReal(deployment: VaultDeployment, authorizer: Contract): Promise<Contract> {
     const { from, emergencyPeriod, emergencyPeriodCheckExtension } = deployment;
-    const args = [authorizer.address, emergencyPeriod, emergencyPeriodCheckExtension];
+    const weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
+    const args = [authorizer.address, weth.address, emergencyPeriod, emergencyPeriodCheckExtension];
     return deploy('Vault', { args, from });
   },
 

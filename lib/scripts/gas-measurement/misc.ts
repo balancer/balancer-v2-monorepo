@@ -20,8 +20,11 @@ export async function setupEnvironment(): Promise<{
 }> {
   const { admin, creator, trader } = await getSigners();
 
+  const weth = await deploy('WETH', { args: [admin.address] });
+
   const authorizer = await deploy('Authorizer', { args: [admin.address] });
-  const vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
+
+  const vault = await deploy('Vault', { args: [authorizer.address, weth.address, 0, 0] });
 
   const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 
@@ -43,7 +46,7 @@ export async function setupEnvironment(): Promise<{
   for (let idx = 0; idx < tokenAddresses.length; ++idx) {
     transfers.push({
       token: tokenAddresses[idx],
-      amount: bn(1e18),
+      amount: bn(100e18),
       sender: trader.address,
       recipient: trader.address,
     });
@@ -80,11 +83,11 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     joinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
   } else if (poolName == 'StablePool') {
-    const amp = bn(50e18);
+    const amplificationParameter = bn(50e18);
 
     pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
       from: creator,
-      parameters: [tokenAddresses, amp, swapFee],
+      parameters: [tokenAddresses, amplificationParameter, swapFee],
     });
 
     joinUserData = encodeJoinStablePool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });

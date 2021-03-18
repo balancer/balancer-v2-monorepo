@@ -29,8 +29,7 @@ describe('Vault - swap queries', () => {
     [, lp] = await ethers.getSigners();
 
     // All of the tests in this suite have no side effects, so we deploy and initially contracts only one to save time
-
-    vault = await deploy('Vault', { args: [ZERO_ADDRESS, 0, 0] });
+    vault = await deploy('Vault', { args: [ZERO_ADDRESS, ZERO_ADDRESS, 0, 0] });
 
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
     await tokens.mint({ to: lp, amount: MAX_UINT112.div(2) });
@@ -147,6 +146,14 @@ describe('Vault - swap queries', () => {
         [5, 0, -20]
       );
     });
+
+    describe('error', () => {
+      it('bubbles up revert reasons', async () => {
+        const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
+        const tx = vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, invalidSwap, tokens.addresses, funds);
+        await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
+    });
   });
 
   describe('given out', () => {
@@ -211,6 +218,14 @@ describe('Vault - swap queries', () => {
         ],
         [0, -20, 5]
       );
+    });
+
+    describe('error', () => {
+      it('bubbles up revert reasons', async () => {
+        const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
+        const tx = vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, invalidSwap, tokens.addresses, funds);
+        await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
+      });
     });
   });
 });

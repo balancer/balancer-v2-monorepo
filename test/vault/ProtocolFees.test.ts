@@ -9,6 +9,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn } from '../../lib/helpers/numbers';
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 
 describe('Vault - protocol fees', () => {
   let admin: SignerWithAddress;
@@ -27,7 +28,7 @@ describe('Vault - protocol fees', () => {
 
   sharedBeforeEach('deploy vault', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
+    vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
 
     const SET_PROTOCOL_FEES_ROLE = roleId(vault, 'setProtocolFees');
     await authorizer.connect(admin).grantRole(SET_PROTOCOL_FEES_ROLE, feeSetter.address);

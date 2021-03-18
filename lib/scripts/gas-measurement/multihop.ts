@@ -5,6 +5,7 @@ import { TokenList } from '../../helpers/tokens';
 import { MAX_INT256, MAX_UINT256 } from '../../helpers/constants';
 import { FundManagement, getTokensSwaps, toSwapIn } from '../../helpers/trading';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
+import { fp } from '../../helpers/numbers';
 
 let vault: Contract;
 let tokens: TokenList;
@@ -62,7 +63,7 @@ async function multihop(getPool: (index: number) => Promise<string>, useInternal
       const trade = { poolId, tokenIn, tokenOut };
 
       if (index == 0) {
-        return { ...trade, amount: 500 };
+        return { ...trade, amount: fp(0.1).toString() };
       } else {
         return trade;
       }

@@ -77,4 +77,11 @@ interface IBasePool {
         uint256 protocolSwapFee,
         bytes calldata userData
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
+
+    /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time
+     * It's the equivalent to Curve's get_virtual_price() function
+     */
+    function getRate() external view returns (uint256);
 }

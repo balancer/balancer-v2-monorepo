@@ -9,6 +9,7 @@ import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { BigNumberish, fp } from '../../lib/helpers/numbers';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress, other: SignerWithAddress;
@@ -21,7 +22,7 @@ describe('BasePool', function () {
 
   sharedBeforeEach(async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, 0, 0] });
+    vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 

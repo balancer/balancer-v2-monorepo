@@ -15,7 +15,7 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
       deterministicDeployment: true,
     });
 
-    await deploy('WETH9', {
+    await deploy('WETH', {
       from: deployer,
       args: [deployer],
       log: true,

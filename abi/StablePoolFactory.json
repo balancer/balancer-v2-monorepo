@@ -42,7 +42,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "amp",
+        "name": "amplificationParameter",
         "type": "uint256"
       },
       {
