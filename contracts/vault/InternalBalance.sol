@@ -69,6 +69,8 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     }
 
     function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override nonReentrant {
+        _ensureBalanceTransferArrayIsSortedByAsset(transfers);
+
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);

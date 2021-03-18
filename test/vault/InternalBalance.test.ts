@@ -459,42 +459,56 @@ describe('Vault - internal balance', () => {
         vault = vault.connect(sender);
       });
 
-      context('when the sender has enough internal balance', () => {
-        const depositedAmount = bn(10e18);
+      context('when the asset is a token', () => {
+        context('when the sender has enough internal balance', () => {
+          const depositedAmount = bn(10e18);
 
-        sharedBeforeEach('deposit internal balance', async () => {
-          await tokens.DAI.mint(sender, depositedAmount);
-          await tokens.DAI.approve(vault, depositedAmount, { from: sender });
-          await vault.depositToInternalBalance([
-            {
-              asset: tokens.DAI.address,
-              amount: depositedAmount,
-              sender: sender.address,
-              recipient: sender.address,
-            },
-          ]);
+          sharedBeforeEach('deposit internal balance', async () => {
+            await tokens.DAI.mint(sender, depositedAmount);
+            await tokens.DAI.approve(vault, depositedAmount, { from: sender });
+            await vault.depositToInternalBalance([
+              {
+                asset: tokens.DAI.address,
+                amount: depositedAmount,
+                sender: sender.address,
+                recipient: sender.address,
+              },
+            ]);
+          });
+
+          context('when requesting all the available balance', () => {
+            const amount = depositedAmount;
+
+            itHandlesWithdrawalsProperly(depositedAmount, amount);
+          });
+
+          context('when requesting part of the balance', () => {
+            const amount = depositedAmount.div(2);
+
+            itHandlesWithdrawalsProperly(depositedAmount, amount);
+          });
+
+          context('when requesting no balance', () => {
+            const amount = bn(0);
+
+            itHandlesWithdrawalsProperly(depositedAmount, amount);
+          });
+
+          context('with requesting more balance than available', () => {
+            const amount = depositedAmount.add(1);
+
+            it('reverts', async () => {
+              await expect(
+                vault.withdrawFromInternalBalance([
+                  { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+                ])
+              ).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
+            });
+          });
         });
 
-        context('when requesting all the available balance', () => {
-          const amount = depositedAmount;
-
-          itHandlesWithdrawalsProperly(depositedAmount, amount);
-        });
-
-        context('when requesting part of the balance', () => {
-          const amount = depositedAmount.div(2);
-
-          itHandlesWithdrawalsProperly(depositedAmount, amount);
-        });
-
-        context('when requesting no balance', () => {
-          const amount = bn(0);
-
-          itHandlesWithdrawalsProperly(depositedAmount, amount);
-        });
-
-        context('with requesting more balance than available', () => {
-          const amount = depositedAmount.add(1);
+        context('when the sender does not have any internal balance', () => {
+          const amount = 1;
 
           it('reverts', async () => {
             await expect(
@@ -506,15 +520,104 @@ describe('Vault - internal balance', () => {
         });
       });
 
-      context('when the sender does not have any internal balance', () => {
-        const amount = 1;
+      context('when the asset is ETH', () => {
+        const amount = bn(100e18);
 
-        it('reverts', async () => {
+        sharedBeforeEach('deposit internal balance', async () => {
+          // We need the sender to have real WETH so that it can be withdrawn
+          await weth.mintWETH({ from: sender, to: sender, amount });
+          await weth.approve(vault, amount, { from: sender });
+          await vault.depositToInternalBalance([
+            {
+              asset: weth.address,
+              amount: amount,
+              sender: sender.address,
+              recipient: sender.address,
+            },
+          ]);
+        });
+
+        it('does not send WETH to the recipient', async () => {
+          await expectBalanceChange(
+            () =>
+              vault.withdrawFromInternalBalance([
+                { asset: ETH_TOKEN_ADDRESS, amount, sender: sender.address, recipient: recipient.address },
+              ]),
+            tokens,
+            { account: recipient }
+          );
+        });
+
+        it('decreases the WETH internal balance for the sender', async () => {
+          const previousSenderBalance = await vault.getInternalBalance(sender.address, [weth.address]);
+
+          await vault.withdrawFromInternalBalance([
+            { asset: ETH_TOKEN_ADDRESS, amount, sender: sender.address, recipient: recipient.address },
+          ]);
+
+          const currentSenderBalance = await vault.getInternalBalance(sender.address, [weth.address]);
+
+          expect(previousSenderBalance[0].sub(currentSenderBalance[0])).to.equal(amount);
+        });
+
+        it('emits an event with WETH as the token address', async () => {
+          const receipt: ContractReceipt = await (
+            await vault.withdrawFromInternalBalance([
+              { asset: ETH_TOKEN_ADDRESS, amount, sender: sender.address, recipient: recipient.address },
+            ])
+          ).wait();
+
+          const currentSenderBalance = await vault.getInternalBalance(sender.address, [weth.address]);
+
+          expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+            user: sender.address,
+            token: weth.address,
+            balance: currentSenderBalance[0],
+          });
+        });
+
+        it('accepts withdrawals of both ETH and WETH', async () => {
+          const previousSenderBalance = await vault.getInternalBalance(sender.address, [weth.address]);
+
+          await vault.withdrawFromInternalBalance([
+            { asset: ETH_TOKEN_ADDRESS, amount: amount.div(2), sender: sender.address, recipient: recipient.address },
+            { asset: weth.address, amount: amount.div(2), sender: sender.address, recipient: recipient.address },
+          ]);
+
+          const currentSenderBalance = await vault.getInternalBalance(sender.address, [weth.address]);
+
+          expect(previousSenderBalance[0].sub(currentSenderBalance[0])).to.equal(amount);
+        });
+
+        it('reverts if ETH is included twice', async () => {
           await expect(
             vault.withdrawFromInternalBalance([
-              { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+              { asset: ETH_TOKEN_ADDRESS, amount: 0, sender: sender.address, recipient: recipient.address },
+              { asset: ETH_TOKEN_ADDRESS, amount: 0, sender: sender.address, recipient: recipient.address },
             ])
-          ).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
+          ).to.be.revertedWith('UNSORTED_ARRAY');
+        });
+
+        context('with protocol withdraw fees', () => {
+          const withdrawFee = 0.005;
+
+          sharedBeforeEach('set fee', async () => {
+            const role = await roleId(vault, 'setProtocolFees');
+            await authorizer.connect(admin).grantRole(role, admin.address);
+            await vault.connect(admin).setProtocolFees(0, fp(withdrawFee), 0);
+          });
+
+          it('charges protocol fees in WETH', async () => {
+            const previousProtocolFees = await vault.getCollectedFees([weth.address]);
+
+            await vault.withdrawFromInternalBalance([
+              { asset: ETH_TOKEN_ADDRESS, amount, sender: sender.address, recipient: recipient.address },
+            ]);
+
+            const currentProtocolFees = await vault.getCollectedFees([weth.address]);
+
+            expect(currentProtocolFees[0].sub(previousProtocolFees[0])).to.equal(pct(amount, withdrawFee));
+          });
         });
       });
     });
