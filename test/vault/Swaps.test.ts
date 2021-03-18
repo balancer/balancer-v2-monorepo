@@ -1,12 +1,13 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract, ContractReceipt, Signer } from 'ethers';
 import { Dictionary } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import TokenList from '../helpers/models/tokens/TokenList';
+import TokenList, { ETH_TOKEN_ADDRESS } from '../helpers/models/tokens/TokenList';
 import { roleId } from '../../lib/helpers/roles';
 import { encodeJoin } from '../helpers/mockPool';
+import * as expectEvent from '../helpers/expectEvent';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 
 import { deploy } from '../../lib/helpers/deploy';
@@ -14,11 +15,10 @@ import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
 import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
 import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 type SwapData = {
   pool?: number; // Index in the poolIds array
-  amount: number;
+  amount: number | BigNumber;
   in: number; // Index in the tokens array
   out: number; // Index in the tokens array
   data?: string;
@@ -38,18 +38,19 @@ describe('Vault - swaps', () => {
   let mainPoolId: string, secondaryPoolId: string;
   let lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress, admin: SignerWithAddress;
 
+  const poolInitialBalance = bn(50e18);
+
   before('setup', async () => {
     [, lp, trader, other, admin] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault and tokens', async () => {
-    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+    tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'WETH']);
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
+    vault = await deploy('Vault', { args: [authorizer.address, tokens.WETH.address, 0, 0] });
 
-    tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
-    await tokens.mint({ to: [lp, trader], amount: MAX_UINT112.div(2) });
+    await tokens.mint({ to: [lp, trader], amount: bn(200e18) });
     await tokens.approve({ to: vault, from: [lp, trader], amount: MAX_UINT112 });
   });
 
@@ -90,6 +91,230 @@ describe('Vault - swaps', () => {
     });
   });
 
+  context('when one of the assets is ETH', () => {
+    const symbols = ['DAI', 'WETH'];
+    let tokenAddresses: string[];
+
+    const limits = Array(symbols.length).fill(MAX_INT256);
+    const deadline = MAX_UINT256;
+
+    beforeEach(() => {
+      tokenAddresses = [ETH_TOKEN_ADDRESS, tokens.DAI.address];
+    });
+
+    context('with minimal swap info pool', () => {
+      sharedBeforeEach('setup pool', async () => {
+        mainPoolId = await deployPool(GeneralPool, symbols);
+      });
+
+      itSwapsWithETHCorrectly();
+    });
+    context('with general pool', () => {
+      sharedBeforeEach('setup pool', async () => {
+        mainPoolId = await deployPool(MinimalSwapInfoPool, symbols);
+      });
+
+      itSwapsWithETHCorrectly();
+    });
+
+    function itSwapsWithETHCorrectly() {
+      let sender: Signer;
+
+      context('when the sender is the trader', () => {
+        beforeEach(() => {
+          sender = trader;
+        });
+
+        it('received ETH is wrapped into WETH', async () => {
+          const swaps = [
+            {
+              poolId: mainPoolId,
+              tokenInIndex: 0, // ETH
+              tokenOutIndex: 1,
+              amountIn: bn(1e18),
+              userData: '0x',
+            },
+          ];
+
+          await expectBalanceChange(
+            () =>
+              vault
+                .connect(sender)
+                .batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18) }),
+            tokens,
+            [
+              { account: vault, changes: { WETH: 1e18, DAI: -2e18 } },
+              { account: trader, changes: { DAI: 2e18 } },
+            ]
+          );
+        });
+
+        it('sent WETH is unwrapped into ETH', async () => {
+          const swaps = [
+            {
+              poolId: mainPoolId,
+              tokenInIndex: 1,
+              tokenOutIndex: 0, // ETH
+              amountIn: bn(1e18),
+              userData: '0x',
+            },
+          ];
+
+          const traderBalanceBefore = await ethers.provider.getBalance(trader.address);
+
+          const gasPrice = 1;
+          const receipt: ContractReceipt = await (
+            await expectBalanceChange(
+              () =>
+                vault.connect(sender).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, { gasPrice }),
+              tokens,
+              [
+                { account: vault, changes: { WETH: -2e18, DAI: 1e18 } },
+                { account: trader, changes: { DAI: -1e18 } },
+              ]
+            )
+          ).wait();
+          const ethSpent = receipt.gasUsed.mul(gasPrice);
+
+          const traderBalanceAfter = await ethers.provider.getBalance(trader.address);
+
+          expect(traderBalanceAfter.sub(traderBalanceBefore)).to.equal(bn(2e18).sub(ethSpent));
+        });
+
+        it('emits an event with WETH as the token address', async () => {
+          const swaps = [
+            {
+              poolId: mainPoolId,
+              tokenInIndex: 0, // ETH
+              tokenOutIndex: 1,
+              amountIn: bn(1e18),
+              userData: '0x',
+            },
+
+            {
+              poolId: mainPoolId,
+              tokenInIndex: 1,
+              tokenOutIndex: 0, // ETH
+              amountIn: bn(1e18),
+              userData: '0x',
+            },
+          ];
+
+          const receipt = await (
+            await vault.connect(sender).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline)
+          ).wait();
+
+          expectEvent.inReceipt(receipt, 'Swap', {
+            poolId: mainPoolId,
+            tokenIn: tokens.WETH.address,
+            tokenOut: tokens.DAI.address,
+            tokensIn: bn(1e18),
+            tokensOut: bn(2e18),
+          });
+
+          expectEvent.inReceipt(receipt, 'Swap', {
+            poolId: mainPoolId,
+            tokenIn: tokens.DAI.address,
+            tokenOut: tokens.WETH.address,
+            tokensIn: bn(1e18),
+            tokensOut: bn(2e18),
+          });
+        });
+
+        it('reverts if less ETH than required was supplied', async () => {
+          const swaps = [
+            {
+              poolId: mainPoolId,
+              tokenInIndex: 0, // ETH
+              tokenOutIndex: 1,
+              amountIn: bn(1e18),
+              userData: '0x',
+            },
+          ];
+
+          await expect(
+            vault
+              .connect(sender)
+              .batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18).sub(1) })
+          ).to.be.revertedWith('INSUFFICIENT_ETH');
+        });
+
+        it('reverts if ETH was sent but not allocated', async () => {
+          await expect(
+            vault
+              .connect(sender)
+              .batchSwapGivenIn([], [tokens.DAI.address, tokens.WETH.address], funds, limits, deadline, {
+                value: 1,
+              })
+          ).to.be.revertedWith('UNALLOCATED_ETH');
+        });
+      });
+
+      context('when the sender is an approved relayer', () => {
+        sharedBeforeEach(async () => {
+          const role = roleId(vault, 'batchSwapGivenIn');
+          await authorizer.connect(admin).grantRole(role, other.address);
+
+          await vault.connect(trader).changeRelayerAllowance(other.address, true);
+        });
+
+        it('returns excess sent ETH to the relayer', async () => {
+          const swaps = [
+            {
+              poolId: mainPoolId,
+              tokenInIndex: 0, // ETH
+              tokenOutIndex: 1,
+              amountIn: bn(1e18),
+              userData: '0x',
+            },
+          ];
+
+          const relayerBalanceBefore = await ethers.provider.getBalance(other.address);
+
+          const gasPrice = 1;
+          const receipt: ContractReceipt = await (
+            await vault.connect(other).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, {
+              value: bn(1e18).add(42), // Only 1e18 is required
+              gasPrice,
+            })
+          ).wait();
+          const ethSpent = receipt.gasUsed.mul(gasPrice);
+
+          const relayerBalanceAfter = await ethers.provider.getBalance(other.address);
+
+          expect(relayerBalanceBefore.sub(relayerBalanceAfter)).to.equal(ethSpent.add(bn(1e18)));
+        });
+
+        it('returns unreceived ETH to the relayer', async () => {
+          const swaps = [
+            {
+              poolId: mainPoolId,
+              tokenInIndex: 1,
+              tokenOutIndex: 0, // ETH
+              amountIn: bn(1e18),
+              userData: '0x',
+            },
+          ];
+
+          const relayerBalanceBefore = await ethers.provider.getBalance(other.address);
+
+          const gasPrice = 1;
+          const receipt: ContractReceipt = await (
+            await vault.connect(other).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, {
+              value: 42,
+              gasPrice,
+            })
+          ).wait();
+          const ethSpent = receipt.gasUsed.mul(gasPrice);
+
+          const relayerBalanceAfter = await ethers.provider.getBalance(other.address);
+
+          expect(relayerBalanceBefore.sub(relayerBalanceAfter)).to.equal(ethSpent);
+        });
+      });
+    }
+  });
+
   function parseSwap(input: SwapInput): Swap[] {
     return input.swaps.map((data) => ({
       poolId: ((data.pool ?? 0) == 0 ? mainPoolId : secondaryPoolId) || ZERO_BYTES32,
@@ -115,7 +340,7 @@ describe('Vault - swaps', () => {
     await pool.connect(lp).registerTokens(sortedTokenAddresses, assetManagers);
 
     // Join the pool - the actual amount is not relevant since the MockPool relies on the multiplier to calculate prices
-    const tokenAmounts = sortedTokenAddresses.map(() => bn(100e18));
+    const tokenAmounts = sortedTokenAddresses.map(() => poolInitialBalance);
 
     const poolId = pool.getPoolId();
     await vault.connect(lp).joinPool(
@@ -314,13 +539,13 @@ describe('Vault - swaps', () => {
                     });
 
                     context('when draining the pool', () => {
-                      const swaps = [{ in: 1, out: 0, amount: 50e18 }];
+                      const swaps = [{ in: 1, out: 0, amount: poolInitialBalance.div(2) }];
 
-                      assertSwapGivenIn({ swaps }, { DAI: 100e18, MKR: -50e18 });
+                      assertSwapGivenIn({ swaps }, { DAI: poolInitialBalance, MKR: poolInitialBalance.div(2).mul(-1) });
                     });
 
                     context('when requesting more than the available balance', () => {
-                      const swaps = [{ in: 1, out: 0, amount: 100e18 }];
+                      const swaps = [{ in: 1, out: 0, amount: poolInitialBalance.div(2).add(1) }];
 
                       assertSwapGivenInReverts({ swaps }, 'SUB_OVERFLOW');
                     });
@@ -748,13 +973,16 @@ describe('Vault - swaps', () => {
                     });
 
                     context('when draining the pool', () => {
-                      const swaps = [{ in: 1, out: 0, amount: 100e18 }];
+                      const swaps = [{ in: 1, out: 0, amount: poolInitialBalance }];
 
-                      assertSwapGivenOut({ swaps }, { DAI: 100e18, MKR: -50e18 });
+                      assertSwapGivenOut(
+                        { swaps },
+                        { DAI: poolInitialBalance, MKR: poolInitialBalance.div(2).mul(-1) }
+                      );
                     });
 
                     context('when requesting more than the available balance', () => {
-                      const swaps = [{ in: 1, out: 0, amount: 200e18 }];
+                      const swaps = [{ in: 1, out: 0, amount: poolInitialBalance.add(1) }];
 
                       assertSwapGivenOutReverts({ swaps }, 'SUB_OVERFLOW');
                     });

@@ -452,7 +452,7 @@ interface IVault {
         FundManagement calldata funds,
         int256[] memory limits,
         uint256 deadline
-    ) external returns (int256[] memory);
+    ) external payable returns (int256[] memory);
 
     /**
      * @dev Data for each individual swap executed by `batchSwapGivenIn`. The tokens in and out are indexed in the
@@ -502,7 +502,7 @@ interface IVault {
         FundManagement calldata funds,
         int256[] memory limits,
         uint256 deadline
-    ) external returns (int256[] memory);
+    ) external payable returns (int256[] memory);
 
     /**
      * @dev Data for each individual swap executed by `batchSwapGivenOut`. The tokens in and out are indexed in the

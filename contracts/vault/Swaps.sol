@@ -119,7 +119,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
-    ) external override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
+    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
         return _batchSwap(_toInternalSwap(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_IN);
     }
 
@@ -129,7 +129,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
-    ) external override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
+    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
         return _batchSwap(_toInternalSwap(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_OUT);
     }
 
