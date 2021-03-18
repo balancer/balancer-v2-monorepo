@@ -26,8 +26,6 @@ describe('Vault - asset transfers handler', function () {
 
     await tokens.mint({ to: [sender, recipient, handler], amount: bn(100e18) });
     await tokens.approve({ to: handler, from: [sender, recipient] });
-
-    await tokens.WETH.mintWETH({ to: handler, from: other, amount: bn(100e18) });
   });
 
   const amount = bn(1e18);
