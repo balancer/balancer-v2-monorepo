@@ -341,7 +341,7 @@ contract StableMath {
         uint256 newInvariant = _calculateInvariant(amp, newBalances);
 
         // return amountBPTIn
-        return bptTotalSupply.mulUp(newInvariant.divDown(currentInvariant).complement());
+        return bptTotalSupply.mulUp(newInvariant.divUp(currentInvariant).complement());
     }
 
     /* 
