@@ -58,13 +58,14 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         uint256 amount
     ) external {
         token.safeTransferFrom(account, address(this), amount);
-        _increaseInternalBalance(account, token, amount);
+        _increaseInternalBalance(account, token, amount, true);
     }
 
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
+        uint256 amount,
+        bool track
     ) internal override {
         _internalTokenBalance[account][token] += amount;
     }

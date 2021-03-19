@@ -398,7 +398,8 @@ abstract contract PoolRegistry is
         }
 
         if (toInternalBalance) {
-            _increaseInternalBalance(recipient, token, amount);
+            // We don't track cached values to reduce the taxable amount in swaps or exits
+            _increaseInternalBalance(recipient, token, amount, false);
             return 0;
         } else {
             uint256 withdrawFee = _calculateProtocolWithdrawFeeAmount(amount);

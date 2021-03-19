@@ -163,7 +163,7 @@ abstract contract AssetTransfersHandler {
         } else {
             IERC20 token = _asIERC20(asset);
             if (toInternalBalance) {
-                _increaseInternalBalance(recipient, token, toSend);
+                _increaseInternalBalance(recipient, token, toSend, false);
             } else {
                 token.safeTransfer(recipient, toSend);
             }
@@ -194,7 +194,8 @@ abstract contract AssetTransfersHandler {
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
+        uint256 amount,
+        bool track
     ) internal virtual;
 
     function _decreaseInternalBalance(

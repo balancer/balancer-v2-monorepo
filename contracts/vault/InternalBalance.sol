@@ -59,7 +59,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            _increaseInternalBalance(recipient, token, amount);
+            _increaseInternalBalance(recipient, token, amount, true);
             token.safeTransferFrom(sender, address(this), amount);
         }
     }
@@ -116,7 +116,8 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
 
             // We ignore the taxable amount here since the assets will stay in the Vault
             _decreaseInternalBalance(sender, token, amount, false);
-            _increaseInternalBalance(recipient, token, amount);
+            // We don't track cached values to reduce the taxable amount in transfers
+            _increaseInternalBalance(recipient, token, amount, false);
         }
     }
 
@@ -126,10 +127,11 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
+        uint256 amount,
+        bool track
     ) internal override {
         bytes32 currentInternalBalance = _getInternalBalance(account, token);
-        bytes32 newBalance = currentInternalBalance.increase(amount);
+        bytes32 newBalance = currentInternalBalance.increase(amount, track);
         _setInternalBalance(account, token, newBalance);
     }
 

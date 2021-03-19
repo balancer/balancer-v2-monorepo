@@ -46,18 +46,22 @@ library InternalBalanceAllocation {
     /**
      * @dev Increases an internal balance and handles its cached value if requested.
      */
-    function increase(bytes32 balance, uint256 amount) internal view returns (bytes32) {
+    function increase(
+        bytes32 balance,
+        uint256 amount,
+        bool track
+    ) internal view returns (bytes32) {
         uint256 newActual = actual(balance).add(amount);
-        uint256 newCached = 0;
-        uint256 newBlockNumber = 0;
+        uint256 newCached = cached(balance);
+        uint256 newBlockNumber = blockNumber(balance);
 
-        uint256 currentBlockNumber = blockNumber(balance);
-        if (currentBlockNumber == block.number) {
-            newCached = cached(balance).add(amount);
-            newBlockNumber = currentBlockNumber;
-        } else {
-            newCached = amount;
-            newBlockNumber = block.number;
+        if (track) {
+            if (newBlockNumber == block.number) {
+                newCached = newCached.add(amount);
+            } else {
+                newCached = amount;
+                newBlockNumber = block.number;
+            }
         }
 
         return toInternalBalance(newActual, newCached, newBlockNumber);
