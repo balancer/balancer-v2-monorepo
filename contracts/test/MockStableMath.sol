@@ -41,6 +41,56 @@ contract MockStableMath is StableMath {
         return _calcInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, tokenAmountOut);
     }
 
+    function exactTokensInForBPTOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256[] memory amountsIn,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) external pure returns (uint256) {
+        return _calcBptOutGivenExactTokensIn(amp, balances, amountsIn, bptTotalSupply, swapFee);
+    }
+
+    function tokenInForExactBPTOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndex,
+        uint256 bptAmountOut,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) external pure returns (uint256) {
+        return _calcTokenInGivenExactBptOut(amp, balances, tokenIndex, bptAmountOut, bptTotalSupply, swapFee);
+    }
+
+    function exactBPTInForTokenOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndex,
+        uint256 bptAmountIn,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) external pure returns (uint256) {
+        return _calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptAmountIn, bptTotalSupply, swapFee);
+    }
+
+    function exactBPTInForTokensOut(
+        uint256[] memory balances,
+        uint256 bptAmountIn,
+        uint256 bptTotalSupply
+    ) external pure returns (uint256[] memory) {
+        return _calcTokensOutGivenExactBptIn(currentBalances, bptAmountIn, bptTotalSupply);
+    }
+
+    function bptInForExactTokensOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256[] memory amountsOut,
+        uint256 bptTotalSupply,
+        uint256 swapFee
+    ) external pure returns (uint256) {
+        return _calcBptInGivenExactTokensOut(amp, balances, amountsOut, bptTotalSupply, swapFee);
+    }
+
     function calculateDueTokenProtocolSwapFee(
         uint256 amp,
         uint256[] memory balances,
