@@ -382,7 +382,7 @@ describe('Vault - internal balance', () => {
 
               context('when withdrawing more than the deposited amount', () => {
                 context('when the previous internal balance was enough', () => {
-                  const amountToWithdraw = depositedAmount.div(2);
+                  const amountToWithdraw = amountToDeposit.add(depositedAmount.div(2));
                   const expectedTaxableAmount = amountToWithdraw.sub(amountToDeposit);
                   const expectedWithdrawFees = pct(expectedTaxableAmount, WITHDRAW_FEE);
 
@@ -418,7 +418,7 @@ describe('Vault - internal balance', () => {
                 });
 
                 context('when the previous internal balance was not enough', () => {
-                  const amountToWithdraw = depositedAmount.add(amountToDeposit).add(1);
+                  const amountToWithdraw = amountToDeposit.add(depositedAmount).add(1);
 
                   it('reverts', async () => {
                     const tx = relayer.depositAndWithdraw(
@@ -456,7 +456,7 @@ describe('Vault - internal balance', () => {
 
               context('when withdrawing more than the deposited amount', () => {
                 context('when the previous internal balance was enough', () => {
-                  const amountsToWithdraw = amountsToDeposit.map(() => depositedAmount.div(4));
+                  const amountsToWithdraw = amountsToDeposit.map((amount) => amount.add(depositedAmount.div(4)));
                   const totalAmountToWithdraw = amountsToWithdraw.reduce((total, amount) => total.add(amount), bn(0));
                   const expectedTaxableAmount = totalAmountToWithdraw.sub(totalAmountToDeposit);
                   const expectedWithdrawFees = pct(expectedTaxableAmount, WITHDRAW_FEE);
@@ -493,7 +493,7 @@ describe('Vault - internal balance', () => {
                 });
 
                 context('when the previous internal balance was not enough', () => {
-                  const amountsToWithdraw = [depositedAmount.add(totalAmountToDeposit), 1];
+                  const amountsToWithdraw = [totalAmountToDeposit.add(depositedAmount), 1];
 
                   it('reverts', async () => {
                     const tx = relayer.depositAndWithdraw(
