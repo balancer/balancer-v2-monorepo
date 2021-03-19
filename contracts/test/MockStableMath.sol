@@ -78,7 +78,7 @@ contract MockStableMath is StableMath {
         uint256 bptAmountIn,
         uint256 bptTotalSupply
     ) external pure returns (uint256[] memory) {
-        return _calcTokensOutGivenExactBptIn(currentBalances, bptAmountIn, bptTotalSupply);
+        return _calcTokensOutGivenExactBptIn(balances, bptAmountIn, bptTotalSupply);
     }
 
     function bptInForExactTokensOut(
