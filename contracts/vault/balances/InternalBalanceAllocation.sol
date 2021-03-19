@@ -28,15 +28,15 @@ library InternalBalanceAllocation {
     }
 
     /**
-     * @dev Returns the cached amount of internal balance.
+     * @dev Returns the exempt amount of internal balance.
      */
-    function cached(bytes32 balance) internal pure returns (uint256) {
+    function exempt(bytes32 balance) internal pure returns (uint256) {
         uint256 mask = 2**(112) - 1;
         return uint256(balance >> 112) & mask;
     }
 
     /**
-     * @dev Returns the last block number when an internal balance was cached.
+     * @dev Returns the last block number when an internal balance exempt was cached.
      */
     function blockNumber(bytes32 balance) internal pure returns (uint256) {
         uint256 mask = 2**(32) - 1;
@@ -44,31 +44,37 @@ library InternalBalanceAllocation {
     }
 
     /**
-     * @dev Increases an internal balance and handles its cached value if requested.
+     * @dev Increases an internal balance. It can also track the internal balance exempt if requested.
+     * In case it is, it will compare the current block number with the last one cached to see if it should
+     * reset the exempt amount or increment it. The exempt amount will always be considered to compute
+     * the taxable amount when an internal balance is decreased
      */
     function increase(
         bytes32 balance,
         uint256 amount,
-        bool track
+        bool trackExempt
     ) internal view returns (bytes32) {
         uint256 newActual = actual(balance).add(amount);
-        uint256 newCached = cached(balance);
+        uint256 newExempt = exempt(balance);
         uint256 newBlockNumber = blockNumber(balance);
 
-        if (track) {
+        if (trackExempt) {
             if (newBlockNumber == block.number) {
-                newCached = newCached.add(amount);
+                newExempt = newExempt.add(amount);
             } else {
-                newCached = amount;
+                newExempt = amount;
                 newBlockNumber = block.number;
             }
         }
 
-        return toInternalBalance(newActual, newCached, newBlockNumber);
+        return toInternalBalance(newActual, newExempt, newBlockNumber);
     }
 
     /**
-     * @dev Decreases an internal balance and handles its cached value if requested.
+     * @dev Decreases an internal balance. In case `capped` was requested, it will be decreased as much as possible.
+     * @return newBalance the new balance obtained after decreasing it
+     * @return taxableAmount the amount that should be used to charge fees considering any existing exempts
+     * @return decreasedAmount the amount the was actually deducted from the internal balance
      */
     function decrease(
         bytes32 balance,
@@ -84,7 +90,7 @@ library InternalBalanceAllocation {
         )
     {
         uint256 currentActual = actual(balance);
-        require(capped || currentActual >= amount, "INSUFFICIENT_INTERNAL_BALANCE");
+        require(capped || (currentActual >= amount), "INSUFFICIENT_INTERNAL_BALANCE");
 
         // We know the decreased amount will be always the minimum between the actual value and the given amount.
         // If the given amount was greater than the actual value and it wasn't requested to be capped, then it
@@ -92,40 +98,36 @@ library InternalBalanceAllocation {
         uint256 decreased = Math.min(currentActual, amount);
         uint256 newActual = currentActual - decreased;
 
-        uint256 newCached = 0;
-        uint256 newBlockNumber = 0;
-        uint256 taxableAmount = amount;
-
         uint256 lastBlockNumber = blockNumber(balance);
         if (lastBlockNumber == block.number) {
-            // A user could be decreasing its internal balance by a number greater than its cached value.
+            // A user could be decreasing its internal balance by a number greater than its exempt value.
             // Then we should always do a sub capped to zero.
-            uint256 currentCached = cached(balance);
-            newCached = currentCached >= amount ? currentCached - amount : 0;
-            newBlockNumber = lastBlockNumber;
-            taxableAmount = currentCached >= amount ? 0 : amount - currentCached;
+            uint256 currentExempt = exempt(balance);
+            uint256 newExempt = currentExempt > amount ? currentExempt - amount : 0;
+            uint256 taxableAmount = currentExempt > amount ? 0 : amount - currentExempt;
+            bytes32 newBalance = toInternalBalance(newActual, newExempt, lastBlockNumber);
+            return (newBalance, taxableAmount, decreased);
+        } else {
+            // Note that we consider the case where the current block number doesn't match with the last one as a
+            // regular decrease. We cannot handle negative exempt values, it would be like "credit" for potential
+            // future ops in the same block.
+            bytes32 newBalance = toInternalBalance(newActual, 0, 0);
+            return (newBalance, amount, decreased);
         }
-
-        // Note that we consider the case where the current block number doesn't match with the last one as a
-        // regular decrease. We cannot handle negative cached values, it would be like "credit" for potential
-        // future ops in the same block.
-
-        bytes32 newBalance = toInternalBalance(newActual, newCached, newBlockNumber);
-        return (newBalance, taxableAmount, decreased);
     }
 
     /**
-     * @dev Packs together actual and cached amounts with a block number to create a balance value.
+     * @dev Packs together actual and exempt amounts with a block number to create a balance value.
      * Critically, this also checks both amounts can be packed together in the same slot.
      */
     function toInternalBalance(
         uint256 _actual,
-        uint256 _cached,
+        uint256 _exempt,
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
-        require(_actual < 2**112 && _cached < 2**112, "INTERNAL_BALANCE_OVERFLOW");
+        require(_actual < 2**112 && _exempt < 2**112, "INTERNAL_BALANCE_OVERFLOW");
         // We assume the block number will fits in an uint32 - this is expected to hold for at least a few decades.
-        return _pack(_actual, _cached, _blockNumber);
+        return _pack(_actual, _exempt, _blockNumber);
     }
 
     /**

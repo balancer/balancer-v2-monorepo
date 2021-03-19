@@ -323,7 +323,7 @@ abstract contract PoolRegistry is
             uint256 amountOut = amountsOut[i];
 
             // Send tokens from the recipient - possibly to Internal Balance
-            // We don't track cached internal balance to reduce the taxable amount in swaps
+            // Tokens deposited to Internal Balance are not later exempt from withdrawal fees.
             uint256 withdrawFee = _sendTokens(tokens[i], amountOut, recipient, toInternalBalance, false);
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
@@ -369,7 +369,8 @@ abstract contract PoolRegistry is
         uint256 toReceive = amount;
         if (fromInternalBalance) {
             (, uint256 decreasedAmount) = _decreaseInternalBalance(sender, token, amount, true);
-            // Note that we ignore the taxable amount here since these are assets being "transferred" to the Vault.
+            // Note that we ignore the taxable amount here since these are assets being "transferred" to the Vault,
+            // which means withdrawal fees do not apply.
             // Also, `decreasedAmount` will be always the minimum between the current internal balance and
             // the amount to decrease. Therefore, it will be always safe to avoid the arithmetic check.
             toReceive -= decreasedAmount;
@@ -393,14 +394,14 @@ abstract contract PoolRegistry is
         uint256 amount,
         address recipient,
         bool toInternalBalance,
-        bool trackCachedInternalBalance
+        bool trackInternalBalanceExempt
     ) internal returns (uint256) {
         if (amount == 0) {
             return 0;
         }
 
         if (toInternalBalance) {
-            _increaseInternalBalance(recipient, token, amount, trackCachedInternalBalance);
+            _increaseInternalBalance(recipient, token, amount, trackInternalBalanceExempt);
             return 0;
         } else {
             uint256 withdrawFee = _calculateProtocolWithdrawFeeAmount(amount);

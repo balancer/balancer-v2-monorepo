@@ -93,7 +93,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             if (taxableAmount > 0) {
                 uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(taxableAmount);
                 _increaseCollectedFees(token, feeAmount);
-                amountToTransfer = amount.sub(feeAmount);
+                amountToTransfer = amountToTransfer.sub(feeAmount);
             }
 
             token.safeTransfer(recipient, amountToTransfer);
@@ -114,9 +114,9 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            // We ignore the taxable amount here since the assets will stay in the Vault
+            // Transferring internal balance to another account is not charged withdrawal fees
             _decreaseInternalBalance(sender, token, amount, false);
-            // We don't track cached values to reduce the taxable amount in transfers
+            // Tokens transferred internally are not later exempt from withdrawal fees.
             _increaseInternalBalance(recipient, token, amount, false);
         }
     }
@@ -128,15 +128,21 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         address account,
         IERC20 token,
         uint256 amount,
-        bool track
+        bool trackExempt
     ) internal override {
         bytes32 currentInternalBalance = _getInternalBalance(account, token);
-        bytes32 newBalance = currentInternalBalance.increase(amount, track);
+        bytes32 newBalance = currentInternalBalance.increase(amount, trackExempt);
         _setInternalBalance(account, token, newBalance);
     }
 
     /**
      * @dev Decreases `account`'s Internal Balance for `token` by `amount`.
+     * When `capped` the internal balance will be decreased as much as possible without reverting.
+     * @return taxableAmount The amount that should be used to charge fees. Some functionalities in the Vault
+     * allows users to avoid fees when working with internal balance deltas in the same block. This is the case for
+     * deposits and withdrawals for example.
+     * @return decreasedAmount The amount that was actually decreased, note this might not be equal to `amount` in
+     * case it was `capped` and the internal balance was actually lower than it.
      */
     function _decreaseInternalBalance(
         address account,

@@ -110,7 +110,8 @@ abstract contract AssetTransfersHandler {
             IERC20 token = _asIERC20(asset);
 
             if (fromInternalBalance) {
-                // Note that we ignore the taxable amount here since these are assets being "transferred" to the Vault.
+                // Note that we ignore the taxable amount here since these are assets being "transferred" to the Vault,
+                // which means withdrawal fees do not apply.
                 // Also, `decreasedAmount` will be always the minimum between the current internal balance and
                 // the amount to decrease. Therefore, it will be always safe to avoid the arithmetic check.
                 (, uint256 receivedFromInternalBalance) = _decreaseInternalBalance(sender, token, amount, true);

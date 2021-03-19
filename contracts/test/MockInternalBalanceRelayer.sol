@@ -38,7 +38,7 @@ contract MockInternalBalanceRelayer {
         }
     }
 
-    function _buildBalanceTransfer(address sender, IERC20 token, uint256 amount) internal returns (IVault.BalanceTransfer[] memory transfers) {
+    function _buildBalanceTransfer(address sender, IERC20 token, uint256 amount) internal pure returns (IVault.BalanceTransfer[] memory transfers) {
         transfers = new IVault.BalanceTransfer[](1);
         transfers[0] = IVault.BalanceTransfer({
             token: token,

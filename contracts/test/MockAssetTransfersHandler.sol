@@ -17,11 +17,13 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
+import "../lib/math/Math.sol";
 import "../lib/math/FixedPoint.sol";
 
 import "../vault/AssetTransfersHandler.sol";
 
 contract MockAssetTransfersHandler is AssetTransfersHandler {
+    using Math for uint256;
     using SafeERC20 for IERC20;
 
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
@@ -65,7 +67,7 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         address account,
         IERC20 token,
         uint256 amount,
-        bool track
+        bool
     ) internal override {
         _internalTokenBalance[account][token] += amount;
     }
@@ -78,7 +80,9 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
     ) internal override returns (uint256, uint256) {
         uint256 currentBalance = _internalTokenBalance[account][token];
         uint256 toDeduct = capped ? Math.min(currentBalance, amount) : amount;
-        _internalTokenBalance[account][token] -= toDeduct;
+        _internalTokenBalance[account][token] = currentBalance.sub(toDeduct);
+
+        // For this mock scenario, we consider always the amount to be fully taxable
         return (toDeduct, toDeduct);
     }
 
