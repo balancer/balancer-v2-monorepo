@@ -80,7 +80,7 @@ describe('BalancerHelpers', function () {
     sharedBeforeEach('estimate expected amounts out', async () => {
       bptIn = (await pool.totalSupply()).div(2);
       expectedAmountsOut = initialBalances.map((balance) => balance.div(2));
-      data = encodeExitWeightedPool({ kind: 'ExactBPTInForAllTokensOut', bptAmountIn: bptIn });
+      data = encodeExitWeightedPool({ kind: 'ExactBPTInForTokensOut', bptAmountIn: bptIn });
     });
 
     it('bubbles up revert reasons', async () => {
