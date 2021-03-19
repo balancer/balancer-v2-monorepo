@@ -17,6 +17,8 @@
     "deploy:docker": "hardhat --network dockerParity deploy",
     "deploy:rinkeby": "hardhat --network rinkeby deploy",
     "deploy:kovan": "hardhat --network kovan deploy",
+    "deploy:ropsten": "hardhat --network ropsten deploy",
+    "deploy:goerli": "hardhat --network goerli deploy",
     "node:hardhat": "hardhat node",
     "seed:local": "hardhat --network localhost seed",
     "seed:docker": "hardhat --network dockerParity seed",
