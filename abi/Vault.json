@@ -474,8 +474,8 @@
       {
         "components": [
           {
-            "internalType": "contract IERC20",
-            "name": "token",
+            "internalType": "contract IAsset",
+            "name": "asset",
             "type": "address"
           },
           {
@@ -489,19 +489,19 @@
             "type": "address"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           }
         ],
-        "internalType": "struct IVault.BalanceTransfer[]",
+        "internalType": "struct IVault.AssetBalanceTransfer[]",
         "name": "transfers",
         "type": "tuple[]"
       }
     ],
     "name": "depositToInternalBalance",
     "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -1084,12 +1084,12 @@
             "type": "address"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           }
         ],
-        "internalType": "struct IVault.BalanceTransfer[]",
+        "internalType": "struct IVault.TokenBalanceTransfer[]",
         "name": "transfers",
         "type": "tuple[]"
       }
@@ -1119,12 +1119,12 @@
             "type": "address"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           }
         ],
-        "internalType": "struct IVault.BalanceTransfer[]",
+        "internalType": "struct IVault.TokenBalanceTransfer[]",
         "name": "transfers",
         "type": "tuple[]"
       }
@@ -1192,8 +1192,8 @@
       {
         "components": [
           {
-            "internalType": "contract IERC20",
-            "name": "token",
+            "internalType": "contract IAsset",
+            "name": "asset",
             "type": "address"
           },
           {
@@ -1207,12 +1207,12 @@
             "type": "address"
           },
           {
-            "internalType": "address",
+            "internalType": "address payable",
             "name": "recipient",
             "type": "address"
           }
         ],
-        "internalType": "struct IVault.BalanceTransfer[]",
+        "internalType": "struct IVault.AssetBalanceTransfer[]",
         "name": "transfers",
         "type": "tuple[]"
       }

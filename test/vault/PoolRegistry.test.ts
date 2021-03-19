@@ -23,10 +23,10 @@ describe('Vault - pool registry', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
-    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+    const weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
+    vault = await deploy('Vault', { args: [authorizer.address, weth.address, 0, 0] });
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
     await allTokens.mint({ to: lp, amount: 50000 });

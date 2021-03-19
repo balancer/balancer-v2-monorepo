@@ -86,17 +86,24 @@ interface IVault {
     // the same kind (deposit, withdraw or transfer) at once.
 
     /**
-     * @dev Data for internal balance transfers - encompassing deposits, withdrawals, and transfers between accounts.
-     *
-     * This gives aggregators maximum flexibility, and makes it possible for an asset manager to manage multiple tokens
-     * and pools with less gas and fewer calls to the vault.
+     * @dev Data for Internal Balance deposits and withdrawals, which include the possibility for ETH to be sent and
+     * received without manual WETH wrapping or unwrapping.
      */
+    struct AssetBalanceTransfer {
+        IAsset asset;
+        uint256 amount;
+        address sender;
+        address payable recipient;
+    }
 
-    struct BalanceTransfer {
+    /**
+     * @dev Data for Internal Balance transfers, which are limited to ERC20 tokens.
+     */
+    struct TokenBalanceTransfer {
         IERC20 token;
         uint256 amount;
         address sender;
-        address recipient;
+        address payable recipient;
     }
 
     /**
@@ -105,42 +112,55 @@ interface IVault {
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits tokens from each `sender` address into Internal Balances of the corresponding `recipient`
-     * accounts specified in the struct. The sources must have allowed the Vault to use their tokens
-     * via `IERC20.approve()`.
-     * Allows aggregators to settle multiple accounts in a single transaction.
+     * @dev Deposits `amount` assets from each `sender` address into Internal Balances of the corresponding `recipient`
+     * accounts. The senders must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     *
+     * If any of the senders doesn't match the contract caller, then it must be a relayer for them.
+     *
+     * ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call. It will be
+     * wrapped into WETH and deposited as that token. Any ETH amount remaining will be sent back to the caller.
+     *
+     * Reverts if ETH was forwarded but not used in any transfer.
      */
-    function depositToInternalBalance(BalanceTransfer[] memory transfers) external;
+    function depositToInternalBalance(AssetBalanceTransfer[] memory transfers) external payable;
 
     /**
-     * @dev Transfers tokens from each `sender` address to the corresponding `recipient` accounts specified
-     * in the struct, making use of the Vault's allowance (like an internal balance deposit, but without recording it,
-     * since it is really just transferred directly between the sender and receiver). The sources must have allowed
-     * the Vault to use their tokens via `IERC20.approve()`.
-     * This will allow relayers to leverage the allowance given to the vault by each sender, to transfer tokens to
-     * external accounts
-     */
-    function transferToExternalBalance(BalanceTransfer[] memory transfers) external;
-
-    /**
-     * @dev Withdraws tokens from each the internal balance of each `sender` address into the `recipient` accounts
-     * specified in the struct. Allows aggregators to settle multiple accounts in a single transaction.
+     * @dev Withdraws `amount` assets from each `sender` address' Internal Balance to the corresponding `recipient`
+     * accounts. The senders must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     *
+     * If any of the senders doesn't match the contract caller, then it must be a relayer for them.
+     *
+     * ETH can be used by passing the ETH sentinel value as the asset. This will deduct WETH instead, unwrap it and send
+     * it to the recipient.
      *
      * This charges protocol withdrawal fees.
      */
-    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external;
+    function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external;
 
     /**
-     * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances
-     * of each `recipient`. Allows aggregators to settle multiple accounts in a single transaction.
+     * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances of each
+     * `recipient`.
      *
      * This does not charge protocol withdrawal fees.
      */
-    function transferInternalBalance(BalanceTransfer[] memory transfers) external;
+    function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external;
+
+    /**
+     * @dev Transfers tokens from each `sender` address to the corresponding `recipient` accounts, making use of the
+     * Vault's allowance. This action is equivalent to an Internal Balance deposit followed immediately by a withdrawal,
+     * except withdraw fees are not charged.
+     *
+     * Typically, this function will only be called by relayers, letting them leverage the allowance users have already
+     * given to the Vault.
+     */
+    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Emitted when a user's Internal Balance changes, either due to calls to the Internal Balance functions, or
      * due to interacting with Pools using Internal Balance.
+     *
+     * Because Internal Balance works exclusively with ERC20 tokens, ETH deposits and withdrawals will be reflected here
+     * as having used WETH.
      */
     event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 balance);
 

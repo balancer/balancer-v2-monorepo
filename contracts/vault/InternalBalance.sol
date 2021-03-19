@@ -19,6 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./Fees.sol";
@@ -45,62 +46,68 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         }
     }
 
-    function depositToInternalBalance(BalanceTransfer[] memory transfers)
+    function depositToInternalBalance(AssetBalanceTransfer[] memory transfers)
         external
+        payable
         override
         nonReentrant
         noEmergencyPeriod
     {
+        uint256 totalWrappedETH = 0;
+        bool wrappedETH = false;
+
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
-            IERC20 token = transfers[i].token;
+            IAsset asset = transfers[i].asset;
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            _increaseInternalBalance(recipient, token, amount, true);
-            token.safeTransferFrom(sender, address(this), amount);
+            _increaseInternalBalance(recipient, _translateToIERC20(asset), amount, true);
+
+            // _receiveAsset does not check if the caller sent enough ETH, so we keep track of it independently (as
+            // multiple deposits may have all deposited ETH).
+            _receiveAsset(asset, amount, sender, false);
+            if (_isETH(asset)) {
+                wrappedETH = true;
+                totalWrappedETH = totalWrappedETH.add(amount);
+            }
         }
+
+        // We prevent user error by reverting if ETH was sent but not allocated to any deposit.
+        if (msg.value > 0) {
+            require(wrappedETH, "UNALLOCATED_ETH");
+        }
+
+        // By returning the excess ETH, we also check that at least totalWrappedETH has been received.
+        _returnExcessEthToCaller(totalWrappedETH);
     }
 
-    function transferToExternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
+    function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override nonReentrant {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
 
-            IERC20 token = transfers[i].token;
+            IAsset asset = transfers[i].asset;
             uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
+            address payable recipient = transfers[i].recipient;
+            IERC20 token = _translateToIERC20(asset);
 
-            // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
-            token.safeTransferFrom(sender, recipient, amount);
-        }
-    }
-
-    function withdrawFromInternalBalance(BalanceTransfer[] memory transfers) external override nonReentrant {
-        for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
-
-            IERC20 token = transfers[i].token;
-            uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
-
-            uint256 amountToTransfer = amount;
+            uint256 amountToSend = amount;
             (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false);
 
             if (taxableAmount > 0) {
                 uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(taxableAmount);
                 _increaseCollectedFees(token, feeAmount);
-                amountToTransfer = amountToTransfer.sub(feeAmount);
+                amountToSend = amountToSend.sub(feeAmount);
             }
 
-            token.safeTransfer(recipient, amountToTransfer);
+            _sendAsset(asset, amountToSend, recipient, false);
         }
     }
 
-    function transferInternalBalance(BalanceTransfer[] memory transfers)
+    function transferInternalBalance(TokenBalanceTransfer[] memory transfers)
         external
         override
         nonReentrant
@@ -118,6 +125,20 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             _decreaseInternalBalance(sender, token, amount, false);
             // Tokens transferred internally are not later exempt from withdrawal fees.
             _increaseInternalBalance(recipient, token, amount, false);
+        }
+    }
+
+    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external override nonReentrant {
+        for (uint256 i = 0; i < transfers.length; i++) {
+            address sender = transfers[i].sender;
+            _authenticateCallerFor(sender);
+
+            IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
+            address recipient = transfers[i].recipient;
+
+            // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
+            token.safeTransferFrom(sender, recipient, amount);
         }
     }
 
