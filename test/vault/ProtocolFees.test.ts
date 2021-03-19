@@ -33,7 +33,7 @@ describe('Vault - protocol fees', () => {
     const SET_PROTOCOL_FEES_ROLE = roleId(vault, 'setProtocolFees');
     await authorizer.connect(admin).grantRole(SET_PROTOCOL_FEES_ROLE, feeSetter.address);
 
-    tokens = await TokenList.create(['DAI', 'MKR']);
+    tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
     await tokens.mint({ to: user, amount: bn(100e18) });
     await tokens.approve({ to: vault, from: user });
   });
@@ -102,14 +102,14 @@ describe('Vault - protocol fees', () => {
         await vault.connect(feeSetter).setProtocolFees(0, bn(0.5e16), 0);
 
         await vault.connect(user).depositToInternalBalance([
-          { token: tokens.DAI.address, amount: bn(20e18), sender: user.address, recipient: user.address },
-          { token: tokens.MKR.address, amount: bn(20e18), sender: user.address, recipient: user.address },
+          { asset: tokens.DAI.address, amount: bn(20e18), sender: user.address, recipient: user.address },
+          { asset: tokens.MKR.address, amount: bn(20e18), sender: user.address, recipient: user.address },
         ]);
 
         // Withdraw internal balance - this will cause withdraw fees to be charged
         await vault.connect(user).withdrawFromInternalBalance([
-          { token: tokens.DAI.address, amount: bn(5e18), sender: user.address, recipient: user.address },
-          { token: tokens.MKR.address, amount: bn(10e18), sender: user.address, recipient: user.address },
+          { asset: tokens.DAI.address, amount: bn(5e18), sender: user.address, recipient: user.address },
+          { asset: tokens.MKR.address, amount: bn(10e18), sender: user.address, recipient: user.address },
         ]);
       });
 

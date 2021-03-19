@@ -279,7 +279,7 @@ describe('Vault - join pool', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).depositToInternalBalance(
               tokens.map((token) => ({
-                token: token.address,
+                asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
                 recipient: lp.address,
@@ -302,7 +302,7 @@ describe('Vault - join pool', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).depositToInternalBalance(
               tokens.map((token) => ({
-                token: token.address,
+                asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
                 recipient: lp.address,
@@ -317,7 +317,7 @@ describe('Vault - join pool', () => {
           beforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).depositToInternalBalance(
               tokens.map((token) => ({
-                token: token.address,
+                asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
                 recipient: lp.address,

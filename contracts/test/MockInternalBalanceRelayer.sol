@@ -27,24 +27,28 @@ contract MockInternalBalanceRelayer {
         vault = _vault;
     }
 
-    function depositAndWithdraw(address sender, IERC20 token, uint256[] memory depositAmounts, uint256[] memory withdrawAmounts) public {
+    function depositAndWithdraw(
+        address payable sender,
+        IAsset asset,
+        uint256[] memory depositAmounts,
+        uint256[] memory withdrawAmounts
+    ) public {
         InputHelpers.ensureInputLengthMatch(depositAmounts.length, withdrawAmounts.length);
         for (uint256 i = 0; i < depositAmounts.length; i++) {
-            IVault.BalanceTransfer[] memory deposit = _buildBalanceTransfer(sender, token, depositAmounts[i]);
+            IVault.AssetBalanceTransfer[] memory deposit = _buildBalanceTransfer(sender, asset, depositAmounts[i]);
             vault.depositToInternalBalance(deposit);
 
-            IVault.BalanceTransfer[] memory withdraw = _buildBalanceTransfer(sender, token, withdrawAmounts[i]);
+            IVault.AssetBalanceTransfer[] memory withdraw = _buildBalanceTransfer(sender, asset, withdrawAmounts[i]);
             vault.withdrawFromInternalBalance(withdraw);
         }
     }
 
-    function _buildBalanceTransfer(address sender, IERC20 token, uint256 amount) internal pure returns (IVault.BalanceTransfer[] memory transfers) {
-        transfers = new IVault.BalanceTransfer[](1);
-        transfers[0] = IVault.BalanceTransfer({
-            token: token,
-            amount: amount,
-            sender: sender,
-            recipient: sender
-        });
+    function _buildBalanceTransfer(
+        address payable sender,
+        IAsset asset,
+        uint256 amount
+    ) internal pure returns (IVault.AssetBalanceTransfer[] memory transfers) {
+        transfers = new IVault.AssetBalanceTransfer[](1);
+        transfers[0] = IVault.AssetBalanceTransfer({ asset: asset, amount: amount, sender: sender, recipient: sender });
     }
 }

@@ -271,13 +271,13 @@ describe('Vault - swaps', () => {
                           sharedBeforeEach('deposit to internal balance', async () => {
                             await vault.connect(trader).depositToInternalBalance([
                               {
-                                token: tokens.MKR.address,
+                                asset: tokens.DAI.address,
                                 amount: bn(1e18),
                                 sender: trader.address,
                                 recipient: trader.address,
                               },
                               {
-                                token: tokens.DAI.address,
+                                asset: tokens.MKR.address,
                                 amount: bn(1e18),
                                 sender: trader.address,
                                 recipient: trader.address,
@@ -292,7 +292,7 @@ describe('Vault - swaps', () => {
                           sharedBeforeEach('deposit to internal balance', async () => {
                             await vault.connect(trader).depositToInternalBalance([
                               {
-                                token: tokens.MKR.address,
+                                asset: tokens.MKR.address,
                                 amount: bn(0.3e18),
                                 sender: trader.address,
                                 recipient: trader.address,
@@ -705,14 +705,14 @@ describe('Vault - swaps', () => {
                           sharedBeforeEach('deposit to internal balance', async () => {
                             await vault.connect(trader).depositToInternalBalance([
                               {
-                                token: tokens.MKR.address,
-                                amount: bn(0.5e18),
+                                asset: tokens.DAI.address,
+                                amount: bn(1e18),
                                 sender: trader.address,
                                 recipient: trader.address,
                               },
                               {
-                                token: tokens.DAI.address,
-                                amount: bn(1e18),
+                                asset: tokens.MKR.address,
+                                amount: bn(0.5e18),
                                 sender: trader.address,
                                 recipient: trader.address,
                               },
@@ -726,7 +726,7 @@ describe('Vault - swaps', () => {
                           sharedBeforeEach('deposit to internal balance', async () => {
                             await vault.connect(trader).depositToInternalBalance([
                               {
-                                token: tokens.MKR.address,
+                                asset: tokens.MKR.address,
                                 amount: bn(0.3e18),
                                 sender: trader.address,
                                 recipient: trader.address,

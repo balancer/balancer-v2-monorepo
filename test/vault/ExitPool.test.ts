@@ -101,7 +101,7 @@ describe('Vault - exit pool', () => {
       // might fail not because the Vault checks its accounting, but because it is out of tokens to send.
       await vault.connect(creator).depositToInternalBalance(
         tokens.map((token) => ({
-          token: token.address,
+          asset: token.address,
           amount: bn(50e18),
           sender: creator.address,
           recipient: creator.address,
@@ -314,7 +314,7 @@ describe('Vault - exit pool', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(recipient).depositToInternalBalance(
               tokens.map((token) => ({
-                token: token.address,
+                asset: token.address,
                 amount: bn(1.5e18),
                 sender: recipient.address,
                 recipient: recipient.address,
@@ -337,7 +337,7 @@ describe('Vault - exit pool', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(recipient).depositToInternalBalance(
               tokens.map((token) => ({
-                token: token.address,
+                asset: token.address,
                 amount: bn(1.5e18),
                 sender: recipient.address,
                 recipient: recipient.address,
