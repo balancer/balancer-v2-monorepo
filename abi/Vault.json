@@ -565,13 +565,13 @@
         "type": "address"
       },
       {
-        "internalType": "address",
+        "internalType": "address payable",
         "name": "recipient",
         "type": "address"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
+        "internalType": "contract IAsset[]",
+        "name": "assets",
         "type": "address[]"
       },
       {
@@ -878,8 +878,8 @@
         "type": "address"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
+        "internalType": "contract IAsset[]",
+        "name": "assets",
         "type": "address[]"
       },
       {
@@ -900,7 +900,7 @@
     ],
     "name": "joinPool",
     "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "payable",
     "type": "function"
   },
   {
