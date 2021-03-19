@@ -285,7 +285,7 @@ contract WeightedMath {
         uint256 totalBPT
     ) internal pure returns (uint256[] memory) {
         /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                 //
+        // exactBPTInForTokensOut                                                                    //
         // (per token)                                                                               //
         // aO = tokenAmountOut             /        bptIn         \                                  //
         // b = tokenBalance      a0 = b * | ---------------------  |                                 //
