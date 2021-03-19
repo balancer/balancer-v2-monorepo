@@ -623,6 +623,13 @@ describe('StablePool', function () {
 
           expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
         });
+
+        it('does not charges fee on exit if the emergency period is active', async () => {
+          await pool.activateEmergencyPeriod();
+
+          const exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(0.5), protocolFeePercentage });
+          expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
+        });
       });
     });
   }
