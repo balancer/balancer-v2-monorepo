@@ -4,12 +4,11 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { BigNumberish, bn, fp, pct } from '../../../lib/helpers/numbers';
-import { GeneralPool, TwoTokenPool } from '../../../lib/helpers/pools';
+import { GeneralPool } from '../../../lib/helpers/pools';
 
 import TokenList from '../../helpers/models/tokens/TokenList';
 import StablePool from '../../helpers/models/pools/stable/StablePool';
 import { RawStablePoolDeployment } from '../../helpers/models/pools/stable/types';
-import { toString } from 'lodash';
 
 describe('StablePool', function () {
   let allTokens: TokenList;
@@ -80,6 +79,12 @@ describe('StablePool', function () {
 
         it('sets the vault', async () => {
           expect(await pool.getVault()).to.equal(pool.vault.address);
+        });
+
+        it('uses general specialization', async () => {
+          const { address, specialization } = await pool.getRegisteredInfo();
+          expect(address).to.equal(pool.address);
+          expect(specialization).to.equal(GeneralPool);
         });
 
         //TODO: implement two token pool for stable?
@@ -478,7 +483,7 @@ describe('StablePool', function () {
       });
     });
 
-    describe.only('swaps', () => {
+    describe('swaps', () => {
       sharedBeforeEach('deploy and join pool', async () => {
         await deployPool();
         await pool.init({ initialBalances });
@@ -492,15 +497,16 @@ describe('StablePool', function () {
 
           const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
-          expect(result).to.be.equalWithError(expectedAmountOut, 0.01);
+          //TODO: review small relative error
+          expect(result).to.be.equalWithError(expectedAmountOut, 0.1);
         });
 
-        it('reverts if token in is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+        it('reverts if invalid token in', async () => {
+          await expect(pool.swapGivenIn({ in: 10, out: 0, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
         });
 
-        it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+        it('reverts if invalid token out', async () => {
+          await expect(pool.swapGivenIn({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
         });
 
         it('fails if the emergency period is active', async () => {
@@ -520,18 +526,105 @@ describe('StablePool', function () {
           expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
         });
 
-        it('reverts if token in is not in the pool when given out', async () => {
-          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+        it('reverts if invalid token in', async () => {
+          await expect(pool.swapGivenOut({ in: 10, out: 0, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
         });
 
-        it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+        it('reverts if invalid token out', async () => {
+          await expect(pool.swapGivenOut({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
         });
 
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
           await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+        });
+      });
+    });
+
+    describe('protocol swap fees', () => {
+      const protocolFeePercentage = fp(0.1); // 10 %
+
+      sharedBeforeEach('deploy and join pool', async () => {
+        await deployPool();
+        await pool.init({ initialBalances, from: lp, protocolFeePercentage });
+      });
+
+      context('without balance changes', () => {
+        it('joins and exits do not accumulate fees', async () => {
+          let joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(100), protocolFeePercentage });
+          expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          joinResult = await pool.joinGivenOut({ from: lp, bptOut: fp(1), token: 0, protocolFeePercentage });
+          expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          let exitResult = await pool.singleExitGivenIn({ from: lp, bptIn: fp(10), token: 0, protocolFeePercentage });
+          expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(10), protocolFeePercentage });
+          expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(10), protocolFeePercentage });
+          expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
+
+          exitResult = await pool.exitGivenOut({ from: lp, amountsOut: fp(10), protocolFeePercentage });
+          expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
+        });
+      });
+
+      context('with previous swap', () => {
+        let currentBalances: BigNumber[], expectedDueProtocolFeeAmounts: BigNumber[];
+
+        sharedBeforeEach('simulate doubled initial balances ', async () => {
+          // 4/3 of the initial balances
+          currentBalances = initialBalances.map((balance) => balance.mul(4).div(3));
+        });
+
+        sharedBeforeEach('compute expected due protocol fees', async () => {
+          const maxBalance = currentBalances.reduce((max, balance) => (balance.gt(max) ? balance : max), bn(0));
+          const paidTokenIndex = currentBalances.indexOf(maxBalance);
+          const protocolFeeAmount = await pool.estimateSwapFee(paidTokenIndex, protocolFeePercentage, currentBalances);
+          expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? protocolFeeAmount : n));
+        });
+
+        it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
+          const result = await pool.joinGivenIn({ from: lp, amountsIn: fp(1), currentBalances, protocolFeePercentage });
+
+          expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        });
+
+        it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
+          const result = await pool.singleExitGivenIn({
+            from: lp,
+            bptIn: fp(0.5),
+            token: 0,
+            currentBalances,
+            protocolFeePercentage,
+          });
+
+          expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        });
+
+        it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
+          const result = await pool.multiExitGivenIn({
+            from: lp,
+            bptIn: fp(1),
+            currentBalances,
+            protocolFeePercentage,
+          });
+
+          expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        });
+
+        it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
+          const result = await pool.exitGivenOut({
+            from: lp,
+            amountsOut: fp(1),
+            currentBalances,
+            protocolFeePercentage,
+          });
+
+          expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
         });
       });
     });

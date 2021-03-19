@@ -490,7 +490,7 @@ export default class WeightedPool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({
-        kind: 'ExactBPTInForAllTokensOut',
+        kind: 'ExactBPTInForTokensOut',
         bptAmountIn: params.bptIn,
       }),
     };

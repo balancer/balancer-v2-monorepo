@@ -35,7 +35,7 @@ contract StableMath {
     // The amplification parameter equals to: A n^(n-1)
     function _calculateInvariant(uint256 amplificationParameter, uint256[] memory balances)
         internal
-        view
+        pure
         returns (uint256)
     {
         /**********************************************************************************************
@@ -92,7 +92,7 @@ contract StableMath {
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenAmountIn
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         /**************************************************************************************************************
         // outGivenIn token x for y - polynomial equation to solve                                                   //
         // ay = amount out to calculate                                                                              //
@@ -132,7 +132,7 @@ contract StableMath {
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenAmountOut
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         /**************************************************************************************************************
         // inGivenOut token x for y - polynomial equation to solve                                                   //
         // ax = amount in to calculate                                                                               //
@@ -183,7 +183,7 @@ contract StableMath {
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         // BPT out, so we round down overall.
 
         // Get current invariant
@@ -249,7 +249,7 @@ contract StableMath {
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         // Token in, so we round up overall.
 
         // Get current invariant
@@ -294,7 +294,7 @@ contract StableMath {
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         // BPT in, so we round up overall.
 
         // Get current invariant
@@ -357,7 +357,7 @@ contract StableMath {
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         // Get current invariant
         uint256 currentInvariant = _calculateInvariant(amp, balances);
         // Calculate new invariant
@@ -392,7 +392,7 @@ contract StableMath {
         uint256[] memory balances,
         uint256 bptAmountIn,
         uint256 bptTotalSupply
-    ) internal view returns (uint256[] memory) {
+    ) internal pure returns (uint256[] memory) {
         /**********************************************************************************************
         // exactBPTInForTokensOut                                                                 //
         // (per token)                                                                               //
@@ -420,7 +420,7 @@ contract StableMath {
         uint256 lastInvariant,
         uint256 tokenIndex,
         uint256 protocolSwapFeePercentage
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         /**************************************************************************************************************
         // oneTokenSwapFee - polynomial equation to solve                                                            //
         // af = fee amount to calculate in one token                                                                 //
@@ -458,7 +458,7 @@ contract StableMath {
         uint256[] memory balances,
         uint256 invariant,
         uint256 tokenIndex
-    ) private view returns (uint256) {
+    ) private pure returns (uint256) {
         //Rounds result up overall
 
         uint256 ampTimesTotal = Math.mul(amplificationParameter, balances.length);

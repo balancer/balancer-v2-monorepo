@@ -319,7 +319,16 @@ export function calcTokenOutGivenExactBptIn(
   return fp(amountOutBeforeFee.mul(new Decimal(1).sub(swapFeeExcess)));
 }
 
-//TODO: _calcTokensOutGivenExactBptIn
+export function calcTokensOutGivenExactBptIn(
+  fpBalances: BigNumberish[],
+  fpBptAmountIn: BigNumberish,
+  fpBptTotalSupply: BigNumberish
+): BigNumber[] {
+  const balances = fpBalances.map(fromFp);
+  const bptRatio = fromFp(fpBptAmountIn).div(fromFp(fpBptTotalSupply));
+  const amountsOut = balances.map((balance) => balance.mul(bptRatio));
+  return amountsOut.map(fp);
+}
 
 export function calculateOneTokenSwapFee(
   fpBalances: BigNumberish[],

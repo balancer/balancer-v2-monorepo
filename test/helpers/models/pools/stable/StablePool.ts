@@ -220,14 +220,15 @@ export default class StablePool {
         poolId: this.poolId,
         from: params.from ?? ZERO_ADDRESS,
         to: params.recipient ?? ZERO_ADDRESS,
-        tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
-        tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
+        tokenIn: params.in < this.tokens.length ? this.tokens.get(params.in)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
+        tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
         latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
         userData: params.data ?? '0x',
         amountIn: params.amount,
       },
-      currentBalances[tokenIn] || bn(0),
-      currentBalances[tokenOut] || bn(0)
+      currentBalances,
+      tokenIn,
+      tokenOut
     );
   }
 
@@ -240,14 +241,15 @@ export default class StablePool {
         poolId: this.poolId,
         from: params.from ?? ZERO_ADDRESS,
         to: params.recipient ?? ZERO_ADDRESS,
-        tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
-        tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
+        tokenIn: params.in < this.tokens.length ? this.tokens.get(params.in)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
+        tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
         latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
         userData: params.data ?? '0x',
         amountOut: params.amount,
       },
-      currentBalances[tokenIn] || bn(0),
-      currentBalances[tokenOut] || bn(0)
+      currentBalances,
+      tokenIn,
+      tokenOut
     );
   }
 
@@ -445,7 +447,7 @@ export default class StablePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitStablePool({
-        kind: 'ExactBPTInForAllTokensOut',
+        kind: 'ExactBPTInForTokensOut',
         bptAmountIn: params.bptIn,
       }),
     };

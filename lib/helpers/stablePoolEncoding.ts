@@ -45,7 +45,7 @@ export function encodeJoinStablePool(
 }
 
 const EXIT_STABLE_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT_TAG = 0;
-const EXIT_STABLE_POOL_EXACT_BPT_IN_FOR_ALL_TOKENS_OUT_TAG = 1;
+const EXIT_STABLE_POOL_EXACT_BPT_IN_FOR_TOKENS_OUT_TAG = 1;
 const EXIT_STABLE_POOL_BPT_IN_FOR_EXACT_TOKENS_OUT_TAG = 2;
 
 export type ExitStablePoolExactBPTInForOneTokenOut = {
@@ -54,8 +54,8 @@ export type ExitStablePoolExactBPTInForOneTokenOut = {
   exitTokenIndex: number;
 };
 
-export type ExitStablePoolExactBPTInForAllTokensOut = {
-  kind: 'ExactBPTInForAllTokensOut';
+export type ExitStablePoolExactBPTInForTokensOut = {
+  kind: 'ExactBPTInForTokensOut';
   bptAmountIn: BigNumberish;
 };
 
@@ -68,7 +68,7 @@ export type ExitStablePoolBPTInForExactTokensOut = {
 export function encodeExitStablePool(
   exitData:
     | ExitStablePoolExactBPTInForOneTokenOut
-    | ExitStablePoolExactBPTInForAllTokensOut
+    | ExitStablePoolExactBPTInForTokensOut
     | ExitStablePoolBPTInForExactTokensOut
 ): string {
   if (exitData.kind == 'ExactBPTInForOneTokenOut') {
@@ -76,10 +76,10 @@ export function encodeExitStablePool(
       ['uint256', 'uint256', 'uint256'],
       [EXIT_STABLE_POOL_EXACT_BPT_IN_FOR_ONE_TOKEN_OUT_TAG, exitData.bptAmountIn, exitData.exitTokenIndex]
     );
-  } else if (exitData.kind == 'ExactBPTInForAllTokensOut') {
+  } else if (exitData.kind == 'ExactBPTInForTokensOut') {
     return ethers.utils.defaultAbiCoder.encode(
       ['uint256', 'uint256'],
-      [EXIT_STABLE_POOL_EXACT_BPT_IN_FOR_ALL_TOKENS_OUT_TAG, exitData.bptAmountIn]
+      [EXIT_STABLE_POOL_EXACT_BPT_IN_FOR_TOKENS_OUT_TAG, exitData.bptAmountIn]
     );
   } else {
     return ethers.utils.defaultAbiCoder.encode(
