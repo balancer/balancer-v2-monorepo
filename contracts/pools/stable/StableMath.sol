@@ -392,20 +392,22 @@ contract StableMath {
         uint256 bptTotalSupply
     ) internal pure returns (uint256[] memory) {
         /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                 //
+        // exactBPTInForTokensOut                                                                    //
         // (per token)                                                                               //
         // aO = tokenAmountOut             /        bptIn         \                                  //
         // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \       bptTotalSupply       /                                  //
-        // bpt = bptTotalSupply                                                                            //
+        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
+        // bpt = bptTotalSupply                                                                      //
         **********************************************************************************************/
 
         // Since we're computing an amount out, we round down overall. This means rounding down on both the
         // multiplication and division.
 
+        uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
+
         uint256[] memory amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mulDown(bptAmountIn).divDown(bptTotalSupply);
+            amountsOut[i] = balances[i].mulDown(bptRatio);
         }
 
         return amountsOut;
