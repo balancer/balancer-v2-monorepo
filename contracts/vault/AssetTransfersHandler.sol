@@ -110,7 +110,11 @@ abstract contract AssetTransfersHandler {
             IERC20 token = _asIERC20(asset);
 
             if (fromInternalBalance) {
-                uint256 receivedFromInternalBalance = _decreaseRemainingInternalBalance(sender, token, amount);
+                // Note that we ignore the taxable amount here since these are assets being "transferred" to the Vault,
+                // which means withdrawal fees do not apply.
+                // Also, `decreasedAmount` will be always the minimum between the current internal balance and
+                // the amount to decrease. Therefore, it will be always safe to avoid the arithmetic check.
+                (, uint256 receivedFromInternalBalance) = _decreaseInternalBalance(sender, token, amount, true);
                 amount -= receivedFromInternalBalance;
             }
 
@@ -160,7 +164,7 @@ abstract contract AssetTransfersHandler {
         } else {
             IERC20 token = _asIERC20(asset);
             if (toInternalBalance) {
-                _increaseInternalBalance(recipient, token, toSend);
+                _increaseInternalBalance(recipient, token, toSend, false);
             } else {
                 token.safeTransfer(recipient, toSend);
             }
@@ -191,12 +195,14 @@ abstract contract AssetTransfersHandler {
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
+        uint256 amount,
+        bool track
     ) internal virtual;
 
-    function _decreaseRemainingInternalBalance(
+    function _decreaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
-    ) internal virtual returns (uint256);
+        uint256 amount,
+        bool capped
+    ) internal virtual returns (uint256, uint256);
 }

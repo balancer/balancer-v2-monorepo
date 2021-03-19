@@ -16,8 +16,29 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
+import "../lib/helpers/InputHelpers.sol";
+
 contract Authorizer is AccessControl {
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    /**
+     * @dev Grants multiple roles to a single account
+     */
+    function grantRoles(bytes32[] memory roles, address account) external {
+        for (uint256 i = 0; i < roles.length; i++) {
+            grantRole(roles[i], account);
+        }
+    }
+
+    /**
+     * @dev Grants roles to a list of accounts
+     */
+    function grantRolesToMany(bytes32[] memory roles, address[] memory accounts) external {
+        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
+        for (uint256 i = 0; i < roles.length; i++) {
+            grantRole(roles[i], accounts[i]);
+        }
     }
 }

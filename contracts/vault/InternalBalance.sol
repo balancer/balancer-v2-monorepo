@@ -21,15 +21,17 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../lib/math/Math.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
-import "./AssetTransfersHandler.sol";
 import "./Fees.sol";
+import "./AssetTransfersHandler.sol";
+import "./balances/InternalBalanceAllocation.sol";
 
 abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fees {
     using Math for uint256;
     using SafeERC20 for IERC20;
+    using InternalBalanceAllocation for bytes32;
 
     // Stores all account's Internal Balance for each token.
-    mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
+    mapping(address => mapping(IERC20 => bytes32)) private _internalTokenBalance;
 
     function getInternalBalance(address user, IERC20[] memory tokens)
         external
@@ -39,7 +41,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     {
         balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            balances[i] = _getInternalBalance(user, tokens[i]);
+            balances[i] = _getInternalBalance(user, tokens[i]).actual();
         }
     }
 
@@ -57,7 +59,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            _increaseInternalBalance(recipient, token, amount);
+            _increaseInternalBalance(recipient, token, amount, true);
             token.safeTransferFrom(sender, address(this), amount);
         }
     }
@@ -85,11 +87,16 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(amount);
-            _increaseCollectedFees(token, feeAmount);
+            uint256 amountToTransfer = amount;
+            (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false);
 
-            _decreaseInternalBalance(sender, token, amount);
-            token.safeTransfer(recipient, amount.sub(feeAmount));
+            if (taxableAmount > 0) {
+                uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(taxableAmount);
+                _increaseCollectedFees(token, feeAmount);
+                amountToTransfer = amountToTransfer.sub(feeAmount);
+            }
+
+            token.safeTransfer(recipient, amountToTransfer);
         }
     }
 
@@ -107,8 +114,10 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            _decreaseInternalBalance(sender, token, amount);
-            _increaseInternalBalance(recipient, token, amount);
+            // Transferring internal balance to another account is not charged withdrawal fees
+            _decreaseInternalBalance(sender, token, amount, false);
+            // Tokens transferred internally are not later exempt from withdrawal fees.
+            _increaseInternalBalance(recipient, token, amount, false);
         }
     }
 
@@ -118,46 +127,36 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
+        uint256 amount,
+        bool trackExempt
     ) internal override {
-        uint256 currentInternalBalance = _getInternalBalance(account, token);
-        uint256 newBalance = currentInternalBalance.add(amount);
+        bytes32 currentInternalBalance = _getInternalBalance(account, token);
+        bytes32 newBalance = currentInternalBalance.increase(amount, trackExempt);
         _setInternalBalance(account, token, newBalance);
     }
 
     /**
      * @dev Decreases `account`'s Internal Balance for `token` by `amount`.
+     * When `capped` the internal balance will be decreased as much as possible without reverting.
+     * @return taxableAmount The amount that should be used to charge fees. Some functionalities in the Vault
+     * allows users to avoid fees when working with internal balance deltas in the same block. This is the case for
+     * deposits and withdrawals for example.
+     * @return decreasedAmount The amount that was actually decreased, note this might not be equal to `amount` in
+     * case it was `capped` and the internal balance was actually lower than it.
      */
     function _decreaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
-    ) internal {
-        uint256 currentInternalBalance = _getInternalBalance(account, token);
-        require(currentInternalBalance >= amount, "INSUFFICIENT_INTERNAL_BALANCE");
-        uint256 newBalance = currentInternalBalance - amount;
+        uint256 amount,
+        bool capped
+    ) internal override returns (uint256, uint256) {
+        bytes32 currentInternalBalance = _getInternalBalance(account, token);
+        (bytes32 newBalance, uint256 taxableAmount, uint256 decreasedAmount) = currentInternalBalance.decrease(
+            amount,
+            capped
+        );
         _setInternalBalance(account, token, newBalance);
-    }
-
-    /**
-     * @dev Same as _decreaseInternalBalance, except it doesn't revert of `account` doesn't have enough balance, and
-     * instead decreases it by as much as possible.
-     *
-     * Returns the amount of Internal Balance deducted.
-     */
-    function _decreaseRemainingInternalBalance(
-        address account,
-        IERC20 token,
-        uint256 amount
-    ) internal override returns (uint256) {
-        uint256 currentInternalBalance = _getInternalBalance(account, token);
-        uint256 toDeduct = Math.min(currentInternalBalance, amount);
-
-        // toDeduct is by construction smaller or equal than currentInternalBalance, so we don't need checked
-        // arithmetic.
-        _setInternalBalance(account, token, currentInternalBalance - toDeduct);
-
-        return toDeduct;
+        return (taxableAmount, decreasedAmount);
     }
 
     /**
@@ -169,16 +168,16 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     function _setInternalBalance(
         address account,
         IERC20 token,
-        uint256 balance
-    ) internal {
+        bytes32 balance
+    ) private {
         _internalTokenBalance[account][token] = balance;
-        emit InternalBalanceChanged(account, token, balance);
+        emit InternalBalanceChanged(account, token, balance.actual());
     }
 
     /**
      * @dev Returns `account`'s Internal Balance for `token`.
      */
-    function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
+    function _getInternalBalance(address account, IERC20 token) internal view returns (bytes32) {
         return _internalTokenBalance[account][token];
     }
 }

@@ -179,8 +179,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 _receiveTokens(token, toReceive, funds.sender, funds.fromInternalBalance);
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
-                // Withdraw fees are not charged when sending funds as part of a swap
-                _sendTokens(token, toSend, funds.recipient, funds.toInternalBalance);
+                // Withdraw fees are not charged when sending funds as part of a swap.
+                // Deposits to Internal Balance are also exempt of this fee during the current block.
+                _sendTokens(token, toSend, funds.recipient, funds.toInternalBalance, true);
             }
         }
     }
