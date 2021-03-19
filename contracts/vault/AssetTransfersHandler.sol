@@ -98,7 +98,11 @@ abstract contract AssetTransfersHandler {
             IERC20 token = _asIERC20(asset);
 
             if (fromInternalBalance) {
-                uint256 receivedFromInternalBalance = _decreaseRemainingInternalBalance(sender, token, amount);
+                // Note that we ignore the taxable amount here since these assets are not being withdrawn from the Vault
+                // but rather reallocated (e.g. as part of a swap or join).
+                // Because `receivedFromInternalBalance` will be always the minimum between the current internal balance
+                // and the amount to decrease, it is safe to perform unchecked arithmetic.
+                (, uint256 receivedFromInternalBalance) = _decreaseInternalBalance(sender, token, amount, true);
                 amount -= receivedFromInternalBalance;
             }
 
@@ -114,25 +118,16 @@ abstract contract AssetTransfersHandler {
      *
      * If `asset` is ETH, `toInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
      * are instead sent directly after unwrapping WETH.
-     *
-     * If `chargeWithdrawFee` is true, an appropiate withdrawal fee will be applied and deducted from `amount`. In all
-     * cases, the charged amount is returned (and is zero when `chargeWithdrawFee` is false).
      */
     function _sendAsset(
         IAsset asset,
         uint256 amount,
         address payable recipient,
-        bool toInternalBalance,
-        bool chargeWithdrawFee
-    ) internal returns (uint256) {
+        bool toInternalBalance
+    ) internal {
         if (amount == 0) {
-            return 0;
+            return;
         }
-
-        // Sending an asset may have a withdraw fee applied, reducing the amount sent. This fee is only applied if
-        // requested (as e.g. swaps don't charge this fee), unless depositing to internal balance (which is exempt).
-        uint256 withdrawFee = chargeWithdrawFee && !toInternalBalance ? _calculateProtocolWithdrawFeeAmount(amount) : 0;
-        uint256 toSend = amount.sub(withdrawFee);
 
         if (_isETH(asset)) {
             // Sending ETH is not as involved as receiving it: the only special behavior it has is it cannot be
@@ -141,20 +136,18 @@ abstract contract AssetTransfersHandler {
 
             // First, the Vault withdraws deposited ETH in the WETH contract, by burning the same amount of WETH
             // from the Vault. This receipt will be handled by the Vault's `receive`.
-            _WETH.withdraw(toSend);
+            _WETH.withdraw(amount);
 
             // Then, the withdrawn ETH is sent to the recipient.
-            recipient.sendValue(toSend);
+            recipient.sendValue(amount);
         } else {
             IERC20 token = _asIERC20(asset);
             if (toInternalBalance) {
-                _increaseInternalBalance(recipient, token, toSend);
+                _increaseInternalBalance(recipient, token, amount, false);
             } else {
-                token.safeTransfer(recipient, toSend);
+                token.safeTransfer(recipient, amount);
             }
         }
-
-        return withdrawFee;
     }
 
     /**
@@ -198,12 +191,14 @@ abstract contract AssetTransfersHandler {
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
+        uint256 amount,
+        bool track
     ) internal virtual;
 
-    function _decreaseRemainingInternalBalance(
+    function _decreaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount
-    ) internal virtual returns (uint256);
+        uint256 amount,
+        bool capped
+    ) internal virtual returns (uint256, uint256);
 }

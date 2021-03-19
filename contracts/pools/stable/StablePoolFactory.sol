@@ -33,13 +33,22 @@ contract StablePoolFactory is BasePoolFactory {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 amp,
+        uint256 amplificationParameter,
         uint256 swapFee,
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
     ) external returns (address) {
         address pool = address(
-            new StablePool(vault, name, symbol, tokens, amp, swapFee, emergencyPeriod, emergencyPeriodCheckExtension)
+            new StablePool(
+                vault,
+                name,
+                symbol,
+                tokens,
+                amplificationParameter,
+                swapFee,
+                emergencyPeriod,
+                emergencyPeriodCheckExtension
+            )
         );
         _register(pool);
         return pool;

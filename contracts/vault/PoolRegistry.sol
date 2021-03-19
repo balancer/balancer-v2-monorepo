@@ -323,7 +323,8 @@ abstract contract PoolRegistry is
             uint256 amountOut = amountsOut[i];
 
             // Send tokens from the recipient - possibly to Internal Balance
-            uint256 withdrawFee = _sendTokens(tokens[i], amountOut, recipient, toInternalBalance);
+            // Tokens deposited to Internal Balance are not later exempt from withdrawal fees.
+            uint256 withdrawFee = _sendTokens(tokens[i], amountOut, recipient, toInternalBalance, false);
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
 
@@ -367,13 +368,12 @@ abstract contract PoolRegistry is
 
         uint256 toReceive = amount;
         if (fromInternalBalance) {
-            uint256 currentInternalBalance = _getInternalBalance(sender, token);
-            uint256 toWithdraw = Math.min(currentInternalBalance, amount);
-
-            // toWithdraw is by construction smaller or equal than currentInternalBalance and toReceive, so we don't
-            // need checked arithmetic.
-            _setInternalBalance(sender, token, currentInternalBalance - toWithdraw);
-            toReceive -= toWithdraw;
+            (, uint256 decreasedAmount) = _decreaseInternalBalance(sender, token, amount, true);
+            // Note that we ignore the taxable amount here since these are assets being "transferred" to the Vault,
+            // which means withdrawal fees do not apply.
+            // Also, `decreasedAmount` will be always the minimum between the current internal balance and
+            // the amount to decrease. Therefore, it will be always safe to avoid the arithmetic check.
+            toReceive -= decreasedAmount;
         }
 
         if (toReceive > 0) {
@@ -393,14 +393,15 @@ abstract contract PoolRegistry is
         IERC20 token,
         uint256 amount,
         address recipient,
-        bool toInternalBalance
+        bool toInternalBalance,
+        bool trackInternalBalanceExempt
     ) internal returns (uint256) {
         if (amount == 0) {
             return 0;
         }
 
         if (toInternalBalance) {
-            _increaseInternalBalance(recipient, token, amount);
+            _increaseInternalBalance(recipient, token, amount, trackInternalBalanceExempt);
             return 0;
         } else {
             uint256 withdrawFee = _calculateProtocolWithdrawFeeAmount(amount);

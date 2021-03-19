@@ -84,11 +84,11 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     joinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
   } else if (poolName == 'StablePool') {
-    const amp = bn(50e18);
+    const amplificationParameter = bn(50e18);
 
     pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
       from: creator,
-      parameters: [tokenAddresses, amp, swapFee],
+      parameters: [tokenAddresses, amplificationParameter, swapFee],
     });
 
     joinUserData = encodeJoinStablePool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
