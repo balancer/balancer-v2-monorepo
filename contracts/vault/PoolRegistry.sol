@@ -323,7 +323,8 @@ abstract contract PoolRegistry is
             uint256 amountOut = amountsOut[i];
 
             // Send tokens from the recipient - possibly to Internal Balance
-            uint256 withdrawFee = _sendTokens(tokens[i], amountOut, recipient, toInternalBalance);
+            // We don't track cached internal balance to reduce the taxable amount in swaps
+            uint256 withdrawFee = _sendTokens(tokens[i], amountOut, recipient, toInternalBalance, false);
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
 
@@ -391,15 +392,15 @@ abstract contract PoolRegistry is
         IERC20 token,
         uint256 amount,
         address recipient,
-        bool toInternalBalance
+        bool toInternalBalance,
+        bool trackCachedInternalBalance
     ) internal returns (uint256) {
         if (amount == 0) {
             return 0;
         }
 
         if (toInternalBalance) {
-            // We don't track cached values to reduce the taxable amount in swaps or exits
-            _increaseInternalBalance(recipient, token, amount, false);
+            _increaseInternalBalance(recipient, token, amount, trackCachedInternalBalance);
             return 0;
         } else {
             uint256 withdrawFee = _calculateProtocolWithdrawFeeAmount(amount);
