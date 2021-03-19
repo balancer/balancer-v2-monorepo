@@ -43,17 +43,26 @@ export default class StablePool {
   poolId: string;
   tokens: TokenList;
   swapFee: BigNumberish;
+  amplificationParameter: BigNumberish;
   vault: Vault;
 
   static async create(params: RawStablePoolDeployment = {}): Promise<StablePool> {
     return StablePoolDeployer.deploy(params);
   }
 
-  constructor(instance: Contract, poolId: string, vault: Vault, tokens: TokenList, swapFee: BigNumberish) {
+  constructor(
+    instance: Contract,
+    poolId: string,
+    vault: Vault,
+    tokens: TokenList,
+    amplificationParameter: BigNumberish,
+    swapFee: BigNumberish
+  ) {
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
     this.tokens = tokens;
+    this.amplificationParameter = amplificationParameter;
     this.swapFee = swapFee;
   }
 
@@ -122,9 +131,8 @@ export default class StablePool {
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    const amplificationParameter = await this.getAmplificationParameter();
 
-    return calculateInvariant(currentBalances, amplificationParameter);
+    return calculateInvariant(currentBalances, this.amplificationParameter);
   }
 
   async estimateSwapFee(
@@ -135,8 +143,12 @@ export default class StablePool {
     if (!currentBalances) currentBalances = await this.getBalances();
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const amplificationParameter = await this.getAmplificationParameter();
-    const feeAmount = calculateOneTokenSwapFee(currentBalances, amplificationParameter, lastInvariant, paidTokenIndex);
+    const feeAmount = calculateOneTokenSwapFee(
+      currentBalances,
+      this.amplificationParameter,
+      lastInvariant,
+      paidTokenIndex
+    );
 
     return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
   }
@@ -144,17 +156,15 @@ export default class StablePool {
   async estimateGivenIn(params: SwapStablePool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
     if (!currentBalances) currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
-    const amplificationParameter = await this.getAmplificationParameter();
 
-    return bn(calcOutGivenIn(currentBalances, amplificationParameter, tokenIn, tokenOut, params.amount));
+    return bn(calcOutGivenIn(currentBalances, this.amplificationParameter, tokenIn, tokenOut, params.amount));
   }
 
   async estimateGivenOut(params: SwapStablePool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
     if (!currentBalances) currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
-    const amplificationParameter = await this.getAmplificationParameter();
 
-    return bn(calcInGivenOut(currentBalances, amplificationParameter, tokenIn, tokenOut, params.amount));
+    return bn(calcInGivenOut(currentBalances, this.amplificationParameter, tokenIn, tokenOut, params.amount));
   }
 
   async estimateBptOut(
@@ -164,9 +174,8 @@ export default class StablePool {
   ): Promise<BigNumberish> {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
-    const amplificationParameter = await this.getAmplificationParameter();
 
-    return calcBptOutGivenExactTokensIn(currentBalances, amplificationParameter, amountsIn, supply, this.swapFee);
+    return calcBptOutGivenExactTokensIn(currentBalances, this.amplificationParameter, amountsIn, supply, this.swapFee);
   }
 
   async estimateTokenIn(
@@ -178,12 +187,11 @@ export default class StablePool {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
     const tokenIndex = this.tokens.indexOf(token);
-    const amplificationParameter = await this.getAmplificationParameter();
 
     return calcTokenInGivenExactBptOut(
       tokenIndex,
       currentBalances,
-      amplificationParameter,
+      this.amplificationParameter,
       bptOut,
       supply,
       this.swapFee
@@ -199,12 +207,11 @@ export default class StablePool {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
     const tokenIndex = this.tokens.indexOf(token);
-    const amplificationParameter = await this.getAmplificationParameter();
 
     return calcTokenOutGivenExactBptIn(
       tokenIndex,
       currentBalances,
-      amplificationParameter,
+      this.amplificationParameter,
       bptIn,
       supply,
       this.swapFee
