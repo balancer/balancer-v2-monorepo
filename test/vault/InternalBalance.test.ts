@@ -14,11 +14,7 @@ import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { bn, fp, pct } from '../../lib/helpers/numbers';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
-<<<<<<< HEAD
-import WETH from '../helpers/models/tokens/WETH';
 import { forceSendEth } from '../helpers/eth';
-=======
->>>>>>> Delete WETH model
 
 describe('Vault - internal balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;

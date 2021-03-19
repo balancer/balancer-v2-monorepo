@@ -28,7 +28,7 @@ abstract contract AssetTransfersHandler {
     using Address for address payable;
     using Math for uint256;
 
-    // solhint-disable-next-line func-name-mixedcase
+    // solhint-disable-next-line var-name-mixedcase
     IWETH private immutable _WETH;
 
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
@@ -123,7 +123,8 @@ abstract contract AssetTransfersHandler {
         IAsset asset,
         uint256 amount,
         address payable recipient,
-        bool toInternalBalance
+        bool toInternalBalance,
+        bool trackExempt
     ) internal {
         if (amount == 0) {
             return;
@@ -143,7 +144,7 @@ abstract contract AssetTransfersHandler {
         } else {
             IERC20 token = _asIERC20(asset);
             if (toInternalBalance) {
-                _increaseInternalBalance(recipient, token, amount, false);
+                _increaseInternalBalance(recipient, token, amount, trackExempt);
             } else {
                 token.safeTransfer(recipient, amount);
             }

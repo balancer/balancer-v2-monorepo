@@ -44,9 +44,10 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         IAsset asset,
         uint256 amount,
         address payable recipient,
-        bool toInternalBalance
+        bool toInternalBalance,
+        bool trackExempt
     ) external {
-        _sendAsset(asset, amount, recipient, toInternalBalance);
+        _sendAsset(asset, amount, recipient, toInternalBalance, trackExempt);
     }
 
     function getInternalBalance(address account, IERC20 token) external view returns (uint256) {

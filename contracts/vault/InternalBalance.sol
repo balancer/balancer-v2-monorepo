@@ -101,7 +101,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
                 amountToSend = amountToSend.sub(feeAmount);
             }
 
-            _sendAsset(asset, amountToSend, recipient, false);
+            _sendAsset(asset, amountToSend, recipient, false, false);
         }
     }
 
