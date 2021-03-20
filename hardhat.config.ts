@@ -108,6 +108,9 @@ export default {
             enabled: true,
             runs: 9999,
           },
+          debug: {
+            revertStrings: 'strip',
+          },
         },
       },
     ],
@@ -118,6 +121,9 @@ export default {
           optimizer: {
             enabled: true,
             runs: 400,
+          },
+          debug: {
+            revertStrings: 'strip',
           },
         },
       },
