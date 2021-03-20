@@ -320,11 +320,11 @@ interface IVault {
         bytes32 poolId,
         address sender,
         address recipient,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         uint256[] memory maxAmountsIn,
         bool fromInternalBalance,
         bytes memory userData
-    ) external;
+    ) external payable;
 
     /**
      * @dev Emitted when a user joins a Pool by calling `joinPool`.
@@ -372,8 +372,8 @@ interface IVault {
     function exitPool(
         bytes32 poolId,
         address sender,
-        address recipient,
-        IERC20[] memory tokens,
+        address payable recipient,
+        IAsset[] memory assets,
         uint256[] memory minAmountsOut,
         bool toInternalBalance,
         bytes memory userData
