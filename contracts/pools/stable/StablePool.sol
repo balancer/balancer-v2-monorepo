@@ -238,27 +238,27 @@ contract StablePool is BaseGeneralPool, StableMath {
         virtual
         override
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
-        // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
-        // event and now - the invariant's growth is due exclusively to swap fees.\
+        //If emergency period is active, protocol fees are not charged to avoid any extra calculation.
+        if (_isEmergencyPeriodInactive()) {
+            // Due protocol swap fees are computed by measuring the growth of the invariant from the previous
+            // join or exit event and now - the invariant's growth is due exclusively to swap fees.\
+            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, _lastInvariant, protocolSwapFeePercentage);
 
-        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-            balances,
-            _lastInvariant,
-            protocolSwapFeePercentage
-        );
-
-        // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
-        // returns.
-        for (uint256 i = 0; i < _totalTokens; ++i) {
-            balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
+            // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
+            // returns.
+            for (uint256 i = 0; i < _totalTokens; ++i) {
+                balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
+            }
+        } else {
+            dueProtocolFeeAmounts = new uint256[](_totalTokens);
         }
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(balances, userData);
+        (bptAmountIn, amountsOut) = _doExit(balances, userData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the due
         // protocol swap fees in future joins and exits.
