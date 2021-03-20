@@ -42,15 +42,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     uint256 private immutable _normalizedWeight4;
     uint256 private immutable _normalizedWeight5;
     uint256 private immutable _normalizedWeight6;
-    uint256 private immutable _normalizedWeight7;
-    uint256 private immutable _normalizedWeight8;
-    uint256 private immutable _normalizedWeight9;
-    uint256 private immutable _normalizedWeight10;
-    uint256 private immutable _normalizedWeight11;
-    uint256 private immutable _normalizedWeight12;
-    uint256 private immutable _normalizedWeight13;
-    uint256 private immutable _normalizedWeight14;
-    uint256 private immutable _normalizedWeight15;
 
     uint256 private _lastInvariant;
 
@@ -98,15 +89,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         _normalizedWeight4 = weights.length > 4 ? normalizedWeights[4] : 0;
         _normalizedWeight5 = weights.length > 5 ? normalizedWeights[5] : 0;
         _normalizedWeight6 = weights.length > 6 ? normalizedWeights[6] : 0;
-        _normalizedWeight7 = weights.length > 7 ? normalizedWeights[7] : 0;
-        _normalizedWeight8 = weights.length > 8 ? normalizedWeights[8] : 0;
-        _normalizedWeight9 = weights.length > 9 ? normalizedWeights[9] : 0;
-        _normalizedWeight10 = weights.length > 10 ? normalizedWeights[10] : 0;
-        _normalizedWeight11 = weights.length > 11 ? normalizedWeights[11] : 0;
-        _normalizedWeight12 = weights.length > 12 ? normalizedWeights[12] : 0;
-        _normalizedWeight13 = weights.length > 13 ? normalizedWeights[13] : 0;
-        _normalizedWeight14 = weights.length > 14 ? normalizedWeights[14] : 0;
-        _normalizedWeight15 = weights.length > 15 ? normalizedWeights[15] : 0;
     }
 
     function _normalizedWeight(IERC20 token) internal view virtual returns (uint256) {
@@ -118,15 +100,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         else if (token == _token4) { return _normalizedWeight4; }
         else if (token == _token5) { return _normalizedWeight5; }
         else if (token == _token6) { return _normalizedWeight6; }
-        else if (token == _token7) { return _normalizedWeight7; }
-        else if (token == _token8) { return _normalizedWeight8; }
-        else if (token == _token9) { return _normalizedWeight9; }
-        else if (token == _token10) { return _normalizedWeight10; }
-        else if (token == _token11) { return _normalizedWeight11; }
-        else if (token == _token12) { return _normalizedWeight12; }
-        else if (token == _token13) { return _normalizedWeight13; }
-        else if (token == _token14) { return _normalizedWeight14; }
-        else if (token == _token15) { return _normalizedWeight15; }
         else {
             revert("INVALID_TOKEN");
         }
@@ -144,15 +117,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             if (_totalTokens > 4) { normalizedWeights[4] = _normalizedWeight4; } else { return normalizedWeights; }
             if (_totalTokens > 5) { normalizedWeights[5] = _normalizedWeight5; } else { return normalizedWeights; }
             if (_totalTokens > 6) { normalizedWeights[6] = _normalizedWeight6; } else { return normalizedWeights; }
-            if (_totalTokens > 7) { normalizedWeights[7] = _normalizedWeight7; } else { return normalizedWeights; }
-            if (_totalTokens > 8) { normalizedWeights[8] = _normalizedWeight8; } else { return normalizedWeights; }
-            if (_totalTokens > 9) { normalizedWeights[9] = _normalizedWeight9; } else { return normalizedWeights; }
-            if (_totalTokens > 10) { normalizedWeights[10] = _normalizedWeight10; } else { return normalizedWeights; }
-            if (_totalTokens > 11) { normalizedWeights[11] = _normalizedWeight11; } else { return normalizedWeights; }
-            if (_totalTokens > 12) { normalizedWeights[12] = _normalizedWeight12; } else { return normalizedWeights; }
-            if (_totalTokens > 13) { normalizedWeights[13] = _normalizedWeight13; } else { return normalizedWeights; }
-            if (_totalTokens > 14) { normalizedWeights[14] = _normalizedWeight14; } else { return normalizedWeights; }
-            if (_totalTokens > 15) { normalizedWeights[15] = _normalizedWeight15; } else { return normalizedWeights; }
         }
 
         return normalizedWeights;
