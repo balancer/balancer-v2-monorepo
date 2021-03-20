@@ -1,42 +1,22 @@
 import { ethers } from 'hardhat';
-import { Dictionary } from 'lodash';
-import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { deepEqual } from 'assert';
 
-import * as allPools from './allPools.json';
-import { bn, fp } from '../../helpers/numbers';
-import { TokenList, deployTokens } from '../../helpers/tokens';
-import { WEEK } from '../../helpers/time';
-import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
-import { formatPools, getTokenInfoForDeploy, Pool } from './processJSON';
 
 let deployer: SignerWithAddress;
-let controller: SignerWithAddress;
-let trader: SignerWithAddress;
-//let validator: Contract;
-let assetManager: SignerWithAddress; // This would normally be a contract
-
-const NUM_POOLS = 10;
-
-const decimalsByAddress: Dictionary<number> = {};
 
 async function main() {
-  [deployer, controller] = await ethers.getSigners();
-
-  console.log(deployer.address)
+  [deployer] = await ethers.getSigners();
 
   const FAUCET = '0x4f6D439924E2744bf624B388FeF0f3B790c1762B';
 
   const tokens = [
-    '0xaCec30eb6aE25c582A5A860E6265F1a024De6afC',
-    // '0x8C2dC411b75115E0B358595C9b8B09b91258bf01',
-    // '0xa92e018F54337690b1b190B27a959c384d004f7b',
-    // '0x9dd9829d7a781F4f1e04D2227c472c589fe1D78D',
-    // '0xD320647E67d7e3d350ecf20913141fe0227b7b7d',
-    // '0xC27A406EF60955F9446B27B0c3c21cDBde57eacC',
-    // '0x29C3Abb16B2b6201f25e32a4BA5B7b14118be1E6'
+    '0xe1329748c41A140536e41049C95c36A53bCACee6',
+    '0x59935f19d720aD935beCdC34c4F367397a28DaED',
+    '0xD9D9E09604c0C14B592e6E383582291b026EBced',
+    '0xFd05Bbf0e4E2fc552A67F3cb2dD2ecB289252eE1',
+    '0x1688C45BC51Faa1B783D274E03Da0A0B28A0A871',
+    '0x7A0Fbc1aD60E8d624215282afb0e877E51A08136',
+    '0x5468C3a3e32e390C6Fef5E3622a616695b501900'
   ];
 
   for (const t of tokens) {
