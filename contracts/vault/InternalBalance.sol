@@ -151,7 +151,12 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     ) internal override {
         bytes32 currentInternalBalance = _getInternalBalance(account, token);
         bytes32 newBalance = currentInternalBalance.increase(amount, trackExempt);
-        _setInternalBalance(account, token, newBalance);
+
+        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256 as the value is
+        // guaranteed to fit.
+        emit InternalBalanceChanged(account, token, int256(amount));
+
+        _internalTokenBalance[account][token] = newBalance;
     }
 
     /**
@@ -174,23 +179,14 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             amount,
             capped
         );
-        _setInternalBalance(account, token, newBalance);
-        return (taxableAmount, decreasedAmount);
-    }
 
-    /**
-     * @dev Sets `account`'s Internal Balance for `token` to `balance`.
-     *
-     * This costs less gas than `_increaseInternalBalance` or `_decreaseInternalBalance`, since the current collected
-     * fees do not need to be read.
-     */
-    function _setInternalBalance(
-        address account,
-        IERC20 token,
-        bytes32 balance
-    ) private {
-        _internalTokenBalance[account][token] = balance;
-        emit InternalBalanceChanged(account, token, balance.actual());
+        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256 as the value is
+        // guaranteed to fit.
+        emit InternalBalanceChanged(account, token, -int256(amount));
+
+        _internalTokenBalance[account][token] = newBalance;
+
+        return (taxableAmount, decreasedAmount);
     }
 
     /**
