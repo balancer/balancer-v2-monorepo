@@ -55,9 +55,9 @@
       },
       {
         "indexed": false,
-        "internalType": "uint256",
-        "name": "balance",
-        "type": "uint256"
+        "internalType": "int256",
+        "name": "delta",
+        "type": "int256"
       }
     ],
     "name": "InternalBalanceChanged",

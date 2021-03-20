@@ -94,7 +94,7 @@ describe('Vault - internal balance', () => {
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: recipient.address,
           token: tokens.DAI.address,
-          balance: amount,
+          delta: amount,
         });
       });
     };
@@ -203,12 +203,10 @@ describe('Vault - internal balance', () => {
             )
           ).wait();
 
-          const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [weth.address]);
-
           expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
             user: recipient.address,
             token: weth.address,
-            balance: currentRecipientBalance[0],
+            delta: amount,
           });
         });
 
@@ -427,7 +425,7 @@ describe('Vault - internal balance', () => {
             expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
               user: sender.address,
               token: tokens.DAI.address,
-              balance: depositedAmount.sub(amount),
+              delta: amount.mul(-1),
             });
           });
         });
@@ -760,12 +758,10 @@ describe('Vault - internal balance', () => {
               ])
             ).wait();
 
-            const currentSenderBalance = await vault.getInternalBalance(sender.address, [weth.address]);
-
             expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
               user: sender.address,
               token: weth.address,
-              balance: currentSenderBalance[0],
+              delta: amount.mul(-1),
             });
           });
 
@@ -1002,25 +998,25 @@ describe('Vault - internal balance', () => {
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: sender.address,
           token: tokens.DAI.address,
-          balance: initialBalances.DAI.sub(transferredAmounts.DAI),
+          delta: transferredAmounts.DAI.mul(-1),
         });
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: sender.address,
           token: tokens.MKR.address,
-          balance: initialBalances.MKR.sub(transferredAmounts.MKR),
+          delta: transferredAmounts.MKR.mul(-1),
         });
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: recipient.address,
           token: tokens.DAI.address,
-          balance: transferredAmounts.DAI,
+          delta: transferredAmounts.DAI,
         });
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: recipient.address,
           token: tokens.MKR.address,
-          balance: transferredAmounts.MKR,
+          delta: transferredAmounts.MKR,
         });
       });
     }
