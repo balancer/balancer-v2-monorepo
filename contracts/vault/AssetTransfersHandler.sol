@@ -56,6 +56,18 @@ abstract contract AssetTransfersHandler {
     }
 
     /**
+     * @dev Same as `_translateToIERC20(IAsset)`, but for an entire array.
+     */
+    function _translateToIERC20(IAsset[] memory assets) internal view returns (IERC20[] memory) {
+        IERC20[] memory tokens = new IERC20[](assets.length);
+        for (uint256 i = 0; i < assets.length; ++i) {
+            tokens[i] = _translateToIERC20(assets[i]);
+        }
+
+        return tokens;
+    }
+
+    /**
      * @dev Interprets `asset` as an IERC20 token. This function should only be called on `asset` if `_isETH` previously
      * returned false for it, that is, if `asset` is guaranteed to not be the sentinel value that stands for ETH.
      */

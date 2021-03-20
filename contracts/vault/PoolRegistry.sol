@@ -242,44 +242,27 @@ abstract contract PoolRegistry is
         bytes32 poolId,
         address sender,
         address recipient,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         uint256[] memory maxAmountsIn,
         bool fromInternalBalance,
         bytes memory userData
-    ) external override nonReentrant noEmergencyPeriod withRegisteredPool(poolId) authenticateFor(sender) {
-        InputHelpers.ensureInputLengthMatch(tokens.length, maxAmountsIn.length);
+    ) external payable override nonReentrant noEmergencyPeriod withRegisteredPool(poolId) authenticateFor(sender) {
+        InputHelpers.ensureInputLengthMatch(assets.length, maxAmountsIn.length);
 
-        bytes32[] memory balances = _validateTokensAndGetBalances(poolId, tokens);
+        bytes32[] memory balances = _validateTokensAndGetBalances(poolId, assets);
 
-        // Call the `onJoinPool` hook to get the amounts to send to the Pool and to charge as protocol swap fees for
-        // each token.
-        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _callOnJoinPool(
+        _callOnJoinPoolAndReceiveAssets(
             poolId,
-            tokens,
+            assets,
             balances,
             sender,
             recipient,
-            userData
+            userData,
+            maxAmountsIn,
+            fromInternalBalance
         );
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            uint256 amountIn = amountsIn[i];
-            require(amountIn <= maxAmountsIn[i], "JOIN_ABOVE_MAX");
-
-            // Receive tokens from the caller - possibly from Internal Balance
-            _receiveTokens(tokens[i], amountIn, sender, fromInternalBalance);
-
-            uint256 feeToPay = dueProtocolFeeAmounts[i];
-
-            // Compute the new Pool balances - we reuse the `balances` array to avoid allocating more memory. Note that
-            // due protocol fees might be larger than amounts in, resulting in an overall decrease of the Pool's balance
-            // for a token.
-            balances[i] = amountIn >= feeToPay
-                ? balances[i].increaseCash(amountIn - feeToPay) // Don't need checked arithmetic
-                : balances[i].decreaseCash(feeToPay - amountIn); // Same as -(int256(amountIn) - int256(feeToPay))
-
-            _increaseCollectedFees(tokens[i], feeToPay);
-        }
+        IERC20[] memory tokens = _translateToIERC20(assets);
 
         // Update the Pool's balance - how this is done depends on the Pool specialization setting.
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -290,51 +273,132 @@ abstract contract PoolRegistry is
         } else {
             _setGeneralPoolBalances(poolId, balances);
         }
-
-        emit PoolJoined(poolId, sender, tokens, amountsIn, dueProtocolFeeAmounts);
     }
 
-    function exitPool(
+    // Temporary function to work around stack-too-deep
+    function _callOnJoinPoolAndReceiveAssets(
         bytes32 poolId,
+        IAsset[] memory assets,
+        bytes32[] memory balances,
         address sender,
         address recipient,
-        IERC20[] memory tokens,
-        uint256[] memory minAmountsOut,
-        bool toInternalBalance,
-        bytes memory userData
-    ) external override nonReentrant withRegisteredPool(poolId) authenticateFor(sender) {
-        InputHelpers.ensureInputLengthMatch(tokens.length, minAmountsOut.length);
-
-        bytes32[] memory balances = _validateTokensAndGetBalances(poolId, tokens);
-
-        // Call the `onExitPool` hook to get the amounts to take from the Pool and to charge as protocol swap fees for
+        bytes memory userData,
+        uint256[] memory maxAmountsIn,
+        bool fromInternalBalance
+    ) private {
+        // Call the `onJoinPool` hook to get the amounts to send to the Pool and to charge as protocol swap fees for
         // each token.
-        (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _callOnExitPool(
+        (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _callOnJoinPool(
             poolId,
-            tokens,
+            assets,
             balances,
             sender,
             recipient,
             userData
         );
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
+        _receivePoolAssets(
+            assets,
+            balances,
+            amountsIn,
+            dueProtocolFeeAmounts,
+            maxAmountsIn,
+            sender,
+            fromInternalBalance
+        );
+
+        emit PoolJoined(poolId, sender, _translateToIERC20(assets), amountsIn, dueProtocolFeeAmounts);
+    }
+
+    // Temporary function to work around stack-too-deep
+    function _receivePoolAssets(
+        IAsset[] memory assets,
+        bytes32[] memory balances,
+        uint256[] memory amountsIn,
+        uint256[] memory dueProtocolFeeAmounts,
+        uint256[] memory maxAmountsIn,
+        address sender,
+        bool fromInternalBalance
+    ) private {
+        bool ethAssetSeen = false;
+        uint256 wrappedETH = 0;
+
+        for (uint256 i = 0; i < assets.length; ++i) {
+            uint256 amountIn = amountsIn[i];
+            require(amountIn <= maxAmountsIn[i], "JOIN_ABOVE_MAX");
+
+            // Receive assets from the caller - possibly from Internal Balance
+            _receiveAsset(assets[i], amountIn, sender, fromInternalBalance);
+
+            if (_isETH(assets[i])) {
+                ethAssetSeen = true;
+                wrappedETH = wrappedETH.add(amountIn);
+            }
+
+            uint256 feeToPay = dueProtocolFeeAmounts[i];
+
+            // Compute the new Pool balances - we reuse the `balances` array to avoid allocating more memory. Note that
+            // due protocol fees might be larger than amounts in, resulting in an overall decrease of the Pool's balance
+            // for a token.
+            balances[i] = amountIn >= feeToPay
+                ? balances[i].increaseCash(amountIn - feeToPay) // Don't need checked arithmetic
+                : balances[i].decreaseCash(feeToPay - amountIn); // Same as -(int256(amountIn) - int256(feeToPay))
+
+            _increaseCollectedFees(_translateToIERC20(assets[i]), feeToPay);
+        }
+
+        // We prevent user error by reverting if ETH was sent but not referenced by any asset.
+        _ensureNoUnallocatedETH(ethAssetSeen);
+
+        // By returning the excess ETH, we also check that at least wrappedETH has been received.
+        _returnExcessEthToCaller(wrappedETH);
+    }
+
+    function exitPool(
+        bytes32 poolId,
+        address sender,
+        address payable recipient,
+        IAsset[] memory assets,
+        uint256[] memory minAmountsOut,
+        bool toInternalBalance,
+        bytes memory userData
+    ) external override nonReentrant withRegisteredPool(poolId) authenticateFor(sender) {
+        InputHelpers.ensureInputLengthMatch(assets.length, minAmountsOut.length);
+
+        bytes32[] memory balances = _validateTokensAndGetBalances(poolId, assets);
+
+        // Call the `onExitPool` hook to get the amounts to take from the Pool and to charge as protocol swap fees for
+        // each token.
+        (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _callOnExitPool(
+            poolId,
+            assets,
+            balances,
+            sender,
+            recipient,
+            userData
+        );
+
+        for (uint256 i = 0; i < assets.length; ++i) {
             require(amountsOut[i] >= minAmountsOut[i], "EXIT_BELOW_MIN");
             uint256 amountOut = amountsOut[i];
 
             // Send tokens from the recipient - possibly to Internal Balance
             // Tokens deposited to Internal Balance are not later exempt from withdrawal fees.
-            uint256 withdrawFee = _sendTokens(tokens[i], amountOut, recipient, toInternalBalance, false);
 
-            uint256 feeToPay = dueProtocolFeeAmounts[i];
+            uint256 withdrawFee = toInternalBalance ? 0 : _calculateProtocolWithdrawFeeAmount(amountOut);
+            _sendAsset(assets[i], amountOut.sub(withdrawFee), recipient, toInternalBalance, false);
+
+            uint256 protocolSwapFee = dueProtocolFeeAmounts[i];
 
             // Compute the new Pool balances - we reuse the `balances` array to avoid allocating more memory. A Pool's
             // token balance always decreases after an exit (potentially by 0).
-            uint256 delta = amountOut.add(feeToPay);
+            uint256 delta = amountOut.add(protocolSwapFee);
             balances[i] = balances[i].decreaseCash(delta);
 
-            _increaseCollectedFees(tokens[i], feeToPay.add(withdrawFee));
+            _increaseCollectedFees(_translateToIERC20(assets[i]), protocolSwapFee.add(withdrawFee));
         }
+
+        IERC20[] memory tokens = _translateToIERC20(assets);
 
         // Update the Pool's balance - how this is done depends on the Pool specialization setting.
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -350,73 +414,12 @@ abstract contract PoolRegistry is
     }
 
     /**
-     * @dev Takes `amount` tokens of `token` from `sender`.
-     *
-     * If `fromInternalBalance` is false, tokens will be transferred via `ERC20.transferFrom`. If true, Internal Balance
-     * will be deducted instead, and only the difference between `amount` and available Internal Balance transferred (if
-     * any).
-     */
-    function _receiveTokens(
-        IERC20 token,
-        uint256 amount,
-        address sender,
-        bool fromInternalBalance
-    ) internal {
-        if (amount == 0) {
-            return;
-        }
-
-        uint256 toReceive = amount;
-        if (fromInternalBalance) {
-            (, uint256 decreasedAmount) = _decreaseInternalBalance(sender, token, amount, true);
-            // Note that we ignore the taxable amount here since these are assets being "transferred" to the Vault,
-            // which means withdrawal fees do not apply.
-            // Also, `decreasedAmount` will be always the minimum between the current internal balance and
-            // the amount to decrease. Therefore, it will be always safe to avoid the arithmetic check.
-            toReceive -= decreasedAmount;
-        }
-
-        if (toReceive > 0) {
-            token.safeTransferFrom(sender, address(this), toReceive);
-        }
-    }
-
-    /**
-     * @dev Grants `amount` tokens of `token` to `recipient`.
-     *
-     * If `toInternalBalance` is false, tokens are transferred via `ERC20.transfer`, after being charged with protocol
-     * withdraw fees. If true, the tokens are deposited to Internal Balance, and no fees are charged.
-     *
-     * Returns the amount of charged protocol fees.
-     */
-    function _sendTokens(
-        IERC20 token,
-        uint256 amount,
-        address recipient,
-        bool toInternalBalance,
-        bool trackInternalBalanceExempt
-    ) internal returns (uint256) {
-        if (amount == 0) {
-            return 0;
-        }
-
-        if (toInternalBalance) {
-            _increaseInternalBalance(recipient, token, amount, trackInternalBalanceExempt);
-            return 0;
-        } else {
-            uint256 withdrawFee = _calculateProtocolWithdrawFeeAmount(amount);
-            token.safeTransfer(recipient, amount.sub(withdrawFee));
-            return withdrawFee;
-        }
-    }
-
-    /**
      * @dev Internal helper to call the `onJoinPool` hook on a Pool's contract and perform basic validation on the
      * returned values. Avoid stack-too-deep issues.
      */
     function _callOnJoinPool(
         bytes32 poolId,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         bytes32[] memory balances,
         address sender,
         address recipient,
@@ -435,7 +438,7 @@ abstract contract PoolRegistry is
             userData
         );
 
-        InputHelpers.ensureInputLengthMatch(tokens.length, amountsIn.length, dueProtocolFeeAmounts.length);
+        InputHelpers.ensureInputLengthMatch(assets.length, amountsIn.length, dueProtocolFeeAmounts.length);
     }
 
     /**
@@ -444,7 +447,7 @@ abstract contract PoolRegistry is
      */
     function _callOnExitPool(
         bytes32 poolId,
-        IERC20[] memory tokens,
+        IAsset[] memory assets,
         bytes32[] memory balances,
         address sender,
         address recipient,
@@ -463,7 +466,7 @@ abstract contract PoolRegistry is
             userData
         );
 
-        InputHelpers.ensureInputLengthMatch(tokens.length, amountsOut.length, dueProtocolFeeAmounts.length);
+        InputHelpers.ensureInputLengthMatch(assets.length, amountsOut.length, dueProtocolFeeAmounts.length);
     }
 
     /**
@@ -472,16 +475,16 @@ abstract contract PoolRegistry is
      * `expectedTokens` must equal exactly the token array returned by `getPoolTokens`: both arrays must have the same
      * length, elements and order.
      */
-    function _validateTokensAndGetBalances(bytes32 poolId, IERC20[] memory expectedTokens)
+    function _validateTokensAndGetBalances(bytes32 poolId, IAsset[] memory expectedAssets)
         internal
         view
         returns (bytes32[] memory)
     {
         (IERC20[] memory actualTokens, bytes32[] memory balances) = _getPoolTokens(poolId);
-        InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
+        InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedAssets.length);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
-            require(actualTokens[i] == expectedTokens[i], "TOKENS_MISMATCH");
+            require(actualTokens[i] == _translateToIERC20(expectedAssets[i]), "TOKENS_MISMATCH");
         }
 
         return balances;
