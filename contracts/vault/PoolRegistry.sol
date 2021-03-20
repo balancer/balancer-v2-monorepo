@@ -386,18 +386,16 @@ abstract contract PoolRegistry is
             // Tokens deposited to Internal Balance are not later exempt from withdrawal fees.
 
             uint256 withdrawFee = toInternalBalance ? 0 : _calculateProtocolWithdrawFeeAmount(amountOut);
-            amountOut = amountOut.sub(withdrawFee);
+            _sendAsset(assets[i], amountOut.sub(withdrawFee), recipient, toInternalBalance, false);
 
-            _sendAsset(assets[i], amountOut, recipient, toInternalBalance, false);
-
-            uint256 feeToPay = dueProtocolFeeAmounts[i];
+            uint256 protocolSwapFee = dueProtocolFeeAmounts[i];
 
             // Compute the new Pool balances - we reuse the `balances` array to avoid allocating more memory. A Pool's
             // token balance always decreases after an exit (potentially by 0).
-            uint256 delta = amountOut.add(feeToPay);
+            uint256 delta = amountOut.add(protocolSwapFee);
             balances[i] = balances[i].decreaseCash(delta);
 
-            _increaseCollectedFees(_translateToIERC20(assets[i]), feeToPay.add(withdrawFee));
+            _increaseCollectedFees(_translateToIERC20(assets[i]), protocolSwapFee.add(withdrawFee));
         }
 
         IERC20[] memory tokens = _translateToIERC20(assets);
