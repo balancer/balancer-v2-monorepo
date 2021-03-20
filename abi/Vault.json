@@ -734,30 +734,6 @@
         "type": "bytes32"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      }
-    ],
-    "name": "getPoolAssetManagers",
-    "outputs": [
-      {
-        "internalType": "address[]",
-        "name": "assetManagers",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
         "internalType": "contract IERC20",
         "name": "token",
         "type": "address"

@@ -633,15 +633,6 @@ interface IVault {
     }
 
     /**
-     * @dev Returns the Pool's Asset Managers for the given `tokens`. Asset Managers can manage a Pool's assets
-     * by taking them out of the Vault via `withdrawFromPoolBalance`, `depositToPoolBalance` and `updateManagedBalance`.
-     */
-    function getPoolAssetManagers(bytes32 poolId, IERC20[] memory tokens)
-        external
-        view
-        returns (address[] memory assetManagers);
-
-    /**
      * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `withdrawFromPoolBalance`
      * or `depositToPoolBalance`.
      */
