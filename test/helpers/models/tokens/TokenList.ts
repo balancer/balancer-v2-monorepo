@@ -10,7 +10,6 @@ import {
   TokensDeploymentOptions,
 } from './types';
 import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
-import WETH from './WETH';
 
 export const ETH_TOKEN_ADDRESS = ZERO_ADDRESS;
 
@@ -41,8 +40,8 @@ export default class TokenList {
     return this.get(1);
   }
 
-  get WETH(): WETH {
-    return this.findBySymbol('WETH') as WETH;
+  get WETH(): Token {
+    return this.findBySymbol('WETH');
   }
 
   get DAI(): Token {
@@ -118,5 +117,11 @@ export default class TokenList {
     const token = this.tokens.find((token) => token.symbol.toLowerCase() === symbol.toLowerCase());
     if (!token) throw Error(`Could not find token with symbol ${symbol}`);
     return token;
+  }
+
+  findIndexBySymbol(symbol: string): number {
+    const index = this.tokens.findIndex((token) => token.symbol.toLowerCase() === symbol.toLowerCase());
+    if (index == -1) throw Error(`Could not find token with symbol ${symbol}`);
+    return index;
   }
 }

@@ -86,7 +86,7 @@ export async function expectBalanceChange(
   promise: () => Promise<unknown>,
   tokens: TokenList,
   balanceChange: BalanceChange | Array<BalanceChange>
-): Promise<void> {
+): Promise<any> {
   const trackers: Dictionary<Dictionary<ERC20BalanceTracker>> = {};
   const balanceChanges: Array<BalanceChange> = Array.isArray(balanceChange) ? balanceChange : [balanceChange];
 
@@ -99,7 +99,7 @@ export async function expectBalanceChange(
     });
   }
 
-  await promise();
+  const result = await promise();
 
   for (const { account, changes } of balanceChanges) {
     const address = accountToAddress(account);
@@ -125,4 +125,6 @@ export async function expectBalanceChange(
       }
     });
   }
+
+  return result;
 }

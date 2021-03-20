@@ -5,10 +5,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deepEqual } from 'assert';
 
 import * as allPools from './allPools.json';
-import { roleId } from '../../helpers/roles';
 import { bn, fp } from '../../helpers/numbers';
 import { TokenList, deployTokens } from '../../helpers/tokens';
-import { FundManagement, SwapIn } from '../../helpers/trading';
+import { WEEK } from '../../helpers/time';
 import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { formatPools, getTokenInfoForDeploy, Pool } from './processJSON';
@@ -21,7 +20,6 @@ let trader: SignerWithAddress;
 let assetManager: SignerWithAddress; // This would normally be a contract
 
 const NUM_POOLS = 5;
-const INVESTMENT_AMOUNT = 123;
 
 const decimalsByAddress: Dictionary<number> = {};
 
@@ -75,74 +73,8 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
   const pools: Contract[] = (await deployPools(filteredPools, tokens)).filter((x): x is Contract => x !== undefined);
 
-  console.log(`\nSwapping a few tokens...`);
-  await Promise.all(pools.map((p) => swapInPool(p)));
-
-  // TODO add pool type which supports asset withdrawals
-  const supportsAssetWithdrawals = false;
-  if (supportsAssetWithdrawals) {
-    console.log('Making a few investments...');
-    await Promise.all(pools.map(investPool));
-  }
-
-  console.log('\nSetting the protocol swap fee...');
-  const role = roleId(vault, 'setProtocolFees');
-  await authorizer.connect(deployer).grantRole(role, deployer.address);
-  await vault.connect(deployer).setProtocolFees(fp(0.1), 0, 0);
-
   return;
 };
-
-async function swapInPool(pool: Contract) {
-  const poolId = await pool.getPoolId();
-
-  const vault = await ethers.getContract('Vault');
-  const { tokens: tokenAddresses } = await vault.getPoolTokens(poolId);
-  const tokenInIndex = 0;
-  const tokenOutIndex = 1;
-
-  const tokenInAddress = tokenAddresses[tokenInIndex];
-  const amountInDecimals = decimalsByAddress[tokenInAddress];
-  const amountIn = bn(100).mul(bn(10).pow(amountInDecimals));
-
-  const swap: SwapIn = {
-    poolId,
-    tokenInIndex,
-    tokenOutIndex,
-    amountIn,
-    userData: '0x',
-  };
-  const swaps: SwapIn[] = [swap];
-
-  const funds: FundManagement = {
-    sender: trader.address,
-    recipient: trader.address,
-    fromInternalBalance: false,
-    toInternalBalance: false,
-  };
-
-  const validatorData = '0x';
-  const params = [ZERO_ADDRESS, validatorData, swaps, tokenAddresses, funds];
-
-  const receipt = await (await vault.connect(trader).batchSwapGivenIn(...params)).wait();
-  const event = receipt.events?.find((e: Event) => e.event == 'Swap');
-  if (event == undefined) {
-    throw new Error('Could not find Swap event');
-  }
-  return event;
-}
-
-async function investPool(pool: Contract) {
-  const poolId = await pool.getPoolId();
-
-  const vault = await ethers.getContract('Vault');
-  const { tokens: tokenAddresses } = await vault.getPoolTokens(poolId);
-
-  const token = tokenAddresses[0];
-
-  await pool.authorizeAssetManager(token, assetManager.address);
-  return vault.connect(assetManager).withdrawFromPoolBalance(poolId, token, INVESTMENT_AMOUNT);
-}
 
 // in order to keep the tokens in line with the initial balances, weights, etc
 // we presort the addresses before deploying the pool
@@ -195,7 +127,9 @@ async function deployStrategyPool(
 
   const name = tokens.length + ' token pool';
   const sym = 'TESTPOOL';
-  const parameters = [name, sym, tokens, weights, swapFee];
+  const emergencyPeriod = WEEK;
+  const emergencyPeriodCheckExtension = WEEK;
+  const parameters = [name, sym, tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension];
 
   const tx = await wpFactoryContract.connect(controller).create(...parameters);
   const receipt = await tx.wait();

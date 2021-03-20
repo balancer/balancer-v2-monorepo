@@ -15,7 +15,6 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
       from: deployer,
       args: [vault.address],
       log: true,
-      deterministicDeployment: true,
     });
   }
 }

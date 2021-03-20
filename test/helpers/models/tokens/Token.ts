@@ -33,9 +33,15 @@ export default class Token {
     return this.instance.balanceOf(TypesConverter.toAddress(account));
   }
 
-  async mint(to: Account, amount?: BigNumberish, { from }: TxParams = {}): Promise<ContractTransaction> {
+  async mint(to: Account, amount?: BigNumberish, { from }: TxParams = {}): Promise<void> {
     const token = from ? this.instance.connect(from) : this.instance;
-    return token.mint(TypesConverter.toAddress(to), amount ?? MAX_UINT256);
+
+    if (this.symbol === 'WETH') {
+      await token.deposit({ value: amount });
+      await token.transfer(TypesConverter.toAddress(to), amount);
+    } else {
+      await token.mint(TypesConverter.toAddress(to), amount ?? MAX_UINT256);
+    }
   }
 
   async approve(to: Account, amount?: BigNumberish, { from }: TxParams = {}): Promise<ContractTransaction> {

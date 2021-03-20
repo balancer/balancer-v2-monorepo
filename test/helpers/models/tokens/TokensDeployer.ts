@@ -6,7 +6,6 @@ import Token from './Token';
 import TokenList from './TokenList';
 import TypesConverter from '../types/TypesConverter';
 import { RawTokenDeployment, RawTokensDeployment, TokenDeployment, TokensDeploymentOptions } from './types';
-import WETH from './WETH';
 
 class TokensDeployer {
   async deploy(params: RawTokensDeployment, { sorted, from }: TokensDeploymentOptions = {}): Promise<TokenList> {
@@ -22,16 +21,14 @@ class TokensDeployer {
     const { symbol, name, decimals, from } = TypesConverter.toTokenDeployment(params);
     const sender = from || (await ethers.getSigners())[0];
 
+    let instance;
     if (symbol !== 'WETH') {
-      return new Token(
-        name,
-        symbol,
-        decimals,
-        await deploy('TestToken', { from: sender, args: [sender.address, 'Token', 'TKN', decimals] })
-      );
+      instance = await deploy('TestToken', { from: sender, args: [sender.address, 'Token', 'TKN', decimals] });
     } else {
-      return new WETH(name, symbol, decimals, await deploy('WETH', { from: sender, args: [sender.address] }));
+      instance = await deploy('WETH', { from: sender, args: [sender.address] });
     }
+
+    return new Token(name, symbol, decimals, instance);
   }
 
   private _sortTokensDeployment(tokens: Token[], params: RawTokensDeployment): Token[] {

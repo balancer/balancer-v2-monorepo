@@ -14,14 +14,13 @@ import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { bn, fp, pct } from '../../lib/helpers/numbers';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
-import WETH from '../helpers/models/tokens/WETH';
 import { forceSendEth } from '../helpers/eth';
 
 describe('Vault - internal balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
   let relayer: SignerWithAddress, otherRecipient: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
-  let tokens: TokenList, weth: WETH;
+  let tokens: TokenList, weth: Token;
 
   const WITHDRAW_FEE = 0.005;
 
@@ -31,7 +30,7 @@ describe('Vault - internal balance', () => {
 
   sharedBeforeEach('deploy vault & tokens', async () => {
     tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
-    weth = (await TokensDeployer.deployToken({ symbol: 'WETH' })) as WETH;
+    weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address, weth.address, 0, 0] });
@@ -719,8 +718,7 @@ describe('Vault - internal balance', () => {
 
         context('when the sender has enough internal balance', () => {
           sharedBeforeEach('deposit internal balance', async () => {
-            // We need the sender to have real WETH so that it can be withdrawn
-            await weth.mintWETH({ from: sender, to: sender, amount });
+            await weth.mint(sender, amount, { from: sender });
             await weth.approve(vault, amount, { from: sender });
             await vault.depositToInternalBalance([
               {
