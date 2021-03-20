@@ -19,13 +19,13 @@ let trader: SignerWithAddress;
 //let validator: Contract;
 let assetManager: SignerWithAddress; // This would normally be a contract
 
-const NUM_POOLS = 5;
+const NUM_POOLS = 10;
 
 const decimalsByAddress: Dictionary<number> = {};
 
 module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment) {
   ethers = hre.ethers;
-  [deployer, controller, trader, assetManager] = await ethers.getSigners();
+  [deployer, controller] = await ethers.getSigners();
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
@@ -55,23 +55,13 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     const tradingBalanceScaled = tradingBalance.div(bn(10).pow(decimals[index]));
     console.log(`${symbol}: ${token.address} ${tradingBalanceScaled}`);
 
-    await token.connect(controller).approve(vault.address, MAX_UINT256);
     await token.connect(deployer).mint(controller.address, tradingBalance);
-    await token.connect(deployer).mint(trader.address, tradingBalance);
-    await token.connect(trader).approve(vault.address, MAX_UINT256);
-    await token.connect(assetManager).approve(vault.address, MAX_UINT256);
+    await token.connect(controller).approve(vault.address, MAX_UINT256);
 
-    // deposit half into user balance
-    const depositBalance = tradingBalance.div(bn(2));
-    await vault
-      .connect(trader)
-      .depositToInternalBalance([
-        { token: token.address, amount: depositBalance, sender: trader.address, recipient: trader.address },
-      ]);
   }
 
-  console.log(`\nDeploying Pools using vault: ${vault.address}`);
-  const pools: Contract[] = (await deployPools(filteredPools, tokens)).filter((x): x is Contract => x !== undefined);
+  // console.log(`\nDeploying Pools using vault: ${vault.address}`);
+  await deployPools(filteredPools, tokens);
 
   return;
 };
@@ -81,8 +71,8 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
 const compareAddresses = (addressA: string, addressB: string) =>
   addressA.toLowerCase() > addressB.toLowerCase() ? 1 : -1;
 
-async function deployPools(filteredPools: Pool[], tokens: TokenList): Promise<(Contract | undefined)[]> {
-  const promises = filteredPools.map((p) => {
+async function deployPools(filteredPools: Pool[], tokens: TokenList) {
+  for(const p of filteredPools) {
     const tokensList: Array<string> = [];
     const weights: Array<BigNumber> = [];
     const balances: Array<BigNumber> = [];
@@ -98,9 +88,8 @@ async function deployPools(filteredPools: Pool[], tokens: TokenList): Promise<(C
       });
 
     // Deploy pool and provide liquidity
-    return deployStrategyPool(tokensList, weights, balances, swapFee);
-  });
-  return await Promise.all(promises);
+    await deployStrategyPool(tokensList, weights, balances, swapFee);
+  };
 }
 
 async function deployStrategyPool(
@@ -154,7 +143,6 @@ async function initializeStrategyPool(
   const vault = await ethers.getContract('Vault');
 
   const poolId = await pool.getPoolId();
-
   // Sanity check: need to make sure tokens are in sorted order in some cases
   // or joinPool will fail
   deepEqual(tokens, (await vault.getPoolTokens(poolId)).tokens);

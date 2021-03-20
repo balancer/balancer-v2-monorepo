@@ -34,6 +34,7 @@ contract WETH is AccessControl, IWETH {
     mapping(address => mapping(address => uint256)) public override allowance;
 
     constructor(address minter) {
+        _setupRole(DEFAULT_ADMIN_ROLE, minter);
         _setupRole(MINTER_ROLE, minter);
     }
 

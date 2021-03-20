@@ -15,7 +15,7 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
     log: true,
   });
 
-  if (hre.network.live && vault.newlyDeployed) {
+  if (hre.network.live) {
     await tenderly.push({
       name: 'Vault',
       address: vault.address,
