@@ -37,6 +37,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
         uint256[] memory amounts,
         bytes calldata receiverData
     ) external override nonReentrant noEmergencyPeriod {
+        /*
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         uint256[] memory feeAmounts = new uint256[](tokens.length);
@@ -71,5 +72,6 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
 
             _increaseCollectedFees(token, receivedFees);
         }
+        */
     }
 }
