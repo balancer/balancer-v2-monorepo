@@ -163,7 +163,7 @@ interface IVault {
      * Because Internal Balance works exclusively with ERC20 tokens, ETH deposits and withdrawals will be reflected here
      * as having used WETH.
      */
-    event InternalBalanceChanged(address indexed user, IERC20 indexed token, uint256 balance);
+    event InternalBalanceChanged(address indexed user, IERC20 indexed token, int256 delta);
 
     // Pools
     //
