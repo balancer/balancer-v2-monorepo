@@ -91,7 +91,7 @@
         "type": "int256"
       }
     ],
-    "name": "PoolBalanceChanged",
+    "name": "PoolBalanceManaged",
     "type": "event"
   },
   {
@@ -512,36 +512,6 @@
         "type": "bytes32"
       },
       {
-        "components": [
-          {
-            "internalType": "contract IERC20",
-            "name": "token",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct IVault.AssetManagerTransfer[]",
-        "name": "transfers",
-        "type": "tuple[]"
-      }
-    ],
-    "name": "depositToPoolBalance",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
         "internalType": "contract IERC20[]",
         "name": "tokens",
         "type": "address[]"
@@ -906,6 +876,41 @@
   {
     "inputs": [
       {
+        "internalType": "bytes32",
+        "name": "poolId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "enum IVault.AssetManagerOpKind",
+        "name": "kind",
+        "type": "uint8"
+      },
+      {
+        "components": [
+          {
+            "internalType": "contract IERC20",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IVault.AssetManagerTransfer[]",
+        "name": "transfers",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "managePoolBalance",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "enum IVault.SwapKind",
         "name": "kind",
         "type": "uint8"
@@ -1137,36 +1142,6 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "components": [
-          {
-            "internalType": "contract IERC20",
-            "name": "token",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct IVault.AssetManagerTransfer[]",
-        "name": "transfers",
-        "type": "tuple[]"
-      }
-    ],
-    "name": "updateManagedBalance",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "contract IERC20[]",
         "name": "tokens",
         "type": "address[]"
@@ -1218,36 +1193,6 @@
       }
     ],
     "name": "withdrawFromInternalBalance",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "components": [
-          {
-            "internalType": "contract IERC20",
-            "name": "token",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct IVault.AssetManagerTransfer[]",
-        "name": "transfers",
-        "type": "tuple[]"
-      }
-    ],
-    "name": "withdrawFromPoolBalance",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
