@@ -19,6 +19,7 @@ import "../math/FixedPoint.sol";
 import "./InputHelpers.sol";
 
 import "../../pools/BasePool.sol";
+import "../../vault/ProtocolFees.sol";
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/balances/BalanceAllocation.sol";
 
@@ -65,7 +66,8 @@ contract BalancerHelpers {
 
         // Deduct withdraw fees unless it's using internal balance
         if (!toInternalBalance) {
-            (, uint256 withdrawFeePct, ) = vault.getProtocolFees();
+            ProtocolFees protocolFees = vault.getProtocolFees();
+            uint256 withdrawFeePct = protocolFees.getWithdrawFee();
             for (uint256 i = 0; i < amountsOut.length; i++) {
                 uint256 amountOut = amountsOut[i];
                 uint256 withdrawFee = FixedPoint.mulUp(amountOut, withdrawFeePct);
@@ -85,8 +87,8 @@ contract BalancerHelpers {
             returns (uint256, uint256[] memory) query
     ) internal returns (uint256, uint256[] memory) {
         (uint256[] memory balances, uint256 latestBlockNumberUsed) = _validateTokensAndGetBalances(poolId, tokens);
-        (uint256 protocolSwapFee, , ) = vault.getProtocolFees();
-        return query(poolId, sender, recipient, balances, latestBlockNumberUsed, protocolSwapFee, userData);
+        ProtocolFees protocolFees = vault.getProtocolFees();
+        return query(poolId, sender, recipient, balances, latestBlockNumberUsed, protocolFees.getSwapFee(), userData);
     }
 
     function _validateTokensAndGetBalances(bytes32 poolId, IERC20[] memory expectedTokens)

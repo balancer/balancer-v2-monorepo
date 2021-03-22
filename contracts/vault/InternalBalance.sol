@@ -96,8 +96,8 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false);
 
             if (taxableAmount > 0) {
-                uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(taxableAmount);
-                _increaseCollectedFees(token, feeAmount);
+                uint256 feeAmount = _calculateWithdrawFee(taxableAmount);
+                _payFee(token, feeAmount);
                 amountToSend = amountToSend.sub(feeAmount);
             }
 

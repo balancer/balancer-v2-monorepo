@@ -637,25 +637,6 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      }
-    ],
-    "name": "getCollectedFees",
-    "outputs": [
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "getEmergencyPeriod",
     "outputs": [
@@ -818,19 +799,9 @@
     "name": "getProtocolFees",
     "outputs": [
       {
-        "internalType": "uint256",
-        "name": "swapFee",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "withdrawFee",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "flashLoanFee",
-        "type": "uint256"
+        "internalType": "contract ProtocolFees",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -1044,29 +1015,6 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "newSwapFee",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "newWithdrawFee",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "newFlashLoanFee",
-        "type": "uint256"
-      }
-    ],
-    "name": "setProtocolFees",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "components": [
           {
             "internalType": "contract IERC20",
@@ -1160,29 +1108,6 @@
       }
     ],
     "name": "updateManagedBalance",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "amounts",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "address",
-        "name": "recipient",
-        "type": "address"
-      }
-    ],
-    "name": "withdrawCollectedFees",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
