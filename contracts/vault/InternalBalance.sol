@@ -101,6 +101,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
                 amountToSend = amountToSend.sub(feeAmount);
             }
 
+            // Tokens withdrawn from Internal Balance are not exempt from withdrawal fees.
             _sendAsset(asset, amountToSend, recipient, false, false);
         }
     }
