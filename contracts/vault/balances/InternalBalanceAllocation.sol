@@ -79,7 +79,8 @@ library InternalBalanceAllocation {
     function decrease(
         bytes32 balance,
         uint256 amount,
-        bool capped
+        bool capped,
+        bool useExempt
     )
         internal
         view
@@ -103,8 +104,8 @@ library InternalBalanceAllocation {
             // A user could be decreasing its internal balance by a number greater than its exempt value.
             // Then we should always do a sub capped to zero.
             uint256 currentExempt = exempt(balance);
-            uint256 newExempt = currentExempt > amount ? currentExempt - amount : 0;
-            uint256 taxableAmount = currentExempt > amount ? 0 : amount - currentExempt;
+            uint256 newExempt = useExempt ? (currentExempt > amount ? currentExempt - amount : 0) : currentExempt;
+            uint256 taxableAmount = useExempt ? (currentExempt > amount ? 0 : amount - currentExempt): amount;
             bytes32 newBalance = toInternalBalance(newActual, newExempt, lastBlockNumber);
             return (newBalance, taxableAmount, decreased);
         } else {

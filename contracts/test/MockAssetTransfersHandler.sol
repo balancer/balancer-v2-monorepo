@@ -76,7 +76,8 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         address account,
         IERC20 token,
         uint256 amount,
-        bool capped
+        bool capped,
+        bool
     ) internal override returns (uint256, uint256) {
         uint256 currentBalance = _internalTokenBalance[account][token];
         uint256 toDeduct = capped ? Math.min(currentBalance, amount) : amount;

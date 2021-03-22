@@ -93,7 +93,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             IERC20 token = _translateToIERC20(asset);
 
             uint256 amountToSend = amount;
-            (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false);
+            (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false, true);
 
             if (taxableAmount > 0) {
                 uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(taxableAmount);
@@ -120,7 +120,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             address recipient = transfers[i].recipient;
 
             // Transferring internal balance to another account is not charged withdrawal fees
-            _decreaseInternalBalance(sender, token, amount, false);
+            _decreaseInternalBalance(sender, token, amount, false, false);
             // Tokens transferred internally are not later exempt from withdrawal fees.
             _increaseInternalBalance(recipient, token, amount, false);
         }
@@ -172,12 +172,14 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         address account,
         IERC20 token,
         uint256 amount,
-        bool capped
+        bool capped,
+        bool useExempt
     ) internal override returns (uint256, uint256) {
         bytes32 currentInternalBalance = _getInternalBalance(account, token);
         (bytes32 newBalance, uint256 taxableAmount, uint256 decreasedAmount) = currentInternalBalance.decrease(
             amount,
-            capped
+            capped,
+            useExempt
         );
 
         // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256 as the value is
