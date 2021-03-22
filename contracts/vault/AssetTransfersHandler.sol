@@ -209,8 +209,6 @@ abstract contract AssetTransfersHandler {
     // this case, Fees and InternalBalance) in order to decouple it from the rest of the system and enable standalone
     // testing by implementing these with mocks.
 
-    function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view virtual returns (uint256);
-
     function _increaseInternalBalance(
         address account,
         IERC20 token,
