@@ -292,14 +292,12 @@ interface IVault {
             address assetManager
         );
 
-
     struct PoolBalanceChange {
         bool useInternalBalance;
         IAsset[] assets;
         uint256[] limits;
         bytes userData;
     }
-
 
     /**
      * @dev Called by users to join a Pool, which transfers tokens from `sender` into the Pool's balance. This will
