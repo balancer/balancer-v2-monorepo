@@ -142,29 +142,20 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Process asset deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
 
-        bool ethAssetSeen = false;
-        uint256 wrappedETH = 0;
-
+        EthTracker memory tracker;
         for (uint256 i = 0; i < assets.length; ++i) {
-            IAsset asset = assets[i];
             int256 delta = assetDeltas[i];
-
             _require(delta <= limits[i], Errors.SWAP_LIMIT);
 
-            bool isETH = _isETH(asset);
-            if (isETH) {
-                ethAssetSeen = true;
-            }
-
+            IAsset asset = assets[i];
             if (delta > 0) {
                 uint256 toReceive = uint256(delta);
                 _receiveAsset(asset, toReceive, funds.sender, funds.fromInternalBalance);
-
-                if (isETH) {
-                    wrappedETH = wrappedETH.add(toReceive);
-                }
+                _trackEth(tracker, asset, toReceive);
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
+                // Given that the delta is negative, we don't track an amount for ETH
+                _trackEth(tracker, asset, 0);
 
                 // Withdraw fees are not charged when sending funds as part of a swap.
                 // Deposits to Internal Balance are also exempt of this fee during the current block.
@@ -172,11 +163,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             }
         }
 
-        // We prevent user error by reverting if ETH was sent but not referenced by any asset.
-        _ensureNoUnallocatedETH(ethAssetSeen);
-
-        // By returning the excess ETH, we also check that at least wrappedETH has been received.
-        _returnExcessEthToCaller(wrappedETH);
+        // Handle any remaining ETH by checking it wasn't sent by mistake and returning the excess in case there is any
+        _handleRemainingEth(tracker);
     }
 
     // For `_swapWithPools` to handle both given in and given out swaps, it internally tracks the 'given' amount

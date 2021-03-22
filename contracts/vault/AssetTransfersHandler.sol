@@ -121,8 +121,28 @@ abstract contract AssetTransfersHandler is AssetHelpers {
         }
     }
 
+    struct EthTracker {
+        bool ethAssetSeen;
+        uint256 amountUsed;
+    }
+
+    function _trackEth(
+        EthTracker memory tracker,
+        IAsset asset,
+        uint256 amount
+    ) internal pure {
+        bool isETH = _isETH(asset);
+        if (isETH) {
+            tracker.ethAssetSeen = true;
+            tracker.amountUsed = tracker.amountUsed.add(amount);
+        }
+    }
+
     /**
-     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` of it has been spent.
+     * @dev Reverts in transactions where a user sent ETH, but didn't specify usage of it as an asset. `ethAssetSeen`
+     * should be true if any asset held the sentinel value for ETH, and false otherwise.
+     * In case the user did specify the usage of sent ETH, it will return any excess back to the contract caller,
+     * assuming `amountUsed` of it has been spent.
      *
      * Because the caller might not now exactly how much ETH a Vault action will require, they may send extra amounts.
      * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
@@ -131,22 +151,15 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      *
      * Reverts if the contract caller sent less ETH than `amountUsed`.
      */
-    function _returnExcessEthToCaller(uint256 amountUsed) internal {
-        _require(msg.value >= amountUsed, Errors.INSUFFICIENT_ETH);
-
-        uint256 excess = msg.value - amountUsed;
-        if (excess > 0) {
-            msg.sender.sendValue(excess);
-        }
-    }
-
-    /**
-     * @dev Reverts in transactions where a user sent ETH, but didn't specify usage of it as an asset. `ethAssetSeen`
-     * should be true if any asset held the sentinel value for ETH, and false otherwise.
-     */
-    function _ensureNoUnallocatedETH(bool ethAssetSeen) internal view {
+    function _handleRemainingEth(EthTracker memory tracker) internal {
         if (msg.value > 0) {
-            _require(ethAssetSeen, Errors.UNALLOCATED_ETH);
+            require(tracker.ethAssetSeen, Errors.UNALLOCATED_ETH);
+            require(msg.value >= tracker.amountUsed, Errors.INSUFFICIENT_ETH);
+
+            uint256 excess = msg.value - tracker.amountUsed;
+            if (excess > 0) {
+                msg.sender.sendValue(excess);
+            }
         }
     }
 

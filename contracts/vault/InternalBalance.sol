@@ -54,9 +54,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         nonReentrant
         noEmergencyPeriod
     {
-        bool ethAssetSeen = false;
-        uint256 wrappedETH = 0;
-
+        EthTracker memory tracker;
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
@@ -70,17 +68,11 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             // _receiveAsset does not check if the caller sent enough ETH, so we keep track of it independently (as
             // multiple deposits may have all deposited ETH).
             _receiveAsset(asset, amount, sender, false);
-            if (_isETH(asset)) {
-                ethAssetSeen = true;
-                wrappedETH = wrappedETH.add(amount);
-            }
+            _trackEth(tracker, asset, amount);
         }
 
-        // We prevent user error by reverting if ETH was sent but not allocated to any deposit.
-        _ensureNoUnallocatedETH(ethAssetSeen);
-
-        // By returning the excess ETH, we also check that at least wrappedETH has been received.
-        _returnExcessEthToCaller(wrappedETH);
+        // Handle any remaining ETH by checking it wasn't sent by mistake and returning the excess in case there is any
+        _handleRemainingEth(tracker);
     }
 
     function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override nonReentrant {
