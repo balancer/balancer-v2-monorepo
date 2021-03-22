@@ -71,9 +71,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
     }
 
-    // This struct is identical in layout to SwapRequestGivenIn and SwapRequestGivenOut from IPoolSwapStructs, except
-    // the 'amountIn/Out' is named 'amount'.
+    // This struct is identical in layout to IPoolSwapStructs.SwapRequest
     struct InternalSwapRequest {
+        SwapKind kind;
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint256 amount;
@@ -85,30 +85,16 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     }
 
     /**
-     * @dev Converts an InternalSwapRequest into a SwapRequestGivenIn, with no runtime cost.
+     * @dev Converts an InternalSwapRequest into a Pool SwapRequest, with no runtime cost.
      */
-    function _toSwapRequestGivenIn(InternalSwapRequest memory internalSwapRequest)
+    function _toPoolSwapRequest(InternalSwapRequest memory internalSwapRequest)
         private
         pure
-        returns (IPoolSwapStructs.SwapRequestGivenIn memory swapRequestGivenIn)
+        returns (IPoolSwapStructs.SwapRequest memory swapRequest)
     {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            swapRequestGivenIn := internalSwapRequest
-        }
-    }
-
-    /**
-     * @dev Converts an InternalSwapRequest into a SwapRequestGivenOut, with no runtime cost.
-     */
-    function _toSwapRequestGivenOut(InternalSwapRequest memory internalSwapRequest)
-        private
-        pure
-        returns (IPoolSwapStructs.SwapRequestGivenOut memory swapRequestGivenOut)
-    {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            swapRequestGivenOut := internalSwapRequest
+            swapRequest := internalSwapRequest
         }
     }
 
@@ -321,6 +307,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         SwapKind kind
     ) private returns (uint256 amountIn, uint256 amountOut) {
         InternalSwapRequest memory request = InternalSwapRequest({
+            kind: kind,
             tokenIn: tokenIn,
             tokenOut: tokenOut,
             amount: swap.amount,
@@ -438,21 +425,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         request.latestBlockNumberUsed = Math.max(tokenInBalance.blockNumber(), tokenOutBalance.blockNumber());
 
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
-        if (kind == SwapKind.GIVEN_IN) {
-            IPoolSwapStructs.SwapRequestGivenIn memory swapIn = _toSwapRequestGivenIn(request);
-            uint256 amountOut = pool.onSwapGivenIn(swapIn, tokenInTotal, tokenOutTotal);
-
-            newTokenInBalance = tokenInBalance.increaseCash(request.amount);
-            newTokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
-            amountCalculated = amountOut;
-        } else {
-            IPoolSwapStructs.SwapRequestGivenOut memory swapOut = _toSwapRequestGivenOut(request);
-            uint256 amountIn = pool.onSwapGivenOut(swapOut, tokenInTotal, tokenOutTotal);
-
-            newTokenInBalance = tokenInBalance.increaseCash(amountIn);
-            newTokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
-            amountCalculated = amountIn;
-        }
+        IPoolSwapStructs.SwapRequest memory poolSwapRequest = _toPoolSwapRequest(request);
+        amountCalculated = pool.onSwap(poolSwapRequest, tokenInTotal, tokenOutTotal);
+        bool givenIn = kind == SwapKind.GIVEN_IN;
+        newTokenInBalance = tokenInBalance.increaseCash(givenIn ? request.amount : amountCalculated);
+        newTokenOutBalance = tokenOutBalance.decreaseCash(givenIn ? amountCalculated : request.amount);
     }
 
     function _processGeneralPoolSwapRequest(
@@ -486,21 +463,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
-        if (kind == SwapKind.GIVEN_IN) {
-            IPoolSwapStructs.SwapRequestGivenIn memory swapRequestIn = _toSwapRequestGivenIn(request);
-            uint256 amountOut = pool.onSwapGivenIn(swapRequestIn, currentBalances, indexIn, indexOut);
-
-            amountCalculated = amountOut;
-            tokenInBalance = tokenInBalance.increaseCash(request.amount);
-            tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
-        } else {
-            IPoolSwapStructs.SwapRequestGivenOut memory swapRequestOut = _toSwapRequestGivenOut(request);
-            uint256 amountIn = pool.onSwapGivenOut(swapRequestOut, currentBalances, indexIn, indexOut);
-
-            amountCalculated = amountIn;
-            tokenInBalance = tokenInBalance.increaseCash(amountIn);
-            tokenOutBalance = tokenOutBalance.decreaseCash(request.amount);
-        }
+        IPoolSwapStructs.SwapRequest memory poolSwapRequest = _toPoolSwapRequest(request);
+        amountCalculated = pool.onSwap(poolSwapRequest, currentBalances, indexIn, indexOut);
+        bool givenIn = kind == SwapKind.GIVEN_IN;
+        tokenInBalance = tokenInBalance.increaseCash(givenIn ? request.amount : amountCalculated);
+        tokenOutBalance = tokenOutBalance.decreaseCash(givenIn ? amountCalculated : request.amount);
 
         // Because no token registrations or unregistrations happened between now and when we retrieved the indexes for
         // token in and token out, we can use `unchecked_setAt`, saving storage reads.
