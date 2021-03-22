@@ -164,14 +164,18 @@ async function initializeStrategyPool(
   const fromInternalBalance = false;
   const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
 
-  const joinTx = await vault
-    .connect(controller)
-    .joinPool(poolId, controller.address, recipient, tokens, maxAmountsIn, fromInternalBalance, initialJoinUserData);
+  const joinTx = await vault.connect(controller).joinPool(poolId, controller.address, recipient, {
+    assets: tokens,
+    limits: maxAmountsIn,
+    useInternalBalance: fromInternalBalance,
+    userData: initialJoinUserData,
+  });
+
   const receipt = await joinTx.wait();
 
-  const event = receipt.events?.find((e: Event) => e.event == 'PoolJoined');
+  const event = receipt.events?.find((e: Event) => e.event == 'PoolBalanceChanged');
   if (event == undefined) {
-    throw new Error('Could not find PoolJoined event');
+    throw new Error('Could not find PoolBalanceChanged event');
   }
   return event;
 }

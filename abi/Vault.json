@@ -75,20 +75,32 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "assetManager",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "contract IERC20",
-        "name": "token",
+        "name": "liquidityProvider",
         "type": "address"
       },
       {
         "indexed": false,
-        "internalType": "int256",
-        "name": "amount",
-        "type": "int256"
+        "internalType": "bool",
+        "name": "add",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "contract IERC20[]",
+        "name": "tokens",
+        "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "amounts",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "protocolFees",
+        "type": "uint256[]"
       }
     ],
     "name": "PoolBalanceChanged",
@@ -106,66 +118,23 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "liquidityProvider",
+        "name": "assetManager",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract IERC20",
+        "name": "token",
         "type": "address"
       },
       {
         "indexed": false,
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256[]",
-        "name": "amountsOut",
-        "type": "uint256[]"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256[]",
-        "name": "protocolFees",
-        "type": "uint256[]"
+        "internalType": "int256",
+        "name": "amount",
+        "type": "int256"
       }
     ],
-    "name": "PoolExited",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "liquidityProvider",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256[]",
-        "name": "amountsIn",
-        "type": "uint256[]"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256[]",
-        "name": "protocolFees",
-        "type": "uint256[]"
-      }
-    ],
-    "name": "PoolJoined",
+    "name": "PoolBalanceManaged",
     "type": "event"
   },
   {
@@ -570,24 +539,31 @@
         "type": "address"
       },
       {
-        "internalType": "contract IAsset[]",
-        "name": "assets",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "minAmountsOut",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "bool",
-        "name": "toInternalBalance",
-        "type": "bool"
-      },
-      {
-        "internalType": "bytes",
-        "name": "userData",
-        "type": "bytes"
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "useInternalBalance",
+            "type": "bool"
+          },
+          {
+            "internalType": "contract IAsset[]",
+            "name": "assets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "limits",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "userData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct IVault.PoolBalanceChange",
+        "name": "change",
+        "type": "tuple"
       }
     ],
     "name": "exitPool",
@@ -878,24 +854,31 @@
         "type": "address"
       },
       {
-        "internalType": "contract IAsset[]",
-        "name": "assets",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "maxAmountsIn",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "bool",
-        "name": "fromInternalBalance",
-        "type": "bool"
-      },
-      {
-        "internalType": "bytes",
-        "name": "userData",
-        "type": "bytes"
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "useInternalBalance",
+            "type": "bool"
+          },
+          {
+            "internalType": "contract IAsset[]",
+            "name": "assets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "limits",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "userData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct IVault.PoolBalanceChange",
+        "name": "change",
+        "type": "tuple"
       }
     ],
     "name": "joinPool",

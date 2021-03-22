@@ -55,18 +55,15 @@ describe('Vault - asset manager', function () {
 
       await pool.registerTokens(tokens.addresses, assetManagers);
 
-      await vault.connect(lp).joinPool(
-        poolId,
-        lp.address,
-        other.address,
-        tokens.addresses,
-        tokens.addresses.map(() => MAX_UINT256),
-        false,
-        encodeJoin(
+      await vault.connect(lp).joinPool(poolId, lp.address, other.address, {
+        assets: tokens.addresses,
+        limits: tokens.addresses.map(() => MAX_UINT256),
+        useInternalBalance: false,
+        userData: encodeJoin(
           tokens.addresses.map(() => tokenInitialBalance),
           tokens.addresses.map(() => 0)
-        )
-      );
+        ),
+      });
     });
 
     describe('setting', () => {
@@ -344,17 +341,12 @@ describe('Vault - asset manager', function () {
         const { tokens: poolTokens, balances } = await vault.getPoolTokens(poolId);
 
         // Balances must be zero to deregister, so we do a full exit
-        await vault
-          .connect(lp)
-          .exitPool(
-            poolId,
-            lp.address,
-            lp.address,
-            poolTokens,
-            Array(poolTokens.length).fill(0),
-            false,
-            encodeExit(balances, Array(poolTokens.length).fill(0))
-          );
+        await vault.connect(lp).exitPool(poolId, lp.address, lp.address, {
+          assets: poolTokens,
+          limits: Array(poolTokens.length).fill(0),
+          useInternalBalance: false,
+          userData: encodeExit(balances, Array(poolTokens.length).fill(0)),
+        });
 
         // Deregistering tokens should remove the asset managers
         await pool.deregisterTokens([tokens.DAI.address, tokens.MKR.address]);

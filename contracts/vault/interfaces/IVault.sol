@@ -292,6 +292,15 @@ interface IVault {
             address assetManager
         );
 
+
+    struct PoolBalanceChange {
+        bool useInternalBalance;
+        IAsset[] assets;
+        uint256[] limits;
+        bytes userData;
+    }
+
+
     /**
      * @dev Called by users to join a Pool, which transfers tokens from `sender` into the Pool's balance. This will
      * trigger custom Pool behavior, which will typically grant something in return to `recipient` - often tokenized
@@ -314,28 +323,14 @@ interface IVault {
      * of Pool shares to obtain). This can be encoded in the `userData` argument, which is ignored by the Vault and
      * passed directly to the Pool's contract, as is `recipient`.
      *
-     * Emits a `PoolJoined` event.
+     * Emits a `PoolBalanceChanged` event.
      */
     function joinPool(
         bytes32 poolId,
         address sender,
         address recipient,
-        IAsset[] memory assets,
-        uint256[] memory maxAmountsIn,
-        bool fromInternalBalance,
-        bytes memory userData
+        PoolBalanceChange memory change
     ) external payable;
-
-    /**
-     * @dev Emitted when a user joins a Pool by calling `joinPool`.
-     */
-    event PoolJoined(
-        bytes32 indexed poolId,
-        address indexed liquidityProvider,
-        IERC20[] tokens,
-        uint256[] amountsIn,
-        uint256[] protocolFees
-    );
 
     /**
      * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
@@ -367,26 +362,24 @@ interface IVault {
      * of Pool shares to return). This can be encoded in the `userData` argument, which is ignored by the Vault and
      * passed directly to the Pool's contract.
      *
-     * Emits a `PoolExited` event.
+     * Emits a `PoolBalanceChanged` event.
      */
     function exitPool(
         bytes32 poolId,
         address sender,
         address payable recipient,
-        IAsset[] memory assets,
-        uint256[] memory minAmountsOut,
-        bool toInternalBalance,
-        bytes memory userData
+        PoolBalanceChange memory change
     ) external;
 
     /**
-     * @dev Emitted when a user exits a pool by calling `exitPool`.
+     * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool` respectively.
      */
-    event PoolExited(
+    event PoolBalanceChanged(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
+        bool add,
         IERC20[] tokens,
-        uint256[] amountsOut,
+        uint256[] amounts,
         uint256[] protocolFees
     );
 
@@ -645,7 +638,7 @@ interface IVault {
      * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `withdrawFromPoolBalance`
      * or `depositToPoolBalance`.
      */
-    event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
+    event PoolBalanceManaged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     /**
      * @dev Called by a Pool's Asset Manager to withdraw tokens from the Vault. This decreases

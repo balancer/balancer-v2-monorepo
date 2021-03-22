@@ -59,15 +59,12 @@ export default class Vault {
           params.protocolFeePercentage,
           params.data
         )
-      : vault.joinPool(
-          params.poolId,
-          (params.from || (await this._defaultSender())).address,
-          params.recipient,
-          params.tokens,
-          params.maxAmountsIn ?? Array(params.tokens.length).fill(MAX_UINT256),
-          params.fromInternalBalance ?? false,
-          params.data
-        );
+      : vault.joinPool(params.poolId, (params.from || (await this._defaultSender())).address, params.recipient, {
+          assets: params.tokens,
+          limits: params.maxAmountsIn ?? Array(params.tokens.length).fill(MAX_UINT256),
+          useInternalBalance: params.fromInternalBalance ?? false,
+          userData: params.data,
+        });
   }
 
   async exitPool(params: ExitPool): Promise<ContractTransaction> {
@@ -82,15 +79,12 @@ export default class Vault {
           params.protocolFeePercentage,
           params.data
         )
-      : vault.exitPool(
-          params.poolId,
-          (params.from || (await this._defaultSender())).address,
-          params.recipient,
-          params.tokens,
-          params.minAmountsOut ?? Array(params.tokens.length).fill(0),
-          params.toInternalBalance ?? false,
-          params.data
-        );
+      : vault.exitPool(params.poolId, (params.from || (await this._defaultSender())).address, params.recipient, {
+          assets: params.tokens,
+          limits: params.minAmountsOut ?? Array(params.tokens.length).fill(0),
+          useInternalBalance: params.toInternalBalance ?? false,
+          userData: params.data,
+        });
   }
 
   async getProtocolFees(): Promise<{ swapFee: BigNumber; withdrawFee: BigNumber; flashLoanFee: BigNumber }> {
