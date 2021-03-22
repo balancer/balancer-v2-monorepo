@@ -332,32 +332,22 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         });
 
         // Get the calculated amount from the Pool and update its balances
-        uint256 amountCalculated = _processSwapRequest(request, kind);
+        uint256 amountCalculated;
+        address pool = _getPoolAddress(request.poolId);
+        PoolSpecialization specialization = _getPoolSpecialization(request.poolId);
+        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            amountCalculated = _processMinimalSwapInfoPoolSwapRequest(request, IMinimalSwapInfoPool(pool), kind);
+        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+            amountCalculated = _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool), kind);
+        } else {
+            amountCalculated = _processGeneralPoolSwapRequest(request, IGeneralPool(pool), kind);
+        }
 
         // Store swap information for next swap
         previous.tokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
         previous.amountCalculated = amountCalculated;
 
         (amountIn, amountOut) = _getAmounts(kind, swap.amount, amountCalculated);
-    }
-
-    /**
-     * @dev Calls the swap hook on the Pool and updates its balances as a result of the swap being executed. The
-     * interface used for the call will depend on the Pool's specialization setting.
-     *
-     * Returns the token amount calculated by the Pool.
-     */
-    function _processSwapRequest(InternalSwapRequest memory request, SwapKind kind) private returns (uint256) {
-        address pool = _getPoolAddress(request.poolId);
-        PoolSpecialization specialization = _getPoolSpecialization(request.poolId);
-
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            return _processMinimalSwapInfoPoolSwapRequest(request, IMinimalSwapInfoPool(pool), kind);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            return _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool), kind);
-        } else {
-            return _processGeneralPoolSwapRequest(request, IGeneralPool(pool), kind);
-        }
     }
 
     function _processTwoTokenPoolSwapRequest(
