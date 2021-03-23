@@ -12,11 +12,11 @@ import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { formatPools, getTokenInfoForDeploy, Pool } from './processJSON';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 let ethers: any;
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
-//let validator: Contract;
 let assetManager: SignerWithAddress; // This would normally be a contract
 
 const NUM_POOLS = 5;

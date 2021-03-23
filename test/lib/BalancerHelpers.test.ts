@@ -45,7 +45,7 @@ describe('BalancerHelpers', function () {
       const expectedBptOut = await pool.estimateBptOut(amountsIn, initialBalances);
 
       const data = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', amountsIn, minimumBPT: 0 });
-      const result = await helper.callStatic.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+      const result = await helper.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
         maxAmountsIn: maxAmountsIn,
         fromInternalBalance: false,
@@ -58,7 +58,7 @@ describe('BalancerHelpers', function () {
 
     it('bubbles up revert reasons', async () => {
       const data = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
-      const tx = helper.callStatic.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+      const tx = helper.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
         maxAmountsIn: maxAmountsIn,
         fromInternalBalance: fromInternalBalance,
@@ -82,7 +82,7 @@ describe('BalancerHelpers', function () {
     });
 
     const queryExit = async ({ data, internalBalance }: { data: string; internalBalance?: boolean }) => {
-      return helper.callStatic.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+      return helper.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
         minAmountsOut: [],
         toInternalBalance: internalBalance,
@@ -92,7 +92,7 @@ describe('BalancerHelpers', function () {
 
     it('bubbles up revert reasons', async () => {
       const data = encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: bptIn, exitTokenIndex: 90 });
-      const tx = helper.callStatic.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+      const tx = helper.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
         minAmountsOut,
         toInternalBalance: false,
