@@ -104,8 +104,9 @@ library InternalBalanceAllocation {
             // A user could be decreasing its internal balance by a number greater than its exempt value.
             // Then we should always do a sub capped to zero.
             uint256 currentExempt = exempt(balance);
-            uint256 newExempt = useExempt ? (currentExempt > amount ? currentExempt - amount : 0) : currentExempt;
-            uint256 taxableAmount = useExempt ? (currentExempt > amount ? 0 : amount - currentExempt) : amount;
+            uint256 exemptUsed = useExempt ? Math.min(currentExempt, decreased) : 0;
+            uint256 newExempt = currentExempt - exemptUsed;
+            uint256 taxableAmount = decreased - exemptUsed;
             bytes32 newBalance = toInternalBalance(newActual, newExempt, lastBlockNumber);
             return (newBalance, taxableAmount, decreased);
         } else {
@@ -113,7 +114,7 @@ library InternalBalanceAllocation {
             // regular decrease. We cannot handle negative exempt values, it would be like "credit" for potential
             // future ops in the same block.
             bytes32 newBalance = toInternalBalance(newActual, 0, 0);
-            return (newBalance, amount, decreased);
+            return (newBalance, decreased, decreased);
         }
     }
 
