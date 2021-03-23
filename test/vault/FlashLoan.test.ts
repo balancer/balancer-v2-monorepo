@@ -13,7 +13,7 @@ import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress, minter: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
-  let authorizer: Contract, vault: Contract, receiver: Contract, protocolFees: Contract;
+  let authorizer: Contract, vault: Contract, receiver: Contract, feesCollector: Contract;
   let tokens: TokenList;
 
   before('setup', async () => {
@@ -26,11 +26,9 @@ describe('Vault - flash loans', () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
+    feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const factory = await ethers.getContractFactory('ProtocolFees');
-    protocolFees = await factory.attach(await vault.getProtocolFees());
-
-    const SET_FLASH_LOAN_ROLE = roleId(protocolFees, 'setFlashLoanFee');
+    const SET_FLASH_LOAN_ROLE = roleId(feesCollector, 'setFlashLoanFee');
     await authorizer.connect(admin).grantRole(SET_FLASH_LOAN_ROLE, feeSetter.address);
 
     tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
@@ -43,7 +41,7 @@ describe('Vault - flash loans', () => {
 
   context('with no protocol fees', () => {
     sharedBeforeEach(async () => {
-      await protocolFees.connect(feeSetter).setFlashLoanFee(0);
+      await feesCollector.connect(feeSetter).setFlashLoanFee(0);
     });
 
     it('causes no net balance change on the Vault', async () => {
@@ -77,7 +75,7 @@ describe('Vault - flash loans', () => {
     const feePercentage = fp(0.005); // 0.5%
 
     sharedBeforeEach(async () => {
-      await protocolFees.connect(feeSetter).setFlashLoanFee(feePercentage);
+      await feesCollector.connect(feeSetter).setFlashLoanFee(feePercentage);
     });
 
     it('zero loans are possible', async () => {
@@ -90,7 +88,7 @@ describe('Vault - flash loans', () => {
         { account: vault }
       );
 
-      expect((await protocolFees.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
+      expect((await feesCollector.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
     });
 
     it('zero loans are possible', async () => {
@@ -103,7 +101,7 @@ describe('Vault - flash loans', () => {
         { account: vault }
       );
 
-      expect((await protocolFees.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
+      expect((await feesCollector.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
     });
 
     it('the fees module receives protocol fees', async () => {
@@ -113,10 +111,10 @@ describe('Vault - flash loans', () => {
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
         tokens,
-        { account: protocolFees, changes: { DAI: feeAmount } }
+        { account: feesCollector, changes: { DAI: feeAmount } }
       );
 
-      expect((await protocolFees.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
+      expect((await feesCollector.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
     });
 
     it('protocol fees are rounded up', async () => {
@@ -126,10 +124,10 @@ describe('Vault - flash loans', () => {
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [loan], '0x10'),
         tokens,
-        { account: protocolFees, changes: { DAI: feeAmount } }
+        { account: feesCollector, changes: { DAI: feeAmount } }
       );
 
-      expect((await protocolFees.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
+      expect((await feesCollector.getCollectedFees([tokens.DAI.address]))[0]).to.equal(feeAmount);
     });
 
     it('excess fees can be paid', async () => {
@@ -141,10 +139,10 @@ describe('Vault - flash loans', () => {
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
         tokens,
-        { account: protocolFees, changes: { DAI: feeAmount } }
+        { account: feesCollector, changes: { DAI: feeAmount } }
       );
 
-      expect(await protocolFees.getCollectedFees([tokens.DAI.address])).to.deep.equal([feeAmount]);
+      expect(await feesCollector.getCollectedFees([tokens.DAI.address])).to.deep.equal([feeAmount]);
     });
 
     it('all balance can be loaned', async () => {
@@ -176,11 +174,11 @@ describe('Vault - flash loans', () => {
           () =>
             vault.connect(other).flashLoan(receiver.address, [tokens.DAI.address, tokens.MKR.address], amounts, '0x10'),
           tokens,
-          { account: protocolFees, changes: { DAI: feeAmounts[0], MKR: feeAmounts[1] } }
+          { account: feesCollector, changes: { DAI: feeAmounts[0], MKR: feeAmounts[1] } }
         );
 
-        expect(await protocolFees.getCollectedFees([tokens.DAI.address])).to.deep.equal([feeAmounts[0]]);
-        expect(await protocolFees.getCollectedFees([tokens.MKR.address])).to.deep.equal([feeAmounts[1]]);
+        expect(await feesCollector.getCollectedFees([tokens.DAI.address])).to.deep.equal([feeAmounts[0]]);
+        expect(await feesCollector.getCollectedFees([tokens.MKR.address])).to.deep.equal([feeAmounts[1]]);
       });
 
       it('all balance can be loaned', async () => {

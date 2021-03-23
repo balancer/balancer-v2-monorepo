@@ -20,7 +20,7 @@ import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 describe('Vault - exit pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let recipient: SignerWithAddress, relayer: SignerWithAddress;
-  let authorizer: Contract, vault: Contract, protocolFees: Contract;
+  let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let allTokens: TokenList;
 
   const SWAP_FEE = fp(0.1);
@@ -35,13 +35,11 @@ describe('Vault - exit pool', () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
     vault = vault.connect(lp);
+    feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const factory = await ethers.getContractFactory('ProtocolFees');
-    protocolFees = await factory.attach(await vault.getProtocolFees());
-
-    const role = roleId(protocolFees, 'setSwapFee');
+    const role = roleId(feesCollector, 'setSwapFee');
     await authorizer.connect(admin).grantRole(role, admin.address);
-    await protocolFees.connect(admin).setSwapFee(SWAP_FEE);
+    await feesCollector.connect(admin).setSwapFee(SWAP_FEE);
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [creator, recipient], amount: bn(100e18) });
@@ -215,12 +213,12 @@ describe('Vault - exit pool', () => {
           const WITHDRAW_FEE = fp(0.002); // 0.2%
 
           sharedBeforeEach('set protocol withdraw fee', async () => {
-            const SWAP_FEE_ROLE = roleId(protocolFees, 'setSwapFee');
-            const WITHDRAW_FEE_ROLE = roleId(protocolFees, 'setWithdrawFee');
+            const SWAP_FEE_ROLE = roleId(feesCollector, 'setSwapFee');
+            const WITHDRAW_FEE_ROLE = roleId(feesCollector, 'setWithdrawFee');
 
             await authorizer.connect(admin).grantRoles([SWAP_FEE_ROLE, WITHDRAW_FEE_ROLE], admin.address);
-            await protocolFees.connect(admin).setSwapFee(SWAP_FEE);
-            await protocolFees.connect(admin).setWithdrawFee(WITHDRAW_FEE);
+            await feesCollector.connect(admin).setSwapFee(SWAP_FEE);
+            await feesCollector.connect(admin).setWithdrawFee(WITHDRAW_FEE);
           });
 
           itExitsCorrectlyWithAndWithoutDueProtocolFeesAndInternalBalance();
@@ -360,7 +358,7 @@ describe('Vault - exit pool', () => {
       let expectedCollectedFees: BigNumber[], expectedWithdrawFees: BigNumber[];
 
       sharedBeforeEach('calculate expected fees', async () => {
-        const withdrawFee = await protocolFees.getWithdrawFee();
+        const withdrawFee = await feesCollector.getWithdrawFee();
 
         // Fixed point division rounding up, since the protocol withdraw fee is a fixed point number
         expectedWithdrawFees = exitAmounts.map((amount) =>
@@ -398,7 +396,7 @@ describe('Vault - exit pool', () => {
         await expectBalanceChange(() => exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance }), tokens, [
           { account: vault, changes: vaultChanges },
           { account: recipient, changes: recipientChanges },
-          { account: protocolFees, changes: protocolFeesChanges },
+          { account: feesCollector, changes: protocolFeesChanges },
         ]);
       });
 
@@ -437,7 +435,7 @@ describe('Vault - exit pool', () => {
           sender: lp.address,
           recipient: recipient.address,
           currentBalances: previousPoolBalances,
-          protocolSwapFee: await protocolFees.getSwapFee(),
+          protocolSwapFee: await feesCollector.getSwapFee(),
           latestBlockNumberUsed: previousBlockNumber,
           userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
         });
@@ -466,9 +464,9 @@ describe('Vault - exit pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const previousCollectedFees = await protocolFees.getCollectedFees(tokens.addresses);
+        const previousCollectedFees = await feesCollector.getCollectedFees(tokens.addresses);
         await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance });
-        const currentCollectedFees = await protocolFees.getCollectedFees(tokens.addresses);
+        const currentCollectedFees = await feesCollector.getCollectedFees(tokens.addresses);
 
         // Fees from both sources are lumped together.
         expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(expectedCollectedFees);

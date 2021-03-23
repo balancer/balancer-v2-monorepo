@@ -15,7 +15,7 @@ describe('Vault - protocol fees', () => {
 
   let vault: Vault;
   let tokens: TokenList;
-  let protocolFees: Contract;
+  let feesCollector: Contract;
 
   before('setup', async () => {
     [, admin, user, feeCollector, other] = await ethers.getSigners();
@@ -23,7 +23,7 @@ describe('Vault - protocol fees', () => {
 
   sharedBeforeEach('deploy vault', async () => {
     vault = await Vault.create({ admin });
-    protocolFees = await vault.getProtocolFeesInstance();
+    feesCollector = await vault.getFeesCollector();
   });
 
   sharedBeforeEach('mint tokens', async () => {
@@ -123,7 +123,7 @@ describe('Vault - protocol fees', () => {
       });
 
       it('authorized accounts can withdraw protocol fees to any recipient', async () => {
-        const role = roleId(protocolFees, 'withdrawCollectedFees');
+        const role = roleId(feesCollector, 'withdrawCollectedFees');
         await vault.grantRole(role, feeCollector);
 
         await expectBalanceChange(
@@ -140,7 +140,7 @@ describe('Vault - protocol fees', () => {
       });
 
       it('protocol fees cannot be over-withdrawn', async () => {
-        const role = roleId(protocolFees, 'withdrawCollectedFees');
+        const role = roleId(feesCollector, 'withdrawCollectedFees');
         await vault.grantRole(role, feeCollector);
 
         await expect(

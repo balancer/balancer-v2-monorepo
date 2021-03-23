@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAuthorizer.sol";
 import "./IFlashLoanReceiver.sol";
 import "./IAsset.sol";
-import "../ProtocolFees.sol";
+import "../ProtocolFeesCollector.sol";
 
 pragma solidity ^0.7.0;
 
@@ -708,5 +708,5 @@ interface IVault {
     /**
      * @dev Returns the current protocol fee module.
      */
-    function getProtocolFees() external view returns (ProtocolFees);
+    function getProtocolFeesCollector() external view returns (ProtocolFeesCollector);
 }

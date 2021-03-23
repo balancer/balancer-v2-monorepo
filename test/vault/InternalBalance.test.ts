@@ -19,7 +19,7 @@ import { forceSendEth } from '../helpers/eth';
 describe('Vault - internal balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
   let relayer: SignerWithAddress, otherRecipient: SignerWithAddress;
-  let authorizer: Contract, vault: Contract, protocolFees: Contract;
+  let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let tokens: TokenList, weth: Token;
 
   const WITHDRAW_FEE = 0.005;
@@ -37,11 +37,10 @@ describe('Vault - internal balance', () => {
   });
 
   sharedBeforeEach('set withdraw fee', async () => {
-    const factory = await ethers.getContractFactory('ProtocolFees');
-    protocolFees = await factory.attach(await vault.getProtocolFees());
-    const role = await roleId(protocolFees, 'setWithdrawFee');
+    feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
+    const role = await roleId(feesCollector, 'setWithdrawFee');
     await authorizer.connect(admin).grantRole(role, admin.address);
-    await protocolFees.connect(admin).setWithdrawFee(fp(WITHDRAW_FEE));
+    await feesCollector.connect(admin).setWithdrawFee(fp(WITHDRAW_FEE));
   });
 
   describe('deposit', () => {
@@ -388,7 +387,7 @@ describe('Vault - internal balance', () => {
       context('when tokens and balances match', () => {
         context('without protocol withdraw fees', () => {
           sharedBeforeEach('remove withdraw fee', async () => {
-            await protocolFees.connect(admin).setWithdrawFee(0);
+            await feesCollector.connect(admin).setWithdrawFee(0);
           });
 
           it('transfers the tokens from the vault to recipient', async () => {
@@ -446,13 +445,13 @@ describe('Vault - internal balance', () => {
             });
 
             it('protocol fees are collected', async () => {
-              const previousCollectedFees = await protocolFees.getCollectedFees([tokens.DAI.address]);
+              const previousCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
 
               await vault.withdrawFromInternalBalance([
                 { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
               ]);
 
-              const currentCollectedFees = await protocolFees.getCollectedFees([tokens.DAI.address]);
+              const currentCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
               expect(currentCollectedFees[0].sub(previousCollectedFees[0])).to.equal(pct(amount, WITHDRAW_FEE));
             });
           });
@@ -486,11 +485,11 @@ describe('Vault - internal balance', () => {
               });
 
               it('does not collect protocol fees', async () => {
-                const previousCollectedFees = await protocolFees.getCollectedFees([tokens.DAI.address]);
+                const previousCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
 
                 await relayer.depositAndWithdraw(sender.address, tokens.DAI.address, deposits, withdraws);
 
-                const currentCollectedFees = await protocolFees.getCollectedFees([tokens.DAI.address]);
+                const currentCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
                 expect(currentCollectedFees[0]).to.equal(previousCollectedFees[0]);
               });
             };
@@ -538,7 +537,7 @@ describe('Vault - internal balance', () => {
                   });
 
                   it('protocol fees are collected', async () => {
-                    const previousCollectedFees = await protocolFees.getCollectedFees([tokens.DAI.address]);
+                    const previousCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
 
                     await relayer.depositAndWithdraw(
                       sender.address,
@@ -547,7 +546,7 @@ describe('Vault - internal balance', () => {
                       [amountToWithdraw]
                     );
 
-                    const currentCollectedFees = await protocolFees.getCollectedFees([tokens.DAI.address]);
+                    const currentCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
                     expect(currentCollectedFees[0].sub(previousCollectedFees[0])).to.equal(expectedWithdrawFees);
                   });
                 });
@@ -613,7 +612,7 @@ describe('Vault - internal balance', () => {
                   });
 
                   it('protocol fees are collected', async () => {
-                    const previousCollectedFees = await protocolFees.getCollectedFees([tokens.DAI.address]);
+                    const previousCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
 
                     await relayer.depositAndWithdraw(
                       sender.address,
@@ -622,7 +621,7 @@ describe('Vault - internal balance', () => {
                       amountsToWithdraw
                     );
 
-                    const currentCollectedFees = await protocolFees.getCollectedFees([tokens.DAI.address]);
+                    const currentCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
                     expect(currentCollectedFees[0].sub(previousCollectedFees[0])).to.equal(expectedWithdrawFees);
                   });
                 });
@@ -784,17 +783,17 @@ describe('Vault - internal balance', () => {
             const withdrawFee = 0.005;
 
             sharedBeforeEach('set fee', async () => {
-              await protocolFees.connect(admin).setWithdrawFee(fp(withdrawFee));
+              await feesCollector.connect(admin).setWithdrawFee(fp(withdrawFee));
             });
 
             it('charges protocol fees in WETH', async () => {
-              const previousProtocolFees = await protocolFees.getCollectedFees([weth.address]);
+              const previousProtocolFees = await feesCollector.getCollectedFees([weth.address]);
 
               await vault.withdrawFromInternalBalance([
                 { asset: ETH_TOKEN_ADDRESS, amount, sender: sender.address, recipient: recipient.address },
               ]);
 
-              const currentProtocolFees = await protocolFees.getCollectedFees([weth.address]);
+              const currentProtocolFees = await feesCollector.getCollectedFees([weth.address]);
 
               expect(currentProtocolFees[0].sub(previousProtocolFees[0])).to.equal(pct(amount, withdrawFee));
             });

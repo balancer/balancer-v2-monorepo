@@ -20,11 +20,12 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/Authentication.sol";
+import "../lib/helpers/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
 
-contract ProtocolFees is Authentication {
+contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
@@ -60,7 +61,7 @@ contract ProtocolFees is Authentication {
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
-    ) external authenticate {
+    ) external authenticate nonReentrant {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {

@@ -796,10 +796,10 @@
   },
   {
     "inputs": [],
-    "name": "getProtocolFees",
+    "name": "getProtocolFeesCollector",
     "outputs": [
       {
-        "internalType": "contract ProtocolFees",
+        "internalType": "contract ProtocolFeesCollector",
         "name": "",
         "type": "address"
       }

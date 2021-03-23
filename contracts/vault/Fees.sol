@@ -21,42 +21,42 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 
-import "./ProtocolFees.sol";
+import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";
 import "./interfaces/IVault.sol";
 
 abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
     using SafeERC20 for IERC20;
 
-    ProtocolFees private _protocolFees;
+    ProtocolFeesCollector private _protocolFeesCollector;
 
     constructor() {
-        _protocolFees = new ProtocolFees(IVault(this));
+        _protocolFeesCollector = new ProtocolFeesCollector(IVault(this));
     }
 
-    function getProtocolFees() external view override returns (ProtocolFees) {
-        return _protocolFees;
+    function getProtocolFeesCollector() external view override returns (ProtocolFeesCollector) {
+        return _protocolFeesCollector;
     }
 
     /**
      * @dev Returns the percentage protocol swap fee.
      */
     function _getProtocolSwapFee() internal view returns (uint256) {
-        return _protocolFees.getSwapFee();
+        return _protocolFeesCollector.getSwapFee();
     }
 
     /**
      * @dev Returns the protocol fee to charge for a withdrawal of `amount`.
      */
     function _calculateWithdrawFee(uint256 amount) internal view returns (uint256) {
-        return _calculateFee(amount, _protocolFees.getWithdrawFee());
+        return _calculateFee(amount, _protocolFeesCollector.getWithdrawFee());
     }
 
     /**
      * @dev Returns the protocol fee to charge for a flash loan of `amount`.
      */
     function _calculateFlashLoanFee(uint256 amount) internal view returns (uint256) {
-        return _calculateFee(amount, _protocolFees.getFlashLoanFee());
+        return _calculateFee(amount, _protocolFeesCollector.getFlashLoanFee());
     }
 
     function _calculateFee(uint256 amount, uint256 pct) internal pure returns (uint256) {
@@ -67,7 +67,7 @@ abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
 
     function _payFee(IERC20 token, uint256 amount) internal {
         if (amount > 0) {
-            token.safeTransfer(address(_protocolFees), amount);
+            token.safeTransfer(address(_protocolFeesCollector), amount);
         }
     }
 }

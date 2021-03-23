@@ -19,7 +19,7 @@ import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
-  let authorizer: Contract, vault: Contract, protocolFees: Contract;
+  let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let allTokens: TokenList;
 
   before(async () => {
@@ -31,13 +31,11 @@ describe('Vault - join pool', () => {
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
+    feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const factory = await ethers.getContractFactory('ProtocolFees');
-    protocolFees = await factory.attach(await vault.getProtocolFees());
-
-    const role = roleId(protocolFees, 'setSwapFee');
+    const role = roleId(feesCollector, 'setSwapFee');
     await authorizer.connect(admin).grantRole(role, admin.address);
-    await protocolFees.connect(admin).setSwapFee(fp(0.1));
+    await feesCollector.connect(admin).setSwapFee(fp(0.1));
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [creator, lp], amount: bn(100e18) });
@@ -377,7 +375,7 @@ describe('Vault - join pool', () => {
           [
             { account: lp, changes: lpChanges },
             { account: vault, changes: vaultChanges },
-            { account: protocolFees, changes: protocolFeesChanges },
+            { account: feesCollector, changes: protocolFeesChanges },
           ]
         );
       });
@@ -415,7 +413,7 @@ describe('Vault - join pool', () => {
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
           latestBlockNumberUsed: previousBlockNumber,
-          protocolSwapFee: await protocolFees.getSwapFee(),
+          protocolSwapFee: await feesCollector.getSwapFee(),
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
       });
@@ -443,9 +441,9 @@ describe('Vault - join pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const previousCollectedFees: BigNumber[] = await protocolFees.getCollectedFees(tokens.addresses);
+        const previousCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
         await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
-        const currentCollectedFees: BigNumber[] = await protocolFees.getCollectedFees(tokens.addresses);
+        const currentCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
 
         expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(dueProtocolFeeAmounts);
       });
