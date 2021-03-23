@@ -69,4 +69,9 @@ contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
     function setEmergencyPeriod(bool active) external authenticate {
         _setEmergencyPeriod(active);
     }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function WETH() external view override returns (IWETH) {
+        return _WETH;
+    }
 }

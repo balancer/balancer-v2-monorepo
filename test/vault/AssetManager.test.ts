@@ -57,8 +57,8 @@ describe('Vault - asset manager', function () {
 
       await vault.connect(lp).joinPool(poolId, lp.address, other.address, {
         assets: tokens.addresses,
-        limits: tokens.addresses.map(() => MAX_UINT256),
-        useInternalBalance: false,
+        maxAmountsIn: tokens.addresses.map(() => MAX_UINT256),
+        fromInternalBalance: false,
         userData: encodeJoin(
           tokens.addresses.map(() => tokenInitialBalance),
           tokens.addresses.map(() => 0)
@@ -343,8 +343,8 @@ describe('Vault - asset manager', function () {
         // Balances must be zero to deregister, so we do a full exit
         await vault.connect(lp).exitPool(poolId, lp.address, lp.address, {
           assets: poolTokens,
-          limits: Array(poolTokens.length).fill(0),
-          useInternalBalance: false,
+          minAmountsOut: Array(poolTokens.length).fill(0),
+          toInternalBalance: false,
           userData: encodeExit(balances, Array(poolTokens.length).fill(0)),
         });
 

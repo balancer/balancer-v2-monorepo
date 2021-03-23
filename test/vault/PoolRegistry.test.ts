@@ -291,8 +291,8 @@ describe('Vault - pool registry', () => {
                   sharedBeforeEach('add some balance', async () => {
                     await vault.connect(lp).joinPool(poolId, lp.address, other.address, {
                       assets: tokens.addresses,
-                      limits: Array(tokens.length).fill(MAX_UINT256),
-                      useInternalBalance: false,
+                      maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
+                      fromInternalBalance: false,
                       userData: encodeJoin(Array(tokens.length).fill(5), Array(tokens.length).fill(0)),
                     });
                   });
@@ -307,8 +307,8 @@ describe('Vault - pool registry', () => {
                       it('can deregister the tokens without balance', async () => {
                         await vault.connect(lp).exitPool(poolId, lp.address, other.address, {
                           assets: tokens.addresses,
-                          limits: Array(tokens.length).fill(0),
-                          useInternalBalance: false,
+                          minAmountsOut: Array(tokens.length).fill(0),
+                          toInternalBalance: false,
                           userData: encodeExit(
                             tokens.addresses.map((_, index) => (index == 0 ? 5 : 0)), // Fully exit on token 0
                             Array(tokens.length).fill(0)

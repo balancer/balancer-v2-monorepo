@@ -58,8 +58,8 @@ describe('Vault - swap validation', () => {
 
       await vault.connect(lp).joinPool(poolId, lp.address, ZERO_ADDRESS, {
         assets: tokens.addresses,
-        limits: Array(tokens.length).fill(MAX_UINT256),
-        useInternalBalance: false,
+        maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
+        fromInternalBalance: false,
         userData: encodeJoin(Array(tokens.length).fill(initialBalance), Array(tokens.length).fill(0)),
       });
 

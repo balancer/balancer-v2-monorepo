@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
@@ -23,6 +24,7 @@ import "../lib/helpers/AssetHelpers.sol";
 
 import "./interfaces/IWETH.sol";
 import "./interfaces/IAsset.sol";
+import "./interfaces/IVault.sol";
 
 abstract contract AssetTransfersHandler is AssetHelpers {
     using SafeERC20 for IERC20;

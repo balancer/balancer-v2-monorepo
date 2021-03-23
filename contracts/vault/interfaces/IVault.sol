@@ -19,6 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAuthorizer.sol";
 import "./IFlashLoanReceiver.sol";
 import "./IAsset.sol";
+import "./IWETH.sol";
 
 pragma solidity ^0.7.0;
 
@@ -55,6 +56,12 @@ interface IVault {
     // This combined requirements means users cannot be tricked into allowing malicious relayers (because they will not
     // have been allowed by the Authorizer), nor can a malicious Authorizer allow malicious relayers to drain user funds
     // (unless the user then allows this malicious relayer).
+
+    /**
+     * @dev Returns the Vault's WETH instance.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function WETH() external view returns (IWETH);
 
     /**
      * @dev Returns the Vault's Authorizer.
@@ -293,10 +300,10 @@ interface IVault {
         );
 
     struct PoolBalanceChange {
-        bool useInternalBalance;
         IAsset[] assets;
         uint256[] limits;
         bytes userData;
+        bool useInternalBalance;
     }
 
     /**
@@ -335,8 +342,15 @@ interface IVault {
         bytes32 poolId,
         address sender,
         address recipient,
-        PoolBalanceChange memory change
+        JoinPoolRequest memory request
     ) external payable;
+
+    struct JoinPoolRequest {
+        IAsset[] assets;
+        uint256[] maxAmountsIn;
+        bytes userData;
+        bool fromInternalBalance;
+    }
 
     /**
      * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
@@ -381,8 +395,15 @@ interface IVault {
         bytes32 poolId,
         address sender,
         address payable recipient,
-        PoolBalanceChange memory change
+        ExitPoolRequest memory request
     ) external;
+
+    struct ExitPoolRequest {
+        IAsset[] assets;
+        uint256[] minAmountsOut;
+        bytes userData;
+        bool toInternalBalance;
+    }
 
     /**
      * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool` respectively.
@@ -390,11 +411,13 @@ interface IVault {
     event PoolBalanceChanged(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
-        bool positive,
+        PoolBalanceChangeKind kind,
         IERC20[] tokens,
         uint256[] amounts,
         uint256[] protocolFees
     );
+
+    enum PoolBalanceChangeKind { JOIN, EXIT }
 
     // Swaps
     //

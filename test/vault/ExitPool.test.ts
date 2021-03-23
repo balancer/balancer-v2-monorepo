@@ -87,8 +87,8 @@ describe('Vault - exit pool', () => {
       // Join the Pool from the creator so that it has some tokens to exit and pay protocol fees with
       await vault.connect(creator).joinPool(poolId, creator.address, ZERO_ADDRESS, {
         assets: tokens.addresses,
-        limits: array(MAX_UINT256),
-        useInternalBalance: false,
+        maxAmountsIn: array(MAX_UINT256),
+        fromInternalBalance: false,
         userData: encodeExit(array(50e18), array(0)),
       });
 
@@ -119,8 +119,8 @@ describe('Vault - exit pool', () => {
         .connect(data.fromRelayer ?? false ? relayer : lp)
         .exitPool(data.poolId ?? poolId, lp.address, recipient.address, {
           assets: data.tokenAddresses ?? tokens.addresses,
-          limits: data.minAmountsOut ?? array(0),
-          useInternalBalance: data.toInternalBalance ?? false,
+          minAmountsOut: data.minAmountsOut ?? array(0),
+          toInternalBalance: data.toInternalBalance ?? false,
           userData: encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts),
         });
     }
@@ -435,7 +435,7 @@ describe('Vault - exit pool', () => {
 
         expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
           poolId,
-          positive: false,
+          kind: 1,
           liquidityProvider: lp.address,
           amounts: exitAmounts,
           protocolFees: dueProtocolFeeAmounts,

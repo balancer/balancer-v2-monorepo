@@ -38,7 +38,7 @@ contract BalancerHelpers is AssetHelpers {
 
     IVault public immutable vault;
 
-    constructor(IVault _vault, IWETH weth) AssetHelpers(weth) {
+    constructor(IVault _vault) AssetHelpers(_vault.WETH()) {
         vault = _vault;
     }
 
@@ -46,23 +46,45 @@ contract BalancerHelpers is AssetHelpers {
         bytes32 poolId,
         address sender,
         address recipient,
-        IVault.PoolBalanceChange memory change
+        IVault.JoinPoolRequest memory request
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
         (address pool, ) = vault.getPool(poolId);
-        (bptOut, amountsIn) = _queryPool(poolId, sender, recipient, change, BasePool(pool).queryJoin);
+        (uint256[] memory balances, uint256 latestBlockNumber) = _validateAssetsAndGetBalances(poolId, request.assets);
+        (uint256 protocolSwapFee, , ) = vault.getProtocolFees();
+
+        (bptOut, amountsIn) = BasePool(pool).queryJoin(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            latestBlockNumber,
+            protocolSwapFee,
+            request.userData
+        );
     }
 
     function queryExit(
         bytes32 poolId,
         address sender,
         address recipient,
-        IVault.PoolBalanceChange memory change
+        IVault.ExitPoolRequest memory request
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
         (address pool, ) = vault.getPool(poolId);
-        (bptIn, amountsOut) = _queryPool(poolId, sender, recipient, change, BasePool(pool).queryExit);
+        (uint256[] memory balances, uint256 latestBlockNumber) = _validateAssetsAndGetBalances(poolId, request.assets);
+        (uint256 protocolSwapFee, , ) = vault.getProtocolFees();
+
+        (bptIn, amountsOut) = BasePool(pool).queryExit(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            latestBlockNumber,
+            protocolSwapFee,
+            request.userData
+        );
 
         // Deduct withdraw fees unless it's using internal balance
-        if (!change.useInternalBalance) {
+        if (!request.toInternalBalance) {
             (, uint256 withdrawFeePct, ) = vault.getProtocolFees();
             for (uint256 i = 0; i < amountsOut.length; i++) {
                 uint256 amountOut = amountsOut[i];
@@ -70,20 +92,6 @@ contract BalancerHelpers is AssetHelpers {
                 amountsOut[i] = amountOut.sub(withdrawFee);
             }
         }
-    }
-
-    function _queryPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        IVault.PoolBalanceChange memory change,
-        function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
-            external
-            returns (uint256, uint256[] memory) query
-    ) internal returns (uint256, uint256[] memory) {
-        (uint256[] memory balances, uint256 latestBlockNumber) = _validateAssetsAndGetBalances(poolId, change.assets);
-        (uint256 protocolSwapFee, , ) = vault.getProtocolFees();
-        return query(poolId, sender, recipient, balances, latestBlockNumber, protocolSwapFee, change.userData);
     }
 
     function _validateAssetsAndGetBalances(bytes32 poolId, IAsset[] memory expectedAssets)

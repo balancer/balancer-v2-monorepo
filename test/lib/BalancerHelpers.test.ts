@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../lib/helpers/deploy';
 import { fp, pct } from '../../lib/helpers/numbers';
-import { ZERO_ADDRESS } from '../../lib/helpers/constants';
+import {MAX_UINT112, ZERO_ADDRESS} from '../../lib/helpers/constants';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../lib/helpers/weightedPoolEncoding';
 
 import Vault from '../helpers/models/vault/Vault';
@@ -33,30 +33,25 @@ describe('BalancerHelpers', function () {
   });
 
   sharedBeforeEach('deploy helper', async () => {
-    const WETH = await TokensDeployer.deployToken('WETH');
-    helper = await deploy('BalancerHelpers', { args: [pool.vault.address, WETH.address] });
+    helper = await deploy('BalancerHelpers', { args: [pool.vault.address] });
   });
-
-  const query = async ({ fn, data, internalBalance }: { fn: string; data: string; internalBalance?: boolean }) => {
-    return helper.callStatic[fn](pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
-      assets: tokens.addresses,
-      limits: [],
-      useInternalBalance: internalBalance,
-      userData: data,
-    });
-  };
 
   describe('queryJoin', () => {
     // These two values are superfluous, as they are not used by the helper
     const fromInternalBalance = false;
-    const maxAmountsIn: BigNumber[] = [];
+    const maxAmountsIn: BigNumber[] = [MAX_UINT112, MAX_UINT112];
 
     it('can query join results', async () => {
       const amountsIn = [fp(1), fp(0)];
       const expectedBptOut = await pool.estimateBptOut(amountsIn, initialBalances);
 
       const data = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', amountsIn, minimumBPT: 0 });
-      const result = await query({ fn: 'queryJoin', data });
+      const result = await helper.callStatic.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+        assets: tokens.addresses,
+        maxAmountsIn: maxAmountsIn,
+        fromInternalBalance: false,
+        userData: data,
+      });
 
       expect(result.amountsIn).to.deep.equal(amountsIn);
       expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
@@ -66,8 +61,8 @@ describe('BalancerHelpers', function () {
       const data = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
       const tx = helper.callStatic.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
-        limits: maxAmountsIn,
-        useInternalBalance: fromInternalBalance,
+        maxAmountsIn: maxAmountsIn,
+        fromInternalBalance: fromInternalBalance,
         userData: data,
       });
 
@@ -87,12 +82,21 @@ describe('BalancerHelpers', function () {
       data = encodeExitWeightedPool({ kind: 'ExactBPTInForTokensOut', bptAmountIn: bptIn });
     });
 
+    const queryExit = async ({ data, internalBalance }: { data: string; internalBalance?: boolean }) => {
+      return helper.callStatic.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+        assets: tokens.addresses,
+        minAmountsOut: [],
+        toInternalBalance: internalBalance,
+        userData: data,
+      });
+    };
+
     it('bubbles up revert reasons', async () => {
       const data = encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: bptIn, exitTokenIndex: 90 });
       const tx = helper.callStatic.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
-        limits: minAmountsOut,
-        useInternalBalance: false,
+        minAmountsOut,
+        toInternalBalance: false,
         userData: data,
       });
 
@@ -103,7 +107,7 @@ describe('BalancerHelpers', function () {
       const internalBalance = true;
 
       it('tells the exit results without considering the withdraw fees', async () => {
-        const result = await query({ fn: 'queryExit', data, internalBalance });
+        const result = await queryExit({ data, internalBalance });
 
         expect(result.bptIn).to.equal(bptIn);
         expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
@@ -119,7 +123,7 @@ describe('BalancerHelpers', function () {
       });
 
       it('tells the exit results considering the withdraw fees', async () => {
-        const result = await query({ fn: 'queryExit', data, internalBalance });
+        const result = await queryExit({ data, internalBalance });
         expect(result.bptIn).to.equal(bptIn);
 
         const expectedAmountsOutWithFees = expectedAmountsOut.map((amount) => amount.sub(pct(amount, withdrawFee)));

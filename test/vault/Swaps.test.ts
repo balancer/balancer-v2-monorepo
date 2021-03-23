@@ -347,8 +347,8 @@ describe('Vault - swaps', () => {
     const poolId = pool.getPoolId();
     await vault.connect(lp).joinPool(poolId, lp.address, other.address, {
       assets: sortedTokenAddresses,
-      limits: tokenAmounts,
-      useInternalBalance: false,
+      maxAmountsIn: tokenAmounts,
+      fromInternalBalance: false,
       userData: encodeJoin(tokenAmounts, Array(sortedTokenAddresses.length).fill(0)),
     });
 

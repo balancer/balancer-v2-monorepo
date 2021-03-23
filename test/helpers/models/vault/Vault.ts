@@ -61,8 +61,8 @@ export default class Vault {
         )
       : vault.joinPool(params.poolId, (params.from || (await this._defaultSender())).address, params.recipient, {
           assets: params.tokens,
-          limits: params.maxAmountsIn ?? Array(params.tokens.length).fill(MAX_UINT256),
-          useInternalBalance: params.fromInternalBalance ?? false,
+          maxAmountsIn: params.maxAmountsIn ?? Array(params.tokens.length).fill(MAX_UINT256),
+          fromInternalBalance: params.fromInternalBalance ?? false,
           userData: params.data,
         });
   }
@@ -81,8 +81,8 @@ export default class Vault {
         )
       : vault.exitPool(params.poolId, (params.from || (await this._defaultSender())).address, params.recipient, {
           assets: params.tokens,
-          limits: params.minAmountsOut ?? Array(params.tokens.length).fill(0),
-          useInternalBalance: params.toInternalBalance ?? false,
+          minAmountsOut: params.minAmountsOut ?? Array(params.tokens.length).fill(0),
+          toInternalBalance: params.toInternalBalance ?? false,
           userData: params.data,
         });
   }

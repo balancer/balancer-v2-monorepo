@@ -166,8 +166,8 @@ async function initializeStrategyPool(
 
   const joinTx = await vault.connect(controller).joinPool(poolId, controller.address, recipient, {
     assets: tokens,
-    limits: maxAmountsIn,
-    useInternalBalance: fromInternalBalance,
+    maxAmountsIn,
+    fromInternalBalance,
     userData: initialJoinUserData,
   });
 

@@ -78,8 +78,8 @@ describe('Vault - join pool', () => {
       // Join the Pool from the creator so that it has some tokens to pay protocol fees with
       await vault.connect(creator).joinPool(poolId, creator.address, ZERO_ADDRESS, {
         assets: tokens.addresses,
-        limits: array(MAX_UINT256),
-        useInternalBalance: false,
+        maxAmountsIn: array(MAX_UINT256),
+        fromInternalBalance: false,
         userData: encodeJoin(array(50e18), array(0)),
       });
     });
@@ -99,8 +99,8 @@ describe('Vault - join pool', () => {
         .connect(data.fromRelayer ?? false ? relayer : lp)
         .joinPool(data.poolId ?? poolId, lp.address, ZERO_ADDRESS, {
           assets: data.tokenAddresses ?? tokens.addresses,
-          limits: data.maxAmountsIn ?? array(MAX_UINT256),
-          useInternalBalance: data.fromInternalBalance ?? false,
+          maxAmountsIn: data.maxAmountsIn ?? array(MAX_UINT256),
+          fromInternalBalance: data.fromInternalBalance ?? false,
           userData: encodeJoin(data.joinAmounts ?? joinAmounts, data.dueProtocolFeeAmounts ?? DUE_PROTOCOL_FEE_AMOUNTS),
         });
     }
@@ -419,7 +419,7 @@ describe('Vault - join pool', () => {
         expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
           poolId,
           liquidityProvider: lp.address,
-          positive: true,
+          kind: 0,
           amounts: joinAmounts,
           protocolFees: dueProtocolFeeAmounts,
         });

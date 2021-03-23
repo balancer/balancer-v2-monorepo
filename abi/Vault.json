@@ -80,9 +80,9 @@
       },
       {
         "indexed": false,
-        "internalType": "bool",
-        "name": "add",
-        "type": "bool"
+        "internalType": "enum IVault.PoolBalanceChangeKind",
+        "name": "kind",
+        "type": "uint8"
       },
       {
         "indexed": false,
@@ -230,6 +230,19 @@
     ],
     "name": "TokensRegistered",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "WETH",
+    "outputs": [
+      {
+        "internalType": "contract IWETH",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [
@@ -541,28 +554,28 @@
       {
         "components": [
           {
-            "internalType": "bool",
-            "name": "useInternalBalance",
-            "type": "bool"
-          },
-          {
             "internalType": "contract IAsset[]",
             "name": "assets",
             "type": "address[]"
           },
           {
             "internalType": "uint256[]",
-            "name": "limits",
+            "name": "minAmountsOut",
             "type": "uint256[]"
           },
           {
             "internalType": "bytes",
             "name": "userData",
             "type": "bytes"
+          },
+          {
+            "internalType": "bool",
+            "name": "toInternalBalance",
+            "type": "bool"
           }
         ],
-        "internalType": "struct IVault.PoolBalanceChange",
-        "name": "change",
+        "internalType": "struct IVault.ExitPoolRequest",
+        "name": "request",
         "type": "tuple"
       }
     ],
@@ -856,28 +869,28 @@
       {
         "components": [
           {
-            "internalType": "bool",
-            "name": "useInternalBalance",
-            "type": "bool"
-          },
-          {
             "internalType": "contract IAsset[]",
             "name": "assets",
             "type": "address[]"
           },
           {
             "internalType": "uint256[]",
-            "name": "limits",
+            "name": "maxAmountsIn",
             "type": "uint256[]"
           },
           {
             "internalType": "bytes",
             "name": "userData",
             "type": "bytes"
+          },
+          {
+            "internalType": "bool",
+            "name": "fromInternalBalance",
+            "type": "bool"
           }
         ],
-        "internalType": "struct IVault.PoolBalanceChange",
-        "name": "change",
+        "internalType": "struct IVault.JoinPoolRequest",
+        "name": "request",
         "type": "tuple"
       }
     ],

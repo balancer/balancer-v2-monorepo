@@ -44,8 +44,8 @@ describe('Vault - swap queries', () => {
 
       await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
         assets: tokens.addresses,
-        limits: Array(tokens.length).fill(MAX_UINT256),
-        useInternalBalance: false,
+        maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
+        fromInternalBalance: false,
         userData: encodeJoin(Array(tokens.length).fill(bn(100e18)), Array(tokens.length).fill(0)),
       });
 
