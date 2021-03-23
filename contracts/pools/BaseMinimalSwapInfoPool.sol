@@ -48,7 +48,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) external view override returns (uint256) {
+    ) external view virtual override returns (uint256) {
         // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
         swapRequest.amountIn = _subtractSwapFee(swapRequest.amountIn);
 
@@ -70,7 +70,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) external view override returns (uint256) {
+    ) external view virtual override returns (uint256) {
         uint256 scalingFactorTokenIn = _scalingFactor(swapRequest.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(swapRequest.tokenOut);
 
