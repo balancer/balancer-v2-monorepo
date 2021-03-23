@@ -504,11 +504,11 @@ abstract contract PoolRegistry is
         bytes32[] memory balances,
         uint256[] memory amountsIn,
         uint256[] memory dueProtocolFeeAmounts
-    ) private returns (bytes32[] memory newBalances) {
+    ) private returns (bytes32[] memory finalBalances) {
         bool ethAssetSeen = false;
         uint256 wrappedETH = 0;
 
-        newBalances = new bytes32[](balances.length);
+        finalBalances = new bytes32[](balances.length);
         for (uint256 i = 0; i < change.assets.length; ++i) {
             uint256 amountIn = amountsIn[i];
             require(amountIn <= change.limits[i], "JOIN_ABOVE_MAX");
@@ -526,7 +526,7 @@ abstract contract PoolRegistry is
 
             // Compute the new Pool balances. Note that due protocol fees might be larger than amounts in,
             // resulting in an overall decrease of the Pool's balance for a token.
-            newBalances[i] = amountIn >= feeToPay
+            finalBalances[i] = (amountIn >= feeToPay)
                 ? balances[i].increaseCash(amountIn - feeToPay) // Don't need checked arithmetic
                 : balances[i].decreaseCash(feeToPay - amountIn); // Same as -(int256(amountIn) - int256(feeToPay))
 
@@ -546,8 +546,8 @@ abstract contract PoolRegistry is
         bytes32[] memory balances,
         uint256[] memory amountsOut,
         uint256[] memory dueProtocolFeeAmounts
-    ) private returns (bytes32[] memory newBalances) {
-        newBalances = new bytes32[](balances.length);
+    ) private returns (bytes32[] memory finalBalances) {
+        finalBalances = new bytes32[](balances.length);
         for (uint256 i = 0; i < change.assets.length; ++i) {
             uint256 amountOut = amountsOut[i];
             require(amountOut >= change.limits[i], "EXIT_BELOW_MIN");
@@ -562,7 +562,7 @@ abstract contract PoolRegistry is
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             uint256 delta = amountOut.add(protocolSwapFee);
-            newBalances[i] = balances[i].decreaseCash(delta);
+            finalBalances[i] = balances[i].decreaseCash(delta);
 
             _increaseCollectedFees(_translateToIERC20(asset), protocolSwapFee.add(withdrawFee));
         }
