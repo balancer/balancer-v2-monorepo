@@ -345,18 +345,12 @@ describe('Vault - swaps', () => {
     const tokenAmounts = sortedTokenAddresses.map(() => poolInitialBalance);
 
     const poolId = pool.getPoolId();
-    await vault.connect(lp).joinPool(
-      poolId,
-      lp.address,
-      other.address,
-      sortedTokenAddresses,
-      tokenAmounts,
-      false,
-      encodeJoin(
-        tokenAmounts,
-        sortedTokenAddresses.map(() => 0)
-      )
-    );
+    await vault.connect(lp).joinPool(poolId, lp.address, other.address, {
+      assets: sortedTokenAddresses,
+      maxAmountsIn: tokenAmounts,
+      fromInternalBalance: false,
+      userData: encodeJoin(tokenAmounts, Array(sortedTokenAddresses.length).fill(0)),
+    });
 
     return poolId;
   }

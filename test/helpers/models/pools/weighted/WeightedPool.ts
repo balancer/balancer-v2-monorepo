@@ -261,7 +261,7 @@ export default class WeightedPool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.callStatic.onSwap(
+    return this.instance.onSwap(
       {
         kind: SWAP_GIVEN.IN,
         poolId: this.poolId,
@@ -282,7 +282,7 @@ export default class WeightedPool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.callStatic.onSwap(
+    return this.instance.onSwap(
       {
         kind: SWAP_GIVEN.OUT,
         poolId: this.poolId,
@@ -344,7 +344,7 @@ export default class WeightedPool {
   }
 
   async queryJoin(params: JoinExitWeightedPool): Promise<JoinQueryResult> {
-    const fn = this.instance.callStatic.queryJoin;
+    const fn = this.instance.queryJoin;
     return (await this._executeQuery(params, fn)) as JoinQueryResult;
   }
 
@@ -365,12 +365,12 @@ export default class WeightedPool {
     });
 
     const receipt = await (await tx).wait();
-    const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
-    return { amountsIn, dueProtocolFeeAmounts };
+    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: amounts, dueProtocolFeeAmounts };
   }
 
   async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
-    const fn = this.instance.callStatic.queryExit;
+    const fn = this.instance.queryExit;
     return (await this._executeQuery(params, fn)) as ExitQueryResult;
   }
 
@@ -391,8 +391,8 @@ export default class WeightedPool {
     });
 
     const receipt = await (await tx).wait();
-    const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
-    return { amountsOut, dueProtocolFeeAmounts };
+    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: amounts, dueProtocolFeeAmounts };
   }
 
   private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {
