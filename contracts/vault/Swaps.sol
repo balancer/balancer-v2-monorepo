@@ -181,7 +181,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
                 // Withdraw fees are not charged when sending funds as part of a swap.
                 // Deposits to Internal Balance are also exempt of this fee during the current block.
-                _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance, false);
+                _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance, true);
             }
         }
 
