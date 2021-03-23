@@ -5,13 +5,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../lib/helpers/deploy';
 import { fp, pct } from '../../lib/helpers/numbers';
-import {MAX_UINT112, ZERO_ADDRESS} from '../../lib/helpers/constants';
+import { MAX_UINT112, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../lib/helpers/weightedPoolEncoding';
 
 import Vault from '../helpers/models/vault/Vault';
 import TokenList from '../helpers/models/tokens/TokenList';
 import WeightedPool from '../helpers/models/pools/weighted/WeightedPool';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('BalancerHelpers', function () {
   let helper: Contract, vault: Vault, pool: WeightedPool, tokens: TokenList, lp: SignerWithAddress;
