@@ -5,6 +5,11 @@
         "internalType": "contract IVault",
         "name": "_vault",
         "type": "address"
+      },
+      {
+        "internalType": "contract IWETH",
+        "name": "weth",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -28,24 +33,31 @@
         "type": "address"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "bool",
-        "name": "toInternalBalance",
-        "type": "bool"
-      },
-      {
-        "internalType": "bytes",
-        "name": "userData",
-        "type": "bytes"
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "useInternalBalance",
+            "type": "bool"
+          },
+          {
+            "internalType": "contract IAsset[]",
+            "name": "assets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "limits",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "userData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct IVault.PoolBalanceChange",
+        "name": "change",
+        "type": "tuple"
       }
     ],
     "name": "queryExit",
@@ -82,24 +94,31 @@
         "type": "address"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      },
-      {
-        "internalType": "bytes",
-        "name": "userData",
-        "type": "bytes"
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "useInternalBalance",
+            "type": "bool"
+          },
+          {
+            "internalType": "contract IAsset[]",
+            "name": "assets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "limits",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "userData",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct IVault.PoolBalanceChange",
+        "name": "change",
+        "type": "tuple"
       }
     ],
     "name": "queryJoin",

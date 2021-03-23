@@ -28,7 +28,7 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
 
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
-    constructor(IWETH weth) AssetTransfersHandler(weth) {}
+    constructor(IWETH weth) AssetHelpers(weth) {}
 
     function receiveAsset(
         IAsset asset,

@@ -60,7 +60,7 @@ contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
         uint256 emergencyPeriodCheckExtension
     )
         VaultAuthorization(authorizer)
-        AssetTransfersHandler(weth)
+        AssetHelpers(weth)
         EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
     {
         // solhint-disable-previous-line no-empty-blocks

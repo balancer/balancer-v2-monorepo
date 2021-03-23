@@ -11,6 +11,7 @@ import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../lib/helper
 import Vault from '../helpers/models/vault/Vault';
 import TokenList from '../helpers/models/tokens/TokenList';
 import WeightedPool from '../helpers/models/pools/weighted/WeightedPool';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('BalancerHelpers', function () {
   let helper: Contract, vault: Vault, pool: WeightedPool, tokens: TokenList, lp: SignerWithAddress;
@@ -32,11 +33,17 @@ describe('BalancerHelpers', function () {
   });
 
   sharedBeforeEach('deploy helper', async () => {
-    helper = await deploy('BalancerHelpers', { args: [pool.vault.address] });
+    const WETH = await TokensDeployer.deployToken('WETH');
+    helper = await deploy('BalancerHelpers', { args: [pool.vault.address, WETH.address] });
   });
 
   const query = async ({ fn, data, internalBalance }: { fn: string; data: string; internalBalance?: boolean }) => {
-    return helper.callStatic[fn](pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, tokens.addresses, [], internalBalance, data);
+    return helper.callStatic[fn](pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+      assets: tokens.addresses,
+      limits: [],
+      useInternalBalance: internalBalance,
+      userData: data,
+    });
   };
 
   describe('queryJoin', () => {
@@ -57,15 +64,12 @@ describe('BalancerHelpers', function () {
 
     it('bubbles up revert reasons', async () => {
       const data = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
-      const tx = helper.callStatic.queryJoin(
-        pool.poolId,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        tokens.addresses,
-        maxAmountsIn,
-        fromInternalBalance,
-        data
-      );
+      const tx = helper.callStatic.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+        assets: tokens.addresses,
+        limits: maxAmountsIn,
+        useInternalBalance: fromInternalBalance,
+        userData: data,
+      });
 
       await expect(tx).to.be.revertedWith('UNHANDLED_JOIN_KIND');
     });
@@ -85,15 +89,12 @@ describe('BalancerHelpers', function () {
 
     it('bubbles up revert reasons', async () => {
       const data = encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: bptIn, exitTokenIndex: 90 });
-      const tx = helper.callStatic.queryExit(
-        pool.poolId,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        tokens.addresses,
-        minAmountsOut,
-        false,
-        data
-      );
+      const tx = helper.callStatic.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+        assets: tokens.addresses,
+        limits: minAmountsOut,
+        useInternalBalance: false,
+        userData: data,
+      });
 
       await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
     });
