@@ -491,23 +491,6 @@ abstract contract PoolRegistry is
 
     // Assets under management
 
-    function getPoolAssetManagers(bytes32 poolId, IERC20[] memory tokens)
-        external
-        view
-        override
-        returns (address[] memory assetManagers)
-    {
-        _ensureRegisteredPool(poolId);
-        assetManagers = new address[](tokens.length);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-
-            _ensureTokenRegistered(poolId, token);
-            assetManagers[i] = _poolAssetManagers[poolId][token];
-        }
-    }
-
     function withdrawFromPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers)
         external
         override
