@@ -19,9 +19,9 @@ import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
 
 import "../BaseMinimalSwapInfoPool.sol";
+import "../PoolUserDataHelpers.sol";
 
 import "./WeightedMath.sol";
-import "./WeightedPoolUserDataHelpers.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
@@ -29,7 +29,7 @@ import "./WeightedPoolUserDataHelpers.sol";
 
 contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
-    using WeightedPoolUserDataHelpers for bytes;
+    using PoolUserDataHelpers for bytes;
 
     // The protocol fees will be always charged using the token associated to the max weight in the pool.
     // Since these Pools will register tokens only once, we can assume this index will be constant.
@@ -53,9 +53,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     uint256 private immutable _normalizedWeight15;
 
     uint256 private _lastInvariant;
-
-    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
         IVault vault,
@@ -218,8 +215,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         address,
         bytes memory userData
     ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
-        WeightedPool.JoinKind kind = userData.joinKind();
-        require(kind == WeightedPool.JoinKind.INIT, "UNINITIALIZED");
+        PoolUserDataHelpers.JoinKind kind = userData.joinKind();
+        require(kind == PoolUserDataHelpers.JoinKind.INIT, "UNINITIALIZED");
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
         require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
@@ -287,11 +284,11 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        JoinKind kind = userData.joinKind();
+        PoolUserDataHelpers.JoinKind kind = userData.joinKind();
 
-        if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == PoolUserDataHelpers.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(currentBalances, normalizedWeights, userData);
-        } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == PoolUserDataHelpers.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(currentBalances, normalizedWeights, userData);
         } else {
             revert("UNHANDLED_JOIN_KIND");
@@ -400,13 +397,13 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        ExitKind kind = userData.exitKind();
+        PoolUserDataHelpers.ExitKind kind = userData.exitKind();
 
-        if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == PoolUserDataHelpers.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(normalizedWeights, currentBalances, userData);
-        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == PoolUserDataHelpers.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(currentBalances, userData);
-        } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+        } else if (kind == PoolUserDataHelpers.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(normalizedWeights, currentBalances, userData);
         } else {
             revert("UNHANDLED_EXIT_KIND");

@@ -19,20 +19,17 @@ import "../../lib/math/FixedPoint.sol";
 import "../../lib/helpers/InputHelpers.sol";
 
 import "../BaseGeneralPool.sol";
+import "../PoolUserDataHelpers.sol";
 
 import "./StableMath.sol";
-import "./StablePoolUserDataHelpers.sol";
 
 contract StablePool is BaseGeneralPool, StableMath {
     using FixedPoint for uint256;
-    using StablePoolUserDataHelpers for bytes;
+    using PoolUserDataHelpers for bytes;
 
     uint256 private immutable _amplificationParameter;
 
     uint256 private _lastInvariant;
-
-    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
         IVault vault,
@@ -102,8 +99,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         address,
         bytes memory userData
     ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
-        StablePool.JoinKind kind = userData.joinKind();
-        require(kind == StablePool.JoinKind.INIT, "UNINITIALIZED");
+        PoolUserDataHelpers.JoinKind kind = userData.joinKind();
+        require(kind == PoolUserDataHelpers.JoinKind.INIT, "UNINITIALIZED");
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
@@ -166,11 +163,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256, uint256[] memory)
     {
-        JoinKind kind = userData.joinKind();
+        PoolUserDataHelpers.JoinKind kind = userData.joinKind();
 
-        if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == PoolUserDataHelpers.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, userData);
-        } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == PoolUserDataHelpers.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, userData);
         } else {
             revert("UNHANDLED_JOIN_KIND");
@@ -272,13 +269,13 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256, uint256[] memory)
     {
-        ExitKind kind = userData.exitKind();
+        PoolUserDataHelpers.ExitKind kind = userData.exitKind();
 
-        if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        if (kind == PoolUserDataHelpers.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(balances, userData);
-        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == PoolUserDataHelpers.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
-        } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+        } else if (kind == PoolUserDataHelpers.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, userData);
         } else {
             revert("UNHANDLED_EXIT_KIND");
