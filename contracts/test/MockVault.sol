@@ -29,7 +29,7 @@ contract MockVault {
     IAuthorizer private _authorizer;
     mapping (bytes32 => Pool) private pools;
 
-    event PoolBalanceChanged(bool add, uint256[] amounts, uint256[] dueProtocolFeeAmounts);
+    event PoolBalanceChanged(bool positive, uint256[] amounts, uint256[] dueProtocolFeeAmounts);
 
     constructor(IAuthorizer authorizer) {
         _authorizer = authorizer;

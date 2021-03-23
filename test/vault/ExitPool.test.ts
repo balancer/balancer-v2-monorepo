@@ -435,7 +435,7 @@ describe('Vault - exit pool', () => {
 
         expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
           poolId,
-          add: false,
+          positive: false,
           liquidityProvider: lp.address,
           amounts: exitAmounts,
           protocolFees: dueProtocolFeeAmounts,

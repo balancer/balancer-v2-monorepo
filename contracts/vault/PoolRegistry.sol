@@ -244,7 +244,7 @@ abstract contract PoolRegistry is
         address recipient,
         PoolBalanceChange memory change
     ) external payable override {
-        _changePoolBalance(true, poolId, sender, recipient, change);
+        _joinOrExit(true, poolId, sender, recipient, change);
     }
 
     function exitPool(
@@ -253,10 +253,10 @@ abstract contract PoolRegistry is
         address payable recipient,
         PoolBalanceChange memory change
     ) external override {
-        _changePoolBalance(false, poolId, sender, recipient, change);
+        _joinOrExit(false, poolId, sender, recipient, change);
     }
 
-    function _changePoolBalance(
+    function _joinOrExit(
         bool join,
         bytes32 poolId,
         address sender,
