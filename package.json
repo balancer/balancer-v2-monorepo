@@ -36,7 +36,7 @@
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
-    "@openzeppelin/contracts": "3.3.0-solc-0.7",
+    "@openzeppelin/contracts": "3.4-solc-0.7",
     "@tenderly/hardhat-tenderly": "1.0.6",
     "@types/chai": "^4.2.12",
     "@types/lodash": "^4.14.161",
