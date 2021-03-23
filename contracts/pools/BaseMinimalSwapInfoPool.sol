@@ -53,7 +53,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
         return
-            request.kind == SwapKind.GIVEN_IN
+            request.kind == IVault.SwapKind.GIVEN_IN
                 ? _swapGivenIn(request, balanceTokenIn, balanceTokenOut, scalingFactorTokenIn, scalingFactorTokenOut)
                 : _swapGivenOut(request, balanceTokenIn, balanceTokenOut, scalingFactorTokenIn, scalingFactorTokenOut);
     }

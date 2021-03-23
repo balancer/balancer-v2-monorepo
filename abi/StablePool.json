@@ -463,7 +463,7 @@
       {
         "components": [
           {
-            "internalType": "enum IPoolSwapStructs.SwapKind",
+            "internalType": "enum IVault.SwapKind",
             "name": "kind",
             "type": "uint8"
           },

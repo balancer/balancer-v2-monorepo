@@ -17,11 +17,14 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "./IVault.sol";
+
 interface IPoolSwapStructs {
     // This is not really an interface - it just defines common structs used by other interfaces: IGeneralPool and
     // IMinimalSwapInfoPool.
 
-    // This data structure represents a request for a token swap, where the amount sent by the Pool is known.
+    // This data structure represents a request for a token swap, where `kind` indicates the swap type (given in or
+    // given out) which tells whether the amount sent by the Pool is known or not respectively.
     //
     // `tokenIn` and `tokenOut` are the tokens the Pool will receive and send, respectively. `amountOut` is the number
     // of `tokenOut` tokens that the Pool will send.
@@ -34,7 +37,7 @@ interface IPoolSwapStructs {
     // where the funds the Pool sends are going to.
     // `userData` is extra data provided by the caller - typically a signature from a trusted party.
     struct SwapRequest {
-        SwapKind kind;
+        IVault.SwapKind kind;
         IERC20 tokenIn;
         IERC20 tokenOut;
         uint256 amount;
@@ -45,6 +48,4 @@ interface IPoolSwapStructs {
         address to;
         bytes userData;
     }
-
-    enum SwapKind { GIVEN_IN, GIVEN_OUT }
 }

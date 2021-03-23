@@ -127,7 +127,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256,
         uint256
     ) external view override returns (uint256 amount) {
-        return swapRequest.kind == SwapKind.GIVEN_IN
+        return swapRequest.kind == IVault.SwapKind.GIVEN_IN
             ? swapRequest.amount.mul(_multiplier)
             : swapRequest.amount.div(_multiplier);
     }
@@ -138,7 +138,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256,
         uint256
     ) external view override returns (uint256) {
-        return swapRequest.kind == SwapKind.GIVEN_IN
+        return swapRequest.kind == IVault.SwapKind.GIVEN_IN
             ? swapRequest.amount.mul(_multiplier)
             : swapRequest.amount.div(_multiplier);
     }

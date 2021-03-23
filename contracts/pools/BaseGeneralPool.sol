@@ -52,10 +52,9 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     ) external view override returns (uint256) {
         _validateIndexes(indexIn, indexOut, _totalTokens);
         uint256[] memory scalingFactors = _scalingFactors();
-        _upscaleArray(balances, scalingFactors);
 
         return
-            swapRequest.kind == SwapKind.GIVEN_IN
+            swapRequest.kind == IVault.SwapKind.GIVEN_IN
                 ? _swapGivenIn(swapRequest, balances, indexIn, indexOut, scalingFactors)
                 : _swapGivenOut(swapRequest, balances, indexIn, indexOut, scalingFactors);
     }
@@ -69,6 +68,8 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     ) internal view returns (uint256) {
         // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
         swapRequest.amount = _subtractSwapFee(swapRequest.amount);
+
+        _upscaleArray(balances, scalingFactors);
         swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexIn]);
 
         uint256 amountOut = _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
@@ -84,6 +85,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) internal view returns (uint256) {
+        _upscaleArray(balances, scalingFactors);
         swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexOut]);
 
         uint256 amountIn = _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);

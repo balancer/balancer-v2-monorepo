@@ -427,9 +427,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
         IPoolSwapStructs.SwapRequest memory poolSwapRequest = _toPoolSwapRequest(request);
         amountCalculated = pool.onSwap(poolSwapRequest, tokenInTotal, tokenOutTotal);
-        bool givenIn = kind == SwapKind.GIVEN_IN;
-        newTokenInBalance = tokenInBalance.increaseCash(givenIn ? request.amount : amountCalculated);
-        newTokenOutBalance = tokenOutBalance.decreaseCash(givenIn ? amountCalculated : request.amount);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(kind, request.amount, amountCalculated);
+        newTokenInBalance = tokenInBalance.increaseCash(amountIn);
+        newTokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
     }
 
     function _processGeneralPoolSwapRequest(
@@ -465,9 +465,9 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
         IPoolSwapStructs.SwapRequest memory poolSwapRequest = _toPoolSwapRequest(request);
         amountCalculated = pool.onSwap(poolSwapRequest, currentBalances, indexIn, indexOut);
-        bool givenIn = kind == SwapKind.GIVEN_IN;
-        tokenInBalance = tokenInBalance.increaseCash(givenIn ? request.amount : amountCalculated);
-        tokenOutBalance = tokenOutBalance.decreaseCash(givenIn ? amountCalculated : request.amount);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(kind, request.amount, amountCalculated);
+        tokenInBalance = tokenInBalance.increaseCash(amountIn);
+        tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
 
         // Because no token registrations or unregistrations happened between now and when we retrieved the indexes for
         // token in and token out, we can use `unchecked_setAt`, saving storage reads.
