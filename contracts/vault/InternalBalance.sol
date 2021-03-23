@@ -93,7 +93,8 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             IERC20 token = _translateToIERC20(asset);
 
             uint256 amountToSend = amount;
-            (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false);
+            // Since we're charging withdraw fees, we attempt to withdraw from the exempt Internal Balance if possible
+            (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false, true);
 
             if (taxableAmount > 0) {
                 uint256 feeAmount = _calculateProtocolWithdrawFeeAmount(taxableAmount);
@@ -120,8 +121,9 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            // Transferring internal balance to another account is not charged withdrawal fees
-            _decreaseInternalBalance(sender, token, amount, false);
+            // Transferring internal balance to another account is not charged withdrawal fees.
+            // Because of this, we use the exempt balance if possible.
+            _decreaseInternalBalance(sender, token, amount, false, false);
             // Tokens transferred internally are not later exempt from withdrawal fees.
             _increaseInternalBalance(recipient, token, amount, false);
         }
@@ -178,12 +180,14 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         address account,
         IERC20 token,
         uint256 amount,
-        bool capped
+        bool capped,
+        bool useExempt
     ) internal override returns (uint256, uint256) {
         bytes32 currentInternalBalance = _getInternalBalance(account, token);
         (bytes32 newBalance, uint256 taxableAmount, uint256 decreasedAmount) = currentInternalBalance.decrease(
             amount,
-            capped
+            capped,
+            useExempt
         );
 
         // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256 as the value is
