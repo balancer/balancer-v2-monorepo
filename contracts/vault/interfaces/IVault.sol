@@ -19,6 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAuthorizer.sol";
 import "./IFlashLoanReceiver.sol";
 import "./IAsset.sol";
+import "./IWETH.sol";
 import "../ProtocolFeesCollector.sol";
 
 pragma solidity ^0.7.0;
@@ -56,6 +57,12 @@ interface IVault {
     // This combined requirements means users cannot be tricked into allowing malicious relayers (because they will not
     // have been allowed by the Authorizer), nor can a malicious Authorizer allow malicious relayers to drain user funds
     // (unless the user then allows this malicious relayer).
+
+    /**
+     * @dev Returns the Vault's WETH instance.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function WETH() external view returns (IWETH);
 
     /**
      * @dev Returns the Vault's Authorizer.
@@ -293,6 +300,13 @@ interface IVault {
             address assetManager
         );
 
+    struct PoolBalanceChange {
+        IAsset[] assets;
+        uint256[] limits;
+        bytes userData;
+        bool useInternalBalance;
+    }
+
     /**
      * @dev Called by users to join a Pool, which transfers tokens from `sender` into the Pool's balance. This will
      * trigger custom Pool behavior, which will typically grant something in return to `recipient` - often tokenized
@@ -323,28 +337,21 @@ interface IVault {
      * of Pool shares to obtain). This can be encoded in the `userData` argument, which is ignored by the Vault and
      * passed directly to the Pool's contract, as is `recipient`.
      *
-     * Emits a `PoolJoined` event.
+     * Emits a `PoolBalanceChanged` event.
      */
     function joinPool(
         bytes32 poolId,
         address sender,
         address recipient,
-        IAsset[] memory assets,
-        uint256[] memory maxAmountsIn,
-        bool fromInternalBalance,
-        bytes memory userData
+        JoinPoolRequest memory request
     ) external payable;
 
-    /**
-     * @dev Emitted when a user joins a Pool by calling `joinPool`.
-     */
-    event PoolJoined(
-        bytes32 indexed poolId,
-        address indexed liquidityProvider,
-        IERC20[] tokens,
-        uint256[] amountsIn,
-        uint256[] protocolFees
-    );
+    struct JoinPoolRequest {
+        IAsset[] assets;
+        uint256[] maxAmountsIn;
+        bytes userData;
+        bool fromInternalBalance;
+    }
 
     /**
      * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
@@ -383,28 +390,35 @@ interface IVault {
      * of Pool shares to return). This can be encoded in the `userData` argument, which is ignored by the Vault and
      * passed directly to the Pool's contract.
      *
-     * Emits a `PoolExited` event.
+     * Emits a `PoolBalanceChanged` event.
      */
     function exitPool(
         bytes32 poolId,
         address sender,
         address payable recipient,
-        IAsset[] memory assets,
-        uint256[] memory minAmountsOut,
-        bool toInternalBalance,
-        bytes memory userData
+        ExitPoolRequest memory request
     ) external;
 
+    struct ExitPoolRequest {
+        IAsset[] assets;
+        uint256[] minAmountsOut;
+        bytes userData;
+        bool toInternalBalance;
+    }
+
     /**
-     * @dev Emitted when a user exits a pool by calling `exitPool`.
+     * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool` respectively.
      */
-    event PoolExited(
+    event PoolBalanceChanged(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
+        PoolBalanceChangeKind kind,
         IERC20[] tokens,
-        uint256[] amountsOut,
+        uint256[] amounts,
         uint256[] protocolFees
     );
+
+    enum PoolBalanceChangeKind { JOIN, EXIT }
 
     // Swaps
     //
@@ -649,19 +663,10 @@ interface IVault {
     }
 
     /**
-     * @dev Returns the Pool's Asset Managers for the given `tokens`. Asset Managers can manage a Pool's assets
-     * by taking them out of the Vault via `withdrawFromPoolBalance`, `depositToPoolBalance` and `updateManagedBalance`.
-     */
-    function getPoolAssetManagers(bytes32 poolId, IERC20[] memory tokens)
-        external
-        view
-        returns (address[] memory assetManagers);
-
-    /**
      * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `withdrawFromPoolBalance`
      * or `depositToPoolBalance`.
      */
-    event PoolBalanceChanged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
+    event PoolBalanceManaged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     /**
      * @dev Called by a Pool's Asset Manager to withdraw tokens from the Vault. This decreases

@@ -86,17 +86,12 @@ describe('Vault - exit pool', () => {
       dueProtocolFeeAmounts = array(0);
 
       // Join the Pool from the creator so that it has some tokens to exit and pay protocol fees with
-      await vault
-        .connect(creator)
-        .joinPool(
-          poolId,
-          creator.address,
-          ZERO_ADDRESS,
-          tokens.addresses,
-          array(MAX_UINT256),
-          false,
-          encodeExit(array(50e18), array(0))
-        );
+      await vault.connect(creator).joinPool(poolId, creator.address, ZERO_ADDRESS, {
+        assets: tokens.addresses,
+        maxAmountsIn: array(MAX_UINT256),
+        fromInternalBalance: false,
+        userData: encodeExit(array(50e18), array(0)),
+      });
 
       // Deposit to Internal Balance from the creator so that the Vault has some additional tokens. Otherwise, tests
       // might fail not because the Vault checks its accounting, but because it is out of tokens to send.
@@ -123,15 +118,12 @@ describe('Vault - exit pool', () => {
     function exitPool(data: ExitPoolData): Promise<ContractTransaction> {
       return vault
         .connect(data.fromRelayer ?? false ? relayer : lp)
-        .exitPool(
-          data.poolId ?? poolId,
-          lp.address,
-          recipient.address,
-          data.tokenAddresses ?? tokens.addresses,
-          data.minAmountsOut ?? array(0),
-          data.toInternalBalance ?? false,
-          encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts)
-        );
+        .exitPool(data.poolId ?? poolId, lp.address, recipient.address, {
+          assets: data.tokenAddresses ?? tokens.addresses,
+          minAmountsOut: data.minAmountsOut ?? array(0),
+          toInternalBalance: data.toInternalBalance ?? false,
+          userData: encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts),
+        });
     }
 
     context('when called incorrectly', () => {
@@ -452,13 +444,14 @@ describe('Vault - exit pool', () => {
         });
       });
 
-      it('emits PoolExited from the vault', async () => {
+      it('emits PoolBalanceChanged from the vault', async () => {
         const receipt = await (await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance })).wait();
 
-        expectEvent.inReceipt(receipt, 'PoolExited', {
+        expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
           poolId,
+          kind: 1,
           liquidityProvider: lp.address,
-          amountsOut: exitAmounts,
+          amounts: exitAmounts,
           protocolFees: dueProtocolFeeAmounts,
         });
       });

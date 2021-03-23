@@ -13,13 +13,17 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "../math/Math.sol";
 import "../math/FixedPoint.sol";
+
 import "./InputHelpers.sol";
+import "./AssetHelpers.sol";
 
 import "../../pools/BasePool.sol";
 import "../../vault/ProtocolFeesCollector.sol";
+import "../../vault/interfaces/IWETH.sol";
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/balances/BalanceAllocation.sol";
 
@@ -28,14 +32,14 @@ import "../../vault/balances/BalanceAllocation.sol";
  * It connects different functionalities of the protocol components to allow accessing information that would
  * have required a more cumbersome setup if we wanted to provide these already built-in.
  */
-contract BalancerHelpers {
+contract BalancerHelpers is AssetHelpers {
     using Math for uint256;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
 
     IVault public immutable vault;
 
-    constructor(IVault _vault) {
+    constructor(IVault _vault) AssetHelpers(_vault.WETH()) {
         vault = _vault;
     }
 
@@ -43,30 +47,45 @@ contract BalancerHelpers {
         bytes32 poolId,
         address sender,
         address recipient,
-        IERC20[] memory tokens,
-        uint256[] memory,
-        bool,
-        bytes memory userData
+        IVault.JoinPoolRequest memory request
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
         (address pool, ) = vault.getPool(poolId);
-        (bptOut, amountsIn) = _queryPool(poolId, sender, recipient, tokens, userData, BasePool(pool).queryJoin);
+        (uint256[] memory balances, uint256 latestBlockNumber) = _validateAssetsAndGetBalances(poolId, request.assets);
+        ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
+
+        (bptOut, amountsIn) = BasePool(pool).queryJoin(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            latestBlockNumber,
+            feesCollector.getSwapFee(),
+            request.userData
+        );
     }
 
     function queryExit(
         bytes32 poolId,
         address sender,
         address recipient,
-        IERC20[] memory tokens,
-        uint256[] memory,
-        bool toInternalBalance,
-        bytes memory userData
+        IVault.ExitPoolRequest memory request
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
         (address pool, ) = vault.getPool(poolId);
-        (bptIn, amountsOut) = _queryPool(poolId, sender, recipient, tokens, userData, BasePool(pool).queryExit);
+        (uint256[] memory balances, uint256 latestBlockNumber) = _validateAssetsAndGetBalances(poolId, request.assets);
+        ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
+
+        (bptIn, amountsOut) = BasePool(pool).queryExit(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            latestBlockNumber,
+            feesCollector.getSwapFee(),
+            request.userData
+        );
 
         // Deduct withdraw fees unless it's using internal balance
-        if (!toInternalBalance) {
-            ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
+        if (!request.toInternalBalance) {
             uint256 withdrawFeePct = feesCollector.getWithdrawFee();
             for (uint256 i = 0; i < amountsOut.length; i++) {
                 uint256 amountOut = amountsOut[i];
@@ -76,27 +95,14 @@ contract BalancerHelpers {
         }
     }
 
-    function _queryPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        IERC20[] memory tokens,
-        bytes memory userData,
-        function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
-            external
-            returns (uint256, uint256[] memory) query
-    ) internal returns (uint256, uint256[] memory) {
-        (uint256[] memory balances, uint256 latestBlockNumberUsed) = _validateTokensAndGetBalances(poolId, tokens);
-        ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
-        return query(poolId, sender, recipient, balances, latestBlockNumberUsed, feesCollector.getSwapFee(), userData);
-    }
-
-    function _validateTokensAndGetBalances(bytes32 poolId, IERC20[] memory expectedTokens)
+    function _validateAssetsAndGetBalances(bytes32 poolId, IAsset[] memory expectedAssets)
         internal
         view
         returns (uint256[] memory balances, uint256 latestBlockNumberUsed)
     {
         IERC20[] memory actualTokens;
+        IERC20[] memory expectedTokens = _translateToIERC20(expectedAssets);
+
         latestBlockNumberUsed = 0;
         (actualTokens, balances) = vault.getPoolTokens(poolId);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);

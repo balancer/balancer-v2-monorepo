@@ -98,15 +98,12 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
   const poolId = await pool.getPoolId();
 
-  await vault.connect(creator).joinPool(
-    poolId,
-    creator.address,
-    creator.address,
-    tokenAddresses,
-    tokenAddresses.map(() => initialPoolBalance), // These end up being the actual join amounts
-    false,
-    joinUserData
-  );
+  await vault.connect(creator).joinPool(poolId, creator.address, creator.address, {
+    assets: tokenAddresses,
+    maxAmountsIn: tokenAddresses.map(() => initialPoolBalance), // These end up being the actual join amounts
+    fromInternalBalance: false,
+    userData: joinUserData,
+  });
 
   return poolId;
 }

@@ -362,8 +362,8 @@ export default class WeightedPool {
     });
 
     const receipt = await (await tx).wait();
-    const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
-    return { amountsIn, dueProtocolFeeAmounts };
+    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: amounts, dueProtocolFeeAmounts };
   }
 
   async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
@@ -388,8 +388,8 @@ export default class WeightedPool {
     });
 
     const receipt = await (await tx).wait();
-    const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
-    return { amountsOut, dueProtocolFeeAmounts };
+    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: amounts, dueProtocolFeeAmounts };
   }
 
   private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {

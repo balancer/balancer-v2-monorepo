@@ -13,67 +13,23 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/AssetHelpers.sol";
 
 import "./interfaces/IWETH.sol";
 import "./interfaces/IAsset.sol";
+import "./interfaces/IVault.sol";
 
-abstract contract AssetTransfersHandler {
+abstract contract AssetTransfersHandler is AssetHelpers {
     using SafeERC20 for IERC20;
     using Address for address payable;
     using Math for uint256;
-
-    // solhint-disable-next-line var-name-mixedcase
-    IWETH private immutable _WETH;
-
-    // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
-    // multiple reasons: it is cheap to pass as a calldata argument, it is a known invalid token and non-contract, and
-    // it is an adddress Pools cannot register as a token.
-    address private constant _ETH = address(0);
-
-    constructor(IWETH weth) {
-        _WETH = weth;
-    }
-
-    /**
-     * @dev Returns true if `asset` is the sentinel value that stands for ETH.
-     */
-    function _isETH(IAsset asset) internal pure returns (bool) {
-        return address(asset) == _ETH;
-    }
-
-    /**
-     * @dev Translates `asset` into an equivalent IERC20 token address. If `asset` stands for ETH, it will be translated
-     * into the WETH contract.
-     */
-    function _translateToIERC20(IAsset asset) internal view returns (IERC20) {
-        return _isETH(asset) ? _WETH : _asIERC20(asset);
-    }
-
-    /**
-     * @dev Same as `_translateToIERC20(IAsset)`, but for an entire array.
-     */
-    function _translateToIERC20(IAsset[] memory assets) internal view returns (IERC20[] memory) {
-        IERC20[] memory tokens = new IERC20[](assets.length);
-        for (uint256 i = 0; i < assets.length; ++i) {
-            tokens[i] = _translateToIERC20(assets[i]);
-        }
-
-        return tokens;
-    }
-
-    /**
-     * @dev Interprets `asset` as an IERC20 token. This function should only be called on `asset` if `_isETH` previously
-     * returned false for it, that is, if `asset` is guaranteed to not be the sentinel value that stands for ETH.
-     */
-    function _asIERC20(IAsset asset) internal pure returns (IERC20) {
-        return IERC20(address(asset));
-    }
 
     /**
      * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, as much as possible is first
@@ -110,12 +66,13 @@ abstract contract AssetTransfersHandler {
             IERC20 token = _asIERC20(asset);
 
             if (fromInternalBalance) {
-                // Note that we ignore the taxable amount here since these assets are not being withdrawn from the Vault
-                // but rather reallocated (e.g. as part of a swap or join).
-                // Because `receivedFromInternalBalance` will be always the minimum between the current internal balance
+                // We take as many tokens form Internal Balance as possible: any remaining amounts will be transferred.
+                // Note that this usage of Internal Balance is not charged withdraw fees, so we attempt to not use the
+                // exempt Internal Balance if possible.
+                (, uint256 deductedBalance) = _decreaseInternalBalance(sender, token, amount, true, false);
+                // Because `deductedBalance` will be always the minimum between the current internal balance
                 // and the amount to decrease, it is safe to perform unchecked arithmetic.
-                (, uint256 receivedFromInternalBalance) = _decreaseInternalBalance(sender, token, amount, true);
-                amount -= receivedFromInternalBalance;
+                amount -= deductedBalance;
             }
 
             if (amount > 0) {
@@ -220,6 +177,7 @@ abstract contract AssetTransfersHandler {
         address account,
         IERC20 token,
         uint256 amount,
-        bool capped
+        bool capped,
+        bool useExempts
     ) internal virtual returns (uint256, uint256);
 }
