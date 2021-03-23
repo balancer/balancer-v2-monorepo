@@ -69,18 +69,18 @@ abstract contract AssetTransfersHandler {
 
     /**
      * @dev Interprets `asset` as an IERC20 token. This function should only be called on `asset` if `_isETH` previously
-     * returned false for it, that is, if `asset` is guaranteed to not be the sentinel value that stands for ETH.
+     * returned false for it, that is, if `asset` is guaranteed not to be the ETH sentinel value.
      */
     function _asIERC20(IAsset asset) internal pure returns (IERC20) {
         return IERC20(address(asset));
     }
 
     /**
-     * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, as much as possible is first
-     * withdrawn from Internal Balance, and the transfer is performed on the remaining amount, if any.
+     * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, it first withdraws as much
+     * as possible from Internal Balance, then transfers any remaining amount.
      *
      * If `asset` is ETH, `fromInternalBalance` must be false (as ETH cannot be held as internal balance), and the funds
-     * will be wrapped wrapped into WETH.
+     * will be wrapped into WETH.
      *
      * WARNING: this function does not check that the contract caller has actually supplied any ETH - it is up to the
      * caller of this function to check that this is true to prevent the Vault from using its own ETH (though the Vault
@@ -112,7 +112,7 @@ abstract contract AssetTransfersHandler {
             if (fromInternalBalance) {
                 // Note that we ignore the taxable amount here since these assets are not being withdrawn from the Vault
                 // but rather reallocated (e.g. as part of a swap or join).
-                // Because `receivedFromInternalBalance` will be always the minimum between the current internal balance
+                // Because `receivedFromInternalBalance` will always be the lesser of the current internal balance
                 // and the amount to decrease, it is safe to perform unchecked arithmetic.
                 (, uint256 receivedFromInternalBalance) = _decreaseInternalBalance(sender, token, amount, true);
                 amount -= receivedFromInternalBalance;
@@ -143,11 +143,11 @@ abstract contract AssetTransfersHandler {
         }
 
         if (_isETH(asset)) {
-            // Sending ETH is not as involved as receiving it: the only special behavior it has is it cannot be
+            // Sending ETH is not as involved as receiving it: the only special behavior is it cannot be
             // deposited to Internal Balance.
             require(!toInternalBalance, "INVALID_ETH_INTERNAL_BALANCE");
 
-            // First, the Vault withdraws deposited ETH in the WETH contract, by burning the same amount of WETH
+            // First, the Vault withdraws deposited ETH from the WETH contract, by burning the same amount of WETH
             // from the Vault. This receipt will be handled by the Vault's `receive`.
             _WETH.withdraw(amount);
 
@@ -164,9 +164,9 @@ abstract contract AssetTransfersHandler {
     }
 
     /**
-     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` of it has been spent.
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent.
      *
-     * Because the caller might not now exactly how much ETH a Vault action will require, they may send extra amounts.
+     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
      * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
      * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
      * returned ETH.
@@ -205,7 +205,7 @@ abstract contract AssetTransfersHandler {
         require(msg.sender == address(_WETH), "ETH_TRANSFER");
     }
 
-    // This contract has uses virtual internal functions instead of inheriting from the modules that implement them (in
+    // This contract uses virtual internal functions instead of inheriting from the modules that implement them (in
     // this case, Fees and InternalBalance) in order to decouple it from the rest of the system and enable standalone
     // testing by implementing these with mocks.
 

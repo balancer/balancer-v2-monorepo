@@ -46,7 +46,7 @@ library InternalBalanceAllocation {
     /**
      * @dev Increases an internal balance. It can also track the internal balance exempt if requested.
      * In case it is, it will compare the current block number with the last one cached to see if it should
-     * reset the exempt amount or increment it. The exempt amount will always be considered to compute
+     * reset the exempt amount or increment it. The exempt amount will always be considered in computing
      * the taxable amount when an internal balance is decreased
      */
     function increase(
@@ -92,15 +92,15 @@ library InternalBalanceAllocation {
         uint256 currentActual = actual(balance);
         require(capped || (currentActual >= amount), "INSUFFICIENT_INTERNAL_BALANCE");
 
-        // We know the decreased amount will be always the minimum between the actual value and the given amount.
-        // If the given amount was greater than the actual value and it wasn't requested to be capped, then it
-        // was caught by the require above
+        // We know the decreased amount will always be the lesser of the actual value and the given amount.
+        // If the given amount was greater than the actual value, and it wasn't requested to be capped, then it
+        // would be caught by the require above
         uint256 decreased = Math.min(currentActual, amount);
         uint256 newActual = currentActual - decreased;
 
         uint256 lastBlockNumber = blockNumber(balance);
         if (lastBlockNumber == block.number) {
-            // A user could be decreasing its internal balance by a number greater than its exempt value.
+            // A user could be decreasing their internal balance by a number greater than the exempt value.
             // Then we should always do a sub capped to zero.
             uint256 currentExempt = exempt(balance);
             uint256 newExempt = currentExempt > amount ? currentExempt - amount : 0;
@@ -108,7 +108,7 @@ library InternalBalanceAllocation {
             bytes32 newBalance = toInternalBalance(newActual, newExempt, lastBlockNumber);
             return (newBalance, taxableAmount, decreased);
         } else {
-            // Note that we consider the case where the current block number doesn't match with the last one as a
+            // Note that we consider the case where the current block number doesn't match the last one as a
             // regular decrease. We cannot handle negative exempt values, it would be like "credit" for potential
             // future ops in the same block.
             bytes32 newBalance = toInternalBalance(newActual, 0, 0);
@@ -118,7 +118,7 @@ library InternalBalanceAllocation {
 
     /**
      * @dev Packs together actual and exempt amounts with a block number to create a balance value.
-     * Critically, this also checks both amounts can be packed together in the same slot.
+     * Critically, this also checks that both amounts can be packed together in the same slot.
      */
     function toInternalBalance(
         uint256 _actual,
@@ -126,7 +126,7 @@ library InternalBalanceAllocation {
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
         require(_actual < 2**112 && _exempt < 2**112, "INTERNAL_BALANCE_OVERFLOW");
-        // We assume the block number will fits in an uint32 - this is expected to hold for at least a few decades.
+        // We assume the block number will fit in a uint32 - this is expected to hold for at least a few decades.
         return _pack(_actual, _exempt, _blockNumber);
     }
 

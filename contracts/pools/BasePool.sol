@@ -32,7 +32,7 @@ import "../lib/helpers/EmergencyPeriod.sol";
 
 /**
  * @dev Reference implementation for the base layer of a Pool contract that manges a single Pool with an immutable set
- * of registered tokens, no Asset Managers, and an immutable swap fee.
+ * of registered tokens, and no Asset Managers. The swapFee is controlled through BasePoolAuthorization.
  *
  * Because this contract doesn't implement the swap hooks, derived contracts should likely inherit from BaseGeneralPool
  * or BaseMinimalSwapInfoPool instead.

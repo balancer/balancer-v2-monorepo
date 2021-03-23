@@ -28,9 +28,10 @@ contract MinimalSwapInfoPoolsBalance {
     // These Pools use the IMinimalSwapInfoPool interface, and so the Vault must read the balance of the two tokens
     // in the swap. The best solution is to use a mapping from token to balance, which lets us read or write any token's
     // balance in a single storage access.
+    //
     // We also keep a set with all tokens in the Pool, and update this set when cash is added or removed from the pool.
-    // Tokens in the set always have a non-zero balance, so we don't need
-    // to check the set for token existence during a swap: the non-zero balance check achieves this for less gas.
+    // Tokens in the set always have a non-zero balance, so we don't need to check the set for token existence during
+    // a swap: the non-zero balance check achieves this for less gas.
 
     mapping(bytes32 => EnumerableSet.AddressSet) internal _minimalSwapInfoPoolsTokens;
     mapping(bytes32 => mapping(IERC20 => bytes32)) internal _minimalSwapInfoPoolsBalances;
@@ -40,8 +41,8 @@ contract MinimalSwapInfoPoolsBalance {
      *
      * Requirements:
      *
-     * - Each token must not be the zero address.
-     * - Each token must not be registered in the Pool.
+     * - Tokens must have valid (non-zero) addresses
+     * - Tokens cannot already be registered in the Pool
      */
     function _registerMinimalSwapInfoPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
@@ -59,8 +60,8 @@ contract MinimalSwapInfoPoolsBalance {
      *
      * Requirements:
      *
-     * - Each token must be registered in the Pool.
-     * - Each token must have non balance in the Vault.
+     * - Tokens must be registered in the Pool
+     * - Tokens must have zero balance in the Vault
      */
     function _deregisterMinimalSwapInfoPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
@@ -70,7 +71,7 @@ contract MinimalSwapInfoPoolsBalance {
             require(_minimalSwapInfoPoolsBalances[poolId][token].isZero(), "NONZERO_TOKEN_BALANCE");
             bool removed = poolTokens.remove(address(token));
             require(removed, "TOKEN_NOT_REGISTERED");
-            // No need to delete the balance entries, since they already are zero
+            // No need to delete the balance entries, since they are already zero
         }
     }
 

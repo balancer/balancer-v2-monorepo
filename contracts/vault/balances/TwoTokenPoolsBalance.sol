@@ -26,10 +26,12 @@ contract TwoTokenPoolsBalance {
     // These are similar to the Minimal Swap Info Pool case (because the Pool only has two tokens, and therefore there
     // are only two balances to read), but there's a key difference in how data is stored. Keeping a set makes little
     // sense, as it will only ever hold two tokens, so we can just store those two directly.
+    //
     // The gas savings associated with using these Pools come from how token balances are stored: cash for token A and
-    // token B is packed together, as are external amounts. Because only cash changes in a swap, there's no need to
+    // token B are packed together, as are external amounts. Because only cash changes in a swap, there's no need to
     // write to this second storage slot.
-    // This however makes Vault code that interacts with these Pools cumbersome: both balances must be accessed at the
+    //
+    // However, this makes Vault code that interacts with these Pools cumbersome: both balances must be accessed at the
     // same time by using both token addresses, and some logic is needed to differentiate token A from token B. In this
     // case, token A is always the token with the lowest numerical address value. The token X and token Y names are used
     // in functions when it is unknown which one is A and which one is B.
@@ -48,12 +50,15 @@ contract TwoTokenPoolsBalance {
     // We could just keep a mapping from Pool ID to TwoTokenSharedBalances, but there's an issue: we wouldn't know to
     // which tokens those balances correspond. This would mean having to also check the tokens struct in a swap, to make
     // sure the tokens being swapped are the ones in the Pool.
+    //
     // What we do instead to save those storage reads is keep a nested mapping from token pair hash to the balances
     // struct. The Pool only has two tokens, so only a single entry of this mapping is set (the one that corresponds to
-    // that pair's hash). This means queries for token pairs where any of the tokens is not in the Pool will generate a
-    // hash for a mapping entry that was not set, containing zero balances. Non-zero balances are only possible if both
-    // tokens in the pair are the Pool's tokens, which means we don't have to check the TwoTokensTokens struct and save
-    // storage reads.
+    // that pair's hash).
+    //
+    // This means queries for token pairs where any of the tokens is not in the Pool will generate a hash for a mapping
+    // entry that was not set, containing zero balances. Non-zero balances are only possible if both tokens in the pair
+    // are the Pool's tokens, which means we don't have to check the TwoTokensTokens struct and can save storage reads.
+
     mapping(bytes32 => TwoTokenPoolTokens) private _twoTokenPoolTokens;
 
     /**
@@ -61,9 +66,9 @@ contract TwoTokenPoolsBalance {
      *
      * Requirements:
      *
-     * - `tokenX` and `tokenY` cannot be the same.
-     * - Both tokens must not be the zero address.
-     * - Both tokens must not be registered in the Pool.
+     * - `tokenX` and `tokenY` cannot be the same
+     * - Tokens must have valid (non-zero) addresses
+     * - Token cannot already be registered in the Pool
      * - Tokens must be ordered: tokenX < tokenY.
      */
     function _registerTwoTokenPoolTokens(
@@ -91,7 +96,7 @@ contract TwoTokenPoolsBalance {
      * Requirements:
      *
      * - `tokenX` and `tokenY` must be the Pool's tokens.
-     * - Both tokens must have non balance in the Vault.
+     * - Both tokens must have zero balance in the Vault.
      */
     function _deregisterTwoTokenPoolTokens(
         bytes32 poolId,
@@ -309,7 +314,7 @@ contract TwoTokenPoolsBalance {
     }
 
     /**
-     * @dev Sorts two tokens ascendingly, returning them as a (tokenA, tokenB) tuple.
+     * @dev Sorts two tokens ascending, returning them as a (tokenA, tokenB) tuple.
      */
     function _sortTwoTokens(IERC20 tokenX, IERC20 tokenY) private pure returns (IERC20, IERC20) {
         return tokenX < tokenY ? (tokenX, tokenY) : (tokenY, tokenX);

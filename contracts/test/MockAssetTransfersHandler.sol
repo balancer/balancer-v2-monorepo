@@ -81,7 +81,7 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         uint256 toDeduct = capped ? Math.min(currentBalance, amount) : amount;
         _internalTokenBalance[account][token] = currentBalance.sub(toDeduct);
 
-        // For this mock scenario, we consider always the amount to be fully taxable
+        // For this mock scenario, we always consider the amount to be fully taxable
         return (toDeduct, toDeduct);
     }
 }

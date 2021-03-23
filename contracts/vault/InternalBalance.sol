@@ -31,7 +31,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     using SafeERC20 for IERC20;
     using InternalBalanceAllocation for bytes32;
 
-    // Stores all account's Internal Balance for each token.
+    // Stores all accounts' Internal Balances for each token.
     mapping(address => mapping(IERC20 => bytes32)) private _internalTokenBalance;
 
     function getInternalBalance(address user, IERC20[] memory tokens)
@@ -135,7 +135,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
+            // Do not charge a withdrawal fee, since it's just making use of the Vault's allowance
             token.safeTransferFrom(sender, recipient, amount);
         }
     }
@@ -152,7 +152,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         bytes32 currentInternalBalance = _getInternalBalance(account, token);
         bytes32 newBalance = currentInternalBalance.increase(amount, trackExempt);
 
-        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256 as the value is
+        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256, as the value is
         // guaranteed to fit.
         emit InternalBalanceChanged(account, token, int256(amount));
 
@@ -162,11 +162,11 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     /**
      * @dev Decreases `account`'s Internal Balance for `token` by `amount`.
      * When `capped` the internal balance will be decreased as much as possible without reverting.
-     * @return taxableAmount The amount that should be used to charge fees. Some functionalities in the Vault
-     * allows users to avoid fees when working with internal balance deltas in the same block. This is the case for
-     * deposits and withdrawals for example.
-     * @return decreasedAmount The amount that was actually decreased, note this might not be equal to `amount` in
-     * case it was `capped` and the internal balance was actually lower than it.
+     * @return taxableAmount The amount that should be used to charge fees. Some Vault functions
+     * allow users to avoid fees when working with internal balance deltas in the same block. For example,
+     * deposits and withdrawals.
+     * @return decreasedAmount The amount that was actually decreased. Note this might not be equal to `amount` in
+     * case it was `capped` and the internal balance was actually lower.
      */
     function _decreaseInternalBalance(
         address account,
@@ -180,7 +180,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             capped
         );
 
-        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256 as the value is
+        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256, as the value is
         // guaranteed to fit.
         emit InternalBalanceChanged(account, token, -int256(amount));
 

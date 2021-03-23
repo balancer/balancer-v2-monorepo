@@ -534,7 +534,7 @@ describe('WeightedPool', function () {
           const maxAmountInWithFees = maxAmountIn.mul(POOL_SWAP_FEE.add(fp(1))).div(fp(1));
 
           const amount = maxAmountInWithFees.add(fp(1));
-          await expect(pool.swapGivenIn({ in: 1, out: 0, amount })).to.be.revertedWith('ERR_MAX_IN_RATIO');
+          await expect(pool.swapGivenIn({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_IN_RATIO');
         });
 
         it('reverts if token in is not in the pool', async () => {
@@ -574,7 +574,7 @@ describe('WeightedPool', function () {
         it('reverts if token in exceeds max out ratio', async () => {
           const amount = (await pool.getMaxOut(0)).add(2);
 
-          await expect(pool.swapGivenOut({ in: 1, out: 0, amount })).to.be.revertedWith('ERR_MAX_OUT_RATIO');
+          await expect(pool.swapGivenOut({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_OUT_RATIO');
         });
 
         it('reverts if token in is not in the pool when given out', async () => {
