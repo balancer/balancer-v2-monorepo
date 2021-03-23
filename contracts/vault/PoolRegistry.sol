@@ -384,7 +384,6 @@ abstract contract PoolRegistry is
 
             // Send tokens from the recipient - possibly to Internal Balance
             // Tokens deposited to Internal Balance are not later exempt from withdrawal fees.
-
             uint256 withdrawFee = toInternalBalance ? 0 : _calculateProtocolWithdrawFeeAmount(amountOut);
             _sendAsset(assets[i], amountOut.sub(withdrawFee), recipient, toInternalBalance, false);
 

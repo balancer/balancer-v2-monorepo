@@ -101,6 +101,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
                 amountToSend = amountToSend.sub(feeAmount);
             }
 
+            // Tokens withdrawn from Internal Balance are not exempt from withdrawal fees.
             _sendAsset(asset, amountToSend, recipient, false, false);
         }
     }
@@ -126,7 +127,12 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         }
     }
 
-    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external override nonReentrant {
+    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers)
+        external
+        override
+        nonReentrant
+        noEmergencyPeriod
+    {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
