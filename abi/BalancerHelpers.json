@@ -28,24 +28,31 @@
         "type": "address"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "bool",
-        "name": "toInternalBalance",
-        "type": "bool"
-      },
-      {
-        "internalType": "bytes",
-        "name": "userData",
-        "type": "bytes"
+        "components": [
+          {
+            "internalType": "contract IAsset[]",
+            "name": "assets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "minAmountsOut",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "userData",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bool",
+            "name": "toInternalBalance",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct IVault.ExitPoolRequest",
+        "name": "request",
+        "type": "tuple"
       }
     ],
     "name": "queryExit",
@@ -82,24 +89,31 @@
         "type": "address"
       },
       {
-        "internalType": "contract IERC20[]",
-        "name": "tokens",
-        "type": "address[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      },
-      {
-        "internalType": "bytes",
-        "name": "userData",
-        "type": "bytes"
+        "components": [
+          {
+            "internalType": "contract IAsset[]",
+            "name": "assets",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "maxAmountsIn",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "bytes",
+            "name": "userData",
+            "type": "bytes"
+          },
+          {
+            "internalType": "bool",
+            "name": "fromInternalBalance",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct IVault.JoinPoolRequest",
+        "name": "request",
+        "type": "tuple"
       }
     ],
     "name": "queryJoin",

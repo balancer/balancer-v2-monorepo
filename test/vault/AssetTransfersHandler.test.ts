@@ -6,9 +6,10 @@ import TokenList, { ETH_TOKEN_ADDRESS } from '../helpers/models/tokens/TokenList
 
 import { deploy } from '../../lib/helpers/deploy';
 import { expectBalanceChange } from '../helpers/tokenBalance';
-import { bn, FP_SCALING_FACTOR, min } from '../../lib/helpers/numbers';
+import { bn, min } from '../../lib/helpers/numbers';
 import { expect } from 'chai';
 import Token from '../helpers/models/tokens/Token';
+import { forceSendEth } from '../helpers/eth';
 
 describe('Vault - asset transfers handler', function () {
   let handler: Contract;
@@ -25,12 +26,6 @@ describe('Vault - asset transfers handler', function () {
 
     await tokens.mint({ to: [sender, recipient, handler], amount: bn(100e18) });
     await tokens.approve({ to: handler, from: [sender, recipient] });
-
-    // WETH tokens are special as they need to be properly minted in the WETH contract in order to be fully usable:
-    // otherwise, the withdraw function will fail due to a lack of ETH.
-    const weth = await ethers.getContractAt('WETH', tokens.WETH.address);
-    await weth.connect(other).deposit({ value: bn(100e18) });
-    await weth.connect(other).transfer(handler.address, bn(100e18));
   });
 
   const amount = bn(1e18);
@@ -94,7 +89,7 @@ describe('Vault - asset transfers handler', function () {
             );
           });
 
-          it('returns extra ETH to the caller', async () => {
+          it('does not return extra ETH to the caller', async () => {
             const callerBalanceBefore = await ethers.provider.getBalance(other.address);
 
             const gasPrice = 1;
@@ -107,7 +102,21 @@ describe('Vault - asset transfers handler', function () {
 
             const callerBalanceAfter = await ethers.provider.getBalance(other.address);
 
-            expect(callerBalanceBefore.sub(callerBalanceAfter)).to.equal(amount.add(txETH));
+            const ethSent = txETH.add(amount.mul(2));
+            expect(callerBalanceBefore.sub(callerBalanceAfter)).to.equal(ethSent);
+          });
+
+          it('does not check if any ETH was supplied', async () => {
+            // Regular ETH transfers are rejected, so we use forceSendEth to get the handler to hold some ETH for it to
+            // use.
+            await forceSendEth(handler.address, amount);
+
+            // Despite the caller not sending any ETH, the transaction goes through (using the handler's own balance).
+            await expectBalanceChange(
+              () => handler.receiveAsset(eth, amount, sender.address, fromInternalBalance, { value: 0 }),
+              tokens,
+              { account: handler.address, changes: { WETH: amount } }
+            );
           });
 
           it('does take WETH from internal balance', async () => {
@@ -246,13 +255,6 @@ describe('Vault - asset transfers handler', function () {
   });
 
   describe('sendAsset', () => {
-    const withdrawFee = bn(1e16); // 0.01, or 1%
-    let amountMinusFees: BigNumber;
-
-    sharedBeforeEach('set withdraw fee', async () => {
-      await handler.setProtocolWithdrawFeePercentage(withdrawFee);
-    });
-
     context('when the asset is ETH', () => {
       const eth = ETH_TOKEN_ADDRESS;
 
@@ -264,71 +266,51 @@ describe('Vault - asset transfers handler', function () {
         const toInternalBalance = true;
 
         it('reverts', async () => {
-          await expect(handler.sendAsset(eth, amount, recipient.address, toInternalBalance, false)).to.be.revertedWith(
-            'INVALID_ETH_INTERNAL_BALANCE'
-          );
+          await expect(
+            handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance)
+          ).to.be.revertedWith('INVALID_ETH_INTERNAL_BALANCE');
         });
       });
 
       function itSendsEtherCorrectly() {
         const toInternalBalance = false;
 
-        context('when not charging withdraw fees', () => {
-          itSendsEtherCorrectlyChargingOrNotWithdrawFees(toInternalBalance, false);
-        });
-
-        context('when charging withdraw fees', () => {
-          itSendsEtherCorrectlyChargingOrNotWithdrawFees(toInternalBalance, true);
-        });
-      }
-
-      function itSendsEtherCorrectlyChargingOrNotWithdrawFees(toInternalBalance: boolean, chargeWithdrawFee: boolean) {
-        beforeEach(() => {
-          amountMinusFees = chargeWithdrawFee ? amount.sub(amount.mul(withdrawFee).div(FP_SCALING_FACTOR)) : amount;
-        });
-
         it('sends ETH to the recipient', async () => {
           const recipientBalanceBefore = await ethers.provider.getBalance(recipient.address);
 
-          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, chargeWithdrawFee);
+          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance);
 
           const recipientBalanceAfter = await ethers.provider.getBalance(recipient.address);
 
-          expect(recipientBalanceAfter.sub(recipientBalanceBefore)).to.equal(amountMinusFees);
+          expect(recipientBalanceAfter.sub(recipientBalanceBefore)).to.equal(amount);
         });
 
         it('does not affect the ETH balance', async () => {
           const recipientBalanceBefore = await ethers.provider.getBalance(recipient.address);
 
-          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, chargeWithdrawFee);
+          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance);
           eth;
           const recipientBalanceAfter = await ethers.provider.getBalance(recipient.address);
 
-          expect(recipientBalanceAfter.sub(recipientBalanceBefore)).to.equal(amountMinusFees);
+          expect(recipientBalanceAfter.sub(recipientBalanceBefore)).to.equal(amount);
         });
 
         it('unwraps WETH into ETH', async () => {
           await expectBalanceChange(
-            () => handler.sendAsset(eth, amount, recipient.address, toInternalBalance, chargeWithdrawFee),
+            () => handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance),
             tokens,
-            { account: handler, changes: { WETH: amountMinusFees.mul(-1) } }
+            { account: handler, changes: { WETH: amount.mul(-1) } }
           );
         });
 
         it('does not use internal balance', async () => {
           const recipientInternalBalanceBefore = await handler.getInternalBalance(recipient.address, eth);
 
-          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, chargeWithdrawFee);
+          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance);
 
           const recipientInternalBalanceAfter = await handler.getInternalBalance(recipient.address, eth);
 
           expect(recipientInternalBalanceAfter).to.equal(recipientInternalBalanceBefore);
-        });
-
-        it('returns the withdraw fee', async () => {
-          expect(
-            await handler.callStatic.sendAsset(eth, amount, recipient.address, toInternalBalance, chargeWithdrawFee)
-          ).to.equal(amount.sub(amountMinusFees));
         });
       }
     });
@@ -349,98 +331,60 @@ describe('Vault - asset transfers handler', function () {
           token = tokens.findBySymbol(symbol);
         });
 
-        context('when not charging withdraw fees', () => {
-          itSendsTokensCorrectlyChargingOrNotWithdrawFees(false);
+        context('when not sending to internal balance', () => {
+          itSendsTokensCorrectlyNotUsingInternalBalance();
         });
 
-        context('when charging withdraw fees', () => {
-          itSendsTokensCorrectlyChargingOrNotWithdrawFees(true);
+        context('when sending to internal balance', () => {
+          itSendsTokensCorrectlyUsingInternalBalance();
         });
 
-        function itSendsTokensCorrectlyChargingOrNotWithdrawFees(chargeWithdrawFee: boolean) {
-          beforeEach(() => {
-            amountMinusFees = chargeWithdrawFee ? amount.sub(amount.mul(withdrawFee).div(FP_SCALING_FACTOR)) : amount;
+        function itSendsTokensCorrectlyNotUsingInternalBalance() {
+          const toInternalBalance = false;
+
+          it('sends tokens to the recipient', async () => {
+            await expectBalanceChange(
+              () => handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, toInternalBalance),
+              tokens,
+              [
+                { account: recipient, changes: { [symbol]: amount } },
+                { account: handler, changes: { [symbol]: amount.mul(-1) } },
+              ]
+            );
           });
 
-          context('when not sending to internal balance', () => {
-            itSendsTokensCorrectlyNotUsingInternalBalance();
+          it('does not affect internal balance', async () => {
+            const recipientInternalBalanceBefore = await handler.getInternalBalance(recipient.address, token.address);
+
+            await handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, toInternalBalance);
+
+            const recipientInternalBalanceAfter = await handler.getInternalBalance(recipient.address, token.address);
+
+            expect(recipientInternalBalanceAfter).to.equal(recipientInternalBalanceBefore);
+          });
+        }
+
+        function itSendsTokensCorrectlyUsingInternalBalance() {
+          const toInternalBalance = true;
+
+          it('assigns tokens as internal balance not charging a withdraw fee', async () => {
+            const recipientInternalBalanceBefore = await handler.getInternalBalance(recipient.address, token.address);
+
+            await handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, toInternalBalance);
+
+            const recipientInternalBalanceAfter = await handler.getInternalBalance(recipient.address, token.address);
+
+            // Note balance increases by amount, not by amountMinusFees
+            expect(recipientInternalBalanceAfter.sub(recipientInternalBalanceBefore)).to.equal(amount);
           });
 
-          context('when sending to internal balance', () => {
-            itSendsTokensCorrectlyUsingInternalBalance();
+          it('transfers no tokens', async () => {
+            await expectBalanceChange(
+              () => handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, toInternalBalance),
+              tokens,
+              { account: handler }
+            );
           });
-
-          function itSendsTokensCorrectlyNotUsingInternalBalance() {
-            const toInternalBalance = false;
-
-            it('sends tokens to the recipient', async () => {
-              await expectBalanceChange(
-                () => handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, chargeWithdrawFee),
-                tokens,
-                [
-                  { account: recipient, changes: { [symbol]: amountMinusFees } },
-                  { account: handler, changes: { [symbol]: amountMinusFees.mul(-1) } },
-                ]
-              );
-            });
-
-            it('does not affect internal balance', async () => {
-              const recipientInternalBalanceBefore = await handler.getInternalBalance(recipient.address, token.address);
-
-              await handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, chargeWithdrawFee);
-
-              const recipientInternalBalanceAfter = await handler.getInternalBalance(recipient.address, token.address);
-
-              expect(recipientInternalBalanceAfter).to.equal(recipientInternalBalanceBefore);
-            });
-
-            it('returns the withdraw fee', async () => {
-              expect(
-                await handler.callStatic.sendAsset(
-                  token.address,
-                  amount,
-                  recipient.address,
-                  toInternalBalance,
-                  chargeWithdrawFee
-                )
-              ).to.equal(amount.sub(amountMinusFees));
-            });
-          }
-
-          function itSendsTokensCorrectlyUsingInternalBalance() {
-            const toInternalBalance = true;
-
-            it('assigns tokens as internal balance not charging a withdraw fee', async () => {
-              const recipientInternalBalanceBefore = await handler.getInternalBalance(recipient.address, token.address);
-
-              await handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, chargeWithdrawFee);
-
-              const recipientInternalBalanceAfter = await handler.getInternalBalance(recipient.address, token.address);
-
-              // Note balance increases by amount, not by amountMinusFees
-              expect(recipientInternalBalanceAfter.sub(recipientInternalBalanceBefore)).to.equal(amount);
-            });
-
-            it('transfers no tokens', async () => {
-              await expectBalanceChange(
-                () => handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, chargeWithdrawFee),
-                tokens,
-                { account: handler }
-              );
-            });
-
-            it('returns a zero withdraw fee', async () => {
-              expect(
-                await handler.callStatic.sendAsset(
-                  token.address,
-                  amount,
-                  recipient.address,
-                  toInternalBalance,
-                  chargeWithdrawFee
-                )
-              ).to.be.zero;
-            });
-          }
         }
       }
     });

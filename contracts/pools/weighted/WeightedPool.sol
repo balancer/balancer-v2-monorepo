@@ -55,7 +55,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     uint256 private _lastInvariant;
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
         IVault vault,
@@ -360,27 +360,33 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         virtual
         override
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
         uint256[] memory normalizedWeights = _normalizedWeights();
 
-        // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
-        // event and now - the invariant's growth is due exclusively to swap fees.
-        uint256 invariantBeforeExit = WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
-        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-            currentBalances,
-            normalizedWeights,
-            _lastInvariant,
-            invariantBeforeExit,
-            protocolSwapFeePercentage
-        );
+        //If emergency period is active, protocol fees are not charged to avoid any extra calculation.
+        if (_isEmergencyPeriodInactive()) {
+            // Due protocol swap fees are computed by measuring the growth of the invariant from the previous
+            // join or exit event and now - the invariant's growth is due exclusively to swap fees.
+            uint256 invariantBeforeExit = WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
+            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
+                currentBalances,
+                normalizedWeights,
+                _lastInvariant,
+                invariantBeforeExit,
+                protocolSwapFeePercentage
+            );
 
-        // Update current balances by subtracting the protocol due fee amounts
-        _subtractToCurrentBalances(currentBalances, dueProtocolFeeAmounts);
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(currentBalances, normalizedWeights, userData);
+            // Update current balances by subtracting the protocol due fee amounts
+            _subtractToCurrentBalances(currentBalances, dueProtocolFeeAmounts);
+        } else {
+            dueProtocolFeeAmounts = new uint256[](_totalTokens);
+        }
+
+        (bptAmountIn, amountsOut) = _doExit(currentBalances, normalizedWeights, userData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the due
         // protocol swap fees in future joins and exits.
@@ -398,7 +404,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(normalizedWeights, currentBalances, userData);
-        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(currentBalances, userData);
         } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(normalizedWeights, currentBalances, userData);

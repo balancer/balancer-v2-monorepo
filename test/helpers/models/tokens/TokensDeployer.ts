@@ -21,10 +21,12 @@ class TokensDeployer {
     const { symbol, name, decimals, from } = TypesConverter.toTokenDeployment(params);
     const sender = from || (await ethers.getSigners())[0];
 
-    const instance =
-      symbol === 'WETH'
-        ? await deploy('WETH', { from: sender, args: [sender.address] })
-        : await deploy('TestToken', { from: sender, args: [sender.address, 'Token', 'TKN', decimals] });
+    let instance;
+    if (symbol !== 'WETH') {
+      instance = await deploy('TestToken', { from: sender, args: [sender.address, 'Token', 'TKN', decimals] });
+    } else {
+      instance = await deploy('WETH', { from: sender, args: [sender.address] });
+    }
 
     return new Token(name, symbol, decimals, instance);
   }

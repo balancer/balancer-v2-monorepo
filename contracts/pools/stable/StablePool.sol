@@ -32,7 +32,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     uint256 private _lastInvariant;
 
     enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT }
-    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     constructor(
         IVault vault,
@@ -238,27 +238,27 @@ contract StablePool is BaseGeneralPool, StableMath {
         virtual
         override
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         )
     {
-        // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
-        // event and now - the invariant's growth is due exclusively to swap fees.\
+        //If emergency period is active, protocol fees are not charged to avoid any extra calculation.
+        if (_isEmergencyPeriodInactive()) {
+            // Due protocol swap fees are computed by measuring the growth of the invariant from the previous
+            // join or exit event and now - the invariant's growth is due exclusively to swap fees.\
+            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, _lastInvariant, protocolSwapFeePercentage);
 
-        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-            balances,
-            _lastInvariant,
-            protocolSwapFeePercentage
-        );
-
-        // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
-        // returns.
-        for (uint256 i = 0; i < _totalTokens; ++i) {
-            balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
+            // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
+            // returns.
+            for (uint256 i = 0; i < _totalTokens; ++i) {
+                balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
+            }
+        } else {
+            dueProtocolFeeAmounts = new uint256[](_totalTokens);
         }
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(balances, userData);
+        (bptAmountIn, amountsOut) = _doExit(balances, userData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the due
         // protocol swap fees in future joins and exits.
@@ -276,7 +276,7 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         if (kind == ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(balances, userData);
-        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+        } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
         } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, userData);
@@ -344,7 +344,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
 
-        require(bptAmountIn <= maxBPTAmountIn, "BPT_OUT_MIN_AMOUNT");
+        require(bptAmountIn <= maxBPTAmountIn, "BPT_IN_MAX_AMOUNT");
 
         return (bptAmountIn, amountsOut);
     }

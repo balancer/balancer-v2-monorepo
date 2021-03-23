@@ -118,4 +118,10 @@ export default class TokenList {
     if (!token) throw Error(`Could not find token with symbol ${symbol}`);
     return token;
   }
+
+  findIndexBySymbol(symbol: string): number {
+    const index = this.tokens.findIndex((token) => token.symbol.toLowerCase() === symbol.toLowerCase());
+    if (index == -1) throw Error(`Could not find token with symbol ${symbol}`);
+    return index;
+  }
 }

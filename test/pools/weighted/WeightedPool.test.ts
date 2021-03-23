@@ -27,10 +27,7 @@ describe('WeightedPool', function () {
     await allTokens.mint({ to: [lp, trader], amount: fp(100) });
   });
 
-  // TODO: These tests are failing with a Hardhat error:
-  // AssertionError: Expected transaction to be reverted with *, but other exception was thrown:
-  // Error: Transaction reverted and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat
-  context.skip('for a 1 token pool', () => {
+  context('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
       const tokens = await TokenList.create(1);
       const weights = [fp(1)];
@@ -47,10 +44,7 @@ describe('WeightedPool', function () {
     itBehavesAsWeightedPool(3);
   });
 
-  // TODO: These tests are failing with a Hardhat error:
-  // AssertionError: Expected transaction to be reverted with *, but other exception was thrown:
-  // Error: Transaction reverted and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat
-  context.skip('for a too-many token pool', () => {
+  context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 16
       const tokens = await TokenList.create(17);
@@ -135,10 +129,7 @@ describe('WeightedPool', function () {
         });
       });
 
-      // TODO: These tests are failing with a Hardhat error:
-      // AssertionError: Expected transaction to be reverted with *, but other exception was thrown:
-      // Error: Transaction reverted and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat
-      context.skip('when the creation fails', () => {
+      context('when the creation fails', () => {
         it('reverts if the number of tokens and weights do not match', async () => {
           const badWeights = weights.slice(1);
 
@@ -684,6 +675,13 @@ describe('WeightedPool', function () {
           });
 
           expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        });
+
+        it('does not charges fee on exit if the emergency period is active', async () => {
+          await pool.activateEmergencyPeriod();
+
+          const exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(0.5), protocolFeePercentage });
+          expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
         });
       });
 

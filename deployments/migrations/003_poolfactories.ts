@@ -12,13 +12,11 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
     from: deployer,
     args: [vault.address],
     log: true,
-    deterministicDeployment: true,
   });
 
   await deploy('StablePoolFactory', {
     from: deployer,
     args: [vault.address],
     log: true,
-    deterministicDeployment: true,
   });
 }

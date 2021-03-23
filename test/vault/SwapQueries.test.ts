@@ -42,17 +42,12 @@ describe('Vault - swap queries', () => {
       await pool.setMultiplier(fp(2));
       await pool.registerTokens(tokens.addresses, Array(tokens.length).fill(ZERO_ADDRESS));
 
-      await vault
-        .connect(lp)
-        .joinPool(
-          poolId,
-          lp.address,
-          lp.address,
-          tokens.addresses,
-          Array(tokens.length).fill(MAX_UINT256),
-          false,
-          encodeJoin(Array(tokens.length).fill(bn(100e18)), Array(tokens.length).fill(0))
-        );
+      await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
+        assets: tokens.addresses,
+        maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
+        fromInternalBalance: false,
+        userData: encodeJoin(Array(tokens.length).fill(bn(100e18)), Array(tokens.length).fill(0)),
+      });
 
       poolIds.push(poolId);
     }

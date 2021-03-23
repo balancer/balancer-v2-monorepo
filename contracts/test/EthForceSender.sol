@@ -14,11 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-/**
- * @dev This is an empty interface used to represent either either token contracts that adhere to the IERC20 interface,
- * or a sentinel value that represents ETH (the zero address). We're just relying on the fact that `interface` can be
- * used to declare new address-like types.
- */
-interface IAsset {
-    // solhint-disable-previous-line no-empty-blocks
+contract EthForceSender {
+    constructor(address payable recipient) payable {
+        selfdestruct(recipient);
+    }
 }

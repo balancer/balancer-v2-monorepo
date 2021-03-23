@@ -23,10 +23,10 @@ describe('Vault - pool registry', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
-    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+    const weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
+    vault = await deploy('Vault', { args: [authorizer.address, weth.address, 0, 0] });
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
     await allTokens.mint({ to: lp, amount: 50000 });
@@ -289,17 +289,12 @@ describe('Vault - pool registry', () => {
 
                 context('when some tokens still have some balance', () => {
                   sharedBeforeEach('add some balance', async () => {
-                    await vault
-                      .connect(lp)
-                      .joinPool(
-                        poolId,
-                        lp.address,
-                        other.address,
-                        tokens.addresses,
-                        Array(tokens.length).fill(MAX_UINT256),
-                        false,
-                        encodeJoin(Array(tokens.length).fill(5), Array(tokens.length).fill(0))
-                      );
+                    await vault.connect(lp).joinPool(poolId, lp.address, other.address, {
+                      assets: tokens.addresses,
+                      maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
+                      fromInternalBalance: false,
+                      userData: encodeJoin(Array(tokens.length).fill(5), Array(tokens.length).fill(0)),
+                    });
                   });
 
                   context('when trying to deregister individually', () => {
@@ -310,18 +305,15 @@ describe('Vault - pool registry', () => {
                       });
                     } else {
                       it('can deregister the tokens without balance', async () => {
-                        await vault.connect(lp).exitPool(
-                          poolId,
-                          lp.address,
-                          other.address,
-                          tokens.addresses,
-                          Array(tokens.length).fill(0),
-                          false,
-                          encodeExit(
+                        await vault.connect(lp).exitPool(poolId, lp.address, other.address, {
+                          assets: tokens.addresses,
+                          minAmountsOut: Array(tokens.length).fill(0),
+                          toInternalBalance: false,
+                          userData: encodeExit(
                             tokens.addresses.map((_, index) => (index == 0 ? 5 : 0)), // Fully exit on token 0
                             Array(tokens.length).fill(0)
-                          )
-                        );
+                          ),
+                        });
 
                         await pool.deregisterTokens([tokens.first.address]);
 

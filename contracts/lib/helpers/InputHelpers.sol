@@ -16,6 +16,8 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "../../vault/interfaces/IAsset.sol";
+
 library InputHelpers {
     function ensureInputLengthMatch(uint256 a, uint256 b) internal pure {
         require(a == b, "INPUT_LENGTH_MISMATCH");
@@ -29,14 +31,32 @@ library InputHelpers {
         require(a == b && b == c, "INPUT_LENGTH_MISMATCH");
     }
 
+    function ensureArrayIsSorted(IAsset[] memory array) internal pure {
+        address[] memory addressArray;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            addressArray := array
+        }
+        ensureArrayIsSorted(addressArray);
+    }
+
     function ensureArrayIsSorted(IERC20[] memory array) internal pure {
+        address[] memory addressArray;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            addressArray := array
+        }
+        ensureArrayIsSorted(addressArray);
+    }
+
+    function ensureArrayIsSorted(address[] memory array) internal pure {
         if (array.length < 2) {
             return;
         }
 
-        IERC20 previous = array[0];
+        address previous = array[0];
         for (uint256 i = 1; i < array.length; ++i) {
-            IERC20 current = array[i];
+            address current = array[i];
             require(previous < current, "UNSORTED_ARRAY");
             previous = current;
         }

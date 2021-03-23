@@ -29,18 +29,18 @@ describe('StableMath', function () {
         const balances = [bn(10e18), bn(12e18)];
 
         const result = await mock.invariant(amp, balances);
-        const expectedInvariant = calculateInvariant(amp, balances);
+        const expectedInvariant = calculateInvariant(balances, amp);
 
-        expectEqualWithError(result, bn(expectedInvariant.toFixed(0)), MAX_RELATIVE_ERROR);
+        expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
       });
       it('returns invariant equals analytical solution', async () => {
         const amp = bn(100e18);
         const balances = [bn(10e18), bn(12e18)];
 
         const result = await mock.invariant(amp, balances);
-        const expectedInvariant = calculateAnalyticalInvariantForTwoTokens(amp, balances);
+        const expectedInvariant = calculateAnalyticalInvariantForTwoTokens(balances, amp);
 
-        expectEqualWithError(result, bn(expectedInvariant.toFixed(0)), MAX_RELATIVE_ERROR);
+        expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
       });
     });
     context('three tokens', () => {
@@ -49,9 +49,9 @@ describe('StableMath', function () {
         const balances = [bn(10e18), bn(12e18), bn(14e18)];
 
         const result = await mock.invariant(amp, balances);
-        const expectedInvariant = calculateInvariant(amp, balances);
+        const expectedInvariant = calculateInvariant(balances, amp);
 
-        expectEqualWithError(result, bn(expectedInvariant.toFixed(0)), MAX_RELATIVE_ERROR);
+        expectEqualWithError(result, expectedInvariant, MAX_RELATIVE_ERROR);
       });
     });
   });
@@ -66,7 +66,7 @@ describe('StableMath', function () {
         const amountOut = bn(1e18);
 
         const result = await mock.inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, amountOut);
-        const expectedAmountIn = calcInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, amountOut);
+        const expectedAmountIn = calcInGivenOut(balances, amp, tokenIndexIn, tokenIndexOut, amountOut);
 
         expectEqualWithError(result, bn(expectedAmountIn.toFixed(0)), MAX_RELATIVE_ERROR);
       });
@@ -80,7 +80,7 @@ describe('StableMath', function () {
         const amountOut = bn(1e18);
 
         const result = await mock.inGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, amountOut);
-        const expectedAmountIn = calcInGivenOut(amp, balances, tokenIndexIn, tokenIndexOut, amountOut);
+        const expectedAmountIn = calcInGivenOut(balances, amp, tokenIndexIn, tokenIndexOut, amountOut);
 
         expectEqualWithError(result, bn(expectedAmountIn.toFixed(0)), MAX_RELATIVE_ERROR);
       });
@@ -97,7 +97,7 @@ describe('StableMath', function () {
         const amountIn = bn(1e18);
 
         const result = await mock.outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, amountIn);
-        const expectedAmountOut = calcOutGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, amountIn);
+        const expectedAmountOut = calcOutGivenIn(balances, amp, tokenIndexIn, tokenIndexOut, amountIn);
 
         expectEqualWithError(result, bn(expectedAmountOut.toFixed(0)), MAX_RELATIVE_ERROR);
       });
@@ -111,7 +111,7 @@ describe('StableMath', function () {
         const amountIn = bn(1e18);
 
         const result = await mock.outGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, amountIn);
-        const expectedAmountOut = calcOutGivenIn(amp, balances, tokenIndexIn, tokenIndexOut, amountIn);
+        const expectedAmountOut = calcOutGivenIn(balances, amp, tokenIndexIn, tokenIndexOut, amountIn);
 
         expectEqualWithError(result, bn(expectedAmountOut.toFixed(0)), MAX_RELATIVE_ERROR);
       });
@@ -136,7 +136,7 @@ describe('StableMath', function () {
           protocolSwapFee
         );
 
-        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+        const expectedFeeAmount = calculateOneTokenSwapFee(balances, amp, lastInvariant, tokenIndex);
         const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
 
         expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
@@ -158,7 +158,7 @@ describe('StableMath', function () {
           tokenIndex,
           protocolSwapFee
         );
-        const expectedFeeAmount = calculateOneTokenSwapFee(amp, balances, lastInvariant, tokenIndex);
+        const expectedFeeAmount = calculateOneTokenSwapFee(balances, amp, lastInvariant, tokenIndex);
 
         const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
 

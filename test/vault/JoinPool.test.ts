@@ -76,17 +76,12 @@ describe('Vault - join pool', () => {
       DUE_PROTOCOL_FEE_AMOUNTS = array(0);
 
       // Join the Pool from the creator so that it has some tokens to pay protocol fees with
-      await vault
-        .connect(creator)
-        .joinPool(
-          poolId,
-          creator.address,
-          ZERO_ADDRESS,
-          tokens.addresses,
-          array(MAX_UINT256),
-          false,
-          encodeJoin(array(50e18), array(0))
-        );
+      await vault.connect(creator).joinPool(poolId, creator.address, ZERO_ADDRESS, {
+        assets: tokens.addresses,
+        maxAmountsIn: array(MAX_UINT256),
+        fromInternalBalance: false,
+        userData: encodeJoin(array(50e18), array(0)),
+      });
     });
 
     type JoinPoolData = {
@@ -102,15 +97,12 @@ describe('Vault - join pool', () => {
     function joinPool(data: JoinPoolData): Promise<ContractTransaction> {
       return vault
         .connect(data.fromRelayer ?? false ? relayer : lp)
-        .joinPool(
-          data.poolId ?? poolId,
-          lp.address,
-          ZERO_ADDRESS,
-          data.tokenAddresses ?? tokens.addresses,
-          data.maxAmountsIn ?? array(MAX_UINT256),
-          data.fromInternalBalance ?? false,
-          encodeJoin(data.joinAmounts ?? joinAmounts, data.dueProtocolFeeAmounts ?? DUE_PROTOCOL_FEE_AMOUNTS)
-        );
+        .joinPool(data.poolId ?? poolId, lp.address, ZERO_ADDRESS, {
+          assets: data.tokenAddresses ?? tokens.addresses,
+          maxAmountsIn: data.maxAmountsIn ?? array(MAX_UINT256),
+          fromInternalBalance: data.fromInternalBalance ?? false,
+          userData: encodeJoin(data.joinAmounts ?? joinAmounts, data.dueProtocolFeeAmounts ?? DUE_PROTOCOL_FEE_AMOUNTS),
+        });
     }
 
     context('when called incorrectly', () => {
@@ -279,7 +271,7 @@ describe('Vault - join pool', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).depositToInternalBalance(
               tokens.map((token) => ({
-                token: token.address,
+                asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
                 recipient: lp.address,
@@ -302,7 +294,7 @@ describe('Vault - join pool', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).depositToInternalBalance(
               tokens.map((token) => ({
-                token: token.address,
+                asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
                 recipient: lp.address,
@@ -317,7 +309,7 @@ describe('Vault - join pool', () => {
           beforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).depositToInternalBalance(
               tokens.map((token) => ({
-                token: token.address,
+                asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
                 recipient: lp.address,
@@ -421,13 +413,14 @@ describe('Vault - join pool', () => {
         });
       });
 
-      it('emits PoolJoined from the vault', async () => {
+      it('emits PoolBalanceChanged from the vault', async () => {
         const receipt = await (await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).wait();
 
-        expectEvent.inReceipt(receipt, 'PoolJoined', {
+        expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
           poolId,
           liquidityProvider: lp.address,
-          amountsIn: joinAmounts,
+          kind: 0,
+          amounts: joinAmounts,
           protocolFees: dueProtocolFeeAmounts,
         });
       });

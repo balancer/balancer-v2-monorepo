@@ -118,7 +118,6 @@ contract StableMath {
             tokenIndexOut
         );
 
-        //TODO: revert balance changes?
         balances[tokenIndexIn] = balances[tokenIndexIn].sub(tokenAmountIn);
 
         return balances[tokenIndexOut].sub(finalBalanceOut).sub(1);
@@ -159,7 +158,6 @@ contract StableMath {
             tokenIndexIn
         );
 
-        //TODO: revert balance changes?
         balances[tokenIndexOut] = balances[tokenIndexOut].add(tokenAmountOut);
 
         return finalBalanceIn.sub(balances[tokenIndexIn]).add(1);
@@ -209,6 +207,7 @@ contract StableMath {
         }
 
         // Second loop to calculate new amounts in taking into account the fee on the % excess
+        uint256[] memory newBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             // Percentage of the amount supplied that will be implicitly swapped for other tokens in the pool
             uint256 tokenBalancePercentageExcess;
@@ -227,11 +226,11 @@ contract StableMath {
 
             uint256 amountInAfterFee = amountsIn[i].mulDown(swapFeeExcess.complement());
 
-            balances[i] = balances[i].add(amountInAfterFee);
+            newBalances[i] = balances[i].add(amountInAfterFee);
         }
 
         // get new invariant taking into account swap fees
-        uint256 newInvariant = _calculateInvariant(amp, balances);
+        uint256 newInvariant = _calculateInvariant(amp, newBalances);
 
         // return amountBPTOut
         return bptTotalSupply.mulDown(newInvariant.divDown(currentInvariant).sub(FixedPoint.ONE));
@@ -296,6 +295,8 @@ contract StableMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) internal pure returns (uint256) {
+        // BPT in, so we round up overall.
+
         // Get current invariant
         uint256 currentInvariant = _calculateInvariant(amp, balances);
 
@@ -316,6 +317,7 @@ contract StableMath {
         }
 
         // Second loop to calculate new amounts in taking into account the fee on the % excess
+        uint256[] memory newBalances = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 tokenBalancePercentageExcess;
             // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
@@ -332,11 +334,11 @@ contract StableMath {
 
             uint256 amountOutBeforeFee = amountsOut[i].divUp(swapFeeExcess.complement());
 
-            balances[i] = balances[i].sub(amountOutBeforeFee);
+            newBalances[i] = balances[i].sub(amountOutBeforeFee);
         }
 
         // get new invariant taking into account swap fees
-        uint256 newInvariant = _calculateInvariant(amp, balances);
+        uint256 newInvariant = _calculateInvariant(amp, newBalances);
 
         // return amountBPTIn
         return bptTotalSupply.mulUp(newInvariant.divUp(currentInvariant).complement());
@@ -392,20 +394,22 @@ contract StableMath {
         uint256 bptTotalSupply
     ) internal pure returns (uint256[] memory) {
         /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                 //
+        // exactBPTInForTokensOut                                                                    //
         // (per token)                                                                               //
         // aO = tokenAmountOut             /        bptIn         \                                  //
         // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \       bptTotalSupply       /                                  //
-        // bpt = bptTotalSupply                                                                            //
+        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
+        // bpt = bptTotalSupply                                                                      //
         **********************************************************************************************/
 
         // Since we're computing an amount out, we round down overall. This means rounding down on both the
         // multiplication and division.
 
+        uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
+
         uint256[] memory amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mulDown(bptAmountIn).divDown(bptTotalSupply);
+            amountsOut[i] = balances[i].mulDown(bptRatio);
         }
 
         return amountsOut;
