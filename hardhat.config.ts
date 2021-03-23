@@ -6,7 +6,12 @@ import 'hardhat-abi-exporter';
 import 'hardhat-local-networks-config-plugin';
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
+
 import { task } from 'hardhat/config';
+import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
+import overrideQueryFunctions from './lib/scripts/plugins/overrideQueryFunctions';
+
+task(TASK_COMPILE).setAction(overrideQueryFunctions);
 
 task('seed', 'Add seed data').setAction(async (args, hre) => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
