@@ -132,7 +132,7 @@ export default class Vault {
     if (!this.feesCollector) {
       this.feesCollector = await ethers.getContractAt(
         'ProtocolFeesCollector',
-        await this.instancegetProtocolFeesCollector()
+        await this.instance.getProtocolFeesCollector()
       );
     }
     return this.feesCollector;
