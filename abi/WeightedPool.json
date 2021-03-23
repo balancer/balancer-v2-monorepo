@@ -489,6 +489,11 @@
       {
         "components": [
           {
+            "internalType": "enum IVault.SwapKind",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
             "internalType": "contract IERC20",
             "name": "tokenIn",
             "type": "address"
@@ -500,7 +505,7 @@
           },
           {
             "internalType": "uint256",
-            "name": "amountIn",
+            "name": "amount",
             "type": "uint256"
           },
           {
@@ -529,93 +534,22 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct IPoolSwapStructs.SwapRequestGivenIn",
-        "name": "swapRequest",
+        "internalType": "struct IPoolSwapStructs.SwapRequest",
+        "name": "request",
         "type": "tuple"
       },
       {
         "internalType": "uint256",
-        "name": "currentBalanceTokenIn",
+        "name": "balanceTokenIn",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "currentBalanceTokenOut",
+        "name": "balanceTokenOut",
         "type": "uint256"
       }
     ],
-    "name": "onSwapGivenIn",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "contract IERC20",
-            "name": "tokenIn",
-            "type": "address"
-          },
-          {
-            "internalType": "contract IERC20",
-            "name": "tokenOut",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amountOut",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "poolId",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "latestBlockNumberUsed",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "from",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "internalType": "bytes",
-            "name": "userData",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct IPoolSwapStructs.SwapRequestGivenOut",
-        "name": "swapRequest",
-        "type": "tuple"
-      },
-      {
-        "internalType": "uint256",
-        "name": "currentBalanceTokenIn",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "currentBalanceTokenOut",
-        "type": "uint256"
-      }
-    ],
-    "name": "onSwapGivenOut",
+    "name": "onSwap",
     "outputs": [
       {
         "internalType": "uint256",
@@ -677,7 +611,7 @@
         "type": "uint256[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -731,7 +665,7 @@
         "type": "uint256[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {

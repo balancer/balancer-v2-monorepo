@@ -79,7 +79,8 @@ library InternalBalanceAllocation {
     function decrease(
         bytes32 balance,
         uint256 amount,
-        bool capped
+        bool capped,
+        bool useExempt
     )
         internal
         view
@@ -96,6 +97,8 @@ library InternalBalanceAllocation {
         // If the given amount was greater than the actual value, and it wasn't requested to be capped, then it
         // would be caught by the require above
         uint256 decreased = Math.min(currentActual, amount);
+
+        // Because of how decreased is constructed, we can skip checked arithmetic.
         uint256 newActual = currentActual - decreased;
 
         uint256 lastBlockNumber = blockNumber(balance);
@@ -103,8 +106,14 @@ library InternalBalanceAllocation {
             // A user could be decreasing their internal balance by a number greater than the exempt value.
             // Then we should always do a sub capped to zero.
             uint256 currentExempt = exempt(balance);
-            uint256 newExempt = currentExempt > amount ? currentExempt - amount : 0;
-            uint256 taxableAmount = currentExempt > amount ? 0 : amount - currentExempt;
+
+            uint256 exemptUsed = useExempt ? Math.min(currentExempt, decreased) : 0;
+            uint256 newExempt = currentExempt - exemptUsed;
+            uint256 taxableAmount = decreased - exemptUsed;
+
+            // Note that it is possible for newExempt to be larger than newActual, if useExempt was false and
+            // all non-exempt balance was used. This excess exempt balance remains as credit for future
+            // withdrawals (but only in the same block!).
             bytes32 newBalance = toInternalBalance(newActual, newExempt, lastBlockNumber);
             return (newBalance, taxableAmount, decreased);
         } else {
@@ -112,7 +121,7 @@ library InternalBalanceAllocation {
             // regular decrease. We cannot handle negative exempt values, it would be like "credit" for potential
             // future ops in the same block.
             bytes32 newBalance = toInternalBalance(newActual, 0, 0);
-            return (newBalance, amount, decreased);
+            return (newBalance, decreased, decreased);
         }
     }
 

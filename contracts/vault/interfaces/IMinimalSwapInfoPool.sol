@@ -16,37 +16,22 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./IBasePool.sol";
-import "./IPoolSwapStructs.sol";
 
 /**
  * @dev Pool contracts with the MinimalSwapInfo or TwoToken specialization settings should implement this interface.
+ *
+ * This is called by the Vault when a user calls `IVault.batchSwapGivenIn` or `IVault.batchSwapGivenOut` to swap with
+ * this Pool. Returns the number of tokens the Pool will grant to the user (if GivenIn) or that the user will grant to
+ * the pool (if GivenOut) as part of the swap.
+ *
+ * This can often be implemented by a `view` function, since many pricing algorithms don't need to track state
+ * changes in swaps. However, contracts implementing this in non-view functions should check that the caller is
+ * indeed the Vault.
  */
 interface IMinimalSwapInfoPool is IBasePool {
-    /**
-     * @dev Called by the Vault when a user calls `IVault.batchSwapGivenIn` to swap with this Pool. Returns the number
-     * of tokens the Pool will grant to the user as part of the swap.
-     *
-     * This can often be implemented by a `view` function, since many pricing algorithms don't need to track state
-     * changes in swaps. However, contracts implementing this in non-view functions should check that the caller is
-     * indeed the Vault.
-     */
-    function onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
+    function onSwap(
+        SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) external returns (uint256 amountOut);
-
-    /**
-     * @dev Called by the Vault when a user calls `IVault.batchSwapGivenOut` to swap with this Pool. Returns the number
-     * of tokens the user must grant to the Pool as part of the swap.
-     *
-     * This can often be implemented by a `view` function, since many pricing algorithms don't need to track state
-     * changes in swaps. However, contracts implementing this in non-view functions should check that the caller is
-     * indeed the Vault.
-     */
-    function onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) external returns (uint256 amountIn);
+    ) external returns (uint256 amount);
 }

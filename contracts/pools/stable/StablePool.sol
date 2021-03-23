@@ -61,7 +61,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     // Swap
 
     function _onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
+        SwapRequest memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
@@ -71,14 +71,14 @@ contract StablePool is BaseGeneralPool, StableMath {
             balances,
             indexIn,
             indexOut,
-            swapRequest.amountIn
+            swapRequest.amount
         );
 
         return amountOut;
     }
 
     function _onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
+        SwapRequest memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
@@ -88,7 +88,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             balances,
             indexIn,
             indexOut,
-            swapRequest.amountOut
+            swapRequest.amount
         );
 
         return amountIn;

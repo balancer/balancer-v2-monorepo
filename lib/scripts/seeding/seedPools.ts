@@ -12,11 +12,11 @@ import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
 import { formatPools, getTokenInfoForDeploy, Pool } from './processJSON';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 let ethers: any;
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
 let trader: SignerWithAddress;
-//let validator: Contract;
 let assetManager: SignerWithAddress; // This would normally be a contract
 
 const NUM_POOLS = 5;
@@ -164,14 +164,18 @@ async function initializeStrategyPool(
   const fromInternalBalance = false;
   const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
 
-  const joinTx = await vault
-    .connect(controller)
-    .joinPool(poolId, controller.address, recipient, tokens, maxAmountsIn, fromInternalBalance, initialJoinUserData);
+  const joinTx = await vault.connect(controller).joinPool(poolId, controller.address, recipient, {
+    assets: tokens,
+    maxAmountsIn,
+    fromInternalBalance,
+    userData: initialJoinUserData,
+  });
+
   const receipt = await joinTx.wait();
 
-  const event = receipt.events?.find((e: Event) => e.event == 'PoolJoined');
+  const event = receipt.events?.find((e: Event) => e.event == 'PoolBalanceChanged');
   if (event == undefined) {
-    throw new Error('Could not find PoolJoined event');
+    throw new Error('Could not find PoolBalanceChanged event');
   }
   return event;
 }

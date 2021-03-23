@@ -52,7 +52,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
 
             // Not checking amount against current balance, transfer will revert if it is exceeded
             preLoanBalances[i] = token.balanceOf(address(this));
-            feeAmounts[i] = _calculateProtocolFlashLoanFeeAmount(amount);
+            feeAmounts[i] = _calculateFlashLoanFee(amount);
 
             token.safeTransfer(address(receiver), amount);
         }
@@ -69,7 +69,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
             uint256 receivedFees = postLoanBalance - preLoanBalance;
             require(receivedFees >= feeAmounts[i], "INSUFFICIENT_COLLECTED_FEES");
 
-            _increaseCollectedFees(token, receivedFees);
+            _payFee(token, receivedFees);
         }
     }
 }

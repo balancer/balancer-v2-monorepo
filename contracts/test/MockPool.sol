@@ -121,41 +121,26 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
     }
 
     // IGeneralPool
-    function onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
-        uint256[] calldata,
+    function onSwap(
+        SwapRequest memory swapRequest,
+        uint256[] memory,
         uint256,
         uint256
-    ) external view override returns (uint256) {
-        return swapRequest.amountIn.mul(_multiplier);
-    }
-
-    function onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
-        uint256[] calldata,
-        uint256,
-        uint256
-    ) external view override returns (uint256) {
-        uint256 amountIn = swapRequest.amountOut.div(_multiplier);
-        return amountIn;
+    ) external view override returns (uint256 amount) {
+        return swapRequest.kind == IVault.SwapKind.GIVEN_IN
+            ? swapRequest.amount.mul(_multiplier)
+            : swapRequest.amount.div(_multiplier);
     }
 
     // IMinimalSwapInfoPool
-    function onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn calldata swapRequest,
+    function onSwap(
+        SwapRequest memory swapRequest,
         uint256,
         uint256
     ) external view override returns (uint256) {
-        return swapRequest.amountIn.mul(_multiplier);
-    }
-
-    function onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut calldata swapRequest,
-        uint256,
-        uint256
-    ) external view override returns (uint256) {
-        uint256 amountIn = swapRequest.amountOut.div(_multiplier);
-        return amountIn;
+        return swapRequest.kind == IVault.SwapKind.GIVEN_IN
+            ? swapRequest.amount.mul(_multiplier)
+            : swapRequest.amount.div(_multiplier);
     }
 
     function getRate() external pure override returns (uint256) {
