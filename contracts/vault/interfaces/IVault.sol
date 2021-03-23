@@ -657,6 +657,16 @@ interface IVault {
     // Pool's benefit, for example by lending unused tokens at an interest, or using them to participate in voting
     // protocols.
 
+    /**
+     * @dev Called by a Pool's Asset Manager to perform an operation (withdraw, deposit, or update) in the Vault.
+     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
+     */
+    function managePoolBalance(
+        bytes32 poolId,
+        AssetManagerOpKind kind,
+        AssetManagerTransfer[] memory transfers
+    ) external;
+
     struct AssetManagerTransfer {
         IERC20 token;
         uint256 amount;
@@ -669,27 +679,14 @@ interface IVault {
     event PoolBalanceManaged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     /**
-     * @dev Called by a Pool's Asset Manager to withdraw tokens from the Vault. This decreases
-     * the Pool's cash but increases its managed balance, leaving the total balance unchanged.
-     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
+     * Deposits increase the Pool's cash, but decreases its managed balance, leaving the total balance unchanged.
+     *
+     * Withdrawals decrease the Pool's cash, but increases its managed balance, leaving the total balance unchanged.
+     *
+     * Updates don't affect the Pool's cash balance, but because the managed balance changes, it does alter the total.
+     * The external amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
      */
-    function withdrawFromPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
-
-    /**
-     * @dev Called by a Pool's Asset Manager to deposit tokens into the Vault. This increases the Pool's cash,
-     * but decreases its managed balance, leaving the total balance unchanged. The Asset Manager must have approved
-     * the Vault to use each token. Array input allows asset managers to manage multiple tokens for a pool in a
-     * single transaction.
-     */
-    function depositToPoolBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
-
-    /**
-     * @dev Called by a Pool's Asset Manager for to update the amount held outside the vault. This does not affect
-     * the Pool's cash balance, but because the managed balance changes, it does alter the total. The external
-     * amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
-     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
-     */
-    function updateManagedBalance(bytes32 poolId, AssetManagerTransfer[] memory transfers) external;
+    enum AssetManagerOpKind { DEPOSIT, WITHDRAW, UPDATE }
 
     // Protocol Fees
     //
