@@ -27,6 +27,7 @@ contract WeightedMath {
 
     // Pool limits that arise from this math (and the imposed 100/1 maximum weight ratio)
     uint256 internal constant _MIN_WEIGHT = 0.01e18;
+    uint256 internal constant _MAX_WEIGHTED_TOKENS = 1e18 / _MIN_WEIGHT;
 
     uint256 internal constant _MAX_IN_RATIO = 0.3e18;
     uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
