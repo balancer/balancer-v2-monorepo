@@ -44,22 +44,33 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
 
     // Swap Hooks
 
-    function onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
+    function onSwap(
+        SwapRequest memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) external view virtual override returns (uint256) {
         _validateIndexes(indexIn, indexOut, _totalTokens);
-
-        // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
-        swapRequest.amountIn = _subtractSwapFee(swapRequest.amountIn);
-
         uint256[] memory scalingFactors = _scalingFactors();
 
-        // All token amounts are upscaled.
-        swapRequest.amountIn = _upscale(swapRequest.amountIn, scalingFactors[indexIn]);
+        return
+            swapRequest.kind == IVault.SwapKind.GIVEN_IN
+                ? _swapGivenIn(swapRequest, balances, indexIn, indexOut, scalingFactors)
+                : _swapGivenOut(swapRequest, balances, indexIn, indexOut, scalingFactors);
+    }
+
+    function _swapGivenIn(
+        SwapRequest memory swapRequest,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut,
+        uint256[] memory scalingFactors
+    ) internal view returns (uint256) {
+        // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
+        swapRequest.amount = _subtractSwapFee(swapRequest.amount);
+
         _upscaleArray(balances, scalingFactors);
+        swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexIn]);
 
         uint256 amountOut = _onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
 
@@ -67,19 +78,15 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         return _downscaleDown(amountOut, scalingFactors[indexOut]);
     }
 
-    function onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
+    function _swapGivenOut(
+        SwapRequest memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
-        uint256 indexOut
-    ) external view virtual override returns (uint256) {
-        _validateIndexes(indexIn, indexOut, _totalTokens);
-
-        uint256[] memory scalingFactors = _scalingFactors();
-
-        // All token amounts are upscaled.
-        swapRequest.amountOut = _upscale(swapRequest.amountOut, scalingFactors[indexOut]);
+        uint256 indexOut,
+        uint256[] memory scalingFactors
+    ) internal view returns (uint256) {
         _upscaleArray(balances, scalingFactors);
+        swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexOut]);
 
         uint256 amountIn = _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
 
@@ -91,14 +98,14 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     }
 
     function _onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
+        SwapRequest memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
     ) internal view virtual returns (uint256);
 
     function _onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
+        SwapRequest memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut

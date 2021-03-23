@@ -40,6 +40,7 @@ import {
   calculateMaxOneTokenSwapFee,
 } from '../../../math/weighted';
 
+const SWAP_GIVEN = { IN: 0, OUT: 1 };
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
 const MAX_INVARIANT_RATIO = fp(3);
@@ -260,8 +261,9 @@ export default class WeightedPool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.onSwapGivenIn(
+    return this.instance.onSwap(
       {
+        kind: SWAP_GIVEN.IN,
         poolId: this.poolId,
         from: params.from ?? ZERO_ADDRESS,
         to: params.recipient ?? ZERO_ADDRESS,
@@ -269,7 +271,7 @@ export default class WeightedPool {
         tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
         latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
         userData: params.data ?? '0x',
-        amountIn: params.amount,
+        amount: params.amount,
       },
       currentBalances[tokenIn] || bn(0),
       currentBalances[tokenOut] || bn(0)
@@ -280,8 +282,9 @@ export default class WeightedPool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.onSwapGivenOut(
+    return this.instance.onSwap(
       {
+        kind: SWAP_GIVEN.OUT,
         poolId: this.poolId,
         from: params.from ?? ZERO_ADDRESS,
         to: params.recipient ?? ZERO_ADDRESS,
@@ -289,7 +292,7 @@ export default class WeightedPool {
         tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
         latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
         userData: params.data ?? '0x',
-        amountOut: params.amount,
+        amount: params.amount,
       },
       currentBalances[tokenIn] || bn(0),
       currentBalances[tokenOut] || bn(0)

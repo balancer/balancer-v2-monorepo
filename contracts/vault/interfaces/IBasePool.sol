@@ -16,12 +16,13 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./IVault.sol";
+import "./IPoolSwapStructs.sol";
 
 /**
  * @dev Interface all Pool contracts should implement. Note that this is not the complete Pool contract interface, as it
  * is missing the swap hooks: Pool contracts should instead inherit from either IGeneralPool or IMinimalSwapInfoPool.
  */
-interface IBasePool {
+interface IBasePool is IPoolSwapStructs {
     /**
      * @dev Called by the Vault when a user calls `IVault.joinPool` to join this Pool. Returns how many tokens the user
      * should provide for each registered token, as well as how many protocol fees the Pool owes to the Vault. After
