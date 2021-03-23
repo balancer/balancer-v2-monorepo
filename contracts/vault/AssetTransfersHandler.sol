@@ -110,9 +110,8 @@ abstract contract AssetTransfersHandler {
             IERC20 token = _asIERC20(asset);
 
             if (fromInternalBalance) {
-                // Note that we ignore the taxable amount here since these assets are not being withdrawn from the Vault
-                // but rather reallocated (e.g. as part of a swap or join).
-                // This function uses Internal Balance charging no fees, so we attempt to not use the
+                // We take as many tokens form Internal Balance as possible: any remaining amounts will be transferred.
+                // Note that this usage of Internal Balance is not charged withdraw fees, so we attempt to not use the
                 // exempt Internal Balance if possible.
                 (, uint256 deductedBalance) = _decreaseInternalBalance(sender, token, amount, true, false);
                 // Because `deductedBalance` will be always the minimum between the current internal balance

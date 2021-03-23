@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import { network } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 
 import { deploy } from '../../../lib/helpers/deploy';
-import { BigNumberish, bn, fp, min } from '../../../lib/helpers/numbers';
+import { BigNumberish, bn, fp } from '../../../lib/helpers/numbers';
 import { MAX_UINT112, MAX_UINT32 } from '../../../lib/helpers/constants';
 
 describe('Vault - internal balance allocation', () => {
@@ -61,7 +61,7 @@ describe('Vault - internal balance allocation', () => {
     });
 
     it('stores extreme values', async () => {
-      await testBalanceAllocation(MAX_UINT112.div(2), MAX_UINT112.div(2).add(1), 10000);
+      await testBalanceAllocation(MAX_UINT112.sub(1), MAX_UINT112.sub(1), 10000);
     });
 
     it('stores extreme block number', async () => {
@@ -79,7 +79,7 @@ describe('Vault - internal balance allocation', () => {
     let currentBlockNumber: number;
 
     sharedBeforeEach('compute current block number', async () => {
-      currentBlockNumber = await ethers.provider.getBlockNumber();
+      currentBlockNumber = Number(await network.provider.send('eth_blockNumber'));
     });
 
     context('when tracking exempts', () => {
@@ -179,7 +179,7 @@ describe('Vault - internal balance allocation', () => {
             const previousExempt = 0;
             const previousBlockNumber = 0;
 
-            it('stores the exempt', async () => {
+            it('reverts', async () => {
               const previousBalance = await toBalance(previousActual, previousExempt, previousBlockNumber);
 
               await expect(library.increase(previousBalance, increasingAmount, track)).to.be.revertedWith(
@@ -341,7 +341,7 @@ describe('Vault - internal balance allocation', () => {
             const previousExempt = 0;
             const previousBlockNumber = 0;
 
-            it('stores the exempt', async () => {
+            it('reverts', async () => {
               const previousBalance = await toBalance(previousActual, previousExempt, previousBlockNumber);
 
               await expect(library.increase(previousBalance, increasingAmount, track)).to.be.revertedWith(
@@ -412,7 +412,7 @@ describe('Vault - internal balance allocation', () => {
     let currentBlockNumber: number;
 
     sharedBeforeEach('compute current block number', async () => {
-      currentBlockNumber = await ethers.provider.getBlockNumber();
+      currentBlockNumber = Number(await network.provider.send('eth_blockNumber'));
     });
 
     const itDecreasesTheBalanceProperlyWhenNoPreviousActualValue = (useExempt: boolean) => {
@@ -476,7 +476,7 @@ describe('Vault - internal balance allocation', () => {
           const previousExempt = 0;
           const previousBlockNumber = 0;
 
-          it('does not charge any taxesstores the exempt', async () => {
+          it('does not charge any taxes nor affects the exempt', async () => {
             const previousBalance = await toBalance(previousActual, previousExempt, previousBlockNumber);
 
             const [newBalance, taxableAmount, decreased] = await library.decrease(
@@ -551,14 +551,14 @@ describe('Vault - internal balance allocation', () => {
 
       context('when there was a previous actual value', () => {
         context('when there is room for a smaller actual value', () => {
-          const previousActual = decreasingAmount.add(fp(1));
+          const previousActual = decreasingAmount.add(1);
 
           const itDecreasesTheBalanceIgnoringCappedOption = (capped: boolean) => {
             context('when there was a previous exempt', () => {
               let previousBlockNumber: number;
 
               context('when the previous exempt was smaller than the decreasing amount', () => {
-                const previousExempt = decreasingAmount.sub(fp(1));
+                const previousExempt = decreasingAmount.sub(1);
 
                 context('when the block number matches the one for previous exempt', () => {
                   sharedBeforeEach('compute previous block number', async () => {
@@ -608,7 +608,7 @@ describe('Vault - internal balance allocation', () => {
               });
 
               context('when the previous exempt was bigger than the decreasing amount', () => {
-                const previousExempt = decreasingAmount.add(fp(1));
+                const previousExempt = decreasingAmount.add(1);
 
                 context('when the block number matches the one for previous exempt', () => {
                   sharedBeforeEach('compute previous block number', async () => {
@@ -691,7 +691,7 @@ describe('Vault - internal balance allocation', () => {
         });
 
         context('when the actual value cannot be decreased', () => {
-          const previousActual = decreasingAmount.sub(fp(1));
+          const previousActual = decreasingAmount.sub(1);
 
           context('when capped', () => {
             const capped = true;
@@ -700,14 +700,14 @@ describe('Vault - internal balance allocation', () => {
               let previousBlockNumber: number;
 
               context('when the previous exempt was smaller than the decreasing amount', () => {
-                const previousExempt = decreasingAmount.sub(fp(1));
+                const previousExempt = decreasingAmount.sub(1);
 
                 context('when the block number matches the one for previous exempt', () => {
                   sharedBeforeEach('compute previous block number', async () => {
                     previousBlockNumber = currentBlockNumber;
                   });
 
-                  it('sets the previous exempt to zero and charges fee based on the maximum exceeding decreased amount', async () => {
+                  it('sets the previous exempt to zero and charges fee based on the non-exempt decreased amount', async () => {
                     const previousBalance = await toBalance(previousActual, previousExempt, previousBlockNumber);
 
                     const [newBalance, taxableAmount, decreased] = await library.decrease(
@@ -720,8 +720,8 @@ describe('Vault - internal balance allocation', () => {
                     expect(await library.exempt(newBalance)).to.equal(0);
                     expect(await library.blockNumber(newBalance)).to.equal(previousBlockNumber);
 
-                    expect(taxableAmount).to.equal(min(previousActual, decreasingAmount).sub(previousExempt));
-                    expect(decreased).to.equal(min(previousActual, decreasingAmount));
+                    expect(taxableAmount).to.equal(previousActual.sub(previousExempt));
+                    expect(decreased).to.equal(previousActual);
                   });
                 });
 
@@ -730,7 +730,7 @@ describe('Vault - internal balance allocation', () => {
                     previousBlockNumber = currentBlockNumber - 1;
                   });
 
-                  it('sets the previous exempt to zero and taxes the maximum decreased amount', async () => {
+                  it('sets the previous exempt to zero and taxes the decreased amount', async () => {
                     const previousBalance = await toBalance(previousActual, previousExempt, previousBlockNumber);
 
                     const [newBalance, taxableAmount, decreased] = await library.decrease(
@@ -743,14 +743,14 @@ describe('Vault - internal balance allocation', () => {
                     expect(await library.exempt(newBalance)).to.equal(0);
                     expect(await library.blockNumber(newBalance)).to.equal(0);
 
-                    expect(taxableAmount).to.equal(min(previousActual, decreasingAmount));
-                    expect(decreased).to.equal(min(previousActual, decreasingAmount));
+                    expect(taxableAmount).to.equal(previousActual);
+                    expect(decreased).to.equal(previousActual);
                   });
                 });
               });
 
               context('when the previous exempt was bigger than the decreasing amount', () => {
-                const previousExempt = decreasingAmount.add(fp(1));
+                const previousExempt = decreasingAmount.add(1);
 
                 context('when the block number matches the one for previous exempt', () => {
                   sharedBeforeEach('compute previous block number', async () => {
@@ -759,7 +759,6 @@ describe('Vault - internal balance allocation', () => {
 
                   it('reduces the previous exempt and does not charge any taxes', async () => {
                     const previousBalance = await toBalance(previousActual, previousExempt, previousBlockNumber);
-                    const expectedDecreasedAmount = min(previousActual, decreasingAmount);
 
                     const [newBalance, taxableAmount, decreased] = await library.decrease(
                       previousBalance,
@@ -768,11 +767,11 @@ describe('Vault - internal balance allocation', () => {
                       useExempt
                     );
                     expect(await library.actual(newBalance)).to.equal(0);
-                    expect(await library.exempt(newBalance)).to.equal(previousExempt.sub(expectedDecreasedAmount));
+                    expect(await library.exempt(newBalance)).to.equal(previousExempt.sub(previousActual));
                     expect(await library.blockNumber(newBalance)).to.equal(previousBlockNumber);
 
                     expect(taxableAmount).to.equal(0);
-                    expect(decreased).to.equal(expectedDecreasedAmount);
+                    expect(decreased).to.equal(previousActual);
                   });
                 });
 
@@ -794,8 +793,8 @@ describe('Vault - internal balance allocation', () => {
                     expect(await library.exempt(newBalance)).to.equal(0);
                     expect(await library.blockNumber(newBalance)).to.equal(0);
 
-                    expect(taxableAmount).to.equal(min(previousActual, decreasingAmount));
-                    expect(decreased).to.equal(min(previousActual, decreasingAmount));
+                    expect(taxableAmount).to.equal(previousActual);
+                    expect(decreased).to.equal(previousActual);
                   });
                 });
               });
@@ -818,8 +817,8 @@ describe('Vault - internal balance allocation', () => {
                 expect(await library.exempt(newBalance)).to.equal(0);
                 expect(await library.blockNumber(newBalance)).to.equal(0);
 
-                expect(taxableAmount).to.equal(min(previousActual, decreasingAmount));
-                expect(decreased).to.equal(min(previousActual, decreasingAmount));
+                expect(taxableAmount).to.equal(previousActual);
+                expect(decreased).to.equal(previousActual);
               });
             });
           });
@@ -886,14 +885,14 @@ describe('Vault - internal balance allocation', () => {
 
       context('when there was a previous actual value', () => {
         context('when there is room for a smaller actual value', () => {
-          const previousActual = decreasingAmount.add(fp(1));
+          const previousActual = decreasingAmount.add(1);
 
           const itDecreasesTheBalanceIgnoringCappedOption = (capped: boolean) => {
             context('when there was a previous exempt', () => {
               let previousBlockNumber: number;
 
               context('when the previous exempt was smaller than the decreasing amount', () => {
-                const previousExempt = decreasingAmount.sub(fp(1));
+                const previousExempt = decreasingAmount.sub(1);
 
                 context('when the block number matches the one for previous exempt', () => {
                   sharedBeforeEach('compute previous block number', async () => {
@@ -943,7 +942,7 @@ describe('Vault - internal balance allocation', () => {
               });
 
               context('when the previous exempt was bigger than the decreasing amount', () => {
-                const previousExempt = decreasingAmount.add(fp(1));
+                const previousExempt = decreasingAmount.add(1);
 
                 context('when the block number matches the one for previous exempt', () => {
                   sharedBeforeEach('compute previous block number', async () => {
@@ -1026,7 +1025,7 @@ describe('Vault - internal balance allocation', () => {
         });
 
         context('when the actual value cannot be decreased', () => {
-          const previousActual = decreasingAmount.sub(fp(1));
+          const previousActual = decreasingAmount.sub(1);
 
           context('when capped', () => {
             const capped = true;
@@ -1053,8 +1052,8 @@ describe('Vault - internal balance allocation', () => {
                     expect(await library.exempt(newBalance)).to.equal(previousExempt);
                     expect(await library.blockNumber(newBalance)).to.equal(previousBlockNumber);
 
-                    expect(taxableAmount).to.equal(min(previousActual, decreasingAmount));
-                    expect(decreased).to.equal(min(previousActual, decreasingAmount));
+                    expect(taxableAmount).to.equal(previousActual);
+                    expect(decreased).to.equal(previousActual);
                   });
                 });
 
@@ -1076,20 +1075,20 @@ describe('Vault - internal balance allocation', () => {
                     expect(await library.exempt(newBalance)).to.equal(0);
                     expect(await library.blockNumber(newBalance)).to.equal(0);
 
-                    expect(taxableAmount).to.equal(min(previousActual, decreasingAmount));
-                    expect(decreased).to.equal(min(previousActual, decreasingAmount));
+                    expect(taxableAmount).to.equal(previousActual);
+                    expect(decreased).to.equal(previousActual);
                   });
                 });
               };
 
               context('when the previous exempt was smaller than the decreasing amount', () => {
-                const previousExempt = decreasingAmount.sub(fp(1));
+                const previousExempt = decreasingAmount.sub(1);
 
                 itDecreasesTheBalanceIgnoringPreviousExempts(previousExempt);
               });
 
               context('when the previous exempt was bigger than the decreasing amount', () => {
-                const previousExempt = decreasingAmount.add(fp(1));
+                const previousExempt = decreasingAmount.add(1);
 
                 itDecreasesTheBalanceIgnoringPreviousExempts(previousExempt);
               });
@@ -1112,8 +1111,8 @@ describe('Vault - internal balance allocation', () => {
                 expect(await library.exempt(newBalance)).to.equal(0);
                 expect(await library.blockNumber(newBalance)).to.equal(0);
 
-                expect(taxableAmount).to.equal(min(previousActual, decreasingAmount));
-                expect(decreased).to.equal(min(previousActual, decreasingAmount));
+                expect(taxableAmount).to.equal(previousActual);
+                expect(decreased).to.equal(previousActual);
               });
             });
           });

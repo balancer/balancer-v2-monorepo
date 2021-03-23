@@ -94,20 +94,20 @@ library InternalBalanceAllocation {
         require(capped || (currentActual >= amount), "INSUFFICIENT_INTERNAL_BALANCE");
 
         uint256 decreased = Math.min(currentActual, amount);
-        
+
         // Because of how decreased is constructed, we can skip checked arithmetic.
         uint256 newActual = currentActual - decreased;
 
         uint256 lastBlockNumber = blockNumber(balance);
         if (lastBlockNumber == block.number) {
             uint256 currentExempt = exempt(balance);
-            
-            uint256 exemptUsed = useExempt ? Math.min(currentExempt, decreased) : 0;          
+
+            uint256 exemptUsed = useExempt ? Math.min(currentExempt, decreased) : 0;
             uint256 newExempt = currentExempt - exemptUsed;
             uint256 taxableAmount = decreased - exemptUsed;
-            
+
             // Note that it is possible for newExempt to be larger than newActual, if useExempt was false and
-            // all non-exempt balance was used. This excess exempt balance remains as credit for future 
+            // all non-exempt balance was used. This excess exempt balance remains as credit for future
             // withdrawals (but only in the same block!).
             bytes32 newBalance = toInternalBalance(newActual, newExempt, lastBlockNumber);
             return (newBalance, taxableAmount, decreased);
