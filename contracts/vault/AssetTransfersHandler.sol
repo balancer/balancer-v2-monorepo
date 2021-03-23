@@ -112,9 +112,8 @@ abstract contract AssetTransfersHandler {
             if (fromInternalBalance) {
                 // Note that we ignore the taxable amount here since these assets are not being withdrawn from the Vault
                 // but rather reallocated (e.g. as part of a swap or join).
-                // Note we also don't use existing exempts if there are any when receiving assets, even when
-                // depositing internal balance: it simply wouldn't make sense to increase the internal balance from
-                // an already existing internal balance.
+                // This function uses Internal Balance charging no fees, so we attempt to not use the
+                // exempt Internal Balance if possible.
                 (, uint256 deductedBalance) = _decreaseInternalBalance(sender, token, amount, true, false);
                 // Because `deductedBalance` will be always the minimum between the current internal balance
                 // and the amount to decrease, it is safe to perform unchecked arithmetic.

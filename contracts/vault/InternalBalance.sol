@@ -93,6 +93,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             IERC20 token = _translateToIERC20(asset);
 
             uint256 amountToSend = amount;
+            // Since we're charging withdraw fees, we attempt to withdraw from the exempt Internal Balance if possible
             (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false, true);
 
             if (taxableAmount > 0) {
@@ -119,7 +120,8 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             uint256 amount = transfers[i].amount;
             address recipient = transfers[i].recipient;
 
-            // Transferring internal balance to another account is not charged withdrawal fees
+            // Transferring internal balance to another account is not charged withdrawal fees.
+            // Because of this, we use the exempt balance if possible.
             _decreaseInternalBalance(sender, token, amount, false, false);
             // Tokens transferred internally are not later exempt from withdrawal fees.
             _increaseInternalBalance(recipient, token, amount, false);
