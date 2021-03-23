@@ -38,6 +38,8 @@ import {
   calcInGivenOut,
 } from '../../../math/stable';
 
+const SWAP_GIVEN = { IN: 0, OUT: 1 };
+
 export default class StablePool {
   instance: Contract;
   poolId: string;
@@ -222,8 +224,9 @@ export default class StablePool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.callStatic.onSwapGivenIn(
+    return this.instance.callStatic.onSwap(
       {
+        kind: SWAP_GIVEN.IN,
         poolId: this.poolId,
         from: params.from ?? ZERO_ADDRESS,
         to: params.recipient ?? ZERO_ADDRESS,
@@ -231,7 +234,7 @@ export default class StablePool {
         tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
         latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
         userData: params.data ?? '0x',
-        amountIn: params.amount,
+        amount: params.amount,
       },
       currentBalances,
       tokenIn,
@@ -243,8 +246,9 @@ export default class StablePool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.callStatic.onSwapGivenOut(
+    return this.instance.callStatic.onSwap(
       {
+        kind: SWAP_GIVEN.OUT,
         poolId: this.poolId,
         from: params.from ?? ZERO_ADDRESS,
         to: params.recipient ?? ZERO_ADDRESS,
@@ -252,7 +256,7 @@ export default class StablePool {
         tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
         latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
         userData: params.data ?? '0x',
-        amountOut: params.amount,
+        amount: params.amount,
       },
       currentBalances,
       tokenIn,
@@ -326,8 +330,8 @@ export default class StablePool {
     });
 
     const receipt = await (await tx).wait();
-    const { amountsIn, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolJoined').args;
-    return { amountsIn, dueProtocolFeeAmounts };
+    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: amounts, dueProtocolFeeAmounts };
   }
 
   async queryExit(params: JoinExitStablePool): Promise<ExitQueryResult> {
@@ -352,8 +356,8 @@ export default class StablePool {
     });
 
     const receipt = await (await tx).wait();
-    const { amountsOut, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolExited').args;
-    return { amountsOut, dueProtocolFeeAmounts };
+    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: amounts, dueProtocolFeeAmounts };
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {

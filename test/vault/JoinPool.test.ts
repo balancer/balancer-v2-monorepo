@@ -19,7 +19,7 @@ import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
-  let authorizer: Contract, vault: Contract;
+  let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let allTokens: TokenList;
 
   before(async () => {
@@ -31,10 +31,11 @@ describe('Vault - join pool', () => {
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
+    feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const role = roleId(vault, 'setProtocolFees');
+    const role = roleId(feesCollector, 'setSwapFee');
     await authorizer.connect(admin).grantRole(role, admin.address);
-    await vault.connect(admin).setProtocolFees(fp(0.1), 0, 0);
+    await feesCollector.connect(admin).setSwapFee(fp(0.1));
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [creator, lp], amount: bn(100e18) });
@@ -76,17 +77,12 @@ describe('Vault - join pool', () => {
       DUE_PROTOCOL_FEE_AMOUNTS = array(0);
 
       // Join the Pool from the creator so that it has some tokens to pay protocol fees with
-      await vault
-        .connect(creator)
-        .joinPool(
-          poolId,
-          creator.address,
-          ZERO_ADDRESS,
-          tokens.addresses,
-          array(MAX_UINT256),
-          false,
-          encodeJoin(array(50e18), array(0))
-        );
+      await vault.connect(creator).joinPool(poolId, creator.address, ZERO_ADDRESS, {
+        assets: tokens.addresses,
+        maxAmountsIn: array(MAX_UINT256),
+        fromInternalBalance: false,
+        userData: encodeJoin(array(50e18), array(0)),
+      });
     });
 
     type JoinPoolData = {
@@ -102,15 +98,12 @@ describe('Vault - join pool', () => {
     function joinPool(data: JoinPoolData): Promise<ContractTransaction> {
       return vault
         .connect(data.fromRelayer ?? false ? relayer : lp)
-        .joinPool(
-          data.poolId ?? poolId,
-          lp.address,
-          ZERO_ADDRESS,
-          data.tokenAddresses ?? tokens.addresses,
-          data.maxAmountsIn ?? array(MAX_UINT256),
-          data.fromInternalBalance ?? false,
-          encodeJoin(data.joinAmounts ?? joinAmounts, data.dueProtocolFeeAmounts ?? DUE_PROTOCOL_FEE_AMOUNTS)
-        );
+        .joinPool(data.poolId ?? poolId, lp.address, ZERO_ADDRESS, {
+          assets: data.tokenAddresses ?? tokens.addresses,
+          maxAmountsIn: data.maxAmountsIn ?? array(MAX_UINT256),
+          fromInternalBalance: data.fromInternalBalance ?? false,
+          userData: encodeJoin(data.joinAmounts ?? joinAmounts, data.dueProtocolFeeAmounts ?? DUE_PROTOCOL_FEE_AMOUNTS),
+        });
     }
 
     context('when called incorrectly', () => {
@@ -348,17 +341,23 @@ describe('Vault - join pool', () => {
       });
 
       it('takes tokens from the LP into the vault', async () => {
-        const expectedTransferAmounts = arraySub(joinAmounts, expectedInternalBalanceToUse);
-
         // Tokens are sent from the LP, so the expected change is negative
+        const expectedTransferAmounts = arraySub(joinAmounts, expectedInternalBalanceToUse);
         const lpChanges = tokens.reduce(
           (changes, token, i) => ({ ...changes, [token.symbol]: expectedTransferAmounts[i].mul(-1) }),
           {}
         );
 
         // Tokens are sent to the Vault, so the expected change is positive
+        const expectedVaultChanges = arraySub(expectedTransferAmounts, dueProtocolFeeAmounts);
         const vaultChanges = tokens.reduce(
-          (changes, token, i) => ({ ...changes, [token.symbol]: expectedTransferAmounts[i] }),
+          (changes, token, i) => ({ ...changes, [token.symbol]: expectedVaultChanges[i] }),
+          {}
+        );
+
+        // Tokens are sent to the Protocol Fees, so the expected change is positive
+        const protocolFeesChanges = tokens.reduce(
+          (changes, token, i) => ({ ...changes, [token.symbol]: dueProtocolFeeAmounts[i] }),
           {}
         );
 
@@ -366,8 +365,9 @@ describe('Vault - join pool', () => {
           () => joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance }),
           allTokens,
           [
-            { account: vault, changes: vaultChanges },
             { account: lp, changes: lpChanges },
+            { account: vault, changes: vaultChanges },
+            { account: feesCollector, changes: protocolFeesChanges },
           ]
         );
       });
@@ -405,7 +405,7 @@ describe('Vault - join pool', () => {
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
           latestBlockNumberUsed: previousBlockNumber,
-          protocolSwapFee: (await vault.getProtocolFees()).swapFee,
+          protocolSwapFee: await feesCollector.getSwapFee(),
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
       });
@@ -421,21 +421,22 @@ describe('Vault - join pool', () => {
         });
       });
 
-      it('emits PoolJoined from the vault', async () => {
+      it('emits PoolBalanceChanged from the vault', async () => {
         const receipt = await (await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).wait();
 
-        expectEvent.inReceipt(receipt, 'PoolJoined', {
+        expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
           poolId,
           liquidityProvider: lp.address,
-          amountsIn: joinAmounts,
+          kind: 0,
+          amounts: joinAmounts,
           protocolFees: dueProtocolFeeAmounts,
         });
       });
 
       it('collects protocol fees', async () => {
-        const previousCollectedFees: BigNumber[] = await vault.getCollectedFees(tokens.addresses);
+        const previousCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
         await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
-        const currentCollectedFees: BigNumber[] = await vault.getCollectedFees(tokens.addresses);
+        const currentCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
 
         expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(dueProtocolFeeAmounts);
       });

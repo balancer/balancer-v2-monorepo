@@ -177,11 +177,11 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     // Swap
 
     function _onSwapGivenIn(
-        IPoolSwapStructs.SwapRequestGivenIn memory swapRequest,
+        SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view virtual override noEmergencyPeriod returns (uint256) {
-        require(swapRequest.amountIn <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), "ERR_MAX_IN_RATIO");
+        require(swapRequest.amount <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), "ERR_MAX_IN_RATIO");
 
         return
             WeightedMath._calcOutGivenIn(
@@ -189,16 +189,16 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
                 _normalizedWeight(swapRequest.tokenIn),
                 currentBalanceTokenOut,
                 _normalizedWeight(swapRequest.tokenOut),
-                swapRequest.amountIn
+                swapRequest.amount
             );
     }
 
     function _onSwapGivenOut(
-        IPoolSwapStructs.SwapRequestGivenOut memory swapRequest,
+        SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view virtual override noEmergencyPeriod returns (uint256) {
-        require(swapRequest.amountOut <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), "ERR_MAX_OUT_RATIO");
+        require(swapRequest.amount <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), "ERR_MAX_OUT_RATIO");
 
         return
             WeightedMath._calcInGivenOut(
@@ -206,7 +206,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
                 _normalizedWeight(swapRequest.tokenIn),
                 currentBalanceTokenOut,
                 _normalizedWeight(swapRequest.tokenOut),
-                swapRequest.amountOut
+                swapRequest.amount
             );
     }
 

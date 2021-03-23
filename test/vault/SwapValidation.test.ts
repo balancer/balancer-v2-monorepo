@@ -56,17 +56,12 @@ describe('Vault - swap validation', () => {
 
       const poolId = await pool.getPoolId();
 
-      await vault
-        .connect(lp)
-        .joinPool(
-          poolId,
-          lp.address,
-          ZERO_ADDRESS,
-          tokens.addresses,
-          Array(tokens.length).fill(MAX_UINT256),
-          false,
-          encodeJoin(Array(tokens.length).fill(initialBalance), Array(tokens.length).fill(0))
-        );
+      await vault.connect(lp).joinPool(poolId, lp.address, ZERO_ADDRESS, {
+        assets: tokens.addresses,
+        maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
+        fromInternalBalance: false,
+        userData: encodeJoin(Array(tokens.length).fill(initialBalance), Array(tokens.length).fill(0)),
+      });
 
       poolIds.push(poolId);
     }
@@ -97,7 +92,7 @@ describe('Vault - swap validation', () => {
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
+      return vault.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);
@@ -109,7 +104,7 @@ describe('Vault - swap validation', () => {
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
-      return vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
+      return vault.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
     };
 
     itValidatesCorrectlyInAllCases(doSwap, querySwap);

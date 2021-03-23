@@ -42,17 +42,12 @@ describe('Vault - swap queries', () => {
       await pool.setMultiplier(fp(2));
       await pool.registerTokens(tokens.addresses, Array(tokens.length).fill(ZERO_ADDRESS));
 
-      await vault
-        .connect(lp)
-        .joinPool(
-          poolId,
-          lp.address,
-          lp.address,
-          tokens.addresses,
-          Array(tokens.length).fill(MAX_UINT256),
-          false,
-          encodeJoin(Array(tokens.length).fill(bn(100e18)), Array(tokens.length).fill(0))
-        );
+      await vault.connect(lp).joinPool(poolId, lp.address, lp.address, {
+        assets: tokens.addresses,
+        maxAmountsIn: Array(tokens.length).fill(MAX_UINT256),
+        fromInternalBalance: false,
+        userData: encodeJoin(Array(tokens.length).fill(bn(100e18)), Array(tokens.length).fill(0)),
+      });
 
       poolIds.push(poolId);
     }
@@ -88,7 +83,7 @@ describe('Vault - swap queries', () => {
     function assertQueryBatchSwapGivenIn(swapsData: SwapData[], expectedDeltas: number[]) {
       it('returns the expected amounts', async () => {
         const swaps: Swap[] = toSwaps(swapsData);
-        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
+        const deltas = await vault.queryBatchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds);
         expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
@@ -150,7 +145,7 @@ describe('Vault - swap queries', () => {
     describe('error', () => {
       it('bubbles up revert reasons', async () => {
         const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
-        const tx = vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_IN, invalidSwap, tokens.addresses, funds);
+        const tx = vault.queryBatchSwap(SWAP_KIND.GIVEN_IN, invalidSwap, tokens.addresses, funds);
         await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
       });
     });
@@ -161,7 +156,7 @@ describe('Vault - swap queries', () => {
       it('returns the expected amounts', async () => {
         const swaps: Swap[] = toSwaps(swapsData);
 
-        const deltas = await vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
+        const deltas = await vault.queryBatchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds);
         expect(deltas).to.deep.equal(expectedDeltas.map(bn));
       });
     }
@@ -223,7 +218,7 @@ describe('Vault - swap queries', () => {
     describe('error', () => {
       it('bubbles up revert reasons', async () => {
         const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
-        const tx = vault.callStatic.queryBatchSwap(SWAP_KIND.GIVEN_OUT, invalidSwap, tokens.addresses, funds);
+        const tx = vault.queryBatchSwap(SWAP_KIND.GIVEN_OUT, invalidSwap, tokens.addresses, funds);
         await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
       });
     });
