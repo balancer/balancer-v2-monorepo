@@ -147,20 +147,22 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             int256 delta = assetDeltas[i];
             _require(delta <= limits[i], Errors.SWAP_LIMIT);
 
+            uint256 toReceive;
             IAsset asset = assets[i];
+
             if (delta > 0) {
-                uint256 toReceive = uint256(delta);
+                toReceive = uint256(delta);
                 _receiveAsset(asset, toReceive, funds.sender, funds.fromInternalBalance);
-                _trackEth(tracker, asset, toReceive);
             } else if (delta < 0) {
-                uint256 toSend = uint256(-delta);
                 // Given that the delta is negative, we don't track an amount for ETH
-                _trackEth(tracker, asset, 0);
+                uint256 toSend = uint256(-delta);
 
                 // Withdraw fees are not charged when sending funds as part of a swap.
                 // Deposits to Internal Balance are also exempt of this fee during the current block.
                 _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance, true);
             }
+
+            _trackEth(tracker, asset, toReceive);
         }
 
         // Handle any remaining ETH by checking it wasn't sent by mistake and returning the excess in case there is any

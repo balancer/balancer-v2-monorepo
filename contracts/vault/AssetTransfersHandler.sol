@@ -153,8 +153,8 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      */
     function _handleRemainingEth(EthTracker memory tracker) internal {
         if (msg.value > 0) {
-            require(tracker.ethAssetSeen, Errors.UNALLOCATED_ETH);
-            require(msg.value >= tracker.amountUsed, Errors.INSUFFICIENT_ETH);
+            _require(tracker.ethAssetSeen, Errors.UNALLOCATED_ETH);
+            _require(msg.value >= tracker.amountUsed, Errors.INSUFFICIENT_ETH);
 
             uint256 excess = msg.value - tracker.amountUsed;
             if (excess > 0) {
