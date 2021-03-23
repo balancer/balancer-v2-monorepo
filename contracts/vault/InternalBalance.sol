@@ -126,7 +126,12 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         }
     }
 
-    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external override nonReentrant {
+    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers)
+        external
+        override
+        nonReentrant
+        noEmergencyPeriod
+    {
         for (uint256 i = 0; i < transfers.length; i++) {
             address sender = transfers[i].sender;
             _authenticateCallerFor(sender);
