@@ -22,6 +22,7 @@ import "./InputHelpers.sol";
 import "./AssetHelpers.sol";
 
 import "../../pools/BasePool.sol";
+import "../../vault/ProtocolFeesCollector.sol";
 import "../../vault/interfaces/IWETH.sol";
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/balances/BalanceAllocation.sol";
@@ -50,7 +51,7 @@ contract BalancerHelpers is AssetHelpers {
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
         (address pool, ) = vault.getPool(poolId);
         (uint256[] memory balances, uint256 latestBlockNumber) = _validateAssetsAndGetBalances(poolId, request.assets);
-        (uint256 protocolSwapFee, , ) = vault.getProtocolFees();
+        ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
 
         (bptOut, amountsIn) = BasePool(pool).queryJoin(
             poolId,
@@ -58,7 +59,7 @@ contract BalancerHelpers is AssetHelpers {
             recipient,
             balances,
             latestBlockNumber,
-            protocolSwapFee,
+            feesCollector.getSwapFee(),
             request.userData
         );
     }
@@ -71,7 +72,7 @@ contract BalancerHelpers is AssetHelpers {
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
         (address pool, ) = vault.getPool(poolId);
         (uint256[] memory balances, uint256 latestBlockNumber) = _validateAssetsAndGetBalances(poolId, request.assets);
-        (uint256 protocolSwapFee, , ) = vault.getProtocolFees();
+        ProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
 
         (bptIn, amountsOut) = BasePool(pool).queryExit(
             poolId,
@@ -79,13 +80,13 @@ contract BalancerHelpers is AssetHelpers {
             recipient,
             balances,
             latestBlockNumber,
-            protocolSwapFee,
+            feesCollector.getSwapFee(),
             request.userData
         );
 
         // Deduct withdraw fees unless it's using internal balance
         if (!request.toInternalBalance) {
-            (, uint256 withdrawFeePct, ) = vault.getProtocolFees();
+            uint256 withdrawFeePct = feesCollector.getWithdrawFee();
             for (uint256 i = 0; i < amountsOut.length; i++) {
                 uint256 amountOut = amountsOut[i];
                 uint256 withdrawFee = FixedPoint.mulUp(amountOut, withdrawFeePct);

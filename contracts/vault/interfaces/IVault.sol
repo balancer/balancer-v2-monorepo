@@ -20,6 +20,7 @@ import "./IAuthorizer.sol";
 import "./IFlashLoanReceiver.sol";
 import "./IAsset.sol";
 import "./IWETH.sol";
+import "../ProtocolFeesCollector.sol";
 
 pragma solidity ^0.7.0;
 
@@ -707,40 +708,7 @@ interface IVault {
     // exiting a Pool in debt without first paying their share.
 
     /**
-     * @dev Returns the current protocol fee percentages. These are 18 decimals fixed point numbers, which means that
-     * e.g. a value of 0.1e18 stands for a 10% fee.
+     * @dev Returns the current protocol fee module.
      */
-    function getProtocolFees()
-        external
-        view
-        returns (
-            uint256 swapFee,
-            uint256 withdrawFee,
-            uint256 flashLoanFee
-        );
-
-    /**
-     * @dev Sets new Protocol fees. The caller must be allowed by the Authorizer to do this, and the new fee values must
-     * not be above the absolute maximum amounts.
-     */
-    function setProtocolFees(
-        uint256 swapFee,
-        uint256 withdrawFee,
-        uint256 flashLoanFee
-    ) external;
-
-    /**
-     * @dev Returns the amount of protocol fees collected by the Vault for each token in the `tokens` array.
-     */
-    function getCollectedFees(IERC20[] memory tokens) external view returns (uint256[] memory);
-
-    /**
-     * @dev Withdraws collected protocol fees, transferring them to `recipient`. The caller must be allowed by the
-     * Authorizer to do this.
-     */
-    function withdrawCollectedFees(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        address recipient
-    ) external;
+    function getProtocolFeesCollector() external view returns (ProtocolFeesCollector);
 }

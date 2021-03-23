@@ -19,7 +19,7 @@ import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
-  let authorizer: Contract, vault: Contract;
+  let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let allTokens: TokenList;
 
   before(async () => {
@@ -31,10 +31,11 @@ describe('Vault - join pool', () => {
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
+    feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const role = roleId(vault, 'setProtocolFees');
+    const role = roleId(feesCollector, 'setSwapFee');
     await authorizer.connect(admin).grantRole(role, admin.address);
-    await vault.connect(admin).setProtocolFees(fp(0.1), 0, 0);
+    await feesCollector.connect(admin).setSwapFee(fp(0.1));
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [creator, lp], amount: bn(100e18) });
@@ -340,17 +341,23 @@ describe('Vault - join pool', () => {
       });
 
       it('takes tokens from the LP into the vault', async () => {
-        const expectedTransferAmounts = arraySub(joinAmounts, expectedInternalBalanceToUse);
-
         // Tokens are sent from the LP, so the expected change is negative
+        const expectedTransferAmounts = arraySub(joinAmounts, expectedInternalBalanceToUse);
         const lpChanges = tokens.reduce(
           (changes, token, i) => ({ ...changes, [token.symbol]: expectedTransferAmounts[i].mul(-1) }),
           {}
         );
 
         // Tokens are sent to the Vault, so the expected change is positive
+        const expectedVaultChanges = arraySub(expectedTransferAmounts, dueProtocolFeeAmounts);
         const vaultChanges = tokens.reduce(
-          (changes, token, i) => ({ ...changes, [token.symbol]: expectedTransferAmounts[i] }),
+          (changes, token, i) => ({ ...changes, [token.symbol]: expectedVaultChanges[i] }),
+          {}
+        );
+
+        // Tokens are sent to the Protocol Fees, so the expected change is positive
+        const protocolFeesChanges = tokens.reduce(
+          (changes, token, i) => ({ ...changes, [token.symbol]: dueProtocolFeeAmounts[i] }),
           {}
         );
 
@@ -358,8 +365,9 @@ describe('Vault - join pool', () => {
           () => joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance }),
           allTokens,
           [
-            { account: vault, changes: vaultChanges },
             { account: lp, changes: lpChanges },
+            { account: vault, changes: vaultChanges },
+            { account: feesCollector, changes: protocolFeesChanges },
           ]
         );
       });
@@ -397,7 +405,7 @@ describe('Vault - join pool', () => {
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
           latestBlockNumberUsed: previousBlockNumber,
-          protocolSwapFee: (await vault.getProtocolFees()).swapFee,
+          protocolSwapFee: await feesCollector.getSwapFee(),
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
       });
@@ -426,9 +434,9 @@ describe('Vault - join pool', () => {
       });
 
       it('collects protocol fees', async () => {
-        const previousCollectedFees: BigNumber[] = await vault.getCollectedFees(tokens.addresses);
+        const previousCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
         await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
-        const currentCollectedFees: BigNumber[] = await vault.getCollectedFees(tokens.addresses);
+        const currentCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
 
         expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(dueProtocolFeeAmounts);
       });

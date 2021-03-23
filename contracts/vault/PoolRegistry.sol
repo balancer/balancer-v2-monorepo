@@ -513,7 +513,7 @@ abstract contract PoolRegistry is
                 ? balances[i].increaseCash(amountIn - feeToPay) // Don't need checked arithmetic
                 : balances[i].decreaseCash(feeToPay - amountIn); // Same as -(int256(amountIn) - int256(feeToPay))
 
-            _increaseCollectedFees(_translateToIERC20(asset), feeToPay);
+            _payFee(_translateToIERC20(asset), feeToPay);
         }
 
         // We prevent user error by reverting if ETH was sent but not referenced by any asset.
@@ -537,7 +537,7 @@ abstract contract PoolRegistry is
 
             // Send tokens from the recipient - possibly to Internal Balance
             // Tokens deposited to Internal Balance are not later exempt from withdrawal fees.
-            uint256 withdrawFee = change.useInternalBalance ? 0 : _calculateProtocolWithdrawFeeAmount(amountOut);
+            uint256 withdrawFee = change.useInternalBalance ? 0 : _calculateWithdrawFee(amountOut);
             IAsset asset = change.assets[i];
             _sendAsset(asset, amountOut.sub(withdrawFee), recipient, change.useInternalBalance, false);
 
@@ -547,7 +547,7 @@ abstract contract PoolRegistry is
             uint256 delta = amountOut.add(protocolSwapFee);
             finalBalances[i] = balances[i].decreaseCash(delta);
 
-            _increaseCollectedFees(_translateToIERC20(asset), protocolSwapFee.add(withdrawFee));
+            _payFee(_translateToIERC20(asset), protocolSwapFee.add(withdrawFee));
         }
     }
 
