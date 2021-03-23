@@ -26,8 +26,9 @@ interface IPoolSwapStructs {
     // This data structure represents a request for a token swap, where `kind` indicates the swap type (given in or
     // given out) which tells whether the amount sent by the Pool is known or not respectively.
     //
-    // `tokenIn` and `tokenOut` are the tokens the Pool will receive and send, respectively. `amountOut` is the number
-    // of `tokenOut` tokens that the Pool will send.
+    // `tokenIn` and `tokenOut` are the tokens the Pool will receive and send, respectively. `amount` is the number
+    // of `tokenIn` tokens that goes into the Pool, or the number of `tokenOut` tokens that the Pool will send depending
+    // on the given swap `kind`.
     //
     // All other fields are not strictly necessary for most swaps, but are provided to support advanced scenarios in
     // some Pools.
