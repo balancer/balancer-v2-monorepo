@@ -306,15 +306,23 @@ interface IVault {
      *
      * If the caller is not `sender`, it must be an authorized relayer for them.
      *
-     * The `tokens` and `maxAmountsIn` arrays must have the same length, and each entry in these indicates the maximum
-     * token amount to send for each token contract. The amounts to send are decided by the Pool and not the Vault: it
-     * just enforces these maximums.
+     * The `assets` and `maxAmountsIn` arrays must have the same length, and each entry in these indicates the maximum
+     * amount to send for each asset. The amounts to send are decided by the Pool and not the Vault: it just enforces
+     * these maximums.
      *
-     * `tokens` must have the same length and order as the one returned by `getPoolTokens`. This prevents issues when
-     * interacting with Pools that register and deregister tokens frequently.
+     * If joining a Pool that holds WETH, it is possible to send ETH directly: the Vault will do the wrapping. To enable
+     * this mechanism, the IAsset sentinel value (the zero address) must be passed in the `assets` array instead of the
+     * WETH address. Note that it is not possible to combine ETH and WETH in the same join. Any excess ETH will be sent
+     * back to the caller (not the sender, which is relevant for relayers).
+     *
+     * `assets` must have the same length and order as the one returned by `getPoolTokens`. This prevents issues when
+     * interacting with Pools that register and deregister tokens frequently. If sending ETH however, the array must be
+     * sorted *before* replacing the WETH address with the ETH address, which means the final `assets` array might not
+     * be sorted.
      *
      * If `fromInternalBalance` is true, the caller's Internal Balance will be preferred: ERC20 transfers will only
-     * be made for the difference between the requested amount and Internal Balance (if any).
+     * be made for the difference between the requested amount and Internal Balance (if any). Note that ETH cannot be
+     * withdrawn from Internal Balance: attempting to do so with trigger a revert.
      *
      * This causes the Vault to call the `IBasePool.onJoinPool` hook on the Pool's contract, where Pools implements
      * their own custom logic. This typically requires additional information from the user (such as the expected number
@@ -342,11 +350,18 @@ interface IVault {
      * token amount to receive for each token contract. The amounts to send are decided by the Pool and not the Vault:
      * it just enforces these minimums.
      *
-     * `tokens` must have the same length and order as the one returned by `getPoolTokens`. This prevents issues when
-     * interacting with Pools that register and deregister tokens frequently.
+     * If exiting a Pool that holds WETH, it is possible to receive ETH directly: the Vault will do the unwrapping. To
+     * enable this mechanism, the IAsset sentinel value (the zero address) must be passed in the `assets` array instead
+     * of the WETH address. Note that it is not possible to combine ETH and WETH in the same exit.
+     *
+     * `assets` must have the same length and order as the one returned by `getPoolTokens`. This prevents issues when
+     * interacting with Pools that register and deregister tokens frequently. If receiving ETH however, the array must
+     * be sorted *before* replacing the WETH address with the ETH address, which means the final `assets` array might
+     * not be sorted.
      *
      * If `toInternalBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
-     * an ERC20 transfer will be performed, charging protocol withdraw fees.
+     * an ERC20 transfer will be performed, charging protocol withdraw fees. Note that ETH cannot be deposited to
+     * Internal Balance: attempting to do so with trigger a revert.
      *
      * `minAmountsOut` is the minimum amount of tokens the user expects to get out of the Pool, for each token in the
      * `tokens` array. This array must match the Pool's registered tokens.
@@ -413,9 +428,9 @@ interface IVault {
     // this point in time (e.g. if the transaction failed to be included in a block promptly).
     //
     // If interacting with Pools that hold WETH, it is possible to both send and receive ETH directly: the Vault will do
-    // the wrapping and unwrapping. To enable this mecanism, the IAsset sentinel value (the zero address) must be passed
-    // in the `assets` array instead of the WETH address. Note that it is possible to combine ETH and WETH in the same
-    // swap. Any excess ETH will be sent back to the caller (not the sender, which is relevant for relayers).
+    // the wrapping and unwrapping. To enable this mechanism, the IAsset sentinel value (the zero address) must be
+    // passed in the `assets` array instead of the WETH address. Note that it is possible to combine ETH and WETH in the
+    // same swap. Any excess ETH will be sent back to the caller (not the sender, which is relevant for relayers).
     //
     // Finally, Internal Balance can be used both when sending and receiving tokens.
 
