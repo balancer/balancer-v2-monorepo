@@ -410,7 +410,7 @@ abstract contract PoolRegistry is
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) internal {
+    ) private {
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
@@ -428,7 +428,7 @@ abstract contract PoolRegistry is
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) internal {
+    ) private {
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
@@ -446,7 +446,7 @@ abstract contract PoolRegistry is
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) internal {
+    ) private {
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
