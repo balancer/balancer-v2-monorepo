@@ -27,7 +27,6 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
     using SafeERC20 for IERC20;
 
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
-    uint256 private _fee;
 
     constructor(IWETH weth) AssetTransfersHandler(weth) {}
 
@@ -84,17 +83,5 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
 
         // For this mock scenario, we consider always the amount to be fully taxable
         return (toDeduct, toDeduct);
-    }
-
-    function calculateProtocolWithdrawFeeAmount(uint256 amount) external view returns (uint256) {
-        return _calculateProtocolWithdrawFeeAmount(amount);
-    }
-
-    function setProtocolWithdrawFeePercentage(uint256 fee) external {
-        _fee = fee;
-    }
-
-    function _calculateProtocolWithdrawFeeAmount(uint256 amount) internal view override returns (uint256) {
-        return FixedPoint.mulDown(amount, _fee);
     }
 }
