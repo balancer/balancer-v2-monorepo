@@ -31,6 +31,8 @@ abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
     ProtocolFeesCollector private _protocolFeesCollector;
 
     constructor() {
+        // Most of the protocol fee logic is not here but in the ProtocolFeesCollector contract. The reason for this is
+        // to reduce the bytecode size of the Vault.
         _protocolFeesCollector = new ProtocolFeesCollector(IVault(this));
     }
 
