@@ -20,6 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/helpers/BalancerErrors.sol";
 
 import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";

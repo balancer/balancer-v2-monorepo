@@ -71,15 +71,15 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        require(tokenX != IERC20(0) && tokenY != IERC20(0), "ZERO_ADDRESS_TOKEN");
+        _require(tokenX != IERC20(0) && tokenY != IERC20(0), Errors.ZERO_ADDRESS_TOKEN);
 
         // Not technically true since we didn't register yet, but this is consistent with the error messages of other
         // specialization settings.
-        require(tokenX != tokenY, "TOKEN_ALREADY_REGISTERED");
-        require(tokenX < tokenY, "UNSORTED_TOKENS");
+        _require(tokenX != tokenY, Errors.TOKEN_ALREADY_REGISTERED);
+        _require(tokenX < tokenY, Errors.UNSORTED_TOKENS);
 
         TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
-        require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), "TOKENS_ALREADY_SET");
+        _require(poolTokens.tokenA == IERC20(0) && poolTokens.tokenB == IERC20(0), Errors.TOKENS_ALREADY_SET);
 
         poolTokens.tokenA = tokenX;
         poolTokens.tokenB = tokenY;
@@ -99,7 +99,7 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenY
     ) internal {
         (bytes32 balanceA, bytes32 balanceB, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
-        require(balanceA.isZero() && balanceB.isZero(), "NONZERO_TOKEN_BALANCE");
+        _require(balanceA.isZero() && balanceB.isZero(), Errors.NONZERO_TOKEN_BALANCE);
 
         delete _twoTokenPoolTokens[poolId];
         // No need to delete the balance entries, since they already are zero
@@ -204,7 +204,7 @@ contract TwoTokenPoolsBalance {
         // Only registered tokens can have non-zero balances, so we can use this as a shortcut to avoid the
         // expensive _hasPoolTwoTokens check.
         bool exists = sharedCash.isNotZero() || sharedManaged.isNotZero() || _hasPoolTwoTokens(poolId, tokenA, tokenB);
-        require(exists, "TOKEN_NOT_REGISTERED");
+        _require(exists, Errors.TOKEN_NOT_REGISTERED);
 
         balanceA = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
         balanceB = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);

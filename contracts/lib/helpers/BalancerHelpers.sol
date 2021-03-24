@@ -20,6 +20,7 @@ import "../math/FixedPoint.sol";
 
 import "./InputHelpers.sol";
 import "./AssetHelpers.sol";
+import "./BalancerErrors.sol";
 
 import "../../pools/BasePool.sol";
 import "../../vault/ProtocolFeesCollector.sol";
@@ -109,7 +110,7 @@ contract BalancerHelpers is AssetHelpers {
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             IERC20 token = actualTokens[i];
-            require(token == expectedTokens[i], "TOKENS_MISMATCH");
+            _require(token == expectedTokens[i], Errors.TOKENS_MISMATCH);
             (, , uint256 blockNumber, ) = vault.getPoolTokenInfo(poolId, token);
             latestBlockNumberUsed = Math.max(latestBlockNumberUsed, blockNumber);
         }

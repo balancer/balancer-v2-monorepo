@@ -14,6 +14,8 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "./BalancerErrors.sol";
+
 /**
  * @dev Library for managing an enumerable variant of Solidity's
  * https://solidity.readthedocs.io/en/latest/types.html#mapping-types[`mapping`]
@@ -197,7 +199,7 @@ library EnumerableMap {
      * - `index` must be strictly less than {length}.
      */
     function _at(Map storage map, uint256 index) private view returns (bytes32, bytes32) {
-        require(map._length > index, "OUT_OF_BOUNDS");
+        _require(map._length > index, Errors.OUT_OF_BOUNDS);
 
         MapEntry storage entry = map._entries[index];
         return (entry._key, entry._value);

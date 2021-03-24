@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.0;
 
+import "../helpers/BalancerErrors.sol";
+
 // There's plenty of linter errors caused by this file, we'll eventually
 // revisit it to make it more readable, verfiable and testable.
 /* solhint-disable */
@@ -68,7 +70,7 @@ library LogExpMath {
      * @return eˆx
      */
     function n_exp(int256 x) internal pure returns (int256) {
-        require(x >= EXPONENT_LB && x <= EXPONENT_UB, "OUT_OF_BOUNDS");
+        _require(x >= EXPONENT_LB && x <= EXPONENT_UB, Errors.OUT_OF_BOUNDS);
 
         if (x < 0) return (DOUBLE_DECIMALS / n_exp(-x));
         int256 ans = PRECISION;
@@ -148,7 +150,7 @@ library LogExpMath {
      * @return ln(x)
      */
     function n_log(int256 a) internal pure returns (int256) {
-        require(a > 0, "OUT_OF_BOUNDS");
+        _require(a > 0, Errors.OUT_OF_BOUNDS);
         if (a < DECIMALS) return (-n_log(DOUBLE_DECIMALS / a));
         int256 ans = 0;
         if (a >= a0 * DECIMALS) {
@@ -233,8 +235,8 @@ library LogExpMath {
             return 0;
         }
 
-        require(x < 2**255, "X_OUT_OF_BOUNDS"); // uint256 can be casted to a positive int256
-        require(y < MILD_EXPONENT_BOUND, "Y_OUT_OF_BOUNDS");
+        _require(x < 2**255, Errors.X_OUT_OF_BOUNDS); // uint256 can be casted to a positive int256
+        _require(y < MILD_EXPONENT_BOUND, Errors.Y_OUT_OF_BOUNDS);
         int256 x_int256 = int256(x);
         int256 y_int256 = int256(y);
         int256 logx_times_y;

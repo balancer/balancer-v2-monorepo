@@ -47,7 +47,7 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
 
-            require(token > previousToken, "UNSORTED_TOKENS"); // Prevents duplicate tokens
+            _require(token > previousToken, Errors.UNSORTED_TOKENS); // Prevents duplicate tokens
             previousToken = token;
 
             // Not checking amount against current balance, transfer will revert if it is exceeded
@@ -64,10 +64,10 @@ abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
             uint256 preLoanBalance = preLoanBalances[i];
 
             uint256 postLoanBalance = token.balanceOf(address(this));
-            require(postLoanBalance >= preLoanBalance, "INVALID_POST_LOAN_BALANCE");
+            _require(postLoanBalance >= preLoanBalance, Errors.INVALID_POST_LOAN_BALANCE);
 
             uint256 receivedFees = postLoanBalance - preLoanBalance;
-            require(receivedFees >= feeAmounts[i], "INSUFFICIENT_COLLECTED_FEES");
+            _require(receivedFees >= feeAmounts[i], Errors.INSUFFICIENT_COLLECTED_FEES);
 
             _payFee(token, receivedFees);
         }
