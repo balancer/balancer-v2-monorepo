@@ -95,6 +95,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor14;
     uint256 internal immutable _scalingFactor15;
 
+    event SwapFeeChanged(uint256 swapFee);
+
     constructor(
         IVault vault,
         IVault.PoolSpecialization specialization,
@@ -186,7 +188,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function setSwapFee(uint256 swapFee) external authenticate {
         _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
+
         _swapFee = swapFee;
+        emit SwapFeeChanged(swapFee);
     }
 
     function setEmergencyPeriod(bool active) external authenticate {
