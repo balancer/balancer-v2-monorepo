@@ -16,9 +16,9 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/drafts/IERC20Permit.sol";
 import "@openzeppelin/contracts/drafts/EIP712.sol";
+import "../lib/openzeppelin/Counters.sol";
 import "../lib/math/Math.sol";
 
 // Contracts
