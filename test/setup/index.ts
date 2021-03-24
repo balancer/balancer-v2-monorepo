@@ -96,7 +96,7 @@ chai.use(function (chai) {
 
           // If the actual error code is not a balancer error, re-throw error
           if (!actualErrorCode.includes('BAL#')) throw error;
-          actualErrorCode = actualErrorCode.replace('BAL#', '').replace(/\0/g, '');
+          actualErrorCode = actualErrorCode.replace('BAL#', '');
 
           // If there is no balancer error matching the expected revert reason re-throw the error
           // @ts-ignore

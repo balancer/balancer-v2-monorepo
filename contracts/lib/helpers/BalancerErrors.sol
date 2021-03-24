@@ -166,7 +166,7 @@ library Errors {
         reversed[i++] = byte(uint8(35)); // #
         reversed[i++] = byte(uint8(76)); // L
         reversed[i++] = byte(uint8(65)); // A
-        reversed[i++] = byte(uint8(66)); // B
+        reversed[i] = byte(uint8(66));   // B
 
         // Reverse the bytes array
         bytes memory reason = new bytes(i + 1);
