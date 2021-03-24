@@ -104,8 +104,8 @@ contract GeneralPoolsBalance {
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) internal {
-        _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
+    ) internal returns (int256) {
+        return _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateGeneralPoolBalance(
@@ -113,10 +113,12 @@ contract GeneralPoolsBalance {
         IERC20 token,
         function(bytes32, uint256) returns (bytes32) mutation,
         uint256 amount
-    ) internal {
+    ) internal returns (int256) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
-        poolBalances.set(token, mutation(currentBalance, amount));
+        bytes32 newBalance = mutation(currentBalance, amount);
+        poolBalances.set(token, newBalance);
+        return newBalance.managedDelta(currentBalance);
     }
 
     /**

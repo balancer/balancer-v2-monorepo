@@ -427,7 +427,6 @@ describe('Vault - join pool', () => {
         expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
           poolId,
           liquidityProvider: lp.address,
-          kind: 0,
           amounts: joinAmounts,
           protocolFees: dueProtocolFeeAmounts,
         });

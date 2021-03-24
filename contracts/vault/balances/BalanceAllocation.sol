@@ -80,6 +80,14 @@ library BalanceAllocation {
     }
 
     /**
+     * @dev Returns the managed delta between two balances
+     */
+    function managedDelta(bytes32 balance, bytes32 otherBalance) internal pure returns (int256) {
+        // Due to how balances are packed we know the delta between two managed values will always fit in an int256
+        return int256(managed(balance)) - int256(managed(otherBalance));
+    }
+
+    /**
      * @dev Returns the total balance for each entry in `balances`.
      */
     function totals(bytes32[] memory balances) internal pure returns (uint256[] memory results) {

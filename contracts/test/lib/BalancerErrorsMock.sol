@@ -18,6 +18,6 @@ import "../../lib/helpers/BalancerErrors.sol";
 
 contract BalancerErrorsMock {
     function fail(uint256 code) external pure {
-        require(false, Errors._toReason(code));
+        _revert(code);
     }
 }

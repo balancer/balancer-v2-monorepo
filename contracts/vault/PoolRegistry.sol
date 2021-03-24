@@ -21,7 +21,6 @@ import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
-import "../lib/openzeppelin/SafeCast.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/Counters.sol";
 
@@ -40,7 +39,6 @@ abstract contract PoolRegistry is
     TwoTokenPoolsBalance
 {
     using Math for uint256;
-    using SafeCast for uint256;
     using SafeERC20 for IERC20;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
@@ -312,7 +310,9 @@ abstract contract PoolRegistry is
             _setGeneralPoolBalances(poolId, finalBalances);
         }
 
-        emit PoolBalanceChanged(poolId, sender, kind, tokens, amounts, dueProtocolFeeAmounts);
+        // We can unsafely cast to int256 cause balances are actually stored as uint112
+        bool positive = kind == PoolBalanceChangeKind.JOIN;
+        emit PoolBalanceChanged(poolId, sender, tokens, _unsafeCastToInt256(amounts, positive), dueProtocolFeeAmounts);
     }
 
     function _callPoolBalanceChange(
@@ -396,13 +396,16 @@ abstract contract PoolRegistry is
             _ensurePoolAssetManagerIsSender(poolId, token);
             uint256 amount = transfers[i].amount;
 
+            int256 delta;
             if (kind == AssetManagerOpKind.DEPOSIT) {
-                _depositPoolBalance(poolId, specialization, token, amount);
+                delta = _depositPoolBalance(poolId, specialization, token, amount);
             } else if (kind == AssetManagerOpKind.WITHDRAW) {
-                _withdrawPoolBalance(poolId, specialization, token, amount);
+                delta = _withdrawPoolBalance(poolId, specialization, token, amount);
             } else {
-                _updateManagedBalance(poolId, specialization, token, amount);
+                delta = _updateManagedBalance(poolId, specialization, token, amount);
             }
+
+            emit PoolBalanceManaged(poolId, msg.sender, token, delta);
         }
     }
 
@@ -411,7 +414,7 @@ abstract contract PoolRegistry is
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) private {
+    ) private returns (int256) {
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
@@ -421,7 +424,9 @@ abstract contract PoolRegistry is
         }
 
         token.safeTransfer(msg.sender, amount);
-        emit PoolBalanceManaged(poolId, msg.sender, token, -(amount.toInt256()));
+
+        // Due to how balances are stored internally we know `amount` will always fit in an int256
+        return -int256(amount);
     }
 
     function _depositPoolBalance(
@@ -429,7 +434,7 @@ abstract contract PoolRegistry is
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) private {
+    ) private returns (int256) {
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
@@ -439,7 +444,9 @@ abstract contract PoolRegistry is
         }
 
         token.safeTransferFrom(msg.sender, address(this), amount);
-        emit PoolBalanceManaged(poolId, msg.sender, token, amount.toInt256());
+
+        // Due to how balances are stored internally we know `amount` will always fit in an int256
+        return int256(amount);
     }
 
     function _updateManagedBalance(
@@ -447,18 +454,14 @@ abstract contract PoolRegistry is
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) private {
+    ) private returns (int256) {
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
+            return _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            _setTwoTokenPoolManagedBalance(poolId, token, amount);
+            return _setTwoTokenPoolManagedBalance(poolId, token, amount);
         } else {
-            _setGeneralPoolManagedBalance(poolId, token, amount);
+            return _setGeneralPoolManagedBalance(poolId, token, amount);
         }
-
-        // Due to how balances are stored internally, computing the delta here could be a little bit expensive
-        // in terms of bytecode. The user will have to reconstruct it based on the previous balances manually
-        emit PoolBalanceManaged(poolId, msg.sender, token, amount.toInt256());
     }
 
     /**
@@ -588,6 +591,16 @@ abstract contract PoolRegistry is
             return _isMinimalSwapInfoPoolTokenRegistered(poolId, token);
         } else {
             return _isGeneralPoolTokenRegistered(poolId, token);
+        }
+    }
+
+    /**
+     * @dev Casts an array of uint256 to int256 without checking overflows
+     */
+    function _unsafeCastToInt256(uint256[] memory values, bool positive) private pure returns (int256[] memory casts) {
+        casts = new int256[](values.length);
+        for (uint256 i = 0; i < values.length; i++) {
+            casts[i] = positive ? int256(values[i]) : -int256(values[i]);
         }
     }
 }

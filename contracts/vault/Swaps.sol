@@ -22,6 +22,7 @@ import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/EnumerableMap.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeCast.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/EnumerableSet.sol";
 

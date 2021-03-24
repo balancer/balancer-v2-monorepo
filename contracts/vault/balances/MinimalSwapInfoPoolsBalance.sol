@@ -106,8 +106,8 @@ contract MinimalSwapInfoPoolsBalance {
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) internal {
-        _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
+    ) internal returns (int256) {
+        return _updateMinimalSwapInfoPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateMinimalSwapInfoPoolBalance(
@@ -115,9 +115,11 @@ contract MinimalSwapInfoPoolsBalance {
         IERC20 token,
         function(bytes32, uint256) returns (bytes32) mutation,
         uint256 amount
-    ) internal {
+    ) internal returns (int256) {
         bytes32 currentBalance = _getMinimalSwapInfoPoolBalance(poolId, token);
-        _minimalSwapInfoPoolsBalances[poolId][token] = mutation(currentBalance, amount);
+        bytes32 newBalance = mutation(currentBalance, amount);
+        _minimalSwapInfoPoolsBalances[poolId][token] = newBalance;
+        return newBalance.managedDelta(currentBalance);
     }
 
     /**
