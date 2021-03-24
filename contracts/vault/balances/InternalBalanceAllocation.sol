@@ -129,7 +129,7 @@ library InternalBalanceAllocation {
         uint256 _exempt,
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
-        _require(_actual < 2**112 && _exempt < 2**112, 99);
+        _require(_actual < 2**112 && _exempt < 2**112, Errors.INTERNAL_BALANCE_OVERFLOW);
         // We assume the block number will fits in an uint32 - this is expected to hold for at least a few decades.
         return _pack(_actual, _exempt, _blockNumber);
     }

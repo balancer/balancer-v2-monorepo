@@ -6,7 +6,7 @@ import { deploy } from '../../lib/helpers/deploy';
 describe('BalancerErrors', function () {
   let errors: Contract;
 
-  sharedBeforeEach('deploy errors', async () => {
+  beforeEach('deploy errors', async () => {
     errors = await deploy('BalancerErrorsMock');
   });
 
