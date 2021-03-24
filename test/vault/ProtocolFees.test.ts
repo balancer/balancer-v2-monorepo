@@ -145,7 +145,7 @@ describe('Vault - protocol fees', () => {
 
         await expect(
           vault.withdrawCollectedFees(tokens.DAI.address, bn(0.05e18).add(1), other, { from: feeCollector })
-        ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+        ).to.be.revertedWith('ERC20_TRANSFER_EXCEEDS_BALANCE');
       });
 
       it('unauthorized accounts cannot withdraw collected fees', async () => {

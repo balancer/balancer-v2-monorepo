@@ -246,9 +246,9 @@ library LogExpMath {
         } else {
             logx_times_y = n_log(x_int256) * y_int256;
         }
-        require(
+        _require(
             EXPONENT_LB * DECIMALS <= logx_times_y && logx_times_y <= EXPONENT_UB * DECIMALS,
-            "PRODUCT_OUT_OF_BOUNDS"
+            Errors.PRODUCT_OUT_OF_BOUNDS
         );
         logx_times_y /= DECIMALS;
         return uint256(n_exp(logx_times_y));

@@ -173,7 +173,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, userData);
         } else {
-            revert("UNHANDLED_JOIN_KIND");
+            _revert(Errors.UNHANDLED_JOIN_KIND);
         }
     }
 
@@ -281,7 +281,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, userData);
         } else {
-            revert("UNHANDLED_EXIT_KIND");
+            _revert(Errors.UNHANDLED_EXIT_KIND);
         }
     }
 

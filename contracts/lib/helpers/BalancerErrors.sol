@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.0;
 
+// solhint-disable
+
 function _require(bool condition, uint256 errorCode) pure {
     if (!condition) _revert(errorCode);
 }

@@ -151,7 +151,7 @@ contract GeneralPoolsBalance {
         view
         returns (bytes32)
     {
-        return poolBalances.get(token, "TOKEN_NOT_REGISTERED");
+        return poolBalances.get(token, Errors.TOKEN_NOT_REGISTERED);
     }
 
     function _isGeneralPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {

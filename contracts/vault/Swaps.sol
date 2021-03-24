@@ -16,13 +16,14 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/EnumerableMap.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/EnumerableSet.sol";
 
 import "./PoolRegistry.sol";
 import "./interfaces/IPoolSwapStructs.sol";
@@ -268,7 +269,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                     _require(usingPreviousToken, Errors.MALCONSTRUCTED_MULTIHOP_SWAP);
                     swap.amount = previous.amountCalculated;
                 } else {
-                    revert("UNKNOWN_AMOUNT_IN_FIRST_SWAP");
+                    _revert(Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
                 }
             }
 
@@ -441,8 +442,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenOutBalance;
 
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
-        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "TOKEN_NOT_REGISTERED");
-        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "TOKEN_NOT_REGISTERED");
+        uint256 indexIn = poolBalances.indexOf(request.tokenIn, Errors.TOKEN_NOT_REGISTERED);
+        uint256 indexOut = poolBalances.indexOf(request.tokenOut, Errors.TOKEN_NOT_REGISTERED);
 
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);

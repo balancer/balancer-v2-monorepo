@@ -15,17 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/InputHelpers.sol";
-import "../lib/helpers/BalancerErrors.sol";
+import "../lib/helpers/EmergencyPeriod.sol";
+import "../lib/openzeppelin/ERC20.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
-import "../lib/helpers/EmergencyPeriod.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
@@ -405,7 +403,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         else if (token == _token14) { return _scalingFactor14; }
         else if (token == _token15) { return _scalingFactor15; }
         else {
-            revert("INVALID_TOKEN");
+            _revert(Errors.INVALID_TOKEN);
         }
     }
 

@@ -15,14 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeCast.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/Counters.sol";
 
 import "./interfaces/IBasePool.sol";
 import "./InternalBalance.sol";

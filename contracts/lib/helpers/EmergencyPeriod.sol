@@ -34,7 +34,10 @@ contract EmergencyPeriod {
 
     constructor(uint256 emergencyPeriod, uint256 emergencyPeriodCheckExtension) {
         _require(emergencyPeriod <= _MAX_EMERGENCY_PERIOD, Errors.MAX_EMERGENCY_PERIOD);
-        _require(emergencyPeriodCheckExtension <= _MAX_EMERGENCY_PERIOD_CHECK_EXT, Errors.MAX_EMERGENCY_PERIOD_CHECK_EXT);
+        _require(
+            emergencyPeriodCheckExtension <= _MAX_EMERGENCY_PERIOD_CHECK_EXT,
+            Errors.MAX_EMERGENCY_PERIOD_CHECK_EXT
+        );
 
         _emergencyPeriodEndDate = block.timestamp + emergencyPeriod;
         _emergencyPeriodCheckEndDate = block.timestamp + emergencyPeriod + emergencyPeriodCheckExtension;

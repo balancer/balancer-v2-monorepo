@@ -16,11 +16,11 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 import "../lib/helpers/BalancerErrors.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";

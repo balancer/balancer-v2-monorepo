@@ -16,6 +16,8 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "../../lib/helpers/BalancerErrors.sol";
+
 import "./BalanceAllocation.sol";
 
 contract TwoTokenPoolsBalance {
@@ -164,7 +166,7 @@ contract TwoTokenPoolsBalance {
         } else if (token == tokenB) {
             balanceB = mutation(balanceB, amount);
         } else {
-            revert("TOKEN_NOT_REGISTERED");
+            _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
         balances.sharedCash = BalanceAllocation.toSharedCash(balanceA, balanceB);
@@ -258,7 +260,7 @@ contract TwoTokenPoolsBalance {
         } else if (token == tokenB) {
             return balanceB;
         } else {
-            revert("TOKEN_NOT_REGISTERED");
+            _revert(Errors.TOKEN_NOT_REGISTERED);
         }
     }
 

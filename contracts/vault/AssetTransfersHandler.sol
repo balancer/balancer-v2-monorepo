@@ -16,11 +16,12 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/AssetHelpers.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/Address.sol";
 
 import "./interfaces/IWETH.sol";
 import "./interfaces/IAsset.sol";
