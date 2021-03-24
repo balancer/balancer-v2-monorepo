@@ -14,6 +14,8 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "./BalancerErrors.sol";
+
 /**
  * @dev Library for managing an enumerable variant of Solidity's
  * https://solidity.readthedocs.io/en/latest/types.html#mapping-types[`mapping`]
@@ -100,7 +102,7 @@ library EnumerableMap {
      * - `key` must be in the map.
      */
     function _indexOf(Map storage map, bytes32 key) private view returns (uint256) {
-        return _indexOf(map, key, "OUT_OF_BOUNDS");
+        return _indexOf(map, key, Errors.OUT_OF_BOUNDS);
     }
 
     /**
@@ -109,10 +111,10 @@ library EnumerableMap {
     function _indexOf(
         Map storage map,
         bytes32 key,
-        string memory notFoundErrorMessage
+        uint256 errorCode
     ) private view returns (uint256) {
         uint256 index = map._indexes[key];
-        require(index > 0, notFoundErrorMessage);
+        _require(index > 0, errorCode);
         return index - 1;
     }
 
@@ -197,7 +199,7 @@ library EnumerableMap {
      * - `index` must be strictly less than {length}.
      */
     function _at(Map storage map, uint256 index) private view returns (bytes32, bytes32) {
-        require(map._length > index, "OUT_OF_BOUNDS");
+        _require(map._length > index, Errors.OUT_OF_BOUNDS);
 
         MapEntry storage entry = map._entries[index];
         return (entry._key, entry._value);
@@ -231,7 +233,7 @@ library EnumerableMap {
      * - `key` must be in the map.
      */
     function _get(Map storage map, bytes32 key) private view returns (bytes32) {
-        return _get(map, key, "OUT_OF_BOUNDS");
+        return _get(map, key, Errors.OUT_OF_BOUNDS);
     }
 
     /**
@@ -240,9 +242,9 @@ library EnumerableMap {
     function _get(
         Map storage map,
         bytes32 key,
-        string memory notFoundErrorMessage
+        uint256 errorCode
     ) private view returns (bytes32) {
-        uint256 index = _indexOf(map, key, notFoundErrorMessage);
+        uint256 index = _indexOf(map, key, errorCode);
         return _unchecked_valueAt(map, index);
     }
 
@@ -368,9 +370,9 @@ library EnumerableMap {
     function get(
         UintToAddressMap storage map,
         uint256 key,
-        string memory errorMessage
+        uint256 errorCode
     ) internal view returns (address) {
-        return address(uint256(_get(map._inner, bytes32(key), errorMessage)));
+        return address(uint256(_get(map._inner, bytes32(key), errorCode)));
     }
 
     // IERC20ToBytes32Map
@@ -412,9 +414,9 @@ library EnumerableMap {
     function indexOf(
         IERC20ToBytes32Map storage map,
         IERC20 key,
-        string memory notFoundErrorMessage
+        uint256 errorCode
     ) internal view returns (uint256) {
-        return _indexOf(map._inner, bytes32(uint256(address(key))), notFoundErrorMessage);
+        return _indexOf(map._inner, bytes32(uint256(address(key))), errorCode);
     }
 
     /**
@@ -510,8 +512,8 @@ library EnumerableMap {
     function get(
         IERC20ToBytes32Map storage map,
         IERC20 key,
-        string memory errorMessage
+        uint256 errorCode
     ) internal view returns (bytes32) {
-        return _get(map._inner, bytes32(uint256(address(key))), errorMessage);
+        return _get(map._inner, bytes32(uint256(address(key))), errorCode);
     }
 }

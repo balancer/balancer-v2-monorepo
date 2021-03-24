@@ -80,6 +80,14 @@ library BalanceAllocation {
     }
 
     /**
+     * @dev Returns the managed delta between two balances
+     */
+    function managedDelta(bytes32 balance, bytes32 otherBalance) internal pure returns (int256) {
+        // Due to how balances are packed we know the delta between two managed values will always fit in an int256
+        return int256(managed(balance)) - int256(managed(otherBalance));
+    }
+
+    /**
      * @dev Returns the total balance for each entry in `balances`.
      */
     function totals(bytes32[] memory balances) internal pure returns (uint256[] memory results) {
@@ -135,7 +143,7 @@ library BalanceAllocation {
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
         uint256 balance = _cash + _managed;
-        require(balance >= _cash && balance < 2**112, "BALANCE_TOTAL_OVERFLOW");
+        _require(balance >= _cash && balance < 2**112, Errors.BALANCE_TOTAL_OVERFLOW);
         // We assume the block number will fits in an uint32 - this is expected to hold for at least a few decades.
         return _pack(_cash, _managed, _blockNumber);
     }

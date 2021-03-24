@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.0;
 
+import "./BalancerErrors.sol";
+
 abstract contract Authentication {
     /**
      * @dev Reverts unless the caller is allowed to call this function. Should only be applied to external functions.
@@ -30,7 +32,7 @@ abstract contract Authentication {
         // Each external function is dynamically assigned a role ID as the hash of the contract address
         // and the function selector.
         bytes32 roleId = keccak256(abi.encodePacked(address(this), msg.sig));
-        require(_canPerform(roleId, msg.sender), "SENDER_NOT_ALLOWED");
+        _require(_canPerform(roleId, msg.sender), Errors.SENDER_NOT_ALLOWED);
     }
 
     function _canPerform(bytes32 roleId, address user) internal view virtual returns (bool);

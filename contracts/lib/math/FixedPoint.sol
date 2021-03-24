@@ -14,7 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "../../lib/math/LogExpMath.sol";
+import "./LogExpMath.sol";
+import "../helpers/BalancerErrors.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 
@@ -26,37 +27,37 @@ library FixedPoint {
         // Fixed Point addition is the same as regular checked addition
 
         uint256 c = a + b;
-        require(c >= a, "ADD_OVERFLOW");
+        _require(c >= a, Errors.ADD_OVERFLOW);
         return c;
     }
 
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
 
-        require(b <= a, "SUB_OVERFLOW");
+        _require(b <= a, Errors.SUB_OVERFLOW);
         uint256 c = a - b;
         return c;
     }
 
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c0 = a * b;
-        require(a == 0 || c0 / a == b, "MUL_OVERFLOW");
+        _require(a == 0 || c0 / a == b, Errors.MUL_OVERFLOW);
         uint256 c1 = c0 + (ONE / 2);
-        require(c1 >= c0, "MUL_OVERFLOW");
+        _require(c1 >= c0, Errors.MUL_OVERFLOW);
         uint256 c2 = c1 / ONE;
         return c2;
     }
 
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 product = a * b;
-        require(a == 0 || product / a == b, "MUL_OVERFLOW");
+        _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
 
         return product / ONE;
     }
 
     function mulUp(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 product = a * b;
-        require(a == 0 || product / a == b, "MUL_OVERFLOW");
+        _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
 
         if (product == 0) {
             return 0;
@@ -72,36 +73,36 @@ library FixedPoint {
     }
 
     function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "ZERO_DIVISION");
+        _require(b != 0, Errors.ZERO_DIVISION);
         uint256 c0 = a * ONE;
-        require(a == 0 || c0 / a == ONE, "DIV_INTERNAL"); // mul overflow
+        _require(a == 0 || c0 / a == ONE, Errors.DIV_INTERNAL); // mul overflow
         uint256 c1 = c0 + (b / 2);
-        require(c1 >= c0, "DIV_INTERNAL"); // add require
+        _require(c1 >= c0, Errors.DIV_INTERNAL); // add require
         uint256 c2 = c1 / b;
         return c2;
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "ZERO_DIVISION");
+        _require(b != 0, Errors.ZERO_DIVISION);
 
         if (a == 0) {
             return 0;
         } else {
             uint256 aInflated = a * ONE;
-            require(aInflated / a == ONE, "DIV_INTERNAL"); // mul overflow
+            _require(aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
 
             return aInflated / b;
         }
     }
 
     function divUp(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "ZERO_DIVISION");
+        _require(b != 0, Errors.ZERO_DIVISION);
 
         if (a == 0) {
             return 0;
         } else {
             uint256 aInflated = a * ONE;
-            require(aInflated / a == ONE, "DIV_INTERNAL"); // mul overflow
+            _require(aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
 
             // The traditional divUp formula is:
             // divUp(x, y) := (x + y - 1) / y
