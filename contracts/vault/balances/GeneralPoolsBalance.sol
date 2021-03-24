@@ -47,9 +47,9 @@ contract GeneralPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "ZERO_ADDRESS_TOKEN");
+            _require(token != IERC20(0), Errors.ZERO_ADDRESS_TOKEN);
             bool added = poolBalances.set(token, 0);
-            require(added, "TOKEN_ALREADY_REGISTERED");
+            _require(added, Errors.TOKEN_ALREADY_REGISTERED);
         }
     }
 
@@ -67,7 +67,7 @@ contract GeneralPoolsBalance {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
-            require(currentBalance.isZero(), "NONZERO_TOKEN_BALANCE");
+            _require(currentBalance.isZero(), Errors.NONZERO_TOKEN_BALANCE);
 
             // We don't need to check remove's return value, since _getGeneralPoolBalance already checks that the token
             // was registered.
@@ -151,7 +151,7 @@ contract GeneralPoolsBalance {
         view
         returns (bytes32)
     {
-        return poolBalances.get(token, "TOKEN_NOT_REGISTERED");
+        return poolBalances.get(token, Errors.TOKEN_NOT_REGISTERED);
     }
 
     function _isGeneralPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {

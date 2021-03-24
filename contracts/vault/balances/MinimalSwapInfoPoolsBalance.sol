@@ -15,7 +15,9 @@
 pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
+
+import "../../lib/helpers/BalancerErrors.sol";
+import "../../lib/openzeppelin/EnumerableSet.sol";
 
 import "./BalanceAllocation.sol";
 
@@ -48,9 +50,9 @@ contract MinimalSwapInfoPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "ZERO_ADDRESS_TOKEN");
+            _require(token != IERC20(0), Errors.ZERO_ADDRESS_TOKEN);
             bool added = poolTokens.add(address(token));
-            require(added, "TOKEN_ALREADY_REGISTERED");
+            _require(added, Errors.TOKEN_ALREADY_REGISTERED);
         }
     }
 
@@ -67,9 +69,9 @@ contract MinimalSwapInfoPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(_minimalSwapInfoPoolsBalances[poolId][token].isZero(), "NONZERO_TOKEN_BALANCE");
+            _require(_minimalSwapInfoPoolsBalances[poolId][token].isZero(), Errors.NONZERO_TOKEN_BALANCE);
             bool removed = poolTokens.remove(address(token));
-            require(removed, "TOKEN_NOT_REGISTERED");
+            _require(removed, Errors.TOKEN_NOT_REGISTERED);
             // No need to delete the balance entries, since they already are zero
         }
     }
@@ -148,7 +150,7 @@ contract MinimalSwapInfoPoolsBalance {
     function _getMinimalSwapInfoPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         bytes32 balance = _minimalSwapInfoPoolsBalances[poolId][token];
         bool existsToken = balance.isNotZero() || _minimalSwapInfoPoolsTokens[poolId].contains(address(token));
-        require(existsToken, "TOKEN_NOT_REGISTERED");
+        _require(existsToken, Errors.TOKEN_NOT_REGISTERED);
         return balance;
     }
 

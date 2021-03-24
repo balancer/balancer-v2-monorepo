@@ -16,7 +16,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "../lib/openzeppelin/AccessControl.sol";
 
 import "../vault/interfaces/IWETH.sol";
 

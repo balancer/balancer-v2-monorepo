@@ -15,14 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeCast.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/Counters.sol";
 
 import "./interfaces/IBasePool.sol";
 import "./InternalBalance.sol";
@@ -124,7 +125,7 @@ abstract contract PoolRegistry is
     {
         // Use _totalPools as the Pool ID nonce. uint80 assumes there will never be more than than 2**80 Pools.
         bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_poolNonce.current()));
-        require(!_isPoolRegistered[poolId], "INVALID_POOL_ID"); // Should never happen
+        _require(!_isPoolRegistered[poolId], Errors.INVALID_POOL_ID); // Should never happen
 
         _poolNonce.increment();
         _isPoolRegistered[poolId] = true;
@@ -193,7 +194,7 @@ abstract contract PoolRegistry is
 
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
-            require(tokens.length == 2, "TOKENS_LENGTH_MUST_BE_2");
+            _require(tokens.length == 2, Errors.TOKENS_LENGTH_MUST_BE_2);
             _registerTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _registerMinimalSwapInfoPoolTokens(poolId, tokens);
@@ -221,7 +222,7 @@ abstract contract PoolRegistry is
     {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
-            require(tokens.length == 2, "TOKENS_LENGTH_MUST_BE_2");
+            _require(tokens.length == 2, Errors.TOKENS_LENGTH_MUST_BE_2);
             _deregisterTwoTokenPoolTokens(poolId, tokens[0], tokens[1]);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _deregisterMinimalSwapInfoPoolTokens(poolId, tokens);
@@ -374,7 +375,7 @@ abstract contract PoolRegistry is
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
-            require(actualTokens[i] == expectedTokens[i], "TOKENS_MISMATCH");
+            _require(actualTokens[i] == expectedTokens[i], Errors.TOKENS_MISMATCH);
         }
 
         return balances;
@@ -478,7 +479,7 @@ abstract contract PoolRegistry is
      * @dev Reverts unless `poolId` corresponds to a registered Pool.
      */
     function _ensureRegisteredPool(bytes32 poolId) internal view {
-        require(_isPoolRegistered[poolId], "INVALID_POOL_ID");
+        _require(_isPoolRegistered[poolId], Errors.INVALID_POOL_ID);
     }
 
     function _receiveAssets(
@@ -494,7 +495,7 @@ abstract contract PoolRegistry is
         finalBalances = new bytes32[](balances.length);
         for (uint256 i = 0; i < change.assets.length; ++i) {
             uint256 amountIn = amountsIn[i];
-            require(amountIn <= change.limits[i], "JOIN_ABOVE_MAX");
+            _require(amountIn <= change.limits[i], Errors.JOIN_ABOVE_MAX);
 
             // Receive assets from the caller - possibly from Internal Balance
             IAsset asset = change.assets[i];
@@ -533,7 +534,7 @@ abstract contract PoolRegistry is
         finalBalances = new bytes32[](balances.length);
         for (uint256 i = 0; i < change.assets.length; ++i) {
             uint256 amountOut = amountsOut[i];
-            require(amountOut >= change.limits[i], "EXIT_BELOW_MIN");
+            _require(amountOut >= change.limits[i], Errors.EXIT_BELOW_MIN);
 
             // Send tokens from the recipient - possibly to Internal Balance
             // Tokens deposited to Internal Balance are not later exempt from withdrawal fees.
@@ -557,7 +558,7 @@ abstract contract PoolRegistry is
     function _ensurePoolIsSender(bytes32 poolId) private view {
         _ensureRegisteredPool(poolId);
         address pool = _getPoolAddress(poolId);
-        require(pool == msg.sender, "CALLER_NOT_POOL");
+        _require(pool == msg.sender, Errors.CALLER_NOT_POOL);
     }
 
     /**
@@ -566,14 +567,14 @@ abstract contract PoolRegistry is
      */
     function _ensurePoolAssetManagerIsSender(bytes32 poolId, IERC20 token) private view {
         _ensureTokenRegistered(poolId, token);
-        require(_poolAssetManagers[poolId][token] == msg.sender, "SENDER_NOT_ASSET_MANAGER");
+        _require(_poolAssetManagers[poolId][token] == msg.sender, Errors.SENDER_NOT_ASSET_MANAGER);
     }
 
     /**
      * @dev Reverts unless `token` is registered for `poolId`.
      */
     function _ensureTokenRegistered(bytes32 poolId, IERC20 token) private view {
-        require(_isTokenRegistered(poolId, token), "TOKEN_NOT_REGISTERED");
+        _require(_isTokenRegistered(poolId, token), Errors.TOKEN_NOT_REGISTERED);
     }
 
     /**

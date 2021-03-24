@@ -135,7 +135,7 @@ library BalanceAllocation {
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
         uint256 balance = _cash + _managed;
-        require(balance >= _cash && balance < 2**112, "BALANCE_TOTAL_OVERFLOW");
+        _require(balance >= _cash && balance < 2**112, Errors.BALANCE_TOTAL_OVERFLOW);
         // We assume the block number will fits in an uint32 - this is expected to hold for at least a few decades.
         return _pack(_cash, _managed, _blockNumber);
     }

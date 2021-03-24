@@ -16,11 +16,11 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/Authentication.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
@@ -91,19 +91,19 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     }
 
     function setSwapFee(uint256 newSwapFee) external authenticate {
-        require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, "SWAP_FEE_TOO_HIGH");
+        _require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, Errors.SWAP_FEE_TOO_HIGH);
         _swapFee = newSwapFee;
         emit SwapFeeChanged(newSwapFee);
     }
 
     function setWithdrawFee(uint256 newWithdrawFee) external authenticate {
-        require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "WITHDRAW_FEE_TOO_HIGH");
+        _require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, Errors.WITHDRAW_FEE_TOO_HIGH);
         _withdrawFee = newWithdrawFee;
         emit WithdrawFeeChanged(newWithdrawFee);
     }
 
     function setFlashLoanFee(uint256 newFlashLoanFee) external authenticate {
-        require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FLASH_LOAN_FEE_TOO_HIGH");
+        _require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, Errors.FLASH_LOAN_FEE_TOO_HIGH);
         _flashLoanFee = newFlashLoanFee;
         emit FlashLoanFeeChanged(newFlashLoanFee);
     }

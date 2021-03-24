@@ -15,9 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/Authentication.sol";
 import "../lib/helpers/EmergencyPeriod.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/helpers/BalancerErrors.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
@@ -62,7 +64,7 @@ abstract contract VaultAuthorization is IVault, Authentication, EmergencyPeriod,
     function _authenticateCallerFor(address user) internal view {
         if (msg.sender != user) {
             _authenticateCaller();
-            require(_hasAllowedRelayer(user, msg.sender), "USER_DOESNT_ALLOW_RELAYER");
+            _require(_hasAllowedRelayer(user, msg.sender), Errors.USER_DOESNT_ALLOW_RELAYER);
         }
     }
 

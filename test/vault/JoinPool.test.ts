@@ -476,7 +476,7 @@ describe('Vault - join pool', () => {
             await token.burn(currentBalance.sub(amount).add(1), { from: lp });
 
             return expect(joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).to.be.revertedWith(
-              'ERC20: transfer amount exceeds balance'
+              'ERC20_TRANSFER_EXCEEDS_BALANCE'
             );
           }
         });
