@@ -16,11 +16,12 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/AssetHelpers.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/Address.sol";
 
 import "./interfaces/IWETH.sol";
 import "./interfaces/IAsset.sol";
@@ -53,14 +54,14 @@ abstract contract AssetTransfersHandler is AssetHelpers {
         }
 
         if (_isETH(asset)) {
-            require(!fromInternalBalance, "INVALID_ETH_INTERNAL_BALANCE");
+            _require(!fromInternalBalance, Errors.INVALID_ETH_INTERNAL_BALANCE);
 
             // The ETH amount to receive is deposited into the WETH contract, which will in turn mint WETH for
             // the Vault at a 1:1 ratio.
 
             // A check for this condition is also introduced by the compiler, but this one provides a revert reason.
             // Note we're checking for the Vault's total balance, *not* ETH sent in this transaction.
-            require(address(this).balance >= amount, "INSUFFICIENT_ETH");
+            _require(address(this).balance >= amount, Errors.INSUFFICIENT_ETH);
             _WETH.deposit{ value: amount }();
         } else {
             IERC20 token = _asIERC20(asset);
@@ -102,7 +103,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
         if (_isETH(asset)) {
             // Sending ETH is not as involved as receiving it: the only special behavior is it cannot be
             // deposited to Internal Balance.
-            require(!toInternalBalance, "INVALID_ETH_INTERNAL_BALANCE");
+            _require(!toInternalBalance, Errors.INVALID_ETH_INTERNAL_BALANCE);
 
             // First, the Vault withdraws deposited ETH from the WETH contract, by burning the same amount of WETH
             // from the Vault. This receipt will be handled by the Vault's `receive`.
@@ -131,7 +132,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * Reverts if the contract caller sent less ETH than `amountUsed`.
      */
     function _returnExcessEthToCaller(uint256 amountUsed) internal {
-        require(msg.value >= amountUsed, "INSUFFICIENT_ETH");
+        _require(msg.value >= amountUsed, Errors.INSUFFICIENT_ETH);
 
         uint256 excess = msg.value - amountUsed;
         if (excess > 0) {
@@ -145,7 +146,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      */
     function _ensureNoUnallocatedETH(bool ethAssetSeen) internal view {
         if (msg.value > 0) {
-            require(ethAssetSeen, "UNALLOCATED_ETH");
+            _require(ethAssetSeen, Errors.UNALLOCATED_ETH);
         }
     }
 
@@ -159,7 +160,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * soundness issue. This check only exists as an attempt to prevent user error.
      */
     receive() external payable {
-        require(msg.sender == address(_WETH), "ETH_TRANSFER");
+        _require(msg.sender == address(_WETH), Errors.ETH_TRANSFER);
     }
 
     // This contract uses virtual internal functions instead of inheriting from the modules that implement them (in

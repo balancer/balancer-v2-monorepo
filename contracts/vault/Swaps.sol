@@ -16,13 +16,15 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "../lib/math/Math.sol";
+import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/EnumerableMap.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeCast.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/EnumerableSet.sol";
 
 import "./PoolRegistry.sol";
 import "./interfaces/IPoolSwapStructs.sol";
@@ -131,7 +133,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     ) private returns (int256[] memory assetDeltas) {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
-        require(block.timestamp <= deadline, "SWAP_DEADLINE");
+        _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
 
         InputHelpers.ensureInputLengthMatch(assets.length, limits.length);
 
@@ -148,7 +150,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             IAsset asset = assets[i];
             int256 delta = assetDeltas[i];
 
-            require(delta <= limits[i], "SWAP_LIMIT");
+            _require(delta <= limits[i], Errors.SWAP_LIMIT);
 
             bool isETH = _isETH(asset);
             if (isETH) {
@@ -252,11 +254,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         for (uint256 i = 0; i < swaps.length; ++i) {
             swap = swaps[i];
             _ensureRegisteredPool(swap.poolId);
-            require(swap.tokenInIndex < assets.length && swap.tokenOutIndex < assets.length, "OUT_OF_BOUNDS");
+            _require(swap.tokenInIndex < assets.length && swap.tokenOutIndex < assets.length, Errors.OUT_OF_BOUNDS);
 
             IERC20 tokenIn = _translateToIERC20(assets[swap.tokenInIndex]);
             IERC20 tokenOut = _translateToIERC20(assets[swap.tokenOutIndex]);
-            require(tokenIn != tokenOut, "CANNOT_SWAP_SAME_TOKEN");
+            _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
 
             // Sentinel value for multihop logic
             if (swap.amount == 0) {
@@ -265,10 +267,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 // given amount of token A for token B, and then use the resulting token B amount to swap for token C.
                 if (swaps.length > 1) {
                     bool usingPreviousToken = previous.tokenCalculated == _tokenGiven(kind, tokenIn, tokenOut);
-                    require(usingPreviousToken, "MALCONSTRUCTED_MULTIHOP_SWAP");
+                    _require(usingPreviousToken, Errors.MALCONSTRUCTED_MULTIHOP_SWAP);
                     swap.amount = previous.amountCalculated;
                 } else {
-                    revert("UNKNOWN_AMOUNT_IN_FIRST_SWAP");
+                    _revert(Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
                 }
             }
 
@@ -441,8 +443,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenOutBalance;
 
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
-        uint256 indexIn = poolBalances.indexOf(request.tokenIn, "TOKEN_NOT_REGISTERED");
-        uint256 indexOut = poolBalances.indexOf(request.tokenOut, "TOKEN_NOT_REGISTERED");
+        uint256 indexIn = poolBalances.indexOf(request.tokenIn, Errors.TOKEN_NOT_REGISTERED);
+        uint256 indexOut = poolBalances.indexOf(request.tokenOut, Errors.TOKEN_NOT_REGISTERED);
 
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);

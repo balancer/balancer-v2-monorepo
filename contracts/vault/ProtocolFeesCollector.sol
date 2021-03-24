@@ -16,15 +16,23 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/Authentication.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
 
+/**
+ * @dev This an auxiliary contract to the Vault, deployed by it during construction. It offloads some of the tasks the
+ * Vault performs to reduce its overall bytecode size.
+ *
+ * The current values for all protocol fee percentages are stored here, and any protocol fees charged in the form of
+ * tokens are sent to this contract, where they may be withdrawn by authorized entities. All authorization tasks are
+ * delegated to the Vault's own authorizer.
+ */
 contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -37,8 +45,20 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
 
     // All fees are 18-decimal fixed point numbers.
 
-    // The withdrawal fee is charged whenever tokens exit the vault (except in the case of swaps), as a
-    // percentage of the number of tokens withdrawn.
+    // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
+    // percentage of the tokens exiting.
+    // There are two instances where this may happen: when a Pool is exited, and when Internal Balance is withdrawn. In
+    // the case of exits, this fee can be avoided by depositing the funds into Internal Balance instead, from where they
+    // might be used to e.g. join a different Pool.
+    //
+    // There is an exceptional case where withdraw fees are not charged: when the Vault's Internal Balance is used as a
+    // temporary deposit of funds within a single block. This typically happens in a single transaction that uses
+    // relayers: funds from different accounts may be deposited into Internal Balance, used to perform swaps, and then
+    // withdrawn. This pattern is extremely gas efficient, and is not covered by withdraw fees because tokens were
+    // deposited and withdrawn in the same block.
+    //
+    // The way this mechanism works is by tracking how many tokens were deposited in the current block, and storing
+    // those as a 'fee exempt' balance. Internal Balance withdrawals then only charge fees for non-exempt balance.
     uint256 private _withdrawFee;
 
     // The swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool. These are not
@@ -72,19 +92,19 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     }
 
     function setSwapFee(uint256 newSwapFee) external authenticate {
-        require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, "SWAP_FEE_TOO_HIGH");
+        _require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, Errors.SWAP_FEE_TOO_HIGH);
         _swapFee = newSwapFee;
         emit SwapFeeChanged(newSwapFee);
     }
 
     function setWithdrawFee(uint256 newWithdrawFee) external authenticate {
-        require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, "WITHDRAW_FEE_TOO_HIGH");
+        _require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, Errors.WITHDRAW_FEE_TOO_HIGH);
         _withdrawFee = newWithdrawFee;
         emit WithdrawFeeChanged(newWithdrawFee);
     }
 
     function setFlashLoanFee(uint256 newFlashLoanFee) external authenticate {
-        require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, "FLASH_LOAN_FEE_TOO_HIGH");
+        _require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, Errors.FLASH_LOAN_FEE_TOO_HIGH);
         _flashLoanFee = newFlashLoanFee;
         emit FlashLoanFeeChanged(newFlashLoanFee);
     }

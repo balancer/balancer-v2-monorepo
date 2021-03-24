@@ -15,16 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/InputHelpers.sol";
+import "../lib/helpers/EmergencyPeriod.sol";
+import "../lib/openzeppelin/ERC20.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
-import "../lib/helpers/EmergencyPeriod.sol";
 
 // This contract relies on tons of immutable state variables to
 // perform efficient lookup, without resorting to storage reads.
@@ -103,8 +102,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         BalancerPoolToken(name, symbol)
         EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
     {
-        require(tokens.length >= _MIN_TOKENS, "MIN_TOKENS");
-        require(tokens.length <= _MAX_TOKENS, "MAX_TOKENS");
+        _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
+        _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
         // to make the developer experience consistent, we are requiring this condition for all the native pools.
@@ -113,7 +112,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // order of token-specific parameters (such as token weights) will not change.
         InputHelpers.ensureArrayIsSorted(tokens);
 
-        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
+        _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
 
         bytes32 poolId = vault.registerPool(specialization);
 
@@ -179,7 +178,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     function setSwapFee(uint256 swapFee) external authenticate {
-        require(swapFee <= _MAX_SWAP_FEE, "MAX_SWAP_FEE");
+        _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
         _swapFee = swapFee;
     }
 
@@ -190,8 +189,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Join / Exit Hooks
 
     modifier onlyVault(bytes32 poolId) {
-        require(msg.sender == address(_vault), "CALLER_NOT_VAULT");
-        require(poolId == _poolId, "INVALID_POOL_ID");
+        _require(msg.sender == address(_vault), Errors.CALLER_NOT_VAULT);
+        _require(poolId == _poolId, Errors.INVALID_POOL_ID);
         _;
     }
 
@@ -213,7 +212,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             // On initialization, we lock _MINIMUM_BPT by minting it for the zero address. This BPT acts as a minimum
             // as it will never be burned, which reduces potential issues with rounding, and also prevents the Pool from
             // ever being fully drained.
-            require(bptAmountOut >= _MINIMUM_BPT, "MINIMUM_BPT");
+            _require(bptAmountOut >= _MINIMUM_BPT, Errors.MINIMUM_BPT);
             _mintPoolTokens(address(0), _MINIMUM_BPT);
             _mintPoolTokens(recipient, bptAmountOut - _MINIMUM_BPT);
 
@@ -404,7 +403,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         else if (token == _token14) { return _scalingFactor14; }
         else if (token == _token15) { return _scalingFactor15; }
         else {
-            revert("INVALID_TOKEN");
+            _revert(Errors.INVALID_TOKEN);
         }
     }
 

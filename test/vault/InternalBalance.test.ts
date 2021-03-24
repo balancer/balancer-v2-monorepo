@@ -142,7 +142,7 @@ describe('Vault - internal balance', () => {
                     recipient: recipient.address,
                   },
                 ])
-              ).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
+              ).to.be.revertedWith('ERC20_TRANSFER_EXCEEDS_ALLOWANCE');
             });
           });
         });
@@ -158,7 +158,7 @@ describe('Vault - internal balance', () => {
                   recipient: recipient.address,
                 },
               ])
-            ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+            ).to.be.revertedWith('ERC20_TRANSFER_EXCEEDS_BALANCE');
           });
         });
       });
@@ -1279,7 +1279,7 @@ describe('Vault - internal balance', () => {
                     recipient: recipient.address,
                   },
                 ])
-              ).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
+              ).to.be.revertedWith('ERC20_TRANSFER_EXCEEDS_ALLOWANCE');
             });
           });
         });
@@ -1295,7 +1295,7 @@ describe('Vault - internal balance', () => {
                   recipient: recipient.address,
                 },
               ])
-            ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+            ).to.be.revertedWith('ERC20_TRANSFER_EXCEEDS_BALANCE');
           });
         });
       });

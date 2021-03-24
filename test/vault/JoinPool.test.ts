@@ -427,7 +427,6 @@ describe('Vault - join pool', () => {
         expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
           poolId,
           liquidityProvider: lp.address,
-          kind: 0,
           amounts: joinAmounts,
           protocolFees: dueProtocolFeeAmounts,
         });
@@ -476,7 +475,7 @@ describe('Vault - join pool', () => {
             await token.burn(currentBalance.sub(amount).add(1), { from: lp });
 
             return expect(joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).to.be.revertedWith(
-              'ERC20: transfer amount exceeds balance'
+              'ERC20_TRANSFER_EXCEEDS_BALANCE'
             );
           }
         });

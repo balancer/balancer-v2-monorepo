@@ -91,7 +91,7 @@ library InternalBalanceAllocation {
         )
     {
         uint256 currentActual = actual(balance);
-        require(capped || (currentActual >= amount), "INSUFFICIENT_INTERNAL_BALANCE");
+        _require(capped || (currentActual >= amount), Errors.INSUFFICIENT_INTERNAL_BALANCE);
 
         // We know the decreased amount will always be the lesser of the actual value and the given amount.
         // If the given amount was greater than the actual value, and it wasn't requested to be capped, then it
@@ -134,8 +134,8 @@ library InternalBalanceAllocation {
         uint256 _exempt,
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
-        require(_actual < 2**112 && _exempt < 2**112, "INTERNAL_BALANCE_OVERFLOW");
         // We assume the block number will fit in a uint32 - this is expected to hold for at least a few decades.
+        _require(_actual < 2**112 && _exempt < 2**112, Errors.INTERNAL_BALANCE_OVERFLOW);
         return _pack(_actual, _exempt, _blockNumber);
     }
 

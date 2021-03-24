@@ -14,9 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-
 import "../lib/helpers/InputHelpers.sol";
+import "../lib/openzeppelin/AccessControl.sol";
 
 contract Authorizer is AccessControl {
     constructor(address admin) {

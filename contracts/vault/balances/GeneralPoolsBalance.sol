@@ -48,9 +48,9 @@ contract GeneralPoolsBalance {
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            require(token != IERC20(0), "ZERO_ADDRESS_TOKEN");
+            _require(token != IERC20(0), Errors.ZERO_ADDRESS_TOKEN);
             bool added = poolBalances.set(token, 0);
-            require(added, "TOKEN_ALREADY_REGISTERED");
+            _require(added, Errors.TOKEN_ALREADY_REGISTERED);
         }
     }
 
@@ -68,7 +68,7 @@ contract GeneralPoolsBalance {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
-            require(currentBalance.isZero(), "NONZERO_TOKEN_BALANCE");
+            _require(currentBalance.isZero(), Errors.NONZERO_TOKEN_BALANCE);
 
             // We don't need to check remove's return value, since _getGeneralPoolBalance already checks that the token
             // was registered.
@@ -105,8 +105,8 @@ contract GeneralPoolsBalance {
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) internal {
-        _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
+    ) internal returns (int256) {
+        return _updateGeneralPoolBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateGeneralPoolBalance(
@@ -114,10 +114,12 @@ contract GeneralPoolsBalance {
         IERC20 token,
         function(bytes32, uint256) returns (bytes32) mutation,
         uint256 amount
-    ) internal {
+    ) internal returns (int256) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
         bytes32 currentBalance = _getGeneralPoolBalance(poolBalances, token);
-        poolBalances.set(token, mutation(currentBalance, amount));
+        bytes32 newBalance = mutation(currentBalance, amount);
+        poolBalances.set(token, newBalance);
+        return newBalance.managedDelta(currentBalance);
     }
 
     /**
@@ -152,7 +154,7 @@ contract GeneralPoolsBalance {
         view
         returns (bytes32)
     {
-        return poolBalances.get(token, "TOKEN_NOT_REGISTERED");
+        return poolBalances.get(token, Errors.TOKEN_NOT_REGISTERED);
     }
 
     function _isGeneralPoolTokenRegistered(bytes32 poolId, IERC20 token) internal view returns (bool) {
