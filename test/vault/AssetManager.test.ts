@@ -12,6 +12,7 @@ import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
+import * as expectEvent from '../helpers/expectEvent';
 
 const OP_KIND = { DEPOSIT: 0, WITHDRAW: 1, UPDATE: 2 };
 
@@ -128,6 +129,20 @@ describe('Vault - asset manager', function () {
             expect(currentBalance.managed).to.equal(previousBalance.managed.add(amount));
             expect(currentBalance.blockNumber).to.equal(previousBalance.blockNumber);
           });
+
+          it('emits an event', async () => {
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            const receipt = await (
+              await vault.connect(assetManager).managePoolBalance(poolId, OP_KIND.WITHDRAW, transfers)
+            ).wait();
+
+            expectEvent.inReceipt(receipt, 'PoolBalanceManaged', {
+              poolId,
+              token: tokens.DAI.address,
+              assetManager: assetManager.address,
+              amount: amount.mul(-1),
+            });
+          });
         });
 
         context('when trying to send more than the pool balance', () => {
@@ -198,6 +213,20 @@ describe('Vault - asset manager', function () {
             expect(currentBalance.cash).to.equal(previousBalance.cash.add(amount));
             expect(currentBalance.managed).to.equal(previousBalance.managed.sub(amount));
             expect(currentBalance.blockNumber).to.equal(previousBalance.blockNumber);
+          });
+
+          it('emits an event', async () => {
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            const receipt = await (
+              await vault.connect(assetManager).managePoolBalance(poolId, OP_KIND.DEPOSIT, transfers)
+            ).wait();
+
+            expectEvent.inReceipt(receipt, 'PoolBalanceManaged', {
+              poolId,
+              token: tokens.DAI.address,
+              assetManager: assetManager.address,
+              amount,
+            });
           });
         });
 
@@ -283,6 +312,22 @@ describe('Vault - asset manager', function () {
             const currentBlockNumber = await ethers.provider.getBlockNumber();
             expect(currentBalance.blockNumber).to.equal(currentBlockNumber);
           });
+
+          it('emits an event', async () => {
+            const previousBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            const receipt = await (
+              await vault.connect(assetManager).managePoolBalance(poolId, OP_KIND.UPDATE, transfers)
+            ).wait();
+
+            expectEvent.inReceipt(receipt, 'PoolBalanceManaged', {
+              poolId,
+              token: tokens.DAI.address,
+              assetManager: assetManager.address,
+              amount: amount.sub(previousBalance.managed),
+            });
+          });
         });
 
         context('with losses', () => {
@@ -321,6 +366,22 @@ describe('Vault - asset manager', function () {
 
             const currentBlockNumber = await ethers.provider.getBlockNumber();
             expect(currentBalance.blockNumber).to.equal(currentBlockNumber);
+          });
+
+          it('emits an event', async () => {
+            const previousBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+
+            const transfers = [{ token: tokens.DAI.address, amount: amount }];
+            const receipt = await (
+              await vault.connect(assetManager).managePoolBalance(poolId, OP_KIND.UPDATE, transfers)
+            ).wait();
+
+            expectEvent.inReceipt(receipt, 'PoolBalanceManaged', {
+              poolId,
+              token: tokens.DAI.address,
+              assetManager: assetManager.address,
+              amount: amount.sub(previousBalance.managed),
+            });
           });
         });
       });

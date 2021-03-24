@@ -80,21 +80,15 @@
       },
       {
         "indexed": false,
-        "internalType": "enum IVault.PoolBalanceChangeKind",
-        "name": "kind",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
         "internalType": "contract IERC20[]",
         "name": "tokens",
         "type": "address[]"
       },
       {
         "indexed": false,
-        "internalType": "uint256[]",
+        "internalType": "int256[]",
         "name": "amounts",
-        "type": "uint256[]"
+        "type": "int256[]"
       },
       {
         "indexed": false,
@@ -931,7 +925,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

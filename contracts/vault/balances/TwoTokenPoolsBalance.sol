@@ -143,8 +143,8 @@ contract TwoTokenPoolsBalance {
         bytes32 poolId,
         IERC20 token,
         uint256 amount
-    ) internal {
-        _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManaged, amount);
+    ) internal returns (int256) {
+        return _updateTwoTokenPoolSharedBalance(poolId, token, BalanceAllocation.setManaged, amount);
     }
 
     function _updateTwoTokenPoolSharedBalance(
@@ -152,7 +152,7 @@ contract TwoTokenPoolsBalance {
         IERC20 token,
         function(bytes32, uint256) returns (bytes32) mutation,
         uint256 amount
-    ) private {
+    ) private returns (int256) {
         (
             TwoTokenPoolBalances storage balances,
             IERC20 tokenA,
@@ -161,16 +161,22 @@ contract TwoTokenPoolsBalance {
             bytes32 balanceB
         ) = _getTwoTokenPoolBalances(poolId);
 
+        int256 delta;
         if (token == tokenA) {
-            balanceA = mutation(balanceA, amount);
+            bytes32 newBalance = mutation(balanceA, amount);
+            delta = newBalance.managedDelta(balanceA);
+            balanceA = newBalance;
         } else if (token == tokenB) {
-            balanceB = mutation(balanceB, amount);
+            bytes32 newBalance = mutation(balanceB, amount);
+            delta = newBalance.managedDelta(balanceB);
+            balanceB = newBalance;
         } else {
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
         balances.sharedCash = BalanceAllocation.toSharedCash(balanceA, balanceB);
         balances.sharedManaged = BalanceAllocation.toSharedManaged(balanceA, balanceB);
+        return delta;
     }
 
     /**
