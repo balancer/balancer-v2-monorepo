@@ -14,6 +14,8 @@
 
 pragma solidity ^0.7.0;
 
+import "./BalancerErrors.sol";
+
 // solhint-disable not-rely-on-time
 contract EmergencyPeriod {
     uint256 private constant _MAX_EMERGENCY_PERIOD = 90 days;
@@ -31,8 +33,11 @@ contract EmergencyPeriod {
     }
 
     constructor(uint256 emergencyPeriod, uint256 emergencyPeriodCheckExtension) {
-        require(emergencyPeriod <= _MAX_EMERGENCY_PERIOD, "MAX_EMERGENCY_PERIOD");
-        require(emergencyPeriodCheckExtension <= _MAX_EMERGENCY_PERIOD_CHECK_EXT, "MAX_EMERGENCY_PERIOD_CHECK_EXT");
+        _require(emergencyPeriod <= _MAX_EMERGENCY_PERIOD, Errors.MAX_EMERGENCY_PERIOD);
+        _require(
+            emergencyPeriodCheckExtension <= _MAX_EMERGENCY_PERIOD_CHECK_EXT,
+            Errors.MAX_EMERGENCY_PERIOD_CHECK_EXT
+        );
 
         _emergencyPeriodEndDate = block.timestamp + emergencyPeriod;
         _emergencyPeriodCheckEndDate = block.timestamp + emergencyPeriod + emergencyPeriodCheckExtension;
@@ -51,13 +56,13 @@ contract EmergencyPeriod {
     }
 
     function _setEmergencyPeriod(bool active) internal {
-        require(block.timestamp < _emergencyPeriodEndDate, "EMERGENCY_PERIOD_FINISHED");
+        _require(block.timestamp < _emergencyPeriodEndDate, Errors.EMERGENCY_PERIOD_FINISHED);
         _emergencyPeriodActive = active;
         emit EmergencyPeriodChanged(active);
     }
 
     function _ensureInactiveEmergencyPeriod() internal view {
-        require(_isEmergencyPeriodInactive(), "EMERGENCY_PERIOD_ON");
+        _require(_isEmergencyPeriodInactive(), Errors.EMERGENCY_PERIOD_ON);
     }
 
     function _isEmergencyPeriodInactive() internal view returns (bool) {

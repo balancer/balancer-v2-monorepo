@@ -44,10 +44,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
     ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {
-        require(amplificationParameter >= _MIN_AMP, "MIN_AMP");
-        require(amplificationParameter <= _MAX_AMP, "MAX_AMP");
+        _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
+        _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
 
-        require(tokens.length <= _MAX_STABLE_TOKENS, "MAX_STABLE_TOKENS");
+        _require(tokens.length <= _MAX_STABLE_TOKENS, Errors.MAX_STABLE_TOKENS);
 
         _amplificationParameter = amplificationParameter;
     }
@@ -103,7 +103,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         bytes memory userData
     ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
         StablePool.JoinKind kind = userData.joinKind();
-        require(kind == StablePool.JoinKind.INIT, "UNINITIALIZED");
+        _require(kind == StablePool.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, _totalTokens);
@@ -173,7 +173,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, userData);
         } else {
-            revert("UNHANDLED_JOIN_KIND");
+            _revert(Errors.UNHANDLED_JOIN_KIND);
         }
     }
 
@@ -183,7 +183,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256, uint256[] memory)
     {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
-        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        _require(amountsIn.length == _totalTokens, Errors.ERR_AMOUNTS_IN_LENGTH);
         _upscaleArray(amountsIn, _scalingFactors());
 
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
@@ -194,7 +194,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
 
-        require(bptAmountOut >= minBPTAmountOut, "BPT_OUT_MIN_AMOUNT");
+        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
         return (bptAmountOut, amountsIn);
     }
@@ -281,7 +281,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, userData);
         } else {
-            revert("UNHANDLED_EXIT_KIND");
+            _revert(Errors.UNHANDLED_EXIT_KIND);
         }
     }
 
@@ -292,7 +292,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256, uint256[] memory)
     {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
-        require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
+        _require(tokenIndex < _totalTokens, Errors.OUT_OF_BOUNDS);
 
         // We exit in a single token, so we initialize amountsOut with zeros
         uint256[] memory amountsOut = new uint256[](_totalTokens);
@@ -344,7 +344,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
 
-        require(bptAmountIn <= maxBPTAmountIn, "BPT_IN_MAX_AMOUNT");
+        _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
         return (bptAmountIn, amountsOut);
     }

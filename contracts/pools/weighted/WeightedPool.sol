@@ -81,7 +81,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         for (uint8 i = 0; i < normalizedWeights.length; i++) {
             uint256 normalizedWeight = weights[i].div(sumWeights);
-            require(normalizedWeight >= _MIN_WEIGHT, "MIN_WEIGHT");
+            _require(normalizedWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
             normalizedWeights[i] = normalizedWeight;
 
             if (normalizedWeight > maxNormalizedWeight) {
@@ -128,7 +128,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         else if (token == _token14) { return _normalizedWeight14; }
         else if (token == _token15) { return _normalizedWeight15; }
         else {
-            revert("INVALID_TOKEN");
+            _revert(Errors.INVALID_TOKEN);
         }
     }
 
@@ -181,7 +181,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view virtual override noEmergencyPeriod returns (uint256) {
-        require(swapRequest.amount <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), "ERR_MAX_IN_RATIO");
+        _require(swapRequest.amount <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), Errors.ERR_MAX_IN_RATIO);
 
         return
             WeightedMath._calcOutGivenIn(
@@ -198,7 +198,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view virtual override noEmergencyPeriod returns (uint256) {
-        require(swapRequest.amount <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), "ERR_MAX_OUT_RATIO");
+        _require(swapRequest.amount <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), Errors.ERR_MAX_OUT_RATIO);
 
         return
             WeightedMath._calcInGivenOut(
@@ -219,10 +219,10 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
         WeightedPool.JoinKind kind = userData.joinKind();
-        require(kind == WeightedPool.JoinKind.INIT, "UNINITIALIZED");
+        _require(kind == WeightedPool.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
-        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        _require(amountsIn.length == _totalTokens, Errors.ERR_AMOUNTS_IN_LENGTH);
         _upscaleArray(amountsIn, _scalingFactors());
 
         uint256[] memory normalizedWeights = _normalizedWeights();
@@ -294,7 +294,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(currentBalances, normalizedWeights, userData);
         } else {
-            revert("UNHANDLED_JOIN_KIND");
+            _revert(Errors.UNHANDLED_JOIN_KIND);
         }
     }
 
@@ -304,7 +304,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountIn) = userData.exactTokensInForBptOut();
-        require(amountsIn.length == _totalTokens, "ERR_AMOUNTS_IN_LENGTH");
+        _require(amountsIn.length == _totalTokens, Errors.ERR_AMOUNTS_IN_LENGTH);
         _upscaleArray(amountsIn, _scalingFactors());
 
         uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
@@ -315,7 +315,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             _swapFee
         );
 
-        require(bptAmountOut >= minBPTAmountIn, "BPT_OUT_MIN_AMOUNT");
+        _require(bptAmountOut >= minBPTAmountIn, Errors.BPT_OUT_MIN_AMOUNT);
 
         return (bptAmountOut, amountsIn);
     }
@@ -331,7 +331,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         //Verifies that invariant ratio is not greater than max
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
-        require(invariantRatio <= _MAX_INVARIANT_RATIO, "MAX_OUT_BPT_FOR_TOKEN_IN");
+        _require(invariantRatio <= _MAX_INVARIANT_RATIO, Errors.MAX_OUT_BPT_FOR_TOKEN_IN);
 
         uint256[] memory amountsIn = new uint256[](_totalTokens);
         amountsIn[tokenIndex] = WeightedMath._calcTokenInGivenExactBptOut(
@@ -409,7 +409,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(normalizedWeights, currentBalances, userData);
         } else {
-            revert("UNHANDLED_EXIT_KIND");
+            _revert(Errors.UNHANDLED_EXIT_KIND);
         }
     }
 
@@ -419,13 +419,13 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     ) private view noEmergencyPeriod returns (uint256, uint256[] memory) {
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
-        require(tokenIndex < _totalTokens, "OUT_OF_BOUNDS");
+        _require(tokenIndex < _totalTokens, Errors.OUT_OF_BOUNDS);
 
         uint256 bptTotalSupply = totalSupply();
 
         // Verifies that invariant ratio is not lower than min
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
-        require(invariantRatio >= _MIN_INVARIANT_RATIO, "MIN_BPT_IN_FOR_TOKEN_OUT");
+        _require(invariantRatio >= _MIN_INVARIANT_RATIO, Errors.MIN_BPT_IN_FOR_TOKEN_OUT);
 
         // We exit in a single token, so we initialize amountsOut with zeros
         uint256[] memory amountsOut = new uint256[](_totalTokens);
@@ -478,7 +478,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             totalSupply(),
             _swapFee
         );
-        require(bptAmountIn <= maxBPTAmountIn, "BPT_IN_MAX_AMOUNT");
+        _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
         return (bptAmountIn, amountsOut);
     }

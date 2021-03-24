@@ -412,9 +412,8 @@ interface IVault {
     event PoolBalanceChanged(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
-        PoolBalanceChangeKind kind,
         IERC20[] tokens,
-        uint256[] amounts,
+        int256[] amounts,
         uint256[] protocolFees
     );
 
