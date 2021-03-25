@@ -356,6 +356,14 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 previousInvariant,
         uint256 protocolSwapFeePercentage
     ) private view returns (uint256[] memory) {
+        // Initialize with zeros
+        uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
+
+        // Early exit in case there is no protocol swap fee
+        if (protocolSwapFeePercentage == 0) {
+            return dueProtocolFeeAmounts;
+        }
+
         // Instead of paying the protocol swap fee in all tokens proportionally, we will pay it in a single one. This
         // will reduce gas costs for single asset joins and exits, as at most only two Pool balances will change (the
         // token joined/exited, and the token in which fees will be paid).
@@ -371,8 +379,6 @@ contract StablePool is BaseGeneralPool, StableMath {
             }
         }
 
-        // Initialize with zeros
-        uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
         // Set the fee to pay in the selected token
         dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFee(
             _amplificationParameter,
