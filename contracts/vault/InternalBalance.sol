@@ -84,6 +84,9 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         _returnExcessEthToCaller(wrappedETH);
     }
 
+    /**
+     * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
+     */
     function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override {
         _processInternalBalanceOps(transfers, _withdrawFromInternalBalance);
     }
@@ -110,6 +113,9 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         _sendAsset(asset, amountToSend, payable(recipient), false, false);
     }
 
+    /**
+     * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
+     */
     function transferInternalBalance(AssetBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
         _processInternalBalanceOps(transfers, _transferInternalBalance);
     }
@@ -120,6 +126,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         address recipient,
         uint256 amount
     ) private {
+        _require(!_isETH(asset), Errors.INVALID_ETH_INTERNAL_BALANCE);
         IERC20 token = _translateToIERC20(asset);
         // Transferring internal balance to another account is not charged withdrawal fees.
         // Because of this, we use the exempt balance if possible.
@@ -128,6 +135,9 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         _increaseInternalBalance(recipient, token, amount, false);
     }
 
+    /**
+     * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
+     */
     function transferToExternalBalance(AssetBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
         _processInternalBalanceOps(transfers, _transferToExternalBalance);
     }
