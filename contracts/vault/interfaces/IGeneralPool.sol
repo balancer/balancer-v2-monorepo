@@ -18,7 +18,15 @@ pragma experimental ABIEncoderV2;
 import "./IBasePool.sol";
 
 /**
- * @dev Interface contracts for Pools with the general specialization setting should implement.
+ * @dev IPools with the General specialization setting should implement this interface.
+ *
+ * This is called by the Vault when a user calls `IVault.batchSwapGivenIn` or `IVault.batchSwapGivenOut` to swap with
+ * this Pool. Returns the number of tokens the Pool will grant to the user (if GivenIn) or that the user will grant to
+ * the pool (if GivenOut) as part of the swap.
+ *
+ * This can often be implemented by a `view` function, since many pricing algorithms don't need to track state
+ * changes in swaps. However, contracts implementing this in non-view functions should check that the caller is
+ * indeed the Vault.
  */
 interface IGeneralPool is IBasePool {
     function onSwap(

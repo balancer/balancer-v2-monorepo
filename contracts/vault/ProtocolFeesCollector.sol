@@ -43,7 +43,7 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
 
     IVault public immutable vault;
 
-    // All fixed are 18-decimal fixed point numbers.
+    // All fees are 18-decimal fixed point numbers.
 
     // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
     // percentage of the tokens exiting.
@@ -56,16 +56,17 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     // relayers: funds from different accounts may be deposited into Internal Balance, used to perform swaps, and then
     // withdrawn. This pattern is extremely gas efficient, and is not covered by withdraw fees because tokens were
     // deposited and withdrawn in the same block.
+    //
     // The way this mechanism works is by tracking how many tokens were deposited in the current block, and storing
     // those as a 'fee exempt' balance. Internal Balance withdrawals then only charge fees for non-exempt balance.
     uint256 private _withdrawFee;
 
-    // The swap fee is charged whenever a swap occurs, and is a percentage of the fee charged by the Pool. These are not
-    // actually charged on each individual swap: the `Vault` relies on the Pools being honest and reporting due fees
-    // when joined and exited.
+    // The swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool. These are not
+    // actually charged on each individual swap: the `Vault` relies on the Pools being honest and reporting fees due
+    // when users join and exit them.
     uint256 private _swapFee;
 
-    // The flash loan fee is charged whenever a flash loan occurs, and is a percentage of the tokens lent.
+    // The flash loan fee is charged whenever a flash loan occurs, as a percentage of the tokens lent.
     uint256 private _flashLoanFee;
 
     event SwapFeeChanged(uint256 newSwapFee);

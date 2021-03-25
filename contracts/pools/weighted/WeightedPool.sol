@@ -31,7 +31,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
 
-    // The protocol fees will be always charged using the token associated to the max weight in the pool.
+    // The protocol fees will always be charged using the token associated with the max weight in the pool.
     // Since these Pools will register tokens only once, we can assume this index will be constant.
     uint256 private immutable _maxWeightTokenIndex;
 
@@ -181,7 +181,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view virtual override noEmergencyPeriod returns (uint256) {
-        _require(swapRequest.amount <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), Errors.ERR_MAX_IN_RATIO);
+        _require(swapRequest.amount <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), Errors.MAX_IN_RATIO);
 
         return
             WeightedMath._calcOutGivenIn(
@@ -198,7 +198,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal view virtual override noEmergencyPeriod returns (uint256) {
-        _require(swapRequest.amount <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), Errors.ERR_MAX_OUT_RATIO);
+        _require(swapRequest.amount <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), Errors.MAX_OUT_RATIO);
 
         return
             WeightedMath._calcInGivenOut(
@@ -222,7 +222,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         _require(kind == WeightedPool.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
-        _require(amountsIn.length == _totalTokens, Errors.ERR_AMOUNTS_IN_LENGTH);
+        InputHelpers.ensureInputLengthMatch(_totalTokens, amountsIn.length);
         _upscaleArray(amountsIn, _scalingFactors());
 
         uint256[] memory normalizedWeights = _normalizedWeights();
@@ -304,7 +304,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountIn) = userData.exactTokensInForBptOut();
-        _require(amountsIn.length == _totalTokens, Errors.ERR_AMOUNTS_IN_LENGTH);
+        InputHelpers.ensureInputLengthMatch(_totalTokens, amountsIn.length);
+
         _upscaleArray(amountsIn, _scalingFactors());
 
         uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
@@ -508,7 +509,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         }
 
         // The protocol swap fee are always paid using the token with the largest weight in the pool.
-        // As this is then token that will probably have the largest balance in the pool, we can
+        // As this is the token that will probably have the largest balance in the pool, we can
         // make sure this process won't unbalance the pool in a considerable way.
         dueProtocolFeeAmounts[_maxWeightTokenIndex] = WeightedMath._calcDueTokenProtocolSwapFee(
             currentBalances[_maxWeightTokenIndex],
@@ -550,7 +551,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     // This function returns the appreciation of one BPT relative to the
     // underlying tokens. This starts at 1 when the pool is initialized and grows over time
-    // It's the equivalent to Curve's get_virtual_price() function
+    // It's equivalent to Curve's get_virtual_price() function
     function getRate() public view override returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
         return
