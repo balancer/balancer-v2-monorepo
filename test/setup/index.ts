@@ -73,9 +73,15 @@ chai.use(function (chai) {
       const promise = assertion._obj;
       try {
         // Execute promise given to assert method and catch revert reason if there was any
-        const result = await promise;
-        // If the statement didn't revert simply return it
-        return result;
+        await promise;
+        // If the statement didn't revert throw
+        this.assert(
+          false,
+          'Expected transaction to be reverted',
+          'Expected transaction NOT to be reverted',
+          'Transaction reverted.',
+          'Transaction NOT reverted.'
+        );
       } catch (revert) {
         try {
           // Run catch function
@@ -105,7 +111,7 @@ chai.use(function (chai) {
           const expectedErrorCode = expectedError[0];
 
           // @ts-ignore
-          let actualReason = Object.entries(reasons)[actualErrorCode];
+          let actualReason = reasons[actualErrorCode];
           if (!actualReason) actualReason = `Could not match a Balancer error message`;
 
           // Otherwise, assert the error code matched the actual reason
