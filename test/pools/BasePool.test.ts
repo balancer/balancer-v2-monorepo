@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import * as expectEvent from '../helpers/expectEvent';
 import TokenList from '../helpers/models/tokens/TokenList';
 import { MONTH } from '../../lib/helpers/time';
 import { roleId } from '../../lib/helpers/roles';
@@ -128,6 +129,17 @@ describe('BasePool', function () {
 
             const newSwapFee = fp(0.000001);
             await pool.connect(admin).setSwapFee(newSwapFee);
+
+            expect(await pool.getSwapFee()).to.equal(newSwapFee);
+          });
+
+          it('emits an event', async () => {
+            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+
+            const newSwapFee = fp(0.000001);
+            const receipt = await (await pool.connect(admin).setSwapFee(newSwapFee)).wait();
+
+            expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFee: newSwapFee });
 
             expect(await pool.getSwapFee()).to.equal(newSwapFee);
           });

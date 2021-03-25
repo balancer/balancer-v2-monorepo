@@ -495,6 +495,11 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
 
+        // Early exit in case there is no protocol swap fee
+        if (protocolSwapFeePercentage == 0) {
+            return dueProtocolFeeAmounts;
+        }
+
         // Verifies that invariant ratio is not lower than min.
         // If lower than min, protocol fees will charge up to the min ratio allowed.
         uint256 invariantRatio = previousInvariant.divUp(currentInvariant);
