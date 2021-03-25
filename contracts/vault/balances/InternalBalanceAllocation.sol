@@ -93,9 +93,6 @@ library InternalBalanceAllocation {
         uint256 currentActual = actual(balance);
         _require(capped || (currentActual >= amount), Errors.INSUFFICIENT_INTERNAL_BALANCE);
 
-        // We know the decreased amount will always be the lesser of the actual value and the given amount.
-        // If the given amount was greater than the actual value, and it wasn't requested to be capped, then it
-        // would be caught by the require above
         uint256 decreased = Math.min(currentActual, amount);
 
         // Because of how decreased is constructed, we can skip checked arithmetic.
@@ -103,8 +100,6 @@ library InternalBalanceAllocation {
 
         uint256 lastBlockNumber = blockNumber(balance);
         if (lastBlockNumber == block.number) {
-            // A user could be decreasing their internal balance by a number greater than the exempt value.
-            // Then we should always do a sub capped to zero.
             uint256 currentExempt = exempt(balance);
 
             uint256 exemptUsed = useExempt ? Math.min(currentExempt, decreased) : 0;
