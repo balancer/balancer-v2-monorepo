@@ -57,13 +57,14 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         bool ethAssetSeen = false;
         uint256 wrappedETH = 0;
 
-        for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
+        IAsset asset;
+        address sender;
+        uint256 amount;
+        address recipient;
+        bool authenticated = false;
 
-            IAsset asset = transfers[i].asset;
-            uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
+        for (uint256 i = 0; i < transfers.length; i++) {
+            (asset, sender, recipient, amount, authenticated) = _validateTransfer(transfers[i], authenticated);
 
             _increaseInternalBalance(recipient, _translateToIERC20(asset), amount, true);
 
@@ -83,70 +84,63 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         _returnExcessEthToCaller(wrappedETH);
     }
 
-    function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override nonReentrant {
-        for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
-
-            IAsset asset = transfers[i].asset;
-            uint256 amount = transfers[i].amount;
-            address payable recipient = transfers[i].recipient;
-            IERC20 token = _translateToIERC20(asset);
-
-            uint256 amountToSend = amount;
-            // Since we're charging withdraw fees, we attempt to withdraw from the exempt Internal Balance if possible
-            (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false, true);
-
-            if (taxableAmount > 0) {
-                uint256 feeAmount = _calculateWithdrawFee(taxableAmount);
-                _payFee(token, feeAmount);
-                amountToSend = amountToSend.sub(feeAmount);
-            }
-
-            // Tokens withdrawn from Internal Balance are not exempt from withdrawal fees.
-            _sendAsset(asset, amountToSend, recipient, false, false);
-        }
+    function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override {
+        _processInternalBalanceOps(transfers, _withdrawFromInternalBalance);
     }
 
-    function transferInternalBalance(TokenBalanceTransfer[] memory transfers)
-        external
-        override
-        nonReentrant
-        noEmergencyPeriod
-    {
-        for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
+    function _withdrawFromInternalBalance(
+        IAsset asset,
+        address sender,
+        address recipient,
+        uint256 amount
+    ) private {
+        uint256 amountToSend = amount;
+        IERC20 token = _translateToIERC20(asset);
 
-            IERC20 token = transfers[i].token;
-            uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
+        // Since we're charging withdraw fees, we attempt to withdraw from the exempt Internal Balance if possible
+        (uint256 taxableAmount, ) = _decreaseInternalBalance(sender, token, amount, false, true);
 
-            // Transferring internal balance to another account is not charged withdrawal fees.
-            // Because of this, we use the exempt balance if possible.
-            _decreaseInternalBalance(sender, token, amount, false, false);
-            // Tokens transferred internally are not later exempt from withdrawal fees.
-            _increaseInternalBalance(recipient, token, amount, false);
+        if (taxableAmount > 0) {
+            uint256 feeAmount = _calculateWithdrawFee(taxableAmount);
+            _payFee(token, feeAmount);
+            amountToSend = amountToSend.sub(feeAmount);
         }
+
+        // Tokens withdrawn from Internal Balance are not exempt from withdrawal fees.
+        _sendAsset(asset, amountToSend, payable(recipient), false, false);
     }
 
-    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers)
-        external
-        override
-        nonReentrant
-        noEmergencyPeriod
-    {
-        for (uint256 i = 0; i < transfers.length; i++) {
-            address sender = transfers[i].sender;
-            _authenticateCallerFor(sender);
+    function transferInternalBalance(AssetBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
+        _processInternalBalanceOps(transfers, _transferInternalBalance);
+    }
 
-            IERC20 token = transfers[i].token;
-            uint256 amount = transfers[i].amount;
-            address recipient = transfers[i].recipient;
+    function _transferInternalBalance(
+        IAsset asset,
+        address sender,
+        address recipient,
+        uint256 amount
+    ) private {
+        IERC20 token = _translateToIERC20(asset);
+        // Transferring internal balance to another account is not charged withdrawal fees.
+        // Because of this, we use the exempt balance if possible.
+        _decreaseInternalBalance(sender, token, amount, false, false);
+        // Tokens transferred internally are not later exempt from withdrawal fees.
+        _increaseInternalBalance(recipient, token, amount, false);
+    }
 
-            // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
-            token.safeTransferFrom(sender, recipient, amount);
-        }
+    function transferToExternalBalance(AssetBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
+        _processInternalBalanceOps(transfers, _transferToExternalBalance);
+    }
+
+    function _transferToExternalBalance(
+        IAsset asset,
+        address sender,
+        address recipient,
+        uint256 amount
+    ) private {
+        // Do not charge withdrawal fee, since it's just making use of the Vault's allowance
+        IERC20 token = _translateToIERC20(asset);
+        token.safeTransferFrom(sender, recipient, amount);
     }
 
     /**
@@ -205,5 +199,57 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
      */
     function _getInternalBalance(address account, IERC20 token) internal view returns (bytes32) {
         return _internalTokenBalance[account][token];
+    }
+
+    function _processInternalBalanceOps(
+        AssetBalanceTransfer[] memory transfers,
+        function(IAsset, address, address, uint256) op
+    ) private nonReentrant {
+        IAsset asset;
+        address sender;
+        address recipient;
+        uint256 amount;
+        bool authenticated = false;
+
+        for (uint256 i = 0; i < transfers.length; i++) {
+            (asset, sender, recipient, amount, authenticated) = _validateTransfer(transfers[i], authenticated);
+            op(asset, sender, recipient, amount);
+        }
+    }
+
+    /**
+     * @dev Decodes an asset balance transfer and validates the actual sender is allowed to operate
+     */
+    function _validateTransfer(AssetBalanceTransfer memory transfer, bool wasAuthenticated)
+        private
+        view
+        returns (
+            IAsset asset,
+            address sender,
+            address recipient,
+            uint256 amount,
+            bool authenticated
+        )
+    {
+        sender = transfer.sender;
+        authenticated = wasAuthenticated;
+
+        if (sender != msg.sender) {
+            // In case we found a `sender` address that is not the actual sender (msg.sender)
+            // we ensure it's a relayer allowed by the protocol. Note that we are not computing this check
+            // for the next senders, it's a global authorization, we only need to check it once.
+            if (!wasAuthenticated) {
+                // This will revert in case the actual sender is not allowed by the protocol
+                _authenticateCaller();
+                authenticated = true;
+            }
+
+            // Finally we check the actual msg.sender was also allowed by the `sender`
+            _authenticateCallerFor(sender);
+        }
+
+        asset = transfer.asset;
+        amount = transfer.amount;
+        recipient = transfer.recipient;
     }
 }
