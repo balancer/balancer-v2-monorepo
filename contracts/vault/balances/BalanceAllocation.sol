@@ -33,7 +33,7 @@ import "../../lib/math/Math.sol";
 // 112 bit unsigned integers for 'cash' and 'managed'. Since 'total' is also a 112 bit unsigned value, any combination
 // of 'cash' and 'managed' that yields a 'total' that doesn't fit in that range is disallowed.
 //
-// The remaining 32 bits of each storage slot are used to store the most recent block number where a balance was
+// The remaining 32 bits of each storage slot are used to store the most recent block number when a balance was
 // updated. This can be used to implement price oracles that are resilient to 'sandwich' attacks.
 //
 // We could use a Solidity struct to pack these two values together in a single storage slot, but unfortunately Solidity
@@ -134,8 +134,8 @@ library BalanceAllocation {
 
     /**
      * @dev Packs together cash and managed amounts with a block number to create a balance value.
-     * Critically, this also checks the sum of cash and external doesn't overflow, that is, that `total()` can be
-     * computed.
+     * Critically, this also checks that the sum of cash and external doesn't overflow, that is, that `total()`
+     * can be computed.
      */
     function toBalance(
         uint256 _cash,
@@ -143,8 +143,8 @@ library BalanceAllocation {
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
         uint256 balance = _cash + _managed;
+        // We assume the block number will fit in a uint32 - this is expected to hold for at least a few decades.
         _require(balance >= _cash && balance < 2**112, Errors.BALANCE_TOTAL_OVERFLOW);
-        // We assume the block number will fits in an uint32 - this is expected to hold for at least a few decades.
         return _pack(_cash, _managed, _blockNumber);
     }
 
@@ -206,16 +206,18 @@ library BalanceAllocation {
         return toBalance(currentCash, newManaged, newBlockNumber);
     }
 
-    // Alternative mode for Pools with the token token specialization setting
+    // Alternative mode for Pools with the two token specialization setting
 
     // Instead of storing cash and external for each token in a single storage slot, two token pools store the cash for
     // both tokens in the same slot, and the external for both in another one. This reduces the gas cost for swaps,
     // because the only slot that needs to be updated is the one with the cash. However, it also means that managing
     // balances is more cumbersome, as both tokens need to be read/written at the same time.
+    //
     // The field with both cash balances packed is called sharedCash, and the one with external amounts is called
     // sharedManaged. These two are collectively called the 'shared' balance fields. In both of these, the portion
     // that corresponds to token A is stored in the least significant 112 bits of a 256 bit word, while token B's part
     // uses the most significant 112 bits.
+    //
     // Because only cash is written to during a swap, we store the block number there. Typically Pools have a distinct
     // block number per token: in the case of two token Pools this is not necessary, as both values will be the same.
 
@@ -237,8 +239,8 @@ library BalanceAllocation {
      * @dev Returns the sharedCash shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
-        // Both balances have the block number, since both balances are always updated at the same time it does not
-        // mater where we pick it from.
+        // Both balances have the block number. Since both balances are always updated at the same time,
+        // it does not matter where we pick it from.
         return _pack(cash(tokenABalance), cash(tokenBBalance), blockNumber(tokenABalance));
     }
 

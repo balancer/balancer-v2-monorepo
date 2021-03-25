@@ -42,7 +42,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     using SafeCast for uint256;
     using BalanceAllocation for bytes32;
 
-    // Despite the external API having two separate functions for given in and given out, internally their are handled
+    // Despite the external API having two separate functions for given in and given out, internally they are handled
     // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
 
     // We use inline assembly to convert arrays of different struct types that have the same underlying data
@@ -131,7 +131,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         uint256 deadline,
         SwapKind kind
     ) private returns (int256[] memory assetDeltas) {
-        // The deadline is timestamp-based: it should not be relied on having sub-minute accuracy.
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
 
@@ -168,7 +168,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 uint256 toSend = uint256(-delta);
 
                 // Withdraw fees are not charged when sending funds as part of a swap.
-                // Deposits to Internal Balance are also exempt of this fee during the current block.
+                // Deposits to Internal Balance are also exempt from this fee during the current block.
                 _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance, true);
             }
         }
@@ -233,7 +233,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
     /**
      * @dev Performs all `swaps`, calling swap hooks on the Pool contracts and updating their balances. Does not cause
-     * any transfer of tokens - it instead returns the net Vault token deltas: positive if the Vault should receive
+     * any transfer of tokens - instead it returns the net Vault token deltas: positive if the Vault should receive
      * tokens, and negative if it should send them.
      */
     function _swapWithPools(
@@ -263,7 +263,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             // Sentinel value for multihop logic
             if (swap.amount == 0) {
                 // When the amount given is zero, we use the calculated amount for the previous swap, as long as the
-                // current swap's given token is the previous' calculated token. This makes it possible to e.g. swap a
+                // current swap's given token is the previous calculated token. This makes it possible to e.g. swap a
                 // given amount of token A for token B, and then use the resulting token B amount to swap for token C.
                 if (swaps.length > 1) {
                     bool usingPreviousToken = previous.tokenCalculated == _tokenGiven(kind, tokenIn, tokenOut);
@@ -344,7 +344,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IMinimalSwapInfoPool pool,
         SwapKind kind
     ) private returns (uint256 amountCalculated) {
-        // Due to gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are
+        // For gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are
         // stored internally, instead of using getters and setters for all operations.
 
         (
@@ -471,7 +471,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         tokenInBalance = tokenInBalance.increaseCash(amountIn);
         tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
 
-        // Because no token registrations or unregistrations happened between now and when we retrieved the indexes for
+        // Because no tokens were registered or deregistered between now and when we retrieved the indexes for
         // token in and token out, we can use `unchecked_setAt`, saving storage reads.
         poolBalances.unchecked_setAt(indexIn, tokenInBalance);
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
@@ -485,15 +485,16 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         FundManagement memory funds
     ) external override returns (int256[] memory) {
         // In order to accurately 'simulate' swaps, this function actually does perform the swaps, including calling the
-        // Pool hooks and updating  balances in storage. However, once it computes the final Vault Deltas it then
+        // Pool hooks and updating balances in storage. However, once it computes the final Vault Deltas, it
         // reverts unconditionally, returning this array as the revert data.
+        //
         // By wrapping this reverting call, we can decode the deltas 'returned' and return them as a normal Solidity
         // function would. The only caveat is the function becomes non-view, but off-chain clients can still call it
         // via eth_call to get the expected result.
         //
         // This technique was inspired by the work from the Gnosis team in the Gnosis Safe contract:
         // https://github.com/gnosis/safe-contracts/blob/v1.2.0/contracts/GnosisSafe.sol#L265
-
+        //
         // Most of this function is implemented using inline assembly, as the actual work it needs to do is not
         // significant, and Solidity is not particularly well-suited to generate this behavior, resulting in a large
         // amount of generated bytecode.
