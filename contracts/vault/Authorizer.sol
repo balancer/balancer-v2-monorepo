@@ -40,4 +40,23 @@ contract Authorizer is AccessControl {
             grantRole(roles[i], accounts[i]);
         }
     }
+
+    /**
+     * @dev Revokes multiple roles from a single account
+     */
+    function revokeRoles(bytes32[] memory roles, address account) external {
+        for (uint256 i = 0; i < roles.length; i++) {
+            revokeRole(roles[i], account);
+        }
+    }
+
+    /**
+     * @dev Revokes roles from a list of accounts
+     */
+    function revokeRolesToMany(bytes32[] memory roles, address[] memory accounts) external {
+        InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
+        for (uint256 i = 0; i < roles.length; i++) {
+            revokeRole(roles[i], accounts[i]);
+        }
+    }
 }
