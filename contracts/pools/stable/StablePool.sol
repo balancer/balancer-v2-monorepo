@@ -409,7 +409,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     // underlying tokens. This starts at 1 when the pool is initialized and grows over time
     // It's the equivalent to Curve's get_virtual_price() function
     function getRate() public view override returns (uint256) {
-        (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
+        (, uint256[] memory balances, ) = _vault.getPoolTokens(_poolId);
         return StableMath._calculateInvariant(_amplificationParameter, balances).div(totalSupply());
     }
 }

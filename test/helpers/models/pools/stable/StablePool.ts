@@ -116,7 +116,7 @@ export default class StablePool {
     return this.instance.getAmplificationParameter();
   }
 
-  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[] }> {
+  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; maxBlockNumber: BigNumber }> {
     return this.vault.getPoolTokens(this.poolId);
   }
 
