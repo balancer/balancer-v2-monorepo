@@ -113,7 +113,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
 
-    // Amounts in are multiplied by the multiplier, amounts out divided by it
+    // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
 
     function setMultiplier(uint256 newMultiplier) external {

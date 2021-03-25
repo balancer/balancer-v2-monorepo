@@ -322,7 +322,7 @@ interface IVault {
      * be made for the difference between the requested amount and Internal Balance (if any). Note that ETH cannot be
      * withdrawn from Internal Balance: attempting to do so with trigger a revert.
      *
-     * This causes the Vault to call the `IBasePool.onJoinPool` hook on the Pool's contract, where Pools implements
+     * This causes the Vault to call the `IBasePool.onJoinPool` hook on the Pool's contract, where Pools implement
      * their own custom logic. This typically requires additional information from the user (such as the expected number
      * of Pool shares to obtain). This can be encoded in the `userData` argument, which is ignored by the Vault and
      * passed directly to the Pool's contract, as is `recipient`.
@@ -375,7 +375,7 @@ interface IVault {
      * information (such as the number of Pool shares to provide). This can be encoded in the `userData` argument, which
      * is ignored by the Vault and passed directly to the Pool.
      *
-     * This causes the Vault to call the `IBasePool.onExitPool` hook on the Pool's contract, where Pools implements
+     * This causes the Vault to call the `IBasePool.onExitPool` hook on the Pool's contract, where Pools implement
      * their own custom logic. This typically requires additional information from the user (such as the expected number
      * of Pool shares to return). This can be encoded in the `userData` argument, which is ignored by the Vault and
      * passed directly to the Pool's contract.
@@ -415,7 +415,7 @@ interface IVault {
     // they need not trust Pool contracts in any way: all security checks are made by the Vault. They must however be
     // aware of the Pools' pricing algorithms in order to estimate the prices Pools will quote.
     //
-    // Both swap functions are batched, meaning they perform multiple of swaps in sequence. In each individual swap,
+    // Both swap functions are batched, meaning they perform multiple swaps in sequence. In each individual swap,
     // tokens of one kind are sent from the sender to the Pool (this is the 'token in'), and tokens of one
     // other kind are sent from the Pool to the sender in exchange (this is the 'token out'). More complex swaps, such
     // as one token in to multiple tokens out can be achieved by batching together individual swaps.
@@ -434,8 +434,8 @@ interface IVault {
     // updating the Pool's internal balances).
     //
     // To protect users from front-running or the market changing rapidly, they supply a list of 'limits' for each token
-    // involved in the swap, where either the maximum number of tokens to send (by passing a positive value) or minimum
-    // amount of tokens to receive (by passing a negative value) is specified.
+    // involved in the swap, where either the maximum number of tokens to send (by passing a positive value) or the
+    // minimum amount of tokens to receive (by passing a negative value) is specified.
     //
     // Additionally, a 'deadline' timestamp can also be provided, forcing the swap to fail if it occurs after
     // this point in time (e.g. if the transaction failed to be included in a block promptly).
@@ -445,12 +445,12 @@ interface IVault {
     // passed in the `assets` array instead of the WETH address. Note that it is possible to combine ETH and WETH in the
     // same swap. Any excess ETH will be sent back to the caller (not the sender, which is relevant for relayers).
     //
-    // Finally, Internal Balance can be used both when sending and receiving tokens.
+    // Finally, Internal Balance can be used when either sending or receiving tokens.
 
     /**
-     * @dev Performs a series of swaps with one or multiple Pools. In individual each swap, the amount of tokens sent to
-     * the Pool is determined by the caller. For swaps where the amount of tokens received from the Pool is instead
-     * determined, see `batchSwapGivenOut`.
+     * @dev Performs a series of swaps with one or multiple Pools. In each individual swap, the amount of tokens sent to
+     * the Pool is determined by the caller. For swaps where the amount of tokens received from the Pool is
+     * determined instead, see `batchSwapGivenOut`.
      *
      * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
      * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
@@ -500,9 +500,9 @@ interface IVault {
     }
 
     /**
-     * @dev Performs a series of swaps with one or multiple Pools. In individual each swap, the amount of tokens
+     * @dev Performs a series of swaps with one or multiple Pools. In each individual swap, the amount of tokens
      * received from the Pool is determined by the caller. For swaps where the amount of tokens sent to the Pool is
-     * instead determined, see `batchSwapGivenIn`.
+     * determined instead, see `batchSwapGivenIn`.
      *
      * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
      * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
@@ -575,7 +575,7 @@ interface IVault {
      * If `toInternalBalance` is true, tokens will be deposited to `recipient`'s internal balance instead of
      * transferred. This matches the behavior of `exitPool`.
      *
-     * Note that ETH cannot be deposited to or withdrawn from Internal Balance: attempting to do so with trigger a
+     * Note that ETH cannot be deposited to or withdrawn from Internal Balance: attempting to do so will trigger a
      * revert.
      */
     struct FundManagement {
@@ -593,7 +593,7 @@ interface IVault {
      * `SwapRequest` struct is used instead, and the `kind` argument specifies whether the swap is given in or given
      * out.
      *
-     * Unlike `batchSwapGivenIn` and `batchSwapGivenOut`, this function performs no checks on the sender nor recipient
+     * Unlike `batchSwapGivenIn` and `batchSwapGivenOut`, this function performs no checks on the sender or recipient
      * field in the `funds` struct. This makes it suitable to be called by off-chain applications via eth_call without
      * needing to hold tokens, approve them for the Vault, or even know a user's address.
      *
@@ -643,7 +643,7 @@ interface IVault {
     // tokens from the Vault, deposit them, or assign arbitrary values to its `managed` balance (see
     // `getPoolTokenInfo`). This makes them extremely powerful and dangerous, as they can not only steal a Pool's tokens
     // but also manipulate its prices. However, a properly designed Asset Manager smart contract can be used to the
-    // Pool's benefit, for example by lending unused tokens at an interest, or using them to participate in voting
+    // Pool's benefit, for example by lending unused tokens out for interest, or using them to participate in voting
     // protocols.
 
     /**
@@ -668,9 +668,9 @@ interface IVault {
     event PoolBalanceManaged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     /**
-     * Deposits increase the Pool's cash, but decreases its managed balance, leaving the total balance unchanged.
+     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
      *
-     * Withdrawals decrease the Pool's cash, but increases its managed balance, leaving the total balance unchanged.
+     * Withdrawals decrease the Pool's cash, but increase its managed balance, leaving the total balance unchanged.
      *
      * Updates don't affect the Pool's cash balance, but because the managed balance changes, it does alter the total.
      * The external amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
@@ -686,9 +686,9 @@ interface IVault {
     //
     //  - flash loan fees: charged on all flash loans, as a percentage of the amounts lent.
     //
-    //  - withdraw fees: charged when users take tokens out of the Vault, by either calling
+    //  - withdrawal fees: charged when users take tokens out of the Vault, by either calling
     // `withdrawFromInternalBalance` or calling `exitPool` without depositing to Internal Balance. The fee is a
-    // percentage of the amount withdrawn. Swaps are unaffected by withdraw fees.
+    // percentage of the amount withdrawn. Swaps are unaffected by withdrawal fees.
     //
     //  - swap fees: a percentage of the fees charged by Pools when performing swaps. For a number of reasons, including
     // swap gas costs and interface simplicity, protocol swap fees are not charged on each individual swap. Rather,

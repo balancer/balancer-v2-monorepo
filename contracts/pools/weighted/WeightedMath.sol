@@ -190,7 +190,7 @@ contract WeightedMath {
         // Calculate the factor by which the invariant will increase after minting BPTAmountOut
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply);
 
-        // Calculate by how much the token balance has to increase to cause invariantRatio
+        // Calculate by how much the token balance has to increase to match invariantRatio
         uint256 tokenBalanceRatio = FixedPoint.powUp(invariantRatio, FixedPoint.ONE.divUp(tokenNormalizedWeight));
         uint256 tokenBalancePercentageExcess = tokenNormalizedWeight.complement();
         uint256 amountInAfterFee = tokenBalance.mulUp(tokenBalanceRatio.sub(FixedPoint.ONE));
@@ -267,7 +267,7 @@ contract WeightedMath {
         // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
 
-        // Calculate by how much the token balance has to increase to cause invariantRatio
+        // Calculate by how much the token balance has to increase to match invariantRatio
         uint256 tokenBalanceRatio = FixedPoint.powUp(invariantRatio, FixedPoint.ONE.divUp(tokenNormalizedWeight));
         uint256 tokenBalancePercentageExcess = tokenNormalizedWeight.complement();
 

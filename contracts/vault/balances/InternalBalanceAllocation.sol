@@ -46,7 +46,7 @@ library InternalBalanceAllocation {
     /**
      * @dev Increases an internal balance. It can also track the internal balance exempt if requested.
      * In case it is, it will compare the current block number with the last one cached to see if it should
-     * reset the exempt amount or increment it. The exempt amount will always be considered to compute
+     * reset the exempt amount or increment it. The exempt amount will always be considered in computing
      * the taxable amount when an internal balance is decreased
      */
     function increase(
@@ -112,7 +112,7 @@ library InternalBalanceAllocation {
             bytes32 newBalance = toInternalBalance(newActual, newExempt, lastBlockNumber);
             return (newBalance, taxableAmount, decreased);
         } else {
-            // Note that we consider the case where the current block number doesn't match with the last one as a
+            // Note that we consider the case where the current block number doesn't match the last one as a
             // regular decrease. We cannot handle negative exempt values, it would be like "credit" for potential
             // future ops in the same block.
             bytes32 newBalance = toInternalBalance(newActual, 0, 0);
@@ -122,15 +122,15 @@ library InternalBalanceAllocation {
 
     /**
      * @dev Packs together actual and exempt amounts with a block number to create a balance value.
-     * Critically, this also checks both amounts can be packed together in the same slot.
+     * Critically, this also checks that both amounts can be packed together in the same slot.
      */
     function toInternalBalance(
         uint256 _actual,
         uint256 _exempt,
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
+        // We assume the block number will fit in a uint32 - this is expected to hold for at least a few decades.
         _require(_actual < 2**112 && _exempt < 2**112, Errors.INTERNAL_BALANCE_OVERFLOW);
-        // We assume the block number will fits in an uint32 - this is expected to hold for at least a few decades.
         return _pack(_actual, _exempt, _blockNumber);
     }
 

@@ -33,15 +33,15 @@ abstract contract AssetHelpers {
     }
 
     /**
-     * @dev Returns true if `asset` is the sentinel value that stands for ETH.
+     * @dev Returns true if `asset` is the sentinel value that represents ETH.
      */
     function _isETH(IAsset asset) internal pure returns (bool) {
         return address(asset) == _ETH;
     }
 
     /**
-     * @dev Translates `asset` into an equivalent IERC20 token address. If `asset` stands for ETH, it will be translated
-     * into the WETH contract.
+     * @dev Translates `asset` into an equivalent IERC20 token address. If `asset` represents ETH, it will be translated
+     * to the WETH contract.
      */
     function _translateToIERC20(IAsset asset) internal view returns (IERC20) {
         return _isETH(asset) ? _WETH : _asIERC20(asset);
@@ -59,7 +59,7 @@ abstract contract AssetHelpers {
 
     /**
      * @dev Interprets `asset` as an IERC20 token. This function should only be called on `asset` if `_isETH` previously
-     * returned false for it, that is, if `asset` is guaranteed to not be the sentinel value that stands for ETH.
+     * returned false for it, that is, if `asset` is guaranteed not to be the ETH sentinel value.
      */
     function _asIERC20(IAsset asset) internal pure returns (IERC20) {
         return IERC20(address(asset));
