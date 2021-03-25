@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '../../lib/helpers/deploy';
 import { EIP712Domain, domainSeparator } from './helpers/EIP712';
-import { Contract, Wallet, BigNumber } from 'ethers';
+import { Contract, Wallet } from 'ethers';
 import { expect } from 'chai';
 
 describe('EIP712', function () {
