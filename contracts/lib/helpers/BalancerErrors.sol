@@ -64,8 +64,8 @@ library Errors {
     uint256 internal constant MAX_STABLE_TOKENS                             = 303;
 
     // Weighted pool
-    uint256 internal constant ERR_MAX_IN_RATIO                              = 400;
-    uint256 internal constant ERR_MAX_OUT_RATIO                             = 401;
+    uint256 internal constant MAX_IN_RATIO                                  = 400;
+    uint256 internal constant MAX_OUT_RATIO                                 = 401;
     uint256 internal constant MIN_BPT_IN_FOR_TOKEN_OUT                      = 402;
     uint256 internal constant MAX_OUT_BPT_FOR_TOKEN_IN                      = 403;
 
