@@ -457,8 +457,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Returns all scaling factors in the same order as tokens were registered, which is the order in which the
-     * Vault will pass balances when calling the different Pool hooks.
+     * @dev Returns all the scaling factors in the same order as tokens were registered, which is the order
+     * the Vault will pass balances when calling the different Pool hooks.
      */
     function _scalingFactors() internal view returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](_totalTokens);
@@ -495,8 +495,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates* the
-     * `amounts` array.
+     * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
+     * the `amounts` array.
      */
     function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
@@ -513,8 +513,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead *mutates* the
-     * `amounts` array.
+     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead *mutates*
+     * the `amounts` array.
      */
     function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
@@ -531,8 +531,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead *mutates* the
-     * `amounts` array.
+     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead *mutates*
+     * the `amounts` array.
      */
     function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
