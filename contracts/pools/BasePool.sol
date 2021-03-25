@@ -513,8 +513,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
+     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead 
+     * *mutates* the `amounts` array.
      */
     function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
@@ -531,8 +531,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
+     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead 
+     * *mutates* the `amounts` array.
      */
     function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
         for (uint256 i = 0; i < _totalTokens; ++i) {
