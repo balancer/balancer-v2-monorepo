@@ -28,6 +28,7 @@ contract GeneralPoolsBalance {
     // These Pools use the IGeneralPool interface, which means the Vault must query the balance for *all* of their
     // tokens in every swap. If we kept a mapping of token to balance plus a set (array) of tokens, it'd be very gas
     // intensive to read all token addresses just to then do a lookup on the balance mapping.
+    //
     // Instead, we use our customized EnumerableMap, which lets us read the N balances in N+1 storage accesses (one for
     // the number of tokens in the Pool), as well as access the index of any token in a single read (required for the
     // IGeneralPool call) and update an entry's value given its index.
@@ -39,8 +40,8 @@ contract GeneralPoolsBalance {
      *
      * Requirements:
      *
-     * - Each token must not be the zero address.
-     * - Each token must not be registered in the Pool.
+     * - Tokens must have valid (non-zero) addresses
+     * - Tokens cannot already be registered in the Pool
      */
     function _registerGeneralPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
@@ -58,8 +59,8 @@ contract GeneralPoolsBalance {
      *
      * Requirements:
      *
-     * - Each token must be registered in the Pool.
-     * - Each token must have non balance in the Vault.
+     * - Tokens must be registered in the Pool
+     * - Tokens must have zero balance in the Vault
      */
     function _deregisterGeneralPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];

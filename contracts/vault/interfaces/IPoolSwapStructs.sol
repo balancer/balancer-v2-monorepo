@@ -22,20 +22,23 @@ import "./IVault.sol";
 interface IPoolSwapStructs {
     // This is not really an interface - it just defines common structs used by other interfaces: IGeneralPool and
     // IMinimalSwapInfoPool.
-
-    // This data structure represents a request for a token swap, where `kind` indicates the swap type (given in or
-    // given out) which tells whether the amount sent by the Pool is known or not respectively.
     //
-    // `tokenIn` and `tokenOut` are the tokens the Pool will receive and send, respectively. `amount` is the number
-    // of `tokenIn` tokens that goes into the Pool, or the number of `tokenOut` tokens that the Pool will send depending
-    // on the given swap `kind`.
+    // This data structure represents a request for a token swap, where `kind` indicates the swap type (given in or
+    // given out) which indicates whether or not the amount sent by the pool is known.
+    //
+    //
+    // The pool receives `tokenIn` and sends `tokenOut`. `amount` is the number of `tokenIn` tokens the pool will take
+    // in, or the number of `tokenOut` tokens the Pool will send out, depending on the given swap `kind`.
     //
     // All other fields are not strictly necessary for most swaps, but are provided to support advanced scenarios in
     // some Pools.
+    //
     // `poolId` is the ID of the Pool involved in the swap - this is useful for Pool contracts that implement more than
     // one Pool.
-    // `from` is the origin address where funds the Pool receives are coming from, and `to` is the destination address
-    // where the funds the Pool sends are going to.
+    //
+    // `from` is the origin address for the funds the Pool receives, and `to` is the destination address
+    // where the Pool sends the outgoing tokens.
+    //
     // `userData` is extra data provided by the caller - typically a signature from a trusted party.
     struct SwapRequest {
         IVault.SwapKind kind;

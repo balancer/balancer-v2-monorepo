@@ -73,7 +73,7 @@ abstract contract PoolRegistry is
      * @dev Creates a Pool ID.
      *
      * These are deterministically created by packing into the ID the Pool's contract address and its specialization
-     * setting. This saves gas as this data does not need to be written to or read from storage with interacting with
+     * setting. This saves gas, as these data do not need to be written to or read from storage when interacting with
      * the Pool.
      *
      * Since a single contract can register multiple Pools, a unique nonce must be provided to ensure Pool IDs are
@@ -232,7 +232,7 @@ abstract contract PoolRegistry is
             _deregisterGeneralPoolTokens(poolId, tokens);
         }
 
-        // The deregister calls above ensure the total token balance is zero. It is therefore safe to now remove any
+        // The deregister calls above ensure the total token balance is zero. Therefore it is now safe to remove any
         // associated Asset Managers, since they hold no Pool balance.
         for (uint256 i = 0; i < tokens.length; ++i) {
             delete _poolAssetManagers[poolId][tokens[i]];
@@ -367,7 +367,7 @@ abstract contract PoolRegistry is
     /**
      * @dev Returns the total balance for `poolId`'s `expectedTokens`.
      *
-     * `expectedTokens` must equal exactly the token array returned by `getPoolTokens`: both arrays must have the same
+     * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
      * length, elements and order.
      */
     function _validateTokensAndGetBalances(bytes32 poolId, IERC20[] memory expectedTokens)
