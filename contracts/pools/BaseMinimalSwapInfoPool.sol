@@ -52,52 +52,33 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
-        return
-            request.kind == IVault.SwapKind.GIVEN_IN
-                ? _swapGivenIn(request, balanceTokenIn, balanceTokenOut, scalingFactorTokenIn, scalingFactorTokenOut)
-                : _swapGivenOut(request, balanceTokenIn, balanceTokenOut, scalingFactorTokenIn, scalingFactorTokenOut);
-    }
+        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+            // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
+            request.amount = _subtractSwapFee(request.amount);
 
-    function _swapGivenIn(
-        SwapRequest memory swapRequest,
-        uint256 balanceTokenIn,
-        uint256 balanceTokenOut,
-        uint256 scalingFactorTokenIn,
-        uint256 scalingFactorTokenOut
-    ) internal view returns (uint256) {
-        // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
-        swapRequest.amount = _subtractSwapFee(swapRequest.amount);
+            // All token amounts are upscaled.
+            balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
+            balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+            request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-        // All token amounts are upscaled.
-        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
-        swapRequest.amount = _upscale(swapRequest.amount, scalingFactorTokenIn);
+            uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
 
-        uint256 amountOut = _onSwapGivenIn(swapRequest, balanceTokenIn, balanceTokenOut);
+            // amountOut tokens are exiting the Pool, so we round down.
+            return _downscaleDown(amountOut, scalingFactorTokenOut);
+        } else {
+            // All token amounts are upscaled.
+            balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
+            balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+            request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-        // amountOut tokens are exiting the Pool, so we round down.
-        return _downscaleDown(amountOut, scalingFactorTokenOut);
-    }
+            uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut);
 
-    function _swapGivenOut(
-        SwapRequest memory swapRequest,
-        uint256 balanceTokenIn,
-        uint256 balanceTokenOut,
-        uint256 scalingFactorTokenIn,
-        uint256 scalingFactorTokenOut
-    ) internal view returns (uint256) {
-        // All token amounts are upscaled.
-        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
-        swapRequest.amount = _upscale(swapRequest.amount, scalingFactorTokenOut);
+            // amountIn are tokens entering the Pool, so we round up.
+            amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
 
-        uint256 amountIn = _onSwapGivenOut(swapRequest, balanceTokenIn, balanceTokenOut);
-
-        // amountIn are tokens entering the Pool, so we round up.
-        amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
-
-        // Fees are added after scaling happens, to reduce complexity of rounding direction analysis.
-        return _addSwapFee(amountIn);
+            // Fees are added after scaling happens, to reduce complexity of rounding direction analysis.
+            return _addSwapFee(amountIn);
+        }
     }
 
     function _onSwapGivenIn(
