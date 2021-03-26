@@ -170,11 +170,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             }
         }
 
-        // We prevent user error by reverting if ETH was sent but not referenced by any asset.
-        _ensureNoUnallocatedETH(ethAssetSeen);
-
-        // By returning the excess ETH, we also check that at least wrappedETH has been received.
-        _returnExcessEthToCaller(wrappedETH);
+        // Handle any remaining ETH by checking it wasn't sent by mistake and returning the excess in case there is any.
+        _handleRemainingEth(ethAssetSeen, wrappedETH);
     }
 
     // For `_swapWithPools` to handle both given in and given out swaps, it internally tracks the 'given' amount
@@ -322,11 +319,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         address pool = _getPoolAddress(request.poolId);
         PoolSpecialization specialization = _getPoolSpecialization(request.poolId);
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            amountCalculated = _processMinimalSwapInfoPoolSwapRequest(request, IMinimalSwapInfoPool(pool), kind);
+            amountCalculated = _processMinimalSwapInfoPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            amountCalculated = _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool), kind);
+            amountCalculated = _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
         } else {
-            amountCalculated = _processGeneralPoolSwapRequest(request, IGeneralPool(pool), kind);
+            amountCalculated = _processGeneralPoolSwapRequest(request, IGeneralPool(pool));
         }
 
         // Store swap information for next swap
@@ -336,11 +333,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         (amountIn, amountOut) = _getAmounts(kind, swap.amount, amountCalculated);
     }
 
-    function _processTwoTokenPoolSwapRequest(
-        InternalSwapRequest memory request,
-        IMinimalSwapInfoPool pool,
-        SwapKind kind
-    ) private returns (uint256 amountCalculated) {
+    function _processTwoTokenPoolSwapRequest(InternalSwapRequest memory request, IMinimalSwapInfoPool pool)
+        private
+        returns (uint256 amountCalculated)
+    {
         // For gas efficiency reasons, this function uses low-level knowledge of how Two Token Pool balances are
         // stored internally, instead of using getters and setters for all operations.
 
@@ -369,7 +365,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         (tokenInBalance, tokenOutBalance, amountCalculated) = _callMinimalSwapInfoPoolOnSwapHook(
             request,
             pool,
-            kind,
             tokenInBalance,
             tokenOutBalance
         );
@@ -380,11 +375,10 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             : BalanceAllocation.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
     }
 
-    function _processMinimalSwapInfoPoolSwapRequest(
-        InternalSwapRequest memory request,
-        IMinimalSwapInfoPool pool,
-        SwapKind kind
-    ) private returns (uint256 amountCalculated) {
+    function _processMinimalSwapInfoPoolSwapRequest(InternalSwapRequest memory request, IMinimalSwapInfoPool pool)
+        private
+        returns (uint256 amountCalculated)
+    {
         bytes32 tokenInBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenIn);
         bytes32 tokenOutBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenOut);
 
@@ -392,7 +386,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         (tokenInBalance, tokenOutBalance, amountCalculated) = _callMinimalSwapInfoPoolOnSwapHook(
             request,
             pool,
-            kind,
             tokenInBalance,
             tokenOutBalance
         );
@@ -408,7 +401,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     function _callMinimalSwapInfoPoolOnSwapHook(
         InternalSwapRequest memory request,
         IMinimalSwapInfoPool pool,
-        SwapKind kind,
         bytes32 tokenInBalance,
         bytes32 tokenOutBalance
     )
@@ -426,16 +418,15 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
         IPoolSwapStructs.SwapRequest memory poolSwapRequest = _toPoolSwapRequest(request);
         amountCalculated = pool.onSwap(poolSwapRequest, tokenInTotal, tokenOutTotal);
-        (uint256 amountIn, uint256 amountOut) = _getAmounts(kind, request.amount, amountCalculated);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
         newTokenInBalance = tokenInBalance.increaseCash(amountIn);
         newTokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
     }
 
-    function _processGeneralPoolSwapRequest(
-        InternalSwapRequest memory request,
-        IGeneralPool pool,
-        SwapKind kind
-    ) private returns (uint256 amountCalculated) {
+    function _processGeneralPoolSwapRequest(InternalSwapRequest memory request, IGeneralPool pool)
+        private
+        returns (uint256 amountCalculated)
+    {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
@@ -464,7 +455,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
         IPoolSwapStructs.SwapRequest memory poolSwapRequest = _toPoolSwapRequest(request);
         amountCalculated = pool.onSwap(poolSwapRequest, currentBalances, indexIn, indexOut);
-        (uint256 amountIn, uint256 amountOut) = _getAmounts(kind, request.amount, amountCalculated);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
         tokenInBalance = tokenInBalance.increaseCash(amountIn);
         tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
 

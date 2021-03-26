@@ -77,11 +77,8 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             }
         }
 
-        // We prevent user error by reverting if ETH was sent but not allocated to any deposit.
-        _ensureNoUnallocatedETH(ethAssetSeen);
-
-        // By returning the excess ETH, we also check that at least wrappedETH has been received.
-        _returnExcessEthToCaller(wrappedETH);
+        // Handle any remaining ETH by checking it wasn't sent by mistake and returning the excess in case there is any.
+        _handleRemainingEth(ethAssetSeen, wrappedETH);
     }
 
     /**
