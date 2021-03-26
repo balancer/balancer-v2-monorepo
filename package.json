@@ -12,6 +12,7 @@
     "benchmark": "yarn measure-gas-deployment && yarn measure-gas-single-pair && yarn measure-gas-multihop",
     "compile": "hardhat compile",
     "compile:watch": "nodemon --ext sol --exec yarn compile",
+    "tsc": "tsc",
     "deploy:hardhat": "hardhat --network hardhat deploy",
     "deploy:local": "hardhat --network localhost deploy",
     "deploy:docker": "hardhat --network dockerParity deploy",
