@@ -30,7 +30,6 @@ import "./interfaces/IVault.sol";
 abstract contract AssetTransfersHandler is AssetHelpers {
     using SafeERC20 for IERC20;
     using Address for address payable;
-    using Math for uint256;
 
     /**
      * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, it first withdraws as much
@@ -68,7 +67,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
 
             if (fromInternalBalance) {
                 // We take as many tokens from Internal Balance as possible: any remaining amounts will be transferred.
-                (, uint256 deductedBalance) = _decreaseInternalBalance(sender, token, amount, true, false);
+                uint256 deductedBalance = _decreaseInternalBalance(sender, token, amount, true);
                 // Because `deductedBalance` will be always the lesser of the current internal balance
                 // and the amount to decrease, it is safe to perform unchecked arithmetic.
                 amount -= deductedBalance;
@@ -91,8 +90,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
         IAsset asset,
         uint256 amount,
         address payable recipient,
-        bool toInternalBalance,
-        bool trackExempt
+        bool toInternalBalance
     ) internal {
         if (amount == 0) {
             return;
@@ -112,7 +110,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
         } else {
             IERC20 token = _asIERC20(asset);
             if (toInternalBalance) {
-                _increaseInternalBalance(recipient, token, amount, trackExempt);
+                _increaseInternalBalance(recipient, token, amount);
             } else {
                 token.safeTransfer(recipient, amount);
             }
@@ -168,15 +166,13 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount,
-        bool track
+        uint256 amount
     ) internal virtual;
 
     function _decreaseInternalBalance(
         address account,
         IERC20 token,
         uint256 amount,
-        bool capped,
-        bool useExempts
-    ) internal virtual returns (uint256, uint256);
+        bool capped
+    ) internal virtual returns (uint256);
 }

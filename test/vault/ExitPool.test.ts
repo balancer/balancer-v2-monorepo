@@ -13,7 +13,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { arrayAdd, arraySub, BigNumberish, bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
+import { arrayAdd, arraySub, BigNumberish, bn, fp } from '../../lib/helpers/numbers';
 import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 

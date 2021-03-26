@@ -541,7 +541,7 @@ abstract contract PoolRegistry is
 
             // Send tokens from the recipient - possibly to Internal Balance
             IAsset asset = change.assets[i];
-            _sendAsset(asset, amountOut, recipient, change.useInternalBalance, false);
+            _sendAsset(asset, amountOut, recipient, change.useInternalBalance);
 
             uint256 protocolSwapFee = dueProtocolFeeAmounts[i];
 

@@ -22,18 +22,18 @@ import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
+import "../lib/openzeppelin/SafeCast.sol";
 
 import "./Fees.sol";
 import "./AssetTransfersHandler.sol";
-import "./balances/InternalBalanceAllocation.sol";
 
 abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fees {
     using Math for uint256;
+    using SafeCast for uint256;
     using SafeERC20 for IERC20;
-    using InternalBalanceAllocation for bytes32;
 
     // Stores all accounts' Internal Balances for each token.
-    mapping(address => mapping(IERC20 => bytes32)) private _internalTokenBalance;
+    mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
     function getInternalBalance(address user, IERC20[] memory tokens)
         external
@@ -43,7 +43,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     {
         balances = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
-            balances[i] = _getInternalBalance(user, tokens[i]).actual();
+            balances[i] = _getInternalBalance(user, tokens[i]);
         }
     }
 
@@ -66,7 +66,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         for (uint256 i = 0; i < transfers.length; i++) {
             (asset, sender, recipient, amount, authenticated) = _validateTransfer(transfers[i], authenticated);
 
-            _increaseInternalBalance(recipient, _translateToIERC20(asset), amount, true);
+            _increaseInternalBalance(recipient, _translateToIERC20(asset), amount);
 
             // _receiveAsset does not check if the caller sent enough ETH, so we keep track of it independently (as
             // multiple deposits may have all deposited ETH).
@@ -100,9 +100,9 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         uint256 amountToSend = amount;
         IERC20 token = _translateToIERC20(asset);
 
-        _decreaseInternalBalance(sender, token, amount, false, true);
+        _decreaseInternalBalance(sender, token, amount, false);
 
-        _sendAsset(asset, amountToSend, payable(recipient), false, false);
+        _sendAsset(asset, amountToSend, payable(recipient), false);
     }
 
     /**
@@ -138,8 +138,8 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         // IERC20, with no translation.
         IERC20 token = _asIERC20(asset);
 
-        _decreaseInternalBalance(sender, token, amount, false, false);
-        _increaseInternalBalance(recipient, token, amount, false);
+        _decreaseInternalBalance(sender, token, amount, false);
+        _increaseInternalBalance(recipient, token, amount);
     }
 
     /**
@@ -171,55 +171,43 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount,
-        bool trackExempt
+        uint256 amount
     ) internal override {
-        bytes32 currentInternalBalance = _getInternalBalance(account, token);
-        bytes32 newBalance = currentInternalBalance.increase(amount, trackExempt);
-
-        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256, as the value is
-        // guaranteed to fit.
-        emit InternalBalanceChanged(account, token, int256(amount));
+        uint256 currentBalance = _getInternalBalance(account, token);
+        uint256 newBalance = currentBalance.add(amount);
 
         _internalTokenBalance[account][token] = newBalance;
+
+        emit InternalBalanceChanged(account, token, amount.toInt256());
     }
 
     /**
      * @dev Decreases `account`'s Internal Balance for `token` by `amount`.
      * When `capped` the internal balance will be decreased as much as possible without reverting.
-     * @return taxableAmount The amount that should be used to charge fees. Some Vault functions
-     * allow users to avoid fees when working with internal balance deltas in the same block. For example,
-     * deposits and withdrawals.
-     * @return decreasedAmount The amount that was actually decreased. Note this might not be equal to `amount` in
-     * case it was `capped` and the internal balance was actually lower.
+     *
+     * Returns the amount that was actually deducted from Internal Balance. Note this might not be equal to `amount`
+     * in case it was `capped` and the Internal Balance was actually lower.
      */
     function _decreaseInternalBalance(
         address account,
         IERC20 token,
         uint256 amount,
-        bool capped,
-        bool useExempt
-    ) internal override returns (uint256, uint256) {
-        bytes32 currentInternalBalance = _getInternalBalance(account, token);
-        (bytes32 newBalance, uint256 taxableAmount, uint256 decreasedAmount) = currentInternalBalance.decrease(
-            amount,
-            capped,
-            useExempt
-        );
+        bool capped
+    ) internal override returns (uint256 deducted) {
+        uint256 currentBalance = _getInternalBalance(account, token);
+        _require(capped || (currentBalance >= amount), Errors.INSUFFICIENT_INTERNAL_BALANCE);
 
-        // Because Internal Balance is stored in 112 bits internally, we can safely cast to int256, as the value is
-        // guaranteed to fit.
-        emit InternalBalanceChanged(account, token, -int256(amount));
+        deducted = Math.min(currentBalance, amount);
+        uint256 newBalance = currentBalance - deducted;
 
         _internalTokenBalance[account][token] = newBalance;
-
-        return (taxableAmount, decreasedAmount);
+        emit InternalBalanceChanged(account, token, -(deducted.toInt256()));
     }
 
     /**
      * @dev Returns `account`'s Internal Balance for `token`.
      */
-    function _getInternalBalance(address account, IERC20 token) internal view returns (bytes32) {
+    function _getInternalBalance(address account, IERC20 token) internal view returns (uint256) {
         return _internalTokenBalance[account][token];
     }
 

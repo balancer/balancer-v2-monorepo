@@ -166,9 +166,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
-
-                // Deposits to Internal Balance are also exempt from this fee during the current block.
-                _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance, true);
+                _sendAsset(asset, toSend, funds.recipient, funds.toInternalBalance);
             }
         }
 
