@@ -367,7 +367,7 @@ describe('Vault - asset transfers handler', function () {
         function itSendsTokensCorrectlyUsingInternalBalance() {
           const toInternalBalance = true;
 
-          it('assigns tokens as internal balance not charging a withdraw fee', async () => {
+          it('assigns tokens as internal balance', async () => {
             const recipientInternalBalanceBefore = await handler.getInternalBalance(recipient.address, token.address);
 
             await handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, toInternalBalance);

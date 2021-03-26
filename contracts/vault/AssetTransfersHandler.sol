@@ -68,8 +68,6 @@ abstract contract AssetTransfersHandler is AssetHelpers {
 
             if (fromInternalBalance) {
                 // We take as many tokens from Internal Balance as possible: any remaining amounts will be transferred.
-                // Note that this usage of Internal Balance is not charged withdraw fees, so if possible, we attempt
-                // to avoid using exempt Internal Balance.
                 (, uint256 deductedBalance) = _decreaseInternalBalance(sender, token, amount, true, false);
                 // Because `deductedBalance` will be always the lesser of the current internal balance
                 // and the amount to decrease, it is safe to perform unchecked arithmetic.

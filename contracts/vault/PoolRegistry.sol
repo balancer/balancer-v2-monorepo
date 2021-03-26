@@ -540,10 +540,8 @@ abstract contract PoolRegistry is
             _require(amountOut >= change.limits[i], Errors.EXIT_BELOW_MIN);
 
             // Send tokens from the recipient - possibly to Internal Balance
-            // Tokens deposited to Internal Balance are not later exempt from withdrawal fees.
-            uint256 withdrawFee = change.useInternalBalance ? 0 : _calculateWithdrawFee(amountOut);
             IAsset asset = change.assets[i];
-            _sendAsset(asset, amountOut.sub(withdrawFee), recipient, change.useInternalBalance, false);
+            _sendAsset(asset, amountOut, recipient, change.useInternalBalance, false);
 
             uint256 protocolSwapFee = dueProtocolFeeAmounts[i];
 
@@ -551,7 +549,7 @@ abstract contract PoolRegistry is
             uint256 delta = amountOut.add(protocolSwapFee);
             finalBalances[i] = balances[i].decreaseCash(delta);
 
-            _payFee(_translateToIERC20(asset), protocolSwapFee.add(withdrawFee));
+            _payFee(_translateToIERC20(asset), protocolSwapFee);
         }
     }
 
