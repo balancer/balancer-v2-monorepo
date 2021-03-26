@@ -114,10 +114,25 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     }
 
     /**
+     * @dev Converts an array of `TokenBalanceTransfer` into an array of `AssetBalanceTransfer`, with no runtime cost.
+     */
+    function _toAssetBalanceTransfer(TokenBalanceTransfer[] memory tokenTransfers)
+        private
+        pure
+        returns (AssetBalanceTransfer[] memory assetTransfers)
+    {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            assetTransfers := tokenTransfers
+        }
+    }
+
+    /**
      * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
      */
-    function transferInternalBalance(AssetBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
-        _processInternalBalanceOps(transfers, _transferInternalBalance);
+    function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
+        // We cast transfers into AssetBalanceTransfers in order to reuse _processInternalBalanceOps.
+        _processInternalBalanceOps(_toAssetBalanceTransfer(transfers), _transferInternalBalance);
     }
 
     function _transferInternalBalance(
@@ -126,8 +141,11 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         address recipient,
         uint256 amount
     ) private {
-        _require(!_isETH(asset), Errors.INVALID_ETH_INTERNAL_BALANCE);
-        IERC20 token = _translateToIERC20(asset);
+        // `transferInteralBalance` doesn't actually support assets: this function complies with the interface expected
+        // by `_processInternalBalanceOps` to be able to use that function. We therefore cast assets directly into
+        // IERC20, with no translation.
+        IERC20 token = _asIERC20(asset);
+
         // Transferring internal balance to another account is not charged withdrawal fees.
         // Because of this, we use the exempt balance if possible.
         _decreaseInternalBalance(sender, token, amount, false, false);
@@ -138,8 +156,9 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     /**
      * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
      */
-    function transferToExternalBalance(AssetBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
-        _processInternalBalanceOps(transfers, _transferToExternalBalance);
+    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
+        // We cast transfers into AssetBalanceTransfers in order to reuse _processInternalBalanceOps.
+        _processInternalBalanceOps(_toAssetBalanceTransfer(transfers), _transferToExternalBalance);
     }
 
     function _transferToExternalBalance(
@@ -148,8 +167,12 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         address recipient,
         uint256 amount
     ) private {
+        // `transferToExternalBalance` doesn't actually support assets: this function complies with the interface
+        // expected by `_processInternalBalanceOps` to be able to use that function. We therefore cast assets directly
+        // into IERC20, with no translation.
+        IERC20 token = _asIERC20(asset);
+
         // Do not charge a withdrawal fee, since it's just making use of the Vault's allowance
-        IERC20 token = _translateToIERC20(asset);
         token.safeTransferFrom(sender, recipient, amount);
     }
 

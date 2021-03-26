@@ -904,7 +904,7 @@ describe('Vault - internal balance', () => {
 
         await vault.transferInternalBalance(
           tokens.map((token, i) => ({
-            asset: token.address,
+            token: token.address,
             amount: amounts[i],
             sender: sender.address,
             recipient: recipient.address,
@@ -927,13 +927,13 @@ describe('Vault - internal balance', () => {
 
         await vault.transferInternalBalance([
           {
-            asset: tokens.first.address,
+            token: tokens.first.address,
             amount: amounts[0],
             sender: sender.address,
             recipient: recipient.address,
           },
           {
-            asset: tokens.second.address,
+            token: tokens.second.address,
             amount: amounts[1],
             sender: sender.address,
             recipient: otherRecipient.address,
@@ -966,7 +966,7 @@ describe('Vault - internal balance', () => {
 
         await vault.transferInternalBalance(
           tokens.map((token, i) => ({
-            asset: token.address,
+            token: token.address,
             amount: amounts[i],
             sender: sender.address,
             recipient: recipient.address,
@@ -986,7 +986,7 @@ describe('Vault - internal balance', () => {
         const receipt = await (
           await vault.transferInternalBalance(
             tokens.map((token, i) => ({
-              asset: token.address,
+              token: token.address,
               amount: amounts[i],
               sender: sender.address,
               recipient: recipient.address,
@@ -1051,7 +1051,7 @@ describe('Vault - internal balance', () => {
           await expect(
             vault.transferInternalBalance(
               tokens.map((token, i) => ({
-                asset: token.address,
+                token: token.address,
                 amount: amounts[i],
                 sender: sender.address,
                 recipient: recipient.address,
@@ -1139,7 +1139,7 @@ describe('Vault - internal balance', () => {
             await expect(
               vault.transferInternalBalance(
                 tokens.map((token, i) => ({
-                  asset: token.address,
+                  token: token.address,
                   amount: amounts[i],
                   sender: sender.address,
                   recipient: recipient.address,
@@ -1160,7 +1160,7 @@ describe('Vault - internal balance', () => {
             await expect(
               vault.transferInternalBalance(
                 tokens.map((token, i) => ({
-                  asset: token.address,
+                  token: token.address,
                   amount: amounts[i],
                   sender: sender.address,
                   recipient: recipient.address,
@@ -1179,7 +1179,7 @@ describe('Vault - internal balance', () => {
             await expect(
               vault.transferInternalBalance(
                 tokens.map((token, i) => ({
-                  asset: token.address,
+                  token: token.address,
                   amount: amounts[i],
                   sender: sender.address,
                   recipient: recipient.address,
@@ -1200,7 +1200,7 @@ describe('Vault - internal balance', () => {
         await expectBalanceChange(
           () =>
             vault.transferToExternalBalance([
-              { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+              { token: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
             ]),
           tokens,
           [
@@ -1216,7 +1216,7 @@ describe('Vault - internal balance', () => {
         const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
 
         await vault.transferToExternalBalance([
-          { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+          { token: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
         ]);
 
         const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
@@ -1229,7 +1229,7 @@ describe('Vault - internal balance', () => {
       it('does not emit an event', async () => {
         const receipt = await (
           await vault.transferToExternalBalance([
-            { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+            { token: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
           ])
         ).wait();
 
@@ -1273,7 +1273,7 @@ describe('Vault - internal balance', () => {
               await expect(
                 vault.transferToExternalBalance([
                   {
-                    asset: tokens.DAI.address,
+                    token: tokens.DAI.address,
                     amount: balance,
                     sender: sender.address,
                     recipient: recipient.address,
@@ -1289,7 +1289,7 @@ describe('Vault - internal balance', () => {
             await expect(
               vault.transferToExternalBalance([
                 {
-                  asset: tokens.DAI.address,
+                  token: tokens.DAI.address,
                   amount: balance,
                   sender: sender.address,
                   recipient: recipient.address,
@@ -1330,7 +1330,7 @@ describe('Vault - internal balance', () => {
             await expect(
               vault.transferToExternalBalance([
                 {
-                  asset: tokens.DAI.address,
+                  token: tokens.DAI.address,
                   amount: balance,
                   sender: sender.address,
                   recipient: recipient.address,
@@ -1351,7 +1351,7 @@ describe('Vault - internal balance', () => {
             await expect(
               vault.transferToExternalBalance([
                 {
-                  asset: tokens.DAI.address,
+                  token: tokens.DAI.address,
                   amount: balance,
                   sender: sender.address,
                   recipient: recipient.address,
@@ -1370,7 +1370,7 @@ describe('Vault - internal balance', () => {
             await expect(
               vault.transferToExternalBalance([
                 {
-                  asset: tokens.DAI.address,
+                  token: tokens.DAI.address,
                   amount: balance,
                   sender: sender.address,
                   recipient: recipient.address,

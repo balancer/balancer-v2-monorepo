@@ -105,6 +105,16 @@ interface IVault {
     }
 
     /**
+     * @dev Data for Internal Balance transfers, which are limited to ERC20 tokens.
+     */
+    struct TokenBalanceTransfer {
+        IERC20 token;
+        uint256 amount;
+        address sender;
+        address payable recipient;
+    }
+
+    /**
      * @dev Returns `user`'s Internal Balance for a set of tokens.
      */
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
@@ -142,7 +152,7 @@ interface IVault {
      *
      * This does not charge protocol withdrawal fees.
      */
-    function transferInternalBalance(AssetBalanceTransfer[] memory transfers) external;
+    function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Transfers tokens from each `sender` address to the corresponding `recipient` accounts, making use of the
@@ -152,7 +162,7 @@ interface IVault {
      * Typically, this function will only be called by relayers, letting them leverage the allowance users have already
      * given to the Vault.
      */
-    function transferToExternalBalance(AssetBalanceTransfer[] memory transfers) external;
+    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Emitted when a user's Internal Balance changes, either due to calls to the Internal Balance functions, or
