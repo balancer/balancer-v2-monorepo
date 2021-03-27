@@ -132,9 +132,12 @@ library FixedPoint {
     }
 
     /**
-     * @dev Tells the complement of a given value capped to zero to avoid overflow
+     * @dev Returns the complement of a value (1 - x), capped to 0 if x is larger than 1.
+     *
+     * Useful when computing the complement for values with some level of relative error, as it strips this error and
+     * prevents intermediate negative values.
      */
     function complement(uint256 x) internal pure returns (uint256) {
-        return x >= ONE ? 0 : sub(ONE, x);
+        return (x < ONE) ? (ONE - x) : 0;
     }
 }
