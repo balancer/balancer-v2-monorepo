@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import TokenList from '../helpers/models/tokens/TokenList';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
-import { bn } from '../../lib/helpers/numbers';
+import { bn, fp } from '../../lib/helpers/numbers';
 import { roleId } from '../../lib/helpers/roles';
 import Vault from '../helpers/models/vault/Vault';
 
@@ -84,16 +84,9 @@ describe('Vault - protocol fees', () => {
     });
 
     context('with collected protocol fees', () => {
-      sharedBeforeEach('simulate deposits and withdraws', async () => {
-        await vault.instance.connect(user).depositToInternalBalance([
-          { asset: tokens.DAI.address, amount: bn(20e18), sender: user.address, recipient: user.address },
-          { asset: tokens.MKR.address, amount: bn(20e18), sender: user.address, recipient: user.address },
-        ]);
-
-        await vault.instance.connect(user).withdrawFromInternalBalance([
-          { asset: tokens.DAI.address, amount: bn(5e18), sender: user.address, recipient: user.address },
-          { asset: tokens.MKR.address, amount: bn(10e18), sender: user.address, recipient: user.address },
-        ]);
+      sharedBeforeEach('collect some tokens', async () => {
+        await tokens.DAI.transfer(feesCollector, fp(0.025), { from: user });
+        await tokens.MKR.transfer(feesCollector, fp(0.05), { from: user });
       });
 
       it('reports collected fee', async () => {
