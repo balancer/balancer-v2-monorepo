@@ -225,8 +225,8 @@ interface IVault {
      *
      * The `tokens` and `assetManagers` arrays must have the same length, and each entry in these indicates the Asset
      * Manager for each token. Asset Managers can manage a Pool's tokens by withdrawing and depositing them directly
-     * (via `withdrawFromPoolBalance` and `depositToPoolBalance`), and even set them to arbitrary amounts
-     * (`updateManagedBalance`). They are therefore expected to be highly secured smart contracts with sound design
+     * (via `managePoolBalance` with the appropriate AssetManagerOpKind setting), and even set them to arbitrary amounts
+     * with the UPDATE OpKind. They are therefore expected to be highly secured smart contracts with sound design
      * principles, and the decision to add an Asset Manager should not be made lightly.
      *
      * Pools can not set an Asset Manager by setting them to the zero address. Once an Asset Manager is set, it cannot
@@ -672,8 +672,8 @@ interface IVault {
     }
 
     /**
-     * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `withdrawFromPoolBalance`
-     * or `depositToPoolBalance`.
+     * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `managePoolBalance`
+     * (using the AssetManagerOpKind to determine the type of update)
      */
     event PoolBalanceManaged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
