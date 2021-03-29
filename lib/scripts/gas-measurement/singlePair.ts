@@ -60,6 +60,26 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
   const tokenOut = tokenSymbols[1];
 
   for (let poolAmount = 1; poolAmount <= MAX_POOLS; ++poolAmount) {
+    if (poolAmount == 1) {
+      const receipt = await (
+        await vault.connect(trader).swap(
+          {
+            kind: 0,
+            poolId: poolIds[0],
+            tokenIn: tokens[tokenIn].address,
+            tokenOut: tokens[tokenOut].address,
+            amount: fp(0.1),
+            userData: '0x',
+          },
+          funds,
+          0,
+          MAX_UINT256
+        )
+      ).wait();
+
+      console.log(`${poolAmount} pools: ${printGas(receipt.gasUsed)} (simple swap)`);
+    }
+
     const [tokenAddresses, swaps] = getTokensSwaps(
       tokens,
       poolIds.slice(0, poolAmount).map((poolId) => {

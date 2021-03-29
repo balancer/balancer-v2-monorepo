@@ -557,6 +557,37 @@ interface IVault {
     }
 
     /**
+     * @dev Performs a single swap, only between two tokens.
+     * Returns the amount of tokens received after executing the swap.
+     * Internal Balance usage and recipient are determined by the `funds` struct.
+     * Emits `Swap` events.
+     */
+    function swap(
+        SingleSwap memory request,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    ) external payable returns (uint256);
+
+    /**
+     * @dev Data for two-token swaps executed by `swap`. Compared to `SwapIn` and `SwapOut`, the tokens in and out
+     * are given and there is not asset array, but similarly ETH asset is translated into WETH.
+     *
+     * Here `amount` refers to `amountIn` or `amountOut` depending on whether `kind` specifies a swap given in or out.
+     *
+     * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwapGivenOut` hook, and may be
+     * used to extend swap behavior.
+     */
+    struct SingleSwap {
+        bytes32 poolId;
+        SwapKind kind;
+        IAsset tokenIn;
+        IAsset tokenOut;
+        uint256 amount;
+        bytes userData;
+    }
+
+    /**
      * @dev Emitted for each individual swap performed by `batchSwapGivenIn` and `batchSwapGivenOut`.
      */
     event Swap(

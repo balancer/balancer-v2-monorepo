@@ -96,6 +96,50 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
     }
 
+    function swap(
+        SingleSwap memory request,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (uint256) {
+        // solhint-disable-next-line not-rely-on-time
+        _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
+        _require(request.amount > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
+        _ensureRegisteredPool(request.poolId);
+
+        IERC20 tokenIn = _translateToIERC20(request.tokenIn);
+        IERC20 tokenOut = _translateToIERC20(request.tokenOut);
+        _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
+
+        InternalSwapRequest memory internalRequest = InternalSwapRequest({
+            poolId: request.poolId,
+            kind: request.kind,
+            tokenIn: tokenIn,
+            tokenOut: tokenOut,
+            amount: request.amount,
+            userData: request.userData,
+            from: funds.sender,
+            to: funds.recipient,
+            latestBlockNumberUsed: 0 // will be updated later on based on the pool specialization
+        });
+
+        uint256 amountCalculated = _swapWithPool(internalRequest);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
+        _require(request.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
+
+        // Receive token in
+        _receiveAsset(request.tokenIn, amountIn, funds.sender, funds.fromInternalBalance);
+
+        // Send token out
+        _sendAsset(request.tokenOut, amountOut, funds.recipient, funds.toInternalBalance);
+
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(_isETH(request.tokenIn) ? amountIn : 0);
+
+        emit Swap(request.poolId, tokenIn, tokenOut, amountIn, amountOut);
+        return amountCalculated;
+    }
+
     function batchSwapGivenIn(
         SwapIn[] memory swaps,
         IAsset[] memory assets,
