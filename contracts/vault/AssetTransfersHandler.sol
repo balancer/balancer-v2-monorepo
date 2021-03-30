@@ -118,31 +118,20 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     }
 
     /**
-     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent.
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
+     * if the caller sent less ETH than `amountUsed`.
      *
-     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
+     * Because the caller might not now exactly how much ETH a Vault action will require, they may send extra.
      * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
      * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
      * returned ETH.
-     *
-     * Reverts if the contract caller sent less ETH than `amountUsed`.
      */
-    function _returnExcessEthToCaller(uint256 amountUsed) internal {
+    function _handleRemainingEth(uint256 amountUsed) internal {
         _require(msg.value >= amountUsed, Errors.INSUFFICIENT_ETH);
 
         uint256 excess = msg.value - amountUsed;
         if (excess > 0) {
             msg.sender.sendValue(excess);
-        }
-    }
-
-    /**
-     * @dev Reverts in transactions where a user sent ETH, but didn't specify usage of it as an asset. `ethAssetSeen`
-     * should be true if any asset held the sentinel value for ETH, and false otherwise.
-     */
-    function _ensureNoUnallocatedETH(bool ethAssetSeen) internal view {
-        if (msg.value > 0) {
-            _require(ethAssetSeen, Errors.UNALLOCATED_ETH);
         }
     }
 
