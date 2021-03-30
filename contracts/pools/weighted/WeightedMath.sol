@@ -127,46 +127,36 @@ contract WeightedMath {
     ) internal pure returns (uint256) {
         // BPT out, so we round down overall.
 
-        // First loop to calculate the weighted balance ratio
-        // The increment `amountIn` represents for each token, as a quotient of new and current balances,
-        // not accounting swap fees
-        uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsIn.length);
-        // The weighted sum of token balance rations sans fee
-        uint256 weightedBalanceRatio = 0;
+        uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
+
+        uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            tokenBalanceRatiosWithoutFee[i] = balances[i].add(amountsIn[i]).divDown(balances[i]);
-            weightedBalanceRatio = weightedBalanceRatio.add(
-                tokenBalanceRatiosWithoutFee[i].mulDown(normalizedWeights[i])
-            );
+            balanceRatiosWithFee[i] = balances[i].add(amountsIn[i]).divDown(balances[i]);
+            invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mulDown(normalizedWeights[i]));
         }
 
-        //Second loop to calculate new amounts in taking into account the fee on the % excess
-        // The growth of the invariant caused by the join, as a quotient of the new value and the current one
         uint256 invariantRatio = FixedPoint.ONE;
         for (uint256 i = 0; i < balances.length; i++) {
-            // Percentage of the amount supplied that will be swapped for other tokens in the pool
-            uint256 tokenBalancePercentageExcess;
-            // Some tokens might have amounts supplied in excess of a 'balanced' join: these are identified if
-            // the token's balance ratio sans fee is larger than the weighted balance ratio, and swap fees charged
-            // on the amount to swap
-            if (weightedBalanceRatio >= tokenBalanceRatiosWithoutFee[i]) {
-                tokenBalancePercentageExcess = 0;
+            uint256 amountInWithoutFee;
+
+            if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
+                uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithFees.sub(FixedPoint.ONE));
+                uint256 taxableAmount = amountsIn[i].sub(nonTaxableAmount);
+                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE.sub(swapFee)));
             } else {
-                tokenBalancePercentageExcess = tokenBalanceRatiosWithoutFee[i].sub(weightedBalanceRatio).divUp(
-                    tokenBalanceRatiosWithoutFee[i].sub(FixedPoint.ONE)
-                );
+                amountInWithoutFee = amountsIn[i];
             }
 
-            uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+            uint256 tokenBalanceRatio = balances[i].add(amountInWithoutFee).divDown(balances[i]);
 
-            uint256 amountInAfterFee = amountsIn[i].mulDown(swapFeeExcess.complement());
-
-            uint256 tokenBalanceRatio = FixedPoint.ONE.add(amountInAfterFee.divDown(balances[i]));
-
-            invariantRatio = invariantRatio.mulDown(FixedPoint.powDown(tokenBalanceRatio, normalizedWeights[i]));
+            invariantRatio = invariantRatio.mulDown(tokenBalanceRatio.powDown(normalizedWeights[i]));
         }
 
-        return bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE));
+        if (invariantRatio >= FixedPoint.ONE) {
+            return bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE));
+        } else {
+            return 0;
+        }
     }
 
     function _calcTokenInGivenExactBptOut(
@@ -192,12 +182,13 @@ contract WeightedMath {
 
         // Calculate by how much the token balance has to increase to match invariantRatio
         uint256 tokenBalanceRatio = FixedPoint.powUp(invariantRatio, FixedPoint.ONE.divUp(tokenNormalizedWeight));
-        uint256 tokenBalancePercentageExcess = tokenNormalizedWeight.complement();
-        uint256 amountInAfterFee = tokenBalance.mulUp(tokenBalanceRatio.sub(FixedPoint.ONE));
 
-        uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+        uint256 amountInWithoutFee = tokenBalance.mulUp(tokenBalanceRatio.sub(FixedPoint.ONE));
 
-        return amountInAfterFee.divUp(swapFeeExcess.complement());
+        uint256 taxablePercentage = tokenNormalizedWeight.complement();
+        uint256 efectiveSwapFee = swapFee.mulUp(taxablePercentage);
+
+        return amountInWithoutFee.divUp(efectiveSwapFee.complement());
     }
 
     function _calcBptInGivenExactTokensOut(
