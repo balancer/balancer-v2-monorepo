@@ -13,14 +13,16 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../lib/helpers/BalancerErrors.sol";
 
 import "./BalanceAllocation.sol";
+import "../PoolRegistry.sol";
 
-contract TwoTokenPoolsBalance {
+abstract contract TwoTokenPoolsBalance is PoolRegistry {
     using BalanceAllocation for bytes32;
 
     // Data for Pools with Two Tokens
@@ -215,7 +217,14 @@ contract TwoTokenPoolsBalance {
         // Only registered tokens can have non-zero balances, so we can use this as a shortcut to avoid the
         // expensive _hasPoolTwoTokens check.
         bool exists = sharedCash.isNotZero() || sharedManaged.isNotZero() || _hasPoolTwoTokens(poolId, tokenA, tokenB);
-        _require(exists, Errors.TOKEN_NOT_REGISTERED);
+
+        // If there is no balance for the requested tokens, we first check if the pool was registered.
+        // This is a gas optimization so we don't have to check the pool was registered unnecessarily, which would be
+        // the happy path where there is a token already registered for a given pool ID.
+        if (!exists) {
+            _ensureRegisteredPool(poolId);
+            _revert(Errors.TOKEN_NOT_REGISTERED);
+        }
 
         balanceA = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
         balanceB = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);

@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -20,8 +21,9 @@ import "../../lib/helpers/BalancerErrors.sol";
 import "../../lib/openzeppelin/EnumerableSet.sol";
 
 import "./BalanceAllocation.sol";
+import "../PoolRegistry.sol";
 
-contract MinimalSwapInfoPoolsBalance {
+abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
     using BalanceAllocation for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -151,7 +153,15 @@ contract MinimalSwapInfoPoolsBalance {
     function _getMinimalSwapInfoPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         bytes32 balance = _minimalSwapInfoPoolsBalances[poolId][token];
         bool existsToken = balance.isNotZero() || _minimalSwapInfoPoolsTokens[poolId].contains(address(token));
-        _require(existsToken, Errors.TOKEN_NOT_REGISTERED);
+
+        // If there is no balance for the requested tokens, we first check if the pool was registered.
+        // This is a gas optimization so we don't have to check the pool was registered unnecessarily, which would be
+        // the happy path where there is a token already registered for a given pool ID.
+        if (!existsToken) {
+            _ensureRegisteredPool(poolId);
+            _revert(Errors.TOKEN_NOT_REGISTERED);
+        }
+
         return balance;
     }
 

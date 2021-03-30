@@ -26,13 +26,13 @@ import "../lib/openzeppelin/SafeCast.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/EnumerableSet.sol";
 
-import "./PoolRegistry.sol";
+import "./PoolAssets.sol";
 import "./interfaces/IPoolSwapStructs.sol";
 import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./balances/BalanceAllocation.sol";
 
-abstract contract Swaps is ReentrancyGuard, PoolRegistry {
+abstract contract Swaps is ReentrancyGuard, PoolAssets {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -105,7 +105,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
         _require(request.amount > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
-        _ensureRegisteredPool(request.poolId);
 
         IERC20 tokenIn = _translateToIERC20(request.tokenIn);
         IERC20 tokenOut = _translateToIERC20(request.tokenOut);
@@ -270,8 +269,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             request = swaps[i];
-            _ensureRegisteredPool(request.poolId);
-
             bool withinBounds = request.tokenInIndex < assets.length && request.tokenOutIndex < assets.length;
             _require(withinBounds, Errors.OUT_OF_BOUNDS);
 
@@ -427,9 +424,22 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
+        // We access both token indexes without checking existence cause we will do it manually immediately after.
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
-        uint256 indexIn = poolBalances.indexOf(request.tokenIn, Errors.TOKEN_NOT_REGISTERED);
-        uint256 indexOut = poolBalances.indexOf(request.tokenOut, Errors.TOKEN_NOT_REGISTERED);
+        uint256 indexIn = poolBalances.unchecked_indexOf(request.tokenIn);
+        uint256 indexOut = poolBalances.unchecked_indexOf(request.tokenOut);
+
+        // If any of the requested token didn't belong to the balances map, we first check if the pool was registered.
+        // This is a gas optimization so we don't have to check the pool was registered unnecessarily, which would be
+        // the happy path where there is a token already registered for a given pool ID.
+        if (indexIn == 0 || indexOut == 0) {
+            _ensureRegisteredPool(request.poolId);
+            _revert(Errors.TOKEN_NOT_REGISTERED);
+        }
+
+        // Index zero is used as invalid in maps, since we had check non of these are zero, we can parse them as follows
+        indexIn -= 1;
+        indexOut -= 1;
 
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);
