@@ -216,7 +216,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes memory userData
     ) external virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory scalingFactors = _scalingFactors();
-        _upscaleArray(currentBalances, scalingFactors);
 
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
@@ -233,6 +232,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
             return (amountsIn, new uint256[](_totalTokens));
         } else {
+            _upscaleArray(currentBalances, scalingFactors);
             (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(
                 poolId,
                 sender,
