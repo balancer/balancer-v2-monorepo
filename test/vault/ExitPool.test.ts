@@ -243,7 +243,7 @@ describe('Vault - exit pool', () => {
 
           context('when the relayer is not whitelisted by the authorizer', () => {
             sharedBeforeEach('revoke role from relayer', async () => {
-              const role = roleId(vault, 'exitPools');
+              const role = roleId(vault, 'exitPool');
               await authorizer.connect(admin).revokeRole(role, relayer.address);
             });
 
@@ -338,13 +338,13 @@ describe('Vault - exit pool', () => {
           {}
         );
 
-        // Tokens are sent from the Vault, so the expected change is negative
         const expectedVaultChanges = toInternalBalance
           ? dueProtocolFeeAmounts
-          : arrayAdd(exitAmounts, dueProtocolFeeAmounts).map((a) => a.mul(-1));
+          : arrayAdd(exitAmounts, dueProtocolFeeAmounts);
 
         const vaultChanges = tokens.reduce(
-          (changes, token, i) => ({ ...changes, [token.symbol]: expectedVaultChanges[i] }),
+          // Tokens are sent from the Vault, so the expected change is negative
+          (changes, token, i) => ({ ...changes, [token.symbol]: bn(expectedVaultChanges[i]).mul(-1) }),
           {}
         );
 
