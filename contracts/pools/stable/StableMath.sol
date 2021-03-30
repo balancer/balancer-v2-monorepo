@@ -476,7 +476,7 @@ contract StableMath {
         //We remove the balance fromm c by multiplying it
         c = c.mul(balances[tokenIndex]).div(P_D);
 
-        uint256 b = sum.mul(FixedPoint.ONE).add(invariant.div(ampTimesTotal));
+        uint256 b = sum.add(invariant.div(ampTimesTotal));
 
         //We iterate to find the balance
         uint256 prevTokenBalance = 0;

@@ -44,6 +44,11 @@ export default class Token {
     }
   }
 
+  async transfer(to: Account, amount: BigNumberish, { from }: TxParams = {}): Promise<ContractTransaction> {
+    const token = from ? this.instance.connect(from) : this.instance;
+    return token.transfer(TypesConverter.toAddress(to), amount);
+  }
+
   async approve(to: Account, amount?: BigNumberish, { from }: TxParams = {}): Promise<ContractTransaction> {
     const token = from ? this.instance.connect(from) : this.instance;
     return token.approve(TypesConverter.toAddress(to), amount ?? MAX_UINT256);

@@ -9,20 +9,17 @@ import TokenList, { ETH_TOKEN_ADDRESS } from '../helpers/models/tokens/TokenList
 import * as expectEvent from '../helpers/expectEvent';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
-import { NAry } from '../helpers/models/types/types';
+import { bn } from '../../lib/helpers/numbers';
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
-import { bn, fp, pct } from '../../lib/helpers/numbers';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 import { forceSendEth } from '../helpers/eth';
 
 describe('Vault - internal balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
   let relayer: SignerWithAddress, otherRecipient: SignerWithAddress;
-  let authorizer: Contract, vault: Contract, feesCollector: Contract;
+  let authorizer: Contract, vault: Contract;
   let tokens: TokenList, weth: Token;
-
-  const WITHDRAW_FEE = 0.005;
 
   before('setup signers', async () => {
     [, admin, sender, recipient, otherRecipient, relayer] = await ethers.getSigners();
@@ -34,13 +31,6 @@ describe('Vault - internal balance', () => {
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address, weth.address, 0, 0] });
-  });
-
-  sharedBeforeEach('set withdraw fee', async () => {
-    feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
-    const role = await roleId(feesCollector, 'setWithdrawFee');
-    await authorizer.connect(admin).grantRole(role, admin.address);
-    await feesCollector.connect(admin).setWithdrawFee(fp(WITHDRAW_FEE));
   });
 
   describe('deposit', () => {
@@ -385,262 +375,43 @@ describe('Vault - internal balance', () => {
   describe('withdraw', () => {
     const itHandlesWithdrawalsProperly = (depositedAmount: BigNumber, amount: BigNumber) => {
       context('when tokens and balances match', () => {
-        context('without protocol withdraw fees', () => {
-          sharedBeforeEach('remove withdraw fee', async () => {
-            await feesCollector.connect(admin).setWithdrawFee(0);
-          });
-
-          it('transfers the tokens from the vault to recipient', async () => {
-            await expectBalanceChange(
-              () =>
-                vault.withdrawFromInternalBalance([
-                  { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
-                ]),
-              tokens,
-              { account: recipient, changes: { DAI: amount } }
-            );
-          });
-
-          it('withdraws the internal balance from the sender account', async () => {
-            const previousSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
-            const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
-
-            await vault.withdrawFromInternalBalance([
-              { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
-            ]);
-
-            const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
-            expect(currentSenderBalance[0]).to.be.equal(previousSenderBalance[0].sub(amount));
-
-            const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
-            expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0]);
-          });
-
-          it('emits an event', async () => {
-            const receipt = await (
-              await vault.withdrawFromInternalBalance([
+        it('transfers the tokens from the vault to recipient', async () => {
+          await expectBalanceChange(
+            () =>
+              vault.withdrawFromInternalBalance([
                 { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
-              ])
-            ).wait();
-
-            expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
-              user: sender.address,
-              token: tokens.DAI.address,
-              delta: amount.mul(-1),
-            });
-          });
+              ]),
+            tokens,
+            { account: recipient, changes: { DAI: amount } }
+          );
         });
 
-        context('with protocol withdraw fees', () => {
-          context('when there was no deposit in the same block', () => {
-            it('transfers the requested amount minus the expected fee', async () => {
-              await expectBalanceChange(
-                () =>
-                  vault.withdrawFromInternalBalance([
-                    { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
-                  ]),
-                tokens,
-                { account: recipient, changes: { DAI: amount.sub(pct(amount, WITHDRAW_FEE)) } }
-              );
-            });
+        it('withdraws the internal balance from the sender account', async () => {
+          const previousSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
+          const previousRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
 
-            it('protocol fees are collected', async () => {
-              const previousCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
+          await vault.withdrawFromInternalBalance([
+            { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+          ]);
 
-              await vault.withdrawFromInternalBalance([
-                { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
-              ]);
+          const currentSenderBalance = await vault.getInternalBalance(sender.address, [tokens.DAI.address]);
+          expect(currentSenderBalance[0]).to.be.equal(previousSenderBalance[0].sub(amount));
 
-              const currentCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
-              expect(currentCollectedFees[0].sub(previousCollectedFees[0])).to.equal(pct(amount, WITHDRAW_FEE));
-            });
-          });
+          const currentRecipientBalance = await vault.getInternalBalance(recipient.address, [tokens.DAI.address]);
+          expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0]);
+        });
 
-          context('when there were some deposits in the same block', () => {
-            let relayer: Contract;
+        it('emits an event', async () => {
+          const receipt = await (
+            await vault.withdrawFromInternalBalance([
+              { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
+            ])
+          ).wait();
 
-            sharedBeforeEach('deploy relayer', async () => {
-              relayer = await deploy('MockInternalBalanceRelayer', { args: [vault.address] });
-              const withdrawRole = roleId(vault, 'depositToInternalBalance');
-              const depositRole = roleId(vault, 'withdrawFromInternalBalance');
-              await authorizer.connect(admin).grantRoles([withdrawRole, depositRole], relayer.address);
-              await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
-            });
-
-            const itDoesNotChargeWithdrawFees = (naryDeposits: NAry<BigNumber>, naryWithdraws: NAry<BigNumber>) => {
-              const deposits = Array.isArray(naryDeposits) ? naryDeposits : [naryDeposits];
-              const withdraws = Array.isArray(naryWithdraws) ? naryWithdraws : [naryWithdraws];
-
-              it('transfers the requested amount without fees', async () => {
-                // amount to deposit is greater than or equal to the withdrawn amount
-                const totalAmountToDeposit = deposits.reduce((total, amount) => total.add(amount), bn(0));
-                const totalAmountToWithdraw = withdraws.reduce((total, amount) => total.add(amount), bn(0));
-                const expectedBalanceChange = totalAmountToWithdraw.sub(totalAmountToDeposit);
-
-                await expectBalanceChange(
-                  () => relayer.depositAndWithdraw(sender.address, tokens.DAI.address, deposits, withdraws),
-                  tokens,
-                  { account: sender, changes: { DAI: expectedBalanceChange } }
-                );
-              });
-
-              it('does not collect protocol fees', async () => {
-                const previousCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
-
-                await relayer.depositAndWithdraw(sender.address, tokens.DAI.address, deposits, withdraws);
-
-                const currentCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
-                expect(currentCollectedFees[0]).to.equal(previousCollectedFees[0]);
-              });
-            };
-
-            context('when there was one deposit in the same block', () => {
-              const amountToDeposit = fp(10);
-
-              sharedBeforeEach('approve amounts to deposit', async () => {
-                await tokens.DAI.mint(sender, amountToDeposit);
-                await tokens.DAI.approve(vault, amountToDeposit, { from: sender });
-              });
-
-              context('when withdrawing less than the deposited amount', () => {
-                const amountToWithdraw = amountToDeposit.div(2);
-
-                itDoesNotChargeWithdrawFees(amountToDeposit, amountToWithdraw);
-              });
-
-              context('when withdrawing the same deposited amount', () => {
-                const amountToWithdraw = amountToDeposit;
-
-                itDoesNotChargeWithdrawFees(amountToDeposit, amountToWithdraw);
-              });
-
-              context('when withdrawing more than the deposited amount', () => {
-                context('when the previous internal balance was enough', () => {
-                  const amountToWithdraw = amountToDeposit.add(depositedAmount.div(2));
-                  const expectedTaxableAmount = amountToWithdraw.sub(amountToDeposit);
-                  const expectedWithdrawFees = pct(expectedTaxableAmount, WITHDRAW_FEE);
-
-                  it('transfers the requested amount minus the expected fee', async () => {
-                    const expectedWithdrawnAmount = expectedTaxableAmount.sub(expectedWithdrawFees);
-
-                    await expectBalanceChange(
-                      () =>
-                        relayer.depositAndWithdraw(
-                          sender.address,
-                          tokens.DAI.address,
-                          [amountToDeposit],
-                          [amountToWithdraw]
-                        ),
-                      tokens,
-                      { account: sender, changes: { DAI: expectedWithdrawnAmount } }
-                    );
-                  });
-
-                  it('protocol fees are collected', async () => {
-                    const previousCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
-
-                    await relayer.depositAndWithdraw(
-                      sender.address,
-                      tokens.DAI.address,
-                      [amountToDeposit],
-                      [amountToWithdraw]
-                    );
-
-                    const currentCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
-                    expect(currentCollectedFees[0].sub(previousCollectedFees[0])).to.equal(expectedWithdrawFees);
-                  });
-                });
-
-                context('when the previous internal balance was not enough', () => {
-                  const amountToWithdraw = amountToDeposit.add(depositedAmount).add(1);
-
-                  it('reverts', async () => {
-                    const tx = relayer.depositAndWithdraw(
-                      sender.address,
-                      tokens.DAI.address,
-                      [amountToDeposit],
-                      [amountToWithdraw]
-                    );
-                    await expect(tx).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
-                  });
-                });
-              });
-            });
-
-            context('when there were many operations in the same block', () => {
-              const amountsToDeposit = [fp(10), fp(20)];
-              const totalAmountToDeposit = amountsToDeposit.reduce((total, amount) => total.add(amount), bn(0));
-
-              sharedBeforeEach('approve amounts to deposit', async () => {
-                await tokens.DAI.mint(sender, totalAmountToDeposit);
-                await tokens.DAI.approve(vault, totalAmountToDeposit, { from: sender });
-              });
-
-              context('when withdrawing less than the deposited amount', () => {
-                const amountsToWithdraw = amountsToDeposit.map((amount) => amount.div(2));
-
-                itDoesNotChargeWithdrawFees(amountsToDeposit, amountsToWithdraw);
-              });
-
-              context('when withdrawing the same deposited amount', () => {
-                const amountsToWithdraw = amountsToDeposit;
-
-                itDoesNotChargeWithdrawFees(amountsToDeposit, amountsToWithdraw);
-              });
-
-              context('when withdrawing more than the deposited amount', () => {
-                context('when the previous internal balance was enough', () => {
-                  const amountsToWithdraw = amountsToDeposit.map((amount) => amount.add(depositedAmount.div(4)));
-                  const totalAmountToWithdraw = amountsToWithdraw.reduce((total, amount) => total.add(amount), bn(0));
-                  const expectedTaxableAmount = totalAmountToWithdraw.sub(totalAmountToDeposit);
-                  const expectedWithdrawFees = pct(expectedTaxableAmount, WITHDRAW_FEE);
-
-                  it('transfers the requested amount minus the expected fee', async () => {
-                    const expectedWithdrawnAmount = expectedTaxableAmount.sub(expectedWithdrawFees);
-
-                    await expectBalanceChange(
-                      () =>
-                        relayer.depositAndWithdraw(
-                          sender.address,
-                          tokens.DAI.address,
-                          amountsToDeposit,
-                          amountsToWithdraw
-                        ),
-                      tokens,
-                      { account: sender, changes: { DAI: expectedWithdrawnAmount } }
-                    );
-                  });
-
-                  it('protocol fees are collected', async () => {
-                    const previousCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
-
-                    await relayer.depositAndWithdraw(
-                      sender.address,
-                      tokens.DAI.address,
-                      amountsToDeposit,
-                      amountsToWithdraw
-                    );
-
-                    const currentCollectedFees = await feesCollector.getCollectedFees([tokens.DAI.address]);
-                    expect(currentCollectedFees[0].sub(previousCollectedFees[0])).to.equal(expectedWithdrawFees);
-                  });
-                });
-
-                context('when the previous internal balance was not enough', () => {
-                  const amountsToWithdraw = [totalAmountToDeposit.add(depositedAmount), 1];
-
-                  it('reverts', async () => {
-                    const tx = relayer.depositAndWithdraw(
-                      sender.address,
-                      tokens.DAI.address,
-                      amountsToDeposit,
-                      amountsToWithdraw
-                    );
-                    await expect(tx).to.be.revertedWith('INSUFFICIENT_INTERNAL_BALANCE');
-                  });
-                });
-              });
-            });
+          expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
+            user: sender.address,
+            token: tokens.DAI.address,
+            delta: amount.mul(-1),
           });
         });
       });
@@ -777,26 +548,6 @@ describe('Vault - internal balance', () => {
             const currentSenderBalance = await vault.getInternalBalance(sender.address, [weth.address]);
 
             expect(previousSenderBalance[0].sub(currentSenderBalance[0])).to.equal(amount);
-          });
-
-          context('with protocol withdraw fees', () => {
-            const withdrawFee = 0.005;
-
-            sharedBeforeEach('set fee', async () => {
-              await feesCollector.connect(admin).setWithdrawFee(fp(withdrawFee));
-            });
-
-            it('charges protocol fees in WETH', async () => {
-              const previousProtocolFees = await feesCollector.getCollectedFees([weth.address]);
-
-              await vault.withdrawFromInternalBalance([
-                { asset: ETH_TOKEN_ADDRESS, amount, sender: sender.address, recipient: recipient.address },
-              ]);
-
-              const currentProtocolFees = await feesCollector.getCollectedFees([weth.address]);
-
-              expect(currentProtocolFees[0].sub(previousProtocolFees[0])).to.equal(pct(amount, withdrawFee));
-            });
           });
         });
       });
