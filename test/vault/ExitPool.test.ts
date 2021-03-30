@@ -341,10 +341,10 @@ describe('Vault - exit pool', () => {
         // Tokens are sent from the Vault, so the expected change is negative
         const expectedVaultChanges = toInternalBalance
           ? dueProtocolFeeAmounts
-          : arrayAdd(exitAmounts, dueProtocolFeeAmounts);
+          : arrayAdd(exitAmounts, dueProtocolFeeAmounts).map((a) => a.mul(-1));
 
         const vaultChanges = tokens.reduce(
-          (changes, token, i) => ({ ...changes, [token.symbol]: bn(expectedVaultChanges[i]).mul(-1) }),
+          (changes, token, i) => ({ ...changes, [token.symbol]: expectedVaultChanges[i] }),
           {}
         );
 

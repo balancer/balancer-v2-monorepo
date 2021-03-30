@@ -109,7 +109,7 @@ export default class Vault {
   }
 
   async getProtocolFees(): Promise<{ swapFee: BigNumber; flashLoanFee: BigNumber }> {
-    return { swapFee: await this.getSwapFee(), flashLoanFee: await this.getSwapFee() };
+    return { swapFee: await this.getSwapFee(), flashLoanFee: await this.getFlashLoanFee() };
   }
 
   async getSwapFee(): Promise<BigNumber> {
@@ -122,10 +122,8 @@ export default class Vault {
 
   async getFeesCollector(): Promise<Contract> {
     if (!this.feesCollector) {
-      this.feesCollector = await ethers.getContractAt(
-        'ProtocolFeesCollector',
-        await this.instance.getProtocolFeesCollector()
-      );
+      const instance = await this.instance.getProtocolFeesCollector();
+      this.feesCollector = await ethers.getContractAt('ProtocolFeesCollector', instance);
     }
     return this.feesCollector;
   }
