@@ -87,6 +87,7 @@ export async function expectBalanceChange(
   promise: () => Promise<unknown>,
   tokens: TokenList,
   balanceChange: BalanceChange | Array<BalanceChange>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const trackers: Dictionary<Dictionary<ERC20BalanceTracker>> = {};
   const balanceChanges: Array<BalanceChange> = Array.isArray(balanceChange) ? balanceChange : [balanceChange];
