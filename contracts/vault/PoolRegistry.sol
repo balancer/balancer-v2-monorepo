@@ -492,8 +492,7 @@ abstract contract PoolRegistry is
         uint256[] memory amountsIn,
         uint256[] memory dueProtocolFeeAmounts
     ) private returns (bytes32[] memory finalBalances) {
-        bool ethAssetSeen = false;
-        uint256 wrappedETH = 0;
+        uint256 wrappedEth = 0;
 
         finalBalances = new bytes32[](balances.length);
         for (uint256 i = 0; i < change.assets.length; ++i) {
@@ -505,8 +504,7 @@ abstract contract PoolRegistry is
             _receiveAsset(asset, amountIn, sender, change.useInternalBalance);
 
             if (_isETH(asset)) {
-                ethAssetSeen = true;
-                wrappedETH = wrappedETH.add(amountIn);
+                wrappedEth = wrappedEth.add(amountIn);
             }
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
@@ -520,11 +518,8 @@ abstract contract PoolRegistry is
             _payFee(_translateToIERC20(asset), feeToPay);
         }
 
-        // We prevent user error by reverting if ETH was sent but not referenced by any asset.
-        _ensureNoUnallocatedETH(ethAssetSeen);
-
-        // By returning the excess ETH, we also check that at least wrappedETH has been received.
-        _returnExcessEthToCaller(wrappedETH);
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(wrappedEth);
     }
 
     function _sendAssets(
