@@ -88,7 +88,7 @@ export function getTokenInfoForDeploy(pools: Pool[]): [Array<string>, Array<numb
   const decimals: Array<number> = [];
   const balanceArray: Array<BigNumber> = [];
   const balances: { [sym: string]: BigNumber } = {};
-  const tokensBySymbol: any = {};
+  const tokensBySymbol: { [sym: string]: Token } = {};
 
   const tokens: Token[] = flatMap(pools, (p: Pool) => p.tokens);
 

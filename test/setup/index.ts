@@ -67,6 +67,7 @@ chai.use(function (chai) {
   });
 
   Assertion.overwriteMethod('revertedWith', function (_super) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unused-vars
     return async function (this: any, revertReason: string) {
       // eslint-disable-next-line prefer-rest-params
       const assertion = _super.apply(this, arguments);

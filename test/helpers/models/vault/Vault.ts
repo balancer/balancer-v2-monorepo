@@ -135,6 +135,7 @@ export default class Vault {
       await this.grantRole(roleId(feesCollector, 'setSwapFee'), this.admin);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const instance = from || this.admin ? feesCollector.connect((from || this.admin)!) : feesCollector;
     return instance.setSwapFee(fee);
   }
@@ -145,6 +146,7 @@ export default class Vault {
     if (this.authorizer && this.admin) {
       await this.grantRole(roleId(feesCollector, 'setFlashLoanFee'), this.admin);
     }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const instance = from || this.admin ? feesCollector.connect((from || this.admin)!) : feesCollector;
     return instance.setFlashLoanFee(fee);
   }
