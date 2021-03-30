@@ -21,6 +21,7 @@ import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/Address.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/Counters.sol";
 
@@ -190,6 +191,13 @@ abstract contract PoolRegistry is
     ) external override nonReentrant noEmergencyPeriod onlyPool(poolId) {
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
+        // Validates token addresses and assign asset managers
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            _require(Address.isContract(address(token)), Errors.TOKEN_NOT_CONTRACT);
+            _poolAssetManagers[poolId][token] = assetManagers[i];
+        }
+
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _require(tokens.length == 2, Errors.TOKENS_LENGTH_MUST_BE_2);
@@ -198,14 +206,6 @@ abstract contract PoolRegistry is
             _registerMinimalSwapInfoPoolTokens(poolId, tokens);
         } else {
             _registerGeneralPoolTokens(poolId, tokens);
-        }
-
-        // Assign each token's asset manager
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            address assetManager = assetManagers[i];
-
-            _poolAssetManagers[poolId][token] = assetManager;
         }
 
         emit TokensRegistered(poolId, tokens, assetManagers);

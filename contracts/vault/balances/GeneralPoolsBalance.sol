@@ -47,9 +47,7 @@ contract GeneralPoolsBalance {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            _require(token != IERC20(0), Errors.ZERO_ADDRESS_TOKEN);
-            bool added = poolBalances.set(token, 0);
+            bool added = poolBalances.set(tokens[i], 0);
             _require(added, Errors.TOKEN_ALREADY_REGISTERED);
         }
     }

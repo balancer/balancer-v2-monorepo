@@ -78,8 +78,6 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        _require(tokenX != IERC20(0) && tokenY != IERC20(0), Errors.ZERO_ADDRESS_TOKEN);
-
         // Not technically true since we didn't register yet, but this is consistent with the error messages of other
         // specialization settings.
         _require(tokenX != tokenY, Errors.TOKEN_ALREADY_REGISTERED);

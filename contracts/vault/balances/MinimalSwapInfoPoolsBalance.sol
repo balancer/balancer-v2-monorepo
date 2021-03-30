@@ -50,9 +50,7 @@ contract MinimalSwapInfoPoolsBalance {
         EnumerableSet.AddressSet storage poolTokens = _minimalSwapInfoPoolsTokens[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            _require(token != IERC20(0), Errors.ZERO_ADDRESS_TOKEN);
-            bool added = poolTokens.add(address(token));
+            bool added = poolTokens.add(address(tokens[i]));
             _require(added, Errors.TOKEN_ALREADY_REGISTERED);
         }
     }
