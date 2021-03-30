@@ -118,9 +118,13 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     }
 
     /**
-     * @dev Reverts in case `amountUsed` is greater than the actual amount of ETH sent.
-     * Because the caller might not now exactly how much ETH a Vault action will require, they may send extra amounts.
-     * Note that this excess value is returned *to the contract caller* (msg.sender).
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
+     * if the caller sent less ETH than `amountUsed`.
+     *
+     * Because the caller might not now exactly how much ETH a Vault action will require, they may send extra.
+     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
+     * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
+     * returned ETH.
      */
     function _handleRemainingEth(uint256 amountUsed) internal {
         _require(msg.value >= amountUsed, Errors.INSUFFICIENT_ETH);

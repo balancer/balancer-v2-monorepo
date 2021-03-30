@@ -492,7 +492,7 @@ abstract contract PoolRegistry is
         uint256[] memory amountsIn,
         uint256[] memory dueProtocolFeeAmounts
     ) private returns (bytes32[] memory finalBalances) {
-        uint256 wrappedEthUsed = 0;
+        uint256 wrappedEth = 0;
 
         finalBalances = new bytes32[](balances.length);
         for (uint256 i = 0; i < change.assets.length; ++i) {
@@ -504,7 +504,7 @@ abstract contract PoolRegistry is
             _receiveAsset(asset, amountIn, sender, change.useInternalBalance);
 
             if (_isETH(asset)) {
-                wrappedEthUsed = wrappedEthUsed.add(amountIn);
+                wrappedEth = wrappedEth.add(amountIn);
             }
 
             uint256 feeToPay = dueProtocolFeeAmounts[i];
@@ -519,7 +519,7 @@ abstract contract PoolRegistry is
         }
 
         // Handle any used and remaining ETH.
-        _handleRemainingEth(wrappedEthUsed);
+        _handleRemainingEth(wrappedEth);
     }
 
     function _sendAssets(

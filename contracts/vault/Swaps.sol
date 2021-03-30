@@ -139,7 +139,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Process asset deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
 
-        uint256 wrappedEthUsed = 0;
+        uint256 wrappedEth = 0;
         for (uint256 i = 0; i < assets.length; ++i) {
             IAsset asset = assets[i];
             int256 delta = assetDeltas[i];
@@ -151,7 +151,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 _receiveAsset(asset, toReceive, funds.sender, funds.fromInternalBalance);
 
                 if (_isETH(asset)) {
-                    wrappedEthUsed = wrappedEthUsed.add(toReceive);
+                    wrappedEth = wrappedEth.add(toReceive);
                 }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
@@ -160,7 +160,7 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         }
 
         // Handle any used and remaining ETH.
-        _handleRemainingEth(wrappedEthUsed);
+        _handleRemainingEth(wrappedEth);
     }
 
     // For `_swapWithPools` to handle both given in and given out swaps, it internally tracks the 'given' amount
@@ -218,9 +218,11 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     ) private returns (int256[] memory assetDeltas) {
         assetDeltas = new int256[](assets.length);
 
-        // These variables could be declared inside the loop, but that causes the compiler to allocate memory on each
+        // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
         // loop iteration, increasing gas costs.
         SwapRequest memory request;
+
+        // These store data about the previous swap here to implement multihop logic across swaps.
         IERC20 previousTokenCalculated;
         uint256 previousAmountCalculated;
 
@@ -271,11 +273,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
     }
 
     /**
-     * @dev Performs `swap`, calling the Pool's contract hook and updating the Pool balance. Returns a pair with the
-     * amount of tokens going into and out of the Vault as a result of this swap.
-     *
-     * This function expects to be called with the `previous` swap struct, which will be updated internally to
-     * implement multihop logic.
+     * @dev Performs `swap`, calling the Pool's contract hook and updating the Pool balance.
+     * Returns the amount of tokens going into/out of the Vault as a result of this swap, depending on the swap kind.
      */
     function _swapWithPool(InternalSwapRequest memory request) private returns (uint256) {
         // Get the calculated amount from the Pool and update its balances

@@ -59,7 +59,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         uint256 amount;
         address recipient;
         bool authenticated = false;
-        uint256 wrappedEthUsed = 0;
+        uint256 wrappedEth = 0;
 
         for (uint256 i = 0; i < transfers.length; i++) {
             (asset, sender, recipient, amount, authenticated) = _validateTransfer(transfers[i], authenticated);
@@ -71,12 +71,12 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             _receiveAsset(asset, amount, sender, false);
 
             if (_isETH(asset)) {
-                wrappedEthUsed = wrappedEthUsed.add(amount);
+                wrappedEth = wrappedEth.add(amount);
             }
         }
 
         // Handle any used and remaining ETH.
-        _handleRemainingEth(wrappedEthUsed);
+        _handleRemainingEth(wrappedEth);
     }
 
     /**

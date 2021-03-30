@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { BigNumber, Contract, ContractReceipt, Signer } from 'ethers';
 import { Dictionary } from 'lodash';
+import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList, { ETH_TOKEN_ADDRESS } from '../helpers/models/tokens/TokenList';
@@ -120,7 +120,7 @@ describe('Vault - swaps', () => {
     });
 
     function itSwapsWithETHCorrectly() {
-      let sender: Signer;
+      let sender: SignerWithAddress;
 
       context('when the sender is the trader', () => {
         beforeEach(() => {
@@ -241,14 +241,31 @@ describe('Vault - swaps', () => {
           ).to.be.revertedWith('INSUFFICIENT_ETH');
         });
 
-        it('reverts if ETH was sent but not allocated', async () => {
-          await expect(
-            vault
-              .connect(sender)
-              .batchSwapGivenIn([], [tokens.DAI.address, tokens.WETH.address], funds, limits, deadline, {
-                value: 1,
-              })
-          ).to.be.revertedWith('UNALLOCATED_ETH');
+        it('returns excess ETH if more ETH than required was supplied', async () => {
+          const swaps = [
+            {
+              poolId: mainPoolId,
+              tokenInIndex: 0, // ETH
+              tokenOutIndex: 1,
+              amountIn: bn(1e18),
+              userData: '0x',
+            },
+          ];
+
+          const previousBalance = await ethers.provider.getBalance(sender.address);
+
+          const gasPrice = 1;
+          const receipt: ContractReceipt = await (
+            await vault.connect(sender).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, {
+              value: bn(1e18).add(42), // Only 1e18 is required
+              gasPrice,
+            })
+          ).wait();
+
+          const ethSpent = receipt.gasUsed.mul(gasPrice);
+
+          const currentBalance = await ethers.provider.getBalance(sender.address);
+          expect(previousBalance.sub(currentBalance)).to.equal(ethSpent.add(bn(1e18)));
         });
       });
 
