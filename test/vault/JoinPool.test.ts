@@ -217,7 +217,7 @@ describe('Vault - join pool', () => {
 
             context('when the relayer is not whitelisted by the authorizer', () => {
               sharedBeforeEach('revoke role from relayer', async () => {
-                const role = roleId(vault, 'batchSwapGivenIn');
+                const role = roleId(vault, 'joinPool');
                 await authorizer.connect(admin).revokeRole(role, relayer.address);
               });
 

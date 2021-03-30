@@ -49,13 +49,6 @@ abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
     }
 
     /**
-     * @dev Returns the protocol fee to charge for a withdrawal of `amount`.
-     */
-    function _calculateWithdrawFee(uint256 amount) internal view returns (uint256) {
-        return _calculateFee(amount, _protocolFeesCollector.getWithdrawFee());
-    }
-
-    /**
      * @dev Returns the protocol fee to charge for a flash loan of `amount`.
      */
     function _calculateFlashLoanFee(uint256 amount) internal view returns (uint256) {

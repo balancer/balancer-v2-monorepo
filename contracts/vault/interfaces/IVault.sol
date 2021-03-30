@@ -141,23 +141,18 @@ interface IVault {
      *
      * ETH can be used by passing the ETH sentinel value as the asset. This will deduct WETH instead, unwrap it and send
      * it to the recipient.
-     *
-     * This charges protocol withdrawal fees.
      */
     function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Transfers tokens from the internal balance of each `sender` address to Internal Balances of each
      * `recipient`.
-     *
-     * This does not charge protocol withdrawal fees.
      */
     function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external;
 
     /**
      * @dev Transfers tokens from each `sender` address to the corresponding `recipient` accounts, making use of the
-     * Vault's allowance. This action is equivalent to an Internal Balance deposit followed immediately by a withdrawal,
-     * except withdraw fees are not charged.
+     * Vault's allowance. This action is equivalent to an Internal Balance deposit followed immediately by a withdrawal.
      *
      * Typically, this function will only be called by relayers, letting them leverage the allowance users have already
      * given to the Vault.
@@ -375,8 +370,8 @@ interface IVault {
      * not be sorted.
      *
      * If `toInternalBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
-     * an ERC20 transfer will be performed, charging protocol withdraw fees. Note that ETH cannot be deposited to
-     * Internal Balance: attempting to do so with trigger a revert.
+     * an ERC20 transfer will be performed. Note that ETH cannot be deposited to Internal Balance: attempting to
+     * do so with trigger a revert.
      *
      * `minAmountsOut` is the minimum amount of tokens the user expects to get out of the Pool, for each token in the
      * `tokens` array. This array must match the Pool's registered tokens.
@@ -692,13 +687,9 @@ interface IVault {
     // Some operations cause the Vault to collect tokens in the form of protocol fees, which can then be withdrawn by
     // permissioned accounts.
     //
-    // There are three kinds of protocol fees:
+    // There are two kinds of protocol fees:
     //
     //  - flash loan fees: charged on all flash loans, as a percentage of the amounts lent.
-    //
-    //  - withdrawal fees: charged when users take tokens out of the Vault, by either calling
-    // `withdrawFromInternalBalance` or calling `exitPool` without depositing to Internal Balance. The fee is a
-    // percentage of the amount withdrawn. Swaps are unaffected by withdrawal fees.
     //
     //  - swap fees: a percentage of the fees charged by Pools when performing swaps. For a number of reasons, including
     // swap gas costs and interface simplicity, protocol swap fees are not charged on each individual swap. Rather,
