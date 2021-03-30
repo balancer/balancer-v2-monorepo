@@ -139,26 +139,19 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         // Process asset deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
 
-        bool ethAssetSeen = false;
-        uint256 wrappedETH = 0;
-
+        uint256 wrappedEthUsed = 0;
         for (uint256 i = 0; i < assets.length; ++i) {
             IAsset asset = assets[i];
             int256 delta = assetDeltas[i];
 
             _require(delta <= limits[i], Errors.SWAP_LIMIT);
 
-            bool isETH = _isETH(asset);
-            if (isETH) {
-                ethAssetSeen = true;
-            }
-
             if (delta > 0) {
                 uint256 toReceive = uint256(delta);
                 _receiveAsset(asset, toReceive, funds.sender, funds.fromInternalBalance);
 
-                if (isETH) {
-                    wrappedETH = wrappedETH.add(toReceive);
+                if (_isETH(asset)) {
+                    wrappedEthUsed = wrappedEthUsed.add(toReceive);
                 }
             } else if (delta < 0) {
                 uint256 toSend = uint256(-delta);
@@ -166,8 +159,8 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
             }
         }
 
-        // Handle any remaining ETH by checking it wasn't sent by mistake and returning the excess in case there is any.
-        _handleRemainingEth(ethAssetSeen, wrappedETH);
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(wrappedEthUsed);
     }
 
     // For `_swapWithPools` to handle both given in and given out swaps, it internally tracks the 'given' amount

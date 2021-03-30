@@ -54,14 +54,12 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         nonReentrant
         noEmergencyPeriod
     {
-        bool ethAssetSeen = false;
-        uint256 wrappedETH = 0;
-
         IAsset asset;
         address sender;
         uint256 amount;
         address recipient;
         bool authenticated = false;
+        uint256 wrappedEthUsed = 0;
 
         for (uint256 i = 0; i < transfers.length; i++) {
             (asset, sender, recipient, amount, authenticated) = _validateTransfer(transfers[i], authenticated);
@@ -71,14 +69,14 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             // _receiveAsset does not check if the caller sent enough ETH, so we keep track of it independently (as
             // multiple deposits may have all deposited ETH).
             _receiveAsset(asset, amount, sender, false);
+
             if (_isETH(asset)) {
-                ethAssetSeen = true;
-                wrappedETH = wrappedETH.add(amount);
+                wrappedEthUsed = wrappedEthUsed.add(amount);
             }
         }
 
-        // Handle any remaining ETH by checking it wasn't sent by mistake and returning the excess in case there is any.
-        _handleRemainingEth(ethAssetSeen, wrappedETH);
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(wrappedEthUsed);
     }
 
     /**
