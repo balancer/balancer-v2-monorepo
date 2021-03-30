@@ -50,23 +50,27 @@ export function calcBptOutGivenExactTokensIn(
   const amountsIn = fpAmountsIn.map(fromFp);
   const bptTotalSupply = fromFp(fpBptTotalSupply);
 
-  const balanceRatiosWithoutFee = [];
-  let weightedBalanceRatio = decimal(0);
+  const balanceRatiosWithFee = [];
+  let invariantRatioWithFees = decimal(0);
   for (let i = 0; i < balances.length; i++) {
-    const balanceRatioWithoutFee = balances[i].add(amountsIn[i]).div(balances[i]);
-    balanceRatiosWithoutFee.push(balanceRatioWithoutFee);
-    weightedBalanceRatio = weightedBalanceRatio.add(balanceRatioWithoutFee.mul(weights[i]));
+    balanceRatiosWithFee[i] = balances[i].add(amountsIn[i]).div(balances[i]);
+    invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mul(weights[i]));
   }
 
   let invariantRatio = decimal(1);
-  for (let i = 0; i < fpBalances.length; i++) {
-    const tokenBalancePercentageExcess =
-      weightedBalanceRatio >= balanceRatiosWithoutFee[i]
-        ? decimal(0)
-        : balanceRatiosWithoutFee[i].sub(weightedBalanceRatio).div(balanceRatiosWithoutFee[i].sub(1));
+  for (let i = 0; i < balances.length; i++) {
+    let amountInWithoutFee;
 
-    const amountInAfterFee = amountsIn[i].mul(decimal(1).sub(tokenBalancePercentageExcess.mul(fromFp(fpSwapFee))));
-    const tokenBalanceRatio = amountInAfterFee.div(balances[i]).add(1);
+    if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
+      const nonTaxableAmount = balances[i].mul(invariantRatioWithFees.sub(1));
+      const taxableAmount = amountsIn[i].sub(nonTaxableAmount);
+      amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFee))));
+    } else {
+      amountInWithoutFee = amountsIn[i];
+    }
+
+    const tokenBalanceRatio = balances[i].add(amountInWithoutFee).div(balances[i]);
+
     invariantRatio = invariantRatio.mul(tokenBalanceRatio.pow(weights[i]));
   }
 
