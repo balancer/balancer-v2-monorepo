@@ -34,9 +34,10 @@ describe('Vault - internal balance', () => {
   });
 
   describe('deposit', () => {
+    let from: SignerWithAddress;
     const initialBalance = bn(10);
 
-    const itHandlesDepositsProperly = (amount: BigNumber) => {
+    const itHandlesDepositsProperly = (amount: BigNumber, relayed = false) => {
       it('transfers the tokens from the sender to the vault', async () => {
         await expectBalanceChange(
           () =>
@@ -66,13 +67,22 @@ describe('Vault - internal balance', () => {
         expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0].add(amount));
       });
 
-      it('reverts if ETH is sent', async () => {
-        await expect(
-          vault.depositToInternalBalance(
+      it('returns ETH if any is sent', async () => {
+        const senderAddress = relayed ? relayer.address : sender.address;
+        const previousBalance = await ethers.provider.getBalance(senderAddress);
+
+        const gasPrice = 1;
+        const receipt: ContractReceipt = await (
+          await vault.depositToInternalBalance(
             [{ asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address }],
-            { value: 1 }
+            { value: 100, gasPrice }
           )
-        ).to.be.revertedWith('UNALLOCATED_ETH');
+        ).wait();
+
+        const ethSpent = receipt.gasUsed.mul(gasPrice);
+
+        const currentBalance = await ethers.provider.getBalance(senderAddress);
+        expect(previousBalance.sub(currentBalance)).to.equal(ethSpent);
       });
 
       it('emits an event', async () => {
@@ -282,7 +292,7 @@ describe('Vault - internal balance', () => {
             await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
           });
 
-          itHandlesDepositsProperly(initialBalance);
+          itHandlesDepositsProperly(initialBalance, true);
 
           context('when the asset is ETH', () => {
             it('returns excess ETH to the relayer', async () => {
