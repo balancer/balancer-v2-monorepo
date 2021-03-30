@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import TokenList from '../helpers/models/tokens/TokenList';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
-import { bn } from '../../lib/helpers/numbers';
+import { bn, fp } from '../../lib/helpers/numbers';
 import { roleId } from '../../lib/helpers/roles';
 import Vault from '../helpers/models/vault/Vault';
 
@@ -34,7 +34,6 @@ describe('Vault - protocol fees', () => {
 
   describe('set fees', () => {
     const MAX_SWAP_FEE = bn(50e16); // 50%
-    const MAX_WITHDRAW_FEE = bn(0.5e16); // 0.5%
     const MAX_FLASH_LOAN_FEE = bn(1e16); // 1%
 
     context('when the sender is allowed', () => {
@@ -44,13 +43,6 @@ describe('Vault - protocol fees', () => {
 
           const swapFee = await vault.getSwapFee();
           expect(swapFee).to.equal(MAX_SWAP_FEE);
-        });
-
-        it('sets the withdraw fee properly', async () => {
-          await vault.setWithdrawFee(MAX_WITHDRAW_FEE, { from: admin });
-
-          const withdrawFee = await vault.getWithdrawFee();
-          expect(withdrawFee).to.equal(MAX_WITHDRAW_FEE);
         });
 
         it('sets the flash loan fee properly', async () => {
@@ -68,14 +60,6 @@ describe('Vault - protocol fees', () => {
           await expect(vault.setSwapFee(badSwapFee, { from: admin })).to.be.revertedWith('SWAP_FEE_TOO_HIGH');
         });
 
-        it('reverts if the withdraw fee is above the maximum', async () => {
-          const badWithdrawFee = MAX_WITHDRAW_FEE.add(1);
-
-          await expect(vault.setWithdrawFee(badWithdrawFee, { from: admin })).to.be.revertedWith(
-            'WITHDRAW_FEE_TOO_HIGH'
-          );
-        });
-
         it('reverts if the flash loan fee is above the maximum', async () => {
           const badFlashLoanFee = MAX_FLASH_LOAN_FEE.add(1);
 
@@ -89,7 +73,6 @@ describe('Vault - protocol fees', () => {
     context('when the sender is not allowed', () => {
       it('reverts', async () => {
         await expect(vault.setSwapFee(MAX_SWAP_FEE, { from: other })).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        await expect(vault.setWithdrawFee(MAX_SWAP_FEE, { from: other })).to.be.revertedWith('SENDER_NOT_ALLOWED');
         await expect(vault.setFlashLoanFee(MAX_SWAP_FEE, { from: other })).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
@@ -101,20 +84,9 @@ describe('Vault - protocol fees', () => {
     });
 
     context('with collected protocol fees', () => {
-      sharedBeforeEach('simulate deposits and withdraws', async () => {
-        // Set a non-zero withdraw fee
-        await vault.setWithdrawFee(bn(0.5e16));
-
-        await vault.instance.connect(user).depositToInternalBalance([
-          { asset: tokens.DAI.address, amount: bn(20e18), sender: user.address, recipient: user.address },
-          { asset: tokens.MKR.address, amount: bn(20e18), sender: user.address, recipient: user.address },
-        ]);
-
-        // Withdraw internal balance - this will cause withdraw fees to be charged
-        await vault.instance.connect(user).withdrawFromInternalBalance([
-          { asset: tokens.DAI.address, amount: bn(5e18), sender: user.address, recipient: user.address },
-          { asset: tokens.MKR.address, amount: bn(10e18), sender: user.address, recipient: user.address },
-        ]);
+      sharedBeforeEach('collect some tokens', async () => {
+        await tokens.DAI.transfer(feesCollector, fp(0.025), { from: user });
+        await tokens.MKR.transfer(feesCollector, fp(0.05), { from: user });
       });
 
       it('reports collected fee', async () => {
