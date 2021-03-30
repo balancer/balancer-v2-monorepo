@@ -42,10 +42,9 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         IAsset asset,
         uint256 amount,
         address payable recipient,
-        bool toInternalBalance,
-        bool trackExempt
+        bool toInternalBalance
     ) external {
-        _sendAsset(asset, amount, recipient, toInternalBalance, trackExempt);
+        _sendAsset(asset, amount, recipient, toInternalBalance);
     }
 
     function getInternalBalance(address account, IERC20 token) external view returns (uint256) {
@@ -58,14 +57,13 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         uint256 amount
     ) external {
         token.safeTransferFrom(account, address(this), amount);
-        _increaseInternalBalance(account, token, amount, true);
+        _increaseInternalBalance(account, token, amount);
     }
 
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount,
-        bool
+        uint256 amount
     ) internal override {
         _internalTokenBalance[account][token] += amount;
     }
@@ -74,14 +72,10 @@ contract MockAssetTransfersHandler is AssetTransfersHandler {
         address account,
         IERC20 token,
         uint256 amount,
-        bool capped,
-        bool
-    ) internal override returns (uint256, uint256) {
+        bool capped
+    ) internal override returns (uint256 deducted) {
         uint256 currentBalance = _internalTokenBalance[account][token];
-        uint256 toDeduct = capped ? Math.min(currentBalance, amount) : amount;
-        _internalTokenBalance[account][token] = currentBalance.sub(toDeduct);
-
-        // For this mock scenario, we always consider the amount to be fully taxable
-        return (toDeduct, toDeduct);
+        deducted = capped ? Math.min(currentBalance, amount) : amount;
+        _internalTokenBalance[account][token] = currentBalance.sub(deducted);
     }
 }

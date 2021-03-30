@@ -3,8 +3,8 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { fp } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
-import { fp, pct } from '../../lib/helpers/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../lib/helpers/weightedPoolEncoding';
 
@@ -47,7 +47,7 @@ describe('BalancerHelpers', function () {
       const data = encodeJoinWeightedPool({ kind: 'ExactTokensInForBPTOut', amountsIn, minimumBPT: 0 });
       const result = await helper.queryJoin(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
-        maxAmountsIn: maxAmountsIn,
+        maxAmountsIn,
         fromInternalBalance: false,
         userData: data,
       });
@@ -81,14 +81,17 @@ describe('BalancerHelpers', function () {
       data = encodeExitWeightedPool({ kind: 'ExactBPTInForTokensOut', bptAmountIn: bptIn });
     });
 
-    const queryExit = async ({ data, internalBalance }: { data: string; internalBalance?: boolean }) => {
-      return helper.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
+    it('can query exit results', async () => {
+      const result = await helper.queryExit(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, {
         assets: tokens.addresses,
-        minAmountsOut: [],
-        toInternalBalance: internalBalance,
+        minAmountsOut,
+        toInternalBalance: false,
         userData: data,
       });
-    };
+
+      expect(result.bptIn).to.equal(bptIn);
+      expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
+    });
 
     it('bubbles up revert reasons', async () => {
       const data = encodeExitWeightedPool({ kind: 'ExactBPTInForOneTokenOut', bptAmountIn: bptIn, exitTokenIndex: 90 });
@@ -100,34 +103,6 @@ describe('BalancerHelpers', function () {
       });
 
       await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
-    });
-
-    context('when depositing into internal balance', () => {
-      const internalBalance = true;
-
-      it('tells the exit results without considering the withdraw fees', async () => {
-        const result = await queryExit({ data, internalBalance });
-
-        expect(result.bptIn).to.equal(bptIn);
-        expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
-      });
-    });
-
-    context('when withdrawing the tokens from the vault', () => {
-      const withdrawFee = 0.002; // 0.2%
-      const internalBalance = false;
-
-      sharedBeforeEach('set withdraw fees', async () => {
-        await pool.vault.setWithdrawFee(fp(withdrawFee));
-      });
-
-      it('tells the exit results considering the withdraw fees', async () => {
-        const result = await queryExit({ data, internalBalance });
-        expect(result.bptIn).to.equal(bptIn);
-
-        const expectedAmountsOutWithFees = expectedAmountsOut.map((amount) => amount.sub(pct(amount, withdrawFee)));
-        expect(result.amountsOut).to.be.lteWithError(expectedAmountsOutWithFees, 0.00001);
-      });
     });
   });
 });

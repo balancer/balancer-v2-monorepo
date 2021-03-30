@@ -145,9 +145,8 @@ library Errors {
 
     // Fees
     uint256 internal constant SWAP_FEE_TOO_HIGH 			                = 700;
-    uint256 internal constant WITHDRAW_FEE_TOO_HIGH 			            = 701;
-    uint256 internal constant FLASH_LOAN_FEE_TOO_HIGH 			            = 702;
-    uint256 internal constant INSUFFICIENT_COLLECTED_FEES 		            = 703;
+    uint256 internal constant FLASH_LOAN_FEE_TOO_HIGH 			            = 701;
+    uint256 internal constant INSUFFICIENT_COLLECTED_FEES 		            = 702;
 
     function _toReason(uint256 code) internal pure returns (string memory) {
         // log10(MAX_UINT256) ≈ 78, considering 4 more chars for the identifier, it makes a maximum of 82 length strings

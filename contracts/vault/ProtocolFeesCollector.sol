@@ -38,28 +38,11 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
 
     // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE = 50e16; // 50%
-    uint256 private constant _MAX_PROTOCOL_WITHDRAW_FEE = 0.5e16; // 0.5%
     uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE = 1e16; // 1%
 
     IVault public immutable vault;
 
     // All fees are 18-decimal fixed point numbers.
-
-    // The withdraw fee is charged whenever tokens exit the vault (except in the case of swaps), and is a
-    // percentage of the tokens exiting.
-    // There are two instances where this may happen: when a Pool is exited, and when Internal Balance is withdrawn. In
-    // the case of exits, this fee can be avoided by depositing the funds into Internal Balance instead, from where they
-    // might be used to e.g. join a different Pool.
-    //
-    // There is an exceptional case where withdraw fees are not charged: when the Vault's Internal Balance is used as a
-    // temporary deposit of funds within a single block. This typically happens in a single transaction that uses
-    // relayers: funds from different accounts may be deposited into Internal Balance, used to perform swaps, and then
-    // withdrawn. This pattern is extremely gas efficient, and is not covered by withdraw fees because tokens were
-    // deposited and withdrawn in the same block.
-    //
-    // The way this mechanism works is by tracking how many tokens were deposited in the current block, and storing
-    // those as a 'fee exempt' balance. Internal Balance withdrawals then only charge fees for non-exempt balance.
-    uint256 private _withdrawFee;
 
     // The swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool. These are not
     // actually charged on each individual swap: the `Vault` relies on the Pools being honest and reporting fees due
@@ -70,7 +53,6 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     uint256 private _flashLoanFee;
 
     event SwapFeeChanged(uint256 newSwapFee);
-    event WithdrawFeeChanged(uint256 newWithdrawFee);
     event FlashLoanFeeChanged(uint256 newFlashLoanFee);
 
     constructor(IVault _vault) {
@@ -97,12 +79,6 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
         emit SwapFeeChanged(newSwapFee);
     }
 
-    function setWithdrawFee(uint256 newWithdrawFee) external authenticate {
-        _require(newWithdrawFee <= _MAX_PROTOCOL_WITHDRAW_FEE, Errors.WITHDRAW_FEE_TOO_HIGH);
-        _withdrawFee = newWithdrawFee;
-        emit WithdrawFeeChanged(newWithdrawFee);
-    }
-
     function setFlashLoanFee(uint256 newFlashLoanFee) external authenticate {
         _require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, Errors.FLASH_LOAN_FEE_TOO_HIGH);
         _flashLoanFee = newFlashLoanFee;
@@ -111,10 +87,6 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
 
     function getSwapFee() external view returns (uint256) {
         return _swapFee;
-    }
-
-    function getWithdrawFee() external view returns (uint256) {
-        return _withdrawFee;
     }
 
     function getFlashLoanFee() external view returns (uint256) {

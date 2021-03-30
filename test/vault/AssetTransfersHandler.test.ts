@@ -266,9 +266,9 @@ describe('Vault - asset transfers handler', function () {
         const toInternalBalance = true;
 
         it('reverts', async () => {
-          await expect(
-            handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance)
-          ).to.be.revertedWith('INVALID_ETH_INTERNAL_BALANCE');
+          await expect(handler.sendAsset(eth, amount, recipient.address, toInternalBalance)).to.be.revertedWith(
+            'INVALID_ETH_INTERNAL_BALANCE'
+          );
         });
       });
 
@@ -278,7 +278,7 @@ describe('Vault - asset transfers handler', function () {
         it('sends ETH to the recipient', async () => {
           const recipientBalanceBefore = await ethers.provider.getBalance(recipient.address);
 
-          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance);
+          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance);
 
           const recipientBalanceAfter = await ethers.provider.getBalance(recipient.address);
 
@@ -288,7 +288,7 @@ describe('Vault - asset transfers handler', function () {
         it('does not affect the ETH balance', async () => {
           const recipientBalanceBefore = await ethers.provider.getBalance(recipient.address);
 
-          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance);
+          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance);
           eth;
           const recipientBalanceAfter = await ethers.provider.getBalance(recipient.address);
 
@@ -297,7 +297,7 @@ describe('Vault - asset transfers handler', function () {
 
         it('unwraps WETH into ETH', async () => {
           await expectBalanceChange(
-            () => handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance),
+            () => handler.sendAsset(eth, amount, recipient.address, toInternalBalance),
             tokens,
             { account: handler, changes: { WETH: amount.mul(-1) } }
           );
@@ -306,7 +306,7 @@ describe('Vault - asset transfers handler', function () {
         it('does not use internal balance', async () => {
           const recipientInternalBalanceBefore = await handler.getInternalBalance(recipient.address, eth);
 
-          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance, toInternalBalance);
+          await handler.sendAsset(eth, amount, recipient.address, toInternalBalance);
 
           const recipientInternalBalanceAfter = await handler.getInternalBalance(recipient.address, eth);
 
@@ -344,7 +344,7 @@ describe('Vault - asset transfers handler', function () {
 
           it('sends tokens to the recipient', async () => {
             await expectBalanceChange(
-              () => handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, toInternalBalance),
+              () => handler.sendAsset(token.address, amount, recipient.address, toInternalBalance),
               tokens,
               [
                 { account: recipient, changes: { [symbol]: amount } },
@@ -356,7 +356,7 @@ describe('Vault - asset transfers handler', function () {
           it('does not affect internal balance', async () => {
             const recipientInternalBalanceBefore = await handler.getInternalBalance(recipient.address, token.address);
 
-            await handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, toInternalBalance);
+            await handler.sendAsset(token.address, amount, recipient.address, toInternalBalance);
 
             const recipientInternalBalanceAfter = await handler.getInternalBalance(recipient.address, token.address);
 
@@ -367,10 +367,10 @@ describe('Vault - asset transfers handler', function () {
         function itSendsTokensCorrectlyUsingInternalBalance() {
           const toInternalBalance = true;
 
-          it('assigns tokens as internal balance not charging a withdraw fee', async () => {
+          it('assigns tokens as internal balance', async () => {
             const recipientInternalBalanceBefore = await handler.getInternalBalance(recipient.address, token.address);
 
-            await handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, toInternalBalance);
+            await handler.sendAsset(token.address, amount, recipient.address, toInternalBalance);
 
             const recipientInternalBalanceAfter = await handler.getInternalBalance(recipient.address, token.address);
 
@@ -380,7 +380,7 @@ describe('Vault - asset transfers handler', function () {
 
           it('transfers no tokens', async () => {
             await expectBalanceChange(
-              () => handler.sendAsset(token.address, amount, recipient.address, toInternalBalance, toInternalBalance),
+              () => handler.sendAsset(token.address, amount, recipient.address, toInternalBalance),
               tokens,
               { account: handler }
             );

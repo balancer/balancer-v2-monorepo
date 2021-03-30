@@ -84,16 +84,6 @@ contract BalancerHelpers is AssetHelpers {
             feesCollector.getSwapFee(),
             request.userData
         );
-
-        // Deduct withdraw fees unless it's using internal balance
-        if (!request.toInternalBalance) {
-            uint256 withdrawFeePct = feesCollector.getWithdrawFee();
-            for (uint256 i = 0; i < amountsOut.length; i++) {
-                uint256 amountOut = amountsOut[i];
-                uint256 withdrawFee = FixedPoint.mulUp(amountOut, withdrawFeePct);
-                amountsOut[i] = amountOut.sub(withdrawFee);
-            }
-        }
     }
 
     function _validateAssetsAndGetBalances(bytes32 poolId, IAsset[] memory expectedAssets)
