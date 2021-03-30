@@ -18,6 +18,11 @@ pragma experimental ABIEncoderV2;
 import "./BasePool.sol";
 import "../vault/interfaces/IMinimalSwapInfoPool.sol";
 
+/**
+ * @dev Extension of `BasePool`, adding a handler for `IMinimalSwapInfoPool.onSwap`.
+ *
+ * Derived contracts must implement `_onSapGivenIn` and `_onSwapGivenOut` along with `BasePool`'s virtual functions.
+ */
 abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
     constructor(
         IVault vault,
@@ -100,12 +105,33 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         return _addSwapFee(amountIn);
     }
 
+    /*
+     * @dev Called a swap with the Pool occurs, where the amount of tokens to grant to the Pool is known.
+     *
+     * Returns the amount of tokens that will be taken from the Pool in return.
+     *
+     * All amounts inside `swapRequest`, `balanceTokenIn` and `balanceTokenOut` are upscaled. The swap fee has already
+     * been deducted from `swapRequest.amount`.
+     *
+     * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
+     * Vault.
+     */
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal view virtual returns (uint256);
 
+    /*
+     * @dev Called a swap with the Pool occurs, where the amount of tokens to take from the Pool is known.
+     *
+     * Returns the amount of tokens that will be granted to the Pool in return.
+     *
+     * All amounts inside `swapRequest`, `balanceTokenIn` and `balanceTokenOut` are upscaled.
+     *
+     * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
+     * to it and returning it to the Vault.
+     */
     function _onSwapGivenOut(
         SwapRequest memory swapRequest,
         uint256 balanceTokenIn,
