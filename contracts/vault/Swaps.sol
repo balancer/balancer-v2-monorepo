@@ -111,17 +111,15 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         IERC20 tokenOut = _translateToIERC20(request.tokenOut);
         _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
 
-        InternalSwapRequest memory internalRequest = InternalSwapRequest({
-            poolId: request.poolId,
-            kind: request.kind,
-            tokenIn: tokenIn,
-            tokenOut: tokenOut,
-            amount: request.amount,
-            userData: request.userData,
-            from: funds.sender,
-            to: funds.recipient,
-            latestBlockNumberUsed: 0 // will be updated later on based on the pool specialization
-        });
+        InternalSwapRequest memory internalRequest;
+        internalRequest.poolId = request.poolId;
+        internalRequest.kind = request.kind;
+        internalRequest.tokenIn = tokenIn;
+        internalRequest.tokenOut = tokenOut;
+        internalRequest.amount = request.amount;
+        internalRequest.userData = request.userData;
+        internalRequest.from = funds.sender;
+        internalRequest.to = funds.recipient;
 
         uint256 amountCalculated = _swapWithPool(internalRequest);
         (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
@@ -292,17 +290,15 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 request.amount = previousAmountCalculated;
             }
 
-            InternalSwapRequest memory internalRequest = InternalSwapRequest({
-                poolId: request.poolId,
-                kind: kind,
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                amount: request.amount,
-                userData: request.userData,
-                from: funds.sender,
-                to: funds.recipient,
-                latestBlockNumberUsed: 0 // will be updated later on based on the pool specialization
-            });
+            InternalSwapRequest memory internalRequest;
+            internalRequest.poolId = request.poolId;
+            internalRequest.kind = kind;
+            internalRequest.tokenIn = tokenIn;
+            internalRequest.tokenOut = tokenOut;
+            internalRequest.amount = request.amount;
+            internalRequest.userData = request.userData;
+            internalRequest.from = funds.sender;
+            internalRequest.to = funds.recipient;
 
             previousAmountCalculated = _swapWithPool(internalRequest);
             previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
