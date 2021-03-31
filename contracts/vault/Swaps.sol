@@ -299,7 +299,8 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             internalRequest.userData = request.userData;
             internalRequest.from = funds.sender;
             internalRequest.to = funds.recipient;
-            // latestBlockNumberUsed is not set here - that will be done later by the different Pool specialization handlers
+            // latestBlockNumberUsed is not set here - that will be done later by the different Pool specialization
+            // handlers
 
             previousAmountCalculated = _swapWithPool(internalRequest);
             previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
@@ -434,14 +435,14 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         uint256 indexOut = poolBalances.unchecked_indexOf(request.tokenOut);
 
         if (indexIn == 0 || indexOut == 0) {
-            // The tokens might not be registered because the Pool itself is not registered. If so, we provide a more 
+            // The tokens might not be registered because the Pool itself is not registered. If so, we provide a more
             // accurate revert reason. We only check this at this stage to save gas in the case where the tokens
             // are registered, whicn implies the Pool is as well.
             _ensureRegisteredPool(request.poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
-        // EnumerableMap stores indices plus one to use the zero index as a sentinel value - because these are valid, 
+        // EnumerableMap stores indices plus one to use the zero index as a sentinel value - because these are valid,
         // we can undo this.
         indexIn -= 1;
         indexOut -= 1;

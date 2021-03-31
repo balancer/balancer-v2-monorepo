@@ -557,12 +557,12 @@ interface IVault {
     }
 
     /**
-     * @dev Performs a swap with a single Pool. 
+     * @dev Performs a swap with a single Pool.
      *
-     * If the swap is given in (the number of tokens to send to the Pool is known), it returns the amount of tokens taken
-     * from the Pool, which must be larger or equal to `limit`.
+     * If the swap is given in (the number of tokens to send to the Pool is known), it returns the amount of tokens
+     * taken from the Pool, which must be larger or equal to `limit`.
      *
-     * If the swap is given out (the number of tokens to take from the Pool is known), it returns the amount of 
+     * If the swap is given out (the number of tokens to take from the Pool is known), it returns the amount of
      * tokens sent the Pool, which must be smaller or equal to `limit`.
      *
      * Internal Balance usage and recipient are determined by the `funds` struct.

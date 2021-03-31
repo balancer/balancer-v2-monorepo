@@ -135,7 +135,8 @@ export default class Vault {
       await this.grantRole(roleId(feesCollector, 'setSwapFee'), this.admin);
     }
 
-    const instance = from || this.admin ? feesCollector.connect((from || this.admin)!) : feesCollector;
+    const sender = from || this.admin;
+    const instance = sender ? feesCollector.connect(sender) : feesCollector;
     return instance.setSwapFee(fee);
   }
 
@@ -145,7 +146,9 @@ export default class Vault {
     if (this.authorizer && this.admin) {
       await this.grantRole(roleId(feesCollector, 'setFlashLoanFee'), this.admin);
     }
-    const instance = from || this.admin ? feesCollector.connect((from || this.admin)!) : feesCollector;
+
+    const sender = from || this.admin;
+    const instance = sender ? feesCollector.connect(sender) : feesCollector;
     return instance.setFlashLoanFee(fee);
   }
 
