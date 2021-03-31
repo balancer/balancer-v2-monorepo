@@ -10,7 +10,7 @@ import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/types';
 
-describe('WeightedPool', function () {
+describe.only('WeightedPool', function () {
   let allTokens: TokenList;
   let trader: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
 
@@ -389,8 +389,7 @@ describe('WeightedPool', function () {
           // Calculate bpt amount in so that the invariant ratio
           // ((bptTotalSupply - bptAmountIn / bptTotalSupply))
           // is more than 0.7
-          const bptIn = (await pool.getMaxInvariantDecrease()).add(2);
-
+          const bptIn = (await pool.getMaxInvariantDecrease()).add(5);
           await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('MIN_BPT_IN_FOR_TOKEN_OUT');
         });
 
