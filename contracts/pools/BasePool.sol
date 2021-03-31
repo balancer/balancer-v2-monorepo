@@ -35,10 +35,15 @@ import "../vault/interfaces/IBasePool.sol";
  * @dev Reference implementation for the base layer of a Pool contract that manges a single Pool with an immutable set
  * of registered tokens, no Asset Managers, and admin-controlled swap fee and emergency stop mechanisms.
  *
+ * Note that both swap fees and the emergency stop mechanism are not used by this contract, but instead exposed so that
+ * derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the `noEmergencyPeriod`
+ * modifier, respectively.
+ *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.
  *
  * Because this contract doesn't implement the swap hooks, derived contracts should inherit from BaseGeneralPool or
- * BaseMinimalSwapInfoPool instead.
+ * BaseMinimalSwapInfoPool instead. Additionally, they must implement the `_onInitializePool`, `_onJoinPool` and
+ * `_onExitPool` virtual functions.
  */
 abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, EmergencyPeriod {
     using FixedPoint for uint256;
@@ -106,11 +111,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 swapFee,
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
-    )
-        BasePoolAuthorization()
-        BalancerPoolToken(name, symbol)
-        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
-    {
+    ) BalancerPoolToken(name, symbol) EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension) {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
@@ -215,7 +216,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes memory userData
     ) external virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory scalingFactors = _scalingFactors();
-        _upscaleArray(currentBalances, scalingFactors);
 
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
@@ -232,6 +232,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
             return (amountsIn, new uint256[](_totalTokens));
         } else {
+            _upscaleArray(currentBalances, scalingFactors);
             (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(
                 poolId,
                 sender,
@@ -241,6 +242,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 protocolSwapFeePercentage,
                 userData
             );
+
+            // Note we no longer use `currentBalances` after calling `_onJoinPool`, which may mutate it.
 
             _mintPoolTokens(recipient, bptAmountOut);
 
@@ -274,6 +277,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             protocolSwapFeePercentage,
             userData
         );
+
+        // Note we no longer use `currentBalances` after calling `_onExitPool`, which may mutate it.
 
         _burnPoolTokens(sender, bptAmountIn);
 
@@ -352,15 +357,46 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             );
     }
 
-    // Internal hooks to be overridden by derived contracts
+    // Internal hooks to be overridden by derived contracts - all token amounts (except BPT) in these interfaces are
+    // upscaled.
 
+    /**
+     * @dev Called when the Pool is joined for the first time, that is, when the BPT total supply is zero.
+     *
+     * Returns the amount of BPT to mint, and the token amounts the Pool will receive in return.
+     *
+     * Minted BPT will be sent to `recipient`, except for _MINIMUM_BPT which will be deducted from this amount and sent
+     * to the zero address instead. This will cause that BPT to remain forever locked there, preventing total BTP from
+     * ever dropping below that value, and ensuring `_onInitializePool` can only be called once in the entire Pool's
+     * lifetime.
+     *
+     * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
+     * be downscaled (rounding up) before being returned to the Vault.
+     */
     function _onInitializePool(
         bytes32 poolId,
         address sender,
         address recipient,
         bytes memory userData
-    ) internal virtual returns (uint256, uint256[] memory);
+    ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
+    /**
+     * @dev Called whenever the Pool is joined, outside of the first initialization join (see `_onInitializePool`).
+     *
+     * Returns the amount of BPT to mint, the token amounts that the Pool will receive in
+     * return, and the number of tokens to pay in the form of due protocol swap fees.
+     *
+     * Implementations of this function might choose to mutate the `currentBalances` array to save gas (e.g. when
+     * performing intermediate calculations, such as subtraction of due protocol fees). This can be done safely.
+     *
+     * Minted BPT will be sent to `recipient`.
+     *
+     * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
+     * be downscaled (rounding up) before being returned to the Vault.
+     *
+     * Due protocol swap fees will be taken from the Pool's balance in the Vault (see `IBasePool.onJoinPool`). These
+     * amounts are considered upscaled and will be downscaled (rounding down) before being returned to the Vault.
+     */
     function _onJoinPool(
         bytes32 poolId,
         address sender,
@@ -373,11 +409,28 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         internal
         virtual
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountOut,
+            uint256[] memory amountsIn,
+            uint256[] memory dueProtocolFeeAmounts
         );
 
+    /**
+     * @dev Called whenever the Pool is exited.
+     *
+     * Returns the amount of BPT to burn, the token amounts for each Pool token that the Pool will grant in return, and
+     * the number of tokens to pay in the form of due protocol swap fees.
+     *
+     * Implementations of this function might choose to mutate the `currentBalances` array to save gas (e.g. when
+     * performing intermediate calculations, such as subtraction of due protocol fees). This can be done safely.
+     *
+     * BPT will be burnt from `sender`.
+     *
+     * The Pool will grant tokens to `recipient`. These amounts are considered upscaled and will  be downscaled
+     * (rounding down) before being returned to the Vault.
+     *
+     * Due protocol swap fees will be taken from the Pool's balance in the Vault (see `IBasePool.onExitPool`). These
+     * amounts are considered upscaled and will be downscaled (rounding down) before being returned to the Vault.
+     */
     function _onExitPool(
         bytes32 poolId,
         address sender,
@@ -390,9 +443,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         internal
         virtual
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         );
 
     // Internal functions

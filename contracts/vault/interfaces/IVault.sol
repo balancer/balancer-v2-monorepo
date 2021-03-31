@@ -557,6 +557,44 @@ interface IVault {
     }
 
     /**
+     * @dev Performs a swap with a single Pool.
+     *
+     * If the swap is given in (the number of tokens to send to the Pool is known), it returns the amount of tokens
+     * taken from the Pool, which must be larger or equal to `limit`.
+     *
+     * If the swap is given out (the number of tokens to take from the Pool is known), it returns the amount of
+     * tokens sent the Pool, which must be smaller or equal to `limit`.
+     *
+     * Internal Balance usage and recipient are determined by the `funds` struct.
+     *
+     * Emits a `Swap` event.
+     */
+    function swap(
+        SingleSwap memory request,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    ) external payable returns (uint256);
+
+    /**
+     * @dev Data for two-token swaps executed by `swap`. Compared to `SwapIn` and `SwapOut`, the tokens in and out
+     * are given and there is not asset array, but similarly ETH asset is translated into WETH.
+     *
+     * Here `amount` refers to `amountIn` or `amountOut` depending on whether `kind` specifies a swap given in or out.
+     *
+     * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwap` hook, and may be
+     * used to extend swap behavior.
+     */
+    struct SingleSwap {
+        bytes32 poolId;
+        SwapKind kind;
+        IAsset assetIn;
+        IAsset assetOut;
+        uint256 amount;
+        bytes userData;
+    }
+
+    /**
      * @dev Emitted for each individual swap performed by `batchSwapGivenIn` and `batchSwapGivenOut`.
      */
     event Swap(
@@ -650,6 +688,7 @@ interface IVault {
     // but also manipulate its prices. However, a properly designed Asset Manager smart contract can be used to the
     // Pool's benefit, for example by lending unused tokens out for interest, or using them to participate in voting
     // protocols.
+    // This concept is unrelated to the IAsset interface.
 
     /**
      * @dev Called by a Pool's Asset Manager to perform an operation (withdraw, deposit, or update) in the Vault.
