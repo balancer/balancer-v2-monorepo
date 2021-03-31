@@ -557,10 +557,17 @@ interface IVault {
     }
 
     /**
-     * @dev Performs a single swap, only between two tokens.
-     * Returns the amount of tokens received after executing the swap.
+     * @dev Performs a swap with a single Pool. 
+     *
+     * If the swap is given in (the number of tokens to send to the Pool is known), it returns the amount of tokens taken
+     * from the Pool, which must be larger or equal to `limit`.
+     *
+     * If the swap is given out (the number of tokens to take from the Pool is known), it returns the amount of 
+     * tokens sent the Pool, which must be smaller or equal to `limit`.
+     *
      * Internal Balance usage and recipient are determined by the `funds` struct.
-     * Emits `Swap` events.
+     *
+     * Emits a `Swap` event.
      */
     function swap(
         SingleSwap memory request,
@@ -575,7 +582,7 @@ interface IVault {
      *
      * Here `amount` refers to `amountIn` or `amountOut` depending on whether `kind` specifies a swap given in or out.
      *
-     * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwapGivenOut` hook, and may be
+     * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwap` hook, and may be
      * used to extend swap behavior.
      */
     struct SingleSwap {

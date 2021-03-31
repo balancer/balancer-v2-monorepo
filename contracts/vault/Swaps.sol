@@ -109,7 +109,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         IERC20 tokenIn = _translateToIERC20(request.tokenIn);
         IERC20 tokenOut = _translateToIERC20(request.tokenOut);
         _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
-
+        // Initializing each struct field one-by-one uses less gas than setting all at once
         InternalSwapRequest memory internalRequest;
         internalRequest.poolId = request.poolId;
         internalRequest.kind = request.kind;
@@ -287,6 +287,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
                 request.amount = previousAmountCalculated;
             }
 
+            // Initializing each struct field one-by-one uses less gas than setting all at once
             InternalSwapRequest memory internalRequest;
             internalRequest.poolId = request.poolId;
             internalRequest.kind = kind;
@@ -296,6 +297,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             internalRequest.userData = request.userData;
             internalRequest.from = funds.sender;
             internalRequest.to = funds.recipient;
+            // latestBlockNumberUsed is not set here - that will be done later by the different Pool specialization handlers
 
             previousAmountCalculated = _swapWithPool(internalRequest);
             previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
@@ -429,15 +431,16 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         uint256 indexIn = poolBalances.unchecked_indexOf(request.tokenIn);
         uint256 indexOut = poolBalances.unchecked_indexOf(request.tokenOut);
 
-        // If any of the requested token didn't belong to the balances map, we first check if the pool was registered.
-        // This is a gas optimization so we don't have to check the pool was registered unnecessarily, which would be
-        // the happy path where there is a token already registered for a given pool ID.
         if (indexIn == 0 || indexOut == 0) {
+            // The tokens might not be registered because the Pool itself is not registered. If so, we provide a more 
+            // accurate revert reason. We only check this at this stage to save gas in the case where the tokens
+            // are registered, whicn implies the Pool is as well.
             _ensureRegisteredPool(request.poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
-        // Index zero is used as invalid in maps, since we had check non of these are zero, we can parse them as follows
+        // EnumerableMap stores indices plus one to use the zero index as a sentinel value - because these are valid, 
+        // we can undo this.
         indexIn -= 1;
         indexOut -= 1;
 

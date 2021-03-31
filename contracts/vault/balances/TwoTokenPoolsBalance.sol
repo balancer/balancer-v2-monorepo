@@ -218,10 +218,10 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         // expensive _hasPoolTwoTokens check.
         bool exists = sharedCash.isNotZero() || sharedManaged.isNotZero() || _hasPoolTwoTokens(poolId, tokenA, tokenB);
 
-        // If there is no balance for the requested tokens, we first check if the pool was registered.
-        // This is a gas optimization so we don't have to check the pool was registered unnecessarily, which would be
-        // the happy path where there is a token already registered for a given pool ID.
         if (!exists) {
+            // The token might not be registered because the Pool itself is not registered. If so, we provide a more 
+            // accurate revert reason. We only check this at this stage to save gas in the case where the token
+            // is registered, whicn implies the Pool is as well.
             _ensureRegisteredPool(poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
