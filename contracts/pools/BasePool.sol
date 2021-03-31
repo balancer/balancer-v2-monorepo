@@ -36,7 +36,7 @@ import "../vault/interfaces/IBasePool.sol";
  * of registered tokens, no Asset Managers, and admin-controlled swap fee and emergency stop mechanisms.
  *
  * Note that both swap fees and the emergency stop mechanism are not used by this contract, but instead exposed so that
- * derived contracts can use them via the `addSwapFee` and `_subtractSwapFee` functions, and the `noEmergencyPeriod`
+ * derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the `noEmergencyPeriod`
  * modifier, respectively.
  *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.
