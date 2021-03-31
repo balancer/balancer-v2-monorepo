@@ -66,8 +66,8 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
           {
             kind: 0,
             poolId: poolIds[0],
-            tokenIn: tokens[tokenIn].address,
-            tokenOut: tokens[tokenOut].address,
+            assetIn: tokens[tokenIn].address,
+            assetOut: tokens[tokenOut].address,
             amount: fp(0.1),
             userData: '0x',
           },

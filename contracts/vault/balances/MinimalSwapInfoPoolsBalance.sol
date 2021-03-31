@@ -41,11 +41,11 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
     mapping(bytes32 => mapping(IERC20 => bytes32)) internal _minimalSwapInfoPoolsBalances;
 
     /**
-     * @dev Registers a list of tokens in a Minimal Swap Info Pool.
+     * @dev Registers a list of tokens in a Minimal Swap Info Pool. This function assumes the given tokens are
+     * contracts, it's responsibility of the function caller to perform this check.
      *
      * Requirements:
      *
-     * - Tokens must have valid (non-zero) addresses
      * - Tokens cannot already be registered in the Pool
      */
     function _registerMinimalSwapInfoPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {

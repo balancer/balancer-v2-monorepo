@@ -104,10 +104,12 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
-        _require(request.amount > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
 
-        IERC20 tokenIn = _translateToIERC20(request.tokenIn);
-        IERC20 tokenOut = _translateToIERC20(request.tokenOut);
+        uint256 amountGiven = request.amount;
+        _require(amountGiven > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
+
+        IERC20 tokenIn = _translateToIERC20(request.assetIn);
+        IERC20 tokenOut = _translateToIERC20(request.assetOut);
         _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
         // Initializing each struct field one-by-one uses less gas than setting all at once
         InternalSwapRequest memory internalRequest;
@@ -115,23 +117,23 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         internalRequest.kind = request.kind;
         internalRequest.tokenIn = tokenIn;
         internalRequest.tokenOut = tokenOut;
-        internalRequest.amount = request.amount;
+        internalRequest.amount = amountGiven;
         internalRequest.userData = request.userData;
         internalRequest.from = funds.sender;
         internalRequest.to = funds.recipient;
 
         uint256 amountCalculated = _swapWithPool(internalRequest);
-        (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, amountGiven, amountCalculated);
         _require(request.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
 
         // Receive token in
-        _receiveAsset(request.tokenIn, amountIn, funds.sender, funds.fromInternalBalance);
+        _receiveAsset(request.assetIn, amountIn, funds.sender, funds.fromInternalBalance);
 
         // Send token out
-        _sendAsset(request.tokenOut, amountOut, funds.recipient, funds.toInternalBalance);
+        _sendAsset(request.assetOut, amountOut, funds.recipient, funds.toInternalBalance);
 
         // Handle any used and remaining ETH.
-        _handleRemainingEth(_isETH(request.tokenIn) ? amountIn : 0);
+        _handleRemainingEth(_isETH(request.assetIn) ? amountIn : 0);
 
         emit Swap(request.poolId, tokenIn, tokenOut, amountIn, amountOut);
         return amountCalculated;

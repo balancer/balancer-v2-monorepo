@@ -25,8 +25,8 @@ type SingleSwap = {
   kind: number;
   poolId: string;
   amount: BigNumberish;
-  tokenIn: string;
-  tokenOut: string;
+  assetIn: string;
+  assetOut: string;
   userData: string;
 };
 
@@ -365,8 +365,8 @@ describe('Vault - swaps', () => {
       kind,
       poolId: data.poolId,
       amount: data.amount,
-      tokenIn: tokens.addresses[data.tokenInIndex] || ZERO_ADDRESS,
-      tokenOut: tokens.addresses[data.tokenOutIndex] || ZERO_ADDRESS,
+      assetIn: tokens.addresses[data.tokenInIndex] || ZERO_ADDRESS,
+      assetOut: tokens.addresses[data.tokenOutIndex] || ZERO_ADDRESS,
       userData: data.userData,
     };
   }
@@ -420,9 +420,9 @@ describe('Vault - swaps', () => {
         changes?: Dictionary<BigNumberish | Comparison>,
         expectedInternalBalance?: Dictionary<BigNumberish>
       ) => {
-        const isTwoTokenSwap = input.swaps.length === 1;
+        const isSingleSwap = input.swaps.length === 1;
 
-        if (isTwoTokenSwap) {
+        if (isSingleSwap) {
           it('trades the expected amount (single)', async () => {
             const sender = input.fromOther ? other : trader;
             const recipient = input.toOther ? other : trader;
@@ -442,7 +442,7 @@ describe('Vault - swaps', () => {
           });
         }
 
-        it(`trades the expected amount ${isTwoTokenSwap ? '(batch)' : ''}`, async () => {
+        it(`trades the expected amount ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
           const recipient = input.toOther ? other : trader;
           const swaps = toSwapIn(parseSwap(input));
@@ -466,21 +466,22 @@ describe('Vault - swaps', () => {
         });
       };
 
-      const assertSwapGivenInReverts = (input: SwapInput, reason?: string) => {
-        const isTwoTokenSwap = input.swaps.length === 1;
+      const assertSwapGivenInReverts = (input: SwapInput, defaultReason?: string, singleSwapReason = defaultReason) => {
+        const isSingleSwap = input.swaps.length === 1;
 
-        if (isTwoTokenSwap) {
-          const actualReason = reason === 'OUT_OF_BOUNDS' ? 'TOKEN_NOT_REGISTERED' : reason;
-
-          it(`reverts ${isTwoTokenSwap ? '(single)' : ''}`, async () => {
+        if (isSingleSwap) {
+          it(`reverts ${isSingleSwap ? '(single)' : ''}`, async () => {
             const sender = input.fromOther ? other : trader;
             const swap = toSingleSwap(SWAP_KIND.GIVEN_IN, input);
             const call = vault.connect(sender).swap(swap, funds, MAX_UINT256, MAX_UINT256);
-            actualReason ? await expect(call).to.be.revertedWith(actualReason) : await expect(call).to.be.reverted;
+
+            singleSwapReason
+              ? await expect(call).to.be.revertedWith(singleSwapReason)
+              : await expect(call).to.be.reverted;
           });
         }
 
-        it(`reverts ${isTwoTokenSwap ? '(batch)' : ''}`, async () => {
+        it(`reverts ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
           const swaps = toSwapIn(parseSwap(input));
 
@@ -488,8 +489,7 @@ describe('Vault - swaps', () => {
           const deadline = MAX_UINT256;
 
           const call = vault.connect(sender).batchSwapGivenIn(swaps, tokens.addresses, funds, limits, deadline);
-
-          reason ? await expect(call).to.be.revertedWith(reason) : await expect(call).to.be.reverted;
+          defaultReason ? await expect(call).to.be.revertedWith(defaultReason) : await expect(call).to.be.reverted;
         });
       };
 
@@ -653,13 +653,13 @@ describe('Vault - swaps', () => {
               context('when the token index in is not valid', () => {
                 const swaps = [{ in: 30, out: 1, amount: 1e18 }];
 
-                assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS');
+                assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS', 'TOKEN_NOT_REGISTERED');
               });
 
               context('when the token index out is not valid', () => {
                 const swaps = [{ in: 0, out: 10, amount: 1e18 }];
 
-                assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS');
+                assertSwapGivenInReverts({ swaps }, 'OUT_OF_BOUNDS', 'TOKEN_NOT_REGISTERED');
               });
             });
           });
@@ -891,9 +891,9 @@ describe('Vault - swaps', () => {
         changes?: Dictionary<BigNumberish | Comparison>,
         expectedInternalBalance?: Dictionary<BigNumberish>
       ) => {
-        const isTwoTokenSwap = input.swaps.length === 1;
+        const isSingleSwap = input.swaps.length === 1;
 
-        if (isTwoTokenSwap) {
+        if (isSingleSwap) {
           it('trades the expected amount (single)', async () => {
             const sender = input.fromOther ? other : trader;
             const recipient = input.toOther ? other : trader;
@@ -913,7 +913,7 @@ describe('Vault - swaps', () => {
           });
         }
 
-        it(`trades the expected amount ${isTwoTokenSwap ? '(batch)' : ''}`, async () => {
+        it(`trades the expected amount ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
           const recipient = input.toOther ? other : trader;
           const swaps = toSwapOut(parseSwap(input));
@@ -937,21 +937,26 @@ describe('Vault - swaps', () => {
         });
       };
 
-      const assertSwapGivenOutReverts = (input: SwapInput, reason?: string) => {
-        const isTwoTokenSwap = input.swaps.length === 1;
+      const assertSwapGivenOutReverts = (
+        input: SwapInput,
+        defaultReason?: string,
+        singleSwapReason = defaultReason
+      ) => {
+        const isSingleSwap = input.swaps.length === 1;
 
-        if (isTwoTokenSwap) {
-          const actualReason = reason === 'OUT_OF_BOUNDS' ? 'TOKEN_NOT_REGISTERED' : reason;
-
-          it(`reverts ${isTwoTokenSwap ? '(single)' : ''}`, async () => {
+        if (isSingleSwap) {
+          it(`reverts ${isSingleSwap ? '(single)' : ''}`, async () => {
             const sender = input.fromOther ? other : trader;
             const swap = toSingleSwap(SWAP_KIND.GIVEN_OUT, input);
             const call = vault.connect(sender).swap(swap, funds, MAX_UINT256, MAX_UINT256);
-            actualReason ? await expect(call).to.be.revertedWith(actualReason) : await expect(call).to.be.reverted;
+
+            singleSwapReason
+              ? await expect(call).to.be.revertedWith(singleSwapReason)
+              : await expect(call).to.be.reverted;
           });
         }
 
-        it(`reverts ${isTwoTokenSwap ? '(batch)' : ''}`, async () => {
+        it(`reverts ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
           const swaps = toSwapOut(parseSwap(input));
 
@@ -960,7 +965,7 @@ describe('Vault - swaps', () => {
 
           const call = vault.connect(sender).batchSwapGivenOut(swaps, tokens.addresses, funds, limits, deadline);
 
-          reason ? await expect(call).to.be.revertedWith(reason) : await expect(call).to.be.reverted;
+          defaultReason ? await expect(call).to.be.revertedWith(defaultReason) : await expect(call).to.be.reverted;
         });
       };
 
@@ -1127,13 +1132,13 @@ describe('Vault - swaps', () => {
               context('when the token index in is not valid', () => {
                 const swaps = [{ in: 30, out: 1, amount: 1e18 }];
 
-                assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS');
+                assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS', 'TOKEN_NOT_REGISTERED');
               });
 
               context('when the token index out is not valid', () => {
                 const swaps = [{ in: 0, out: 10, amount: 1e18 }];
 
-                assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS');
+                assertSwapGivenOutReverts({ swaps }, 'OUT_OF_BOUNDS', 'TOKEN_NOT_REGISTERED');
               });
             });
           });

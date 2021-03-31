@@ -925,7 +925,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -999,12 +999,12 @@
           },
           {
             "internalType": "contract IAsset",
-            "name": "tokenIn",
+            "name": "assetIn",
             "type": "address"
           },
           {
             "internalType": "contract IAsset",
-            "name": "tokenOut",
+            "name": "assetOut",
             "type": "address"
           },
           {

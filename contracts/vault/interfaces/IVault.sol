@@ -588,8 +588,8 @@ interface IVault {
     struct SingleSwap {
         bytes32 poolId;
         SwapKind kind;
-        IAsset tokenIn;
-        IAsset tokenOut;
+        IAsset assetIn;
+        IAsset assetOut;
         uint256 amount;
         bytes userData;
     }
