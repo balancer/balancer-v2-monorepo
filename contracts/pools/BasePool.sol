@@ -44,7 +44,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
-    uint256 private constant _MAX_TOKENS = 16;
+    uint256 private constant _MAX_TOKENS = 8;
 
     // 1e16 = 1%, 1e18 = 100%
     uint256 private constant _MAX_SWAP_FEE = 10e16;
@@ -65,14 +65,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     IERC20 internal immutable _token5;
     IERC20 internal immutable _token6;
     IERC20 internal immutable _token7;
-    IERC20 internal immutable _token8;
-    IERC20 internal immutable _token9;
-    IERC20 internal immutable _token10;
-    IERC20 internal immutable _token11;
-    IERC20 internal immutable _token12;
-    IERC20 internal immutable _token13;
-    IERC20 internal immutable _token14;
-    IERC20 internal immutable _token15;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -86,14 +78,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor5;
     uint256 internal immutable _scalingFactor6;
     uint256 internal immutable _scalingFactor7;
-    uint256 internal immutable _scalingFactor8;
-    uint256 internal immutable _scalingFactor9;
-    uint256 internal immutable _scalingFactor10;
-    uint256 internal immutable _scalingFactor11;
-    uint256 internal immutable _scalingFactor12;
-    uint256 internal immutable _scalingFactor13;
-    uint256 internal immutable _scalingFactor14;
-    uint256 internal immutable _scalingFactor15;
 
     event SwapFeeChanged(uint256 swapFee);
 
@@ -145,14 +129,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _token5 = tokens.length > 5 ? tokens[5] : IERC20(0);
         _token6 = tokens.length > 6 ? tokens[6] : IERC20(0);
         _token7 = tokens.length > 7 ? tokens[7] : IERC20(0);
-        _token8 = tokens.length > 8 ? tokens[8] : IERC20(0);
-        _token9 = tokens.length > 9 ? tokens[9] : IERC20(0);
-        _token10 = tokens.length > 10 ? tokens[10] : IERC20(0);
-        _token11 = tokens.length > 11 ? tokens[11] : IERC20(0);
-        _token12 = tokens.length > 12 ? tokens[12] : IERC20(0);
-        _token13 = tokens.length > 13 ? tokens[13] : IERC20(0);
-        _token14 = tokens.length > 14 ? tokens[14] : IERC20(0);
-        _token15 = tokens.length > 15 ? tokens[15] : IERC20(0);
 
         _scalingFactor0 = tokens.length > 0 ? _computeScalingFactor(tokens[0]) : 0;
         _scalingFactor1 = tokens.length > 1 ? _computeScalingFactor(tokens[1]) : 0;
@@ -162,14 +138,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _scalingFactor5 = tokens.length > 5 ? _computeScalingFactor(tokens[5]) : 0;
         _scalingFactor6 = tokens.length > 6 ? _computeScalingFactor(tokens[6]) : 0;
         _scalingFactor7 = tokens.length > 7 ? _computeScalingFactor(tokens[7]) : 0;
-        _scalingFactor8 = tokens.length > 8 ? _computeScalingFactor(tokens[8]) : 0;
-        _scalingFactor9 = tokens.length > 9 ? _computeScalingFactor(tokens[9]) : 0;
-        _scalingFactor10 = tokens.length > 10 ? _computeScalingFactor(tokens[10]) : 0;
-        _scalingFactor11 = tokens.length > 11 ? _computeScalingFactor(tokens[11]) : 0;
-        _scalingFactor12 = tokens.length > 12 ? _computeScalingFactor(tokens[12]) : 0;
-        _scalingFactor13 = tokens.length > 13 ? _computeScalingFactor(tokens[13]) : 0;
-        _scalingFactor14 = tokens.length > 14 ? _computeScalingFactor(tokens[14]) : 0;
-        _scalingFactor15 = tokens.length > 15 ? _computeScalingFactor(tokens[15]) : 0;
     }
 
     // Getters / Setters
@@ -443,14 +411,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         else if (token == _token5) { return _scalingFactor5; }
         else if (token == _token6) { return _scalingFactor6; }
         else if (token == _token7) { return _scalingFactor7; }
-        else if (token == _token8) { return _scalingFactor8; }
-        else if (token == _token9) { return _scalingFactor9; }
-        else if (token == _token10) { return _scalingFactor10; }
-        else if (token == _token11) { return _scalingFactor11; }
-        else if (token == _token12) { return _scalingFactor12; }
-        else if (token == _token13) { return _scalingFactor13; }
-        else if (token == _token14) { return _scalingFactor14; }
-        else if (token == _token15) { return _scalingFactor15; }
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -473,14 +433,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             if (_totalTokens > 5) { scalingFactors[5] = _scalingFactor5; } else { return scalingFactors; }
             if (_totalTokens > 6) { scalingFactors[6] = _scalingFactor6; } else { return scalingFactors; }
             if (_totalTokens > 7) { scalingFactors[7] = _scalingFactor7; } else { return scalingFactors; }
-            if (_totalTokens > 8) { scalingFactors[8] = _scalingFactor8; } else { return scalingFactors; }
-            if (_totalTokens > 9) { scalingFactors[9] = _scalingFactor9; } else { return scalingFactors; }
-            if (_totalTokens > 10) { scalingFactors[10] = _scalingFactor10; } else { return scalingFactors; }
-            if (_totalTokens > 11) { scalingFactors[11] = _scalingFactor11; } else { return scalingFactors; }
-            if (_totalTokens > 12) { scalingFactors[12] = _scalingFactor12; } else { return scalingFactors; }
-            if (_totalTokens > 13) { scalingFactors[13] = _scalingFactor13; } else { return scalingFactors; }
-            if (_totalTokens > 14) { scalingFactors[14] = _scalingFactor14; } else { return scalingFactors; }
-            if (_totalTokens > 15) { scalingFactors[15] = _scalingFactor15; } else { return scalingFactors; }
         }
 
         return scalingFactors;
