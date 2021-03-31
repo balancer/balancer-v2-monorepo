@@ -8,6 +8,7 @@ import { BigNumberish, bn } from '../../lib/helpers/numbers';
 import Token from './models/tokens/Token';
 
 // Ported from @openzeppelin/test-helpers to use with ERC20 tokens and Ethers
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 type Account = string | SignerWithAddress | Contract;
 type CompareFunction = 'equal' | 'eq' | 'above' | 'gt' | 'gte' | 'below' | 'lt' | 'lte' | 'least' | 'most' | 'near';

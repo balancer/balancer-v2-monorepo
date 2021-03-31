@@ -36,20 +36,18 @@ contract GeneralPoolsBalance {
     mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _generalPoolsBalances;
 
     /**
-     * @dev Registers a list of tokens in a General Pool.
+     * @dev Registers a list of tokens in a General Pool. This function assumes the given tokens are contracts,
+     * it's responsibility of the function caller to perform this check.
      *
      * Requirements:
      *
-     * - Tokens must have valid (non-zero) addresses
      * - Tokens cannot already be registered in the Pool
      */
     function _registerGeneralPoolTokens(bytes32 poolId, IERC20[] memory tokens) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[poolId];
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            _require(token != IERC20(0), Errors.ZERO_ADDRESS_TOKEN);
-            bool added = poolBalances.set(token, 0);
+            bool added = poolBalances.set(tokens[i], 0);
             _require(added, Errors.TOKEN_ALREADY_REGISTERED);
         }
     }
