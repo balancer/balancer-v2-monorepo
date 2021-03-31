@@ -34,7 +34,6 @@ describe('Vault - internal balance', () => {
   });
 
   describe('deposit', () => {
-    let from: SignerWithAddress;
     const initialBalance = bn(10);
 
     const itHandlesDepositsProperly = (amount: BigNumber, relayed = false) => {
