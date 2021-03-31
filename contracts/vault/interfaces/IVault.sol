@@ -655,6 +655,7 @@ interface IVault {
     // but also manipulate its prices. However, a properly designed Asset Manager smart contract can be used to the
     // Pool's benefit, for example by lending unused tokens out for interest, or using them to participate in voting
     // protocols.
+    // This concept is unrelated to the IAsset interface.
 
     /**
      * @dev Called by a Pool's Asset Manager to perform an operation (withdraw, deposit, or update) in the Vault.
