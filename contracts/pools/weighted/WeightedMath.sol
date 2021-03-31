@@ -80,8 +80,8 @@ contract WeightedMath {
         // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
         // Because bI / (bI + aI) <= 1, the exponent rounds down.
 
-        uint256 newBalance = tokenBalanceIn.add(tokenAmountIn);
-        uint256 base = tokenBalanceIn.divUp(newBalance);
+        uint256 denominator = tokenBalanceIn.add(tokenAmountIn);
+        uint256 base = tokenBalanceIn.divUp(denominator);
         uint256 exponent = tokenWeightIn.divDown(tokenWeightOut);
         uint256 power = base.powUp(exponent);
 
