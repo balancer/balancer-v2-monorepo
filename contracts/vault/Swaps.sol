@@ -26,13 +26,13 @@ import "../lib/openzeppelin/SafeCast.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/EnumerableSet.sol";
 
-import "./PoolRegistry.sol";
+import "./PoolAssets.sol";
 import "./interfaces/IPoolSwapStructs.sol";
 import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./balances/BalanceAllocation.sol";
 
-abstract contract Swaps is ReentrancyGuard, PoolRegistry {
+abstract contract Swaps is ReentrancyGuard, PoolAssets {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -94,6 +94,49 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         assembly {
             swapRequest := internalSwapRequest
         }
+    }
+
+    function swap(
+        SingleSwap memory request,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (uint256) {
+        // solhint-disable-next-line not-rely-on-time
+        _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
+
+        uint256 amountGiven = request.amount;
+        _require(amountGiven > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
+
+        IERC20 tokenIn = _translateToIERC20(request.assetIn);
+        IERC20 tokenOut = _translateToIERC20(request.assetOut);
+        _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
+        // Initializing each struct field one-by-one uses less gas than setting all at once
+        InternalSwapRequest memory internalRequest;
+        internalRequest.poolId = request.poolId;
+        internalRequest.kind = request.kind;
+        internalRequest.tokenIn = tokenIn;
+        internalRequest.tokenOut = tokenOut;
+        internalRequest.amount = amountGiven;
+        internalRequest.userData = request.userData;
+        internalRequest.from = funds.sender;
+        internalRequest.to = funds.recipient;
+
+        uint256 amountCalculated = _swapWithPool(internalRequest);
+        (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, amountGiven, amountCalculated);
+        _require(request.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
+
+        // Receive token in
+        _receiveAsset(request.assetIn, amountIn, funds.sender, funds.fromInternalBalance);
+
+        // Send token out
+        _sendAsset(request.assetOut, amountOut, funds.recipient, funds.toInternalBalance);
+
+        // Handle any used and remaining ETH.
+        _handleRemainingEth(_isETH(request.assetIn) ? amountIn : 0);
+
+        emit Swap(request.poolId, tokenIn, tokenOut, amountIn, amountOut);
+        return amountCalculated;
     }
 
     function batchSwapGivenIn(
@@ -228,8 +271,6 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             request = swaps[i];
-            _ensureRegisteredPool(request.poolId);
-
             bool withinBounds = request.tokenInIndex < assets.length && request.tokenOutIndex < assets.length;
             _require(withinBounds, Errors.OUT_OF_BOUNDS);
 
@@ -248,17 +289,18 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
                 request.amount = previousAmountCalculated;
             }
 
-            InternalSwapRequest memory internalRequest = InternalSwapRequest({
-                poolId: request.poolId,
-                kind: kind,
-                tokenIn: tokenIn,
-                tokenOut: tokenOut,
-                amount: request.amount,
-                userData: request.userData,
-                from: funds.sender,
-                to: funds.recipient,
-                latestBlockNumberUsed: 0 // will be updated later on based on the pool specialization
-            });
+            // Initializing each struct field one-by-one uses less gas than setting all at once
+            InternalSwapRequest memory internalRequest;
+            internalRequest.poolId = request.poolId;
+            internalRequest.kind = kind;
+            internalRequest.tokenIn = tokenIn;
+            internalRequest.tokenOut = tokenOut;
+            internalRequest.amount = request.amount;
+            internalRequest.userData = request.userData;
+            internalRequest.from = funds.sender;
+            internalRequest.to = funds.recipient;
+            // latestBlockNumberUsed is not set here - that will be done later by the different Pool specialization
+            // handlers
 
             previousAmountCalculated = _swapWithPool(internalRequest);
             previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
@@ -387,9 +429,23 @@ abstract contract Swaps is ReentrancyGuard, PoolRegistry {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
+        // We access both token indexes without checking existence cause we will do it manually immediately after.
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
-        uint256 indexIn = poolBalances.indexOf(request.tokenIn, Errors.TOKEN_NOT_REGISTERED);
-        uint256 indexOut = poolBalances.indexOf(request.tokenOut, Errors.TOKEN_NOT_REGISTERED);
+        uint256 indexIn = poolBalances.unchecked_indexOf(request.tokenIn);
+        uint256 indexOut = poolBalances.unchecked_indexOf(request.tokenOut);
+
+        if (indexIn == 0 || indexOut == 0) {
+            // The tokens might not be registered because the Pool itself is not registered. If so, we provide a more
+            // accurate revert reason. We only check this at this stage to save gas in the case where the tokens
+            // are registered, whicn implies the Pool is as well.
+            _ensureRegisteredPool(request.poolId);
+            _revert(Errors.TOKEN_NOT_REGISTERED);
+        }
+
+        // EnumerableMap stores indices plus one to use the zero index as a sentinel value - because these are valid,
+        // we can undo this.
+        indexIn -= 1;
+        indexOut -= 1;
 
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);

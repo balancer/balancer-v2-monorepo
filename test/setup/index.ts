@@ -10,6 +10,7 @@ import { sharedBeforeEach } from './sharedBeforeEach';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '../helpers/relativeError';
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -67,7 +68,7 @@ chai.use(function (chai) {
   });
 
   Assertion.overwriteMethod('revertedWith', function (_super) {
-    return async function (this: any, revertReason: string) {
+    return async function (this: any) {
       // eslint-disable-next-line prefer-rest-params
       const assertion = _super.apply(this, arguments);
       const promise = assertion._obj;

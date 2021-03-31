@@ -420,6 +420,14 @@ library EnumerableMap {
     }
 
     /**
+     * @dev Returns the index for `key` **plus one**. Does not reverting if the key is not in the map, and returns
+     * 0 instead.
+     */
+    function unchecked_indexOf(IERC20ToBytes32Map storage map, IERC20 key) internal view returns (uint256) {
+        return map._inner._indexes[bytes32(uint256(address(key)))];
+    }
+
+    /**
      * @dev Updates the value for an entry, given its key's index. The key index can be retrieved via {indexOf}, and it
      * should be noted that key indices may change when calling {add} or {remove}. O(1).
      *
