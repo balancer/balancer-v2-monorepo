@@ -243,6 +243,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 userData
             );
 
+            // Note we no longer use `currentBalances` after calling `_onJoinPool`, which may mutate it.
+
             _mintPoolTokens(recipient, bptAmountOut);
 
             // amountsIn are amounts entering the Pool, so we round up.
@@ -275,6 +277,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             protocolSwapFeePercentage,
             userData
         );
+
+        // Note we no longer use `currentBalances` after calling `_onExitPool`, which may mutate it.
 
         _burnPoolTokens(sender, bptAmountIn);
 
@@ -383,6 +387,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * Returns the amount of BPT to mint, the token amounts for each Pool token that the Pool will receive in
      * return, and the number of tokens to pay in the form of due protocol swap fees.
      *
+     * Implementations of this function might choose to mutate the `currentBalances` array to save gas (e.g. when
+     * performing intermediate calculations, such as subtraction of due protocol fees). This can be done safely.
+     *
      * Minted BPT will be sent to `recipient`.
      *
      * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
@@ -413,6 +420,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      *
      * Returns the amount of BPT to burn, the token amounts for each Pool token that the Pool will grant in return, and
      * the number of tokens to pay in the form of due protocol swap fees.
+     *
+     * Implementations of this function might choose to mutate the `currentBalances` array to save gas (e.g. when
+     * performing intermediate calculations, such as subtraction of due protocol fees). This can be done safely.
      *
      * BPT will be burnt from `sender`.
      *
