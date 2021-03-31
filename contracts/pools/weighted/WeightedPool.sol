@@ -162,8 +162,16 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         return _lastInvariant;
     }
 
-    function getInvariant() external view returns (uint256) {
+    /**
+     * @dev Returns the current value of the invariant.
+     */
+    function getInvariant() public view returns (uint256) {
         (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
+
+        // Since the Pool always works with upscaled balances on the different hooks, for consistency we manually
+        // upscale here.
+        _upscaleArray(balances, _scalingFactors());
+
         uint256[] memory normalizedWeights = _normalizedWeights();
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
@@ -551,10 +559,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
     // This function returns the appreciation of one BPT relative to the
     // underlying tokens. This starts at 1 when the pool is initialized and grows over time
-    // It's equivalent to Curve's get_virtual_price() function
     function getRate() public view override returns (uint256) {
-        (, uint256[] memory balances) = _vault.getPoolTokens(_poolId);
-        return
-            Math.mul(WeightedMath._calculateInvariant(_normalizedWeights(), balances), _totalTokens).div(totalSupply());
+        return Math.mul(getInvariant(), _totalTokens).div(totalSupply());
     }
 }
