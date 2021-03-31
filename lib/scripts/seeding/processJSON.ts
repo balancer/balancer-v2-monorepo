@@ -2,6 +2,8 @@
 import { BigNumber, utils } from 'ethers';
 import { flatMap } from 'lodash';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export interface Pool {
   id: string;
   finalized: boolean;

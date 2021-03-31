@@ -13,14 +13,16 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../lib/helpers/BalancerErrors.sol";
 
 import "./BalanceAllocation.sol";
+import "../PoolRegistry.sol";
 
-contract TwoTokenPoolsBalance {
+abstract contract TwoTokenPoolsBalance is PoolRegistry {
     using BalanceAllocation for bytes32;
 
     // Data for Pools with Two Tokens
@@ -64,12 +66,12 @@ contract TwoTokenPoolsBalance {
     mapping(bytes32 => TwoTokenPoolTokens) private _twoTokenPoolTokens;
 
     /**
-     * @dev Registers the tokens of a Two Token Pool.
+     * @dev Registers the tokens of a Two Token Pool. This function assumes the given tokens are contracts,
+     * it's responsibility of the function caller to perform this check.
      *
      * Requirements:
      *
      * - `tokenX` and `tokenY` cannot be the same
-     * - Tokens must have valid (non-zero) addresses
      * - Token cannot already be registered in the Pool
      * - Tokens must be ordered: tokenX < tokenY.
      */
@@ -78,8 +80,6 @@ contract TwoTokenPoolsBalance {
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        _require(tokenX != IERC20(0) && tokenY != IERC20(0), Errors.ZERO_ADDRESS_TOKEN);
-
         // Not technically true since we didn't register yet, but this is consistent with the error messages of other
         // specialization settings.
         _require(tokenX != tokenY, Errors.TOKEN_ALREADY_REGISTERED);
@@ -217,7 +217,14 @@ contract TwoTokenPoolsBalance {
         // Only registered tokens can have non-zero balances, so we can use this as a shortcut to avoid the
         // expensive _hasPoolTwoTokens check.
         bool exists = sharedCash.isNotZero() || sharedManaged.isNotZero() || _hasPoolTwoTokens(poolId, tokenA, tokenB);
-        _require(exists, Errors.TOKEN_NOT_REGISTERED);
+
+        if (!exists) {
+            // The token might not be registered because the Pool itself is not registered. If so, we provide a more
+            // accurate revert reason. We only check this at this stage to save gas in the case where the token
+            // is registered, which implies the Pool is as well.
+            _ensureRegisteredPool(poolId);
+            _revert(Errors.TOKEN_NOT_REGISTERED);
+        }
 
         balanceA = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
         balanceB = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
