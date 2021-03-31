@@ -130,6 +130,10 @@ function pickTokens(tokens: TokenList, size: number, offset?: number): TokenList
   return pick(tokens, tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)));
 }
 
+export function pickTokenAddresses(tokens: TokenList, size: number, offset?: number): string[] {
+  return tokenSymbols.slice(offset ?? 0, size + (offset ?? 0)).map((symbol) => tokens[symbol].address);
+}
+
 export async function getSigners(): Promise<{
   admin: SignerWithAddress;
   creator: SignerWithAddress;
