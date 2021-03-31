@@ -23,6 +23,9 @@ library FixedPoint {
     uint256 internal constant ONE = 1e18; // 18 decimal places
     uint256 internal constant MAX_POW_RELATIVE_ERROR = 10000; // 10^(-14)
 
+    // Minimum base for the power function when the exponent is 'free' (larger than ONE).
+    uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
+
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
 
@@ -118,17 +121,30 @@ library FixedPoint {
         return LogExpMath.pow(x, y);
     }
 
+    /**
+     * @dev Returns x^y, assuming both are fixed point numbers, rounding down. The result is guaranteed to not be above
+     * the true value (that is, the error function expected - actual is always positive).
+     */
     function powDown(uint256 x, uint256 y) internal pure returns (uint256) {
-        uint256 result = LogExpMath.pow(x, y);
-        if (result == 0) {
+        uint256 raw = LogExpMath.pow(x, y);
+        uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
+
+        if (raw < maxError) {
             return 0;
+        } else {
+            return sub(raw, maxError);
         }
-        return sub(sub(result, mulDown(result, MAX_POW_RELATIVE_ERROR)), 1);
     }
 
+    /**
+     * @dev Returns x^y, assuming both are fixed point numbers, rounding up. The result is guaranteed to not be below
+     * the true value (that is, the error function expected - actual is always negative).
+     */
     function powUp(uint256 x, uint256 y) internal pure returns (uint256) {
-        uint256 result = LogExpMath.pow(x, y);
-        return add(add(result, mulUp(result, MAX_POW_RELATIVE_ERROR)), 1);
+        uint256 raw = LogExpMath.pow(x, y);
+        uint256 maxError = add(mulUp(raw, MAX_POW_RELATIVE_ERROR), 1);
+
+        return add(raw, maxError);
     }
 
     /**

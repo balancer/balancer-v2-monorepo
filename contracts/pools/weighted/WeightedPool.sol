@@ -348,18 +348,12 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         _require(tokenIndex < _totalTokens, Errors.OUT_OF_BOUNDS);
 
-        uint256 bptTotalSupply = totalSupply();
-
-        //Verifies that invariant ratio is not greater than max
-        uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
-        _require(invariantRatio <= _MAX_INVARIANT_RATIO, Errors.MAX_OUT_BPT_FOR_TOKEN_IN);
-
         uint256[] memory amountsIn = new uint256[](_totalTokens);
         amountsIn[tokenIndex] = WeightedMath._calcTokenInGivenExactBptOut(
             currentBalances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
-            bptTotalSupply,
+            totalSupply(),
             _swapFee
         );
 
@@ -450,12 +444,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         _require(tokenIndex < _totalTokens, Errors.OUT_OF_BOUNDS);
 
-        uint256 bptTotalSupply = totalSupply();
-
-        // Verifies that invariant ratio is not lower than min
-        uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).div(bptTotalSupply);
-        _require(invariantRatio >= _MIN_INVARIANT_RATIO, Errors.MIN_BPT_IN_FOR_TOKEN_OUT);
-
         // We exit in a single token, so we initialize amountsOut with zeros
         uint256[] memory amountsOut = new uint256[](_totalTokens);
 
@@ -534,16 +522,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             return dueProtocolFeeAmounts;
         }
 
-        // Verifies that invariant ratio is not lower than min.
-        // If lower than min, protocol fees will charge up to the min ratio allowed.
-        uint256 invariantRatio = previousInvariant.divUp(currentInvariant);
-        if (invariantRatio <= _MIN_INVARIANT_RATIO) {
-            currentInvariant = previousInvariant.divUp(_MIN_INVARIANT_RATIO);
-        }
-
-        // The protocol swap fee are always paid using the token with the largest weight in the pool.
-        // As this is the token that will probably have the largest balance in the pool, we can
-        // make sure this process won't unbalance the pool in a considerable way.
+        // The protocol swap fee are always paid using the token with the largest weight in the Pool. As this is the
+        // token that is expected to have the largest balance in the pool, using it to pay fees is expected to not
+        // unbalance the Pool in a considerable way.
         dueProtocolFeeAmounts[_maxWeightTokenIndex] = WeightedMath._calcDueTokenProtocolSwapFee(
             currentBalances[_maxWeightTokenIndex],
             normalizedWeights[_maxWeightTokenIndex],
