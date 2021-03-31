@@ -22,19 +22,20 @@ import "../../lib/helpers/InputHelpers.sol";
 
 contract WeightedMath {
     using FixedPoint for uint256;
-
+    // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
+    // implementation of the power function, as these ratios are often exponents.
     uint256 internal constant _MIN_WEIGHT = 0.01e18;
 
     // Pool limits that arise from limitations in the fixed point power function (and the imposed 100/1 maximum weight
     // ratio).
 
-    // Swap limits: amonts swapped may not be larger than this percentage of total balance.
+    // Swap limits: amounts swapped may not be larger than this percentage of total balance.
     uint256 internal constant _MAX_IN_RATIO = 0.3e18;
     uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
 
-    // Invariant growth limit: joins may not cause the invariant to increase by more than this ratio.
+    // Invariant growth limit: joins cannot cause the invariant to increase by more than this ratio.
     uint256 internal constant _MAX_INVARIANT_RATIO = 3e18;
-    // Invariant shrink limit: exits may not cause the invariant to decrease by less than this ratio.
+    // Invariant shrink limit: exits cannot cause the invariant to decrease by less than this ratio.
     uint256 internal constant _MIN_INVARIANT_RATIO = 0.7e18;
 
     function _calculateInvariant(uint256[] memory normalizedWeights, uint256[] memory balances)
@@ -323,7 +324,7 @@ contract WeightedMath {
         /*  protocolSwapFeePercentage * balanceToken * ( 1 - (previousInvariant / currentInvariant) ^ (1 / weightToken))
         *********************************************************************************/
 
-        if (currentInvariant < previousInvariant) {
+        if (currentInvariant <= previousInvariant) {
             // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
             // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
             return 0;

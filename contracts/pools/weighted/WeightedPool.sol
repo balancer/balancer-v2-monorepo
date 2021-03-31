@@ -344,7 +344,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
-        // Note that is no maximum amount in parameter: this is handled by `IVault.joinPool`.
+        // Note that there is no maximum amount in parameter: this is handled by `IVault.joinPool`.
 
         _require(tokenIndex < _totalTokens, Errors.OUT_OF_BOUNDS);
 
@@ -440,7 +440,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // This exit function is disabled if the emergency period is active.
 
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
-        // Note that is no minimum amount out parameter: this is handled by `IVault.exitPool`.
+        // Note that there is no minimum amount out parameter: this is handled by `IVault.exitPool`.
 
         _require(tokenIndex < _totalTokens, Errors.OUT_OF_BOUNDS);
 
@@ -471,7 +471,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // therefore the one with the lowest likelihood of errors.
 
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        // Note that is no minimum amount out parameter: this is handled by `IVault.exitPool`.
+        // Note that there is no minimum amount out parameter: this is handled by `IVault.exitPool`.
 
         uint256[] memory amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(
             currentBalances,

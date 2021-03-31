@@ -363,8 +363,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     /**
      * @dev Called when the Pool is joined for the first time, that is, when the BPT total supply is zero.
      *
-     * Returns the amount of BPT to mint, and the token amounts for each Pool token that the Pool will receive in
-     * return.
+     * Returns the amount of BPT to mint, and the token amounts the Pool will receive in return.
      *
      * Minted BPT will be sent to `recipient`, except for _MINIMUM_BPT which will be deducted from this amount and sent
      * to the zero address instead. This will cause that BPT to remain forever locked there, preventing total BTP from
@@ -384,7 +383,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     /**
      * @dev Called whenever the Pool is joined, outside of the first initialization join (see `_onInitializePool`).
      *
-     * Returns the amount of BPT to mint, the token amounts for each Pool token that the Pool will receive in
+     * Returns the amount of BPT to mint, the token amounts that the Pool will receive in
      * return, and the number of tokens to pay in the form of due protocol swap fees.
      *
      * Implementations of this function might choose to mutate the `currentBalances` array to save gas (e.g. when
