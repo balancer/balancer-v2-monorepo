@@ -38,6 +38,9 @@ contract WeightedMath {
     // Invariant shrink limit: exits cannot cause the invariant to decrease by less than this ratio.
     uint256 internal constant _MIN_INVARIANT_RATIO = 0.7e18;
 
+    // Invariant is used to collect protocol swap fees by comparing its value between two times.
+    // So we can round always to the same direction. It is also used to initiate the BPT amount
+    // and, because there is a minimum BPT, we round down the invariant.
     function _calculateInvariant(uint256[] memory normalizedWeights, uint256[] memory balances)
         internal
         pure
@@ -52,7 +55,7 @@ contract WeightedMath {
 
         invariant = FixedPoint.ONE;
         for (uint256 i = 0; i < normalizedWeights.length; i++) {
-            invariant = invariant.mul(balances[i].pow(normalizedWeights[i]));
+            invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
         }
     }
 
