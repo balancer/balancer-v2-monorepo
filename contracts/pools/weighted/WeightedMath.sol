@@ -186,7 +186,7 @@ contract WeightedMath {
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply);
         _require(invariantRatio <= _MAX_INVARIANT_RATIO, Errors.MAX_OUT_BPT_FOR_TOKEN_IN);
 
-        // Calculate by how much the token balance has to increase to match invariantRatio
+        // Calculate by how much the token balance has to increase to match the invariantRatio
         uint256 tokenBalanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(tokenNormalizedWeight));
 
         uint256 amountInWithoutFee = tokenBalance.mulUp(tokenBalanceRatio.sub(FixedPoint.ONE));
@@ -206,7 +206,7 @@ contract WeightedMath {
     ) internal pure returns (uint256) {
         // BPT in, so we round up overall.
 
-        // First loop to calculate the weighted balance ratio
+        // First loop calculates the weighted balance ratio
         uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsOut.length);
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
@@ -216,13 +216,13 @@ contract WeightedMath {
             );
         }
 
-        //Second loop to calculate new amounts in taking into account the fee on the % excess
+        // Second loop calculates new amounts in, applying the fee to the percentage excess
         uint256 invariantRatio = FixedPoint.ONE;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 tokenBalancePercentageExcess;
             uint256 tokenBalanceRatio;
-            // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
-            // decrease the fee from what goes above it
+            // Compare each tokenBalanceRatioWithoutFee to the total weighted ratio (weightedBalanceRatio), and
+            // decrease the fee by the excess amount 
             if (weightedBalanceRatio <= tokenBalanceRatiosWithoutFee[i]) {
                 tokenBalancePercentageExcess = 0;
             } else {
@@ -265,11 +265,11 @@ contract WeightedMath {
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
         _require(invariantRatio >= _MIN_INVARIANT_RATIO, Errors.MIN_BPT_IN_FOR_TOKEN_OUT);
 
-        // Calculate by how much the token balance has to increase to match invariantRatio
+        // Calculate by how much the token balance has to increase to match the invariantRatio
         uint256 tokenBalanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(tokenNormalizedWeight));
         uint256 tokenBalancePercentageExcess = tokenNormalizedWeight.complement();
 
-        //Because of rounding up, tokenBalanceRatio can be greater than one
+        // Because of rounding up, tokenBalanceRatio can be greater than one
         uint256 amountOutBeforeFee = tokenBalance.mulDown(tokenBalanceRatio.complement());
 
         uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
@@ -321,8 +321,8 @@ contract WeightedMath {
             return 0;
         }
 
-        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less protocol fees
-        // to the Vault.
+        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
+        // fees to the Vault.
 
         // Fee percentage and balance multiplications round down, while the subtrahend (power) rounds up (as does the
         // base). Because previousInvariant / currentInvariant <= 1, the exponent rounds down.
@@ -332,7 +332,7 @@ contract WeightedMath {
 
         // Because the exponent is larger than one, the base of the power function has a lower bound. We cap to this
         // value to avoid numeric issues, which means in the extreme case (where the invariant growth is larger than
-        // 1 / min exponent) the Pool will pay less protocol fess than it should.
+        // 1 / min exponent) the Pool will pay less in protocol fees than it should.
         base = Math.max(base, FixedPoint.MIN_POW_BASE_FREE_EXPONENT);
 
         uint256 power = base.powUp(exponent);

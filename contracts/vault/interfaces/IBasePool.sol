@@ -19,24 +19,28 @@ import "./IVault.sol";
 import "./IPoolSwapStructs.sol";
 
 /**
- * @dev Interface all Pool contracts should implement. Note that this is not the complete Pool contract interface, as it
- * is missing the swap hooks: Pool contracts should instead inherit from either IGeneralPool or IMinimalSwapInfoPool.
+ * @dev Interface for adding and removing liquidity that all Pool contracts should implement. Note that this is not
+ * the complete Pool contract interface, as it is missing the swap hooks. Pool contracts should also inherit from
+ * either IGeneralPool or IMinimalSwapInfoPool
  */
 interface IBasePool is IPoolSwapStructs {
     /**
-     * @dev Called by the Vault when a user calls `IVault.joinPool` to join this Pool. Returns how many tokens the user
-     * should provide for each registered token, as well as how many protocol fees the Pool owes to the Vault. After
-     * returning, the Vault will take tokens from the `sender` and add it to the Pool's balance, as well as collect
-     * reported protocol fees. The current protocol swap fee percentage is provided to help compute this value.
+     * @dev Called by the Vault when a user calls `IVault.joinPool` to add liquidity to this Pool. Returns how many of
+     * each registered token the user should provide, as well as the amount of protocol fees the Pool owes to the Vault.
+     * The Vault will then take tokens from `sender` and add them to the Pool's balances, as well as collect
+     * the reported amount in protocol fees, which the pool should calculate based on the `protocolSwapFee` percentage.
      *
-     * Due protocol fees are reported and charged on join events so that new users join the Pool free of debt.
+     * Protocol fees are reported and charged on join events so that the pool is free of debt whenever new users join.
      *
-     * `sender` is the account performing the join (from whom tokens will be withdrawn), and `recipient` is an account
-     * designated to receive any benefits (typically pool shares). `currentBalances` contains the total token balances
+     * `sender` is the account performing the join (from whom tokens will be withdrawn), and `recipient` is the account
+     * designated to receive any benefits (typically pool shares). `currentBalances` contains the total balances
      * for each token the Pool registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
      * `latestBlockNumberUsed` is the last block number in which any of the Pool's registered tokens last changed its
      * balance. This can be used to implement price oracles that are resilient to 'sandwich' attacks.
+     *
+     * `userData` contains any pool-specific instructions needed to perform the calculations, such as the type of
+     * join (e.g., proportional given an amount of pool shares, single-asset, multi-asset, etc.)
      *
      * Contracts implementing this function should check that the caller is indeed the Vault before performing any
      * state-changing operations, such as minting pool shares.
@@ -52,19 +56,24 @@ interface IBasePool is IPoolSwapStructs {
     ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
 
     /**
-     * @dev Called by the Vault when a user calls `IVault.exitPool` to exit this Pool. Returns how many tokens the Vault
-     * should deduct from the Pool, as well as how many protocol fees the Pool owes to the Vault. After returning, the
-     * Vault will take tokens from the Pool's balance and add grant them to `recipient`, as well as collect reported
-     * protocol fees. The current protocol swap fee percentage is provided to help compute this value.
+     * @dev Called by the Vault when a user calls `IVault.exitPool` to remove liquidity from this Pool. Returns how many
+     * tokens the Vault should deduct from the Pool's balances, as well as the amount of protocol fees the Pool owes
+     * to the Vault. The Vault will then take tokens from the Pool's balances and send them to `recipient`,
+     * as well as collect the reported amount in protocol fees, which the pool should calculate based on the
+     * `protocolSwapFee` percentage.
      *
-     * Due protocol fees are reported and charged on exit events so that users exit the Pool having paid all debt.
+     * Protocol fees are reported and charged on exit events to guarantee that users exiting the pool have paid their
+     * share, and that the pool is debt-free.
      *
-     * `sender` is the account performing the exit (typically the holder of pool shares), and `recipient` is the account
-     * to which the Vault will grant tokens. `currentBalances` contains the total token balances for each token the Pool
-     * registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
+     * `sender` is the account performing the exit (typically the pool shareholder), and `recipient` is the account
+     * to which the Vault will send the proceeds. `currentBalances` contains the total token balances for each token
+     * the Pool registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
      * `latestBlockNumberUsed` is the last block number in which any of the Pool's registered tokens last changed its
      * balance. This can be used to implement price oracles that are resilient to 'sandwich' attacks.
+     *
+     * `userData` contains any pool-specific instructions needed to perform the calculations, such as the type of
+     * exit (e.g., proportional given an amount of pool shares, single-asset, multi-asset, etc.)
      *
      * Contracts implementing this function should check that the caller is indeed the Vault before performing any
      * state-changing operations, such as burning pool shares.
