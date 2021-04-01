@@ -52,11 +52,11 @@ interface IVault {
     // The only exceptions to this involve relayers. A relayer is an account (typically a contract) that can use the
     // Internal Balance and Vault allowance of other accounts. For an account to be able to wield this power,
     // two things must occur:
-    //  - The Authorizer must allow the account to call the specific functions associated with this permission
-    //    In other words, Balancer governance must specifically approve each relayer contract and function call
+    //  - The Authorizer must allow the the relayer to call the functions associated with this permission.
+    //    In other words, Balancer governance must specifically approve the functions each relayer can call
     //  - Each user must approve the relayer to act on their behalf
-    // This double protection means users cannot be tricked into allowing malicious relayers - because they will not
-    // have been allowed by the Authorizer - nor can malicious relayers approved by a compromised Authorizer drain
+    // This double protection means users cannot be tricked into allowing malicious relayers (because they will not
+    // have been allowed by the Authorizer), nor can malicious relayers approved by a compromised Authorizer drain
     // user funds, since they would also need to be approved by each individual user.
 
     /**
@@ -149,6 +149,8 @@ interface IVault {
     /**
      * @dev Transfers tokens from the internal balances of each `sender` address to the Internal Balances of each
      * `recipient`.
+     *
+     * For each transfer, if the caller is not `sender`, it must be an authorized relayer for them.
      */
     function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external;
 
@@ -229,8 +231,9 @@ interface IVault {
      * with the UPDATE OpKind. They are therefore expected to be highly secured smart contracts with sound design
      * principles, and the decision to add an Asset Manager should not be made lightly.
      *
-     * Pools cannot remove an Asset Manager by setting it to the zero address. Once an Asset Manager is set, it cannot
-     * be changed, except by deregistering the associated token and registering again with a different Asset Manager.
+     * Pools can choose not to assign an Asset Manager to a given token by passing in the zero address. However, once an
+     * Asset Manager is set, it cannot be changed except by deregistering the associated token and registering again
+     * with a different Asset Manager.
      *
      * Emits `TokensRegistered` events.
      */
@@ -285,7 +288,7 @@ interface IVault {
      * equals the sum of `cash` and `managed`.
      *
      * `blockNumber` is the number of the block in which `token`'s balance was last modified (via either a join, exit,
-     * swap, or Asset Management interaction). This value is useful to avoid so-called 'sandwich attacks,' for example
+     * swap, or Asset Management interaction). This value is useful to avoid so-called 'sandwich attacks', for example
      * when developing price oracles.
      *
      * `assetManager` is the Pool's token Asset Manager.
@@ -441,7 +444,7 @@ interface IVault {
     //
     // It also means that under certain conditions it is possible to perform arbitrage by swapping with multiple
     // Pools in a way that results in net token movement out of the Vault (profit), with no tokens being sent in (only
-    // updating the Pool's internal balances).
+    // updating the Pool's internal accounting).
     //
     // To protect users from front-running or the market changing rapidly, they supply a list of 'limits' for each token
     // involved in the swap, where either the maximum number of tokens to send (by passing a positive value) or the
@@ -479,8 +482,8 @@ interface IVault {
      * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
      * unwrapped using WETH by the Vault.
      *
-     * Internal Balance usage and recipient are determined by the `funds` struct. The `limits` array specifies the
-     * maximum amount of each token the vault is allowed to transfer.
+     * Internal Balance usage, sender, and recipient are determined by the `funds` struct. The `limits` array specifies the
+     * minimum or maximum amount of each token the vault is allowed to transfer.
      *
      * Emits `Swap` events.
      */
@@ -613,7 +616,8 @@ interface IVault {
     );
 
     /**
-     * @dev All tokens in a swap are sent to the Vault from the `sender`'s account, and then sent to `recipient`.
+     * @dev All tokens in a swap are either sent from the `sender` account to the Vault, or from the Vault to the
+     * `recipient` account.
      *
      * If the caller is not `sender`, it must be an authorized relayer for them.
      *
