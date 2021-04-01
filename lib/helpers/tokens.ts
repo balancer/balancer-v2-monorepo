@@ -17,7 +17,7 @@ export async function deployTokens(
   const tokenSymbols: TokenList = {};
   for (let i = 0; i < symbols.length; i++) {
     if (symbols[i] === 'WETH') {
-      tokenSymbols[symbols[i]] = await deploy('WETH9', { from, args: [from ? from.address : ZERO_ADDRESS] });
+      tokenSymbols[symbols[i]] = await ethers.getContract('WETH');
     } else {
       tokenSymbols[symbols[i]] = await deployToken(symbols[i], decimals[i], from);
     }
