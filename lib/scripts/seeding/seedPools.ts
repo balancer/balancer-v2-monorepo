@@ -5,20 +5,17 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deepEqual } from 'assert';
 
 import * as allPools from './allPools.json';
-import { bn, fp } from '../../helpers/numbers';
+import { bn } from '../../helpers/numbers';
 import { TokenList, deployTokens } from '../../helpers/tokens';
 import { WEEK } from '../../helpers/time';
 import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
+import { MAX_UINT256 } from '../../helpers/constants';
 import { roleId } from '../../helpers/roles';
 import { formatPools, getTokenInfoForDeploy, Pool } from './processJSON';
 
 let ethers: any;
 let deployer: SignerWithAddress;
 let controller: SignerWithAddress;
-let trader: SignerWithAddress;
-//let validator: Contract;
-let assetManager: SignerWithAddress; // This would normally be a contract
 
 const NUM_POOLS = 10;
 const FAUCET = '0x4f6D439924E2744bf624B388FeF0f3B790c1762B';
@@ -62,7 +59,6 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
     await token.connect(deployer).grantRole(minterRole, FAUCET);
     await token.connect(deployer).mint(controller.address, tradingBalance);
     await token.connect(controller).approve(vault.address, MAX_UINT256);
-
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
@@ -77,7 +73,7 @@ const compareAddresses = (addressA: string, addressB: string) =>
   addressA.toLowerCase() > addressB.toLowerCase() ? 1 : -1;
 
 async function deployPools(filteredPools: Pool[], tokens: TokenList) {
-  for(const p of filteredPools) {
+  for (const p of filteredPools) {
     const tokensList: Array<string> = [];
     const weights: Array<BigNumber> = [];
     const balances: Array<BigNumber> = [];
@@ -94,7 +90,7 @@ async function deployPools(filteredPools: Pool[], tokens: TokenList) {
 
     // Deploy pool and provide liquidity
     await deployStrategyPool(tokensList, weights, balances, swapFee);
-  };
+  }
 }
 
 async function deployStrategyPool(
@@ -161,14 +157,12 @@ async function initializeStrategyPool(
   const fromInternalBalance = false;
   const initialJoinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: initialBalances });
 
-  const joinTx = await vault
-    .connect(controller)
-    .joinPool(poolId, controller.address, recipient,
-      { assets: tokens,
-        maxAmountsIn: maxAmountsIn,
-        userData: initialJoinUserData,
-        fromInternalBalance: fromInternalBalance
-      });
+  await vault.connect(controller).joinPool(poolId, controller.address, recipient, {
+    assets: tokens,
+    maxAmountsIn: maxAmountsIn,
+    userData: initialJoinUserData,
+    fromInternalBalance: fromInternalBalance,
+  });
 }
 
 function filterPools(allPools: Pool[], count: number): Pool[] {
