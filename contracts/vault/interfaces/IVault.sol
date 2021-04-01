@@ -482,8 +482,8 @@ interface IVault {
      * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
      * unwrapped using WETH by the Vault.
      *
-     * Internal Balance usage, sender, and recipient are determined by the `funds` struct. The `limits` array specifies the
-     * minimum or maximum amount of each token the vault is allowed to transfer.
+     * Internal Balance usage, sender, and recipient are determined by the `funds` struct. The `limits` array specifies
+     * the minimum or maximum amount of each token the vault is allowed to transfer.
      *
      * Emits `Swap` events.
      */
