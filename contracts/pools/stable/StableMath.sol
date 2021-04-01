@@ -320,7 +320,7 @@ contract StableMath {
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 tokenBalancePercentageExcess;
             // Compare each tokenBalanceRatioWithoutFee to the total weighted ratio (weightedBalanceRatio), and
-            // decrease the fee by the excess amount 
+            // decrease the fee by the excess amount
             if (weightedBalanceRatio <= tokenBalanceRatiosWithoutFee[i]) {
                 tokenBalancePercentageExcess = 0;
             } else {
@@ -479,7 +479,8 @@ contract StableMath {
 
         // We iterate to find the balance
         uint256 prevTokenBalance = 0;
-        // We multiply the first iteration outside the loop with the invariant to set the value of the initial approximation.
+        // We multiply the first iteration outside the loop with the invariant to set the value of the
+        // initial approximation.
         uint256 tokenBalance = invariant.mul(invariant).add(c).divUp(invariant.add(b));
 
         for (uint256 i = 0; i < 255; i++) {

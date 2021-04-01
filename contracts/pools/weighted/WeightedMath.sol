@@ -222,7 +222,7 @@ contract WeightedMath {
             uint256 tokenBalancePercentageExcess;
             uint256 tokenBalanceRatio;
             // Compare each tokenBalanceRatioWithoutFee to the total weighted ratio (weightedBalanceRatio), and
-            // decrease the fee by the excess amount 
+            // decrease the fee by the excess amount
             if (weightedBalanceRatio <= tokenBalanceRatiosWithoutFee[i]) {
                 tokenBalancePercentageExcess = 0;
             } else {

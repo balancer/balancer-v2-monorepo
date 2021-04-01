@@ -23,7 +23,7 @@ import "../vault/interfaces/IGeneralPool.sol";
  *
  * Derived contracts must implement `_onSwapGivenIn` and `_onSwapGivenOut` along with `BasePool`'s virtual functions.
  */
- abstract contract BaseGeneralPool is IGeneralPool, BasePool {
+abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     constructor(
         IVault vault,
         string memory name,
