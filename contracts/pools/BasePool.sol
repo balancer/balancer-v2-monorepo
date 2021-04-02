@@ -155,7 +155,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _swapFee;
     }
 
-    function setSwapFee(uint256 swapFee) external authenticate {
+    function setSwapFee(uint256 swapFee) external virtual authenticate {
         _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
 
         _swapFee = swapFee;
