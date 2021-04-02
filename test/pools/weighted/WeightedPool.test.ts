@@ -46,11 +46,11 @@ describe('WeightedPool', function () {
   });
 
   // TODO: These fail due to a Hardhat error
-  context.skip('for a too-many token pool', () => {
+  context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
-      // The maximum number of tokens is 16
-      const tokens = await TokenList.create(17);
-      const weights = new Array(17).fill(fp(1));
+      // The maximum number of tokens is 8
+      const tokens = await TokenList.create(9);
+      const weights = new Array(9).fill(fp(1));
 
       await expect(WeightedPool.create({ tokens, weights })).to.be.revertedWith('MAX_TOKENS');
     });
