@@ -359,7 +359,7 @@ interface IVault {
     /**
      * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
      * trigger custom Pool behavior, which will typically ask for something in return from `sender` - often tokenized
-     * Pool shares. The amount of tokens that can be withdraw is limited by the Pool's `cash` balance (see
+     * Pool shares. The amount of tokens that can be withdrawn is limited by the Pool's `cash` balance (see
      * `getPoolTokenInfo`).
      *
      * If the caller is not `sender`, it must be an authorized relayer for them.

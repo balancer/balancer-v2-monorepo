@@ -429,7 +429,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
-        // We access both token indexes without checking existence cause we will do it manually immediately after.
+        // We access both token indexes without checking existence,  because we will do it manually immediately after.
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _generalPoolsBalances[request.poolId];
         uint256 indexIn = poolBalances.unchecked_indexOf(request.tokenIn);
         uint256 indexOut = poolBalances.unchecked_indexOf(request.tokenOut);
