@@ -23,8 +23,10 @@ import "../BaseMinimalSwapInfoPool.sol";
 import "./WeightedMath.sol";
 import "./WeightedPoolUserDataHelpers.sol";
 
-// This contract relies on tons of immutable state variables to
-// perform efficient lookup, without resorting to storage reads.
+// This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
+// reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus total
+// count, resulting in a large number of these.
+
 // solhint-disable max-states-count
 
 contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
