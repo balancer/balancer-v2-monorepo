@@ -2,6 +2,7 @@
 
 pragma solidity ^0.7.0;
 
+import "../../vault/interfaces/IAuthorizer.sol";
 import "../helpers/BalancerErrors.sol";
 
 import "./EnumerableSet.sol";
@@ -42,7 +43,7 @@ import "./Context.sol";
  * grant and revoke this role. Extra precautions should be taken to secure
  * accounts that have been granted it.
  */
-abstract contract AccessControl is Context {
+abstract contract AccessControl is Context, IAuthorizer {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     struct RoleData {
@@ -84,7 +85,7 @@ abstract contract AccessControl is Context {
     /**
      * @dev Returns `true` if `account` has been granted `role`.
      */
-    function hasRole(bytes32 role, address account) public view returns (bool) {
+    function hasRole(bytes32 role, address account) public view override returns (bool) {
         return _roles[role].members.contains(account);
     }
 
@@ -123,6 +124,17 @@ abstract contract AccessControl is Context {
     }
 
     /**
+     * @dev Change the admin that controls `role`. See {grantRole} and
+     * {revokeRole}.
+     *
+     */
+    function setRoleAdmin(bytes32 role, bytes32 adminRole) public virtual {
+        _require(hasRole(_roles[role].adminRole, _msgSender()), Errors.SET_ROLE_SENDER_NOT_ADMIN);
+
+        _setRoleAdmin(role, adminRole);
+    }
+
+    /**
      * @dev Grants `role` to `account`.
      *
      * If `account` had not been already granted `role`, emits a {RoleGranted}
@@ -141,7 +153,7 @@ abstract contract AccessControl is Context {
     /**
      * @dev Revokes `role` from `account`.
      *
-     * If `account` had been granted `role`, emits a {RoleRevoked} event.
+     * If `account` had already been granted `role`, emits a {RoleRevoked} event.
      *
      * Requirements:
      *

@@ -448,7 +448,7 @@ describe('BalancerPoolToken', () => {
 
       context('when the sender does not have enough balance', () => {
         it('reverts', async () => {
-          await expect(token.burn(holder.address, amount)).be.revertedWith('INSUFFICIENT_BALANCE');
+          await expect(token.burn(holder.address, amount)).be.revertedWith('SUB_OVERFLOW');
         });
       });
 

@@ -54,7 +54,7 @@ interface IBasePool is IPoolSwapStructs {
     /**
      * @dev Called by the Vault when a user calls `IVault.exitPool` to exit this Pool. Returns how many tokens the Vault
      * should deduct from the Pool, as well as how many protocol fees the Pool owes to the Vault. After returning, the
-     * Vault will take tokens from the Pool's balance and add grant them to `recipient`, as well as collect reported
+     * Vault will take tokens from the Pool's balance and grant them to `recipient`, as well as collect reported
      * protocol fees. The current protocol swap fee percentage is provided to help compute this value.
      *
      * Due protocol fees are reported and charged on exit events so that users exit the Pool having paid all debt.

@@ -13,8 +13,10 @@ describe('Authorizer', () => {
     [, admin, grantee, other] = await ethers.getSigners();
   });
 
+  const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
+  const NEW_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000003';
 
   const ROLES = [ROLE_1, ROLE_2];
 
@@ -62,6 +64,19 @@ describe('Authorizer', () => {
 
         expect(await authorizer.hasRole(ROLE_2, grantee.address)).to.be.false;
         expect(await authorizer.hasRole(ROLE_1, other.address)).to.be.false;
+      });
+
+      it('changes the admin of a role', async () => {
+        await authorizer.grantRolesToMany(ROLES, [grantee.address, other.address]);
+
+        expect(await authorizer.hasRole(ROLE_1, grantee.address)).to.be.true;
+
+        await authorizer.setRoleAdmin(ROLE_1, NEW_ADMIN_ROLE);
+
+        expect(await authorizer.getRoleAdmin(ROLE_1)).to.equal(NEW_ADMIN_ROLE);
+        expect(await authorizer.hasRole(ROLE_1, grantee.address)).to.be.true;
+
+        await expect(authorizer.setRoleAdmin(ROLE_1, DEFAULT_ADMIN_ROLE)).to.be.revertedWith('SET_ROLE_SENDER_NOT_ADMIN');
       });
     });
 

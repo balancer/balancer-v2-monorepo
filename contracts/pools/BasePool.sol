@@ -32,7 +32,7 @@ import "../vault/interfaces/IBasePool.sol";
 // solhint-disable max-states-count
 
 /**
- * @dev Reference implementation for the base layer of a Pool contract that manges a single Pool with an immutable set
+ * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with an immutable set
  * of registered tokens, no Asset Managers, and admin-controlled swap fee and emergency stop mechanisms.
  *
  * Note that both swap fees and the emergency stop mechanism are not used by this contract, but instead exposed so that
@@ -293,7 +293,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     /**
      * @dev Returns the amount of BPT that would be granted to `recipient` if the `onJoinPool` hook was called by the
-     * Vault with the the same arguments, along with the number of tokens `sender` would have to supply.
+     * Vault with the same arguments, along with the number of tokens `sender` would have to supply.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
      * data such as the protocol swap fee and Pool balances.
@@ -326,7 +326,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     /**
      * @dev Returns the amount of BPT that would be burned from `sender` if the `onExitPool` hook was called by the
-     * Vault with the the same arguments, along with the number of tokens `recipient` would receive.
+     * Vault with the same arguments, along with the number of tokens `recipient` would receive.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
      * data such as the protocol swap fee and Pool balances.

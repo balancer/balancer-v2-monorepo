@@ -80,7 +80,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     }
 
     /**
-     * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
+     * @dev Note that this is not marked as `nonReentrant` because `_processInternalBalanceOps` is already doing it
      */
     function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override {
         _processInternalBalanceOps(transfers, _withdrawFromInternalBalance);
@@ -92,12 +92,11 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         address recipient,
         uint256 amount
     ) private {
-        uint256 amountToSend = amount;
         IERC20 token = _translateToIERC20(asset);
 
         _decreaseInternalBalance(sender, token, amount, false);
 
-        _sendAsset(asset, amountToSend, payable(recipient), false);
+        _sendAsset(asset, amount, payable(recipient), false);
     }
 
     /**
@@ -115,7 +114,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     }
 
     /**
-     * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
+     * @dev Note that this is not marked as `nonReentrant` because `_processInternalBalanceOps` is already doing it
      */
     function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
         // We cast transfers into AssetBalanceTransfers in order to reuse _processInternalBalanceOps.
@@ -138,7 +137,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     }
 
     /**
-     * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
+     * @dev Note that this is not marked as `nonReentrant` because `_processInternalBalanceOps` is already doing it
      */
     function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
         // We cast transfers into AssetBalanceTransfers in order to reuse _processInternalBalanceOps.
@@ -252,6 +251,9 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             // Finally we check the actual msg.sender was also allowed by the `sender`
             _authenticateCallerFor(sender);
         }
+
+        // Recipient cannot be the vault (or funds would be locked)
+        _require(transfer.recipient != address(this), Errors.INVALID_INTERNAL_BALANCE_ACCOUNT);
 
         asset = transfer.asset;
         amount = transfer.amount;

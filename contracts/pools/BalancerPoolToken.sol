@@ -103,7 +103,8 @@ contract BalancerPoolToken is IERC20 {
         _move(sender, recipient, amount);
 
         if (msg.sender != sender && currentAllowance != uint256(-1)) {
-            _require(currentAllowance >= amount, Errors.INSUFFICIENT_ALLOWANCE);
+            // Because of the previous require, we know that if msg.sender != sender then currentAllowance >= amount
+            // _require(currentAllowance >= amount, Errors.INSUFFICIENT_ALLOWANCE);
             _setAllowance(sender, msg.sender, currentAllowance - amount);
         }
 
@@ -138,7 +139,8 @@ contract BalancerPoolToken is IERC20 {
 
     function _burnPoolTokens(address sender, uint256 amount) internal {
         uint256 currentBalance = _balance[sender];
-        _require(currentBalance >= amount, Errors.INSUFFICIENT_BALANCE);
+        // Since _move(amount) succeeded, the recipient (in this case address(this)) will always have at least amount.
+        //_require(currentBalance >= amount, Errors.INSUFFICIENT_BALANCE);
 
         _balance[sender] = currentBalance - amount;
         _totalSupply = _totalSupply.sub(amount);

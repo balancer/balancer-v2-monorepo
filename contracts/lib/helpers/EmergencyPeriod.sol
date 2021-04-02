@@ -17,7 +17,7 @@ pragma solidity ^0.7.0;
 import "./BalancerErrors.sol";
 
 // solhint-disable not-rely-on-time
-contract EmergencyPeriod {
+abstract contract EmergencyPeriod {
     uint256 private constant _MAX_EMERGENCY_PERIOD = 90 days;
     uint256 private constant _MAX_EMERGENCY_PERIOD_CHECK_EXT = 30 days;
 

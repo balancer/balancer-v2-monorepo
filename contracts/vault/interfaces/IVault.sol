@@ -351,7 +351,7 @@ interface IVault {
     /**
      * @dev Called by users to exit a Pool, which transfers tokens from the Pool's balance to `recipient`. This will
      * trigger custom Pool behavior, which will typically ask for something in return from `sender` - often tokenized
-     * Pool shares. The amount of tokens that can be withdraw is limited by the Pool's `cash` balance (see
+     * Pool shares. The amount of tokens that can be withdrawn is limited by the Pool's `cash` balance (see
      * `getPoolTokenInfo`).
      *
      * If the caller is not `sender`, it must be an authorized relayer for them.
@@ -740,4 +740,11 @@ interface IVault {
      * @dev Returns the current protocol fee module.
      */
     function getProtocolFeesCollector() external view returns (ProtocolFeesCollector);
+
+    /**
+     * @dev Failsafe mechanism to halt trading in the Vault or a specific pool, in the event of an emergency.
+     * This can only be called for a limited time, after which the Vault becomes trustless. If an emergency is
+     * declared, the Vault blocks all interactions except exiting pools and withdrawing from internal balances.
+     */
+    function setEmergencyPeriod(bool active) external;
 }

@@ -251,7 +251,7 @@ describe('WeightedPool', function () {
           });
 
           it('fails if not enough BPT', async () => {
-            // This call should fail cause we are requesting minimum 1% more
+            // This call should fail because we are requesting minimum 1% more
             const minimumBptOut = pct(expectedBptOut, 1.01);
 
             await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
@@ -486,7 +486,7 @@ describe('WeightedPool', function () {
         });
 
         it('fails if more BTP needed', async () => {
-          // Call should fail cause we are requesting a max amount lower than the actual needed
+          // Call should fail because we are requesting a max amount lower than the actual needed
           const amountsOut = initialBalances;
           const maximumBptIn = previousBptBalance.div(2);
 

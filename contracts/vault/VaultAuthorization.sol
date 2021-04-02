@@ -50,6 +50,8 @@ abstract contract VaultAuthorization is IVault, Authentication, EmergencyPeriod,
     }
 
     function changeRelayerAllowance(address relayer, bool allowed) external override nonReentrant noEmergencyPeriod {
+        _require(msg.sender != relayer, Errors.INVALID_RELAYER);
+
         _allowedRelayers[msg.sender][relayer] = allowed;
     }
 

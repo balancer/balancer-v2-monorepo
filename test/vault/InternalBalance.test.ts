@@ -66,6 +66,14 @@ describe('Vault - internal balance', () => {
         expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0].add(amount));
       });
 
+      it('does not allow depositing to the vault internal balance', async () => {
+        await expect(
+          vault.depositToInternalBalance([
+            { asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: vault.address },
+          ])
+        ).to.be.revertedWith('INVALID_INTERNAL_BALANCE_ACCOUNT');
+      });
+
       it('returns ETH if any is sent', async () => {
         const senderAddress = relayed ? relayer.address : sender.address;
         const previousBalance = await ethers.provider.getBalance(senderAddress);
