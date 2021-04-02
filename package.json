@@ -1,5 +1,5 @@
 {
-  "name": "balancer-core-v2",
+  "name": "@balancer-labs/balancer-core-v2",
   "version": "0.1.0",
   "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
   "author": "Nicolás Venturo <nico@balancer.finance>",
@@ -20,6 +20,7 @@
     "deploy:ropsten": "hardhat --network ropsten deploy",
     "deploy:goerli": "hardhat --network goerli deploy",
     "node:hardhat": "hardhat node",
+    "prepack": "tsc && yarn compile",
     "seed:local": "hardhat --network localhost seed",
     "seed:docker": "hardhat --network dockerParity seed",
     "seed:hardhat": "hardhat --network hardhat seed",
@@ -36,7 +37,6 @@
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
-    "@openzeppelin/contracts": "3.4.0-solc-0.7",
     "@tenderly/hardhat-tenderly": "1.0.6",
     "@types/chai": "^4.2.12",
     "@types/eth-sig-util": "^2.1.0",
@@ -46,13 +46,11 @@
     "@typescript-eslint/eslint-plugin": "^4.1.1",
     "@typescript-eslint/parser": "^4.1.1",
     "chai": "^4.2.0",
-    "decimal.js": "^10.2.1",
     "dotenv": "^8.2.0",
     "eslint": "^7.9.0",
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^3.1.4",
     "ethereum-waffle": "^3.0.2",
-    "ethers": "^5.0.8",
     "hardhat": "^2.0.7",
     "hardhat-abi-exporter": "^2.0.6",
     "hardhat-deploy": "^0.7.0-beta.32",
@@ -71,5 +69,20 @@
     "solidity-coverage": "^0.7.12",
     "ts-node": "^8.10.2",
     "typescript": "^4.0.2"
+  },
+  "description": "Core contracts of the balancer v2 system",
+  "bugs": {
+    "url": "https://github.com/balancer-labs/balancer-core-v2/issues"
+  },
+  "homepage": "https://github.com/balancer-labs/balancer-core-v2#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "restricted"
+  },
+  "files": ["dist", "artifacts", "abi"],
+  "dependencies": {
+    "decimal.js": "^10.2.1",
+    "ethers": "^5.0.8",
+    "@openzeppelin/contracts": "3.4.0-solc-0.7"
   }
 }
