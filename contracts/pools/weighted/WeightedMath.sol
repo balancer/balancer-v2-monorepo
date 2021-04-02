@@ -25,6 +25,9 @@ contract WeightedMath {
     // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
     // implementation of the power function, as these ratios are often exponents.
     uint256 internal constant _MIN_WEIGHT = 0.01e18;
+    // Since the minimum normalized weight, there is an implicit maximum amount of tokens (that in which all weights
+    // are the minimum one).
+    uint256 internal constant _MAX_WEIGHTED_TOKENS = 100;
 
     // Pool limits that arise from limitations in the fixed point power function (and the imposed 100/1 maximum weight
     // ratio).
