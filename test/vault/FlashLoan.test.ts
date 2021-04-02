@@ -10,7 +10,7 @@ import { roleId } from '../../lib/helpers/roles';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
-import { ZERO_ADDRESS } from '../../dist/lib/helpers/constants';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress, minter: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;

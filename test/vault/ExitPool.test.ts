@@ -240,7 +240,9 @@ describe('Vault - exit pool', () => {
               });
 
               it('reverts when invalid', async () => {
-                await expect(vault.connect(lp).changeRelayerAllowance(lp.address, true)).to.been.revertedWith('INVALID_RELAYER');
+                await expect(vault.connect(lp).changeRelayerAllowance(lp.address, true)).to.been.revertedWith(
+                  'INVALID_RELAYER'
+                );
               });
             });
           });

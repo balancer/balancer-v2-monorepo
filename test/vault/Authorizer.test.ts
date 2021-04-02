@@ -76,7 +76,9 @@ describe('Authorizer', () => {
         expect(await authorizer.getRoleAdmin(ROLE_1)).to.equal(NEW_ADMIN_ROLE);
         expect(await authorizer.hasRole(ROLE_1, grantee.address)).to.be.true;
 
-        await expect(authorizer.setRoleAdmin(ROLE_1, DEFAULT_ADMIN_ROLE)).to.be.revertedWith('SET_ROLE_SENDER_NOT_ADMIN');
+        await expect(authorizer.setRoleAdmin(ROLE_1, DEFAULT_ADMIN_ROLE)).to.be.revertedWith(
+          'SET_ROLE_SENDER_NOT_ADMIN'
+        );
       });
     });
 
