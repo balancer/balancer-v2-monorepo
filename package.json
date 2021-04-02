@@ -78,7 +78,7 @@
     "registry": "https://registry.npmjs.org/",
     "access": "restricted"
   },
-  "files": ["dist", "artifacts"],
+  "files": ["dist", "artifacts", "abi"],
   "dependencies": {
     "decimal.js": "^10.2.1",
     "ethers": "^5.0.8",
