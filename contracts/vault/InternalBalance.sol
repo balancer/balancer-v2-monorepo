@@ -80,7 +80,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     }
 
     /**
-     * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
+     * @dev Note that this is not marked as `nonReentrant` because `_processInternalBalanceOps` is already doing it
      */
     function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external override {
         _processInternalBalanceOps(transfers, _withdrawFromInternalBalance);
@@ -115,7 +115,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     }
 
     /**
-     * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
+     * @dev Note that this is not marked as `nonReentrant` because `_processInternalBalanceOps` is already doing it
      */
     function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
         // We cast transfers into AssetBalanceTransfers in order to reuse _processInternalBalanceOps.
@@ -138,7 +138,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
     }
 
     /**
-     * @dev Note that this is not marked as `nonReentrant` cause `_processInternalBalanceOps` is already doing it
+     * @dev Note that this is not marked as `nonReentrant` because `_processInternalBalanceOps` is already doing it
      */
     function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external override noEmergencyPeriod {
         // We cast transfers into AssetBalanceTransfers in order to reuse _processInternalBalanceOps.
