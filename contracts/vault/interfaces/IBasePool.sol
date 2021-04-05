@@ -30,7 +30,7 @@ interface IBasePool is IPoolSwapStructs {
      * The Vault will then take tokens from `sender` and add them to the Pool's balances, as well as collect
      * the reported amount in protocol fees, which the pool should calculate based on the `protocolSwapFee` percentage.
      *
-     * Protocol fees are reported and charged on join events so that the pool is free of debt whenever new users join.
+     * Protocol fees are reported and charged on join events so that the Pool is free of debt whenever new users join.
      *
      * `sender` is the account performing the join (from whom tokens will be withdrawn), and `recipient` is the account
      * designated to receive any benefits (typically pool shares). `currentBalances` contains the total balances
@@ -59,11 +59,11 @@ interface IBasePool is IPoolSwapStructs {
      * @dev Called by the Vault when a user calls `IVault.exitPool` to remove liquidity from this Pool. Returns how many
      * tokens the Vault should deduct from the Pool's balances, as well as the amount of protocol fees the Pool owes
      * to the Vault. The Vault will then take tokens from the Pool's balances and send them to `recipient`,
-     * as well as collect the reported amount in protocol fees, which the pool should calculate based on the
+     * as well as collect the reported amount in protocol fees, which the Pool should calculate based on the
      * `protocolSwapFee` percentage.
      *
-     * Protocol fees are reported and charged on exit events to guarantee that users exiting the pool have paid their
-     * share, and that the pool is debt-free.
+     * Protocol fees are reported and charged on exit events to guarantee that users exiting the Pool have paid
+     * their share.
      *
      * `sender` is the account performing the exit (typically the pool shareholder), and `recipient` is the account
      * to which the Vault will send the proceeds. `currentBalances` contains the total token balances for each token

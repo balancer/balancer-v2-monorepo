@@ -27,7 +27,7 @@ import "../vault/interfaces/IBasePool.sol";
 
 // This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
 // reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus a total
-// count, resulting in a large number of these variables.
+// count, resulting in a large number of state variables.
 
 // solhint-disable max-states-count
 
@@ -44,9 +44,6 @@ import "../vault/interfaces/IBasePool.sol";
  * Because this contract doesn't implement the swap hooks, derived contracts should generally inherit from
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
- *
- * Pools must also implement the `_onInitializePool`, `_onJoinPool`, and `_onExitPool` virtual functions, and ensure
- * that the join and exit hooks can only be called by the Vault.
  */
 abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, EmergencyPeriod {
     using FixedPoint for uint256;
@@ -158,7 +155,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _swapFee;
     }
 
-    // Called by governance
+    // Caller must be approved by the Vault's Authorizer
     function setSwapFee(uint256 swapFee) external virtual authenticate {
         _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
 
@@ -166,7 +163,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         emit SwapFeeChanged(swapFee);
     }
 
-    // Called by governance
+    // Caller must be approved by the Vault's Authorizer
     function setEmergencyPeriod(bool active) external authenticate {
         _setEmergencyPeriod(active);
     }
@@ -334,7 +331,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // upscaled.
 
     /**
-     * @dev Called when the Pool is joined for the first time; i.e., when the BPT total supply is zero.
+     * @dev Called when the Pool is joined for the first time; that is, when the BPT total supply is zero.
      *
      * Returns the amount of BPT to mint, and the token amounts the Pool will receive in return.
      *
