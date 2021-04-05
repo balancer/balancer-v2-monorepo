@@ -23,11 +23,11 @@ import "./FlashLoanProvider.sol";
 import "./Swaps.sol";
 
 /**
- * @dev The `Vault` is Balancer V2's core contract. A single instance of it exists in the entire network, and it is the
+ * @dev The `Vault` is Balancer V2's core contract. A single instance of it exists for the entire network, and it is the
  * entity used to interact with Pools by joining, exiting, or swapping with them.
  *
- * The `Vault`'s source code is split among a number of sub-contracts with the goal of improving readability and making
- * understanding the system easier. All sub-contracts have been marked as `abstract` to make explicit the fact that only
+ * The `Vault`'s source code is split among a number of sub-contracts, with the goal of improving readability and making
+ * understanding the system easier. All sub-contracts have been marked as `abstract` to explicitly indicate that only
  * the full `Vault` is meant to be deployed.
  *
  * Roughly speaking, these are the contents of each sub-contract:
@@ -46,7 +46,7 @@ import "./Swaps.sol";
  * multitude of design decisions, from minor things like the format used to store Pool IDs, to major features such as
  * the different Pool specialization settings.
  *
- * Finally, the large number of tasks carried out by the Vault mean its bytecode is very large, which is at odds with
+ * Finally, the large number of tasks carried out by the Vault means its bytecode is very large, which exceeds
  * the contract size limit imposed by EIP 170 (https://eips.ethereum.org/EIPS/eip-170). Manual tuning of the source code
  * was required to improve code generation and bring the bytecode size below this limit. This includes extensive
  * utilization of `internal` functions (particularly inside modifiers), usage of named return arguments, and dedicated
