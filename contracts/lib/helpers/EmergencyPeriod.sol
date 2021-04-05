@@ -16,8 +16,30 @@ pragma solidity ^0.7.0;
 
 import "./BalancerErrors.sol";
 
+/**
+ * @dev Provide "Emergency Stop" functionality for the Vault and Pools, for a limited time - after which the
+ * protocol becomes trustless (aside from standard governance functions such as setting protocol fees,
+ * designating oracles, approving relayers, etc.)
+ *
+ * The Emergency Period end date is initialized on creation, and cannot be set longer than _MAX_EMERGENCY_PERIOD
+ * days in the future. During this period, governance may call `setEmergencyPeriod` on either the Vault, or
+ * an individual Pool.
+ *
+ * Setting emergency mode on the Vault halts all swaps, flash loans, and internal balance deposits or transfers.
+ * It also prevents creating new Pools, or modifying the token composition of Pools. All users can do is withdraw
+ * from their internal balances.
+ *
+ * Setting emergency mode on a Pool prevents swaps with that pool, adding liquidity, and single asset exit.
+ * All users can do is exit (proportionally, or defining the tokens to be withdrawn).
+ *
+ * Emergency mode can also be canceled before the _emergencyPeriodEndDate. If the Vault (or a Pool) is in emergency
+ * mode when the end date passes, it will remain "locked" for an additional period, and can no longer be turned back
+ * on until that period expires. The additional time period is also set on creation, and is limited to
+ * _MAX_EMERGENCY_PERIOD_CHECK_EXT days. This allows time for any redeployment/liquidity migration that
+ * may be necessary.
+ */
 // solhint-disable not-rely-on-time
-contract EmergencyPeriod {
+abstract contract EmergencyPeriod {
     uint256 private constant _MAX_EMERGENCY_PERIOD = 90 days;
     uint256 private constant _MAX_EMERGENCY_PERIOD_CHECK_EXT = 30 days;
 

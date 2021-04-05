@@ -276,8 +276,8 @@ interface IVault {
      * @dev Returns detailed information for a Pool's registered token.
      *
      * `cash` is the number of tokens the Vault currently holds for the Pool. `managed` is the number of tokens
-     * withdrawn and reported by the Pool's token Asset Manager. The Pool's total balance for `token` equals the sum of
-     * `cash` and `managed`.
+     * withdrawn or set as managed by the Pool's token Asset Manager. The Pool's total balance for `token` equals
+     * the sum of `cash` and `managed`.
      *
      * `blockNumber` is the number of the block in which `token`'s balance was last modified (via either a join, exit,
      * swap, or Asset Management interactions). This value is useful to avoid so-called 'sandwich attacks', for example

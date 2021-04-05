@@ -312,6 +312,8 @@ contract StablePool is BaseGeneralPool, StableMath {
     /**
      * @dev Note we are not tagging this function with `noEmergencyPeriod` to allow users to exit in a proportional
      * manner in case there is an emergency in the pool. This operation should never be restricted.
+     *
+     * Proportional exit is the simplest option, and therefore the one least likely to fail.
      */
     function _exitExactBPTInForTokensOut(uint256[] memory balances, bytes memory userData)
         private
@@ -325,10 +327,17 @@ contract StablePool is BaseGeneralPool, StableMath {
         return (bptAmountIn, amountsOut);
     }
 
+    /**
+     * @dev Note we are not tagging this function with `noEmergencyPeriod` to allow users to exit
+     * in case there is an emergency in the pool. This operation should never be restricted.
+     *
+     * Though we expect proportional exit (i.e., _exitExactBPTInForTokensOut) to be the safest way
+     * to withdraw from a pool in an emergency - it could be that one of the tokens is frozen or
+     * locked in some way (e.g. a failed proxy upgrade), in which case proportional exit would fail.
+     */
     function _exitBPTInForExactTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
-        noEmergencyPeriod
         returns (uint256, uint256[] memory)
     {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
