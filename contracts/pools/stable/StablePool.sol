@@ -292,7 +292,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256, uint256[] memory)
     {
         // This exit function is disabled if the emergency period is active.
-    
+
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         _require(tokenIndex < _totalTokens, Errors.OUT_OF_BOUNDS);
 
@@ -335,7 +335,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256, uint256[] memory)
     {
         // This exit function is disabled if the emergency period is active.
-    
+
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _totalTokens);
 
