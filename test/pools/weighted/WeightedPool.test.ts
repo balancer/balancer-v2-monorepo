@@ -495,6 +495,13 @@ describe('WeightedPool', function () {
           );
         });
       });
+
+      it('fails if the emergency period is active', async () => {
+        await pool.activateEmergencyPeriod();
+
+        const amountsOut = initialBalances;
+        await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+      });
     });
 
     describe('swaps', () => {
