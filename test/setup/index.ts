@@ -1,5 +1,6 @@
-import chai, { expect } from 'chai';
 import { AsyncFunc } from 'mocha';
+import { BigNumber } from 'ethers';
+import chai, { expect } from 'chai';
 
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { BigNumberish, bn } from '../../lib/helpers/numbers';
@@ -32,7 +33,7 @@ global.sharedBeforeEach = (nameOrFn: string | AsyncFunc, maybeFn?: AsyncFunc): v
   sharedBeforeEach(nameOrFn, maybeFn);
 };
 
-chai.use(function (chai) {
+chai.use(function (chai, utils) {
   const { Assertion } = chai;
 
   Assertion.addProperty('zero', function () {
@@ -121,5 +122,32 @@ chai.use(function (chai) {
         }
       }
     };
+  });
+
+  ['eq', 'equal', 'equals'].forEach((fn: string) => {
+    Assertion.overwriteMethod(fn, function (_super) {
+      return function (this: any, expected: any) {
+        const actual = utils.flag(this, 'object');
+        if (
+          utils.flag(this, 'deep') &&
+          Array.isArray(actual) &&
+          Array.isArray(expected) &&
+          actual.length === expected.length &&
+          (actual.some(BigNumber.isBigNumber) || expected.some(BigNumber.isBigNumber))
+        ) {
+          const equal = actual.every((value: any, i: number) => BigNumber.from(value).eq(expected[i]));
+          this.assert(
+            equal,
+            `Expected "[${expected}]" to be deeply equal [${actual}]`,
+            `Expected "[${expected}]" NOT to be deeply equal [${actual}]`,
+            expected,
+            actual
+          );
+        } else {
+          // eslint-disable-next-line prefer-rest-params
+          _super.apply(this, arguments);
+        }
+      };
+    });
   });
 });
