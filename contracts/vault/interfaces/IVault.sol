@@ -428,7 +428,7 @@ interface IVault {
     // they need not trust Pool contracts in any way: all security checks are made by the Vault. They must however be
     // aware of the Pools' pricing algorithms in order to estimate the prices Pools will quote.
     //
-    // On one hand, `swap` simply executes only one swap, while `batchSwap` will perform multiple swaps in sequence.
+    // The `swap` function executes a single swap, while `batchSwap` can perform multiple swaps in sequence.
     // In each individual swap, tokens of one kind are sent from the sender to the Pool (this is the 'token in'),
     // and tokens of another kind are sent from the Pool to the recipient in exchange (this is the 'token out').
     // More complex swaps, such as one token in to multiple tokens out can be achieved by batching together
