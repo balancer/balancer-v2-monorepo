@@ -424,14 +424,15 @@ interface IVault {
 
     // Swaps
     //
-    // Users can swap tokens with Pools by calling the `batchSwapGivenIn` and `batchSwapGivenOut` functions. To do this,
+    // Users can swap tokens with Pools by calling the `swap` and `batchSwap` functions. To do this,
     // they need not trust Pool contracts in any way: all security checks are made by the Vault. They must however be
     // aware of the Pools' pricing algorithms in order to estimate the prices Pools will quote.
     //
-    // Both swap functions are batched, meaning they perform multiple swaps in sequence. In each individual swap,
-    // tokens of one kind are sent from the sender to the Pool (this is the 'token in'), and tokens of another
-    // kind are sent from the Pool to the sender in exchange (this is the 'token out'). More complex swaps, such
-    // as one token in to multiple tokens out can be achieved by batching together individual swaps.
+    // On one hand, `swap` simply executes only one swap, while `batchSwap` will perform multiple swaps in sequence.
+    // In each individual swap, tokens of one kind are sent from the sender to the Pool (this is the 'token in'),
+    // and tokens of another kind are sent from the Pool to the sender in exchange (this is the 'token out').
+    // More complex swaps, such as one token in to multiple tokens out can be achieved by batching together
+    // individual swaps.
     //
     // Additionally, it is possible to chain swaps by using the output of one as the input to the next, as
     // well as the opposite. This extended swap is known as a 'multihop' swap, since it 'hops' through a number of
@@ -460,111 +461,7 @@ interface IVault {
     //
     // Finally, Internal Balance can be used when either sending or receiving tokens.
 
-    /**
-     * @dev Performs a series of swaps with one or multiple Pools. In each individual swap, the amount of tokens sent to
-     * the Pool is determined by the caller. For swaps where the amount of tokens received from the Pool is
-     * determined instead, see `batchSwapGivenOut`.
-     *
-     * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
-     * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
-     * index in the `assets` array.
-     *
-     * Swaps are executed sequentially, in the order specified by the `swaps` array. Each array element describes a
-     * Pool, the token and amount to send to this Pool, and the token to receive from it (but not the amount). This will
-     * be determined by the Pool's pricing algorithm once the Vault calls the `onSwapGivenIn` hook.
-     *
-     * Multihop swaps can be executed by passing an `amountIn` value of zero for a swap. This will cause the amount out
-     * of the previous swap to be used as the amount in for the current one. In such a scenario, `tokenIn` must equal
-     * the previous swap's `tokenOut`.
-     *
-     * The `assets` array contains the addresses of all assets involved in the swaps. These are either token addresses,
-     * or the IAsset sentinel value (the zero address) for ETH. Each entry in the `swaps` array specifies tokens in and
-     * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
-     * unwrapped using WETH by the Vault.
-     *
-     * Internal Balance usage, sender, and recipient are determined by the `funds` struct. The `limits` array specifies
-     * the minimum or maximum amount of each token the vault is allowed to transfer.
-     *
-     * Emits `Swap` events.
-     */
-    function batchSwapGivenIn(
-        SwapIn[] calldata swaps,
-        IAsset[] memory assets,
-        FundManagement calldata funds,
-        int256[] memory limits,
-        uint256 deadline
-    ) external payable returns (int256[] memory);
-
-    /**
-     * @dev Data for each individual swap executed by `batchSwapGivenIn`. The tokens in and out are indexed in the
-     * `assets` array passed to that function, where an ETH asset is translated into WETH.
-     *
-     * If `amountIn` is zero, the multihop mechanism is used to determine the actual amount based on the amount out from
-     * the previous swap.
-     *
-     * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwapGivenIn` hook, and may be
-     * used to extend swap behavior.
-     */
-    struct SwapIn {
-        bytes32 poolId;
-        uint256 tokenInIndex;
-        uint256 tokenOutIndex;
-        uint256 amountIn;
-        bytes userData;
-    }
-
-    /**
-     * @dev Performs a series of swaps with one or multiple Pools. In each individual swap, the amount of tokens
-     * received from the Pool is determined by the caller. For swaps where the amount of tokens sent to the Pool is
-     * determined instead, see `batchSwapGivenIn`.
-     *
-     * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
-     * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
-     * index in the `assets` array.
-     *
-     * Swaps are executed sequentially, in the order specified by the `swaps` array. Each array element describes a
-     * Pool, the token and amount to receive from this Pool, and the token to send to it (but not the amount). This will
-     * be determined by the Pool's pricing algorithm once the Vault calls the `onSwapGivenOut` hook.
-     *
-     * Multihop swaps can be executed by passing an `amountOut` value of zero for a swap. This will cause the amount in
-     * of the previous swap to be used as the amount out of the current one. In such a scenario, `tokenOut` must equal
-     * the previous swap's `tokenIn`.
-     *
-     * The `assets` array contains the addresses of all assets involved in the swaps. These are either token addresses,
-     * or the IAsset sentinel value (the zero address) for ETH. Each entry in the `swaps` array specifies tokens in and
-     * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
-     * unwrapped using WETH by the Vault.
-     *
-     * Internal Balance usage and recipient are determined by the `funds` struct. The `limits` array specifies the
-     * minimum amount of each token the vault must transfer.
-     *
-     * Emits `Swap` events.
-     */
-    function batchSwapGivenOut(
-        SwapOut[] calldata swaps,
-        IAsset[] memory assets,
-        FundManagement calldata funds,
-        int256[] memory limits,
-        uint256 deadline
-    ) external payable returns (int256[] memory);
-
-    /**
-     * @dev Data for each individual swap executed by `batchSwapGivenOut`. The tokens in and out are indexed in the
-     * `assets` array passed to that function, where an ETH asset is translated into WETH.
-     *
-     * If `amountOut` is zero, the multihop mechanism is used to determine the actual amount based on the amount in from
-     * the previous swap.
-     *
-     * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwapGivenOut` hook, and may be
-     * used to extend swap behavior.
-     */
-    struct SwapOut {
-        bytes32 poolId;
-        uint256 tokenInIndex;
-        uint256 tokenOutIndex;
-        uint256 amountOut;
-        bytes userData;
-    }
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
 
     /**
      * @dev Performs a swap with a single Pool.
@@ -587,8 +484,8 @@ interface IVault {
     ) external payable returns (uint256);
 
     /**
-     * @dev Data for two-token swaps executed by `swap`. Compared to `SwapIn` and `SwapOut`, the tokens in and out
-     * are given so there is no asset array, but similarly, the ETH asset is translated into WETH.
+     * @dev Data for two-token swaps executed by `swap`. The assets in and out are given, and the ETH asset
+     * is translated into WETH.
      *
      * Here `amount` refers to `amountIn` or `amountOut` depending on whether `kind` specifies a swap given in or out.
      *
@@ -605,7 +502,64 @@ interface IVault {
     }
 
     /**
-     * @dev Emitted for each individual swap performed by `batchSwapGivenIn` and `batchSwapGivenOut`.
+     * @dev Performs a series of swaps with one or multiple Pools. In each individual swap, the amount of tokens sent to
+     * or received from the Pool is determined by the caller depending on whether the specified swap `kind` was given in
+     * or given out respectively.
+     *
+     * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
+     * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
+     * index in the `assets` array.
+     *
+     * Swaps are executed sequentially, in the order specified by the `swaps` array. Each array element describes a
+     * Pool, the token to be sent to this Pool, the token to receive from it, and an amount that will refer to the
+     * amount of tokens to be sent or to received from the Pool based on the swap kind. Then, the amount sent or
+     * received in return based on the swap kind, will be determined by the Pool's pricing algorithm once the Vault
+     * calls the `onSwap` hook.
+     *
+     * Multihop swaps can be executed by passing an `amount` value of zero for a swap. This will cause the amount in/out
+     * of the previous swap to be used as the amount in for the current one. In such a scenario, `tokenIn` must equal
+     * the previous swap's `tokenOut` in case of a swap given in, or `tokenOut` must equal the previous swap's `tokenIn`
+     * in case of a swap given out.
+     *
+     * The `assets` array contains the addresses of all assets involved in the swaps. These are either token addresses,
+     * or the IAsset sentinel value (the zero address) for ETH. Each entry in the `swaps` array specifies tokens in and
+     * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
+     * unwrapped using WETH by the Vault.
+     *
+     * Internal Balance usage, sender, and recipient are determined by the `funds` struct. The `limits` array specifies
+     * the minimum or maximum amount of each token the vault is allowed to transfer.
+     *
+     * Emits `Swap` events.
+     */
+    function batchSwap(
+        SwapKind kind,
+        BatchSwapStep[] calldata swaps,
+        IAsset[] memory assets,
+        FundManagement calldata funds,
+        int256[] memory limits,
+        uint256 deadline
+    ) external payable returns (int256[] memory);
+
+    /**
+     * @dev Data for each individual swap executed by `batchSwap`. The asset in and out are indexed in the
+     * `assets` array passed to that function, where an ETH asset is translated into WETH.
+     *
+     * If `amount` is zero, the multihop mechanism is used to determine the actual amount based on the amount in/out
+     * from the previous swap depending on the swap kind specified.
+     *
+     * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwap` hook, and may be
+     * used to extend swap behavior.
+     */
+    struct BatchSwapStep {
+        bytes32 poolId;
+        uint256 assetInIndex;
+        uint256 assetOutIndex;
+        uint256 amount;
+        bytes userData;
+    }
+
+    /**
+     * @dev Emitted for each individual swap performed by `swap` or `batchSwap`.
      */
     event Swap(
         bytes32 indexed poolId,
@@ -640,37 +594,24 @@ interface IVault {
     }
 
     /**
-     * @dev Simulates a call to `batchSwapGivenIn` or `batchSwapGivenOut`, returning an array of Vault asset deltas.
+     * @dev Simulates a call to `batchSwap`, returning an array of Vault asset deltas.
      * Each element in the array corresponds to the asset at the same index, and indicates the number of tokens (or ETH)
      * the Vault would take from the sender (if positive) or send to the recipient (if negative). The arguments it
-     * receives are the same that an equivalent `batchSwapGivenIn` or `batchSwapGivenOut` call would receive, except the
-     * `SwapRequest` struct is used instead, and the `kind` argument specifies whether the swap is given in or given
-     * out.
+     * receives are the same that an equivalent `batchSwap` call would receive.
      *
-     * Unlike `batchSwapGivenIn` and `batchSwapGivenOut`, this function performs no checks on the sender or recipient
-     * field in the `funds` struct. This makes it suitable to be called by off-chain applications via eth_call without
-     * needing to hold tokens, approve them for the Vault, or even know a user's address.
+     * Unlike `batchSwap`, this function performs no checks on the sender or recipient field in the `funds` struct.
+     * This makes it suitable to be called by off-chain applications via eth_call without needing to hold tokens,
+     * approve them for the Vault, or even know a user's address.
      *
      * Note that this function is not 'view' (due to implementation details): the client code must explicitly execute
      * eth_call instead of eth_sendTransaction.
      */
     function queryBatchSwap(
         SwapKind kind,
-        SwapRequest[] memory swaps,
+        BatchSwapStep[] memory swaps,
         IAsset[] memory assets,
         FundManagement memory funds
     ) external returns (int256[] memory assetDeltas);
-
-    enum SwapKind { GIVEN_IN, GIVEN_OUT }
-
-    // This struct is identical in layout to SwapIn and SwapOut, except the 'amountIn/Out' field is named 'amount'.
-    struct SwapRequest {
-        bytes32 poolId;
-        uint256 tokenInIndex;
-        uint256 tokenOutIndex;
-        uint256 amount;
-        bytes userData;
-    }
 
     // Flash Loans
 
