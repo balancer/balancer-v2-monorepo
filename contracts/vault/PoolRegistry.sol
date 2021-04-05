@@ -99,7 +99,7 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, VaultAuthorization {
         noEmergencyPeriod
         returns (bytes32)
     {
-        // Use _totalPools as the Pool ID nonce. uint80 assumes there will never be more than than 2**80 Pools.
+        // uint80 assumes there will never be more than than 2**80 Pools.
         bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_poolNonce.current()));
         _require(!_isPoolRegistered[poolId], Errors.INVALID_POOL_ID); // Should never happen
 

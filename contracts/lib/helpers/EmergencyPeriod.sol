@@ -21,7 +21,7 @@ import "./BalancerErrors.sol";
  * turns off and can no longer be turned on.
  *
  * The Emergency Period end date is initialized on creation, and cannot be set longer than _MAX_EMERGENCY_PERIOD
- * days in the future. During this period `_setEmergencyPeriod` can be called to either activate 
+ * days in the future. During this period `_setEmergencyPeriod` can be called to either activate
  * or deactivate the emergency stop.
  *
  * If the emergency stop is active when the end date passes, it will remain active for an additional period after which
