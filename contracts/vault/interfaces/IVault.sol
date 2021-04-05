@@ -430,13 +430,20 @@ interface IVault {
     //
     // On one hand, `swap` simply executes only one swap, while `batchSwap` will perform multiple swaps in sequence.
     // In each individual swap, tokens of one kind are sent from the sender to the Pool (this is the 'token in'),
-    // and tokens of another kind are sent from the Pool to the sender in exchange (this is the 'token out').
+    // and tokens of another kind are sent from the Pool to the recipient in exchange (this is the 'token out').
     // More complex swaps, such as one token in to multiple tokens out can be achieved by batching together
     // individual swaps.
     //
-    // Additionally, it is possible to chain swaps by using the output of one as the input to the next, as
-    // well as the opposite. This extended swap is known as a 'multihop' swap, since it 'hops' through a number of
-    // intermediate tokens before arriving at the final intended token.
+    // There are two swap kinds: 
+    //  - 'given in' swaps, where the amount of tokens in (sent to the Pool) is known, and the Pool determines (via the
+    // `onSwap` hook) the amount of tokens out (to send to the recipient).
+    //  - 'given out' swaps, where the amount of tokens out (received from the Pool) is known, and the Pool determines
+    // (via the `onSwap` hook) the amount of tokens in (to receive from the sender).
+    //
+    // Additionally, it is possible to chain swaps by using the output of one as the input to the next (for given in 
+    // swaps), as well as using inputs of one as the previous one (for given out swaps). These extended swaps are known as
+    // 'multihop' swaps, since they 'hop' through a number of intermediate tokens before arriving at the final intended 
+    // token.
     //
     // In all cases, tokens are only transferred in and out of the Vault (or withdrawn from and deposited into Internal
     // Balance) after all individual swaps have been completed, and the net token balance change computed. This makes
@@ -466,11 +473,11 @@ interface IVault {
     /**
      * @dev Performs a swap with a single Pool.
      *
-     * If the swap is given in (the number of tokens to send to the Pool is known), it returns the amount of tokens
+     * If the swap is given in (the number of tokens to send to the Pool is known), returns the amount of tokens
      * taken from the Pool, which must be larger or equal to `limit`.
      *
-     * If the swap is given out (the number of tokens to take from the Pool is known), it returns the amount of
-     * tokens sent by the Pool, which must be smaller or equal to `limit`.
+     * If the swap is given out (the number of tokens to take from the Pool is known), returns the amount of
+     * tokens sent to the Pool, which must be smaller or equal to `limit`.
      *
      * Internal Balance usage and the recipient are determined by the `funds` struct.
      *
@@ -484,10 +491,11 @@ interface IVault {
     ) external payable returns (uint256);
 
     /**
-     * @dev Data for two-token swaps executed by `swap`. The assets in and out are given, and the ETH asset
-     * is translated into WETH.
+     * @dev Data for a single swap executed by `swap`. `amount` is either `amountIn` or `amountOut` depending on 
+     * the `kind` value.
      *
-     * Here `amount` refers to `amountIn` or `amountOut` depending on whether `kind` specifies a swap given in or out.
+     * `assetIn` and `assetOut` are either token addresses, or the IAsset sentinel value (the zero address) for ETH. 
+     * Note that Pools never interact with ETH directly: it will be wrapped or unwrapped using WETH by the Vault.
      *
      * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwap` hook, and may be
      * used to extend swap behavior.
@@ -502,19 +510,16 @@ interface IVault {
     }
 
     /**
-     * @dev Performs a series of swaps with one or multiple Pools. In each individual swap, the amount of tokens sent to
-     * or received from the Pool is determined by the caller depending on whether the specified swap `kind` was given in
-     * or given out respectively.
+     * @dev Performs a series of swaps with one or multiple Pools. In each individual swap, the caller determines either
+     * the amount of tokens sent to or received from the Pool depending on the `kind` value.
      *
      * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
      * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
      * index in the `assets` array.
      *
      * Swaps are executed sequentially, in the order specified by the `swaps` array. Each array element describes a
-     * Pool, the token to be sent to this Pool, the token to receive from it, and an amount that will refer to the
-     * amount of tokens to be sent or to received from the Pool based on the swap kind. Then, the amount sent or
-     * received in return based on the swap kind, will be determined by the Pool's pricing algorithm once the Vault
-     * calls the `onSwap` hook.
+     * Pool, the token to be sent to this Pool, the token to receive from it, and an amount that is either `amountIn` or
+     * `amountOut` depending on the swap kind.
      *
      * Multihop swaps can be executed by passing an `amount` value of zero for a swap. This will cause the amount in/out
      * of the previous swap to be used as the amount in for the current one. In such a scenario, `tokenIn` must equal
@@ -528,6 +533,9 @@ interface IVault {
      *
      * Internal Balance usage, sender, and recipient are determined by the `funds` struct. The `limits` array specifies
      * the minimum or maximum amount of each token the vault is allowed to transfer.
+     *
+     * `batchSwap` can be used to make a single swap, like `swap` does, but doing so requires more gas than the 
+     * euivalent `swap` call.
      *
      * Emits `Swap` events.
      */
@@ -594,7 +602,9 @@ interface IVault {
     }
 
     /**
-     * @dev Simulates a call to `batchSwap`, returning an array of Vault asset deltas.
+     * @dev Simulates a call to `batchSwap`, returning an array of Vault asset deltas. Calls to `swap` cannot be 
+     * simulated directly, but an equivalent `batchSwap` call can and will yield the exact same result.
+     *
      * Each element in the array corresponds to the asset at the same index, and indicates the number of tokens (or ETH)
      * the Vault would take from the sender (if positive) or send to the recipient (if negative). The arguments it
      * receives are the same that an equivalent `batchSwap` call would receive.
