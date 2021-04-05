@@ -17,26 +17,17 @@ pragma solidity ^0.7.0;
 import "./BalancerErrors.sol";
 
 /**
- * @dev Provide "Emergency Stop" functionality for the Vault and Pools, for a limited time - after which the
- * protocol becomes trustless (aside from standard governance functions such as setting protocol fees,
- * designating oracles, approving relayers, etc.)
+ * @dev Provide "Emergency Stop" functionality that is automatically disabled after a time, after which it
+ * turns off and can no longer be turned on.
  *
  * The Emergency Period end date is initialized on creation, and cannot be set longer than _MAX_EMERGENCY_PERIOD
- * days in the future. During this period, governance may call `setEmergencyPeriod` on either the Vault, or
- * an individual Pool.
+ * days in the future. During this period `_setEmergencyPeriod` can be called to either activate 
+ * or deactivate the emergency stop.
  *
- * Setting emergency mode on the Vault halts all swaps, flash loans, and internal balance deposits or transfers.
- * It also prevents creating new Pools, or modifying the token composition of Pools. All users can do is withdraw
- * from their internal balances.
- *
- * Setting emergency mode on a Pool prevents swaps with that pool, adding liquidity, and single asset exit.
- * All users can do is exit (proportionally, or defining the tokens to be withdrawn).
- *
- * Emergency mode can also be canceled before the _emergencyPeriodEndDate. If the Vault (or a Pool) is in emergency
- * mode when the end date passes, it will remain "locked" for an additional period, and can no longer be turned back
- * on until that period expires. The additional time period is also set on creation, and is limited to
- * _MAX_EMERGENCY_PERIOD_CHECK_EXT days. This allows time for any redeployment/liquidity migration that
- * may be necessary.
+ * If the emergency stop is active when the end date passes, it will remain active for an additional period after which
+ * it will be automatically deactivated forever. This additional time period is also set on creation, and is limited to
+ * _MAX_EMERGENCY_PERIOD_CHECK_EXT days. This provides enough time to react to the issue, even if the
+ * emergency period is about to expire.
  */
 // solhint-disable not-rely-on-time
 abstract contract EmergencyPeriod {
