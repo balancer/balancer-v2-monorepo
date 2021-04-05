@@ -26,7 +26,7 @@ import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";
 import "./interfaces/IVault.sol";
 
-abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
+abstract contract Fees is IVault {
     using SafeERC20 for IERC20;
 
     ProtocolFeesCollector private _protocolFeesCollector;
