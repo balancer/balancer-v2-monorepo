@@ -115,6 +115,7 @@ library Errors {
     uint256 internal constant RENOUNCE_SENDER_NOT_ALLOWED                   = 542;
     uint256 internal constant ENUMERABLE_NON_EXISTENT_KEY                   = 543;
     uint256 internal constant SET_ROLE_SENDER_NOT_ADMIN                     = 544;
+    uint256 internal constant INVALID_SIGNATURE                             = 545;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID                               = 600;

@@ -18,7 +18,7 @@ describe('SignaturesValidator', () => {
     [, user, sender, other] = await ethers.getSigners();
   });
 
-  beforeEach('deploy validator', async () => {
+  sharedBeforeEach('deploy validator', async () => {
     validator = await deploy('SignaturesValidatorMock');
   });
 

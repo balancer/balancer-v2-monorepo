@@ -20,11 +20,12 @@ import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/Authentication.sol";
 import "../lib/helpers/EmergencyPeriod.sol";
 import "../lib/helpers/BalancerErrors.sol";
+import "../lib/helpers/SignaturesValidator.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
 
-abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication, EmergencyPeriod {
+abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication, SignaturesValidator, EmergencyPeriod {
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _allowedRelayers;
 
@@ -49,8 +50,15 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
         return _authorizer;
     }
 
-    function changeRelayerAllowance(address relayer, bool allowed) external override nonReentrant noEmergencyPeriod {
-        _allowedRelayers[msg.sender][relayer] = allowed;
+    /**
+     * @dev Change a relayer allowance for `msg.sender`
+     */
+    function changeRelayerAllowance(
+        address sender,
+        address relayer,
+        bool allowed
+    ) external override nonReentrant noEmergencyPeriod authenticateFor(sender) {
+        _allowedRelayers[sender][relayer] = allowed;
     }
 
     function hasAllowedRelayer(address user, address relayer) external view override returns (bool) {
@@ -61,15 +69,18 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
      * @dev Reverts unless  `user` has allowed the caller as a relayer, and the caller is allowed by the Authorizer to
      * call the entry point function.
      */
-    function _authenticateFor(address user) internal view {
+    function _authenticateFor(address user) internal {
         if (msg.sender != user) {
             _authenticateCaller();
-            _authenticateCallerFor(user);
+            // Validate signature only if the user didn't grant allowance to the relayer
+            if (!_hasAllowedRelayer(user, msg.sender)) {
+                _validateSignature(user, Errors.USER_DOESNT_ALLOW_RELAYER);
+            }
         }
     }
 
     /**
-     * @dev Reverts unless  `user` has allowed the caller as a relayer.
+     * @dev Reverts unless `user` has allowed the caller as a relayer.
      */
     function _authenticateCallerFor(address user) internal view {
         _require(_hasAllowedRelayer(user, msg.sender), Errors.USER_DOESNT_ALLOW_RELAYER);

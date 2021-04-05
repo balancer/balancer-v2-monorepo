@@ -12,17 +12,18 @@ contract SignaturesValidatorMock is SignaturesValidator {
         _decodeCalldata();
     }
 
-    function authenticateCall(address _user) external authenticateBySig(_user) {
+    function authenticateCall(address user) external {
+        _validateSignature(user, Errors.INVALID_SIGNATURE);
         _decodeCalldata();
-        emit Authenticated(_user, msg.sender);
+        emit Authenticated(user, msg.sender);
     }
 
-    function anotherFunction(address _user) external {
+    function anotherFunction(address user) external {
         // do nothing
     }
 
-    function increaseNonce(address _user) external {
-        nextNonce[_user]++;
+    function increaseNonce(address user) external {
+        _nextNonce[user]++;
     }
 
     function _decodeCalldata() internal {
