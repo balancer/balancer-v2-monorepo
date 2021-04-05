@@ -29,7 +29,7 @@ import "../../lib/math/Math.sol";
 // The Vault disallows the Pool's 'cash' ever becoming negative, in other words, it can never use any tokens that
 // are not inside of the Vault.
 //
-// One of the goals of this library is to store the entire token balance in a single storage slot, which is we we use
+// One of the goals of this library is to store the entire token balance in a single storage slot, which is why we use
 // 112 bit unsigned integers for 'cash' and 'managed'. Since 'total' is also a 112 bit unsigned value, any combination
 // of 'cash' and 'managed' that yields a 'total' that doesn't fit in that range is disallowed.
 //
