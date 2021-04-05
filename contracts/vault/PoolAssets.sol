@@ -223,7 +223,7 @@ abstract contract PoolAssets is
             _setGeneralPoolBalances(poolId, finalBalances);
         }
 
-        // We can unsafely cast to int256 cause balances are actually stored as uint112
+        // We can unsafely cast to int256 because balances are actually stored as uint112
         bool positive = kind == PoolBalanceChangeKind.JOIN;
         emit PoolBalanceChanged(poolId, sender, tokens, _unsafeCastToInt256(amounts, positive), dueProtocolFeeAmounts);
     }
@@ -440,7 +440,7 @@ abstract contract PoolAssets is
             uint256 amountOut = amountsOut[i];
             _require(amountOut >= change.limits[i], Errors.EXIT_BELOW_MIN);
 
-            // Send tokens from the recipient - possibly to Internal Balance
+            // Send tokens to the recipient - possibly to Internal Balance
             IAsset asset = change.assets[i];
             _sendAsset(asset, amountOut, recipient, change.useInternalBalance);
 
