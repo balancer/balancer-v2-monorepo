@@ -212,6 +212,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
 
+        // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
+        // consistent in Pools with similar compositions but different number of tokens.
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, _totalTokens);
 
         _lastInvariant = invariantAfterJoin;
@@ -541,6 +543,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     // This function returns the appreciation of one BPT relative to the
     // underlying tokens. This starts at 1 when the pool is initialized and grows over time
     function getRate() public view override returns (uint256) {
+        // The initial BPT supply is equal to the invariant times the number of tokens.
         return Math.mul(getInvariant(), _totalTokens).div(totalSupply());
     }
 }
