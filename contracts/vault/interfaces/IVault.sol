@@ -434,16 +434,16 @@ interface IVault {
     // More complex swaps, such as one token in to multiple tokens out can be achieved by batching together
     // individual swaps.
     //
-    // There are two swap kinds: 
+    // There are two swap kinds:
     //  - 'given in' swaps, where the amount of tokens in (sent to the Pool) is known, and the Pool determines (via the
     // `onSwap` hook) the amount of tokens out (to send to the recipient).
     //  - 'given out' swaps, where the amount of tokens out (received from the Pool) is known, and the Pool determines
     // (via the `onSwap` hook) the amount of tokens in (to receive from the sender).
     //
-    // Additionally, it is possible to chain swaps by using the output of one as the input to the next (for given in 
-    // swaps), as well as using inputs of one as the previous one (for given out swaps). These extended swaps are known as
-    // 'multihop' swaps, since they 'hop' through a number of intermediate tokens before arriving at the final intended 
-    // token.
+    // Additionally, it is possible to chain swaps by using the output of one as the input to the next (for given in
+    // swaps), as well as using inputs of one as the previous one (for given out swaps). These extended swaps are known
+    // as 'multihop' swaps, since they 'hop' through a number of intermediate tokens before arriving at the final
+    // intended token.
     //
     // In all cases, tokens are only transferred in and out of the Vault (or withdrawn from and deposited into Internal
     // Balance) after all individual swaps have been completed, and the net token balance change computed. This makes
@@ -491,10 +491,10 @@ interface IVault {
     ) external payable returns (uint256);
 
     /**
-     * @dev Data for a single swap executed by `swap`. `amount` is either `amountIn` or `amountOut` depending on 
+     * @dev Data for a single swap executed by `swap`. `amount` is either `amountIn` or `amountOut` depending on
      * the `kind` value.
      *
-     * `assetIn` and `assetOut` are either token addresses, or the IAsset sentinel value (the zero address) for ETH. 
+     * `assetIn` and `assetOut` are either token addresses, or the IAsset sentinel value (the zero address) for ETH.
      * Note that Pools never interact with ETH directly: it will be wrapped or unwrapped using WETH by the Vault.
      *
      * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwap` hook, and may be
@@ -534,7 +534,7 @@ interface IVault {
      * Internal Balance usage, sender, and recipient are determined by the `funds` struct. The `limits` array specifies
      * the minimum or maximum amount of each token the vault is allowed to transfer.
      *
-     * `batchSwap` can be used to make a single swap, like `swap` does, but doing so requires more gas than the 
+     * `batchSwap` can be used to make a single swap, like `swap` does, but doing so requires more gas than the
      * euivalent `swap` call.
      *
      * Emits `Swap` events.
@@ -602,7 +602,7 @@ interface IVault {
     }
 
     /**
-     * @dev Simulates a call to `batchSwap`, returning an array of Vault asset deltas. Calls to `swap` cannot be 
+     * @dev Simulates a call to `batchSwap`, returning an array of Vault asset deltas. Calls to `swap` cannot be
      * simulated directly, but an equivalent `batchSwap` call can and will yield the exact same result.
      *
      * Each element in the array corresponds to the asset at the same index, and indicates the number of tokens (or ETH)
