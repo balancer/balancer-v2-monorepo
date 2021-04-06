@@ -108,20 +108,12 @@ export default class Vault {
     return feesCollector.withdrawCollectedFees(tokens, amounts, TypesConverter.toAddress(recipient));
   }
 
-  async getProtocolFees(): Promise<{ swapFee: BigNumber; withdrawFee: BigNumber; flashLoanFee: BigNumber }> {
-    return {
-      swapFee: await this.getSwapFee(),
-      withdrawFee: await this.getSwapFee(),
-      flashLoanFee: await this.getSwapFee(),
-    };
+  async getProtocolFees(): Promise<{ swapFee: BigNumber; flashLoanFee: BigNumber }> {
+    return { swapFee: await this.getSwapFee(), flashLoanFee: await this.getFlashLoanFee() };
   }
 
   async getSwapFee(): Promise<BigNumber> {
     return (await this.getFeesCollector()).getSwapFee();
-  }
-
-  async getWithdrawFee(): Promise<BigNumber> {
-    return (await this.getFeesCollector()).getWithdrawFee();
   }
 
   async getFlashLoanFee(): Promise<BigNumber> {
@@ -130,43 +122,34 @@ export default class Vault {
 
   async getFeesCollector(): Promise<Contract> {
     if (!this.feesCollector) {
-      this.feesCollector = await ethers.getContractAt(
-        'ProtocolFeesCollector',
-        await this.instance.getProtocolFeesCollector()
-      );
+      const instance = await this.instance.getProtocolFeesCollector();
+      this.feesCollector = await ethers.getContractAt('ProtocolFeesCollector', instance);
     }
     return this.feesCollector;
   }
 
-  async setSwapFee(withdrawFee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
+  async setSwapFee(fee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
       await this.grantRole(roleId(feesCollector, 'setSwapFee'), this.admin);
     }
 
-    const instance = from || this.admin ? feesCollector.connect((from || this.admin)!) : feesCollector;
-    return instance.setSwapFee(withdrawFee);
+    const sender = from || this.admin;
+    const instance = sender ? feesCollector.connect(sender) : feesCollector;
+    return instance.setSwapFee(fee);
   }
 
-  async setWithdrawFee(withdrawFee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
-    const feesCollector = await this.getFeesCollector();
-
-    if (this.authorizer && this.admin) {
-      await this.grantRole(roleId(feesCollector, 'setWithdrawFee'), this.admin);
-    }
-    const instance = from || this.admin ? feesCollector.connect((from || this.admin)!) : feesCollector;
-    return instance.setWithdrawFee(withdrawFee);
-  }
-
-  async setFlashLoanFee(withdrawFee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
+  async setFlashLoanFee(fee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
       await this.grantRole(roleId(feesCollector, 'setFlashLoanFee'), this.admin);
     }
-    const instance = from || this.admin ? feesCollector.connect((from || this.admin)!) : feesCollector;
-    return instance.setFlashLoanFee(withdrawFee);
+
+    const sender = from || this.admin;
+    const instance = sender ? feesCollector.connect(sender) : feesCollector;
+    return instance.setFlashLoanFee(fee);
   }
 
   async grantRole(roleId: string, to?: Account): Promise<ContractTransaction> {

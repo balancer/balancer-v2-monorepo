@@ -42,7 +42,7 @@ library Errors {
     uint256 internal constant UNSORTED_ARRAY                                = 101;
     uint256 internal constant UNSORTED_TOKENS                               = 102;
     uint256 internal constant INPUT_LENGTH_MISMATCH                         = 103;
-    uint256 internal constant ZERO_ADDRESS_TOKEN                            = 104;
+    uint256 internal constant TOKEN_NOT_CONTRACT                            = 104;
 
     // Shared pools
     uint256 internal constant MIN_TOKENS                                    = 200;
@@ -53,9 +53,8 @@ library Errors {
     uint256 internal constant UNINITIALIZED                                 = 205;
     uint256 internal constant BPT_IN_MAX_AMOUNT                             = 206;
     uint256 internal constant BPT_OUT_MIN_AMOUNT                            = 207;
-    uint256 internal constant ERR_AMOUNTS_IN_LENGTH                         = 208;
-    uint256 internal constant UNHANDLED_JOIN_KIND                           = 209;
-    uint256 internal constant UNHANDLED_EXIT_KIND                           = 210;
+    uint256 internal constant UNHANDLED_JOIN_KIND                           = 208;
+    uint256 internal constant UNHANDLED_EXIT_KIND                           = 209;
 
     // Stable pool
     uint256 internal constant MIN_AMP                                       = 300;
@@ -114,6 +113,7 @@ library Errors {
     uint256 internal constant REVOKE_SENDER_NOT_ADMIN                       = 541;
     uint256 internal constant RENOUNCE_SENDER_NOT_ALLOWED                   = 542;
     uint256 internal constant ENUMERABLE_NON_EXISTENT_KEY                   = 543;
+    uint256 internal constant SET_ROLE_SENDER_NOT_ADMIN                     = 544;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID                               = 600;
@@ -142,12 +142,12 @@ library Errors {
     uint256 internal constant NONZERO_TOKEN_BALANCE 			            = 623;
     uint256 internal constant BALANCE_TOTAL_OVERFLOW 			            = 624;
     uint256 internal constant TOKENS_LENGTH_MUST_BE_2 			            = 625;
+    uint256 internal constant CANNOT_USE_ETH_SENTINEL 			            = 626;
 
     // Fees
     uint256 internal constant SWAP_FEE_TOO_HIGH 			                = 700;
-    uint256 internal constant WITHDRAW_FEE_TOO_HIGH 			            = 701;
-    uint256 internal constant FLASH_LOAN_FEE_TOO_HIGH 			            = 702;
-    uint256 internal constant INSUFFICIENT_COLLECTED_FEES 		            = 703;
+    uint256 internal constant FLASH_LOAN_FEE_TOO_HIGH 			            = 701;
+    uint256 internal constant INSUFFICIENT_COLLECTED_FEES 		            = 702;
 
     function _toReason(uint256 code) internal pure returns (string memory) {
         // log10(MAX_UINT256) ≈ 78, considering 4 more chars for the identifier, it makes a maximum of 82 length strings

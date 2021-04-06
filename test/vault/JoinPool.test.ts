@@ -217,7 +217,7 @@ describe('Vault - join pool', () => {
 
             context('when the relayer is not whitelisted by the authorizer', () => {
               sharedBeforeEach('revoke role from relayer', async () => {
-                const role = roleId(vault, 'batchSwapGivenIn');
+                const role = roleId(vault, 'joinPool');
                 await authorizer.connect(admin).revokeRole(role, relayer.address);
               });
 
@@ -270,8 +270,9 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(
+            await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
+                kind: 0, // deposit
                 asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
@@ -293,8 +294,9 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(
+            await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
+                kind: 0, // deposit
                 asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
@@ -308,8 +310,9 @@ describe('Vault - join pool', () => {
 
         context('with enough internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(
+            await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
+                kind: 0, // deposit
                 asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,

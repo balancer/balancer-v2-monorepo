@@ -26,7 +26,7 @@ import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";
 import "./interfaces/IVault.sol";
 
-abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
+abstract contract Fees is IVault {
     using SafeERC20 for IERC20;
 
     ProtocolFeesCollector private _protocolFeesCollector;
@@ -46,13 +46,6 @@ abstract contract Fees is IVault, ReentrancyGuard, VaultAuthorization {
      */
     function _getProtocolSwapFee() internal view returns (uint256) {
         return _protocolFeesCollector.getSwapFee();
-    }
-
-    /**
-     * @dev Returns the protocol fee to charge for a withdrawal of `amount`.
-     */
-    function _calculateWithdrawFee(uint256 amount) internal view returns (uint256) {
-        return _calculateFee(amount, _protocolFeesCollector.getWithdrawFee());
     }
 
     /**

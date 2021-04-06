@@ -1,5 +1,6 @@
-import chai, { expect } from 'chai';
 import { AsyncFunc } from 'mocha';
+import { BigNumber } from 'ethers';
+import chai, { expect } from 'chai';
 
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { BigNumberish, bn } from '../../lib/helpers/numbers';
@@ -10,6 +11,7 @@ import { sharedBeforeEach } from './sharedBeforeEach';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '../helpers/relativeError';
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -31,7 +33,7 @@ global.sharedBeforeEach = (nameOrFn: string | AsyncFunc, maybeFn?: AsyncFunc): v
   sharedBeforeEach(nameOrFn, maybeFn);
 };
 
-chai.use(function (chai) {
+chai.use(function (chai, utils) {
   const { Assertion } = chai;
 
   Assertion.addProperty('zero', function () {
@@ -67,7 +69,7 @@ chai.use(function (chai) {
   });
 
   Assertion.overwriteMethod('revertedWith', function (_super) {
-    return async function (this: any, revertReason: string) {
+    return async function (this: any) {
       // eslint-disable-next-line prefer-rest-params
       const assertion = _super.apply(this, arguments);
       const promise = assertion._obj;
@@ -86,7 +88,7 @@ chai.use(function (chai) {
         try {
           // Run catch function
           const catchResult = await assertion.catch(revert);
-          // If the catch function didn't throw then return it cause it did match what we were expecting
+          // If the catch function didn't throw, then return it because it did match what we were expecting
           return catchResult;
         } catch (error) {
           // If the catch didn't throw because another reason was expected, re-throw the error
@@ -120,5 +122,32 @@ chai.use(function (chai) {
         }
       }
     };
+  });
+
+  ['eq', 'equal', 'equals'].forEach((fn: string) => {
+    Assertion.overwriteMethod(fn, function (_super) {
+      return function (this: any, expected: any) {
+        const actual = utils.flag(this, 'object');
+        if (
+          utils.flag(this, 'deep') &&
+          Array.isArray(actual) &&
+          Array.isArray(expected) &&
+          actual.length === expected.length &&
+          (actual.some(BigNumber.isBigNumber) || expected.some(BigNumber.isBigNumber))
+        ) {
+          const equal = actual.every((value: any, i: number) => BigNumber.from(value).eq(expected[i]));
+          this.assert(
+            equal,
+            `Expected "[${expected}]" to be deeply equal [${actual}]`,
+            `Expected "[${expected}]" NOT to be deeply equal [${actual}]`,
+            expected,
+            actual
+          );
+        } else {
+          // eslint-disable-next-line prefer-rest-params
+          _super.apply(this, arguments);
+        }
+      };
+    });
   });
 });

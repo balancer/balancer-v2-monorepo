@@ -43,6 +43,37 @@
     "inputs": [
       {
         "indexed": true,
+        "internalType": "contract IERC20",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExternalBalanceTransfer",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "address",
         "name": "user",
         "type": "address"
@@ -241,6 +272,11 @@
   {
     "inputs": [
       {
+        "internalType": "enum IVault.SwapKind",
+        "name": "kind",
+        "type": "uint8"
+      },
+      {
         "components": [
           {
             "internalType": "bytes32",
@@ -249,17 +285,17 @@
           },
           {
             "internalType": "uint256",
-            "name": "tokenInIndex",
+            "name": "assetInIndex",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tokenOutIndex",
+            "name": "assetOutIndex",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "amountIn",
+            "name": "amount",
             "type": "uint256"
           },
           {
@@ -268,7 +304,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct IVault.SwapIn[]",
+        "internalType": "struct IVault.BatchSwapStep[]",
         "name": "swaps",
         "type": "tuple[]"
       },
@@ -315,99 +351,11 @@
         "type": "uint256"
       }
     ],
-    "name": "batchSwapGivenIn",
+    "name": "batchSwap",
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "",
-        "type": "int256[]"
-      }
-    ],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "bytes32",
-            "name": "poolId",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenInIndex",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenOutIndex",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amountOut",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes",
-            "name": "userData",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct IVault.SwapOut[]",
-        "name": "swaps",
-        "type": "tuple[]"
-      },
-      {
-        "internalType": "contract IAsset[]",
-        "name": "assets",
-        "type": "address[]"
-      },
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "sender",
-            "type": "address"
-          },
-          {
-            "internalType": "bool",
-            "name": "fromInternalBalance",
-            "type": "bool"
-          },
-          {
-            "internalType": "address payable",
-            "name": "recipient",
-            "type": "address"
-          },
-          {
-            "internalType": "bool",
-            "name": "toInternalBalance",
-            "type": "bool"
-          }
-        ],
-        "internalType": "struct IVault.FundManagement",
-        "name": "funds",
-        "type": "tuple"
-      },
-      {
-        "internalType": "int256[]",
-        "name": "limits",
-        "type": "int256[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "deadline",
-        "type": "uint256"
-      }
-    ],
-    "name": "batchSwapGivenOut",
-    "outputs": [
-      {
-        "internalType": "int256[]",
-        "name": "",
+        "name": "assetDeltas",
         "type": "int256[]"
       }
     ],
@@ -443,41 +391,6 @@
     "name": "changeRelayerAllowance",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "contract IAsset",
-            "name": "asset",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "sender",
-            "type": "address"
-          },
-          {
-            "internalType": "address payable",
-            "name": "recipient",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct IVault.AssetBalanceTransfer[]",
-        "name": "transfers",
-        "type": "tuple[]"
-      }
-    ],
-    "name": "depositToInternalBalance",
-    "outputs": [],
-    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -853,6 +766,46 @@
   {
     "inputs": [
       {
+        "components": [
+          {
+            "internalType": "enum IVault.UserBalanceOpKind",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "internalType": "contract IAsset",
+            "name": "asset",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "sender",
+            "type": "address"
+          },
+          {
+            "internalType": "address payable",
+            "name": "recipient",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct IVault.UserBalanceOp[]",
+        "name": "ops",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "manageUserBalance",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "enum IVault.SwapKind",
         "name": "kind",
         "type": "uint8"
@@ -866,12 +819,12 @@
           },
           {
             "internalType": "uint256",
-            "name": "tokenInIndex",
+            "name": "assetInIndex",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tokenOutIndex",
+            "name": "assetOutIndex",
             "type": "uint256"
           },
           {
@@ -885,7 +838,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct IVault.SwapRequest[]",
+        "internalType": "struct IVault.BatchSwapStep[]",
         "name": "swaps",
         "type": "tuple[]"
       },
@@ -993,8 +946,23 @@
       {
         "components": [
           {
+            "internalType": "bytes32",
+            "name": "poolId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum IVault.SwapKind",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
             "internalType": "contract IAsset",
-            "name": "asset",
+            "name": "assetIn",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IAsset",
+            "name": "assetOut",
             "type": "address"
           },
           {
@@ -1003,94 +971,62 @@
             "type": "uint256"
           },
           {
-            "internalType": "address",
-            "name": "sender",
-            "type": "address"
-          },
-          {
-            "internalType": "address payable",
-            "name": "recipient",
-            "type": "address"
+            "internalType": "bytes",
+            "name": "userData",
+            "type": "bytes"
           }
         ],
-        "internalType": "struct IVault.AssetBalanceTransfer[]",
-        "name": "transfers",
-        "type": "tuple[]"
-      }
-    ],
-    "name": "transferInternalBalance",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+        "internalType": "struct IVault.SingleSwap",
+        "name": "request",
+        "type": "tuple"
+      },
       {
         "components": [
           {
-            "internalType": "contract IAsset",
-            "name": "asset",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          },
-          {
             "internalType": "address",
             "name": "sender",
             "type": "address"
           },
           {
+            "internalType": "bool",
+            "name": "fromInternalBalance",
+            "type": "bool"
+          },
+          {
             "internalType": "address payable",
             "name": "recipient",
             "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "toInternalBalance",
+            "type": "bool"
           }
         ],
-        "internalType": "struct IVault.AssetBalanceTransfer[]",
-        "name": "transfers",
-        "type": "tuple[]"
-      }
-    ],
-    "name": "transferToExternalBalance",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+        "internalType": "struct IVault.FundManagement",
+        "name": "funds",
+        "type": "tuple"
+      },
       {
-        "components": [
-          {
-            "internalType": "contract IAsset",
-            "name": "asset",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "sender",
-            "type": "address"
-          },
-          {
-            "internalType": "address payable",
-            "name": "recipient",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct IVault.AssetBalanceTransfer[]",
-        "name": "transfers",
-        "type": "tuple[]"
+        "internalType": "uint256",
+        "name": "limit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
       }
     ],
-    "name": "withdrawFromInternalBalance",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "name": "swap",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
     "type": "function"
   },
   {

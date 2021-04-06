@@ -15,25 +15,35 @@
 pragma solidity ^0.7.0;
 
 import "../../lib/math/FixedPoint.sol";
+import "../../lib/math/Math.sol";
 import "../../lib/helpers/InputHelpers.sol";
-
-// This is a contract to emulate file-level functions. Convert to a library
-// after the migration to solc v0.7.1.
 
 /* solhint-disable private-vars-leading-underscore */
 
 contract WeightedMath {
     using FixedPoint for uint256;
-
-    // Pool limits that arise from this math (and the imposed 100/1 maximum weight ratio)
+    // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
+    // implementation of the power function, as these ratios are often exponents.
     uint256 internal constant _MIN_WEIGHT = 0.01e18;
+    // Having a minimum normalized weight imposes a limit on the maximum number of tokens;
+    // i.e., the largest possible pool is one where all tokens have exactly the minimum weight.
+    uint256 internal constant _MAX_WEIGHTED_TOKENS = 100;
 
+    // Pool limits that arise from limitations in the fixed point power function (and the imposed 100/1 maximum weight
+    // ratio).
+
+    // Swap limits: amounts swapped may not be larger than this percentage of total balance.
     uint256 internal constant _MAX_IN_RATIO = 0.3e18;
     uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
 
+    // Invariant growth limit: joins cannot cause the invariant to increase by more than this ratio.
     uint256 internal constant _MAX_INVARIANT_RATIO = 3e18;
+    // Invariant shrink limit: exits cannot cause the invariant to decrease by less than this ratio.
     uint256 internal constant _MIN_INVARIANT_RATIO = 0.7e18;
 
+    // Invariant is used to collect protocol swap fees by comparing its value between two times.
+    // So we can round always to the same direction. It is also used to initiate the BPT amount
+    // and, because there is a minimum BPT, we round down the invariant.
     function _calculateInvariant(uint256[] memory normalizedWeights, uint256[] memory balances)
         internal
         pure
@@ -45,11 +55,10 @@ contract WeightedMath {
         // bi = balance index i     | |  bi ^   = i                                                  //
         // i = invariant                                                                             //
         **********************************************************************************************/
-        InputHelpers.ensureInputLengthMatch(normalizedWeights.length, balances.length);
 
         invariant = FixedPoint.ONE;
-        for (uint8 i = 0; i < normalizedWeights.length; i++) {
-            invariant = invariant.mul(FixedPoint.pow(balances[i], normalizedWeights[i]));
+        for (uint256 i = 0; i < normalizedWeights.length; i++) {
+            invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
         }
     }
 
@@ -77,10 +86,10 @@ contract WeightedMath {
         // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
         // Because bI / (bI + aI) <= 1, the exponent rounds down.
 
-        uint256 newBalance = tokenBalanceIn.add(tokenAmountIn);
-        uint256 base = tokenBalanceIn.divUp(newBalance);
+        uint256 denominator = tokenBalanceIn.add(tokenAmountIn);
+        uint256 base = tokenBalanceIn.divUp(denominator);
         uint256 exponent = tokenWeightIn.divDown(tokenWeightOut);
-        uint256 power = FixedPoint.powUp(base, exponent);
+        uint256 power = base.powUp(exponent);
 
         return tokenBalanceOut.mulDown(power.complement());
     }
@@ -111,8 +120,10 @@ contract WeightedMath {
 
         uint256 base = tokenBalanceOut.divUp(tokenBalanceOut.sub(tokenAmountOut));
         uint256 exponent = tokenWeightOut.divUp(tokenWeightIn);
-        uint256 power = FixedPoint.powUp(base, exponent);
+        uint256 power = base.powUp(exponent);
 
+        // Because the base is larger than one (and the power rounds up), the power should always be larger than one, so
+        // the following subtraction should never revert.
         uint256 ratio = power.sub(FixedPoint.ONE);
 
         return tokenBalanceIn.mulUp(ratio);
@@ -127,46 +138,36 @@ contract WeightedMath {
     ) internal pure returns (uint256) {
         // BPT out, so we round down overall.
 
-        // First loop to calculate the weighted balance ratio
-        // The increment `amountIn` represents for each token, as a quotient of new and current balances,
-        // not accounting swap fees
-        uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsIn.length);
-        // The weighted sum of token balance rations sans fee
-        uint256 weightedBalanceRatio = 0;
+        uint256[] memory balanceRatiosWithFee = new uint256[](amountsIn.length);
+
+        uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            tokenBalanceRatiosWithoutFee[i] = balances[i].add(amountsIn[i]).divDown(balances[i]);
-            weightedBalanceRatio = weightedBalanceRatio.add(
-                tokenBalanceRatiosWithoutFee[i].mulDown(normalizedWeights[i])
-            );
+            balanceRatiosWithFee[i] = balances[i].add(amountsIn[i]).divDown(balances[i]);
+            invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mulDown(normalizedWeights[i]));
         }
 
-        //Second loop to calculate new amounts in taking into account the fee on the % excess
-        // The growth of the invariant caused by the join, as a quotient of the new value and the current one
         uint256 invariantRatio = FixedPoint.ONE;
         for (uint256 i = 0; i < balances.length; i++) {
-            // Percentage of the amount supplied that will be swapped for other tokens in the pool
-            uint256 tokenBalancePercentageExcess;
-            // Some tokens might have amounts supplied in excess of a 'balanced' join: these are identified if
-            // the token's balance ratio sans fee is larger than the weighted balance ratio, and swap fees charged
-            // on the amount to swap
-            if (weightedBalanceRatio >= tokenBalanceRatiosWithoutFee[i]) {
-                tokenBalancePercentageExcess = 0;
+            uint256 amountInWithoutFee;
+
+            if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
+                uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithFees.sub(FixedPoint.ONE));
+                uint256 taxableAmount = amountsIn[i].sub(nonTaxableAmount);
+                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE.sub(swapFee)));
             } else {
-                tokenBalancePercentageExcess = tokenBalanceRatiosWithoutFee[i].sub(weightedBalanceRatio).divUp(
-                    tokenBalanceRatiosWithoutFee[i].sub(FixedPoint.ONE)
-                );
+                amountInWithoutFee = amountsIn[i];
             }
 
-            uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+            uint256 tokenBalanceRatio = balances[i].add(amountInWithoutFee).divDown(balances[i]);
 
-            uint256 amountInAfterFee = amountsIn[i].mulDown(swapFeeExcess.complement());
-
-            uint256 tokenBalanceRatio = FixedPoint.ONE.add(amountInAfterFee.divDown(balances[i]));
-
-            invariantRatio = invariantRatio.mulDown(FixedPoint.powDown(tokenBalanceRatio, normalizedWeights[i]));
+            invariantRatio = invariantRatio.mulDown(tokenBalanceRatio.powDown(normalizedWeights[i]));
         }
 
-        return bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE));
+        if (invariantRatio >= FixedPoint.ONE) {
+            return bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE));
+        } else {
+            return 0;
+        }
     }
 
     function _calcTokenInGivenExactBptOut(
@@ -189,15 +190,20 @@ contract WeightedMath {
 
         // Calculate the factor by which the invariant will increase after minting BPTAmountOut
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply);
+        _require(invariantRatio <= _MAX_INVARIANT_RATIO, Errors.MAX_OUT_BPT_FOR_TOKEN_IN);
 
-        // Calculate by how much the token balance has to increase to match invariantRatio
-        uint256 tokenBalanceRatio = FixedPoint.powUp(invariantRatio, FixedPoint.ONE.divUp(tokenNormalizedWeight));
-        uint256 tokenBalancePercentageExcess = tokenNormalizedWeight.complement();
-        uint256 amountInAfterFee = tokenBalance.mulUp(tokenBalanceRatio.sub(FixedPoint.ONE));
+        // Calculate by how much the token balance has to increase to match the invariantRatio
+        uint256 tokenBalanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(tokenNormalizedWeight));
 
-        uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+        uint256 amountInWithoutFee = tokenBalance.mulUp(tokenBalanceRatio.sub(FixedPoint.ONE));
 
-        return amountInAfterFee.divUp(swapFeeExcess.complement());
+        // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
+        // accordingly.
+        uint256 taxablePercentage = tokenNormalizedWeight.complement();
+        uint256 taxableAmount = amountInWithoutFee.mulUp(taxablePercentage);
+        uint256 nonTaxableAmount = amountInWithoutFee.sub(taxableAmount);
+
+        return nonTaxableAmount.add(taxableAmount.divUp(swapFee.complement()));
     }
 
     function _calcBptInGivenExactTokensOut(
@@ -209,38 +215,33 @@ contract WeightedMath {
     ) internal pure returns (uint256) {
         // BPT in, so we round up overall.
 
-        // First loop to calculate the weighted balance ratio
-        uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsOut.length);
-        uint256 weightedBalanceRatio = 0;
+        uint256[] memory balanceRatiosWithoutFee = new uint256[](amountsOut.length);
+        uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            tokenBalanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).divUp(balances[i]);
-            weightedBalanceRatio = weightedBalanceRatio.add(
-                tokenBalanceRatiosWithoutFee[i].mulUp(normalizedWeights[i])
+            balanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).divUp(balances[i]);
+            invariantRatioWithoutFees = invariantRatioWithoutFees.add(
+                balanceRatiosWithoutFee[i].mulUp(normalizedWeights[i])
             );
         }
 
-        //Second loop to calculate new amounts in taking into account the fee on the % excess
         uint256 invariantRatio = FixedPoint.ONE;
         for (uint256 i = 0; i < balances.length; i++) {
-            uint256 tokenBalancePercentageExcess;
-            uint256 tokenBalanceRatio;
-            // For each ratioSansFee, compare with the total weighted ratio (weightedBalanceRatio) and
-            // decrease the fee from what goes above it
-            if (weightedBalanceRatio <= tokenBalanceRatiosWithoutFee[i]) {
-                tokenBalancePercentageExcess = 0;
+            // Swap fees are typically charged on token in, but there is no token in here, so we apply it to token out.
+            // This results in slightly larger price impact.
+
+            uint256 amountOutWithFee;
+            if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
+                uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithoutFees.complement());
+                uint256 taxableAmount = amountsOut[i].sub(nonTaxableAmount);
+
+                amountOutWithFee = nonTaxableAmount.add(taxableAmount.divUp(swapFee.complement()));
             } else {
-                tokenBalancePercentageExcess = weightedBalanceRatio.sub(tokenBalanceRatiosWithoutFee[i]).divUp(
-                    tokenBalanceRatiosWithoutFee[i].complement()
-                );
+                amountOutWithFee = amountsOut[i];
             }
 
-            uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+            uint256 tokenBalanceRatio = balances[i].sub(amountOutWithFee).divDown(balances[i]);
 
-            uint256 amountOutBeforeFee = amountsOut[i].divUp(swapFeeExcess.complement());
-
-            tokenBalanceRatio = amountOutBeforeFee.divUp(balances[i]).complement();
-
-            invariantRatio = invariantRatio.mulDown(FixedPoint.powDown(tokenBalanceRatio, normalizedWeights[i]));
+            invariantRatio = invariantRatio.mulDown(tokenBalanceRatio.powDown(normalizedWeights[i]));
         }
 
         return bptTotalSupply.mulUp(invariantRatio.complement());
@@ -262,21 +263,29 @@ contract WeightedMath {
         // w = tokenWeight                                                                      //
         *****************************************************************************************/
 
-        // Token out, so we round down overall.
+        // Token out, so we round down overall. The multiplication rounds down, but the power rounds up (so the base
+        // rounds up). Because (totalBPT - bptIn) / totalBPT <= 1, the exponent rounds down.
 
         // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
         uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
+        _require(invariantRatio >= _MIN_INVARIANT_RATIO, Errors.MIN_BPT_IN_FOR_TOKEN_OUT);
 
-        // Calculate by how much the token balance has to increase to match invariantRatio
-        uint256 tokenBalanceRatio = FixedPoint.powUp(invariantRatio, FixedPoint.ONE.divUp(tokenNormalizedWeight));
-        uint256 tokenBalancePercentageExcess = tokenNormalizedWeight.complement();
+        // Calculate by how much the token balance has to decrease to match invariantRatio
+        uint256 tokenBalanceRatio = invariantRatio.powUp(FixedPoint.ONE.divDown(tokenNormalizedWeight));
 
-        //Because of rounding up, tokenBalanceRatio can be greater than one
-        uint256 amountOutBeforeFee = tokenBalance.mulDown(tokenBalanceRatio.complement());
+        // Because of rounding up, tokenBalanceRatio can be greater than one. Using complement prevents reverts.
+        uint256 amountOutWithoutFee = tokenBalance.mulDown(tokenBalanceRatio.complement());
 
-        uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+        // We can now compute how much excess balance is being withdrawn as a result of the virtual swaps, which result
+        // in swap fees.
+        uint256 taxablePercentage = tokenNormalizedWeight.complement();
 
-        return amountOutBeforeFee.mulDown(swapFeeExcess.complement());
+        // Swap fees are typically charged on token in, but there is no token in here, so we apply it to token out. This
+        // results in slightly larger price impact. Fees are rounded up.
+        uint256 taxableAmount = amountOutWithoutFee.mulUp(taxablePercentage);
+        uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
+
+        return nonTaxableAmount.add(taxableAmount.mulDown(swapFee.complement()));
     }
 
     function _calcTokensOutGivenExactBptIn(
@@ -314,25 +323,30 @@ contract WeightedMath {
         uint256 protocolSwapFeePercentage
     ) internal pure returns (uint256) {
         /*********************************************************************************
-        /*  protocolSwapFee * balanceToken * ( 1 - (previousInvariant / currentInvariant) ^ (1 / weightToken))
+        /*  protocolSwapFeePercentage * balanceToken * ( 1 - (previousInvariant / currentInvariant) ^ (1 / weightToken))
         *********************************************************************************/
 
-        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less protocol fees
-        // to the Vault.
+        if (currentInvariant <= previousInvariant) {
+            // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
+            // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
+            return 0;
+        }
+
+        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
+        // fees to the Vault.
 
         // Fee percentage and balance multiplications round down, while the subtrahend (power) rounds up (as does the
         // base). Because previousInvariant / currentInvariant <= 1, the exponent rounds down.
 
-        if (currentInvariant < previousInvariant) {
-            // This should never happen, but this acts as a safeguard to prevent the Pool from entering a locked state
-            // in which joins and exits revert while computing accumulated swap fees.
-            return 0;
-        }
-
         uint256 base = previousInvariant.divUp(currentInvariant);
         uint256 exponent = FixedPoint.ONE.divDown(normalizedWeight);
 
-        uint256 power = FixedPoint.powUp(base, exponent);
+        // Because the exponent is larger than one, the base of the power function has a lower bound. We cap to this
+        // value to avoid numeric issues, which means in the extreme case (where the invariant growth is larger than
+        // 1 / min exponent) the Pool will pay less in protocol fees than it should.
+        base = Math.max(base, FixedPoint.MIN_POW_BASE_FREE_EXPONENT);
+
+        uint256 power = base.powUp(exponent);
 
         uint256 tokenAccruedFees = balance.mulDown(power.complement());
         return tokenAccruedFees.mulDown(protocolSwapFeePercentage);

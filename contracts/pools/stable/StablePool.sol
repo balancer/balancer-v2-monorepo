@@ -138,8 +138,9 @@ contract StablePool is BaseGeneralPool, StableMath {
             uint256[] memory
         )
     {
-        // Due protocol swap fees are computed by measuring the growth of the invariant from the previous join or exit
-        // event and now - the invariant's growth is due exclusively to swap fees.
+        // Due protocol swap fees are computed by measuring the growth of the invariant between the previous join or
+        // exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas to
+        // calculate the fees during each individual swap.
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             balances,
             _lastInvariant,
@@ -154,8 +155,8 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, userData);
 
-        // Update the invariant with the balances the Pool will have after the join, in order to compute the due
-        // protocol swap fees in future joins and exits.
+        // Update the invariant with the balances the Pool will have after the join, in order to compute the
+        // protocol swap fees due in future joins and exits.
         _lastInvariant = _invariantAfterJoin(balances, amountsIn);
 
         return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
@@ -215,8 +216,8 @@ contract StablePool is BaseGeneralPool, StableMath {
             _swapFee
         );
 
-        // We join in a single token, so we initialize downscaledAmountsIn with zeros and
-        // set only downscaledAmountsIn[tokenIndex]
+        // We are joining with a single token, so initialize downscaledAmountsIn with zeros, and
+        // only set downscaledAmountsIn[tokenIndex]
         uint256[] memory downscaledAmountsIn = new uint256[](_totalTokens);
         downscaledAmountsIn[tokenIndex] = amountIn;
 
@@ -243,10 +244,11 @@ contract StablePool is BaseGeneralPool, StableMath {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        //If emergency period is active, protocol fees are not charged to avoid any extra calculation.
+        // To avoid extra calculations, protocol fees are not charged when the emergency period is active
         if (_isEmergencyPeriodInactive()) {
-            // Due protocol swap fees are computed by measuring the growth of the invariant from the previous
-            // join or exit event and now - the invariant's growth is due exclusively to swap fees.
+            // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
+            // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
+            // spending gas calculating fees during each individual swap
             dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, _lastInvariant, protocolSwapFeePercentage);
 
             // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
@@ -260,8 +262,8 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         (bptAmountIn, amountsOut) = _doExit(balances, userData);
 
-        // Update the invariant with the balances the Pool will have after the exit, in order to compute the due
-        // protocol swap fees in future joins and exits.
+        // Update the invariant with the balances the Pool will have after the exit, in order to compute the
+        // protocol swap fees due in future joins and exits.
         _lastInvariant = _invariantAfterExit(balances, amountsOut);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
@@ -291,10 +293,12 @@ contract StablePool is BaseGeneralPool, StableMath {
         noEmergencyPeriod
         returns (uint256, uint256[] memory)
     {
+        // This exit function is disabled if the emergency period is active.
+
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         _require(tokenIndex < _totalTokens, Errors.OUT_OF_BOUNDS);
 
-        // We exit in a single token, so we initialize amountsOut with zeros
+        // We exit in a single token, so initialize amountsOut with zeros and only set amountsOut[tokenIndex]
         uint256[] memory amountsOut = new uint256[](_totalTokens);
 
         amountsOut[tokenIndex] = StableMath._calcTokenOutGivenExactBptIn(
@@ -309,15 +313,16 @@ contract StablePool is BaseGeneralPool, StableMath {
         return (bptAmountIn, amountsOut);
     }
 
-    /**
-     * @dev Note we are not tagging this function with `noEmergencyPeriod` to allow users to exit in a proportional
-     * manner in case there is an emergency in the pool. This operation should never be restricted.
-     */
     function _exitExactBPTInForTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
     {
+        // This exit function is the only one that is not disabled if the emergency period is active: it remains
+        // unrestricted as an attempt to provide users with a mechanism to retrieve their tokens in case of an
+        // emergency.
+        // The reason why exit function is the one that remains available is because it is the simplest one, and
+        // therefore the one with the lowest likelihood of errors.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
         uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply());
@@ -331,6 +336,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         noEmergencyPeriod
         returns (uint256, uint256[] memory)
     {
+        // This exit function is disabled if the emergency period is active.
+
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _totalTokens);
 
@@ -359,7 +366,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_totalTokens);
 
-        // Early exit in case there is no protocol swap fee
+        // Early exit if there is no protocol swap fee
         if (protocolSwapFeePercentage == 0) {
             return dueProtocolFeeAmounts;
         }
@@ -368,7 +375,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // will reduce gas costs for single asset joins and exits, as at most only two Pool balances will change (the
         // token joined/exited, and the token in which fees will be paid).
 
-        // The protocol fee is charged using the token with max balance in the pool.
+        // The protocol fee is charged using the token with the highest balance in the pool.
         uint256 chosenTokenIndex = 0;
         uint256 maxBalance = balances[0];
         for (uint256 i = 1; i < _totalTokens; ++i) {
@@ -411,9 +418,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         return StableMath._calculateInvariant(_amplificationParameter, balances);
     }
 
-    // This function returns the appreciation of one BPT relative to the
-    // underlying tokens. This starts at 1 when the pool is initialized, and grows over time
-    // It's equivalent to Curve's get_virtual_price() function
+    /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time
+     * It's equivalent to Curve's get_virtual_price() function
+     */
     function getRate() public view override returns (uint256) {
         (, uint256[] memory balances, ) = _vault.getPoolTokens(_poolId);
         return StableMath._calculateInvariant(_amplificationParameter, balances).div(totalSupply());

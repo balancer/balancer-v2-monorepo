@@ -5,11 +5,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { deepEqual } from 'assert';
 
 import * as allPools from './allPools.json';
-import { bn, fp } from '../../helpers/numbers';
+import { bn } from '../../helpers/numbers';
 import { TokenList, deployTokens } from '../../helpers/tokens';
 import { WEEK } from '../../helpers/time';
 import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../helpers/constants';
+import { MAX_UINT256 } from '../../helpers/constants';
 import { formatPools, getTokenInfoForDeploy, Pool } from './processJSON';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -29,7 +29,6 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
 
   // Get deployed vault
   const vault = await ethers.getContract('Vault');
-  const authorizer = await ethers.getContract('Authorizer');
 
   // Format pools to BigNumber/scaled format
   const formattedPools: Pool[] = formatPools(allPools);
@@ -63,15 +62,14 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
 
     // deposit half into user balance
     const depositBalance = tradingBalance.div(bn(2));
-    await vault
-      .connect(trader)
-      .depositToInternalBalance([
-        { token: token.address, amount: depositBalance, sender: trader.address, recipient: trader.address },
-      ]);
+    await vault.connect(trader).manageUserBalance([
+      // deposit
+      { kind: 0, token: token.address, amount: depositBalance, sender: trader.address, recipient: trader.address },
+    ]);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);
-  const pools: Contract[] = (await deployPools(filteredPools, tokens)).filter((x): x is Contract => x !== undefined);
+  (await deployPools(filteredPools, tokens)).filter((x): x is Contract => x !== undefined);
 
   return;
 };

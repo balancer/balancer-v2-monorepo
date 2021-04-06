@@ -26,30 +26,35 @@ import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
 
 // This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
-// reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus total
-// count, resulting in a large number of these.
+// reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus a total
+// count, resulting in a large number of state variables.
 
 // solhint-disable max-states-count
 
 /**
- * @dev Reference implementation for the base layer of a Pool contract that manges a single Pool with an immutable set
- * of registered tokens, no Asset Managers, and admin-controlled swap fee and emergency stop mechanisms.
+ * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with an immutable set
+ * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency stop mechanisms.
+ *
+ * Note that neither swap fees nor the emergency stop mechanism are used by this contract. They are passed through so
+ * that derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the
+ * `noEmergencyPeriod` modifier.
  *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.
  *
- * Because this contract doesn't implement the swap hooks, derived contracts should inherit from BaseGeneralPool or
- * BaseMinimalSwapInfoPool instead.
+ * Because this contract doesn't implement the swap hooks, derived contracts should generally inherit from
+ * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
+ * and implement the swap callbacks themselves.
  */
 abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, EmergencyPeriod {
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
-    uint256 private constant _MAX_TOKENS = 16;
+    uint256 private constant _MAX_TOKENS = 8;
 
     // 1e16 = 1%, 1e18 = 100%
     uint256 private constant _MAX_SWAP_FEE = 10e16;
 
-    uint256 private constant _MINIMUM_BPT = 10**3;
+    uint256 private constant _MINIMUM_BPT = 10**6;
 
     uint256 internal _swapFee;
 
@@ -65,14 +70,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     IERC20 internal immutable _token5;
     IERC20 internal immutable _token6;
     IERC20 internal immutable _token7;
-    IERC20 internal immutable _token8;
-    IERC20 internal immutable _token9;
-    IERC20 internal immutable _token10;
-    IERC20 internal immutable _token11;
-    IERC20 internal immutable _token12;
-    IERC20 internal immutable _token13;
-    IERC20 internal immutable _token14;
-    IERC20 internal immutable _token15;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -86,14 +83,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor5;
     uint256 internal immutable _scalingFactor6;
     uint256 internal immutable _scalingFactor7;
-    uint256 internal immutable _scalingFactor8;
-    uint256 internal immutable _scalingFactor9;
-    uint256 internal immutable _scalingFactor10;
-    uint256 internal immutable _scalingFactor11;
-    uint256 internal immutable _scalingFactor12;
-    uint256 internal immutable _scalingFactor13;
-    uint256 internal immutable _scalingFactor14;
-    uint256 internal immutable _scalingFactor15;
 
     event SwapFeeChanged(uint256 swapFee);
 
@@ -106,11 +95,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 swapFee,
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
-    )
-        BasePoolAuthorization()
-        BalancerPoolToken(name, symbol)
-        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
-    {
+    ) BalancerPoolToken(name, symbol) EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension) {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
@@ -145,14 +130,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _token5 = tokens.length > 5 ? tokens[5] : IERC20(0);
         _token6 = tokens.length > 6 ? tokens[6] : IERC20(0);
         _token7 = tokens.length > 7 ? tokens[7] : IERC20(0);
-        _token8 = tokens.length > 8 ? tokens[8] : IERC20(0);
-        _token9 = tokens.length > 9 ? tokens[9] : IERC20(0);
-        _token10 = tokens.length > 10 ? tokens[10] : IERC20(0);
-        _token11 = tokens.length > 11 ? tokens[11] : IERC20(0);
-        _token12 = tokens.length > 12 ? tokens[12] : IERC20(0);
-        _token13 = tokens.length > 13 ? tokens[13] : IERC20(0);
-        _token14 = tokens.length > 14 ? tokens[14] : IERC20(0);
-        _token15 = tokens.length > 15 ? tokens[15] : IERC20(0);
 
         _scalingFactor0 = tokens.length > 0 ? _computeScalingFactor(tokens[0]) : 0;
         _scalingFactor1 = tokens.length > 1 ? _computeScalingFactor(tokens[1]) : 0;
@@ -162,14 +139,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _scalingFactor5 = tokens.length > 5 ? _computeScalingFactor(tokens[5]) : 0;
         _scalingFactor6 = tokens.length > 6 ? _computeScalingFactor(tokens[6]) : 0;
         _scalingFactor7 = tokens.length > 7 ? _computeScalingFactor(tokens[7]) : 0;
-        _scalingFactor8 = tokens.length > 8 ? _computeScalingFactor(tokens[8]) : 0;
-        _scalingFactor9 = tokens.length > 9 ? _computeScalingFactor(tokens[9]) : 0;
-        _scalingFactor10 = tokens.length > 10 ? _computeScalingFactor(tokens[10]) : 0;
-        _scalingFactor11 = tokens.length > 11 ? _computeScalingFactor(tokens[11]) : 0;
-        _scalingFactor12 = tokens.length > 12 ? _computeScalingFactor(tokens[12]) : 0;
-        _scalingFactor13 = tokens.length > 13 ? _computeScalingFactor(tokens[13]) : 0;
-        _scalingFactor14 = tokens.length > 14 ? _computeScalingFactor(tokens[14]) : 0;
-        _scalingFactor15 = tokens.length > 15 ? _computeScalingFactor(tokens[15]) : 0;
     }
 
     // Getters / Setters
@@ -186,13 +155,15 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _swapFee;
     }
 
-    function setSwapFee(uint256 swapFee) external authenticate {
+    // Caller must be approved by the Vault's Authorizer
+    function setSwapFee(uint256 swapFee) external virtual authenticate {
         _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
 
         _swapFee = swapFee;
         emit SwapFeeChanged(swapFee);
     }
 
+    // Caller must be approved by the Vault's Authorizer
     function setEmergencyPeriod(bool active) external authenticate {
         _setEmergencyPeriod(active);
     }
@@ -215,7 +186,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes memory userData
     ) external virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory scalingFactors = _scalingFactors();
-        _upscaleArray(currentBalances, scalingFactors);
 
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
@@ -232,6 +202,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
             return (amountsIn, new uint256[](_totalTokens));
         } else {
+            _upscaleArray(currentBalances, scalingFactors);
             (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(
                 poolId,
                 sender,
@@ -241,6 +212,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 protocolSwapFeePercentage,
                 userData
             );
+
+            // Note we no longer use `currentBalances` after calling `_onJoinPool`, which may mutate it.
 
             _mintPoolTokens(recipient, bptAmountOut);
 
@@ -275,6 +248,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             userData
         );
 
+        // Note we no longer use `currentBalances` after calling `_onExitPool`, which may mutate it.
+
         _burnPoolTokens(sender, bptAmountIn);
 
         // Both amountsOut and dueProtocolFees are amounts exiting the Pool, so we round down.
@@ -287,11 +262,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Query functions
 
     /**
-     * @dev Returns the amount of BPT that would be granted to `recipient` if the `onJoinPool` hook was called by the
+     * @dev Returns the amount of BPT that would be granted to `recipient` if the `onJoinPool` hook were called by the
      * Vault with the the same arguments, along with the number of tokens `sender` would have to supply.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
-     * data such as the protocol swap fee and Pool balances.
+     * data, such as the protocol swap fee and Pool balances.
      *
      * Like `IVault.queryBatchSwap`, this function is not view due to internal implementation details: the caller must
      * explicitly use eth_call instead of eth_sendTransaction.
@@ -320,11 +295,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Returns the amount of BPT that would be burned from `sender` if the `onExitPool` hook was called by the
+     * @dev Returns the amount of BPT that would be burned from `sender` if the `onExitPool` hook were called by the
      * Vault with the the same arguments, along with the number of tokens `recipient` would receive.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
-     * data such as the protocol swap fee and Pool balances.
+     * data, such as the protocol swap fee and Pool balances.
      *
      * Like `IVault.queryBatchSwap`, this function is not view due to internal implementation details: the caller must
      * explicitly use eth_call instead of eth_sendTransaction.
@@ -352,15 +327,46 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             );
     }
 
-    // Internal hooks to be overridden by derived contracts
+    // Internal hooks to be overridden by derived contracts - all token amounts (except BPT) in these interfaces are
+    // upscaled.
 
+    /**
+     * @dev Called when the Pool is joined for the first time; that is, when the BPT total supply is zero.
+     *
+     * Returns the amount of BPT to mint, and the token amounts the Pool will receive in return.
+     *
+     * Minted BPT will be sent to `recipient`, except for _MINIMUM_BPT, which will be deducted from this amount and sent
+     * to the zero address instead. This will cause that BPT to remain forever locked there, preventing total BTP from
+     * ever dropping below that value, and ensuring `_onInitializePool` can only be called once in the entire Pool's
+     * lifetime.
+     *
+     * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
+     * be downscaled (rounding up) before being returned to the Vault.
+     */
     function _onInitializePool(
         bytes32 poolId,
         address sender,
         address recipient,
         bytes memory userData
-    ) internal virtual returns (uint256, uint256[] memory);
+    ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
+    /**
+     * @dev Called whenever the Pool is joined after the first initialization join (see `_onInitializePool`).
+     *
+     * Returns the amount of BPT to mint, the token amounts that the Pool will receive in return, and the number of
+     * tokens to pay in protocol swap fees.
+     *
+     * Implementations of this function might choose to mutate the `currentBalances` array to save gas (e.g. when
+     * performing intermediate calculations, such as subtraction of due protocol fees). This can be done safely.
+     *
+     * Minted BPT will be sent to `recipient`.
+     *
+     * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
+     * be downscaled (rounding up) before being returned to the Vault.
+     *
+     * Due protocol swap fees will be taken from the Pool's balance in the Vault (see `IBasePool.onJoinPool`). These
+     * amounts are considered upscaled and will be downscaled (rounding down) before being returned to the Vault.
+     */
     function _onJoinPool(
         bytes32 poolId,
         address sender,
@@ -373,11 +379,28 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         internal
         virtual
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountOut,
+            uint256[] memory amountsIn,
+            uint256[] memory dueProtocolFeeAmounts
         );
 
+    /**
+     * @dev Called whenever the Pool is exited.
+     *
+     * Returns the amount of BPT to burn, the token amounts for each Pool token that the Pool will grant in return, and
+     * the number of tokens to pay in protocol swap fees.
+     *
+     * Implementations of this function might choose to mutate the `currentBalances` array to save gas (e.g. when
+     * performing intermediate calculations, such as subtraction of due protocol fees). This can be done safely.
+     *
+     * BPT will be burnt from `sender`.
+     *
+     * The Pool will grant tokens to `recipient`. These amounts are considered upscaled and will  be downscaled
+     * (rounding down) before being returned to the Vault.
+     *
+     * Due protocol swap fees will be taken from the Pool's balance in the Vault (see `IBasePool.onExitPool`). These
+     * amounts are considered upscaled and will be downscaled (rounding down) before being returned to the Vault.
+     */
     function _onExitPool(
         bytes32 poolId,
         address sender,
@@ -390,9 +413,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         internal
         virtual
         returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            uint256[] memory dueProtocolFeeAmounts
         );
 
     // Internal functions
@@ -443,22 +466,14 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         else if (token == _token5) { return _scalingFactor5; }
         else if (token == _token6) { return _scalingFactor6; }
         else if (token == _token7) { return _scalingFactor7; }
-        else if (token == _token8) { return _scalingFactor8; }
-        else if (token == _token9) { return _scalingFactor9; }
-        else if (token == _token10) { return _scalingFactor10; }
-        else if (token == _token11) { return _scalingFactor11; }
-        else if (token == _token12) { return _scalingFactor12; }
-        else if (token == _token13) { return _scalingFactor13; }
-        else if (token == _token14) { return _scalingFactor14; }
-        else if (token == _token15) { return _scalingFactor15; }
         else {
             _revert(Errors.INVALID_TOKEN);
         }
     }
 
     /**
-     * @dev Returns all the scaling factors in the same order as tokens were registered, which is the order
-     * the Vault will pass balances when calling the different Pool hooks.
+     * @dev Returns all the scaling factors in the same order as the registered tokens. The Vault will always
+     * pass balances in this order when calling any of the Pool hooks
      */
     function _scalingFactors() internal view returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](_totalTokens);
@@ -473,14 +488,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             if (_totalTokens > 5) { scalingFactors[5] = _scalingFactor5; } else { return scalingFactors; }
             if (_totalTokens > 6) { scalingFactors[6] = _scalingFactor6; } else { return scalingFactors; }
             if (_totalTokens > 7) { scalingFactors[7] = _scalingFactor7; } else { return scalingFactors; }
-            if (_totalTokens > 8) { scalingFactors[8] = _scalingFactor8; } else { return scalingFactors; }
-            if (_totalTokens > 9) { scalingFactors[9] = _scalingFactor9; } else { return scalingFactors; }
-            if (_totalTokens > 10) { scalingFactors[10] = _scalingFactor10; } else { return scalingFactors; }
-            if (_totalTokens > 11) { scalingFactors[11] = _scalingFactor11; } else { return scalingFactors; }
-            if (_totalTokens > 12) { scalingFactors[12] = _scalingFactor12; } else { return scalingFactors; }
-            if (_totalTokens > 13) { scalingFactors[13] = _scalingFactor13; } else { return scalingFactors; }
-            if (_totalTokens > 14) { scalingFactors[14] = _scalingFactor14; } else { return scalingFactors; }
-            if (_totalTokens > 15) { scalingFactors[15] = _scalingFactor15; } else { return scalingFactors; }
         }
 
         return scalingFactors;
@@ -505,8 +512,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Deapplies `scalingFactor` to `amount`, resulting in a smaller or equal value depending on whether it needed
-     * scaling or not. The result is rounded down.
+     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
+     * whether it needed scaling or not. The result is rounded down.
      */
     function _downscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return Math.divDown(amount, scalingFactor);
@@ -523,8 +530,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Deapplies `scalingFactor` to `amount`, resulting in a smaller or equal value depending on whether it needed
-     * scaling or not. The result is rounded up.
+     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
+     * whether it needed scaling or not. The result is rounded up.
      */
     function _downscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return Math.divUp(amount, scalingFactor);

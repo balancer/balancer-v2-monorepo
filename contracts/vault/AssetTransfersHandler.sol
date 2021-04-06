@@ -30,7 +30,6 @@ import "./interfaces/IVault.sol";
 abstract contract AssetTransfersHandler is AssetHelpers {
     using SafeERC20 for IERC20;
     using Address for address payable;
-    using Math for uint256;
 
     /**
      * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, it first withdraws as much
@@ -68,9 +67,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
 
             if (fromInternalBalance) {
                 // We take as many tokens from Internal Balance as possible: any remaining amounts will be transferred.
-                // Note that this usage of Internal Balance is not charged withdraw fees, so if possible, we attempt
-                // to avoid using exempt Internal Balance.
-                (, uint256 deductedBalance) = _decreaseInternalBalance(sender, token, amount, true, false);
+                uint256 deductedBalance = _decreaseInternalBalance(sender, token, amount, true);
                 // Because `deductedBalance` will be always the lesser of the current internal balance
                 // and the amount to decrease, it is safe to perform unchecked arithmetic.
                 amount -= deductedBalance;
@@ -93,8 +90,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
         IAsset asset,
         uint256 amount,
         address payable recipient,
-        bool toInternalBalance,
-        bool trackExempt
+        bool toInternalBalance
     ) internal {
         if (amount == 0) {
             return;
@@ -114,7 +110,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
         } else {
             IERC20 token = _asIERC20(asset);
             if (toInternalBalance) {
-                _increaseInternalBalance(recipient, token, amount, trackExempt);
+                _increaseInternalBalance(recipient, token, amount);
             } else {
                 token.safeTransfer(recipient, amount);
             }
@@ -122,31 +118,20 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     }
 
     /**
-     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent.
+     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
+     * if the caller sent less ETH than `amountUsed`.
      *
-     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
+     * Because the caller might not now exactly how much ETH a Vault action will require, they may send extra.
      * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
      * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
      * returned ETH.
-     *
-     * Reverts if the contract caller sent less ETH than `amountUsed`.
      */
-    function _returnExcessEthToCaller(uint256 amountUsed) internal {
+    function _handleRemainingEth(uint256 amountUsed) internal {
         _require(msg.value >= amountUsed, Errors.INSUFFICIENT_ETH);
 
         uint256 excess = msg.value - amountUsed;
         if (excess > 0) {
             msg.sender.sendValue(excess);
-        }
-    }
-
-    /**
-     * @dev Reverts in transactions where a user sent ETH, but didn't specify usage of it as an asset. `ethAssetSeen`
-     * should be true if any asset held the sentinel value for ETH, and false otherwise.
-     */
-    function _ensureNoUnallocatedETH(bool ethAssetSeen) internal view {
-        if (msg.value > 0) {
-            _require(ethAssetSeen, Errors.UNALLOCATED_ETH);
         }
     }
 
@@ -164,21 +149,19 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     }
 
     // This contract uses virtual internal functions instead of inheriting from the modules that implement them (in
-    // this case, Fees and InternalBalance) in order to decouple it from the rest of the system and enable standalone
+    // this case UserBalance) in order to decouple it from the rest of the system and enable standalone
     // testing by implementing these with mocks.
 
     function _increaseInternalBalance(
         address account,
         IERC20 token,
-        uint256 amount,
-        bool track
+        uint256 amount
     ) internal virtual;
 
     function _decreaseInternalBalance(
         address account,
         IERC20 token,
         uint256 amount,
-        bool capped,
-        bool useExempts
-    ) internal virtual returns (uint256, uint256);
+        bool capped
+    ) internal virtual returns (uint256);
 }
