@@ -16,6 +16,19 @@ pragma solidity ^0.7.0;
 
 import "./BalancerErrors.sol";
 
+/**
+ * @dev Provide "Emergency Stop" functionality that is automatically disabled after a time, after which it
+ * turns off and can no longer be turned on.
+ *
+ * The Emergency Period end date is initialized on creation, and cannot be set longer than _MAX_EMERGENCY_PERIOD
+ * days in the future. During this period `_setEmergencyPeriod` can be called to either activate
+ * or deactivate the emergency stop.
+ *
+ * If the emergency stop is active when the end date passes, it will remain active for an additional period after which
+ * it will be automatically deactivated forever. This additional time period is also set on creation, and is limited to
+ * _MAX_EMERGENCY_PERIOD_CHECK_EXT days. This provides enough time to react to the issue, even if the
+ * emergency period is about to expire.
+ */
 // solhint-disable not-rely-on-time
 abstract contract EmergencyPeriod {
     uint256 private constant _MAX_EMERGENCY_PERIOD = 90 days;
