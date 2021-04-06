@@ -17,6 +17,9 @@ describe('BasePool', function () {
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
+  const MAX_SWAP_FEE = fp(0.15);
+  const MIN_SWAP_FEE = fp(0.000001);
+
   before(async () => {
     [, admin, other] = await ethers.getSigners();
   });
@@ -37,7 +40,7 @@ describe('BasePool', function () {
   ): Promise<Contract> {
     let { tokens: poolTokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
     if (!poolTokens) poolTokens = tokens;
-    if (!swapFee) swapFee = 0;
+    if (!swapFee) swapFee = MIN_SWAP_FEE;
     if (!emergencyPeriod) emergencyPeriod = 0;
     if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = 0;
 
@@ -101,7 +104,7 @@ describe('BasePool', function () {
       });
 
       it('can be initialized to the zero address', async () => {
-        const swapFee = 0;
+        const swapFee = MIN_SWAP_FEE;
         const pool = await deployBasePool({ swapFee });
 
         expect(await pool.getSwapFee()).to.equal(swapFee);
@@ -163,17 +166,21 @@ describe('BasePool', function () {
         });
 
         context('when the new swap fee is not below the maximum', () => {
-          const MAX_SWAP_FEE = fp(0.1);
-
           it('reverts', async () => {
             await expect(pool.connect(admin).setSwapFee(MAX_SWAP_FEE.add(1))).to.be.revertedWith('MAX_SWAP_FEE');
+          });
+        });
+
+        context('when the new swap fee is not above the minimum', () => {
+          it('reverts', async () => {
+            await expect(pool.connect(admin).setSwapFee(MIN_SWAP_FEE.sub(1))).to.be.revertedWith('MIN_SWAP_FEE');
           });
         });
       });
 
       context('when the sender does not have the role to do it', () => {
         it('reverts', async () => {
-          await expect(pool.connect(other).setSwapFee(0)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(pool.connect(other).setSwapFee(MIN_SWAP_FEE)).to.be.revertedWith('SENDER_NOT_ALLOWED');
         });
       });
     });
