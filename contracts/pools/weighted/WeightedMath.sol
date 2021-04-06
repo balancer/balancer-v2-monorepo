@@ -192,7 +192,7 @@ contract WeightedMath {
         uint256 invariantRatio = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply);
         _require(invariantRatio <= _MAX_INVARIANT_RATIO, Errors.MAX_OUT_BPT_FOR_TOKEN_IN);
 
-        // Calculate by how much the token balance has to increase to match invariantRatio
+        // Calculate by how much the token balance has to increase to match the invariantRatio
         uint256 tokenBalanceRatio = invariantRatio.powUp(FixedPoint.ONE.divUp(tokenNormalizedWeight));
 
         uint256 amountInWithoutFee = tokenBalance.mulUp(tokenBalanceRatio.sub(FixedPoint.ONE));
@@ -332,8 +332,8 @@ contract WeightedMath {
             return 0;
         }
 
-        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less protocol fees
-        // to the Vault.
+        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
+        // fees to the Vault.
 
         // Fee percentage and balance multiplications round down, while the subtrahend (power) rounds up (as does the
         // base). Because previousInvariant / currentInvariant <= 1, the exponent rounds down.
@@ -343,7 +343,7 @@ contract WeightedMath {
 
         // Because the exponent is larger than one, the base of the power function has a lower bound. We cap to this
         // value to avoid numeric issues, which means in the extreme case (where the invariant growth is larger than
-        // 1 / min exponent) the Pool will pay less protocol fess than it should.
+        // 1 / min exponent) the Pool will pay less in protocol fees than it should.
         base = Math.max(base, FixedPoint.MIN_POW_BASE_FREE_EXPONENT);
 
         uint256 power = base.powUp(exponent);
