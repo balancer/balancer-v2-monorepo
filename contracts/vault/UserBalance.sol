@@ -52,7 +52,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
         IAsset asset;
         address sender;
         uint256 amount;
-        address recipient;
+        address payable recipient;
         uint256 wrappedEth = 0;
         bool noEmergency = false;
         bool authenticated = false;
@@ -69,6 +69,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
                 if (!noEmergency) {
                     // This will revert in case the emergency period was triggered
                     _ensureInactiveEmergencyPeriod();
+                    // Cache result to avoid repeated checks
                     noEmergency = true;
                 }
 
@@ -110,11 +111,11 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     function _withdrawFromInternalBalance(
         IAsset asset,
         address sender,
-        address recipient,
+        address payable recipient,
         uint256 amount
     ) private {
         _decreaseInternalBalance(sender, _translateToIERC20(asset), amount, false);
-        _sendAsset(asset, amount, payable(recipient), false);
+        _sendAsset(asset, amount, recipient, false);
     }
 
     function _transferInternalBalance(
@@ -205,6 +206,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
             if (!wasAuthenticated) {
                 // This will revert in case the actual sender is not allowed by the protocol
                 _authenticateCaller();
+                // Cache result to avoid repeated checks
                 authenticated = true;
             }
 

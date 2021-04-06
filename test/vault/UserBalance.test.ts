@@ -1285,17 +1285,14 @@ describe('Vault - user balance', () => {
 
             await vault.connect(relayer).manageUserBalance(ops);
 
-            const senderBalances = await vault.getInternalBalance(sender.address, tokens.addresses);
-            expect(senderBalances[0]).to.be.equal(0);
-            expect(senderBalances[1]).to.be.equal(103);
+            expect((await vault.getInternalBalance(sender.address, [tokens.DAI.address]))[0]).to.equal(0);
+            expect((await vault.getInternalBalance(sender.address, [tokens.MKR.address]))[0]).to.equal(103);
 
-            const recipientBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
-            expect(recipientBalances[0]).to.be.equal(5);
-            expect(recipientBalances[1]).to.be.equal(9);
+            expect((await vault.getInternalBalance(recipient.address, [tokens.DAI.address]))[0]).to.equal(5);
+            expect((await vault.getInternalBalance(recipient.address, [tokens.MKR.address]))[0]).to.equal(9);
 
-            const otherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokens.addresses);
-            expect(otherRecipientBalances[0]).to.be.equal(0);
-            expect(otherRecipientBalances[1]).to.be.equal(8);
+            expect((await vault.getInternalBalance(otherRecipient.address, [tokens.DAI.address]))[0]).to.equal(0);
+            expect((await vault.getInternalBalance(otherRecipient.address, [tokens.MKR.address]))[0]).to.equal(8);
 
             expect(await tokens.MKR.balanceOf(otherRecipient)).to.be.equal(200);
           });
@@ -1373,17 +1370,14 @@ describe('Vault - user balance', () => {
 
           await vault.connect(relayer).manageUserBalance(ops);
 
-          const senderBalances = await vault.getInternalBalance(sender.address, tokens.addresses);
-          expect(senderBalances[0]).to.be.equal(0);
-          expect(senderBalances[1]).to.be.equal(0);
+          expect((await vault.getInternalBalance(sender.address, [tokens.DAI.address]))[0]).to.equal(0);
+          expect((await vault.getInternalBalance(sender.address, [tokens.MKR.address]))[0]).to.equal(0);
 
-          const recipientBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
-          expect(recipientBalances[0]).to.be.equal(5);
-          expect(recipientBalances[1]).to.be.equal(9);
+          expect((await vault.getInternalBalance(recipient.address, [tokens.DAI.address]))[0]).to.equal(5);
+          expect((await vault.getInternalBalance(recipient.address, [tokens.MKR.address]))[0]).to.equal(9);
 
-          const otherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokens.addresses);
-          expect(otherRecipientBalances[0]).to.be.equal(5);
-          expect(otherRecipientBalances[1]).to.be.equal(0);
+          expect((await vault.getInternalBalance(otherRecipient.address, [tokens.DAI.address]))[0]).to.equal(5);
+          expect((await vault.getInternalBalance(otherRecipient.address, [tokens.MKR.address]))[0]).to.equal(0);
         });
       });
 
