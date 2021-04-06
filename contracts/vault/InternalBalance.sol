@@ -92,12 +92,11 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
         address recipient,
         uint256 amount
     ) private {
-        uint256 amountToSend = amount;
         IERC20 token = _translateToIERC20(asset);
 
         _decreaseInternalBalance(sender, token, amount, false);
 
-        _sendAsset(asset, amountToSend, payable(recipient), false);
+        _sendAsset(asset, amount, payable(recipient), false);
     }
 
     /**

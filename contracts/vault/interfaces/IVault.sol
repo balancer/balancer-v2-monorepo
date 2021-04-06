@@ -702,4 +702,20 @@ interface IVault {
      * @dev Returns the current protocol fee module.
      */
     function getProtocolFeesCollector() external view returns (ProtocolFeesCollector);
+
+    /**
+     * @dev Safety mechanism to halt most Vault operations in the event of an emergency - typically detection
+     * of an error in some part of the system.
+     *
+     * The emergency stop can only be activated during an initial time period, after which it is forever disabled.
+     *
+     * While the emergency stop is active, the following features are disabled:
+     * - depositing and transferring internal balance
+     * - transferring external balance (using the Vault's allowance)
+     * - swaps
+     * - joining Pools
+     *
+     * Internal balance can still be withdrawn, and Pools exited.
+     */
+    function setEmergencyPeriod(bool active) external;
 }

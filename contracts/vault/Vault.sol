@@ -66,7 +66,7 @@ contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function setEmergencyPeriod(bool active) external authenticate {
+    function setEmergencyPeriod(bool active) external override nonReentrant authenticate {
         _setEmergencyPeriod(active);
     }
 
