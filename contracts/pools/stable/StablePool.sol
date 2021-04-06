@@ -291,6 +291,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         noEmergencyPeriod
         returns (uint256, uint256[] memory)
     {
+        // This exit function is disabled if the emergency period is active.
+
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         _require(tokenIndex < _totalTokens, Errors.OUT_OF_BOUNDS);
 
@@ -309,15 +311,16 @@ contract StablePool is BaseGeneralPool, StableMath {
         return (bptAmountIn, amountsOut);
     }
 
-    /**
-     * @dev Note we are not tagging this function with `noEmergencyPeriod` to allow users to exit in a proportional
-     * manner in case there is an emergency in the pool. This operation should never be restricted.
-     */
     function _exitExactBPTInForTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
         returns (uint256, uint256[] memory)
     {
+        // This exit function is the only one that is not disabled if the emergency period is active: it remains
+        // unrestricted as an attempt to provide users with a mechanism to retrieve their tokens in case of an
+        // emergency.
+        // The reason why exit function is the one that remains available is because it is the simplest one, and
+        // therefore the one with the lowest likelihood of errors.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
         uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply());
@@ -331,6 +334,8 @@ contract StablePool is BaseGeneralPool, StableMath {
         noEmergencyPeriod
         returns (uint256, uint256[] memory)
     {
+        // This exit function is disabled if the emergency period is active.
+
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _totalTokens);
 
