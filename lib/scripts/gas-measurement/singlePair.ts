@@ -4,7 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { TokenList } from '../../helpers/tokens';
 import { fp } from '../../helpers/numbers';
 import { MAX_INT256, MAX_UINT256 } from '../../helpers/constants';
-import { FundManagement, getTokensSwaps, toSwapIn } from '../../helpers/trading';
+import { FundManagement, getTokensSwaps, SWAP_KIND } from '../../helpers/trading';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
 
 let vault: Contract;
@@ -90,8 +90,9 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
     const receipt = await (
       await vault
         .connect(trader)
-        .batchSwapGivenIn(
-          toSwapIn(swaps),
+        .batchSwap(
+          SWAP_KIND.GIVEN_IN,
+          swaps,
           tokenAddresses,
           funds,
           Array(tokenAddresses.length).fill(MAX_INT256),

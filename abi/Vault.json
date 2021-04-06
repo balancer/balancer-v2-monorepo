@@ -241,6 +241,11 @@
   {
     "inputs": [
       {
+        "internalType": "enum IVault.SwapKind",
+        "name": "kind",
+        "type": "uint8"
+      },
+      {
         "components": [
           {
             "internalType": "bytes32",
@@ -249,17 +254,17 @@
           },
           {
             "internalType": "uint256",
-            "name": "tokenInIndex",
+            "name": "assetInIndex",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tokenOutIndex",
+            "name": "assetOutIndex",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "amountIn",
+            "name": "amount",
             "type": "uint256"
           },
           {
@@ -268,7 +273,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct IVault.SwapIn[]",
+        "internalType": "struct IVault.BatchSwapStep[]",
         "name": "swaps",
         "type": "tuple[]"
       },
@@ -315,99 +320,11 @@
         "type": "uint256"
       }
     ],
-    "name": "batchSwapGivenIn",
+    "name": "batchSwap",
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "",
-        "type": "int256[]"
-      }
-    ],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "bytes32",
-            "name": "poolId",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenInIndex",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenOutIndex",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amountOut",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes",
-            "name": "userData",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct IVault.SwapOut[]",
-        "name": "swaps",
-        "type": "tuple[]"
-      },
-      {
-        "internalType": "contract IAsset[]",
-        "name": "assets",
-        "type": "address[]"
-      },
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "sender",
-            "type": "address"
-          },
-          {
-            "internalType": "bool",
-            "name": "fromInternalBalance",
-            "type": "bool"
-          },
-          {
-            "internalType": "address payable",
-            "name": "recipient",
-            "type": "address"
-          },
-          {
-            "internalType": "bool",
-            "name": "toInternalBalance",
-            "type": "bool"
-          }
-        ],
-        "internalType": "struct IVault.FundManagement",
-        "name": "funds",
-        "type": "tuple"
-      },
-      {
-        "internalType": "int256[]",
-        "name": "limits",
-        "type": "int256[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "deadline",
-        "type": "uint256"
-      }
-    ],
-    "name": "batchSwapGivenOut",
-    "outputs": [
-      {
-        "internalType": "int256[]",
-        "name": "",
+        "name": "assetDeltas",
         "type": "int256[]"
       }
     ],
@@ -861,12 +778,12 @@
           },
           {
             "internalType": "uint256",
-            "name": "tokenInIndex",
+            "name": "assetInIndex",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "tokenOutIndex",
+            "name": "assetOutIndex",
             "type": "uint256"
           },
           {
@@ -880,7 +797,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct IVault.SwapRequest[]",
+        "internalType": "struct IVault.BatchSwapStep[]",
         "name": "swaps",
         "type": "tuple[]"
       },

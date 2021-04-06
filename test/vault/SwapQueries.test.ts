@@ -8,7 +8,7 @@ import { encodeJoin } from '../helpers/mockPool';
 import { fp, bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { MinimalSwapInfoPool } from '../../lib/helpers/pools';
-import { FundManagement, Swap } from '../../lib/helpers/trading';
+import { FundManagement, Swap, SWAP_KIND } from '../../lib/helpers/trading';
 import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import TokenList from '../helpers/models/tokens/TokenList';
 
@@ -19,11 +19,6 @@ describe('Vault - swap queries', () => {
   const poolIds: string[] = [];
 
   const MAX_POOLS = 2;
-
-  const SWAP_KIND = {
-    GIVEN_IN: 0,
-    GIVEN_OUT: 1,
-  };
 
   before('setup', async () => {
     [, lp] = await ethers.getSigners();
@@ -62,8 +57,8 @@ describe('Vault - swap queries', () => {
 
   type SwapData = {
     poolIdIndex: number;
-    tokenInIndex: number;
-    tokenOutIndex: number;
+    assetInIndex: number;
+    assetOutIndex: number;
     amount: number;
   };
 
@@ -71,8 +66,8 @@ describe('Vault - swap queries', () => {
     return swapsData.map((swapData) => {
       return {
         poolId: poolIds[swapData.poolIdIndex],
-        tokenInIndex: swapData.tokenInIndex,
-        tokenOutIndex: swapData.tokenOutIndex,
+        assetInIndex: swapData.assetInIndex,
+        assetOutIndex: swapData.assetOutIndex,
         amount: swapData.amount,
         userData: '0x',
       };
@@ -93,8 +88,8 @@ describe('Vault - swap queries', () => {
         [
           {
             poolIdIndex: 0,
-            tokenInIndex: 0,
-            tokenOutIndex: 1,
+            assetInIndex: 0,
+            assetOutIndex: 1,
             amount: 5,
           },
         ],
@@ -107,14 +102,14 @@ describe('Vault - swap queries', () => {
         [
           {
             poolIdIndex: 0,
-            tokenInIndex: 0,
-            tokenOutIndex: 1,
+            assetInIndex: 0,
+            assetOutIndex: 1,
             amount: 5,
           },
           {
             poolIdIndex: 1,
-            tokenInIndex: 0,
-            tokenOutIndex: 1,
+            assetInIndex: 0,
+            assetOutIndex: 1,
             amount: 5,
           },
         ],
@@ -127,14 +122,14 @@ describe('Vault - swap queries', () => {
         [
           {
             poolIdIndex: 0,
-            tokenInIndex: 0,
-            tokenOutIndex: 1,
+            assetInIndex: 0,
+            assetOutIndex: 1,
             amount: 5,
           },
           {
             poolIdIndex: 1,
-            tokenInIndex: 1,
-            tokenOutIndex: 2,
+            assetInIndex: 1,
+            assetOutIndex: 2,
             amount: 0,
           },
         ],
@@ -144,7 +139,7 @@ describe('Vault - swap queries', () => {
 
     describe('error', () => {
       it('bubbles up revert reasons', async () => {
-        const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
+        const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, assetInIndex: 100, assetOutIndex: 1, amount: 5 }]);
         const tx = vault.queryBatchSwap(SWAP_KIND.GIVEN_IN, invalidSwap, tokens.addresses, funds);
         await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
       });
@@ -166,8 +161,8 @@ describe('Vault - swap queries', () => {
         [
           {
             poolIdIndex: 0,
-            tokenInIndex: 0,
-            tokenOutIndex: 1,
+            assetInIndex: 0,
+            assetOutIndex: 1,
             amount: 10,
           },
         ],
@@ -180,14 +175,14 @@ describe('Vault - swap queries', () => {
         [
           {
             poolIdIndex: 0,
-            tokenInIndex: 0,
-            tokenOutIndex: 1,
+            assetInIndex: 0,
+            assetOutIndex: 1,
             amount: 10,
           },
           {
             poolIdIndex: 1,
-            tokenInIndex: 0,
-            tokenOutIndex: 1,
+            assetInIndex: 0,
+            assetOutIndex: 1,
             amount: 10,
           },
         ],
@@ -200,14 +195,14 @@ describe('Vault - swap queries', () => {
         [
           {
             poolIdIndex: 0,
-            tokenInIndex: 0,
-            tokenOutIndex: 1,
+            assetInIndex: 0,
+            assetOutIndex: 1,
             amount: 20,
           },
           {
             poolIdIndex: 1,
-            tokenInIndex: 2,
-            tokenOutIndex: 0,
+            assetInIndex: 2,
+            assetOutIndex: 0,
             amount: 0,
           },
         ],
@@ -217,7 +212,7 @@ describe('Vault - swap queries', () => {
 
     describe('error', () => {
       it('bubbles up revert reasons', async () => {
-        const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, tokenInIndex: 100, tokenOutIndex: 1, amount: 5 }]);
+        const invalidSwap: Swap[] = toSwaps([{ poolIdIndex: 0, assetInIndex: 100, assetOutIndex: 1, amount: 5 }]);
         const tx = vault.queryBatchSwap(SWAP_KIND.GIVEN_OUT, invalidSwap, tokens.addresses, funds);
         await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
       });
