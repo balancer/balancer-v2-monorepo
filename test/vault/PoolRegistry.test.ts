@@ -12,7 +12,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
-import { lastBlockNumber } from '../helpers/utils';
+import { lastBlockNumber } from '../../lib/helpers/time';
 
 describe('Vault - pool registry', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;

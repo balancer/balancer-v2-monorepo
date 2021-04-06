@@ -13,7 +13,7 @@ import { deploy } from '../../lib/helpers/deploy';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
 import * as expectEvent from '../helpers/expectEvent';
-import { lastBlockNumber } from '../helpers/utils';
+import { lastBlockNumber } from '../../lib/helpers/time';
 
 const OP_KIND = { DEPOSIT: 0, WITHDRAW: 1, UPDATE: 2 };
 
