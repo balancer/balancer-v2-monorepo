@@ -26,7 +26,7 @@ async function measureDeployment(name: string, args: Array<unknown>): Promise<Co
   console.log(`Deployment costs ${printGas(deployReceipt.gasUsed.toNumber())}`);
 
   const deployedBytecode = await ethers.provider.getCode(contract.address);
-  const bytecodeSizeKb = deployedBytecode.slice(2).length / 2 / 1024;
+  const bytecodeSizeKb = (deployedBytecode.slice(2).length / 2 / 1024).toFixed(3);
 
   console.log(`Deployed bytecode size is ${bytecodeSizeKb} kB`);
 
