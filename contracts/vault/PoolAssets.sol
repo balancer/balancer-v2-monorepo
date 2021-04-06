@@ -53,11 +53,15 @@ abstract contract PoolAssets is
         view
         override
         withRegisteredPool(poolId)
-        returns (IERC20[] memory tokens, uint256[] memory balances)
+        returns (
+            IERC20[] memory tokens,
+            uint256[] memory balances,
+            uint256 maxBlockNumber
+        )
     {
         bytes32[] memory rawBalances;
         (tokens, rawBalances) = _getPoolTokens(poolId);
-        balances = rawBalances.totals();
+        (balances, maxBlockNumber) = rawBalances.totalsAndMaxBlockNumber();
     }
 
     function getPoolTokenInfo(bytes32 poolId, IERC20 token)

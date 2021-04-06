@@ -48,13 +48,14 @@ library Errors {
     uint256 internal constant MIN_TOKENS                                    = 200;
     uint256 internal constant MAX_TOKENS                                    = 201;
     uint256 internal constant MAX_SWAP_FEE                                  = 202;
-    uint256 internal constant MINIMUM_BPT                                   = 203;
-    uint256 internal constant CALLER_NOT_VAULT                              = 204;
-    uint256 internal constant UNINITIALIZED                                 = 205;
-    uint256 internal constant BPT_IN_MAX_AMOUNT                             = 206;
-    uint256 internal constant BPT_OUT_MIN_AMOUNT                            = 207;
-    uint256 internal constant UNHANDLED_JOIN_KIND                           = 208;
-    uint256 internal constant UNHANDLED_EXIT_KIND                           = 209;
+    uint256 internal constant MIN_SWAP_FEE                                  = 203;
+    uint256 internal constant MINIMUM_BPT                                   = 204;
+    uint256 internal constant CALLER_NOT_VAULT                              = 205;
+    uint256 internal constant UNINITIALIZED                                 = 206;
+    uint256 internal constant BPT_IN_MAX_AMOUNT                             = 207;
+    uint256 internal constant BPT_OUT_MIN_AMOUNT                            = 208;
+    uint256 internal constant UNHANDLED_JOIN_KIND                           = 209;
+    uint256 internal constant UNHANDLED_EXIT_KIND                           = 210;
 
     // Stable pool
     uint256 internal constant MIN_AMP                                       = 300;

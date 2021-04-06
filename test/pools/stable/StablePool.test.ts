@@ -48,7 +48,7 @@ describe('StablePool', function () {
       // The maximum number of tokens is 5
       const tokens = await TokenList.create(6, { sorted: true });
 
-      await expect(StablePool.create({ tokens })).to.be.revertedWith('MAX_STABLE_TOKENS');
+      await expect(StablePool.create({ tokens, swapFee: POOL_SWAP_FEE })).to.be.revertedWith('MAX_STABLE_TOKENS');
     });
   });
 
