@@ -12,14 +12,9 @@ import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
-import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
+import { FundManagement, Swap, SWAP_KIND } from '../../lib/helpers/trading';
 import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
-
-const SWAP_KIND = {
-  GIVEN_IN: 0,
-  GIVEN_OUT: 1,
-};
 
 type SingleSwap = {
   kind: number;
@@ -146,9 +141,9 @@ describe('Vault - swaps', () => {
           const swaps = [
             {
               poolId: mainPoolId,
-              tokenInIndex: 0, // ETH
-              tokenOutIndex: 1,
-              amountIn: bn(1e18),
+              assetInIndex: 0, // ETH
+              assetOutIndex: 1,
+              amount: bn(1e18),
               userData: '0x',
             },
           ];
@@ -157,7 +152,7 @@ describe('Vault - swaps', () => {
             () =>
               vault
                 .connect(sender)
-                .batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18) }),
+                .batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18) }),
             tokens,
             [
               { account: vault, changes: { WETH: 1e18, DAI: -2e18 } },
@@ -170,9 +165,9 @@ describe('Vault - swaps', () => {
           const swaps = [
             {
               poolId: mainPoolId,
-              tokenInIndex: 1,
-              tokenOutIndex: 0, // ETH
-              amountIn: bn(1e18),
+              assetInIndex: 1,
+              assetOutIndex: 0, // ETH
+              amount: bn(1e18),
               userData: '0x',
             },
           ];
@@ -183,7 +178,9 @@ describe('Vault - swaps', () => {
           const receipt: ContractReceipt = await (
             await expectBalanceChange(
               () =>
-                vault.connect(sender).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, { gasPrice }),
+                vault
+                  .connect(sender)
+                  .batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, { gasPrice }),
               tokens,
               [
                 { account: vault, changes: { WETH: -2e18, DAI: 1e18 } },
@@ -202,23 +199,23 @@ describe('Vault - swaps', () => {
           const swaps = [
             {
               poolId: mainPoolId,
-              tokenInIndex: 0, // ETH
-              tokenOutIndex: 1,
-              amountIn: bn(1e18),
+              assetInIndex: 0, // ETH
+              assetOutIndex: 1,
+              amount: bn(1e18),
               userData: '0x',
             },
 
             {
               poolId: mainPoolId,
-              tokenInIndex: 1,
-              tokenOutIndex: 0, // ETH
-              amountIn: bn(1e18),
+              assetInIndex: 1,
+              assetOutIndex: 0, // ETH
+              amount: bn(1e18),
               userData: '0x',
             },
           ];
 
           const receipt = await (
-            await vault.connect(sender).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline)
+            await vault.connect(sender).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline)
           ).wait();
 
           expectEvent.inReceipt(receipt, 'Swap', {
@@ -242,9 +239,9 @@ describe('Vault - swaps', () => {
           const swaps = [
             {
               poolId: mainPoolId,
-              tokenInIndex: 0, // ETH
-              tokenOutIndex: 1,
-              amountIn: bn(1e18),
+              assetInIndex: 0, // ETH
+              assetOutIndex: 1,
+              amount: bn(1e18),
               userData: '0x',
             },
           ];
@@ -252,7 +249,7 @@ describe('Vault - swaps', () => {
           await expect(
             vault
               .connect(sender)
-              .batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18).sub(1) })
+              .batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, { value: bn(1e18).sub(1) })
           ).to.be.revertedWith('INSUFFICIENT_ETH');
         });
 
@@ -260,9 +257,9 @@ describe('Vault - swaps', () => {
           const swaps = [
             {
               poolId: mainPoolId,
-              tokenInIndex: 0, // ETH
-              tokenOutIndex: 1,
-              amountIn: bn(1e18),
+              assetInIndex: 0, // ETH
+              assetOutIndex: 1,
+              amount: bn(1e18),
               userData: '0x',
             },
           ];
@@ -271,7 +268,7 @@ describe('Vault - swaps', () => {
 
           const gasPrice = 1;
           const receipt: ContractReceipt = await (
-            await vault.connect(sender).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, {
+            await vault.connect(sender).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, {
               value: bn(1e18).add(42), // Only 1e18 is required
               gasPrice,
             })
@@ -286,7 +283,7 @@ describe('Vault - swaps', () => {
 
       context('when the sender is an approved relayer', () => {
         sharedBeforeEach(async () => {
-          const role = roleId(vault, 'batchSwapGivenIn');
+          const role = roleId(vault, 'batchSwap');
           await authorizer.connect(admin).grantRole(role, other.address);
 
           await vault.connect(trader).changeRelayerAllowance(other.address, true);
@@ -296,9 +293,9 @@ describe('Vault - swaps', () => {
           const swaps = [
             {
               poolId: mainPoolId,
-              tokenInIndex: 0, // ETH
-              tokenOutIndex: 1,
-              amountIn: bn(1e18),
+              assetInIndex: 0, // ETH
+              assetOutIndex: 1,
+              amount: bn(1e18),
               userData: '0x',
             },
           ];
@@ -307,7 +304,7 @@ describe('Vault - swaps', () => {
 
           const gasPrice = 1;
           const receipt: ContractReceipt = await (
-            await vault.connect(other).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, {
+            await vault.connect(other).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, {
               value: bn(1e18).add(42), // Only 1e18 is required
               gasPrice,
             })
@@ -323,9 +320,9 @@ describe('Vault - swaps', () => {
           const swaps = [
             {
               poolId: mainPoolId,
-              tokenInIndex: 1,
-              tokenOutIndex: 0, // ETH
-              amountIn: bn(1e18),
+              assetInIndex: 1,
+              assetOutIndex: 0, // ETH
+              amount: bn(1e18),
               userData: '0x',
             },
           ];
@@ -334,7 +331,7 @@ describe('Vault - swaps', () => {
 
           const gasPrice = 1;
           const receipt: ContractReceipt = await (
-            await vault.connect(other).batchSwapGivenIn(swaps, tokenAddresses, funds, limits, deadline, {
+            await vault.connect(other).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokenAddresses, funds, limits, deadline, {
               value: 42,
               gasPrice,
             })
@@ -353,8 +350,8 @@ describe('Vault - swaps', () => {
     return input.swaps.map((data) => ({
       poolId: ((data.pool ?? 0) == 0 ? mainPoolId : secondaryPoolId) || ZERO_BYTES32,
       amount: data.amount.toString(),
-      tokenInIndex: data.in,
-      tokenOutIndex: data.out,
+      assetInIndex: data.in,
+      assetOutIndex: data.out,
       userData: data.data ?? '0x',
     }));
   }
@@ -365,8 +362,8 @@ describe('Vault - swaps', () => {
       kind,
       poolId: data.poolId,
       amount: data.amount,
-      assetIn: tokens.addresses[data.tokenInIndex] || ZERO_ADDRESS,
-      assetOut: tokens.addresses[data.tokenOutIndex] || ZERO_ADDRESS,
+      assetIn: tokens.addresses[data.assetInIndex] || ZERO_ADDRESS,
+      assetOut: tokens.addresses[data.assetOutIndex] || ZERO_ADDRESS,
       userData: data.userData,
     };
   }
@@ -445,13 +442,13 @@ describe('Vault - swaps', () => {
         it(`trades the expected amount ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
           const recipient = input.toOther ? other : trader;
-          const swaps = toSwapIn(parseSwap(input));
+          const swaps = parseSwap(input);
 
           const limits = Array(tokens.length).fill(MAX_INT256);
           const deadline = MAX_UINT256;
 
           await expectBalanceChange(
-            () => vault.connect(sender).batchSwapGivenIn(swaps, tokens.addresses, funds, limits, deadline),
+            () => vault.connect(sender).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds, limits, deadline),
             tokens,
             [{ account: recipient, changes }]
           );
@@ -483,12 +480,14 @@ describe('Vault - swaps', () => {
 
         it(`reverts ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
-          const swaps = toSwapIn(parseSwap(input));
+          const swaps = parseSwap(input);
 
           const limits = Array(tokens.length).fill(MAX_INT256);
           const deadline = MAX_UINT256;
 
-          const call = vault.connect(sender).batchSwapGivenIn(swaps, tokens.addresses, funds, limits, deadline);
+          const call = vault
+            .connect(sender)
+            .batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds, limits, deadline);
           defaultReason ? await expect(call).to.be.revertedWith(defaultReason) : await expect(call).to.be.reverted;
         });
       };
@@ -517,7 +516,7 @@ describe('Vault - swaps', () => {
                           context('when the relayer is whitelisted by the authorizer', () => {
                             sharedBeforeEach('grant role to relayer', async () => {
                               const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwapGivenIn');
+                              const batch = roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).grantRoles([single, batch], other.address);
                             });
 
@@ -541,7 +540,7 @@ describe('Vault - swaps', () => {
                           context('when the relayer is not whitelisted by the authorizer', () => {
                             sharedBeforeEach('revoke role from relayer', async () => {
                               const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwapGivenIn');
+                              const batch = roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).revokeRoles([single, batch], other.address);
                             });
 
@@ -916,13 +915,14 @@ describe('Vault - swaps', () => {
         it(`trades the expected amount ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
           const recipient = input.toOther ? other : trader;
-          const swaps = toSwapOut(parseSwap(input));
+          const swaps = parseSwap(input);
 
           const limits = Array(tokens.length).fill(MAX_INT256);
           const deadline = MAX_UINT256;
 
           await expectBalanceChange(
-            () => vault.connect(sender).batchSwapGivenOut(swaps, tokens.addresses, funds, limits, deadline),
+            () =>
+              vault.connect(sender).batchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds, limits, deadline),
             tokens,
             [{ account: recipient, changes }]
           );
@@ -958,12 +958,14 @@ describe('Vault - swaps', () => {
 
         it(`reverts ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
-          const swaps = toSwapOut(parseSwap(input));
+          const swaps = parseSwap(input);
 
           const limits = Array(tokens.length).fill(MAX_INT256);
           const deadline = MAX_UINT256;
 
-          const call = vault.connect(sender).batchSwapGivenOut(swaps, tokens.addresses, funds, limits, deadline);
+          const call = vault
+            .connect(sender)
+            .batchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds, limits, deadline);
 
           defaultReason ? await expect(call).to.be.revertedWith(defaultReason) : await expect(call).to.be.reverted;
         });
@@ -993,7 +995,7 @@ describe('Vault - swaps', () => {
                           context('when the relayer is whitelisted by the authorizer', () => {
                             sharedBeforeEach('grant role to relayer', async () => {
                               const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwapGivenOut');
+                              const batch = roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).grantRoles([single, batch], other.address);
                             });
 
@@ -1017,7 +1019,7 @@ describe('Vault - swaps', () => {
                           context('when the relayer is not whitelisted by the authorizer', () => {
                             sharedBeforeEach('revoke role from relayer', async () => {
                               const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwapGivenOut');
+                              const batch = roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).revokeRoles([single, batch], other.address);
                             });
 
