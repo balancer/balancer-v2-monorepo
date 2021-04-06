@@ -42,33 +42,6 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     using SafeCast for uint256;
     using BalanceAllocation for bytes32;
 
-    // Despite the external API having two separate functions for given in and given out, internally they are handled
-    // together to avoid unnecessary code duplication. This enum indicates which kind of swap we're processing.
-
-    // We use inline assembly to convert arrays of different struct types that have the same underlying data
-    // representation. This doesn't trigger any actual conversions or runtime analysis: it is just coercing the type
-    // system to reinterpret the data as another type.
-
-    /**
-     * @dev Converts an array of `SwapIn` into an array of `SwapRequest`, with no runtime cost.
-     */
-    function _toSwapRequests(SwapIn[] memory swapsIn) private pure returns (SwapRequest[] memory swapRequests) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            swapRequests := swapsIn
-        }
-    }
-
-    /**
-     * @dev Converts an array of `SwapOut` into an array of `InternalSwap`, with no runtime cost.
-     */
-    function _toSwapRequests(SwapOut[] memory swapsOut) private pure returns (SwapRequest[] memory swapRequests) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            swapRequests := swapsOut
-        }
-    }
-
     // This struct is identical in layout to IPoolSwapStructs.SwapRequest
     struct InternalSwapRequest {
         SwapKind kind;
@@ -139,41 +112,25 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         return amountCalculated;
     }
 
-    function batchSwapGivenIn(
-        SwapIn[] memory swaps,
+    function batchSwap(
+        SwapKind kind,
+        BatchSwapStep[] memory swaps,
         IAsset[] memory assets,
         FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
-    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
-        return _batchSwap(_toSwapRequests(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_IN);
-    }
-
-    function batchSwapGivenOut(
-        SwapOut[] memory swaps,
-        IAsset[] memory assets,
-        FundManagement memory funds,
-        int256[] memory limits,
-        uint256 deadline
-    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (int256[] memory) {
-        return _batchSwap(_toSwapRequests(swaps), assets, funds, limits, deadline, SwapKind.GIVEN_OUT);
-    }
-
-    /**
-     * @dev Implements both `batchSwapGivenIn` and `batchSwapGivenIn`, depending on the `kind` value.
-     */
-    function _batchSwap(
-        SwapRequest[] memory swaps,
-        IAsset[] memory assets,
-        FundManagement memory funds,
-        int256[] memory limits,
-        uint256 deadline,
-        SwapKind kind
-    ) private returns (int256[] memory assetDeltas) {
+    )
+        external
+        payable
+        override
+        nonReentrant
+        noEmergencyPeriod
+        authenticateFor(funds.sender)
+        returns (int256[] memory assetDeltas)
+    {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
-
         InputHelpers.ensureInputLengthMatch(assets.length, limits.length);
 
         // Perform the swaps, updating the Pool token balances and computing the net Vault asset deltas.
@@ -181,12 +138,10 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
 
         // Process asset deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
-
         uint256 wrappedEth = 0;
         for (uint256 i = 0; i < assets.length; ++i) {
             IAsset asset = assets[i];
             int256 delta = assetDeltas[i];
-
             _require(delta <= limits[i], Errors.SWAP_LIMIT);
 
             if (delta > 0) {
@@ -254,7 +209,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
      * tokens, and negative if it should send them.
      */
     function _swapWithPools(
-        SwapRequest[] memory swaps,
+        BatchSwapStep[] memory swaps,
         IAsset[] memory assets,
         FundManagement memory funds,
         SwapKind kind
@@ -263,7 +218,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
 
         // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
         // loop iteration, increasing gas costs.
-        SwapRequest memory request;
+        BatchSwapStep memory request;
 
         // These store data about the previous swap here to implement multihop logic across swaps.
         IERC20 previousTokenCalculated;
@@ -271,11 +226,11 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             request = swaps[i];
-            bool withinBounds = request.tokenInIndex < assets.length && request.tokenOutIndex < assets.length;
+            bool withinBounds = request.assetInIndex < assets.length && request.assetOutIndex < assets.length;
             _require(withinBounds, Errors.OUT_OF_BOUNDS);
 
-            IERC20 tokenIn = _translateToIERC20(assets[request.tokenInIndex]);
-            IERC20 tokenOut = _translateToIERC20(assets[request.tokenOutIndex]);
+            IERC20 tokenIn = _translateToIERC20(assets[request.assetInIndex]);
+            IERC20 tokenOut = _translateToIERC20(assets[request.assetOutIndex]);
             _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
 
             // Sentinel value for multihop logic
@@ -309,8 +264,8 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             emit Swap(request.poolId, tokenIn, tokenOut, amountIn, amountOut);
 
             // Accumulate Vault deltas across swaps
-            assetDeltas[request.tokenInIndex] = assetDeltas[request.tokenInIndex].add(amountIn.toInt256());
-            assetDeltas[request.tokenOutIndex] = assetDeltas[request.tokenOutIndex].sub(amountOut.toInt256());
+            assetDeltas[request.assetInIndex] = assetDeltas[request.assetInIndex].add(amountIn.toInt256());
+            assetDeltas[request.assetOutIndex] = assetDeltas[request.assetOutIndex].sub(amountOut.toInt256());
         }
     }
 
@@ -481,7 +436,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     // This function is not marked as `nonReentrant` because the underlying mechanism relies on reentrancy
     function queryBatchSwap(
         SwapKind kind,
-        SwapRequest[] memory swaps,
+        BatchSwapStep[] memory swaps,
         IAsset[] memory assets,
         FundManagement memory funds
     ) external override returns (int256[] memory) {
