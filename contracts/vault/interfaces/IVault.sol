@@ -96,7 +96,7 @@ interface IVault {
     // the same kind (deposit, withdraw or transfer) at once.
 
     /**
-     * @dev Data for Internal Balance deposits and withdrawals, which include the possibility for ETH to be sent and
+     * @dev Data for Internal Balance operations which include the possibility for ETH to be sent and
      * received without manual WETH wrapping or unwrapping.
      */
     struct UserBalanceOp {
@@ -114,30 +114,35 @@ interface IVault {
 
     /**
      * @dev Performs a set of asset balance operations (deposit internal, withdraw internal, transfer internal, or
-     * transfer external) in the Vault. Array input allows users to manage multiple operations in a single transaction.
+     * transfer external) in the Vault. The array input allows users to make multiple operations in a single transaction.
      *
      * For each operation, if the caller is not `sender`, it must be an authorized relayer for them.
      */
     function manageUserBalance(UserBalanceOp[] memory ops) external payable;
 
     /**
-     * `DEPOSIT_INTERNAL` increases the Internal Balance of each `recipient account` transferring tokens from the
-     * corresponding `sender`. The senders must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     * `DEPOSIT_INTERNAL` increases the Internal Balance of the `recipient` account by  transferring tokens from the
+     * corresponding `sender`. The sender must have allowed the Vault to use their tokens via `IERC20.approve()`.
      * ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call. It will be
      * wrapped into WETH and deposited as that token. Any ETH amount remaining will be sent back to the caller (not the
-     * sender, which is relevant for relayers). Reverts if ETH was forwarded but not used in any transfer. Emits
-     * `InternalBalanceChanged` events.
+     * sender, which is relevant for relayers). 
+     * Emits an `InternalBalanceChanged` event.
      *
-     * `WITHDRAW_INTERNAL` decreases the Internal Balance of each `sender` to the corresponding `recipient` account.
+     * `WITHDRAW_INTERNAL` decreases the Internal Balance of the `sender` by transferring tokens to the 
+     * `recipient` account.
      * ETH can be used by passing the ETH sentinel value as the asset. This will deduct WETH instead, unwrap it and send
-     * it to the recipient.the Pool's cash, but increase its managed balance, leaving the total balance unchanged. Emits
-     * `InternalBalanceChanged` events.
+     * it to the recipient.
+     * Emits an `InternalBalanceChanged` event.
      *
-     * `TRANSFER_INTERNAL` transfers tokens from the Internal Balance of each `sender` account to the Internal Balances
-     * of each `recipient`. It doesn't allow using the ETH sentinel. Emits `InternalBalanceChanged` events.
+     * `TRANSFER_INTERNAL` transfers tokens from the Internal Balance the `sender` account to the Internal Balances
+     * of `recipient`. 
+     * Reverts if the ETH sentinel value is passed.
+     * Emit an `InternalBalanceChanged` event.
      *
-     * `TRANSFER_EXTERNAL` transfers tokens from the Internal Balance of each `sender` account to the Internal Balances
-     * of each `recipient`. It doesn't allow using the ETH sentinel. Emits `ExternalBalanceTransfer` events.
+     * `TRANSFER_EXTERNAL` transfers tokens from the Internal Balance of the `sender` account to the Internal Balances
+     * of the `recipient`.
+     * Reverts if the ETH sentinel value is passed.
+     * Emit an `ExternalBalanceTransfer` event.
      */
     enum UserBalanceOpKind { DEPOSIT_INTERNAL, WITHDRAW_INTERNAL, TRANSFER_INTERNAL, TRANSFER_EXTERNAL }
 

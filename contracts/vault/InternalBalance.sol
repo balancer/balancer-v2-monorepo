@@ -48,6 +48,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Vau
     }
 
     function manageUserBalance(UserBalanceOp[] memory ops) external payable override nonReentrant noEmergencyPeriod {
+        // Declaring these variables outside of the loop results in a more gas-efficient implementation
         IAsset asset;
         address sender;
         uint256 amount;
@@ -78,7 +79,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Vau
 
                 (op.kind == UserBalanceOpKind.TRANSFER_INTERNAL)
                     ? _transferInternalBalance(token, sender, recipient, amount)
-                    : _transferToExternalBalance(token, sender, recipient, amount);
+                    : _transferToExternalBalance(token, sender, recipient, amount); // TRANSFER_EXTERNAL
             }
         }
 
@@ -102,8 +103,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Vau
         address recipient,
         uint256 amount
     ) private {
-        IERC20 token = _translateToIERC20(asset);
-        _decreaseInternalBalance(sender, token, amount, false);
+        _decreaseInternalBalance(sender, _translateToIERC20(asset), amount, false);
         _sendAsset(asset, amount, payable(recipient), false);
     }
 
@@ -172,7 +172,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Vau
     }
 
     /**
-     * @dev Decodes a user balance op and validates the actual sender is allowed to operate
+     * @dev Decodes a user balance operation and validates that the contract caller is allowed to operate.
      */
     function _validateUserBalanceOp(UserBalanceOp memory op, bool wasAuthenticated)
         private
