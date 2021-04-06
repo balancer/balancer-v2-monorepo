@@ -59,7 +59,7 @@ abstract contract ReentrancyGuard {
     }
 
     function _enterNonReentrant() private {
-        // On the first call to nonReentrant, _notEntered will be true
+        // On the first call to nonReentrant, _status will be _NOT_ENTERED
         _require(_status != _ENTERED, Errors.REENTRANCY);
 
         // Any calls to nonReentrant after this point will fail

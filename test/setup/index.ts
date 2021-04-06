@@ -88,7 +88,7 @@ chai.use(function (chai, utils) {
         try {
           // Run catch function
           const catchResult = await assertion.catch(revert);
-          // If the catch function didn't throw then return it because it did match what we were expecting
+          // If the catch function didn't throw, then return it because it did match what we were expecting
           return catchResult;
         } catch (error) {
           // If the catch didn't throw because another reason was expected, re-throw the error

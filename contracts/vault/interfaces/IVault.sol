@@ -113,8 +113,9 @@ interface IVault {
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Performs a set of asset balance operations (deposit internal, withdraw internal, transfer internal, or
-     * transfer external) in the Vault. The array input allows users to make multiple operations in a single transaction.
+     * @dev Performs a set of user balance operations (deposit internal, withdraw internal, transfer internal, or
+     * transfer external) in the Vault. The array input allows users to make multiple operations in a single
+     * transaction.
      *
      * For each operation, if the caller is not `sender`, it must be an authorized relayer for them.
      */
@@ -125,17 +126,17 @@ interface IVault {
      * corresponding `sender`. The sender must have allowed the Vault to use their tokens via `IERC20.approve()`.
      * ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call. It will be
      * wrapped into WETH and deposited as that token. Any ETH amount remaining will be sent back to the caller (not the
-     * sender, which is relevant for relayers). 
+     * sender, which is relevant for relayers).
      * Emits an `InternalBalanceChanged` event.
      *
-     * `WITHDRAW_INTERNAL` decreases the Internal Balance of the `sender` by transferring tokens to the 
+     * `WITHDRAW_INTERNAL` decreases the Internal Balance of the `sender` by transferring tokens to the
      * `recipient` account.
      * ETH can be used by passing the ETH sentinel value as the asset. This will deduct WETH instead, unwrap it and send
      * it to the recipient.
      * Emits an `InternalBalanceChanged` event.
      *
      * `TRANSFER_INTERNAL` transfers tokens from the Internal Balance the `sender` account to the Internal Balances
-     * of `recipient`. 
+     * of `recipient`.
      * Reverts if the ETH sentinel value is passed.
      * Emit an `InternalBalanceChanged` event.
      *
@@ -688,4 +689,20 @@ interface IVault {
      * @dev Returns the current protocol fee module.
      */
     function getProtocolFeesCollector() external view returns (ProtocolFeesCollector);
+
+    /**
+     * @dev Safety mechanism to halt most Vault operations in the event of an emergency - typically detection
+     * of an error in some part of the system.
+     *
+     * The emergency stop can only be activated during an initial time period, after which it is forever disabled.
+     *
+     * While the emergency stop is active, the following features are disabled:
+     * - depositing and transferring internal balance
+     * - transferring external balance (using the Vault's allowance)
+     * - swaps
+     * - joining Pools
+     *
+     * Internal balance can still be withdrawn, and Pools exited.
+     */
+    function setEmergencyPeriod(bool active) external;
 }

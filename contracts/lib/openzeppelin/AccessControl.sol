@@ -84,7 +84,7 @@ abstract contract AccessControl is Context {
     /**
      * @dev Returns `true` if `account` has been granted `role`.
      */
-    function hasRole(bytes32 role, address account) public view returns (bool) {
+    function hasRole(bytes32 role, address account) public view virtual returns (bool) {
         return _roles[role].members.contains(account);
     }
 
@@ -141,7 +141,7 @@ abstract contract AccessControl is Context {
     /**
      * @dev Revokes `role` from `account`.
      *
-     * If `account` had been granted `role`, emits a {RoleRevoked} event.
+     * If `account` had already been granted `role`, emits a {RoleRevoked} event.
      *
      * Requirements:
      *

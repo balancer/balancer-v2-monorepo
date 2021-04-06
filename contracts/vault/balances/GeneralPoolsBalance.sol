@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./BalanceAllocation.sol";
 import "../../lib/helpers/EnumerableMap.sol";
 
-contract GeneralPoolsBalance {
+abstract contract GeneralPoolsBalance {
     using BalanceAllocation for bytes32;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 

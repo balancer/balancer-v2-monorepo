@@ -242,7 +242,6 @@ library EnumerableSet {
         return address(uint256(_at(set._inner, index)));
     }
 
-
     // UintSet
 
     struct UintSet {

@@ -19,8 +19,8 @@ import "../vault/interfaces/IAuthorizer.sol";
 
 /**
  * @dev Base authorization layer implementation for pools. It shares the same concept as the one defined for the Vault.
- * It's built on top of OpenZeppelin's Access Control, which allows to define specific roles to control the access of
- * external accounts to the different functionalities of the contract.
+ * It's built on top of OpenZeppelin's Access Control, which allows defining specific roles to control what access
+ * external accounts have to specific contract functions.
  */
 abstract contract BasePoolAuthorization is Authentication {
     function getAuthorizer() external view returns (IAuthorizer) {

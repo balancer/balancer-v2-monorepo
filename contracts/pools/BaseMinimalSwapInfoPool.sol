@@ -21,7 +21,7 @@ import "../vault/interfaces/IMinimalSwapInfoPool.sol";
 /**
  * @dev Extension of `BasePool`, adding a handler for `IMinimalSwapInfoPool.onSwap`.
  *
- * Derived contracts must implement `_onSapGivenIn` and `_onSwapGivenOut` along with `BasePool`'s virtual functions.
+ * Derived contracts must implement `_onSwapGivenIn` and `_onSwapGivenOut` along with `BasePool`'s virtual functions.
  */
 abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
     constructor(
@@ -58,7 +58,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
+            // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
             request.amount = _subtractSwapFee(request.amount);
 
             // All token amounts are upscaled.
@@ -78,16 +78,16 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
 
             uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut);
 
-            // amountIn are tokens entering the Pool, so we round up.
+            // amountIn tokens are entering the Pool, so we round up.
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
 
-            // Fees are added after scaling happens, to reduce complexity of rounding direction analysis.
+            // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
             return _addSwapFee(amountIn);
         }
     }
 
     /*
-     * @dev Called a swap with the Pool occurs, where the amount of tokens to grant to the Pool is known.
+     * @dev Called when a swap with the Pool occurs, where the amount of tokens entering the Pool is known.
      *
      * Returns the amount of tokens that will be taken from the Pool in return.
      *
@@ -104,14 +104,14 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
     ) internal view virtual returns (uint256);
 
     /*
-     * @dev Called a swap with the Pool occurs, where the amount of tokens to take from the Pool is known.
+     * @dev Called when a swap with the Pool occurs, where the amount of tokens exiting the Pool is known.
      *
      * Returns the amount of tokens that will be granted to the Pool in return.
      *
      * All amounts inside `swapRequest`, `balanceTokenIn` and `balanceTokenOut` are upscaled.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
-     * to it and returning it to the Vault.
+     * and returning it to the Vault.
      */
     function _onSwapGivenOut(
         SwapRequest memory swapRequest,
