@@ -51,8 +51,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKENS = 8;
 
-    // 1e16 = 1%, 1e18 = 100%
-    uint256 private constant _MAX_SWAP_FEE = 10e16;
+    // 1e18 = 100%, 1e17 = 10%, 1e12 = 0,0001%,
+    uint256 private constant _MAX_SWAP_FEE = 1e17;
+    uint256 private constant _MIN_SWAP_FEE = 1e12;
 
     uint256 private constant _MINIMUM_BPT = 10**6;
 
@@ -106,6 +107,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // order of token-specific parameters (such as token weights) will not change.
         InputHelpers.ensureArrayIsSorted(tokens);
 
+        _require(swapFee >= _MIN_SWAP_FEE, Errors.MIN_SWAP_FEE);
         _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
 
         bytes32 poolId = vault.registerPool(specialization);
@@ -157,6 +159,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     // Caller must be approved by the Vault's Authorizer
     function setSwapFee(uint256 swapFee) external virtual authenticate {
+        _require(swapFee >= _MIN_SWAP_FEE, Errors.MIN_SWAP_FEE);
         _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
 
         _swapFee = swapFee;
