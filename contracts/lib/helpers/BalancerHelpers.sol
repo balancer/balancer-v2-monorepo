@@ -94,15 +94,12 @@ contract BalancerHelpers is AssetHelpers {
         IERC20[] memory actualTokens;
         IERC20[] memory expectedTokens = _translateToIERC20(expectedAssets);
 
-        latestBlockNumberUsed = 0;
-        (actualTokens, balances) = vault.getPoolTokens(poolId);
+        (actualTokens, balances, latestBlockNumberUsed) = vault.getPoolTokens(poolId);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             IERC20 token = actualTokens[i];
             _require(token == expectedTokens[i], Errors.TOKENS_MISMATCH);
-            (, , uint256 blockNumber, ) = vault.getPoolTokenInfo(poolId, token);
-            latestBlockNumberUsed = Math.max(latestBlockNumberUsed, blockNumber);
         }
     }
 }

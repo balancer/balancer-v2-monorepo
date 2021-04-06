@@ -89,16 +89,6 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev Returns the total balance for each entry in `balances`.
-     */
-    function totals(bytes32[] memory balances) internal pure returns (uint256[] memory results) {
-        results = new uint256[](balances.length);
-        for (uint256 i = 0; i < results.length; i++) {
-            results[i] = total(balances[i]);
-        }
-    }
-
-    /**
      * @dev Returns the total balance for each entry in `balances`, as well as the latest block number when any of them
      * was last updated.
      */

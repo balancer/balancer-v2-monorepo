@@ -265,7 +265,14 @@ interface IVault {
      * Total balances include both tokens held by the Vault and those withdrawn by the Pool's Asset Managers. These are
      * the amounts used by joins, exits and swaps.
      */
-    function getPoolTokens(bytes32 poolId) external view returns (IERC20[] memory tokens, uint256[] memory balances);
+    function getPoolTokens(bytes32 poolId)
+        external
+        view
+        returns (
+            IERC20[] memory tokens,
+            uint256[] memory balances,
+            uint256 maxBlockNumber
+        );
 
     /**
      * @dev Returns detailed information for a Pool's registered token.

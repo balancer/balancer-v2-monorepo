@@ -18,6 +18,8 @@ export const advanceTime = async (seconds: BigNumberish): Promise<void> => {
   await ethers.provider.send('evm_mine', []);
 };
 
+export const lastBlockNumber = async (): Promise<number> => Number(await network.provider.send('eth_blockNumber'));
+
 export const SECOND = 1;
 export const MINUTE = SECOND * 60;
 export const HOUR = MINUTE * 60;

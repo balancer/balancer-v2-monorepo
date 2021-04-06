@@ -1,5 +1,5 @@
 import { times } from 'lodash';
-import { ethers, network } from 'hardhat';
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -16,6 +16,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
+import { lastBlockNumber } from '../../lib/helpers/time';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
@@ -414,7 +415,7 @@ describe('Vault - join pool', () => {
       });
 
       it('updates the latest block number used for all tokens', async () => {
-        const currentBlockNumber = Number(await network.provider.send('eth_blockNumber'));
+        const currentBlockNumber = await lastBlockNumber();
 
         await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
 
