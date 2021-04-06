@@ -2,7 +2,6 @@
 
 pragma solidity ^0.7.0;
 
-import "../../vault/interfaces/IAuthorizer.sol";
 import "../helpers/BalancerErrors.sol";
 
 import "./EnumerableSet.sol";
