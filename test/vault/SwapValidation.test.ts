@@ -3,17 +3,17 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
 import { encodeJoin } from '../helpers/mockPool';
+import TokenList from '../helpers/models/tokens/TokenList';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { fromNow } from '../../lib/helpers/time';
 import { GeneralPool } from '../../lib/helpers/pools';
+import { FundManagement, Swap, SWAP_KIND } from '../../lib/helpers/trading';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 describe('Vault - swap validation', () => {
   let vault: Contract;
@@ -21,11 +21,6 @@ describe('Vault - swap validation', () => {
   let lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
 
   let poolIds: string[];
-
-  const SWAP_KIND = {
-    GIVEN_IN: 0,
-    GIVEN_OUT: 1,
-  };
 
   before(async () => {
     [, lp, trader, other] = await ethers.getSigners();
@@ -71,15 +66,15 @@ describe('Vault - swap validation', () => {
   beforeEach('create random swaps', () => {
     const randomInt = (max: number) => Math.floor(Math.random() * Math.floor(max));
 
-    const tokenInIndex = randomInt(tokens.length);
-    const tokenOutIndex = tokenInIndex == 0 ? tokenInIndex + 1 : tokenInIndex - 1; // Must not equal token in index
+    const assetInIndex = randomInt(tokens.length);
+    const assetOutIndex = assetInIndex == 0 ? assetInIndex + 1 : assetInIndex - 1; // Must not equal token in index
 
     swaps = [];
     for (let i = 0; i < 10; ++i) {
       swaps.push({
         poolId: poolIds[randomInt(poolIds.length)],
-        tokenInIndex,
-        tokenOutIndex,
+        assetInIndex,
+        assetOutIndex,
         amount: bn(randomInt(1e18)),
         userData: '0x',
       });
@@ -88,7 +83,7 @@ describe('Vault - swap validation', () => {
 
   context('in swaps given in', () => {
     const doSwap = (funds: FundManagement, limits: BigNumber[], deadline: BigNumber): Promise<ContractTransaction> => {
-      return vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokens.addresses, funds, limits, deadline);
+      return vault.connect(trader).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds, limits, deadline);
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
@@ -100,7 +95,7 @@ describe('Vault - swap validation', () => {
 
   context('in swaps given out', () => {
     const doSwap = (funds: FundManagement, limits: BigNumber[], deadline: BigNumber): Promise<ContractTransaction> => {
-      return vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokens.addresses, funds, limits, deadline);
+      return vault.connect(trader).batchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds, limits, deadline);
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
