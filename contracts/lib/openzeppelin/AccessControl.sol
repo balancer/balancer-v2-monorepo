@@ -85,7 +85,7 @@ abstract contract AccessControl is Context {
     /**
      * @dev Returns `true` if `account` has been granted `role`.
      */
-    function hasRole(bytes32 role, address account) public view returns (bool) {
+    function hasRole(bytes32 role, address account) public view virtual returns (bool) {
         return _roles[role].members.contains(account);
     }
 
@@ -121,17 +121,6 @@ abstract contract AccessControl is Context {
      */
     function getRoleAdmin(bytes32 role) public view returns (bytes32) {
         return _roles[role].adminRole;
-    }
-
-    /**
-     * @dev Change the admin that controls `role`. See {grantRole} and
-     * {revokeRole}.
-     *
-     */
-    function setRoleAdmin(bytes32 role, bytes32 adminRole) public virtual {
-        _require(hasRole(_roles[role].adminRole, _msgSender()), Errors.SET_ROLE_SENDER_NOT_ADMIN);
-
-        _setRoleAdmin(role, adminRole);
     }
 
     /**

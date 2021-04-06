@@ -14,17 +14,17 @@
 
 pragma solidity ^0.7.0;
 
-import "../lib/helpers/InputHelpers.sol";
+import "./interfaces/IAuthorizer.sol";
 import "../lib/openzeppelin/AccessControl.sol";
+import "../lib/helpers/InputHelpers.sol";
 
-/**
- * @dev There is an IAuthorizer interface that defines `hasRole`, but this function is already
- * defined in AccessControl, so we cannot implement the interface here (and do not want to add
- * it to OpenZeppelin's AccessControl)
- */
-contract Authorizer is AccessControl {
+contract Authorizer is AccessControl, IAuthorizer {
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    function hasRole(bytes32 role, address account) public view override(IAuthorizer, AccessControl) returns (bool) {
+        return AccessControl.hasRole(role, account);
     }
 
     /**

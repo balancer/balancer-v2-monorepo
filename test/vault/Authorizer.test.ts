@@ -65,21 +65,6 @@ describe('Authorizer', () => {
         expect(await authorizer.hasRole(ROLE_2, grantee.address)).to.be.false;
         expect(await authorizer.hasRole(ROLE_1, other.address)).to.be.false;
       });
-
-      it('changes the admin of a role', async () => {
-        await authorizer.grantRolesToMany(ROLES, [grantee.address, other.address]);
-
-        expect(await authorizer.hasRole(ROLE_1, grantee.address)).to.be.true;
-
-        await authorizer.setRoleAdmin(ROLE_1, NEW_ADMIN_ROLE);
-
-        expect(await authorizer.getRoleAdmin(ROLE_1)).to.equal(NEW_ADMIN_ROLE);
-        expect(await authorizer.hasRole(ROLE_1, grantee.address)).to.be.true;
-
-        await expect(authorizer.setRoleAdmin(ROLE_1, DEFAULT_ADMIN_ROLE)).to.be.revertedWith(
-          'SET_ROLE_SENDER_NOT_ADMIN'
-        );
-      });
     });
 
     context('when the sender is not the admin', () => {
