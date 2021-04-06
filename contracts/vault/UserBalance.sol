@@ -27,7 +27,7 @@ import "../lib/openzeppelin/SafeCast.sol";
 import "./VaultAuthorization.sol";
 import "./AssetTransfersHandler.sol";
 
-abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, VaultAuthorization {
+abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAuthorization {
     using Math for uint256;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
@@ -47,14 +47,15 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Vau
         }
     }
 
-    function manageUserBalance(UserBalanceOp[] memory ops) external payable override nonReentrant noEmergencyPeriod {
+    function manageUserBalance(UserBalanceOp[] memory ops) external payable override nonReentrant {
         // Declaring these variables outside of the loop results in a more gas-efficient implementation
         IAsset asset;
         address sender;
         uint256 amount;
         address recipient;
-        bool authenticated = false;
         uint256 wrappedEth = 0;
+        bool noEmergency = false;
+        bool authenticated = false;
 
         UserBalanceOp memory op;
         for (uint256 i = 0; i < ops.length; i++) {
@@ -63,23 +64,32 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Vau
 
             if (op.kind == UserBalanceOpKind.WITHDRAW_INTERNAL) {
                 _withdrawFromInternalBalance(asset, sender, recipient, amount);
-            } else if (op.kind == UserBalanceOpKind.DEPOSIT_INTERNAL) {
-                _depositToInternalBalance(asset, sender, recipient, amount);
-
-                // Only deposits wrap ETH, in case some value was sent and there was no deposit it will be returned
-                // back to the msg.sender at the end of function
-                if (_isETH(asset)) {
-                    wrappedEth = wrappedEth.add(amount);
-                }
             } else {
-                // Transfers don't support assets. Therefore, we check no ETH sentinel was used before casting
-                _require(!_isETH(asset), Errors.CANNOT_USE_ETH_SENTINEL);
-                // Cast asset into IERC20 with no translation.
-                IERC20 token = _asIERC20(asset);
+                // Check emergency period for any other operation that is not a withdrawal
+                if (!noEmergency) {
+                    // This will revert in case the emergency period was triggered
+                    _ensureInactiveEmergencyPeriod();
+                    noEmergency = true;
+                }
 
-                (op.kind == UserBalanceOpKind.TRANSFER_INTERNAL)
-                    ? _transferInternalBalance(token, sender, recipient, amount)
-                    : _transferToExternalBalance(token, sender, recipient, amount); // TRANSFER_EXTERNAL
+                if (op.kind == UserBalanceOpKind.DEPOSIT_INTERNAL) {
+                    _depositToInternalBalance(asset, sender, recipient, amount);
+
+                    // Only deposits wrap ETH, in case some value was sent and there was no deposit it will be returned
+                    // back to the msg.sender at the end of function
+                    if (_isETH(asset)) {
+                        wrappedEth = wrappedEth.add(amount);
+                    }
+                } else {
+                    // Transfers don't support assets. Therefore, we check no ETH sentinel was used before casting
+                    _require(!_isETH(asset), Errors.CANNOT_USE_ETH_SENTINEL);
+                    // Cast asset into IERC20 with no translation.
+                    IERC20 token = _asIERC20(asset);
+
+                    (op.kind == UserBalanceOpKind.TRANSFER_INTERNAL)
+                        ? _transferInternalBalance(token, sender, recipient, amount)
+                        : _transferToExternalBalance(token, sender, recipient, amount); // TRANSFER_EXTERNAL
+                }
             }
         }
 
@@ -180,7 +190,7 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Vau
         returns (
             IAsset asset,
             address sender,
-            address recipient,
+            address payable recipient,
             uint256 amount,
             bool authenticated
         )

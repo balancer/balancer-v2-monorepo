@@ -5,15 +5,16 @@ import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import Token from '../helpers/models/tokens/Token';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 import TokenList, { ETH_TOKEN_ADDRESS } from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
-import { expectBalanceChange } from '../helpers/tokenBalance';
 
 import { bn } from '../../lib/helpers/numbers';
+import { MONTH } from '../../lib/helpers/time';
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 import { forceSendEth } from '../helpers/eth';
+import { expectBalanceChange } from '../helpers/tokenBalance';
 
 const OP_KIND = {
   DEPOSIT_INTERNAL: 0,
@@ -22,7 +23,7 @@ const OP_KIND = {
   TRANSFER_EXTERNAL: 3,
 };
 
-describe('Vault - internal balance', () => {
+describe('Vault - user balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
   let relayer: SignerWithAddress, otherRecipient: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
@@ -37,10 +38,10 @@ describe('Vault - internal balance', () => {
     weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, weth.address, 0, 0] });
+    vault = await deploy('Vault', { args: [authorizer.address, weth.address, MONTH, MONTH] });
   });
 
-  describe('deposit', () => {
+  describe('deposit internal balance', () => {
     const kind = OP_KIND.DEPOSIT_INTERNAL;
     const initialBalance = bn(10);
 
@@ -101,7 +102,7 @@ describe('Vault - internal balance', () => {
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: recipient.address,
-          asset: tokens.DAI.address,
+          token: tokens.DAI.address,
           delta: amount,
         });
       });
@@ -120,7 +121,7 @@ describe('Vault - internal balance', () => {
 
           context('when the given amount is approved by the sender', () => {
             sharedBeforeEach('approve tokens', async () => {
-              await tokens.DAI.approve(vault.address, initialBalance, { from: sender });
+              await tokens.DAI.approve(vault, initialBalance, { from: sender });
             });
 
             context('when tokens and balances match', () => {
@@ -215,7 +216,7 @@ describe('Vault - internal balance', () => {
 
           expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
             user: recipient.address,
-            asset: weth.address,
+            token: weth.address,
             delta: amount,
           });
         });
@@ -409,7 +410,7 @@ describe('Vault - internal balance', () => {
     });
   });
 
-  describe('withdraw', () => {
+  describe('withdraw internal balance', () => {
     const kind = OP_KIND.WITHDRAW_INTERNAL;
 
     const itHandlesWithdrawalsProperly = (depositedAmount: BigNumber, amount: BigNumber) => {
@@ -455,7 +456,7 @@ describe('Vault - internal balance', () => {
 
           expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
             user: sender.address,
-            asset: tokens.DAI.address,
+            token: tokens.DAI.address,
             delta: amount.mul(-1),
           });
         });
@@ -591,7 +592,7 @@ describe('Vault - internal balance', () => {
 
             expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
               user: sender.address,
-              asset: weth.address,
+              token: weth.address,
               delta: amount.mul(-1),
             });
           });
@@ -720,7 +721,7 @@ describe('Vault - internal balance', () => {
     });
   });
 
-  describe('transfer', () => {
+  describe('transfer internal balance', () => {
     const kind = OP_KIND.TRANSFER_INTERNAL;
 
     function itHandlesTransfersProperly(
@@ -832,25 +833,25 @@ describe('Vault - internal balance', () => {
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: sender.address,
-          asset: tokens.DAI.address,
+          token: tokens.DAI.address,
           delta: transferredAmounts.DAI.mul(-1),
         });
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: sender.address,
-          asset: tokens.MKR.address,
+          token: tokens.MKR.address,
           delta: transferredAmounts.MKR.mul(-1),
         });
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: recipient.address,
-          asset: tokens.DAI.address,
+          token: tokens.DAI.address,
           delta: transferredAmounts.DAI,
         });
 
         expectEvent.inReceipt(receipt, 'InternalBalanceChanged', {
           user: recipient.address,
-          asset: tokens.MKR.address,
+          token: tokens.MKR.address,
           delta: transferredAmounts.MKR,
         });
       });
@@ -1033,7 +1034,7 @@ describe('Vault - internal balance', () => {
     });
   });
 
-  describe('external transfer', () => {
+  describe('transfer external balance', () => {
     const balance = bn(10);
     const kind = OP_KIND.TRANSFER_EXTERNAL;
 
@@ -1068,7 +1069,7 @@ describe('Vault - internal balance', () => {
         expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0]);
       });
 
-      it('does not emit an event', async () => {
+      it('emits an event', async () => {
         const receipt = await (
           await vault.manageUserBalance([
             { kind, asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
@@ -1076,6 +1077,13 @@ describe('Vault - internal balance', () => {
         ).wait();
 
         expectEvent.notEmitted(receipt, 'InternalBalanceChanged');
+
+        expectEvent.inReceipt(receipt, 'ExternalBalanceTransfer', {
+          sender: sender.address,
+          recipient: recipient.address,
+          token: tokens.DAI.address,
+          amount,
+        });
       });
     };
 
@@ -1092,7 +1100,7 @@ describe('Vault - internal balance', () => {
 
           context('when the given amount is approved by the sender', () => {
             sharedBeforeEach('approve tokens', async () => {
-              await tokens.DAI.approve(vault.address, balance, { from: sender });
+              await tokens.DAI.approve(vault, balance, { from: sender });
             });
 
             context('when tokens and balances match', () => {
@@ -1225,6 +1233,174 @@ describe('Vault - internal balance', () => {
               ])
             ).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
+        });
+      });
+    });
+  });
+
+  describe('batch', () => {
+    type UserBalanceOp = {
+      kind: number;
+      amount: number;
+      asset: string;
+      sender: string;
+      recipient: string;
+    };
+
+    const op = (
+      kind: number,
+      token: Token,
+      amount: number,
+      from: SignerWithAddress,
+      to?: SignerWithAddress
+    ): UserBalanceOp => {
+      return { kind, asset: token.address, amount, sender: from.address, recipient: (to || from).address };
+    };
+
+    sharedBeforeEach('mint and approve tokens', async () => {
+      await tokens.mint({ to: sender, amount: bn(1000e18) });
+      await tokens.approve({ from: sender, to: vault });
+    });
+
+    sharedBeforeEach('allow relayer', async () => {
+      const role = roleId(vault, 'manageUserBalance');
+      await authorizer.connect(admin).grantRole(role, relayer.address);
+      await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
+      await vault.connect(recipient).changeRelayerAllowance(relayer.address, true);
+    });
+
+    context('when there is no emergency', () => {
+      context('when all the senders allowed the relayer', () => {
+        context('when all ops add up', () => {
+          it('succeeds', async () => {
+            const ops = [
+              op(OP_KIND.DEPOSIT_INTERNAL, tokens.DAI, 10, sender, recipient),
+              op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 20, sender, recipient),
+              op(OP_KIND.WITHDRAW_INTERNAL, tokens.DAI, 5, recipient),
+              op(OP_KIND.TRANSFER_INTERNAL, tokens.MKR, 8, recipient, otherRecipient),
+              op(OP_KIND.TRANSFER_INTERNAL, tokens.MKR, 3, recipient, sender),
+              op(OP_KIND.TRANSFER_EXTERNAL, tokens.MKR, 200, sender, otherRecipient),
+              op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 100, sender, sender),
+            ];
+
+            await vault.connect(relayer).manageUserBalance(ops);
+
+            const senderBalances = await vault.getInternalBalance(sender.address, tokens.addresses);
+            expect(senderBalances[0]).to.be.equal(0);
+            expect(senderBalances[1]).to.be.equal(103);
+
+            const recipientBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
+            expect(recipientBalances[0]).to.be.equal(5);
+            expect(recipientBalances[1]).to.be.equal(9);
+
+            const otherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokens.addresses);
+            expect(otherRecipientBalances[0]).to.be.equal(0);
+            expect(otherRecipientBalances[1]).to.be.equal(8);
+
+            expect(await tokens.MKR.balanceOf(otherRecipient)).to.be.equal(200);
+          });
+        });
+
+        context('when all ops do not add up', () => {
+          it('reverts', async () => {
+            const ops = [
+              op(OP_KIND.DEPOSIT_INTERNAL, tokens.DAI, 10, sender, recipient),
+              op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 20, sender, recipient),
+              op(OP_KIND.WITHDRAW_INTERNAL, tokens.DAI, 5, recipient),
+              op(OP_KIND.TRANSFER_INTERNAL, tokens.MKR, 8, recipient, otherRecipient),
+              op(OP_KIND.TRANSFER_INTERNAL, tokens.MKR, 3, recipient, sender),
+              op(OP_KIND.TRANSFER_EXTERNAL, tokens.MKR, 200, sender, otherRecipient),
+              op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 100, sender, sender),
+              op(OP_KIND.WITHDRAW_INTERNAL, tokens.MKR, 10, recipient),
+            ];
+
+            await expect(vault.connect(relayer).manageUserBalance(ops)).to.be.revertedWith(
+              'INSUFFICIENT_INTERNAL_BALANCE'
+            );
+          });
+        });
+      });
+
+      context('when one of the senders did not allow the relayer', () => {
+        it('reverts', async () => {
+          const ops = [
+            op(OP_KIND.DEPOSIT_INTERNAL, tokens.DAI, 10, sender, recipient),
+            op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 20, sender, recipient),
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.DAI, 5, recipient),
+            op(OP_KIND.TRANSFER_INTERNAL, tokens.MKR, 8, recipient, otherRecipient),
+            op(OP_KIND.TRANSFER_INTERNAL, tokens.MKR, 3, recipient, sender),
+            op(OP_KIND.TRANSFER_EXTERNAL, tokens.MKR, 200, sender, otherRecipient),
+            op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 100, sender, sender),
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.MKR, 1, otherRecipient),
+          ];
+
+          await expect(vault.connect(relayer).manageUserBalance(ops)).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+        });
+      });
+    });
+
+    context('when there is an emergency', () => {
+      sharedBeforeEach('deposit some internal balances', async () => {
+        const ops = [
+          op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 1, sender, sender),
+          op(OP_KIND.DEPOSIT_INTERNAL, tokens.DAI, 10, sender, recipient),
+          op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 20, sender, recipient),
+          op(OP_KIND.DEPOSIT_INTERNAL, tokens.DAI, 50, sender, otherRecipient),
+        ];
+
+        await vault.connect(relayer).manageUserBalance(ops);
+
+        await vault.connect(sender).changeRelayerAllowance(relayer.address, true);
+        await vault.connect(otherRecipient).changeRelayerAllowance(relayer.address, true);
+      });
+
+      sharedBeforeEach('activate emergency period', async () => {
+        const role = roleId(vault, 'setEmergencyPeriod');
+        await authorizer.connect(admin).grantRole(role, admin.address);
+        await vault.connect(admin).setEmergencyPeriod(true);
+      });
+
+      context('when only withdrawing internal balance', () => {
+        it('succeeds', async () => {
+          const ops = [
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.DAI, 10, otherRecipient),
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.MKR, 1, sender),
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.DAI, 5, recipient),
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.MKR, 8, recipient),
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.MKR, 3, recipient),
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.DAI, 35, otherRecipient),
+          ];
+
+          await vault.connect(relayer).manageUserBalance(ops);
+
+          const senderBalances = await vault.getInternalBalance(sender.address, tokens.addresses);
+          expect(senderBalances[0]).to.be.equal(0);
+          expect(senderBalances[1]).to.be.equal(0);
+
+          const recipientBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
+          expect(recipientBalances[0]).to.be.equal(5);
+          expect(recipientBalances[1]).to.be.equal(9);
+
+          const otherRecipientBalances = await vault.getInternalBalance(otherRecipient.address, tokens.addresses);
+          expect(otherRecipientBalances[0]).to.be.equal(5);
+          expect(otherRecipientBalances[1]).to.be.equal(0);
+        });
+      });
+
+      context('when trying to perform multiple ops', () => {
+        it('reverts', async () => {
+          const ops = [
+            op(OP_KIND.DEPOSIT_INTERNAL, tokens.DAI, 10, sender, recipient),
+            op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 20, sender, recipient),
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.DAI, 5, recipient, recipient),
+            op(OP_KIND.TRANSFER_INTERNAL, tokens.MKR, 8, recipient, otherRecipient),
+            op(OP_KIND.TRANSFER_INTERNAL, tokens.MKR, 3, recipient, sender),
+            op(OP_KIND.TRANSFER_EXTERNAL, tokens.MKR, 200, sender, otherRecipient),
+            op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 100, sender, sender),
+            op(OP_KIND.WITHDRAW_INTERNAL, tokens.MKR, 1, otherRecipient, recipient),
+          ];
+
+          await expect(vault.connect(relayer).manageUserBalance(ops)).to.be.revertedWith('EMERGENCY_PERIOD_ON');
         });
       });
     });
