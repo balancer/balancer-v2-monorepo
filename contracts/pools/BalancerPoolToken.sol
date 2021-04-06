@@ -115,7 +115,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         _move(sender, recipient, amount);
 
         if (msg.sender != sender && currentAllowance != uint256(-1)) {
-            _require(currentAllowance >= amount, Errors.INSUFFICIENT_ALLOWANCE);
+            // Because of the previous require, we know that if msg.sender != sender then currentAllowance >= amount
             _setAllowance(sender, msg.sender, currentAllowance - amount);
         }
 

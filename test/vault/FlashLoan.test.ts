@@ -10,6 +10,7 @@ import { roleId } from '../../lib/helpers/roles';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 
 describe('Vault - flash loans', () => {
   let admin: SignerWithAddress, minter: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
@@ -201,6 +202,14 @@ describe('Vault - flash loans', () => {
             .connect(other)
             .flashLoan(receiver.address, [tokens.MKR.address, tokens.DAI.address], [bn(100e18), bn(100e18)], '0x10')
         ).to.be.revertedWith('UNSORTED_TOKENS');
+      });
+
+      it('reverts if a token is invalid', async () => {
+        await expect(
+          vault
+            .connect(other)
+            .flashLoan(receiver.address, [tokens.MKR.address, ZERO_ADDRESS], [bn(100e18), bn(100e18)], '0x10')
+        ).to.be.revertedWith('INVALID_TOKEN');
       });
     });
   });
