@@ -51,9 +51,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKENS = 8;
 
-    // 1e18 = 100%, 1e17 = 10%, 1e12 = 0,0001%,
-    uint256 private constant _MAX_SWAP_FEE = 1e17;
+    // 1e18 = 100%, 1e17 = 10%, 1e12 = 0.0001%,
     uint256 private constant _MIN_SWAP_FEE = 1e12;
+    uint256 private constant _MAX_SWAP_FEE = 1e17;
 
     uint256 private constant _MINIMUM_BPT = 10**6;
 
