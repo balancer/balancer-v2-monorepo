@@ -1,3 +1,4 @@
+import { network } from 'hardhat';
 import { EthereumProvider } from 'hardhat/types';
 
 export async function takeSnapshot(provider: EthereumProvider): Promise<string> {
@@ -17,3 +18,5 @@ export async function getProvider(): Promise<EthereumProvider> {
   const hre = await import('hardhat');
   return hre.network.provider;
 }
+
+export const lastBlockNumber = async (): Promise<number> => Number(await network.provider.send('eth_blockNumber'));
