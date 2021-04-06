@@ -238,12 +238,6 @@ describe('Vault - exit pool', () => {
                   'USER_DOESNT_ALLOW_RELAYER'
                 );
               });
-
-              it('reverts when invalid', async () => {
-                await expect(vault.connect(lp).changeRelayerAllowance(lp.address, true)).to.been.revertedWith(
-                  'INVALID_RELAYER'
-                );
-              });
             });
           });
 
