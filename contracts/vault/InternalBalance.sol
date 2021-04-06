@@ -252,9 +252,6 @@ abstract contract InternalBalance is ReentrancyGuard, AssetTransfersHandler, Fee
             _authenticateCallerFor(sender);
         }
 
-        // Recipient cannot be the vault (or funds would be locked)
-        _require(transfer.recipient != address(this), Errors.INVALID_INTERNAL_BALANCE_ACCOUNT);
-
         asset = transfer.asset;
         amount = transfer.amount;
         recipient = transfer.recipient;

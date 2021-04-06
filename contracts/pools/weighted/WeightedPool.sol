@@ -25,7 +25,7 @@ import "./WeightedPoolUserDataHelpers.sol";
 
 // This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
 // reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus total
-// count, resulting in a large number of these.
+// count, resulting in a large number of state variables.
 
 contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     using FixedPoint for uint256;

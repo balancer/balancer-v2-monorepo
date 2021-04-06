@@ -753,9 +753,18 @@ interface IVault {
     function getProtocolFeesCollector() external view returns (ProtocolFeesCollector);
 
     /**
-     * @dev Failsafe mechanism to halt trading in the Vault or a specific pool, in the event of an emergency.
-     * This can only be called for a limited time, after which the Vault becomes trustless. If an emergency is
-     * declared, the Vault blocks all interactions except exiting pools and withdrawing from internal balances.
+     * @dev Safety mechanism to halt most Vault operations in the event of an emergency - typically detection
+     * of an error in some part of the system.
+     *
+     * The emergency stop can only be activated during an initial time period, after which it is forever disabled.
+     *
+     * While the emergency stop is active, the following features are disabled:
+     * - depositing and transferring internal balance
+     * - transferring external balance (using the Vault's allowance)
+     * - swaps
+     * - joining Pools
+     *
+     * Internal balance can still be withdrawn, and Pools exited.
      */
     function setEmergencyPeriod(bool active) external;
 }

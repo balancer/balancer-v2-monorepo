@@ -43,7 +43,7 @@ import "./Context.sol";
  * grant and revoke this role. Extra precautions should be taken to secure
  * accounts that have been granted it.
  */
-abstract contract AccessControl is Context, IAuthorizer {
+abstract contract AccessControl is Context {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     struct RoleData {
@@ -85,7 +85,7 @@ abstract contract AccessControl is Context, IAuthorizer {
     /**
      * @dev Returns `true` if `account` has been granted `role`.
      */
-    function hasRole(bytes32 role, address account) public view override returns (bool) {
+    function hasRole(bytes32 role, address account) public view returns (bool) {
         return _roles[role].members.contains(account);
     }
 
