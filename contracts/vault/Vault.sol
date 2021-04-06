@@ -32,7 +32,7 @@ import "./Swaps.sol";
  *
  * Roughly speaking, these are the contents of each sub-contract:
  *
- *  - `InternalBalance`: deposit, withdrawal and transfer of Internal Balance.
+ *  - `UserBalance`: manage user balances (Internal Balance operations and external balance transfers)
  *  - `Fees`: set and compute protocol fees.
  *  - `FlashLoanProvider`: flash loans.
  *  - `PoolRegistry`: Pool registration, joining, exiting, and Asset Manager interactions.

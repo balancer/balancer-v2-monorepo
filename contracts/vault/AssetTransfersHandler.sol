@@ -149,7 +149,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     }
 
     // This contract uses virtual internal functions instead of inheriting from the modules that implement them (in
-    // this case, Fees and InternalBalance) in order to decouple it from the rest of the system and enable standalone
+    // this case UserBalance) in order to decouple it from the rest of the system and enable standalone
     // testing by implementing these with mocks.
 
     function _increaseInternalBalance(
