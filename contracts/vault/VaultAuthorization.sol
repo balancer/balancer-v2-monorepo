@@ -24,7 +24,7 @@ import "../lib/helpers/BalancerErrors.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
 
-abstract contract VaultAuthorization is IVault, Authentication, EmergencyPeriod, ReentrancyGuard {
+abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication, EmergencyPeriod {
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _allowedRelayers;
 

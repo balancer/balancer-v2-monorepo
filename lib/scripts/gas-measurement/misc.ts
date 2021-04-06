@@ -45,6 +45,7 @@ export async function setupEnvironment(): Promise<{
 
   for (let idx = 0; idx < tokenAddresses.length; ++idx) {
     transfers.push({
+      kind: 0, // deposit
       asset: tokenAddresses[idx],
       amount: bn(100e18),
       sender: trader.address,
@@ -52,7 +53,7 @@ export async function setupEnvironment(): Promise<{
     });
   }
 
-  await vault.connect(trader).depositToInternalBalance(transfers);
+  await vault.connect(trader).manageUserBalance(transfers);
 
   return { vault, tokens, trader };
 }

@@ -28,7 +28,7 @@ import "../lib/openzeppelin/SafeERC20.sol";
 import "./Fees.sol";
 import "./interfaces/IFlashLoanReceiver.sol";
 
-abstract contract FlashLoanProvider is ReentrancyGuard, Fees {
+abstract contract FlashLoanProvider is Fees, ReentrancyGuard, EmergencyPeriod {
     using SafeERC20 for IERC20;
 
     function flashLoan(
