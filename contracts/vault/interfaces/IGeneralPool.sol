@@ -20,7 +20,7 @@ import "./IBasePool.sol";
 /**
  * @dev IPools with the General specialization setting should implement this interface.
  *
- * This is called by the Vault when a user calls `IVault.batchSwap` to swap with this Pool.
+ * This is called by the Vault when a user calls `IVault.swap` or `IVault.batchSwap` to swap with this Pool.
  * Returns the number of tokens the Pool will grant to the user in case of a swap given in, or
  * that the user will grant to the pool in case of given out, as part of the swap.
  *
