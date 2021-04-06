@@ -64,7 +64,8 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev Returns the amount of Pool tokens that have been withdrawn (or reported) by its Asset Manager.
+     * @dev Returns the amount of Pool tokens that have been withdrawn (or updated through setManaged)
+     * by its Asset Manager.
      */
     function managed(bytes32 balance) internal pure returns (uint256) {
         uint256 mask = 2**(112) - 1;
