@@ -470,6 +470,13 @@ describe('StablePool', function () {
             'BPT_IN_MAX_AMOUNT'
           );
         });
+  
+        it('fails if the emergency period is active', async () => {
+          await pool.activateEmergencyPeriod();
+  
+          const amountsOut = initialBalances;
+          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+        });
       });
     });
 
