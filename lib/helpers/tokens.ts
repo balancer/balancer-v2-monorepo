@@ -4,7 +4,6 @@ import { Dictionary, fromPairs } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from './deploy';
-import { ZERO_ADDRESS } from './constants';
 
 export type TokenList = Dictionary<Contract>;
 
