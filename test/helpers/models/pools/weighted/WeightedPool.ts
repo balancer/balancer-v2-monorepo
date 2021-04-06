@@ -150,7 +150,7 @@ export default class WeightedPool {
     return this.instance.getNormalizedWeights();
   }
 
-  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[] }> {
+  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; maxBlockNumber: BigNumber }> {
     return this.vault.getPoolTokens(this.poolId);
   }
 

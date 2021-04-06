@@ -23,8 +23,8 @@ contract BalanceAllocationMock {
         return balance.total();
     }
 
-    function totals(bytes32[] memory balances) public pure returns (uint256[] memory) {
-        return BalanceAllocation.totals(balances);
+    function totals(bytes32[] memory balances) public pure returns (uint256[] memory result) {
+        (result, ) = BalanceAllocation.totalsAndMaxBlockNumber(balances);
     }
 
     function cash(bytes32 balance) public pure returns (uint256) {
