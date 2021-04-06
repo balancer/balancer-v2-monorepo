@@ -96,21 +96,12 @@ interface IVault {
     // the same kind (deposit, withdraw or transfer) at once.
 
     /**
-     * @dev Data for Internal Balance deposits and withdrawals, which include the possibility for ETH to be sent and
+     * @dev Data for Internal Balance operations which include the possibility for ETH to be sent and
      * received without manual WETH wrapping or unwrapping.
      */
-    struct AssetBalanceTransfer {
+    struct UserBalanceOp {
+        UserBalanceOpKind kind;
         IAsset asset;
-        uint256 amount;
-        address sender;
-        address payable recipient;
-    }
-
-    /**
-     * @dev Data for Internal Balance transfers, which are limited to ERC20 tokens.
-     */
-    struct TokenBalanceTransfer {
-        IERC20 token;
         uint256 amount;
         address sender;
         address payable recipient;
@@ -122,48 +113,39 @@ interface IVault {
     function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
 
     /**
-     * @dev Deposits `amount` assets from each `sender` address into Internal Balances of the corresponding `recipient`
-     * accounts. The senders must have allowed the Vault to use their tokens via `IERC20.approve()`.
+     * @dev Performs a set of user balance operations (deposit internal, withdraw internal, transfer internal, or
+     * transfer external) in the Vault. The array input allows users to make multiple operations in a single
+     * transaction.
      *
-     * For each deposit, if the caller is not `sender`, it must be an authorized relayer for them.
-     *
+     * For each operation, if the caller is not `sender`, it must be an authorized relayer for them.
+     */
+    function manageUserBalance(UserBalanceOp[] memory ops) external payable;
+
+    /**
+     * `DEPOSIT_INTERNAL` increases the Internal Balance of the `recipient` account by  transferring tokens from the
+     * corresponding `sender`. The sender must have allowed the Vault to use their tokens via `IERC20.approve()`.
      * ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call. It will be
      * wrapped into WETH and deposited as that token. Any ETH amount remaining will be sent back to the caller (not the
      * sender, which is relevant for relayers).
+     * Emits an `InternalBalanceChanged` event.
      *
-     * Reverts if ETH was forwarded but not used in any transfer.
-     */
-    function depositToInternalBalance(AssetBalanceTransfer[] memory transfers) external payable;
-
-    /**
-     * @dev Withdraws `amount` assets from each `sender` address' Internal Balance to the corresponding `recipient`
-     * accounts. The senders must have allowed the Vault to use their tokens via `IERC20.approve()`.
-     *
-     * For each withdrawal, if the caller is not `sender`, it must be an authorized relayer for them.
-     *
+     * `WITHDRAW_INTERNAL` decreases the Internal Balance of the `sender` by transferring tokens to the
+     * `recipient` account.
      * ETH can be used by passing the ETH sentinel value as the asset. This will deduct WETH instead, unwrap it and send
      * it to the recipient.
-     */
-    function withdrawFromInternalBalance(AssetBalanceTransfer[] memory transfers) external;
-
-    /**
-     * @dev Transfers tokens from the internal balances of each `sender` address to the Internal Balances of each
-     * `recipient`.
+     * Emits an `InternalBalanceChanged` event.
      *
-     * For each transfer, if the caller is not `sender`, it must be an authorized relayer for them.
-     */
-    function transferInternalBalance(TokenBalanceTransfer[] memory transfers) external;
-
-    /**
-     * @dev Transfers tokens from each `sender` address to the corresponding `recipient` account, making use of the
-     * Vault's allowance. This action is equivalent to an Internal Balance deposit followed immediately by a withdrawal.
+     * `TRANSFER_INTERNAL` transfers tokens from the Internal Balance the `sender` account to the Internal Balances
+     * of `recipient`.
+     * Reverts if the ETH sentinel value is passed.
+     * Emit an `InternalBalanceChanged` event.
      *
-     * For each transfer, if the caller is not `sender`, it must be an authorized relayer for them.
-     *
-     * Typically, this function will only be called by relayers, letting them leverage the allowance users have already
-     * given to the Vault.
+     * `TRANSFER_EXTERNAL` transfers tokens from the Internal Balance of the `sender` account to the Internal Balances
+     * of the `recipient`.
+     * Reverts if the ETH sentinel value is passed.
+     * Emit an `ExternalBalanceTransfer` event.
      */
-    function transferToExternalBalance(TokenBalanceTransfer[] memory transfers) external;
+    enum UserBalanceOpKind { DEPOSIT_INTERNAL, WITHDRAW_INTERNAL, TRANSFER_INTERNAL, TRANSFER_EXTERNAL }
 
     /**
      * @dev Emitted when a user's Internal Balance changes, due to calls on the Internal Balance functions, or
@@ -173,6 +155,11 @@ interface IVault {
      * the WETH address.
      */
     event InternalBalanceChanged(address indexed user, IERC20 indexed token, int256 delta);
+
+    /**
+     * @dev Emitted when a user's allowance is used by the Vault to transfer tokens to an external account.
+     */
+    event ExternalBalanceTransfer(IERC20 indexed token, address indexed sender, address recipient, uint256 amount);
 
     // Pools
     //

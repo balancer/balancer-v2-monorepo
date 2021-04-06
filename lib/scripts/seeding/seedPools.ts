@@ -62,11 +62,10 @@ module.exports = async function action(args: any, hre: HardhatRuntimeEnvironment
 
     // deposit half into user balance
     const depositBalance = tradingBalance.div(bn(2));
-    await vault
-      .connect(trader)
-      .depositToInternalBalance([
-        { token: token.address, amount: depositBalance, sender: trader.address, recipient: trader.address },
-      ]);
+    await vault.connect(trader).manageUserBalance([
+      // deposit
+      { kind: 0, token: token.address, amount: depositBalance, sender: trader.address, recipient: trader.address },
+    ]);
   }
 
   console.log(`\nDeploying Pools using vault: ${vault.address}`);

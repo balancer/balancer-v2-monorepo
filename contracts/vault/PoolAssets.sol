@@ -24,16 +24,18 @@ import "../lib/helpers/ReentrancyGuard.sol";
 import "../lib/openzeppelin/Address.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
-import "./interfaces/IBasePool.sol";
-import "./InternalBalance.sol";
+import "./Fees.sol";
+import "./UserBalance.sol";
 import "./balances/BalanceAllocation.sol";
 import "./balances/GeneralPoolsBalance.sol";
 import "./balances/MinimalSwapInfoPoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
+import "./interfaces/IBasePool.sol";
 
 abstract contract PoolAssets is
+    Fees,
     ReentrancyGuard,
-    InternalBalance,
+    UserBalance,
     GeneralPoolsBalance,
     MinimalSwapInfoPoolsBalance,
     TwoTokenPoolsBalance

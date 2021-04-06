@@ -570,14 +570,16 @@ describe('Vault - swaps', () => {
 
                         context('when using less than available as internal balance', () => {
                           sharedBeforeEach('deposit to internal balance', async () => {
-                            await vault.connect(trader).depositToInternalBalance([
+                            await vault.connect(trader).manageUserBalance([
                               {
+                                kind: 0, // deposit
                                 asset: tokens.DAI.address,
                                 amount: bn(1e18),
                                 sender: trader.address,
                                 recipient: trader.address,
                               },
                               {
+                                kind: 0, // deposit
                                 asset: tokens.MKR.address,
                                 amount: bn(1e18),
                                 sender: trader.address,
@@ -591,8 +593,9 @@ describe('Vault - swaps', () => {
 
                         context('when using more than available as internal balance', () => {
                           sharedBeforeEach('deposit to internal balance', async () => {
-                            await vault.connect(trader).depositToInternalBalance([
+                            await vault.connect(trader).manageUserBalance([
                               {
+                                kind: 0, // deposit
                                 asset: tokens.MKR.address,
                                 amount: bn(0.3e18),
                                 sender: trader.address,
@@ -1049,14 +1052,16 @@ describe('Vault - swaps', () => {
 
                         context('when using less than available as internal balance', () => {
                           sharedBeforeEach('deposit to internal balance', async () => {
-                            await vault.connect(trader).depositToInternalBalance([
+                            await vault.connect(trader).manageUserBalance([
                               {
+                                kind: 0, // deposit
                                 asset: tokens.DAI.address,
                                 amount: bn(1e18),
                                 sender: trader.address,
                                 recipient: trader.address,
                               },
                               {
+                                kind: 0, // deposit
                                 asset: tokens.MKR.address,
                                 amount: bn(0.5e18),
                                 sender: trader.address,
@@ -1070,8 +1075,9 @@ describe('Vault - swaps', () => {
 
                         context('when using more than available as internal balance', () => {
                           sharedBeforeEach('deposit to internal balance', async () => {
-                            await vault.connect(trader).depositToInternalBalance([
+                            await vault.connect(trader).manageUserBalance([
                               {
+                                kind: 0, // deposit
                                 asset: tokens.MKR.address,
                                 amount: bn(0.3e18),
                                 sender: trader.address,

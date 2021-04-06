@@ -270,8 +270,9 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(
+            await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
+                kind: 0, // deposit
                 asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
@@ -293,8 +294,9 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(
+            await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
+                kind: 0, // deposit
                 asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
@@ -308,8 +310,9 @@ describe('Vault - join pool', () => {
 
         context('with enough internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(
+            await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
+                kind: 0, // deposit
                 asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
