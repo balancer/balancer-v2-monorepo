@@ -883,7 +883,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
