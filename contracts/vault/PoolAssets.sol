@@ -164,7 +164,7 @@ abstract contract PoolAssets is
         address sender,
         address recipient,
         JoinPoolRequest memory request
-    ) external payable override {
+    ) external payable override noEmergencyPeriod {
         _joinOrExit(PoolBalanceChangeKind.JOIN, poolId, sender, recipient, _toPoolBalanceChange(request));
     }
 
@@ -211,7 +211,7 @@ abstract contract PoolAssets is
         address sender,
         address recipient,
         PoolBalanceChange memory change
-    ) internal nonReentrant noEmergencyPeriod withRegisteredPool(poolId) authenticateFor(sender) {
+    ) internal nonReentrant withRegisteredPool(poolId) authenticateFor(sender) {
         InputHelpers.ensureInputLengthMatch(change.assets.length, change.limits.length);
 
         IERC20[] memory tokens = _translateToIERC20(change.assets);
