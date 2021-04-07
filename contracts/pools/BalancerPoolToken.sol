@@ -18,7 +18,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/drafts/IERC20Permit.sol";
 import "@openzeppelin/contracts/drafts/EIP712.sol";
-import "../lib/openzeppelin/Counters.sol";
 import "../lib/math/Math.sol";
 
 // Contracts
@@ -37,7 +36,6 @@ import "../lib/math/Math.sol";
  * - Emits 'Approval' events whenever allowance is changed by `transferFrom`
  */
 contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
-    using Counters for Counters.Counter;
     using Math for uint256;
 
     // State variables
@@ -48,7 +46,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
     );
 
-    mapping(address => Counters.Counter) private _nonces;
+    mapping(address => uint256) private _nonces;
 
     mapping(address => uint256) private _balance;
     mapping(address => mapping(address => uint256)) private _allowance;
@@ -135,7 +133,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         require(block.timestamp <= deadline, "DEADLINE_EXPIRED");
 
         bytes32 structHash = keccak256(
-            abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner].current(), deadline)
+            abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner], deadline)
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
@@ -143,12 +141,12 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         address signer = ECDSA.recover(hash, v, r, s);
         require(signer == owner, "INVALID_SIGNATURE");
 
-        _nonces[owner].increment();
+        _nonces[owner] += 1;
         _setAllowance(owner, spender, value);
     }
 
     function nonces(address owner) external view override returns (uint256) {
-        return _nonces[owner].current();
+        return _nonces[owner];
     }
 
     // solhint-disable-next-line func-name-mixedcase
