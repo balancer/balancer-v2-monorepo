@@ -379,6 +379,11 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
         "name": "relayer",
         "type": "address"
       },
@@ -504,6 +509,19 @@
   },
   {
     "inputs": [],
+    "name": "getDomainSeparator",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getEmergencyPeriod",
     "outputs": [
       {
@@ -544,6 +562,25 @@
         "internalType": "uint256[]",
         "name": "balances",
         "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getNextNonce",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -883,7 +920,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

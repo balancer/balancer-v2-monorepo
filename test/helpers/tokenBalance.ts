@@ -82,14 +82,14 @@ export async function balanceTracker(address: string, token: Token): Promise<ERC
 //   tokens,
 //   { account, changes: { 'DAI': 50, 'USDC': -50, 'UNI': ['gt', 0] } } // Earn an unknown amount of UNI
 // });
-
+//
+// Returns the result of calling `promise`.
 export async function expectBalanceChange(
   promise: () => Promise<unknown>,
   tokens: TokenList,
   balanceChange: BalanceChange | Array<BalanceChange>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
-  // Returns the result of calling `promise`
   const trackers: Dictionary<Dictionary<ERC20BalanceTracker>> = {};
   const balanceChanges: Array<BalanceChange> = Array.isArray(balanceChange) ? balanceChange : [balanceChange];
 

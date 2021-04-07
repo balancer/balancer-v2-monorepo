@@ -11,7 +11,7 @@ describe('BalancerErrors', function () {
   });
 
   it('encodes the error code as expected', async () => {
-    await expect(errors.fail(1234)).to.be.revertedWith('1234');
+    await expect(errors.fail(123)).to.be.revertedWith('123');
   });
 
   it('translates the error code to its corresponding string if existent', async () => {

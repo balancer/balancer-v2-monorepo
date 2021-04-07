@@ -86,6 +86,9 @@ contract WeightedMath {
         // The multiplication rounds down, and the subtrahend (power) rounds up (so the base rounds up too).
         // Because bI / (bI + aI) <= 1, the exponent rounds down.
 
+        // Cannot exceed maximum in ratio
+        _require(tokenAmountIn <= tokenBalanceIn.mul(_MAX_IN_RATIO), Errors.MAX_IN_RATIO);
+
         uint256 denominator = tokenBalanceIn.add(tokenAmountIn);
         uint256 base = tokenBalanceIn.divUp(denominator);
         uint256 exponent = tokenWeightIn.divDown(tokenWeightOut);
@@ -117,6 +120,9 @@ contract WeightedMath {
 
         // The multiplication rounds up, and the power rounds up (so the base rounds up too).
         // Because b0 / (b0 - a0) >= 1, the exponent rounds up.
+
+        // Cannot exceed maximum out ratio
+        _require(tokenAmountOut <= tokenBalanceOut.mul(_MAX_OUT_RATIO), Errors.MAX_OUT_RATIO);
 
         uint256 base = tokenBalanceOut.divUp(tokenBalanceOut.sub(tokenAmountOut));
         uint256 exponent = tokenWeightOut.divUp(tokenWeightIn);

@@ -1218,11 +1218,10 @@
     safe-buffer "^5.1.1"
     util.promisify "^1.0.0"
 
-"@nomiclabs/hardhat-ethers@npm:hardhat-deploy-ethers", hardhat-deploy-ethers@^0.3.0-beta.7:
-  name "@nomiclabs/hardhat-ethers"
-  version "0.3.0-beta.7"
-  resolved "https://registry.yarnpkg.com/hardhat-deploy-ethers/-/hardhat-deploy-ethers-0.3.0-beta.7.tgz#860d86b84ed3c4fdef64283ccf1e8d5623454d02"
-  integrity sha512-JKMNte6vudu9LSNqgmBtNxc1gfxp3NUcPKVAf/FANHfl9pa/mBGg6hpQO7tD8CLkAbe6f4K5BjyYIPWX3p7MKw==
+"@nomiclabs/hardhat-ethers@^2.0.1":
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-ethers/-/hardhat-ethers-2.0.2.tgz#c472abcba0c5185aaa4ad4070146e95213c68511"
+  integrity sha512-6quxWe8wwS4X5v3Au8q1jOvXYEPkS1Fh+cME5u6AwNdnI4uERvPlVjlgRWzpnb+Rrt1l/cEqiNRH9GlsBMSDQg==
 
 "@nomiclabs/hardhat-waffle@^2.0.0":
   version "2.0.0"
@@ -5300,6 +5299,12 @@ hardhat-abi-exporter@^2.0.6:
   version "2.0.6"
   resolved "https://registry.yarnpkg.com/hardhat-abi-exporter/-/hardhat-abi-exporter-2.0.6.tgz#87afff4e218ec96697afe630e1bd0185c52d7ab3"
   integrity sha512-VCXAZ6BXQWPKDV6pvNECYDLRNhYCPQRZwwXfcajwOoiMva99X46hQV7RLzbWjI1gO7WWRtiZLWns+zWvJ6hqUQ==
+
+hardhat-deploy-ethers@^0.3.0-beta.7:
+  name "@nomiclabs/hardhat-ethers"
+  version "0.3.0-beta.7"
+  resolved "https://registry.yarnpkg.com/hardhat-deploy-ethers/-/hardhat-deploy-ethers-0.3.0-beta.7.tgz#860d86b84ed3c4fdef64283ccf1e8d5623454d02"
+  integrity sha512-JKMNte6vudu9LSNqgmBtNxc1gfxp3NUcPKVAf/FANHfl9pa/mBGg6hpQO7tD8CLkAbe6f4K5BjyYIPWX3p7MKw==
 
 hardhat-deploy@^0.7.0-beta.32:
   version "0.7.0-beta.38"
