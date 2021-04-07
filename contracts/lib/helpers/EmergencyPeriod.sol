@@ -35,8 +35,8 @@ abstract contract EmergencyPeriod {
     uint256 private constant _MAX_EMERGENCY_PERIOD_CHECK_EXT = 30 days;
 
     bool private _emergencyPeriodActive;
-    uint256 internal immutable _emergencyPeriodEndDate;
-    uint256 internal immutable _emergencyPeriodCheckEndDate;
+    uint256 private immutable _emergencyPeriodEndDate;
+    uint256 private immutable _emergencyPeriodCheckEndDate;
 
     event EmergencyPeriodChanged(bool active);
 
@@ -65,11 +65,11 @@ abstract contract EmergencyPeriod {
             uint256 checkEndDate
         )
     {
-        return (!_isEmergencyPeriodInactive(), _emergencyPeriodEndDate, _emergencyPeriodCheckEndDate);
+        return (!_isEmergencyPeriodInactive(), _getEmergencyPeriodEndDate(), _getEmergencyPeriodCheckEndDate());
     }
 
     function _setEmergencyPeriod(bool active) internal {
-        _require(block.timestamp < _emergencyPeriodEndDate, Errors.EMERGENCY_PERIOD_FINISHED);
+        _require(block.timestamp < _getEmergencyPeriodEndDate(), Errors.EMERGENCY_PERIOD_FINISHED);
         _emergencyPeriodActive = active;
         emit EmergencyPeriodChanged(active);
     }
@@ -79,6 +79,14 @@ abstract contract EmergencyPeriod {
     }
 
     function _isEmergencyPeriodInactive() internal view returns (bool) {
-        return (block.timestamp >= _emergencyPeriodCheckEndDate) || !_emergencyPeriodActive;
+        return (block.timestamp >= _getEmergencyPeriodCheckEndDate()) || !_emergencyPeriodActive;
+    }
+
+    function _getEmergencyPeriodEndDate() internal view returns (uint256) {
+        return _emergencyPeriodEndDate;
+    }
+
+    function _getEmergencyPeriodCheckEndDate() internal view returns (uint256) {
+        return _emergencyPeriodCheckEndDate;
     }
 }
