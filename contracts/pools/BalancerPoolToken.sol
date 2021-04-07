@@ -132,9 +132,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp <= deadline, "DEADLINE_EXPIRED");
 
-        bytes32 structHash = keccak256(
-            abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner], deadline)
-        );
+        bytes32 structHash = keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _nonces[owner], deadline));
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
