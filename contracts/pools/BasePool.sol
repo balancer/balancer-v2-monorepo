@@ -59,9 +59,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     uint256 internal _swapFee;
 
-    IVault internal immutable _vault;
-    bytes32 internal immutable _poolId;
-    uint256 internal immutable _totalTokens;
+    IVault private immutable _vault;
+    bytes32 private immutable _poolId;
+    uint256 private immutable _totalTokens;
 
     IERC20 internal immutable _token0;
     IERC20 internal immutable _token1;
@@ -146,11 +146,23 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Getters / Setters
 
     function getVault() external view returns (IVault) {
+        return _getVault();
+    }
+
+    function _getVault() internal view returns (IVault) {
         return _vault;
     }
 
     function getPoolId() external view returns (bytes32) {
+        return _getPoolId();
+    }
+
+    function _getPoolId() internal view returns (bytes32) {
         return _poolId;
+    }
+
+    function _getTotalTokens() internal view returns (uint256) {
+        return _totalTokens;
     }
 
     function getSwapFee() external view returns (uint256) {
@@ -174,8 +186,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Join / Exit Hooks
 
     modifier onlyVault(bytes32 poolId) {
-        _require(msg.sender == address(_vault), Errors.CALLER_NOT_VAULT);
-        _require(poolId == _poolId, Errors.INVALID_POOL_ID);
+        _require(msg.sender == address(_getVault()), Errors.CALLER_NOT_VAULT);
+        _require(poolId == _getPoolId(), Errors.INVALID_POOL_ID);
         _;
     }
 
@@ -203,7 +215,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
 
-            return (amountsIn, new uint256[](_totalTokens));
+            return (amountsIn, new uint256[](_getTotalTokens()));
         } else {
             _upscaleArray(currentBalances, scalingFactors);
             (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(
@@ -479,18 +491,19 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * pass balances in this order when calling any of the Pool hooks
      */
     function _scalingFactors() internal view returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](_totalTokens);
+        uint256 totalTokens = _getTotalTokens();
+        uint256[] memory scalingFactors = new uint256[](totalTokens);
 
         // prettier-ignore
         {
-            if (_totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
-            if (_totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
-            if (_totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
-            if (_totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
-            if (_totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
-            if (_totalTokens > 5) { scalingFactors[5] = _scalingFactor5; } else { return scalingFactors; }
-            if (_totalTokens > 6) { scalingFactors[6] = _scalingFactor6; } else { return scalingFactors; }
-            if (_totalTokens > 7) { scalingFactors[7] = _scalingFactor7; } else { return scalingFactors; }
+            if (totalTokens > 0) { scalingFactors[0] = _scalingFactor0; } else { return scalingFactors; }
+            if (totalTokens > 1) { scalingFactors[1] = _scalingFactor1; } else { return scalingFactors; }
+            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
+            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
+            if (totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
+            if (totalTokens > 5) { scalingFactors[5] = _scalingFactor5; } else { return scalingFactors; }
+            if (totalTokens > 6) { scalingFactors[6] = _scalingFactor6; } else { return scalingFactors; }
+            if (totalTokens > 7) { scalingFactors[7] = _scalingFactor7; } else { return scalingFactors; }
         }
 
         return scalingFactors;
@@ -509,7 +522,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * the `amounts` array.
      */
     function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _totalTokens; ++i) {
+        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
             amounts[i] = Math.mul(amounts[i], scalingFactors[i]);
         }
     }
@@ -527,7 +540,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * *mutates* the `amounts` array.
      */
     function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _totalTokens; ++i) {
+        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
             amounts[i] = Math.divDown(amounts[i], scalingFactors[i]);
         }
     }
@@ -545,7 +558,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * *mutates* the `amounts` array.
      */
     function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _totalTokens; ++i) {
+        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
             amounts[i] = Math.divUp(amounts[i], scalingFactors[i]);
         }
     }
@@ -554,7 +567,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev This contract relies on the roles defined by the Vault's own Authorizer.
      */
     function _getAuthorizer() internal view override returns (IAuthorizer) {
-        return _vault.getAuthorizer();
+        return _getVault().getAuthorizer();
     }
 
     function _queryAction(

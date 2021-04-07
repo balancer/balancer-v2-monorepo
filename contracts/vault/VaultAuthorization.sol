@@ -39,6 +39,7 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
     /* solhint-enable prettier/prettier */
     /* solhint-enable var-name-mixedcase */
     /* solhint-enable private-vars-leading-underscore */
+
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _allowedRelayers;
 
