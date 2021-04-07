@@ -15,10 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/Authentication.sol";
 import "../lib/helpers/EmergencyPeriod.sol";
-import "../lib/helpers/ReentrancyGuard.sol";
 import "../lib/helpers/BalancerErrors.sol";
 
 import "./interfaces/IVault.sol";

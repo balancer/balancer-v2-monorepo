@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/Authentication.sol";
-import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./interfaces/IVault.sol";
