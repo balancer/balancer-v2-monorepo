@@ -11,10 +11,11 @@ import * as expectEvent from '../helpers/expectEvent';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 
 import { deploy } from '../../lib/helpers/deploy';
-import { BigNumberish, fp, bn } from '../../lib/helpers/numbers';
+import { BigNumberish, bn, fp } from '../../lib/helpers/numbers';
 import { FundManagement, Swap, SWAP_KIND } from '../../lib/helpers/trading';
 import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
-import { MinimalSwapInfoPool, PoolSpecializationSetting, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
+import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
+import { encodeCalldataAuthorization, signBatchSwapAuthorization, signSwapAuthorization } from '../helpers/signatures';
 
 type SingleSwap = {
   kind: number;
@@ -39,6 +40,7 @@ type SwapInput = {
   swaps: SwapData[];
   fromOther?: boolean;
   toOther?: boolean;
+  signature?: boolean | string;
 };
 
 describe('Vault - swaps', () => {
@@ -346,7 +348,7 @@ describe('Vault - swaps', () => {
     }
   });
 
-  function parseSwap(input: SwapInput): Swap[] {
+  function toBatchSwap(input: SwapInput): Swap[] {
     return input.swaps.map((data) => ({
       poolId: ((data.pool ?? 0) == 0 ? mainPoolId : secondaryPoolId) || ZERO_BYTES32,
       amount: data.amount.toString(),
@@ -357,7 +359,7 @@ describe('Vault - swaps', () => {
   }
 
   function toSingleSwap(kind: number, input: SwapInput): SingleSwap {
-    const data = parseSwap(input)[0];
+    const data = toBatchSwap(input)[0];
     return {
       kind,
       poolId: data.poolId,
@@ -419,39 +421,9 @@ describe('Vault - swaps', () => {
       ) => {
         const isSingleSwap = input.swaps.length === 1;
 
-        if (isSingleSwap) {
-          it('trades the expected amount (single)', async () => {
-            const sender = input.fromOther ? other : trader;
-            const recipient = input.toOther ? other : trader;
-            const swap = toSingleSwap(SWAP_KIND.GIVEN_IN, input);
-
-            await expectBalanceChange(() => vault.connect(sender).swap(swap, funds, 0, MAX_UINT256), tokens, [
-              { account: recipient, changes },
-            ]);
-
-            if (expectedInternalBalance) {
-              for (const symbol in expectedInternalBalance) {
-                const token = tokens.findBySymbol(symbol);
-                const internalBalance = await vault.getInternalBalance(sender.address, [token.address]);
-                expect(internalBalance[0]).to.be.equal(bn(expectedInternalBalance[symbol]));
-              }
-            }
-          });
-        }
-
-        it(`trades the expected amount ${isSingleSwap ? '(batch)' : ''}`, async () => {
-          const sender = input.fromOther ? other : trader;
-          const recipient = input.toOther ? other : trader;
-          const swaps = parseSwap(input);
-
-          const limits = Array(tokens.length).fill(MAX_INT256);
-          const deadline = MAX_UINT256;
-
-          await expectBalanceChange(
-            () => vault.connect(sender).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds, limits, deadline),
-            tokens,
-            [{ account: recipient, changes }]
-          );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const assertSwap = async (data: string, sender: SignerWithAddress, expectedChanges: any[]): Promise<void> => {
+          await expectBalanceChange(() => sender.sendTransaction({ to: vault.address, data }), tokens, expectedChanges);
 
           if (expectedInternalBalance) {
             for (const symbol in expectedInternalBalance) {
@@ -460,6 +432,44 @@ describe('Vault - swaps', () => {
               expect(internalBalance[0]).to.be.equal(bn(expectedInternalBalance[symbol]));
             }
           }
+        };
+
+        if (isSingleSwap) {
+          it('trades the expected amount (single)', async () => {
+            const sender = input.fromOther ? other : trader;
+            const recipient = input.toOther ? other : trader;
+            const swap = toSingleSwap(SWAP_KIND.GIVEN_IN, input);
+
+            let calldata = vault.interface.encodeFunctionData('swap', [swap, funds, 0, MAX_UINT256]);
+
+            if (input.signature) {
+              const nonce = await vault.getNextNonce(trader.address);
+              const authorization = await signSwapAuthorization(vault, trader, sender, calldata, nonce, MAX_UINT256);
+              const signature = typeof input.signature === 'string' ? input.signature : authorization;
+              calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
+            }
+
+            await assertSwap(calldata, sender, [{ account: recipient, changes }]);
+          });
+        }
+
+        it(`trades the expected amount ${isSingleSwap ? '(batch)' : ''}`, async () => {
+          const sender = input.fromOther ? other : trader;
+          const recipient = input.toOther ? other : trader;
+          const swaps = toBatchSwap(input);
+          const limits = Array(tokens.length).fill(MAX_INT256);
+
+          const args = [SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds, limits, MAX_UINT256];
+          let calldata = vault.interface.encodeFunctionData('batchSwap', args);
+
+          if (input.signature) {
+            const nonce = await vault.getNextNonce(trader.address);
+            const authorization = await signBatchSwapAuthorization(vault, trader, sender, calldata, nonce, MAX_UINT256);
+            const signature = typeof input.signature === 'string' ? input.signature : authorization;
+            calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
+          }
+
+          await assertSwap(calldata, sender, [{ account: recipient, changes }]);
         });
       };
 
@@ -480,7 +490,7 @@ describe('Vault - swaps', () => {
 
         it(`reverts ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
-          const swaps = parseSwap(input);
+          const swaps = toBatchSwap(input);
 
           const limits = Array(tokens.length).fill(MAX_INT256);
           const deadline = MAX_UINT256;
@@ -535,7 +545,20 @@ describe('Vault - swaps', () => {
                                   .changeRelayerAllowance(trader.address, other.address, false);
                               });
 
-                              assertSwapGivenInReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
+                              context('when the relayer has a valid signature from the user', () => {
+                                assertSwapGivenIn({ swaps, fromOther, signature: true }, { DAI: 2e18, MKR: -1e18 });
+                              });
+
+                              context('when the relayer has an invalid signature from the user', () => {
+                                assertSwapGivenInReverts(
+                                  { swaps, fromOther, signature: ZERO_BYTES32 },
+                                  'USER_DOESNT_ALLOW_RELAYER'
+                                );
+                              });
+
+                              context('when there is no signature', () => {
+                                assertSwapGivenInReverts({ swaps, fromOther }, 'USER_DOESNT_ALLOW_RELAYER');
+                              });
                             });
                           });
 
@@ -922,7 +945,7 @@ describe('Vault - swaps', () => {
         it(`trades the expected amount ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
           const recipient = input.toOther ? other : trader;
-          const swaps = parseSwap(input);
+          const swaps = toBatchSwap(input);
 
           const limits = Array(tokens.length).fill(MAX_INT256);
           const deadline = MAX_UINT256;
@@ -965,7 +988,7 @@ describe('Vault - swaps', () => {
 
         it(`reverts ${isSingleSwap ? '(batch)' : ''}`, async () => {
           const sender = input.fromOther ? other : trader;
-          const swaps = parseSwap(input);
+          const swaps = toBatchSwap(input);
 
           const limits = Array(tokens.length).fill(MAX_INT256);
           const deadline = MAX_UINT256;

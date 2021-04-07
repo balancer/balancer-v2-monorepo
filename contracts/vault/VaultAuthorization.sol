@@ -26,6 +26,19 @@ import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
 
 abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication, SignaturesValidator, EmergencyPeriod {
+    /* solhint-disable max-line-length */
+    /* solhint-disable prettier/prettier */
+    /* solhint-disable var-name-mixedcase */
+    /* solhint-disable private-vars-leading-underscore */
+    bytes32 internal immutable JOIN_TYPE_HASH = keccak256("JoinAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 internal immutable EXIT_TYPE_HASH = keccak256("ExitAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 internal immutable SWAP_TYPE_HASH = keccak256("SwapAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 internal immutable BATCH_SWAP_TYPE_HASH = keccak256("BatchSwapAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 internal immutable CHANGE_RELAYER_TYPE_HASH = keccak256("ChangeRelayerAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    /* solhint-enable max-line-length */
+    /* solhint-enable prettier/prettier */
+    /* solhint-enable var-name-mixedcase */
+    /* solhint-enable private-vars-leading-underscore */
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _allowedRelayers;
 
@@ -92,5 +105,21 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
 
     function _canPerform(bytes32 roleId, address user) internal view override returns (bool) {
         return _authorizer.hasRole(roleId, user);
+    }
+
+    function _typeHash() internal view override returns (bytes32) {
+        if (msg.sig == IVault.joinPool.selector) {
+            return JOIN_TYPE_HASH;
+        } else if (msg.sig == IVault.exitPool.selector) {
+            return EXIT_TYPE_HASH;
+        } else if (msg.sig == IVault.swap.selector) {
+            return SWAP_TYPE_HASH;
+        } else if (msg.sig == IVault.batchSwap.selector) {
+            return BATCH_SWAP_TYPE_HASH;
+        } else if (msg.sig == IVault.changeRelayerAllowance.selector) {
+            return CHANGE_RELAYER_TYPE_HASH;
+        } else {
+            return bytes32(0);
+        }
     }
 }

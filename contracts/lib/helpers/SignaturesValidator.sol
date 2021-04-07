@@ -19,6 +19,8 @@ import "./BalancerErrors.sol";
 import "../../vault/interfaces/ISignaturesValidator.sol";
 
 /* solhint-disable max-line-length */
+/* solhint-disable prettier/prettier */
+/* solhint-disable var-name-mixedcase */
 /* solhint-disable private-vars-leading-underscore */
 
 abstract contract SignaturesValidator is ISignaturesValidator {
@@ -27,7 +29,6 @@ abstract contract SignaturesValidator is ISignaturesValidator {
 
     bytes32 internal immutable NAME_HASH = keccak256("Balancer Protocol");
     bytes32 internal immutable VERSION_HASH = keccak256("1");
-    bytes32 internal immutable AUTH_TYPE_HASH = keccak256("Authorization(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
     bytes32 internal immutable EIP712_DOMAIN_HASH = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     mapping(address => uint256) internal _nextNonce;
@@ -66,7 +67,7 @@ abstract contract SignaturesValidator is ISignaturesValidator {
         }
 
         // All type hashes correspond to the form (bytes calldata, address sender, uint256 nonce, uint256 deadline)
-        bytes32 encodeData = keccak256(abi.encode(AUTH_TYPE_HASH, keccak256(_calldata()), msg.sender, nonce, deadline));
+        bytes32 encodeData = keccak256(abi.encode(_typeHash(), keccak256(_calldata()), msg.sender, nonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _getDomainSeparator(), encodeData));
 
         (uint8 v, bytes32 r, bytes32 s) = _signature();
@@ -95,6 +96,11 @@ abstract contract SignaturesValidator is ISignaturesValidator {
     function _getDomainSeparator() internal view returns (bytes32) {
         return keccak256(abi.encode(EIP712_DOMAIN_HASH, NAME_HASH, VERSION_HASH, _chainId(), address(this)));
     }
+
+    /**
+     * @dev Tell which type hash should be used based on the call selector
+     */
+    function _typeHash() internal view virtual returns (bytes32);
 
     /**
      * @dev Chain ID

@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -15,7 +15,41 @@ export function encodeCalldataAuthorization(calldata: string, deadline: BigNumbe
   return `${calldata}${encodedDeadline}${encodedV}${encodedR}${encodedS}`;
 }
 
+export async function signSwapAuthorization(
+  validator: Contract,
+  user: SignerWithAddress,
+  allowedSender: SignerWithAddress,
+  allowedCalldata: string,
+  nonce?: BigNumberish,
+  deadline?: BigNumberish
+): Promise<string> {
+  return signAuthorizationFor('SwapAuth', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+}
+
+export async function signBatchSwapAuthorization(
+  validator: Contract,
+  user: SignerWithAddress,
+  allowedSender: SignerWithAddress,
+  allowedCalldata: string,
+  nonce?: BigNumberish,
+  deadline?: BigNumberish
+): Promise<string> {
+  return signAuthorizationFor('BatchSwapAuth', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+}
+
 export async function signAuthorization(
+  validator: Contract,
+  user: SignerWithAddress,
+  allowedSender: SignerWithAddress,
+  allowedCalldata: string,
+  nonce?: BigNumberish,
+  deadline?: BigNumberish
+): Promise<string> {
+  return signAuthorizationFor('Authorization', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+}
+
+export async function signAuthorizationFor(
+  type: string,
   validator: Contract,
   user: SignerWithAddress,
   allowedSender: SignerWithAddress,
@@ -29,12 +63,12 @@ export async function signAuthorization(
   const domain = {
     name: 'Balancer Protocol',
     version: '1',
-    chainId: (await validator.getChainId()).toString(),
+    chainId: await network.provider.send('eth_chainId'),
     verifyingContract: validator.address,
   };
 
   const types = {
-    Authorization: [
+    [type]: [
       { name: 'calldata', type: 'bytes' },
       { name: 'sender', type: 'address' },
       { name: 'nonce', type: 'uint256' },
