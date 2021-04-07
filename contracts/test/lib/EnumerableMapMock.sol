@@ -8,56 +8,6 @@ import "../../lib/openzeppelin/EnumerableMap.sol";
 
 // solhint-disable func-name-mixedcase
 
-contract EnumerableUintToAddressMapMock {
-    using EnumerableMap for EnumerableMap.UintToAddressMap;
-
-    event OperationResult(bool result);
-
-    EnumerableMap.UintToAddressMap private _map;
-
-    function contains(uint256 key) public view returns (bool) {
-        return _map.contains(key);
-    }
-
-    function set(uint256 key, address value) public {
-        bool result = _map.set(key, value);
-        emit OperationResult(result);
-    }
-
-    function indexOf(uint256 key) public view returns (uint256) {
-        return _map.indexOf(key);
-    }
-
-    function unchecked_setAt(uint256 index, address value) public {
-        _map.unchecked_setAt(index, value);
-    }
-
-    function remove(uint256 key) public {
-        bool result = _map.remove(key);
-        emit OperationResult(result);
-    }
-
-    function length() public view returns (uint256) {
-        return _map.length();
-    }
-
-    function at(uint256 index) public view returns (uint256 key, address value) {
-        return _map.at(index);
-    }
-
-    function unchecked_at(uint256 index) public view returns (uint256 key, address value) {
-        return _map.unchecked_at(index);
-    }
-
-    function unchecked_valueAt(uint256 index) public view returns (address value) {
-        return _map.unchecked_valueAt(index);
-    }
-
-    function get(uint256 key) public view returns (address) {
-        return _map.get(key);
-    }
-}
-
 contract EnumerableIERC20ToBytes32MapMock {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
@@ -74,8 +24,8 @@ contract EnumerableIERC20ToBytes32MapMock {
         emit OperationResult(result);
     }
 
-    function indexOf(IERC20 key) public view returns (uint256) {
-        return _map.indexOf(key);
+    function unchecked_indexOf(IERC20 key) public view returns (uint256) {
+        return _map.unchecked_indexOf(key);
     }
 
     function unchecked_setAt(uint256 index, bytes32 value) public {
@@ -103,7 +53,7 @@ contract EnumerableIERC20ToBytes32MapMock {
         return _map.unchecked_valueAt(index);
     }
 
-    function get(IERC20 key) public view returns (bytes32) {
-        return _map.get(key);
+    function get(IERC20 key, uint256 errorCode) public view returns (bytes32) {
+        return _map.get(key, errorCode);
     }
 }

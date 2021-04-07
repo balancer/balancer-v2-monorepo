@@ -11,6 +11,8 @@ export function shouldBehaveLikeMap(
   const [keyA, keyB, keyC] = keys;
   const [valueA, valueB, valueC] = values;
 
+  const getErrorCode = 42;
+
   async function expectMembersMatch(map: Contract, keys: Array<string | BigNumber>, values: Array<string | BigNumber>) {
     expect(keys.length).to.equal(values.length);
 
@@ -18,7 +20,7 @@ export function shouldBehaveLikeMap(
 
     expect(await map.length()).to.equal(keys.length.toString());
 
-    expect(await Promise.all(keys.map((key) => map.get(key)))).to.have.same.members(values);
+    expect(await Promise.all(keys.map((key) => map.get(key, getErrorCode)))).to.have.same.members(values);
 
     // To compare key-value pairs, we zip keys and values, and convert BNs to
     // strings to workaround Chai limitations when dealing with nested arrays
@@ -84,13 +86,25 @@ export function shouldBehaveLikeMap(
     });
   });
 
-  describe('indexOf', () => {
-    it('returns the index of an added key', async () => {
+  describe('get', () => {
+    it('returns the value for a key', async () => {
+      await store.map.set(keyA, valueA);
+
+      expect(await store.map.get(keyA, getErrorCode)).to.equal(valueA);
+    });
+
+    it('reverts with a custom message if the key is not in the map', async () => {
+      await expect(store.map.get(keyA, getErrorCode)).to.be.revertedWith(getErrorCode.toString());
+    });
+  });
+
+  describe('unchecked_indexOf', () => {
+    it('returns the index of an added key, plus one', async () => {
       await store.map.set(keyA, valueA);
       await store.map.set(keyB, valueB);
 
-      expect(await store.map.indexOf(keyA)).to.equal(0);
-      expect(await store.map.indexOf(keyB)).to.equal(1);
+      expect(await store.map.unchecked_indexOf(keyA)).to.equal(0 + 1);
+      expect(await store.map.unchecked_indexOf(keyB)).to.equal(1 + 1);
     });
 
     it('adding and removing keys can change the index', async () => {
@@ -100,11 +114,11 @@ export function shouldBehaveLikeMap(
       await store.map.remove(keyA);
 
       // B is now the only element; its index must be 0
-      expect(await store.map.indexOf(keyB)).to.equal(0);
+      expect(await store.map.unchecked_indexOf(keyB)).to.equal(0 + 1);
     });
 
-    it('reverts if the key is not in the map', async () => {
-      await expect(store.map.indexOf(keyA)).to.be.revertedWith('OUT_OF_BOUNDS');
+    it('returns a zero index if the key is not in the map', async () => {
+      expect(await store.map.unchecked_indexOf(keyA)).to.be.equal(0);
     });
   });
 
@@ -112,7 +126,7 @@ export function shouldBehaveLikeMap(
     it('updates a value', async () => {
       await store.map.set(keyA, valueA);
 
-      const indexA = await store.map.indexOf(keyA);
+      const indexA = (await store.map.unchecked_indexOf(keyA)) - 1;
       await store.map.unchecked_setAt(indexA, valueB);
 
       await expectMembersMatch(store.map, [keyA], [valueB]);
@@ -122,8 +136,8 @@ export function shouldBehaveLikeMap(
       await store.map.set(keyA, valueA);
       await store.map.set(keyB, valueB);
 
-      const indexA = await store.map.indexOf(keyA);
-      const indexB = await store.map.indexOf(keyB);
+      const indexA = (await store.map.unchecked_indexOf(keyA)) - 1;
+      const indexB = (await store.map.unchecked_indexOf(keyB)) - 1;
 
       await store.map.unchecked_setAt(indexA, valueC);
       await store.map.unchecked_setAt(indexB, valueA);
@@ -141,7 +155,7 @@ export function shouldBehaveLikeMap(
     it('returns an entry at an index', async () => {
       await store.map.set(keyA, valueA);
 
-      const indexA = await store.map.indexOf(keyA);
+      const indexA = (await store.map.unchecked_indexOf(keyA)) - 1;
       const entry = await store.map.unchecked_at(indexA);
 
       expect(entry.key).to.equal(keyA);
@@ -158,7 +172,7 @@ export function shouldBehaveLikeMap(
     it('returns a value at an index', async () => {
       await store.map.set(keyA, valueA);
 
-      const indexA = await store.map.indexOf(keyA);
+      const indexA = (await store.map.unchecked_indexOf(keyA)) - 1;
       const value = await store.map.unchecked_valueAt(indexA);
 
       expect(value).to.equal(valueA);
