@@ -113,6 +113,9 @@ abstract contract PoolAssets is
         // Validates token addresses and assign asset managers
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
+
+            // We need to make sure all registered tokens are contracts to be able to safely use the SafeERC20 functions
+            // on them, which assume the token account has code. Tokens that selfdestruct are not safe to use.
             _require(Address.isContract(address(token)), Errors.TOKEN_NOT_CONTRACT);
             _poolAssetManagers[poolId][token] = assetManagers[i];
         }

@@ -17,16 +17,13 @@ pragma experimental ABIEncoderV2;
 
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
-import "../lib/openzeppelin/Counters.sol";
 
 import "./interfaces/IVault.sol";
 import "./VaultAuthorization.sol";
 
 abstract contract PoolRegistry is IVault, ReentrancyGuard, VaultAuthorization {
-    using Counters for Counters.Counter;
-
-    // Ensure Pool IDs are unique.
-    Counters.Counter private _poolNonce;
+    // This is always used as uint80, but storing as an uint256 results in reduced bytecode due to the lack of masking.
+    uint256 private _nextPoolNonce;
 
     // Pool IDs are stored as `bytes32`.
     mapping(bytes32 => bool) private _isPoolRegistered;
@@ -99,11 +96,13 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, VaultAuthorization {
         noEmergencyPeriod
         returns (bytes32)
     {
-        // uint80 assumes there will never be more than than 2**80 Pools.
-        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_poolNonce.current()));
+        // Each Pool is assigned an ID based on an incrementing nonce. This assumes there will never be more than 2**80
+        // Pools.
+
+        bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_nextPoolNonce));
         _require(!_isPoolRegistered[poolId], Errors.INVALID_POOL_ID); // Should never happen
 
-        _poolNonce.increment();
+        _nextPoolNonce += 1;
         _isPoolRegistered[poolId] = true;
 
         emit PoolRegistered(poolId);
