@@ -159,8 +159,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     ) internal view virtual override noEmergencyPeriod returns (uint256) {
         // Swaps are disabled while the emergency period is active.
 
-        _require(swapRequest.amount <= currentBalanceTokenIn.mul(_MAX_IN_RATIO), Errors.MAX_IN_RATIO);
-
         return
             WeightedMath._calcOutGivenIn(
                 currentBalanceTokenIn,
@@ -177,8 +175,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 currentBalanceTokenOut
     ) internal view virtual override noEmergencyPeriod returns (uint256) {
         // Swaps are disabled while the emergency period is active.
-
-        _require(swapRequest.amount <= currentBalanceTokenOut.mul(_MAX_OUT_RATIO), Errors.MAX_OUT_RATIO);
 
         return
             WeightedMath._calcInGivenOut(
