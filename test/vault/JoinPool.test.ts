@@ -197,7 +197,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is allowed by the user', () => {
                 sharedBeforeEach('allow relayer', async () => {
-                  await vault.connect(lp).changeRelayerAllowance(relayer.address, true);
+                  await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, true);
                 });
 
                 itJoinsCorrectlyWithAndWithoutInternalBalance(dueProtocolFeeAmounts, fromRelayer);
@@ -205,7 +205,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is not allowed by the user', () => {
                 sharedBeforeEach('disallow relayer', async () => {
-                  await vault.connect(lp).changeRelayerAllowance(relayer.address, false);
+                  await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, false);
                 });
 
                 it('reverts', async () => {
@@ -224,7 +224,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is allowed by the user', () => {
                 sharedBeforeEach('allow relayer', async () => {
-                  await vault.connect(lp).changeRelayerAllowance(relayer.address, true);
+                  await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, true);
                 });
 
                 it('reverts', async () => {
@@ -236,7 +236,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is not allowed by the user', () => {
                 sharedBeforeEach('disallow relayer', async () => {
-                  await vault.connect(lp).changeRelayerAllowance(relayer.address, false);
+                  await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, false);
                 });
 
                 it('reverts', async () => {
