@@ -5,7 +5,6 @@ pragma solidity ^0.7.0;
 import "../helpers/BalancerErrors.sol";
 
 import "./EnumerableSet.sol";
-import "./Context.sol";
 
 /**
  * @dev Contract module that allows children to implement role-based access
@@ -42,7 +41,7 @@ import "./Context.sol";
  * grant and revoke this role. Extra precautions should be taken to secure
  * accounts that have been granted it.
  */
-abstract contract AccessControl is Context {
+abstract contract AccessControl {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     struct RoleData {
@@ -50,7 +49,7 @@ abstract contract AccessControl is Context {
         bytes32 adminRole;
     }
 
-    mapping (bytes32 => RoleData) private _roles;
+    mapping(bytes32 => RoleData) private _roles;
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
@@ -133,7 +132,7 @@ abstract contract AccessControl is Context {
      * - the caller must have ``role``'s admin role.
      */
     function grantRole(bytes32 role, address account) public virtual {
-        _require(hasRole(_roles[role].adminRole, _msgSender()), Errors.GRANT_SENDER_NOT_ADMIN);
+        _require(hasRole(_roles[role].adminRole, msg.sender), Errors.GRANT_SENDER_NOT_ADMIN);
 
         _grantRole(role, account);
     }
@@ -148,7 +147,7 @@ abstract contract AccessControl is Context {
      * - the caller must have ``role``'s admin role.
      */
     function revokeRole(bytes32 role, address account) public virtual {
-        _require(hasRole(_roles[role].adminRole, _msgSender()), Errors.REVOKE_SENDER_NOT_ADMIN);
+        _require(hasRole(_roles[role].adminRole, msg.sender), Errors.REVOKE_SENDER_NOT_ADMIN);
 
         _revokeRole(role, account);
     }
@@ -168,7 +167,7 @@ abstract contract AccessControl is Context {
      * - the caller must be `account`.
      */
     function renounceRole(bytes32 role, address account) public virtual {
-        _require(account == _msgSender(), Errors.RENOUNCE_SENDER_NOT_ALLOWED);
+        _require(account == msg.sender, Errors.RENOUNCE_SENDER_NOT_ALLOWED);
 
         _revokeRole(role, account);
     }
@@ -205,13 +204,13 @@ abstract contract AccessControl is Context {
 
     function _grantRole(bytes32 role, address account) private {
         if (_roles[role].members.add(account)) {
-            emit RoleGranted(role, account, _msgSender());
+            emit RoleGranted(role, account, msg.sender);
         }
     }
 
     function _revokeRole(bytes32 role, address account) private {
         if (_roles[role].members.remove(account)) {
-            emit RoleRevoked(role, account, _msgSender());
+            emit RoleRevoked(role, account, msg.sender);
         }
     }
 }
