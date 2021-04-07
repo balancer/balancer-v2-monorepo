@@ -69,7 +69,6 @@ abstract contract SignaturesValidator is ISignaturesValidator {
         // All type hashes correspond to the form (bytes calldata, address sender, uint256 nonce, uint256 deadline)
         bytes32 encodeData = keccak256(abi.encode(_typeHash(), keccak256(_calldata()), msg.sender, nonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _getDomainSeparator(), encodeData));
-
         (uint8 v, bytes32 r, bytes32 s) = _signature();
 
         // EIP-2 still allows signature malleability for ecrecover(). Remove this possibility and make the signature

@@ -169,6 +169,15 @@ describe('SignaturesValidator', () => {
                   const nextNonce = await validator.getNextNonce(user.address);
                   expect(nextNonce).to.be.equal(previousNonce.add(1));
                 });
+
+                it('does not allow using the same signature twice', async () => {
+                  const data = await buildCalldata();
+                  await sender.sendTransaction({ to: validator.address, data });
+
+                  await expect(sender.sendTransaction({ to: validator.address, data })).to.be.revertedWith(
+                    'INVALID_SIGNATURE'
+                  );
+                });
               });
             });
 
