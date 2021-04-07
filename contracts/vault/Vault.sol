@@ -72,6 +72,6 @@ contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
 
     // solhint-disable-next-line func-name-mixedcase
     function WETH() external view override returns (IWETH) {
-        return _WETH;
+        return _WETH();
     }
 }

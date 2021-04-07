@@ -148,8 +148,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     ) internal override {
         uint256 currentBalance = _getInternalBalance(account, token);
         uint256 newBalance = currentBalance.add(amount);
-        _internalTokenBalance[account][token] = newBalance;
-        emit InternalBalanceChanged(account, token, amount.toInt256());
+        _setInternalBalance(account, token, newBalance, amount.toInt256());
     }
 
     /**
@@ -170,9 +169,17 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
 
         deducted = Math.min(currentBalance, amount);
         uint256 newBalance = currentBalance - deducted;
+        _setInternalBalance(account, token, newBalance, -(deducted.toInt256()));
+    }
 
+    function _setInternalBalance(
+        address account,
+        IERC20 token,
+        uint256 newBalance,
+        int256 delta
+    ) private {
         _internalTokenBalance[account][token] = newBalance;
-        emit InternalBalanceChanged(account, token, -(deducted.toInt256()));
+        emit InternalBalanceChanged(account, token, delta);
     }
 
     /**

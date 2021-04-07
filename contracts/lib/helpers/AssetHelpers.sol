@@ -21,7 +21,7 @@ import "../../vault/interfaces/IWETH.sol";
 
 abstract contract AssetHelpers {
     // solhint-disable-next-line var-name-mixedcase
-    IWETH internal immutable _WETH;
+    IWETH private immutable _weth;
 
     // Sentinel value used to indicate WETH with wrapping/unwrapping semantics. The zero address is a good choice for
     // multiple reasons: it is cheap to pass as a calldata argument, it is a known invalid token and non-contract, and
@@ -29,7 +29,12 @@ abstract contract AssetHelpers {
     address private constant _ETH = address(0);
 
     constructor(IWETH weth) {
-        _WETH = weth;
+        _weth = weth;
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function _WETH() internal view returns (IWETH) {
+        return _weth;
     }
 
     /**
@@ -44,7 +49,7 @@ abstract contract AssetHelpers {
      * to the WETH contract.
      */
     function _translateToIERC20(IAsset asset) internal view returns (IERC20) {
-        return _isETH(asset) ? _WETH : _asIERC20(asset);
+        return _isETH(asset) ? _WETH() : _asIERC20(asset);
     }
 
     /**
