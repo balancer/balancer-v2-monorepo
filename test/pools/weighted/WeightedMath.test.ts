@@ -180,7 +180,7 @@ describe('WeightedMath', function () {
       const tokenWeightIn = bn(0.00769e18);
       const tokenBalanceOut = bn(100e18);
       const tokenWeightOut = bn(1e18);
-      const tokenAmountIn = bn(50e18);
+      const tokenAmountIn = bn(15e18);
 
       const outAmountMath = calcOutGivenIn(
         tokenBalanceIn,
