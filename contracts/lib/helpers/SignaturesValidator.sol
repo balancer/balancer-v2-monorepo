@@ -66,8 +66,14 @@ abstract contract SignaturesValidator is ISignaturesValidator {
             return false;
         }
 
+        bytes32 typeHash = _typeHash(msg.sig);
+        // Make sure there is a type hash associated to the called method otherwise the signature is considered invalid.
+        if (typeHash == bytes32(0)) {
+            return false;
+        }
+
         // All type hashes correspond to the form (bytes calldata, address sender, uint256 nonce, uint256 deadline)
-        bytes32 encodeData = keccak256(abi.encode(_typeHash(), keccak256(_calldata()), msg.sender, nonce, deadline));
+        bytes32 encodeData = keccak256(abi.encode(typeHash, keccak256(_calldata()), msg.sender, nonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _getDomainSeparator(), encodeData));
         (uint8 v, bytes32 r, bytes32 s) = _signature();
 
@@ -99,7 +105,7 @@ abstract contract SignaturesValidator is ISignaturesValidator {
     /**
      * @dev Tell which type hash should be used based on the call selector
      */
-    function _typeHash() internal view virtual returns (bytes32);
+    function _typeHash(bytes4 selector) internal view virtual returns (bytes32);
 
     /**
      * @dev Chain ID
