@@ -29,7 +29,7 @@ import "../../lib/math/Math.sol";
 // The Vault disallows the Pool's 'cash' ever becoming negative, in other words, it can never use any tokens that
 // are not inside of the Vault.
 //
-// One of the goals of this library is to store the entire token balance in a single storage slot, which is we we use
+// One of the goals of this library is to store the entire token balance in a single storage slot, which is why we use
 // 112 bit unsigned integers for 'cash' and 'managed'. Since 'total' is also a 112 bit unsigned value, any combination
 // of 'cash' and 'managed' that yields a 'total' that doesn't fit in that range is disallowed.
 //
@@ -64,7 +64,8 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev Returns the amount of Pool tokens that have been withdrawn (or reported) by its Asset Manager.
+     * @dev Returns the amount of Pool tokens that have been withdrawn (or updated through setManaged)
+     * by its Asset Manager.
      */
     function managed(bytes32 balance) internal pure returns (uint256) {
         uint256 mask = 2**(112) - 1;
@@ -85,16 +86,6 @@ library BalanceAllocation {
     function managedDelta(bytes32 balance, bytes32 otherBalance) internal pure returns (int256) {
         // Due to how balances are packed we know the delta between two managed values will always fit in an int256
         return int256(managed(balance)) - int256(managed(otherBalance));
-    }
-
-    /**
-     * @dev Returns the total balance for each entry in `balances`.
-     */
-    function totals(bytes32[] memory balances) internal pure returns (uint256[] memory results) {
-        results = new uint256[](balances.length);
-        for (uint256 i = 0; i < results.length; i++) {
-            results[i] = total(balances[i]);
-        }
     }
 
     /**
@@ -216,7 +207,7 @@ library BalanceAllocation {
     // The field with both cash balances packed is called sharedCash, and the one with external amounts is called
     // sharedManaged. These two are collectively called the 'shared' balance fields. In both of these, the portion
     // that corresponds to token A is stored in the least significant 112 bits of a 256 bit word, while token B's part
-    // uses the most significant 112 bits.
+    // uses the next least significant 112 bits.
     //
     // Because only cash is written to during a swap, we store the block number there. Typically Pools have a distinct
     // block number per token: in the case of two token Pools this is not necessary, as both values will be the same.

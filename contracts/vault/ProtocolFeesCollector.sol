@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/Authentication.sol";
-import "../lib/helpers/ReentrancyGuard.sol";
+import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./interfaces/IVault.sol";
@@ -63,7 +63,7 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
         IERC20[] calldata tokens,
         uint256[] calldata amounts,
         address recipient
-    ) external authenticate nonReentrant {
+    ) external nonReentrant authenticate {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {

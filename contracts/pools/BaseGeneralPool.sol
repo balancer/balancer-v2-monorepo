@@ -18,6 +18,11 @@ pragma experimental ABIEncoderV2;
 import "./BasePool.sol";
 import "../vault/interfaces/IGeneralPool.sol";
 
+/**
+ * @dev Extension of `BasePool`, adding a handler for `IGeneralPool.onSwap`.
+ *
+ * Derived contracts must implement `_onSwapGivenIn` and `_onSwapGivenOut` along with `BasePool`'s virtual functions.
+ */
 abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     constructor(
         IVault vault,
@@ -50,7 +55,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexIn,
         uint256 indexOut
     ) external view virtual override returns (uint256) {
-        _validateIndexes(indexIn, indexOut, _totalTokens);
+        _validateIndexes(indexIn, indexOut, _getTotalTokens());
         uint256[] memory scalingFactors = _scalingFactors();
 
         return
@@ -66,7 +71,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) internal view returns (uint256) {
-        // Fees are subtracted before scaling happens, to reduce complexity of rounding direction analysis.
+        // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
         swapRequest.amount = _subtractSwapFee(swapRequest.amount);
 
         _upscaleArray(balances, scalingFactors);
@@ -90,10 +95,10 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
 
         uint256 amountIn = _onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
 
-        // amountIn are tokens entering the Pool, so we round up.
+        // amountIn tokens are entering the Pool, so we round up.
         amountIn = _downscaleUp(amountIn, scalingFactors[indexIn]);
 
-        // Fees are added after scaling happens, to reduce complexity of rounding direction analysis.
+        // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
         return _addSwapFee(amountIn);
     }
 

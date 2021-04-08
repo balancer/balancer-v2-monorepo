@@ -61,7 +61,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
             // A check for this condition is also introduced by the compiler, but this one provides a revert reason.
             // Note we're checking for the Vault's total balance, *not* ETH sent in this transaction.
             _require(address(this).balance >= amount, Errors.INSUFFICIENT_ETH);
-            _WETH.deposit{ value: amount }();
+            _WETH().deposit{ value: amount }();
         } else {
             IERC20 token = _asIERC20(asset);
 
@@ -103,7 +103,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
 
             // First, the Vault withdraws deposited ETH from the WETH contract, by burning the same amount of WETH
             // from the Vault. This receipt will be handled by the Vault's `receive`.
-            _WETH.withdraw(amount);
+            _WETH().withdraw(amount);
 
             // Then, the withdrawn ETH is sent to the recipient.
             recipient.sendValue(amount);
@@ -145,11 +145,11 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * soundness issue. This check only exists as an attempt to prevent user error.
      */
     receive() external payable {
-        _require(msg.sender == address(_WETH), Errors.ETH_TRANSFER);
+        _require(msg.sender == address(_WETH()), Errors.ETH_TRANSFER);
     }
 
     // This contract uses virtual internal functions instead of inheriting from the modules that implement them (in
-    // this case, Fees and InternalBalance) in order to decouple it from the rest of the system and enable standalone
+    // this case UserBalance) in order to decouple it from the rest of the system and enable standalone
     // testing by implementing these with mocks.
 
     function _increaseInternalBalance(

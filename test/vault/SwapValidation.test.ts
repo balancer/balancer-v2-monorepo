@@ -3,39 +3,35 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import TokenList from '../helpers/models/tokens/TokenList';
 import * as expectEvent from '../helpers/expectEvent';
 import { encodeJoin } from '../helpers/mockPool';
+import TokenList from '../helpers/models/tokens/TokenList';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 
 import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
-import { fromNow } from '../../lib/helpers/time';
+import { fromNow, MONTH } from '../../lib/helpers/time';
 import { GeneralPool } from '../../lib/helpers/pools';
+import { FundManagement, Swap, SWAP_KIND } from '../../lib/helpers/trading';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { FundManagement, Swap, toSwapIn, toSwapOut } from '../../lib/helpers/trading';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
+import { roleId } from '../../lib/helpers/roles';
 
 describe('Vault - swap validation', () => {
-  let vault: Contract;
+  let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
-  let lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
 
   let poolIds: string[];
 
-  const SWAP_KIND = {
-    GIVEN_IN: 0,
-    GIVEN_OUT: 1,
-  };
-
   before(async () => {
-    [, lp, trader, other] = await ethers.getSigners();
+    [, admin, lp, trader, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('setup', async () => {
     const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
-    const authorizer = await deploy('Authorizer', { args: [ZERO_ADDRESS] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
+    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
 
     const totalPools = 5;
@@ -71,15 +67,15 @@ describe('Vault - swap validation', () => {
   beforeEach('create random swaps', () => {
     const randomInt = (max: number) => Math.floor(Math.random() * Math.floor(max));
 
-    const tokenInIndex = randomInt(tokens.length);
-    const tokenOutIndex = tokenInIndex == 0 ? tokenInIndex + 1 : tokenInIndex - 1; // Must not equal token in index
+    const assetInIndex = randomInt(tokens.length);
+    const assetOutIndex = assetInIndex == 0 ? assetInIndex + 1 : assetInIndex - 1; // Must not equal token in index
 
     swaps = [];
     for (let i = 0; i < 10; ++i) {
       swaps.push({
         poolId: poolIds[randomInt(poolIds.length)],
-        tokenInIndex,
-        tokenOutIndex,
+        assetInIndex,
+        assetOutIndex,
         amount: bn(randomInt(1e18)),
         userData: '0x',
       });
@@ -88,7 +84,7 @@ describe('Vault - swap validation', () => {
 
   context('in swaps given in', () => {
     const doSwap = (funds: FundManagement, limits: BigNumber[], deadline: BigNumber): Promise<ContractTransaction> => {
-      return vault.connect(trader).batchSwapGivenIn(toSwapIn(swaps), tokens.addresses, funds, limits, deadline);
+      return vault.connect(trader).batchSwap(SWAP_KIND.GIVEN_IN, swaps, tokens.addresses, funds, limits, deadline);
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
@@ -100,7 +96,7 @@ describe('Vault - swap validation', () => {
 
   context('in swaps given out', () => {
     const doSwap = (funds: FundManagement, limits: BigNumber[], deadline: BigNumber): Promise<ContractTransaction> => {
-      return vault.connect(trader).batchSwapGivenOut(toSwapOut(swaps), tokens.addresses, funds, limits, deadline);
+      return vault.connect(trader).batchSwap(SWAP_KIND.GIVEN_OUT, swaps, tokens.addresses, funds, limits, deadline);
     };
 
     const querySwap = (funds: FundManagement): Promise<BigNumber[]> => {
@@ -141,93 +137,109 @@ describe('Vault - swap validation', () => {
         deadline = await fromNow(60);
       });
 
-      it('reverts if there are less limits than tokens', async () => {
-        await expect(doSwap(funds, Array(tokens.length - 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
-          'INPUT_LENGTH_MISMATCH'
-        );
+      context('when there is an emergency', () => {
+        sharedBeforeEach('activate emergency period', async () => {
+          const role = roleId(vault, 'setEmergencyPeriod');
+          await authorizer.connect(admin).grantRole(role, admin.address);
+          await vault.connect(admin).setEmergencyPeriod(true);
+        });
+
+        it('reverts', async () => {
+          await expect(doSwap(funds, Array(tokens.length).fill(MAX_INT256), await fromNow(60))).to.be.revertedWith(
+            'EMERGENCY_PERIOD_ON'
+          );
+        });
       });
 
-      it('reverts if there are more limits than tokens', async () => {
-        await expect(doSwap(funds, Array(tokens.length + 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
-          'INPUT_LENGTH_MISMATCH'
-        );
-      });
-
-      context('with correct limit length', () => {
-        let deltas: BigNumber[];
-
-        beforeEach('query deltas', async () => {
-          deltas = await querySwap(funds);
+      context('with no emergency', () => {
+        it('reverts if there are less limits than tokens', async () => {
+          await expect(doSwap(funds, Array(tokens.length - 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
+            'INPUT_LENGTH_MISMATCH'
+          );
         });
 
-        context('without withdrawing from internal balance', () => {
-          beforeEach(() => {
-            funds.fromInternalBalance = false;
+        it('reverts if there are more limits than tokens', async () => {
+          await expect(doSwap(funds, Array(tokens.length + 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
+            'INPUT_LENGTH_MISMATCH'
+          );
+        });
+
+        context('with correct limit length', () => {
+          let deltas: BigNumber[];
+
+          beforeEach('query deltas', async () => {
+            deltas = await querySwap(funds);
           });
 
-          itValidatesCorrectlyWithAndWithoutDepositing();
-        });
-
-        context('withdrawing from internal balance', () => {
-          beforeEach(() => {
-            funds.fromInternalBalance = true;
-          });
-
-          itValidatesCorrectlyWithAndWithoutDepositing();
-        });
-
-        function itValidatesCorrectlyWithAndWithoutDepositing() {
-          context('without depositing to internal balance', () => {
+          context('without withdrawing from internal balance', () => {
             beforeEach(() => {
-              funds.toInternalBalance = false;
+              funds.fromInternalBalance = false;
             });
 
-            itValidatesCorrectly();
+            itValidatesCorrectlyWithAndWithoutDepositing();
           });
 
-          context('depositing to internal balance', () => {
+          context('withdrawing from internal balance', () => {
             beforeEach(() => {
-              funds.toInternalBalance = true;
+              funds.fromInternalBalance = true;
             });
 
-            itValidatesCorrectly();
+            itValidatesCorrectlyWithAndWithoutDepositing();
           });
-        }
 
-        function itValidatesCorrectly() {
-          context('with limits too low', () => {
-            it('reverts', async () => {
-              await Promise.all(
-                deltas.map(async (_, i) => {
-                  const limits = [...deltas];
-                  limits[i] = deltas[i].sub(1);
-                  await expect(doSwap(funds, limits, deadline)).to.be.revertedWith('SWAP_LIMIT');
-                })
-              );
+          function itValidatesCorrectlyWithAndWithoutDepositing() {
+            context('without depositing to internal balance', () => {
+              beforeEach(() => {
+                funds.toInternalBalance = false;
+              });
+
+              itValidatesCorrectly();
             });
-          });
 
-          context('with exact limits', () => {
-            it('accepts the swap', async () => {
-              const receipt = await (await doSwap(funds, deltas, deadline)).wait();
-              expectEvent.inReceipt(receipt, 'Swap');
+            context('depositing to internal balance', () => {
+              beforeEach(() => {
+                funds.toInternalBalance = true;
+              });
+
+              itValidatesCorrectly();
             });
-          });
+          }
 
-          context('with sufficient limits', () => {
-            it('accepts the swap', async () => {
-              await Promise.all(
-                deltas.map(async (_, i) => {
-                  const limits = [...deltas];
-                  limits[i] = deltas[i].add(1);
-
-                  const receipt = await (await doSwap(funds, deltas, deadline)).wait();
-                  expectEvent.inReceipt(receipt, 'Swap');
-                })
-              );
+          function itValidatesCorrectly() {
+            context('with limits too low', () => {
+              it('reverts', async () => {
+                await Promise.all(
+                  deltas.map(async (_, i) => {
+                    const limits = [...deltas];
+                    limits[i] = deltas[i].sub(1);
+                    await expect(doSwap(funds, limits, deadline)).to.be.revertedWith('SWAP_LIMIT');
+                  })
+                );
+              });
             });
-          });
-        }
+
+            context('with exact limits', () => {
+              it('accepts the swap', async () => {
+                const receipt = await (await doSwap(funds, deltas, deadline)).wait();
+                expectEvent.inReceipt(receipt, 'Swap');
+              });
+            });
+
+            context('with sufficient limits', () => {
+              it('accepts the swap', async () => {
+                await Promise.all(
+                  deltas.map(async (_, i) => {
+                    const limits = [...deltas];
+                    limits[i] = deltas[i].add(1);
+
+                    const receipt = await (await doSwap(funds, deltas, deadline)).wait();
+                    expectEvent.inReceipt(receipt, 'Swap');
+                  })
+                );
+              });
+            });
+          }
+        });
       });
     });
   }

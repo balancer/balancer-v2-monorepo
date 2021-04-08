@@ -1,28 +1,9 @@
 import { Contract } from 'ethers';
 
-import { bn } from '../../lib/helpers/numbers';
 import { deploy } from '../../lib/helpers/deploy';
 import { shouldBehaveLikeMap } from './EnumerableMap.behavior';
 
 describe('EnumerableMap', () => {
-  describe('EnumerableUintToAddressMap', () => {
-    const keys = [bn(7891), bn(451), bn(9592328)];
-
-    const values = [
-      '0x8B40ECf815AC8d53aB4AD2a00248DE77296344Db',
-      '0x638141Eb8905D9A55D81610f45bC2B47120059e7',
-      '0x7571A57e94F046725612f786Aa9bf44ce6b56894',
-    ];
-
-    const store: { map?: Contract } = {};
-
-    sharedBeforeEach(async () => {
-      store.map = await deploy('EnumerableUintToAddressMapMock');
-    });
-
-    shouldBehaveLikeMap(store as { map: Contract }, keys, values);
-  });
-
   describe('EnumerableIERC20ToBytes32Map', () => {
     const keys = [
       '0x8B40ECf815AC8d53aB4AD2a00248DE77296344Db',

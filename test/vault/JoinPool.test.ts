@@ -1,5 +1,5 @@
 import { times } from 'lodash';
-import { ethers, network } from 'hardhat';
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -16,6 +16,7 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
+import { lastBlockNumber, MONTH } from '../../lib/helpers/time';
 
 describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
@@ -30,7 +31,7 @@ describe('Vault - join pool', () => {
     const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
     authorizer = await deploy('Authorizer', { args: [admin.address] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
+    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
     feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
     const role = roleId(feesCollector, 'setSwapFee');
@@ -196,7 +197,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is allowed by the user', () => {
                 sharedBeforeEach('allow relayer', async () => {
-                  await vault.connect(lp).changeRelayerAllowance(relayer.address, true);
+                  await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, true);
                 });
 
                 itJoinsCorrectlyWithAndWithoutInternalBalance(dueProtocolFeeAmounts, fromRelayer);
@@ -204,7 +205,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is not allowed by the user', () => {
                 sharedBeforeEach('disallow relayer', async () => {
-                  await vault.connect(lp).changeRelayerAllowance(relayer.address, false);
+                  await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, false);
                 });
 
                 it('reverts', async () => {
@@ -223,7 +224,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is allowed by the user', () => {
                 sharedBeforeEach('allow relayer', async () => {
-                  await vault.connect(lp).changeRelayerAllowance(relayer.address, true);
+                  await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, true);
                 });
 
                 it('reverts', async () => {
@@ -235,7 +236,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is not allowed by the user', () => {
                 sharedBeforeEach('disallow relayer', async () => {
-                  await vault.connect(lp).changeRelayerAllowance(relayer.address, false);
+                  await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, false);
                 });
 
                 it('reverts', async () => {
@@ -270,8 +271,9 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(
+            await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
+                kind: 0, // deposit
                 asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
@@ -293,8 +295,9 @@ describe('Vault - join pool', () => {
 
         context('with some internal balance', () => {
           sharedBeforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(
+            await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
+                kind: 0, // deposit
                 asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
@@ -308,8 +311,9 @@ describe('Vault - join pool', () => {
 
         context('with enough internal balance', () => {
           beforeEach('deposit to internal balance', async () => {
-            await vault.connect(lp).depositToInternalBalance(
+            await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
+                kind: 0, // deposit
                 asset: token.address,
                 amount: bn(1.5e18),
                 sender: lp.address,
@@ -340,144 +344,164 @@ describe('Vault - join pool', () => {
         );
       });
 
-      it('takes tokens from the LP into the vault', async () => {
-        // Tokens are sent from the LP, so the expected change is negative
-        const expectedTransferAmounts = arraySub(joinAmounts, expectedInternalBalanceToUse);
-        const lpChanges = tokens.reduce(
-          (changes, token, i) => ({ ...changes, [token.symbol]: expectedTransferAmounts[i].mul(-1) }),
-          {}
-        );
+      context('when there is no emergency', () => {
+        it('takes tokens from the LP into the vault', async () => {
+          // Tokens are sent from the LP, so the expected change is negative
+          const expectedTransferAmounts = arraySub(joinAmounts, expectedInternalBalanceToUse);
+          const lpChanges = tokens.reduce(
+            (changes, token, i) => ({ ...changes, [token.symbol]: expectedTransferAmounts[i].mul(-1) }),
+            {}
+          );
 
-        // Tokens are sent to the Vault, so the expected change is positive
-        const expectedVaultChanges = arraySub(expectedTransferAmounts, dueProtocolFeeAmounts);
-        const vaultChanges = tokens.reduce(
-          (changes, token, i) => ({ ...changes, [token.symbol]: expectedVaultChanges[i] }),
-          {}
-        );
+          // Tokens are sent to the Vault, so the expected change is positive
+          const expectedVaultChanges = arraySub(expectedTransferAmounts, dueProtocolFeeAmounts);
+          const vaultChanges = tokens.reduce(
+            (changes, token, i) => ({ ...changes, [token.symbol]: expectedVaultChanges[i] }),
+            {}
+          );
 
-        // Tokens are sent to the Protocol Fees, so the expected change is positive
-        const protocolFeesChanges = tokens.reduce(
-          (changes, token, i) => ({ ...changes, [token.symbol]: dueProtocolFeeAmounts[i] }),
-          {}
-        );
+          // Tokens are sent to the Protocol Fees, so the expected change is positive
+          const protocolFeesChanges = tokens.reduce(
+            (changes, token, i) => ({ ...changes, [token.symbol]: dueProtocolFeeAmounts[i] }),
+            {}
+          );
 
-        await expectBalanceChange(
-          () => joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance }),
-          allTokens,
-          [
-            { account: lp, changes: lpChanges },
-            { account: vault, changes: vaultChanges },
-            { account: feesCollector, changes: protocolFeesChanges },
-          ]
-        );
-      });
-
-      it('deducts internal balance from the LP', async () => {
-        const previousInternalBalances = await vault.getInternalBalance(lp.address, tokens.addresses);
-        await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
-        const currentInternalBalances = await vault.getInternalBalance(lp.address, tokens.addresses);
-
-        // Internal balance is expected to decrease: previous - current should equal expected.
-        expect(arraySub(previousInternalBalances, currentInternalBalances)).to.deep.equal(expectedInternalBalanceToUse);
-      });
-
-      it('assigns tokens to the pool', async () => {
-        const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
-        await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
-        const { balances: currentPoolBalances } = await vault.getPoolTokens(poolId);
-
-        // The Pool balance is expected to increase by join amounts minus due protocol fees. Note that the deltas are
-        // not necessarily positive, if the fees due are larger than the join amounts.
-        expect(arraySub(currentPoolBalances, previousPoolBalances)).to.deep.equal(
-          arraySub(joinAmounts, dueProtocolFeeAmounts)
-        );
-      });
-
-      it('calls the pool with the join data', async () => {
-        const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
-        const { blockNumber: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
-
-        const receipt = await (await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).wait();
-
-        expectEvent.inIndirectReceipt(receipt, pool.interface, 'OnJoinPoolCalled', {
-          poolId,
-          sender: lp.address,
-          recipient: ZERO_ADDRESS,
-          currentBalances: previousPoolBalances,
-          latestBlockNumberUsed: previousBlockNumber,
-          protocolSwapFee: await feesCollector.getSwapFee(),
-          userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
+          await expectBalanceChange(
+            () => joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance }),
+            allTokens,
+            [
+              { account: lp, changes: lpChanges },
+              { account: vault, changes: vaultChanges },
+              { account: feesCollector, changes: protocolFeesChanges },
+            ]
+          );
         });
-      });
 
-      it('updates the latest block number used for all tokens', async () => {
-        const currentBlockNumber = Number(await network.provider.send('eth_blockNumber'));
+        it('deducts internal balance from the LP', async () => {
+          const previousInternalBalances = await vault.getInternalBalance(lp.address, tokens.addresses);
+          await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
+          const currentInternalBalances = await vault.getInternalBalance(lp.address, tokens.addresses);
 
-        await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
-
-        await tokens.asyncEach(async (token: Token) => {
-          const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
-          expect(newBlockNumber).to.equal(currentBlockNumber + 1);
+          // Internal balance is expected to decrease: previous - current should equal expected.
+          expect(arraySub(previousInternalBalances, currentInternalBalances)).to.deep.equal(
+            expectedInternalBalanceToUse
+          );
         });
-      });
 
-      it('emits PoolBalanceChanged from the vault', async () => {
-        const receipt = await (await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).wait();
+        it('assigns tokens to the pool', async () => {
+          const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
+          await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
+          const { balances: currentPoolBalances } = await vault.getPoolTokens(poolId);
 
-        expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
-          poolId,
-          liquidityProvider: lp.address,
-          amounts: joinAmounts,
-          protocolFees: dueProtocolFeeAmounts,
+          // The Pool balance is expected to increase by join amounts minus due protocol fees. Note that the deltas are
+          // not necessarily positive, if the fees due are larger than the join amounts.
+          expect(arraySub(currentPoolBalances, previousPoolBalances)).to.deep.equal(
+            arraySub(joinAmounts, dueProtocolFeeAmounts)
+          );
         });
-      });
 
-      it('collects protocol fees', async () => {
-        const previousCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
-        await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
-        const currentCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
+        it('calls the pool with the join data', async () => {
+          const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
+          const { blockNumber: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
 
-        expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(dueProtocolFeeAmounts);
-      });
+          const receipt = await (await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).wait();
 
-      it('joins multiple times', async () => {
-        await Promise.all(
-          times(3, () => async () => {
-            const receipt = await (await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).wait();
-            expectEvent.inIndirectReceipt(receipt, pool.interface, 'OnJoinPoolCalled');
-          })
-        );
-      });
+          expectEvent.inIndirectReceipt(receipt, pool.interface, 'OnJoinPoolCalled', {
+            poolId,
+            sender: lp.address,
+            recipient: ZERO_ADDRESS,
+            currentBalances: previousPoolBalances,
+            latestBlockNumberUsed: previousBlockNumber,
+            protocolSwapFee: await feesCollector.getSwapFee(),
+            userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
+          });
+        });
 
-      it('reverts if any of the max amounts in is not enough', async () => {
-        await Promise.all(
-          joinAmounts.map((amount, i) => {
+        it('updates the latest block number used for all tokens', async () => {
+          const currentBlockNumber = await lastBlockNumber();
+
+          await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
+
+          await tokens.asyncEach(async (token: Token) => {
+            const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
+            expect(newBlockNumber).to.equal(currentBlockNumber + 1);
+          });
+        });
+
+        it('emits PoolBalanceChanged from the vault', async () => {
+          const receipt = await (await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).wait();
+
+          expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
+            poolId,
+            liquidityProvider: lp.address,
+            amounts: joinAmounts,
+            protocolFees: dueProtocolFeeAmounts,
+          });
+        });
+
+        it('collects protocol fees', async () => {
+          const previousCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
+          await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance });
+          const currentCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
+
+          expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(dueProtocolFeeAmounts);
+        });
+
+        it('joins multiple times', async () => {
+          await Promise.all(
+            times(3, () => async () => {
+              const receipt = await (
+                await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })
+              ).wait();
+              expectEvent.inIndirectReceipt(receipt, pool.interface, 'OnJoinPoolCalled');
+            })
+          );
+        });
+
+        it('reverts if any of the max amounts in is not enough', async () => {
+          await Promise.all(
+            joinAmounts.map((amount, i) => {
+              if (amount.gt(0)) {
+                const maxAmountsIn = array(MAX_UINT256);
+                maxAmountsIn[i] = amount.sub(1);
+
+                return expect(
+                  joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance, maxAmountsIn })
+                ).to.be.revertedWith('JOIN_ABOVE_MAX');
+              }
+            })
+          );
+        });
+
+        it('reverts if any of the amounts to transfer is larger than lp balance', async () => {
+          const expectedTokensToTransfer = arraySub(joinAmounts, expectedInternalBalanceToUse);
+
+          await tokens.asyncEach(async (token: Token, i: number) => {
+            const amount = expectedTokensToTransfer[i];
             if (amount.gt(0)) {
-              const maxAmountsIn = array(MAX_UINT256);
-              maxAmountsIn[i] = amount.sub(1);
+              // Burn excess balance so that the LP is missing one token to join
+              const currentBalance = await token.balanceOf(lp.address);
+              await token.burn(currentBalance.sub(amount).add(1), { from: lp });
 
-              return expect(
-                joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance, maxAmountsIn })
-              ).to.be.revertedWith('JOIN_ABOVE_MAX');
+              return expect(joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).to.be.revertedWith(
+                'ERC20_TRANSFER_EXCEEDS_BALANCE'
+              );
             }
-          })
-        );
+          });
+        });
       });
 
-      it('reverts if any of the amounts to transfer is larger than lp balance', async () => {
-        const expectedTokensToTransfer = arraySub(joinAmounts, expectedInternalBalanceToUse);
+      context('when there is an emergency', () => {
+        sharedBeforeEach('activate emergency period', async () => {
+          const role = roleId(vault, 'setEmergencyPeriod');
+          await authorizer.connect(admin).grantRole(role, admin.address);
+          await vault.connect(admin).setEmergencyPeriod(true);
+        });
 
-        await tokens.asyncEach(async (token: Token, i: number) => {
-          const amount = expectedTokensToTransfer[i];
-          if (amount.gt(0)) {
-            // Burn excess balance so that the LP is missing one token to join
-            const currentBalance = await token.balanceOf(lp.address);
-            await token.burn(currentBalance.sub(amount).add(1), { from: lp });
-
-            return expect(joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).to.be.revertedWith(
-              'ERC20_TRANSFER_EXCEEDS_BALANCE'
-            );
-          }
+        it('reverts', async () => {
+          await expect(joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance })).to.be.revertedWith(
+            'EMERGENCY_PERIOD_ON'
+          );
         });
       });
     }

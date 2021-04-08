@@ -103,7 +103,7 @@ contract BalancerPoolToken is IERC20 {
         _move(sender, recipient, amount);
 
         if (msg.sender != sender && currentAllowance != uint256(-1)) {
-            _require(currentAllowance >= amount, Errors.INSUFFICIENT_ALLOWANCE);
+            // Because of the previous require, we know that if msg.sender != sender then currentAllowance >= amount
             _setAllowance(sender, msg.sender, currentAllowance - amount);
         }
 
@@ -152,6 +152,9 @@ contract BalancerPoolToken is IERC20 {
     ) internal {
         uint256 currentBalance = _balance[sender];
         _require(currentBalance >= amount, Errors.INSUFFICIENT_BALANCE);
+        // Prohibit transfers to the zero address to avoid confusion with the
+        // Transfer event emitted by `_burnPoolTokens`
+        _require(recipient != address(0), Errors.ERC20_TRANSFER_TO_ZERO_ADDRESS);
 
         _balance[sender] = currentBalance - amount;
         _balance[recipient] = _balance[recipient].add(amount);

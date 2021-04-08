@@ -46,11 +46,11 @@ describe('WeightedPool', function () {
   });
 
   // TODO: These fail due to a Hardhat error
-  context.skip('for a too-many token pool', () => {
+  context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
-      // The maximum number of tokens is 16
-      const tokens = await TokenList.create(17);
-      const weights = new Array(17).fill(fp(1));
+      // The maximum number of tokens is 8
+      const tokens = await TokenList.create(9);
+      const weights = new Array(9).fill(fp(1));
 
       await expect(WeightedPool.create({ tokens, weights })).to.be.revertedWith('MAX_TOKENS');
     });
@@ -251,7 +251,7 @@ describe('WeightedPool', function () {
           });
 
           it('fails if not enough BPT', async () => {
-            // This call should fail cause we are requesting minimum 1% more
+            // This call should fail because we are requesting minimum 1% more
             const minimumBptOut = pct(expectedBptOut, 1.01);
 
             await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
@@ -486,7 +486,7 @@ describe('WeightedPool', function () {
         });
 
         it('fails if more BTP needed', async () => {
-          // Call should fail cause we are requesting a max amount lower than the actual needed
+          // Call should fail because we are requesting a max amount lower than the actual needed
           const amountsOut = initialBalances;
           const maximumBptIn = previousBptBalance.div(2);
 
