@@ -53,7 +53,7 @@ interface IVault is ISignaturesValidator {
     // The only exceptions to this involve relayers. A relayer is an account (typically a contract) that can use the
     // Internal Balance and Vault allowance of other accounts. For an account to be able to wield this power,
     // two things must occur:
-    //  - The Authorizer must allow the the relayer to call the functions associated with this permission.
+    //  - The Authorizer must allow the relayer to call the functions associated with this permission.
     //    In other words, Balancer governance must specifically approve the functions each relayer can call
     //  - Each user must approve the relayer to act on their behalf
     // This double protection means users cannot be tricked into allowing malicious relayers (because they will not
@@ -472,10 +472,10 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Performs a swap with a single Pool.
      *
-     * If the swap is given in (the number of tokens to send to the Pool is known), returns the amount of tokens
+     * If the swap is given out (the number of tokens to send to the Pool is known), returns the amount of tokens
      * taken from the Pool, which must be larger or equal to `limit`.
      *
-     * If the swap is given out (the number of tokens to take from the Pool is known), returns the amount of
+     * If the swap is given in (the number of tokens to take from the Pool is known), returns the amount of
      * tokens sent to the Pool, which must be smaller or equal to `limit`.
      *
      * Internal Balance usage and the recipient are determined by the `funds` struct.
