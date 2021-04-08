@@ -647,8 +647,8 @@ interface IVault is ISignaturesValidator {
     // tokens from the Vault, deposit them, or assign arbitrary values to its `managed` balance (see
     // `getPoolTokenInfo`). This makes them extremely powerful and dangerous. Even if an Asset Manager only directly
     // controls one of the tokens in a Pool, a malicious manager could set that token's balance to manipulate the
-    // prices of the other tokens, then drain the pool with swaps. The risk of using Asset Managers is therefore not
-    // constrained to the tokens they are managing, but extends to the entire Pool's holdings.
+    // prices of the other tokens, and then drain the Pool with swaps. The risk of using Asset Managers is therefore 
+    // not constrained to the tokens they are managing, but extends to the entire Pool's holdings.
     //
     // However, a properly designed Asset Manager smart contract can be safely used for the Pool's benefit,
     // for example by lending unused tokens out for interest, or using them to participate in voting protocols.
