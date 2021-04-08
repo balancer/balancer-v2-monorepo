@@ -30,11 +30,16 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
     /* solhint-disable prettier/prettier */
     /* solhint-disable var-name-mixedcase */
     /* solhint-disable private-vars-leading-underscore */
-    bytes32 internal immutable JOIN_TYPE_HASH = keccak256("JoinAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32 internal immutable EXIT_TYPE_HASH = keccak256("ExitAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32 internal immutable SWAP_TYPE_HASH = keccak256("SwapAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32 internal immutable BATCH_SWAP_TYPE_HASH = keccak256("BatchSwapAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32 internal immutable CHANGE_RELAYER_TYPE_HASH = keccak256("ChangeRelayerAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    // bytes32 internal constant JOIN_TYPE_HASH = keccak256("JoinAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 internal constant JOIN_TYPE_HASH = 0x8378a8c1df05a9f1a8c03f56ac5deaa79a89d08a18ee66900300eeccbbffab60;
+    // bytes32 internal constant EXIT_TYPE_HASH = keccak256("ExitAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 internal constant EXIT_TYPE_HASH = 0x0725e3eb280becc5e8a12353eebf7eea0f300734e37d6ea26a0618f0e33b7c2c;
+    // bytes32 internal constant SWAP_TYPE_HASH = keccak256("SwapAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 internal constant SWAP_TYPE_HASH = 0xccccf29320e8013475285e723e882da98bb8fe6d57df3ef56f4450c8a0b87279;
+    // bytes32 internal constant BATCH_SWAP_TYPE_HASH = keccak256("BatchSwapAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 internal constant BATCH_SWAP_TYPE_HASH = 0x19798cf6a20b933b5582bab474b88a347f49600d7885bea767cebdf93e67e25b;
+    // bytes32 internal constant CHANGE_RELAYER_TYPE_HASH = keccak256("ChangeRelayerAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 internal constant CHANGE_RELAYER_TYPE_HASH = 0xa287a6d125737644e801d3f7878ec24503dc3f766efac5bdc0fe4932726c75f9;
     /* solhint-enable max-line-length */
     /* solhint-enable prettier/prettier */
     /* solhint-enable var-name-mixedcase */
@@ -113,19 +118,29 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
         return _authorizer.hasRole(roleId, user);
     }
 
-    function _typeHash() internal view override returns (bytes32) {
-        if (msg.sig == IVault.joinPool.selector) {
-            return JOIN_TYPE_HASH;
-        } else if (msg.sig == IVault.exitPool.selector) {
-            return EXIT_TYPE_HASH;
-        } else if (msg.sig == IVault.swap.selector) {
-            return SWAP_TYPE_HASH;
-        } else if (msg.sig == IVault.batchSwap.selector) {
-            return BATCH_SWAP_TYPE_HASH;
-        } else if (msg.sig == IVault.changeRelayerAllowance.selector) {
-            return CHANGE_RELAYER_TYPE_HASH;
-        } else {
-            return bytes32(0);
+    function _typeHash(bytes4 selector) internal pure override returns (bytes32 hash) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            // Switch case the selector to return the corresponding type hash
+            switch selector
+                case 0xb95cac2800000000000000000000000000000000000000000000000000000000 {
+                    hash := JOIN_TYPE_HASH
+                }
+                case 0x8bdb391300000000000000000000000000000000000000000000000000000000 {
+                    hash := EXIT_TYPE_HASH
+                }
+                case 0x52bbbe2900000000000000000000000000000000000000000000000000000000 {
+                    hash := SWAP_TYPE_HASH
+                }
+                case 0x945bcec900000000000000000000000000000000000000000000000000000000 {
+                    hash := BATCH_SWAP_TYPE_HASH
+                }
+                case 0x2fd8744600000000000000000000000000000000000000000000000000000000 {
+                    hash := CHANGE_RELAYER_TYPE_HASH
+                }
+                default {
+                    hash := 0x0000000000000000000000000000000000000000000000000000000000000000
+                }
         }
     }
 }
