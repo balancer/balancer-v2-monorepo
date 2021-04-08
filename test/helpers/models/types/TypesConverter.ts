@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { bn, fp } from '../../../../lib/helpers/numbers';
 import { MONTH } from '../../../../lib/helpers/time';
+import { toNormalizedWeights } from '../../../../lib/helpers/weights';
 
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
@@ -42,6 +43,7 @@ export default {
     let { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
+    weights = toNormalizedWeights(weights.map(bn));
     if (!swapFee) swapFee = bn(0);
     if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
     if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;

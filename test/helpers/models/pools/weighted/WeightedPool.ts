@@ -33,7 +33,6 @@ import {
   calcBptOutGivenExactTokensIn,
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
-  toNormalizedWeights,
   calcOutGivenIn,
   calculateOneTokenSwapFee,
   calcInGivenOut,
@@ -83,7 +82,7 @@ export default class WeightedPool {
   }
 
   get normalizedWeights(): BigNumberish[] {
-    return toNormalizedWeights(this.weights).map((w) => bn(w.mul(1e18)));
+    return this.weights;
   }
 
   async name(): Promise<string> {
