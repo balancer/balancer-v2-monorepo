@@ -538,7 +538,7 @@ describe('Vault - swaps', () => {
                               assertSwapGivenIn({ swaps, fromOther }, { DAI: 2e18, MKR: -1e18 });
                             });
 
-                            context.only('when the relayer is not allowed by the user', () => {
+                            context('when the relayer is not allowed by the user', () => {
                               sharedBeforeEach('disallow relayer', async () => {
                                 await vault
                                   .connect(trader)
