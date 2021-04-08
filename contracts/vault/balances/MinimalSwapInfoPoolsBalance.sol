@@ -42,7 +42,7 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
 
     /**
      * @dev Registers a list of tokens in a Minimal Swap Info Pool. This function assumes the given tokens are
-     * contracts, it's responsibility of the function caller to perform this check.
+     * contracts: it's the responsibility of the function caller to perform this check.
      *
      * Requirements:
      *
@@ -154,10 +154,13 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
         bytes32 balance = _minimalSwapInfoPoolsBalances[poolId][token];
         bool existsToken = balance.isNotZero() || _minimalSwapInfoPoolsTokens[poolId].contains(address(token));
 
-        // If there is no balance for the requested tokens, we first check if the pool was registered.
-        // This is a gas optimization so we don't have to check the pool was registered unnecessarily, which would be
-        // the happy path where there is a token already registered for a given pool ID.
+        // If there is no balance for the requested token, we check if the token was registered.
+        // This is a gas optimization so that in the happy path where the token is registered to the pool,
+        // we don't have to check whether the pool was registered.
         if (!existsToken) {
+            // The token might not be registered because the Pool itself is not registered. If so, we provide a more
+            // accurate revert reason. We only check this at this stage to save gas in the case where the token
+            // is registered, which implies the Pool is as well.
             _ensureRegisteredPool(poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }

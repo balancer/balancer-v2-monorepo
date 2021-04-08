@@ -66,8 +66,8 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
     mapping(bytes32 => TwoTokenPoolTokens) private _twoTokenPoolTokens;
 
     /**
-     * @dev Registers the tokens of a Two Token Pool. This function assumes the given tokens are contracts,
-     * it's responsibility of the function caller to perform this check.
+     * @dev Registers the tokens of a Two Token Pool. This function assumes the given tokens are contracts:
+     * it's the responsibility of the function caller to perform this check.
      *
      * Requirements:
      *
