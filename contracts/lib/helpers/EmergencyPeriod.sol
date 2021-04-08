@@ -60,12 +60,11 @@ abstract contract EmergencyPeriod {
         external
         view
         returns (
-            bool,
-            uint256,
-            uint256
+            bool active,
+            uint256 endDate,
+            uint256 checkEndDate
         )
     {
-        // Return (active flag, endDate, and checkEndDate)
         return (!_isEmergencyPeriodInactive(), _getEmergencyPeriodEndDate(), _getEmergencyPeriodCheckEndDate());
     }
 
