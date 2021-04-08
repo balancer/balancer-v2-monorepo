@@ -43,8 +43,8 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _allowedRelayers;
 
-    event AuthorizerChanged(address indexed oldAuthorizer, address indexed newAuthorizer);
-    event RelayerAllowanceChanged(address indexed relayer, address sender, bool allowed);
+    event AuthorizerChanged(IAuthorizer indexed oldAuthorizer, IAuthorizer indexed newAuthorizer);
+    event RelayerAllowanceChanged(address indexed relayer, address indexed sender, bool allowed);
 
     /**
      * @dev Reverts unless `user` has allowed the caller as a relayer, and the caller is allowed by the Authorizer to
@@ -60,8 +60,7 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
     }
 
     function changeAuthorizer(IAuthorizer newAuthorizer) external override nonReentrant authenticate {
-        emit AuthorizerChanged(address(_authorizer), address(newAuthorizer));
-
+        emit AuthorizerChanged(_authorizer, newAuthorizer);
         _authorizer = newAuthorizer;
     }
 
@@ -78,7 +77,6 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
         bool allowed
     ) external override nonReentrant noEmergencyPeriod authenticateFor(sender) {
         _allowedRelayers[sender][relayer] = allowed;
-
         emit RelayerAllowanceChanged(relayer, sender, allowed);
     }
 

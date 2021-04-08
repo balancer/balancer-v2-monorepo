@@ -29,6 +29,25 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "contract IAuthorizer",
+        "name": "oldAuthorizer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract IAuthorizer",
+        "name": "newAuthorizer",
+        "type": "address"
+      }
+    ],
+    "name": "AuthorizerChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": false,
         "internalType": "bool",
         "name": "active",
@@ -173,6 +192,31 @@
       }
     ],
     "name": "PoolRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "relayer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "allowed",
+        "type": "bool"
+      }
+    ],
+    "name": "RelayerAllowanceChanged",
     "type": "event"
   },
   {
