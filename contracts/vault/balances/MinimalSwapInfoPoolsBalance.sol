@@ -156,8 +156,7 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
 
         // If there is no balance for the requested token, we check if the token was registered.
         // This is a gas optimization so that in the happy path where the token is registered to the pool,
-        // we don't have to check whether the pool was registered
-        
+        // we don't have to check whether the pool was registered.
         if (!existsToken) {
             // The token might not be registered because the Pool itself is not registered. If so, we provide a more
             // accurate revert reason. We only check this at this stage to save gas in the case where the token
