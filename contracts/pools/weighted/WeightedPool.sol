@@ -77,7 +77,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
                 maxNormalizedWeight = normalizedWeight;
             }
         }
-        // Ensure that we ensured the normalized weights sum to ONE
+        // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
         _maxWeightTokenIndex = maxWeightTokenIndex;
