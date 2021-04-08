@@ -145,7 +145,7 @@ describe('BalancerPoolToken', () => {
     });
 
     context('when the recipient is the zero address', () => {
-      it('should not allow transfers to the zero address', async () => {
+      it('reverts', async () => {
         await expect(token.connect(holder).transfer(ZERO_ADDRESS, bn(0))).to.be.revertedWith(
           'ERC20_TRANSFER_TO_ZERO_ADDRESS'
         );
@@ -279,7 +279,7 @@ describe('BalancerPoolToken', () => {
           await token.connect(holder).approve(spender.address, amount);
         });
 
-        it('should revert on transferFrom', async () => {
+        it('reverts', async () => {
           await expect(token.connect(spender).transferFrom(holder.address, ZERO_ADDRESS, amount)).to.be.revertedWith(
             'ERC20_TRANSFER_TO_ZERO_ADDRESS'
           );
