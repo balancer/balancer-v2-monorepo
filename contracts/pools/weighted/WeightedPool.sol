@@ -59,28 +59,39 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
     ) BaseMinimalSwapInfoPool(vault, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {
-        InputHelpers.ensureInputLengthMatch(weights.length, tokens.length);
+        uint256 numTokens = weights.length;
+        InputHelpers.ensureInputLengthMatch(numTokens, tokens.length);
 
         // Check valid weights and compute normalized weights
         uint256 sumWeights = 0;
-        for (uint8 i = 0; i < weights.length; i++) {
+        for (uint8 i = 0; i < numTokens; i++) {
             sumWeights = sumWeights.add(weights[i]);
         }
 
         uint256 maxWeightTokenIndex = 0;
         uint256 maxNormalizedWeight = 0;
-        uint256[] memory normalizedWeights = new uint256[](weights.length);
+        uint256 normalizedSum = 0;
 
-        for (uint8 i = 0; i < normalizedWeights.length; i++) {
-            uint256 normalizedWeight = weights[i].div(sumWeights);
+        uint256[] memory normalizedWeights = new uint256[](numTokens);
+
+        for (uint8 i = 0; i < numTokens; i++) {
+            // Ensure the sum of the normalized weights is exactly ONE
+            uint256 normalizedWeight = i == numTokens - 1
+                ? FixedPoint.ONE.sub(normalizedSum)
+                : weights[i].div(sumWeights);
+
             _require(normalizedWeight >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
             normalizedWeights[i] = normalizedWeight;
+            normalizedSum += normalizedWeight;
 
             if (normalizedWeight > maxNormalizedWeight) {
                 maxWeightTokenIndex = i;
                 maxNormalizedWeight = normalizedWeight;
             }
         }
+
+        // Ensure that we ensured the normalized weights sum to ONE
+        _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
         _maxWeightTokenIndex = maxWeightTokenIndex;
         _normalizedWeight0 = weights.length > 0 ? normalizedWeights[0] : 0;
