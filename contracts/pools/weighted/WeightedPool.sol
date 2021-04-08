@@ -59,11 +59,10 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension
     ) BaseMinimalSwapInfoPool(vault, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {
-        uint256 numTokens = normalizedWeights.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, tokens.length);
+        uint256 numTokens = tokens.length;
+        InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
 
-        // Ensure the sum of the normalized weights are above them minimum
-        // and find the token index of the maximum weight
+        // Ensure  each normalized weight is above them minimum and find the token index of the maximum weight
         uint256 normalizedSum = 0;
         uint256 maxWeightTokenIndex = 0;
         uint256 maxNormalizedWeight = 0;
