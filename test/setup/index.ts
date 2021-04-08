@@ -106,17 +106,20 @@ chai.use(function (chai, utils) {
           if (!actualErrorCode.includes('BAL#')) throw error;
           actualErrorCode = actualErrorCode.replace('BAL#', '');
 
+          // @ts-ignore
+          let actualReason = reasons[actualErrorCode];
+          if (!actualReason) actualReason = 'Could not match a Balancer error message';
+
           // If there is no balancer error matching the expected revert reason re-throw the error
           // @ts-ignore
           const expectedError = Object.entries(reasons).find(([, value]) => value == expectedReason);
-          if (!expectedError) throw error;
-          const expectedErrorCode = expectedError[0];
-
-          // @ts-ignore
-          let actualReason = reasons[actualErrorCode];
-          if (!actualReason) actualReason = `Could not match a Balancer error message`;
+          if (!expectedError) {
+            error.message = `${error.message} (${actualReason})`;
+            throw error;
+          }
 
           // Otherwise, assert the error code matched the actual reason
+          const expectedErrorCode = expectedError[0];
           const message = `Expected transaction to be reverted with BAL#${expectedErrorCode} (${expectedReason}), but other exception was thrown: Error: VM Exception while processing transaction: revert BAL#${actualErrorCode} (${actualReason})`;
           expect(actualErrorCode).to.be.equal(expectedErrorCode, message);
         }

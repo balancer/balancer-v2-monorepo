@@ -634,7 +634,7 @@ describe('WeightedPool', function () {
         });
 
         sharedBeforeEach('compute expected due protocol fees', async () => {
-          const paidTokenIndex = weights.indexOf(pool.maxWeight);
+          const paidTokenIndex = pool.weights.indexOf(pool.maxWeight);
           const protocolFeeAmount = await pool.estimateSwapFee(paidTokenIndex, protocolFeePercentage, currentBalances);
           expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? protocolFeeAmount : n));
         });
@@ -696,7 +696,7 @@ describe('WeightedPool', function () {
         });
 
         sharedBeforeEach('compute expected due protocol fees', async () => {
-          const paidTokenIndex = weights.indexOf(pool.maxWeight);
+          const paidTokenIndex = pool.weights.indexOf(pool.maxWeight);
           const feeAmount = await pool.estimateMaxSwapFee(paidTokenIndex, protocolFeePercentage, currentBalances);
           expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? feeAmount : n));
         });

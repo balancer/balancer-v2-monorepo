@@ -36,7 +36,6 @@ const DEPLOYER_PRIVATE_KEY =
 export default {
   networks: {
     hardhat: {
-      allowUnlimitedContractSize: true,
       chainId: CHAIN_IDS.hardhat,
       saveDeployments: true,
     },
@@ -45,11 +44,9 @@ export default {
       live: false,
       chainId: CHAIN_IDS.dockerParity,
       url: 'http://localhost:8545',
-      allowUnlimitedContractSize: true,
       saveDeployments: true,
     },
     localhost: {
-      allowUnlimitedContractSize: true,
       saveDeployments: true,
     },
     mainnet: {
