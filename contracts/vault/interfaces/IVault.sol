@@ -53,7 +53,7 @@ interface IVault is ISignaturesValidator {
     // The only exceptions to this involve relayers. A relayer is an account (typically a contract) that can use the
     // Internal Balance and Vault allowance of other accounts. For an account to be able to wield this power,
     // two things must occur:
-    //  - The Authorizer must allow the the relayer to call the functions associated with this permission.
+    //  - The Authorizer must allow the relayer to call the functions associated with this permission.
     //    In other words, Balancer governance must specifically approve the functions each relayer can call
     //  - Each user must approve the relayer to act on their behalf
     // This double protection means users cannot be tricked into allowing malicious relayers (because they will not
@@ -472,10 +472,10 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Performs a swap with a single Pool.
      *
-     * If the swap is given in (the number of tokens to send to the Pool is known), returns the amount of tokens
+     * If the swap is given out (the number of tokens to send to the Pool is known), returns the amount of tokens
      * taken from the Pool, which must be larger or equal to `limit`.
      *
-     * If the swap is given out (the number of tokens to take from the Pool is known), returns the amount of
+     * If the swap is given in (the number of tokens to take from the Pool is known), returns the amount of
      * tokens sent to the Pool, which must be smaller or equal to `limit`.
      *
      * Internal Balance usage and the recipient are determined by the `funds` struct.
@@ -645,10 +645,14 @@ interface IVault is ISignaturesValidator {
     //
     // Each token registered for a Pool can be assigned an Asset Manager, which is able to freely withdraw the Pool's
     // tokens from the Vault, deposit them, or assign arbitrary values to its `managed` balance (see
-    // `getPoolTokenInfo`). This makes them extremely powerful and dangerous, as they can not only steal a Pool's
-    // tokens, but also manipulate its prices. However, a properly designed Asset Manager smart contract can be used
-    // for the Pool's benefit, for example by lending unused tokens out for interest, or using them to participate
-    // in voting protocols.
+    // `getPoolTokenInfo`). This makes them extremely powerful and dangerous. Even if an Asset Manager only directly
+    // controls one of the tokens in a Pool, a malicious manager could set that token's balance to manipulate the
+    // prices of the other tokens, and then drain the Pool with swaps. The risk of using Asset Managers is therefore
+    // not constrained to the tokens they are managing, but extends to the entire Pool's holdings.
+    //
+    // However, a properly designed Asset Manager smart contract can be safely used for the Pool's benefit,
+    // for example by lending unused tokens out for interest, or using them to participate in voting protocols.
+    //
     // This concept is unrelated to the IAsset interface.
 
     /**

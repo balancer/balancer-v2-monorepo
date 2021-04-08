@@ -35,7 +35,7 @@ function _revert(uint256 errorCode) pure {
     // We don't have revert strings embedded in the contract to save bytecode size: it takes much less space to store a
     // number (8 to 16 bits) than the individual string characters.
     //
-    // The dynamic string creation algorithm that follow could be implemented in Solidity, but assembly allows for a
+    // The dynamic string creation algorithm that follows could be implemented in Solidity, but assembly allows for a
     // much denser implementation, again saving bytecode size. Given this function unconditionally reverts, this is a
     // safe place to rely on it without worrying about how its usage might affect e.g. memory contents.
     assembly {

@@ -278,7 +278,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     /**
      * @dev Returns the amount of BPT that would be granted to `recipient` if the `onJoinPool` hook were called by the
-     * Vault with the the same arguments, along with the number of tokens `sender` would have to supply.
+     * Vault with the same arguments, along with the number of tokens `sender` would have to supply.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
      * data, such as the protocol swap fee and Pool balances.
@@ -311,7 +311,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     /**
      * @dev Returns the amount of BPT that would be burned from `sender` if the `onExitPool` hook were called by the
-     * Vault with the the same arguments, along with the number of tokens `recipient` would receive.
+     * Vault with the same arguments, along with the number of tokens `recipient` would receive.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
      * data, such as the protocol swap fee and Pool balances.

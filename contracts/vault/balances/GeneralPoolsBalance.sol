@@ -36,8 +36,8 @@ abstract contract GeneralPoolsBalance {
     mapping(bytes32 => EnumerableMap.IERC20ToBytes32Map) internal _generalPoolsBalances;
 
     /**
-     * @dev Registers a list of tokens in a General Pool. This function assumes the given tokens are contracts,
-     * it's responsibility of the function caller to perform this check.
+     * @dev Registers a list of tokens in a General Pool. This function assumes the given tokens are contracts:
+     * it's the responsibility of the function caller to perform this check.
      *
      * Requirements:
      *
