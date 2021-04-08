@@ -5,6 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { fp } from '../../helpers/numbers';
 import { deploy } from '../../helpers/deploy';
+import { toNormalizedWeights } from '../../helpers/weights';
 import { MAX_UINT256 } from '../../helpers/constants';
 import { encodeJoinStablePool } from '../../helpers/stablePoolEncoding';
 import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
@@ -76,7 +77,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   let joinUserData: string;
 
   if (poolName == 'WeightedPool') {
-    const weights = symbols.map(() => fp(1)); // Equal weights for all tokens
+    const weights = toNormalizedWeights(symbols.map(() => fp(1))); // Equal weights for all tokens
 
     pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
       from: creator,
