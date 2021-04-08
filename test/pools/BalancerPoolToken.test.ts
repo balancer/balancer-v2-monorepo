@@ -124,9 +124,9 @@ describe('BalancerPoolToken', () => {
 
         context('when the sender does not have enough balance', () => {
           it('reverts', async () => {
-            await expect(token.connect(holder).transfer(recipientAddress || recipient.address, amount)).be.revertedWith(
-              'INSUFFICIENT_BALANCE'
-            );
+            await expect(
+              token.connect(holder).transfer(recipientAddress || recipient.address, amount)
+            ).to.be.revertedWith('INSUFFICIENT_BALANCE');
           });
         });
 
@@ -145,7 +145,11 @@ describe('BalancerPoolToken', () => {
     });
 
     context('when the recipient is the zero address', () => {
-      itHandlesTransfersProperly(ZERO_ADDRESS);
+      it('should not allow transfers to the zero address', async () => {
+        await expect(token.connect(holder).transfer(ZERO_ADDRESS, bn(0))).to.be.revertedWith(
+          'ERC20_TRANSFER_TO_ZERO_ADDRESS'
+        );
+      });
     });
   });
 
@@ -270,7 +274,16 @@ describe('BalancerPoolToken', () => {
       });
 
       describe('when the recipient is the zero address', () => {
-        itHandlesTransferFromsProperly(ZERO_ADDRESS);
+        beforeEach('mint and approve', async () => {
+          await token.mint(holder.address, amount);
+          await token.connect(holder).approve(spender.address, amount);
+        });
+
+        it('should revert on transferFrom', async () => {
+          await expect(token.connect(spender).transferFrom(holder.address, ZERO_ADDRESS, amount)).to.be.revertedWith(
+            'ERC20_TRANSFER_TO_ZERO_ADDRESS'
+          );
+        });
       });
     });
 
