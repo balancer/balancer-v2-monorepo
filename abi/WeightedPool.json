@@ -23,7 +23,7 @@
       },
       {
         "internalType": "uint256[]",
-        "name": "weights",
+        "name": "normalizedWeights",
         "type": "uint256[]"
       },
       {
