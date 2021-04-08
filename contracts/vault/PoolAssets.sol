@@ -110,7 +110,7 @@ abstract contract PoolAssets is
     ) external override nonReentrant noEmergencyPeriod onlyPool(poolId) {
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
-        // Validates token addresses and assign asset managers
+        // Validates token addresses and assigns asset managers
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
 
@@ -192,7 +192,7 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Converts a ExitPoolRequest into a PoolBalanceChange, with no runtime cost.
+     * @dev Converts an ExitPoolRequest into a PoolBalanceChange, with no runtime cost.
      */
     function _toPoolBalanceChange(ExitPoolRequest memory request)
         private
