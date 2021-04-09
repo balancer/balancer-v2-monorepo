@@ -118,24 +118,28 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
         return _authorizer.hasRole(roleId, user);
     }
 
-    function _typeHash(bytes4 selector) internal pure override returns (bytes32 hash) {
+    function _typeHash() internal pure override returns (bytes32 hash) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
+            // Copy first 32 bytes from calldata to extract selector
+            // Shift right (logical) 224 bits the extracted selector to move it to the least significant 4 bytes
+            let selector := shr(224, calldataload(0))
+
             // Switch case the selector to return the corresponding type hash
             switch selector
-                case 0xb95cac2800000000000000000000000000000000000000000000000000000000 {
+                case 0xb95cac28 {
                     hash := JOIN_TYPE_HASH
                 }
-                case 0x8bdb391300000000000000000000000000000000000000000000000000000000 {
+                case 0x8bdb3913 {
                     hash := EXIT_TYPE_HASH
                 }
-                case 0x52bbbe2900000000000000000000000000000000000000000000000000000000 {
+                case 0x52bbbe29 {
                     hash := SWAP_TYPE_HASH
                 }
-                case 0x945bcec900000000000000000000000000000000000000000000000000000000 {
+                case 0x945bcec9 {
                     hash := BATCH_SWAP_TYPE_HASH
                 }
-                case 0x2fd8744600000000000000000000000000000000000000000000000000000000 {
+                case 0x2fd87446 {
                     hash := CHANGE_RELAYER_TYPE_HASH
                 }
                 default {

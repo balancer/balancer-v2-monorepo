@@ -33,7 +33,7 @@ contract SignaturesValidatorMock is SignaturesValidator {
         emit CalldataDecoded(_calldata(), _deadline(), v, r, s);
     }
 
-    function _typeHash(bytes4) internal view override returns (bytes32) {
+    function _typeHash() internal view override returns (bytes32) {
         return AUTH_TYPE_HASH;
     }
 }

@@ -69,7 +69,8 @@ abstract contract EmergencyPeriod {
     }
 
     function _setEmergencyPeriod(bool active) internal {
-        _require(block.timestamp < _getEmergencyPeriodEndDate(), Errors.EMERGENCY_PERIOD_FINISHED);
+        uint256 maxEndDate = active ? _getEmergencyPeriodEndDate() : _getEmergencyPeriodCheckEndDate();
+        _require(block.timestamp < maxEndDate, Errors.EMERGENCY_PERIOD_FINISHED);
         _emergencyPeriodActive = active;
         emit EmergencyPeriodChanged(active);
     }
