@@ -21,6 +21,8 @@ import "../vault/interfaces/IBasePool.sol";
 abstract contract BasePoolFactory {
     IVault public immutable vault;
 
+    mapping(address => bool) public isPoolFromFactory;
+
     event PoolRegistered(address indexed pool);
 
     constructor(IVault _vault) {
@@ -31,6 +33,7 @@ abstract contract BasePoolFactory {
      * @dev Registers a new created pool. Emits a `PoolRegistered` event.
      */
     function _register(address pool) internal {
+        isPoolFromFactory[pool] = true;
         emit PoolRegistered(pool);
     }
 }
