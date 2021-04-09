@@ -42,8 +42,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 amplificationParameter,
         uint256 swapFee,
         uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
-    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {
+        uint256 emergencyPeriodCheckExtension,
+        address feeSetter
+    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, feeSetter) {
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
 

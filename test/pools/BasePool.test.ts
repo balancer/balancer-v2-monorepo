@@ -11,13 +11,15 @@ import { deploy } from '../../lib/helpers/deploy';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { BigNumberish, fp } from '../../lib/helpers/numbers';
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { Account } from '../helpers/models/types/types';
+import TypesConverter from '../helpers/models/types/TypesConverter';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
-  const MAX_SWAP_FEE = fp(0.15);
+  const MAX_SWAP_FEE = fp(0.1);
   const MIN_SWAP_FEE = fp(0.000001);
 
   before(async () => {
@@ -36,13 +38,15 @@ describe('BasePool', function () {
       swapFee?: BigNumberish;
       emergencyPeriod?: number;
       emergencyPeriodCheckExtension?: number;
+      feeSetter?: Account;
     } = {}
   ): Promise<Contract> {
-    let { tokens: poolTokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    let { tokens: poolTokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, feeSetter } = params;
     if (!poolTokens) poolTokens = tokens;
     if (!swapFee) swapFee = MIN_SWAP_FEE;
     if (!emergencyPeriod) emergencyPeriod = 0;
     if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = 0;
+    if (!feeSetter) feeSetter = ZERO_ADDRESS;
 
     return deploy('MockBasePool', {
       args: [
@@ -54,6 +58,7 @@ describe('BasePool', function () {
         swapFee,
         emergencyPeriod,
         emergencyPeriodCheckExtension,
+        TypesConverter.toAddress(feeSetter),
       ],
     });
   }
@@ -114,73 +119,113 @@ describe('BasePool', function () {
     context('setting the swap fee', () => {
       let pool: Contract;
 
-      sharedBeforeEach('deploy pool', async () => {
-        pool = await deployBasePool({ swapFee: fp(0.01) });
-      });
+      context('with no fee setter', () => {
+        const feeSetter = ZERO_ADDRESS;
 
-      context('when the sender is has the role to do it', () => {
-        let role: string;
-
-        sharedBeforeEach('grant permission', async () => {
-          role = roleId(pool, 'setSwapFee');
-          await authorizer.connect(admin).grantRole(role, admin.address);
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await deployBasePool({ swapFee: fp(0.01), feeSetter });
         });
 
-        context('when the new swap fee is below the maximum', () => {
-          it('can change the swap fee', async () => {
-            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+        context('when the sender has the role to do it in the authorizer', () => {
+          let sender: SignerWithAddress;
 
-            const newSwapFee = fp(0.000001);
-            await pool.connect(admin).setSwapFee(newSwapFee);
-
-            expect(await pool.getSwapFee()).to.equal(newSwapFee);
+          sharedBeforeEach('grant permission', async () => {
+            const role = roleId(pool, 'setSwapFee');
+            await authorizer.connect(admin).grantRole(role, admin.address);
+            sender = admin;
           });
 
-          it('emits an event', async () => {
-            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+          context('when the new swap fee is within bounds', () => {
+            const newSwapFee = MAX_SWAP_FEE.sub(1);
 
-            const newSwapFee = fp(0.000001);
-            const receipt = await (await pool.connect(admin).setSwapFee(newSwapFee)).wait();
+            it('can change the swap fee', async () => {
+              await pool.connect(sender).setSwapFee(newSwapFee);
 
-            expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFee: newSwapFee });
+              expect(await pool.getSwapFee()).to.equal(newSwapFee);
+            });
 
-            expect(await pool.getSwapFee()).to.equal(newSwapFee);
+            it('emits an event', async () => {
+              const receipt = await (await pool.connect(sender).setSwapFee(newSwapFee)).wait();
+
+              expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFee: newSwapFee });
+            });
           });
 
-          it('can change the swap fee to zero', async () => {
-            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
-
-            const newSwapFee = fp(0.000001);
-            await pool.connect(admin).setSwapFee(newSwapFee);
-
-            expect(await pool.getSwapFee()).to.equal(newSwapFee);
+          context('when the new swap fee is not below the maximum', () => {
+            it('reverts', async () => {
+              await expect(pool.connect(sender).setSwapFee(MAX_SWAP_FEE.add(1))).to.be.revertedWith('MAX_SWAP_FEE');
+            });
           });
 
-          it('can not change the swap fee if the role was revoked', async () => {
-            await authorizer.connect(admin).revokeRole(role, admin.address);
-
-            expect(await authorizer.hasRole(role, admin.address)).to.be.false;
-
-            await expect(pool.connect(admin).setSwapFee(0)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          context('when the new swap fee is not above the minimum', () => {
+            it('reverts', async () => {
+              await expect(pool.connect(sender).setSwapFee(MIN_SWAP_FEE.sub(1))).to.be.revertedWith('MIN_SWAP_FEE');
+            });
           });
         });
 
-        context('when the new swap fee is not below the maximum', () => {
+        context('when the sender does not have the role to do it', () => {
           it('reverts', async () => {
-            await expect(pool.connect(admin).setSwapFee(MAX_SWAP_FEE.add(1))).to.be.revertedWith('MAX_SWAP_FEE');
-          });
-        });
-
-        context('when the new swap fee is not above the minimum', () => {
-          it('reverts', async () => {
-            await expect(pool.connect(admin).setSwapFee(MIN_SWAP_FEE.sub(1))).to.be.revertedWith('MIN_SWAP_FEE');
+            await expect(pool.connect(other).setSwapFee(MIN_SWAP_FEE)).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
         });
       });
 
-      context('when the sender does not have the role to do it', () => {
-        it('reverts', async () => {
-          await expect(pool.connect(other).setSwapFee(MIN_SWAP_FEE)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      context('with a fee setter', () => {
+        let feeSetter: SignerWithAddress;
+
+        sharedBeforeEach('deploy pool', async () => {
+          feeSetter = other;
+          pool = await deployBasePool({ swapFee: fp(0.01), feeSetter });
+        });
+
+        context('when the sender is the fee setter', () => {
+          context('when the new swap fee is within bounds', () => {
+            const newSwapFee = MAX_SWAP_FEE.sub(1);
+
+            it('can change the swap fee', async () => {
+              await pool.connect(feeSetter).setSwapFee(newSwapFee);
+
+              expect(await pool.getSwapFee()).to.equal(newSwapFee);
+            });
+
+            it('emits an event', async () => {
+              const receipt = await (await pool.connect(feeSetter).setSwapFee(newSwapFee)).wait();
+
+              expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFee: newSwapFee });
+            });
+          });
+
+          context('when the new swap fee is not below the maximum', () => {
+            it('reverts', async () => {
+              await expect(pool.connect(feeSetter).setSwapFee(MAX_SWAP_FEE.add(1))).to.be.revertedWith('MAX_SWAP_FEE');
+            });
+          });
+
+          context('when the new swap fee is not above the minimum', () => {
+            it('reverts', async () => {
+              await expect(pool.connect(feeSetter).setSwapFee(MIN_SWAP_FEE.sub(1))).to.be.revertedWith('MIN_SWAP_FEE');
+            });
+          });
+        });
+
+        context('when the sender is not the fee setter', () => {
+          context('when the sender does not have the role in the authorizer', () => {
+            it('reverts', async () => {
+              await expect(pool.connect(admin).setSwapFee(MIN_SWAP_FEE)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            });
+          });
+
+          context('when the sender has the role in the authorizer', () => {
+            sharedBeforeEach(async () => {
+              const role = roleId(pool, 'setSwapFee');
+              await authorizer.connect(admin).grantRole(role, admin.address);
+            });
+
+            it('reverts', async () => {
+              await expect(pool.connect(admin).setSwapFee(MIN_SWAP_FEE)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            });
+          });
         });
       });
     });

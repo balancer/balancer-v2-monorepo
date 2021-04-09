@@ -59,6 +59,11 @@
         "internalType": "uint256",
         "name": "emergencyPeriodCheckExtension",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
       }
     ],
     "name": "create",

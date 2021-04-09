@@ -25,7 +25,15 @@ export default {
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
+    const {
+      tokens,
+      amplificationParameter,
+      swapFee,
+      emergencyPeriod,
+      emergencyPeriodCheckExtension,
+      feeSetter,
+      from,
+    } = params;
     return deploy('StablePool', {
       args: [
         vault.address,
@@ -36,13 +44,22 @@ export default {
         swapFee,
         emergencyPeriod,
         emergencyPeriodCheckExtension,
+        TypesConverter.toAddress(feeSetter),
       ],
       from,
     });
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
+    const {
+      tokens,
+      amplificationParameter,
+      swapFee,
+      emergencyPeriod,
+      emergencyPeriodCheckExtension,
+      feeSetter,
+      from,
+    } = params;
     const factory = await deploy('StablePoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
@@ -51,7 +68,8 @@ export default {
       amplificationParameter,
       swapFee,
       emergencyPeriod,
-      emergencyPeriodCheckExtension
+      emergencyPeriodCheckExtension,
+      TypesConverter.toAddress(feeSetter)
     );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolRegistered');

@@ -13,6 +13,7 @@ export type RawStablePoolDeployment = {
   swapFee?: BigNumberish;
   emergencyPeriod?: BigNumberish;
   emergencyPeriodCheckExtension?: BigNumberish;
+  feeSetter?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
@@ -24,6 +25,7 @@ export type StablePoolDeployment = {
   swapFee: BigNumberish;
   emergencyPeriod: BigNumberish;
   emergencyPeriodCheckExtension: BigNumberish;
+  feeSetter: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };

@@ -25,7 +25,7 @@ export default {
   },
 
   async _deployStandalone(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
+    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, feeSetter, from } = params;
     return deploy('WeightedPool', {
       args: [
         vault.address,
@@ -36,13 +36,14 @@ export default {
         swapFee,
         emergencyPeriod,
         emergencyPeriodCheckExtension,
+        TypesConverter.toAddress(feeSetter),
       ],
       from,
     });
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
+    const { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, feeSetter, from } = params;
     const factory = await deploy('WeightedPoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
@@ -51,7 +52,8 @@ export default {
       weights,
       swapFee,
       emergencyPeriod,
-      emergencyPeriodCheckExtension
+      emergencyPeriodCheckExtension,
+      TypesConverter.toAddress(feeSetter)
     );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolRegistered');

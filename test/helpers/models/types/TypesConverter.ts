@@ -18,6 +18,7 @@ import {
   TokenDeployment,
   RawTokenDeployment,
 } from '../tokens/types';
+import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
 
 export default {
   toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
@@ -40,24 +41,26 @@ export default {
   },
 
   toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
-    let { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    let { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, feeSetter } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
     if (!swapFee) swapFee = bn(0);
     if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
     if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
-    return { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
+    if (!feeSetter) feeSetter = ZERO_ADDRESS;
+    return { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, feeSetter };
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    let { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, feeSetter } = params;
     if (!tokens) tokens = new TokenList();
     if (!amplificationParameter) amplificationParameter = bn(200 * 1e18);
     if (!swapFee) swapFee = bn(0);
     if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
     if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
-    return { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
+    if (!feeSetter) feeSetter = ZERO_ADDRESS;
+    return { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, feeSetter };
   },
 
   /***

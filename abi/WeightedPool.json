@@ -40,6 +40,11 @@
         "internalType": "uint256",
         "name": "emergencyPeriodCheckExtension",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "feeSetter",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
