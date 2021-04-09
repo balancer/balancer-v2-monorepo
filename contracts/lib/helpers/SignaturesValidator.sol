@@ -25,7 +25,6 @@ import "../../vault/interfaces/ISignaturesValidator.sol";
 
 abstract contract SignaturesValidator is ISignaturesValidator {
     uint256 internal constant EXTRA_CALLDATA_LENGTH = 32 * 4; // deadline + [v,r,s] signature
-    bytes32 internal constant SIGNATURE_S_UPPER_RANGE = bytes32(0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0);
 
     bytes32 internal immutable NAME_HASH = keccak256("Balancer Protocol");
     bytes32 internal immutable VERSION_HASH = keccak256("1");
@@ -66,7 +65,7 @@ abstract contract SignaturesValidator is ISignaturesValidator {
             return false;
         }
 
-        bytes32 typeHash = _typeHash(msg.sig);
+        bytes32 typeHash = _typeHash();
         // Make sure there is a type hash associated to the called method otherwise the signature is considered invalid.
         if (typeHash == bytes32(0)) {
             return false;
@@ -76,19 +75,6 @@ abstract contract SignaturesValidator is ISignaturesValidator {
         bytes32 encodeData = keccak256(abi.encode(typeHash, keccak256(_calldata()), msg.sender, nonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _getDomainSeparator(), encodeData));
         (uint8 v, bytes32 r, bytes32 s) = _signature();
-
-        // EIP-2 still allows signature malleability for ecrecover(). Remove this possibility and make the signature
-        // unique. Appendix F in the Ethereum Yellow paper (https://ethereum.github.io/yellowpaper/paper.pdf), defines
-        // the valid range for s in (281): 0 < s < secp256k1n ÷ 2 + 1, and for v in (282): v ∈ {27, 28}. Most
-        // signatures from current libraries generate a unique signature with an s-value in the lower half order.
-        //
-        // If your library generates malleable signatures, such as s-values in the upper range, calculate a new s-value
-        // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or
-        // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept
-        // these malleable signatures as well.
-        if ((v != 27 && v != 28) || s > SIGNATURE_S_UPPER_RANGE) {
-            return false;
-        }
 
         // Explicitly disallow authorizations for address(0) as ecrecover returns address(0) on malformed messages
         address recoveredAddress = ecrecover(digest, v, r, s);
@@ -105,7 +91,7 @@ abstract contract SignaturesValidator is ISignaturesValidator {
     /**
      * @dev Tell which type hash should be used based on the call selector
      */
-    function _typeHash(bytes4 selector) internal view virtual returns (bytes32);
+    function _typeHash() internal view virtual returns (bytes32);
 
     /**
      * @dev Chain ID
@@ -162,13 +148,7 @@ abstract contract SignaturesValidator is ISignaturesValidator {
     function _decodeExtraCalldataWord(uint256 offset) internal pure returns (bytes32 result) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            // Retrieve the next free memory slot (the free memory pointer)
-            let ptr := mload(0x40)
-            // Advance the free memory pointer by 32 bytes
-            mstore(0x40, add(ptr, 0x20))
-            // Store the calldata word in the allocated space
-            calldatacopy(ptr, add(sub(calldatasize(), EXTRA_CALLDATA_LENGTH), offset), 0x20)
-            result := mload(ptr)
+            result := calldataload(add(sub(calldatasize(), EXTRA_CALLDATA_LENGTH), offset))
         }
     }
 }

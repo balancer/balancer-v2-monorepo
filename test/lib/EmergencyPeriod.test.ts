@@ -144,8 +144,9 @@ describe('EmergencyPeriod', function () {
             await assertEmergencyPeriod(true);
           });
 
-          it('cannot change the emergency period', async () => {
-            await expect(emergency.setEmergencyPeriod(false)).to.be.revertedWith('EMERGENCY_PERIOD_FINISHED');
+          it('can be turned off', async () => {
+            await emergency.setEmergencyPeriod(false);
+            await assertEmergencyPeriod(false);
           });
         });
 
@@ -158,7 +159,7 @@ describe('EmergencyPeriod', function () {
             await assertEmergencyPeriod(false);
           });
 
-          it('cannot change the emergency period', async () => {
+          it('cannot be turned off', async () => {
             await expect(emergency.setEmergencyPeriod(false)).to.be.revertedWith('EMERGENCY_PERIOD_FINISHED');
           });
         });
