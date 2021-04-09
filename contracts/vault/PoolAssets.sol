@@ -168,6 +168,13 @@ abstract contract PoolAssets is
         _joinOrExit(PoolBalanceChangeKind.JOIN, poolId, sender, recipient, _toPoolBalanceChange(request));
     }
 
+    struct PoolBalanceChange {
+        IAsset[] assets;
+        uint256[] limits;
+        bytes userData;
+        bool useInternalBalance;
+    }
+
     /**
      * @dev Converts a JoinPoolRequest into a PoolBalanceChange, with no runtime cost.
      */
