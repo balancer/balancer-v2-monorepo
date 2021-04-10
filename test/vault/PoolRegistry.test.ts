@@ -46,7 +46,7 @@ describe('Vault - pool registry', () => {
 
     it('pools require a valid pool specialization setting', async () => {
       // The existing pool specialization settings are general, minimal swap info and two tokens (0, 1 and 2)
-      await expect(vault.connect(other).registerPool(3)).to.be.reverted;
+      await expect(vault.connect(other).registerPool(3)).to.be.revertedWith('INVALID_POOL_ID');
     });
   });
 
