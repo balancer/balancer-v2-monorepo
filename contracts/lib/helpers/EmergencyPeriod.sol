@@ -28,9 +28,15 @@ import "./BalancerErrors.sol";
  * it will be automatically deactivated forever. This additional time period is also set on creation, and is limited to
  * _MAX_EMERGENCY_PERIOD_CHECK_EXT days. This provides enough time to react to the issue, even if the
  * emergency period is about to expire.
+ *
+ * At any point the Emergency Switch can be turned off. This is a cautionary measure: it lets the Emergency Switch
+ * managers react quickly to potentially dangerous situations, knowing this action can be later reverted if careful
+ * analysis indicates this was a false positive.
  */
-// solhint-disable not-rely-on-time
 abstract contract EmergencyPeriod {
+    // This contract uses timestamps to
+    // solhint-disable not-rely-on-time
+
     uint256 private constant _MAX_EMERGENCY_PERIOD = 90 days;
     uint256 private constant _MAX_EMERGENCY_PERIOD_CHECK_EXT = 30 days;
 

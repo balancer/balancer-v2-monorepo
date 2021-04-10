@@ -63,7 +63,7 @@ interface IVault is ISignaturesValidator {
 
     // Relayers
     //
-    // Additionally, it is also possible for an account to perform certain actions on behalf of another one, using their
+    // Additionally, it is possible for an account to perform certain actions on behalf of another one, using their
     // Vault ERC20 allowance and Internal Balance. These accounts are said to be 'relayers' for these Vault functions,
     // and are expected to be smart contracts with sound authentication mechanisms. For an account to be able to wield
     // this power, two things must occur:
@@ -91,13 +91,13 @@ interface IVault is ISignaturesValidator {
 
     // Internal Balance
     //
-    // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance. This Internal
-    // Balance can be withdrawn or transferred, and it can also be used when joining Pools or performing swaps. Swaps
-    // and Pool exits can also deposit to Internal Balance. Using Internal Balance in these ways results in greatly
-    // reduced gas costs, compared to relying on plain ERC20 transfers using allowance.
+    // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance, and later
+    // transferred Internal or withdrawn. It can also be used as a source of sokens when joining Pools, as a destination
+    // when exiting them, and as either when performing swaps. This usage of Internal Balance results in greatly reduced
+    // gas costs when compared to relying on plain ERC20 transfers, leading to large savings for frequent users.
     //
-    // Internal Balance management features batching, which means each call can be used to perform multiple operations
-    // of the same kind (deposit, withdraw or transfer) at once.
+    // Internal Balance management features batching, which means each a single contract call can be used to perform
+    // multiple operations of the same kind (deposit, withdraw or transfer) at once.
 
     /**
      * @dev Returns `user`'s Internal Balance for a set of tokens.
@@ -114,7 +114,7 @@ interface IVault is ISignaturesValidator {
     function manageUserBalance(UserBalanceOp[] memory ops) external payable;
 
     /**
-     * @dev Data for `manageUserBalance` operations, which include the possibility for ETH to be sent and received 
+     * @dev Data for `manageUserBalance` operations, which include the possibility for ETH to be sent and received
      without manual WETH wrapping or unwrapping.
      */
     struct UserBalanceOp {
