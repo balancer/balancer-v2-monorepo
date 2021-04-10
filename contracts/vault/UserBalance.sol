@@ -19,7 +19,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
-import "../lib/helpers/InputHelpers.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/SafeCast.sol";
@@ -32,7 +31,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
-    // Stores all accounts' Internal Balances for each token.
+    // Stores all accounts' Internal Balance for each token.
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
     function getInternalBalance(address user, IERC20[] memory tokens)
@@ -53,11 +52,12 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
         address sender;
         uint256 amount;
         address payable recipient;
+        UserBalanceOp memory op;
+
         uint256 wrappedEth = 0;
         bool noEmergency = false;
         bool authenticated = false;
 
-        UserBalanceOp memory op;
         for (uint256 i = 0; i < ops.length; i++) {
             op = ops[i];
             (asset, sender, recipient, amount, authenticated) = _validateUserBalanceOp(op, authenticated);
