@@ -91,10 +91,10 @@ interface IVault is ISignaturesValidator {
 
     // Internal Balance
     //
-    // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance. This Internal
-    // Balance can be withdrawn or transferred, and it can also be used when joining Pools or performing swaps. Swaps
-    // and Pool exits can also deposit to Internal Balance. Using Internal Balance in these ways results in greatly
-    // reduced gas costs, compared to relying on plain ERC20 transfers using allowance.
+    // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance.
+    // Internal Balance can be withdrawn or transferred, and it can also be used when joining Pools or performing swaps.
+    // Swaps and Pool exits can also deposit to Internal Balance. Using Internal Balance in these ways results in
+    // greatly reduced gas costs, compared to relying on plain ERC20 transfers using allowance.
     //
     // Internal Balance management features batching, which means each call can be used to perform multiple operations
     // of the same kind (deposit, withdraw or transfer) at once.
@@ -303,7 +303,7 @@ interface IVault is ISignaturesValidator {
      * equals the sum of `cash` and `managed`.
      *
      * `blockNumber` is the number of the block in which `token`'s balance was last modified (via either a join, exit,
-     * swap, or Asset Managet interaction). This value is useful to avoid so-called 'sandwich attacks', for example
+     * swap, or Asset Manager interaction). This value is useful to avoid so-called 'sandwich attacks', for example
      * when developing price oracles.
      *
      * `assetManager` is the Pool's token Asset Manager.
@@ -543,7 +543,7 @@ interface IVault is ISignaturesValidator {
      * the minimum or maximum amount of each token the vault is allowed to transfer.
      *
      * `batchSwap` can be used to make a single swap, like `swap` does, but doing so requires more gas than the
-     * euivalent `swap` call.
+     * equivalent `swap` call.
      *
      * Emits `Swap` events.
      */
