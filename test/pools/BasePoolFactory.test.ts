@@ -21,6 +21,10 @@ describe('BasePoolFactory', function () {
     factory = await deploy('MockPoolFactory', { args: [vault.address] });
   });
 
+  it('stores the vault address', async () => {
+    expect(await factory.getVault()).to.equal(vault.address);
+  });
+
   it('creates a pool', async () => {
     const receipt = await (await factory.create()).wait();
     expectEvent.inReceipt(receipt, 'PoolRegistered');

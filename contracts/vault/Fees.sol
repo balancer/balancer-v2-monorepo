@@ -37,11 +37,7 @@ abstract contract Fees is IVault {
         _protocolFeesCollector = new ProtocolFeesCollector(IVault(this));
     }
 
-    function getProtocolFeesCollector() external view override returns (ProtocolFeesCollector) {
-        return _getProtocolFeesCollector();
-    }
-
-    function _getProtocolFeesCollector() internal view returns (ProtocolFeesCollector) {
+    function getProtocolFeesCollector() public view override returns (ProtocolFeesCollector) {
         return _protocolFeesCollector;
     }
 
@@ -49,14 +45,14 @@ abstract contract Fees is IVault {
      * @dev Returns the percentage protocol swap fee.
      */
     function _getProtocolSwapFee() internal view returns (uint256) {
-        return _getProtocolFeesCollector().getSwapFee();
+        return getProtocolFeesCollector().getSwapFee();
     }
 
     /**
      * @dev Returns the protocol fee to charge for a flash loan of `amount`.
      */
     function _calculateFlashLoanFee(uint256 amount) internal view returns (uint256) {
-        return _calculateFee(amount, _getProtocolFeesCollector().getFlashLoanFee());
+        return _calculateFee(amount, getProtocolFeesCollector().getFlashLoanFee());
     }
 
     function _calculateFee(uint256 amount, uint256 pct) internal pure returns (uint256) {
@@ -67,7 +63,7 @@ abstract contract Fees is IVault {
 
     function _payFee(IERC20 token, uint256 amount) internal {
         if (amount > 0) {
-            token.safeTransfer(address(_getProtocolFeesCollector()), amount);
+            token.safeTransfer(address(getProtocolFeesCollector()), amount);
         }
     }
 }

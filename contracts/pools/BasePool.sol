@@ -145,19 +145,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     // Getters / Setters
 
-    function getVault() external view returns (IVault) {
-        return _getVault();
-    }
-
-    function _getVault() internal view returns (IVault) {
+    function getVault() public view returns (IVault) {
         return _vault;
     }
 
-    function getPoolId() external view returns (bytes32) {
-        return _getPoolId();
-    }
-
-    function _getPoolId() internal view returns (bytes32) {
+    function getPoolId() public view returns (bytes32) {
         return _poolId;
     }
 
@@ -186,8 +178,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Join / Exit Hooks
 
     modifier onlyVault(bytes32 poolId) {
-        _require(msg.sender == address(_getVault()), Errors.CALLER_NOT_VAULT);
-        _require(poolId == _getPoolId(), Errors.INVALID_POOL_ID);
+        _require(msg.sender == address(getVault()), Errors.CALLER_NOT_VAULT);
+        _require(poolId == getPoolId(), Errors.INVALID_POOL_ID);
         _;
     }
 
@@ -567,7 +559,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev This contract relies on the roles defined by the Vault's own Authorizer.
      */
     function _getAuthorizer() internal view override returns (IAuthorizer) {
-        return _getVault().getAuthorizer();
+        return getVault().getAuthorizer();
     }
 
     function _queryAction(

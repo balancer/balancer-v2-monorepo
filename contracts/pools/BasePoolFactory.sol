@@ -19,21 +19,29 @@ import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
 
 abstract contract BasePoolFactory {
-    IVault public immutable vault;
+    IVault private immutable _vault;
 
-    mapping(address => bool) public isPoolFromFactory;
+    mapping(address => bool) private _isPoolFromFactory;
 
     event PoolRegistered(address indexed pool);
 
-    constructor(IVault _vault) {
-        vault = _vault;
+    constructor(IVault vault) {
+        _vault = vault;
+    }
+
+    function getVault() public view returns (IVault) {
+        return _vault;
+    }
+
+    function isPoolFromFactory(address pool) public view returns (bool) {
+        return _isPoolFromFactory[pool];
     }
 
     /**
      * @dev Registers a new created pool. Emits a `PoolRegistered` event.
      */
     function _register(address pool) internal {
-        isPoolFromFactory[pool] = true;
+        _isPoolFromFactory[pool] = true;
         emit PoolRegistered(pool);
     }
 }
