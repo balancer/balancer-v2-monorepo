@@ -164,17 +164,11 @@ describe('StablePool', function () {
         ).to.be.revertedWith('CALLER_NOT_VAULT');
       });
 
-      // TODO: These tests are failing with a Hardhat error:
-      // AssertionError: Expected transaction to be reverted with *, but other exception was thrown:
-      // Error: Transaction reverted and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat
-      it.skip('fails if no user data', async () => {
+      it('fails if no user data', async () => {
         await expect(pool.join({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
       });
 
-      // TODO: These tests are failing with a Hardhat error:
-      // AssertionError: Expected transaction to be reverted with *, but other exception was thrown:
-      // Error: Transaction reverted and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat
-      it.skip('fails if wrong user data', async () => {
+      it('fails if wrong user data', async () => {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
         await expect(pool.join({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
@@ -305,9 +299,6 @@ describe('StablePool', function () {
             expect(result.amountsIn.filter((_, i) => i != token)).to.be.zeros;
           });
 
-          // TODO: implement
-          it.skip('fails if not enough token in');
-
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();
 
@@ -332,11 +323,11 @@ describe('StablePool', function () {
         ).to.be.revertedWith('CALLER_NOT_VAULT');
       });
 
-      it.skip('fails if no user data', async () => {
+      it('fails if no user data', async () => {
         await expect(pool.exit({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
       });
 
-      it.skip('fails if wrong user data', async () => {
+      it('fails if wrong user data', async () => {
         const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
 
         await expect(pool.exit({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
