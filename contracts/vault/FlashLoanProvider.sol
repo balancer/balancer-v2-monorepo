@@ -48,7 +48,7 @@ abstract contract FlashLoanProvider is Fees, ReentrancyGuard, EmergencyPeriod {
             uint256 amount = amounts[i];
 
             // Prevents duplicate tokens
-            _require(token > previousToken, IERC20(0) == token ? Errors.TOKEN_NOT_CONTRACT : Errors.UNSORTED_TOKENS);
+            _require(token > previousToken, IERC20(0) == token ? Errors.ZERO_TOKEN : Errors.UNSORTED_TOKENS);
             previousToken = token;
 
             // Not checking amount against current balance, transfer will revert if it is exceeded

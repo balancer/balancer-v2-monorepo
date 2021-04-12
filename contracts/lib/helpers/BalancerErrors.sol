@@ -98,6 +98,7 @@ library Errors {
     uint256 internal constant UNSORTED_TOKENS = 102;
     uint256 internal constant INPUT_LENGTH_MISMATCH = 103;
     uint256 internal constant TOKEN_NOT_CONTRACT = 104;
+    uint256 internal constant ZERO_TOKEN = 105;
 
     // Shared pools
     uint256 internal constant MIN_TOKENS = 200;
@@ -121,6 +122,7 @@ library Errors {
     uint256 internal constant MAX_OUT_BPT_FOR_TOKEN_IN = 307;
     uint256 internal constant NORMALIZED_WEIGHT_INVARIANT = 308;
     uint256 internal constant INVALID_TOKEN = 309;
+    uint256 internal constant UNHANDLED_JOIN_KIND = 310;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
