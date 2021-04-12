@@ -46,7 +46,7 @@ describe('Vault - pool registry', () => {
 
     it('pools require a valid pool specialization setting', async () => {
       // The existing pool specialization settings are general, minimal swap info and two tokens (0, 1 and 2)
-      await expect(vault.connect(other).registerPool(3)).to.be.revertedWith('INVALID_POOL_ID');
+      await expect(vault.connect(other).registerPool(3)).to.be.reverted;
     });
   });
 
@@ -147,7 +147,7 @@ describe('Vault - pool registry', () => {
                   const addresses = tokens.addresses;
                   addresses[0] = ZERO_ADDRESS;
 
-                  const error = 'TOKEN_NOT_CONTRACT';
+                  const error = 'INVALID_TOKEN';
                   await expect(pool.registerTokens(addresses, assetManagers)).to.be.revertedWith(error);
                   await expect(pool.registerTokens(addresses.reverse(), assetManagers)).to.be.revertedWith(error);
                 });

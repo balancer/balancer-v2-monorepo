@@ -111,7 +111,10 @@ abstract contract PoolAssets is
 
         // Validates token addresses and assigns asset managers
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _poolAssetManagers[poolId][tokens[i]] = assetManagers[i];
+            IERC20 token = tokens[i];
+            _require(token != IERC20(0), Errors.INVALID_TOKEN);
+
+            _poolAssetManagers[poolId][token] = assetManagers[i];
         }
 
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
