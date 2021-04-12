@@ -21,7 +21,6 @@ import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
-import "../lib/openzeppelin/Address.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./Fees.sol";
@@ -112,12 +111,7 @@ abstract contract PoolAssets is
 
         // Validates token addresses and assigns asset managers
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-
-            // We need to make sure all registered tokens are contracts to be able to safely use the SafeERC20 functions
-            // on them, which assume the token account has code. Tokens that selfdestruct are not safe to use.
-            _require(Address.isContract(address(token)), Errors.TOKEN_NOT_CONTRACT);
-            _poolAssetManagers[poolId][token] = assetManagers[i];
+            _poolAssetManagers[poolId][tokens[i]] = assetManagers[i];
         }
 
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
