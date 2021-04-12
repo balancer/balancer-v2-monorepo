@@ -1,0 +1,45 @@
+{
+  "name": "@balancer-labs/v2-deployments",
+  "version": "0.1.0",
+  "license": "GPL-3.0-only",
+  "description": "Balancer v2 deployments",
+  "scripts": {
+    "lint": "eslint . --ext .ts",
+    "compile": "hardhat compile",
+    "build": "tsc && yarn compile",
+    "deploy:hardhat": "hardhat --network hardhat deploy",
+    "deploy:local": "hardhat --network localhost deploy",
+    "deploy:docker": "hardhat --network dockerParity deploy",
+    "deploy:rinkeby": "hardhat --network rinkeby deploy",
+    "deploy:kovan": "hardhat --network kovan deploy",
+    "deploy:ropsten": "hardhat --network ropsten deploy",
+    "deploy:goerli": "hardhat --network goerli deploy",
+    "node:hardhat": "hardhat node",
+    "seed:local": "hardhat --network localhost seed",
+    "seed:docker": "hardhat --network dockerParity seed",
+    "seed:hardhat": "hardhat --network hardhat seed",
+    "redeploy:docker": "yarn hardhat clean && yarn deploy:docker --reset && yarn seed:docker",
+    "export": "hardhat export --export-all deployments/addresses.json"
+  },
+  "dependencies": {
+    "@balancer-labs/v2-core": "^0.1.0",
+    "@balancer-labs/v2-helpers": "^0.1.0"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
+    "@openzeppelin/contracts": "3.3.0-solc-0.7",
+    "@tenderly/hardhat-tenderly": "1.0.6",
+    "@types/node": "^14.6.0",
+    "@typescript-eslint/eslint-plugin": "^4.1.1",
+    "@typescript-eslint/parser": "^4.1.1",
+    "dotenv": "^8.2.0",
+    "ethers": "^5.0.18",
+    "hardhat": "^2.0.9",
+    "hardhat-deploy": "^0.7.0-beta.32",
+    "hardhat-deploy-ethers": "^0.3.0-beta.7",
+    "hardhat-local-networks-config-plugin": "0.0.5",
+    "prettier": "^2.1.2",
+    "ts-node": "^8.10.2",
+    "typescript": "^4.0.2"
+  }
+}

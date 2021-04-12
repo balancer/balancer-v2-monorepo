@@ -1,13 +1,13 @@
 [![CI Status](https://github.com/balancer-labs/balancer-core-v2/workflows/CI/badge.svg)](https://github.com/balancer-labs/balancer-core-v2/actions)
 
-# balancer-core-v2
+# balancer-v2
 
 Prototypes for the v2 architecture
 
 ## Requirements
 
-- [Node.js](https://nodejs.org/en) ^12
-- [Yarn](https://classic.yarnpkg.com/lang/en)
+- [Node.js](https://nodejs.org/en) ^12.10
+- [Yarn](https://classic.yarnpkg.com/lang/en) ^2.0
 
 ## Installation
 
@@ -17,7 +17,8 @@ Run `yarn` to download all dependencies.
 
 All common tasks are implemented as scripts in the `package.json`, and can be run by passing them as arguments to `yarn`.
 
-`yarn compile` and `yarn test` are the two main Solidity workflow tasks, and both have watch modes variants (`yarn test:watch`). Note that `yarn test` does not compile files: if running tests and changing Solidity source code at the same time, it is recommended to run both commands in watch mode in two separate terminals (tests will run automatically on recompilation).
+`yarn compile` and `yarn test` are the two main Solidity workflow tasks, and both have watch modes variants (`yarn test:watch`). 
+Note that `yarn test` does not compile files: if running tests and changing Solidity source code at the same time, it is recommended to run both commands in watch mode in two separate terminals (tests will run automatically on recompilation).
 
 Gas measurements of common tasks can be obtained by running `yarn benchmark`.
 

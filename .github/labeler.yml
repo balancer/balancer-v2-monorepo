@@ -1,2 +1,2 @@
 abi-changes:
-  - abi/**/*
+  - packages/core/abi/**/*
