@@ -124,6 +124,7 @@ library Errors {
     uint256 internal constant MIN_BPT_IN_FOR_TOKEN_OUT = 402;
     uint256 internal constant MAX_OUT_BPT_FOR_TOKEN_IN = 403;
     uint256 internal constant NORMALIZED_WEIGHT_INVARIANT = 404;
+    uint256 internal constant ZERO_INVARIANT = 405;
 
     // Lib
     uint256 internal constant REENTRANCY = 500;
