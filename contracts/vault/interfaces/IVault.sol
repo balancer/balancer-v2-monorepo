@@ -125,7 +125,7 @@ interface IVault is ISignaturesValidator {
         address payable recipient;
     }
 
-    // There are for possible operations in `manageUserBalance`:
+    // There are four possible operations in `manageUserBalance`:
     //
     // - DEPOSIT_INTERNAL
     // Increases the Internal Balance of the `recipient` account by  transferring tokens from the corresponding
@@ -230,7 +230,8 @@ interface IVault is ISignaturesValidator {
      * exit by receiving registered tokens, and can only swap registered tokens.
      *
      * Each token can only be registered once. For Pools with the Two Token specialization, `tokens` must have a length
-     * of two, that is, both tokens must be registered in the same `registerTokens` call.
+     * of two, that is, both tokens must be registered in the same `registerTokens` call, and they must be sorted in
+     * ascending order.
      *
      * The `tokens` and `assetManagers` arrays must have the same length, and each entry in these indicates the Asset
      * Manager for each token. Asset Managers can manage a Pool's tokens via `managePoolBalance`, withdrawing and
@@ -303,7 +304,7 @@ interface IVault is ISignaturesValidator {
      * equals the sum of `cash` and `managed`.
      *
      * `blockNumber` is the number of the block in which `token`'s balance was last modified (via either a join, exit,
-     * swap, or Asset Managet interaction). This value is useful to avoid so-called 'sandwich attacks', for example
+     * swap, or Asset Manager interaction). This value is useful to avoid so-called 'sandwich attacks', for example
      * when developing price oracles.
      *
      * `assetManager` is the Pool's token Asset Manager.
@@ -543,7 +544,7 @@ interface IVault is ISignaturesValidator {
      * the minimum or maximum amount of each token the vault is allowed to transfer.
      *
      * `batchSwap` can be used to make a single swap, like `swap` does, but doing so requires more gas than the
-     * euivalent `swap` call.
+     * equivalent `swap` call.
      *
      * Emits `Swap` events.
      */
