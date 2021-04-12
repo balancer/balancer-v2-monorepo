@@ -273,10 +273,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(currentBalances, normalizedWeights, userData);
-        } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(currentBalances, normalizedWeights, userData);
         } else {
-            _revert(Errors.UNHANDLED_JOIN_KIND);
+            // JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT
+            return _joinTokenInForExactBPTOut(currentBalances, normalizedWeights, userData);
         }
     }
 
@@ -391,10 +390,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             return _exitExactBPTInForTokenOut(currentBalances, normalizedWeights, userData);
         } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(currentBalances, userData);
-        } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            return _exitBPTInForExactTokensOut(currentBalances, normalizedWeights, userData);
         } else {
-            _revert(Errors.UNHANDLED_EXIT_KIND);
+            // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
+            return _exitBPTInForExactTokensOut(currentBalances, normalizedWeights, userData);
         }
     }
 
