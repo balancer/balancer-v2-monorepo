@@ -92,7 +92,7 @@ interface IVault is ISignaturesValidator {
     // Internal Balance
     //
     // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance, and later
-    // transferred Internal or withdrawn. It can also be used as a source of sokens when joining Pools, as a destination
+    // transferred or withdrawn. It can also be used as a source of tokens when joining Pools, as a destination
     // when exiting them, and as either when performing swaps. This usage of Internal Balance results in greatly reduced
     // gas costs when compared to relying on plain ERC20 transfers, leading to large savings for frequent users.
     //
