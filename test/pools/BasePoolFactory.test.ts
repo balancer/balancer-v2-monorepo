@@ -26,10 +26,10 @@ describe('BasePoolFactory', function () {
     expectEvent.inReceipt(receipt, 'PoolRegistered');
   });
 
-  context('with created pool', () => {
+  context('with a created pool', () => {
     let pool: string;
 
-    sharedBeforeEach(async () => {
+    sharedBeforeEach('deploy pool', async () => {
       const receipt = await (await factory.create()).wait();
       const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
 
@@ -40,7 +40,7 @@ describe('BasePoolFactory', function () {
       expect(await factory.isPoolFromFactory(pool)).to.be.true;
     });
 
-    it('does not report non-pool as being factory pools', async () => {
+    it('does not track pools that were not created by the factory', async () => {
       expect(await factory.isPoolFromFactory(other.address)).to.be.false;
     });
   });
