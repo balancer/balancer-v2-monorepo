@@ -171,9 +171,10 @@ contract StablePool is BaseGeneralPool, StableMath {
 
         if (kind == JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, userData);
-        } else {
-            // JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT
+        } else if (kind == JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(balances, userData);
+        } else {
+            _revert(Errors.UNHANDLED_JOIN_KIND);
         }
     }
 
