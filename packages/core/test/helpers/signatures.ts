@@ -15,6 +15,28 @@ export function encodeCalldataAuthorization(calldata: string, deadline: BigNumbe
   return `${calldata}${encodedDeadline}${encodedV}${encodedR}${encodedS}`;
 }
 
+export async function signJoinAuthorization(
+  validator: Contract,
+  user: SignerWithAddress,
+  allowedSender: SignerWithAddress,
+  allowedCalldata: string,
+  nonce?: BigNumberish,
+  deadline?: BigNumberish
+): Promise<string> {
+  return signAuthorizationFor('JoinAuth', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+}
+
+export async function signExitAuthorization(
+  validator: Contract,
+  user: SignerWithAddress,
+  allowedSender: SignerWithAddress,
+  allowedCalldata: string,
+  nonce?: BigNumberish,
+  deadline?: BigNumberish
+): Promise<string> {
+  return signAuthorizationFor('ExitAuth', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+}
+
 export async function signSwapAuthorization(
   validator: Contract,
   user: SignerWithAddress,

@@ -8,7 +8,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import {
-  PoolSpecializationSetting,
+  PoolSpecialization,
   MinimalSwapInfoPool,
   GeneralPool,
   TwoTokenPool,
@@ -87,7 +87,7 @@ describe('Vault - pool registry', () => {
   });
 
   describe('token management', () => {
-    function itManagesPoolQueriesCorrectly(specialization: PoolSpecializationSetting) {
+    function itManagesPoolQueriesCorrectly(specialization: PoolSpecialization) {
       let poolId: string;
 
       sharedBeforeEach(async () => {
@@ -136,7 +136,7 @@ describe('Vault - pool registry', () => {
     };
 
     describe('register', () => {
-      const itHandlesTokensRegistrationProperly = (specialization: PoolSpecializationSetting) => {
+      const itHandlesTokensRegistrationProperly = (specialization: PoolSpecialization) => {
         context('when the pool was created', () => {
           sharedBeforeEach('create pool', async () => {
             pool = await deploy('MockPool', { args: [vault.address, specialization] });
@@ -282,7 +282,7 @@ describe('Vault - pool registry', () => {
     });
 
     describe('deregister', () => {
-      const itHandlesTokensDeregistrationProperly = (specialization: PoolSpecializationSetting) => {
+      const itHandlesTokensDeregistrationProperly = (specialization: PoolSpecialization) => {
         context('when the pool was created', () => {
           sharedBeforeEach('create pool', async () => {
             pool = await deploy('MockPool', { args: [vault.address, specialization] });

@@ -25,7 +25,7 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, VaultAuthorization {
     // This is always used as uint80, but storing as an uint256 results in reduced bytecode due to the lack of masking.
     uint256 private _nextPoolNonce;
 
-    // Pool IDs are stored as `bytes32`.
+    // Pool IDs are represented as `bytes32`, for lack of a way to define new types.
     mapping(bytes32 => bool) private _isPoolRegistered;
 
     /**
@@ -48,8 +48,8 @@ abstract contract PoolRegistry is IVault, ReentrancyGuard, VaultAuthorization {
      * @dev Creates a Pool ID.
      *
      * These are deterministically created by packing into the ID the Pool's contract address and its specialization
-     * setting. This saves gas, as these data do not need to be written to or read from storage when interacting with
-     * the Pool.
+     * setting. This saves gas, as this data does not need to be written to or read from storage when interacting with
+     * the Pool using its ID.
      *
      * Since a single contract can register multiple Pools, a unique nonce must be provided to ensure Pool IDs are
      * unique.

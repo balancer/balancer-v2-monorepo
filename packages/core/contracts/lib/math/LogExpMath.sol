@@ -17,7 +17,7 @@ pragma solidity ^0.7.0;
 import "../helpers/BalancerErrors.sol";
 
 // There's plenty of linter errors caused by this file, we'll eventually
-// revisit it to make it more readable, verfiable and testable.
+// revisit it to make it more readable, verifiable and testable.
 /* solhint-disable */
 
 /**

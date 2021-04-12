@@ -24,7 +24,7 @@ import {
 import {
   GeneralPool,
   MinimalSwapInfoPool,
-  PoolSpecializationSetting,
+  PoolSpecialization,
   TwoTokenPool,
 } from '@balancer-labs/v2-helpers/src/pools';
 
@@ -381,7 +381,7 @@ describe('Vault - swaps', () => {
     };
   }
 
-  async function deployPool(specialization: PoolSpecializationSetting, tokenSymbols: string[]): Promise<string> {
+  async function deployPool(specialization: PoolSpecialization, tokenSymbols: string[]): Promise<string> {
     const pool = await deploy('MockPool', { args: [vault.address, specialization] });
     await pool.setMultiplier(fp(2));
 
@@ -409,19 +409,19 @@ describe('Vault - swaps', () => {
     return poolId;
   }
 
-  function deployMainPool(specialization: PoolSpecializationSetting, tokenSymbols: string[]) {
+  function deployMainPool(specialization: PoolSpecialization, tokenSymbols: string[]) {
     sharedBeforeEach('deploy main pool', async () => {
       mainPoolId = await deployPool(specialization, tokenSymbols);
     });
   }
 
-  function deployAnotherPool(specialization: PoolSpecializationSetting, tokenSymbols: string[]) {
+  function deployAnotherPool(specialization: PoolSpecialization, tokenSymbols: string[]) {
     sharedBeforeEach('deploy secondary pool', async () => {
       secondaryPoolId = await deployPool(specialization, tokenSymbols);
     });
   }
 
-  function itHandlesSwapsProperly(specialization: PoolSpecializationSetting, tokenSymbols: string[]) {
+  function itHandlesSwapsProperly(specialization: PoolSpecialization, tokenSymbols: string[]) {
     deployMainPool(specialization, tokenSymbols);
 
     describe('swap given in', () => {
@@ -735,7 +735,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -803,7 +803,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -870,7 +870,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 const swaps = [
@@ -899,7 +899,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 const swaps = [
@@ -1224,7 +1224,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -1292,7 +1292,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithoutHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 context('for a single pair', () => {
@@ -1355,7 +1355,7 @@ describe('Vault - swaps', () => {
             context('with two tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 const swaps = [
@@ -1384,7 +1384,7 @@ describe('Vault - swaps', () => {
             context('with three tokens', () => {
               const anotherPoolSymbols = ['DAI', 'MKR', 'SNX'];
 
-              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecializationSetting) => {
+              const itHandleMultiSwapsWithHopsProperly = (anotherPoolSpecialization: PoolSpecialization) => {
                 deployAnotherPool(anotherPoolSpecialization, anotherPoolSymbols);
 
                 const swaps = [

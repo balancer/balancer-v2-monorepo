@@ -10,7 +10,7 @@ import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpe
 import {
   GeneralPool,
   MinimalSwapInfoPool,
-  PoolSpecializationSetting,
+  PoolSpecialization,
   TwoTokenPool,
 } from '@balancer-labs/v2-helpers/src/pools';
 
@@ -48,7 +48,7 @@ describe('Vault - asset manager', function () {
     itManagesAssetsCorrectly(TwoTokenPool);
   });
 
-  function itManagesAssetsCorrectly(specialization: PoolSpecializationSetting) {
+  function itManagesAssetsCorrectly(specialization: PoolSpecialization) {
     let poolId: string;
     const tokenInitialBalance = bn(200e18);
 

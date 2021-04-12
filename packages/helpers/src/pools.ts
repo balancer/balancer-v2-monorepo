@@ -8,7 +8,7 @@ export const GeneralPool = 0;
 export const MinimalSwapInfoPool = 1;
 export const TwoTokenPool = 2;
 
-export type PoolSpecializationSetting = typeof MinimalSwapInfoPool | typeof GeneralPool | typeof TwoTokenPool;
+export type PoolSpecialization = typeof MinimalSwapInfoPool | typeof GeneralPool | typeof TwoTokenPool;
 export type PoolName = 'WeightedPool' | 'StablePool';
 
 /**
