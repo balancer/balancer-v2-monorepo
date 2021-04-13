@@ -346,7 +346,7 @@ describe('Vault - join pool', () => {
         });
 
         context('with enough internal balance', () => {
-          beforeEach('deposit to internal balance', async () => {
+          sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
                 kind: 0, // deposit
