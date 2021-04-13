@@ -224,6 +224,93 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         return delta;
     }
 
+    /*
+     * @dev Returns an array with all the tokens and balances in a Two Token Pool. The order may change when
+     * tokens are registered or deregistered.
+     *
+     * This function assumes `poolId` exists and corresponds to the Two Token specialization setting.
+     */
+    function _getTwoTokenPoolTokens(bytes32 poolId)
+        internal
+        view
+        returns (IERC20[] memory tokens, bytes32[] memory balances)
+    {
+        (, IERC20 tokenA, bytes32 balanceA, IERC20 tokenB, bytes32 balanceB) = _getTwoTokenPoolBalances(poolId);
+
+        // Both tokens will either be zero (if unregistered) or non-zero (if registered), but we keep the full check for
+        // clarity.
+        if (tokenA == IERC20(0) || tokenB == IERC20(0)) {
+            return (new IERC20[](0), new bytes32[](0));
+        }
+
+        // Note that functions relying on this getter expect tokens to be properly ordered, so we use the (A, B)
+        // ordering.
+
+        tokens = new IERC20[](2);
+        tokens[0] = tokenA;
+        tokens[1] = tokenB;
+
+        balances = new bytes32[](2);
+        balances[0] = balanceA;
+        balances[1] = balanceB;
+    }
+
+    /**
+     * @dev Same as `_getTwoTokenPoolTokens`, except it returns the two tokens and balances directly instead of using
+     * an array, as well as a storage pointer to the `TwoTokenPoolBalances` struct, which can be used to update it
+     * without having to recompute the pair hash and storage slot.
+     */
+    function _getTwoTokenPoolBalances(bytes32 poolId)
+        private
+        view
+        returns (
+            TwoTokenPoolBalances storage poolBalances,
+            IERC20 tokenA,
+            bytes32 balanceA,
+            IERC20 tokenB,
+            bytes32 balanceB
+        )
+    {
+        TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
+        tokenA = poolTokens.tokenA;
+        tokenB = poolTokens.tokenB;
+
+        bytes32 pairHash = _getTwoTokenPairHash(tokenA, tokenB);
+        poolBalances = poolTokens.balances[pairHash];
+
+        bytes32 sharedCash = poolBalances.sharedCash;
+        bytes32 sharedManaged = poolBalances.sharedManaged;
+
+        balanceA = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
+        balanceB = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
+    }
+
+    /**
+     * @dev Returns the balance of a token in a Two Token Pool.
+     *
+     * This function assumes `poolId` exists and corresponds to the General specialization setting.
+     *
+     * This function is convenient but not particularly gas efficient, and should be avoided during gas-sensitive
+     * operations, such as swaps. For those, _getTwoTokenPoolSharedBalances provides a more flexible interface.
+     *
+     * Requirements:
+     *
+     * - `token` must be registered in the Pool
+     */
+    function _getTwoTokenPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
+        // We can't just read the balance of token, because we need to know the full pair in order to compute the pair
+        // hash and access the balance mapping. We therefore rely on `_getTwoTokenPoolBalances`.
+        (, IERC20 tokenA, bytes32 balanceA, IERC20 tokenB, bytes32 balanceB) = _getTwoTokenPoolBalances(poolId);
+
+        if (token == tokenA) {
+            return balanceA;
+        } else if (token == tokenB) {
+            return balanceB;
+        } else {
+            _revert(Errors.TOKEN_NOT_REGISTERED);
+        }
+    }
+
     /**
      * @dev Returns the balance of the two tokens in a Two Token Pool.
      *
@@ -279,63 +366,6 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         balanceB = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
     }
 
-    /*
-     * @dev Returns an array with all the tokens and balances in a Two Token Pool. The order may change when
-     * tokens are registered or deregistered.
-     *
-     * This function assumes `poolId` exists and corresponds to the Two Token specialization setting.
-     */
-    function _getTwoTokenPoolTokens(bytes32 poolId)
-        internal
-        view
-        returns (IERC20[] memory tokens, bytes32[] memory balances)
-    {
-        (, IERC20 tokenA, bytes32 balanceA, IERC20 tokenB, bytes32 balanceB) = _getTwoTokenPoolBalances(poolId);
-
-        // Both tokens will either be zero (if unregistered) or non-zero (if registered), but we keep the full check for
-        // clarity.
-        if (tokenA == IERC20(0) || tokenB == IERC20(0)) {
-            return (new IERC20[](0), new bytes32[](0));
-        }
-
-        // Note that functions relying on this getter expect tokens to be properly ordered, so we use the (A, B)
-        // ordering.
-
-        tokens = new IERC20[](2);
-        tokens[0] = tokenA;
-        tokens[1] = tokenB;
-
-        balances = new bytes32[](2);
-        balances[0] = balanceA;
-        balances[1] = balanceB;
-    }
-
-    /**
-     * @dev Returns the balance of a token in a Two Token Pool.
-     *
-     * This function assumes `poolId` exists and corresponds to the General specialization setting.
-     *
-     * This function is convenient but not particularly gas efficient, and should be avoided during gas-sensitive
-     * operations, such as swaps. For those, _getTwoTokenPoolSharedBalances provides a more flexible interface.
-     *
-     * Requirements:
-     *
-     * - `token` must be registered in the Pool
-     */
-    function _getTwoTokenPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32 balance) {
-        // We can't just read the balance of token, because we need to know the full pair in order to compute the pair
-        // hash and access the balance mapping. We therefore rely on `_getTwoTokenPoolBalances`.
-        (, IERC20 tokenA, bytes32 balanceA, IERC20 tokenB, bytes32 balanceB) = _getTwoTokenPoolBalances(poolId);
-
-        if (token == tokenA) {
-            return balanceA;
-        } else if (token == tokenB) {
-            return balanceB;
-        } else {
-            _revert(Errors.TOKEN_NOT_REGISTERED);
-        }
-    }
-
     /**
      * @dev Returns true if `token` is registered in a Two Token Pool.
      *
@@ -346,36 +376,6 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
 
         // The zero address can never be a registered token.
         return (token == poolTokens.tokenA || token == poolTokens.tokenB) && token != IERC20(0);
-    }
-
-    /**
-     * @dev Same as `_getTwoTokenPoolTokens`, except it returns the two tokens and balances directly instead of using
-     * an array, as well as a storage pointer to the `TwoTokenPoolBalances` struct, which can be used to update it
-     * without having to recompute the pair hash and storage slot.
-     */
-    function _getTwoTokenPoolBalances(bytes32 poolId)
-        private
-        view
-        returns (
-            TwoTokenPoolBalances storage poolBalances,
-            IERC20 tokenA,
-            bytes32 balanceA,
-            IERC20 tokenB,
-            bytes32 balanceB
-        )
-    {
-        TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
-        tokenA = poolTokens.tokenA;
-        tokenB = poolTokens.tokenB;
-
-        bytes32 pairHash = _getTwoTokenPairHash(tokenA, tokenB);
-        poolBalances = poolTokens.balances[pairHash];
-
-        bytes32 sharedCash = poolBalances.sharedCash;
-        bytes32 sharedManaged = poolBalances.sharedManaged;
-
-        balanceA = BalanceAllocation.fromSharedToBalanceA(sharedCash, sharedManaged);
-        balanceB = BalanceAllocation.fromSharedToBalanceB(sharedCash, sharedManaged);
     }
 
     /**
