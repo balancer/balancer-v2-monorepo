@@ -23,8 +23,9 @@ contract Authorizer is AccessControl, IAuthorizer {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    // This implementation ignores the 'where' field
-    function hasRole(
+    // This implementation ignores the 'where' field, relying on the base `hasRole` instead. All of the grant, revoke
+    // and query functions similarly lack this field.
+    function hasRoleIn(
         bytes32 role,
         address account,
         address

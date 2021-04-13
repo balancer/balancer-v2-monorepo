@@ -17,6 +17,8 @@ describe('BasePool', function () {
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
+  const WHERE = ZERO_ADDRESS;
+
   const MAX_SWAP_FEE = fp(0.15);
   const MIN_SWAP_FEE = fp(0.000001);
 
@@ -128,7 +130,7 @@ describe('BasePool', function () {
 
         context('when the new swap fee is below the maximum', () => {
           it('can change the swap fee', async () => {
-            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+            expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
 
             const newSwapFee = fp(0.000001);
             await pool.connect(admin).setSwapFee(newSwapFee);
@@ -137,7 +139,7 @@ describe('BasePool', function () {
           });
 
           it('emits an event', async () => {
-            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+            expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
 
             const newSwapFee = fp(0.000001);
             const receipt = await (await pool.connect(admin).setSwapFee(newSwapFee)).wait();
@@ -148,7 +150,7 @@ describe('BasePool', function () {
           });
 
           it('can change the swap fee to zero', async () => {
-            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+            expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
 
             const newSwapFee = fp(0.000001);
             await pool.connect(admin).setSwapFee(newSwapFee);
@@ -159,7 +161,7 @@ describe('BasePool', function () {
           it('can not change the swap fee if the role was revoked', async () => {
             await authorizer.connect(admin).revokeRole(role, admin.address);
 
-            expect(await authorizer.hasRole(role, admin.address)).to.be.false;
+            expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
 
             await expect(pool.connect(admin).setSwapFee(0)).to.be.revertedWith('SENDER_NOT_ALLOWED');
           });
@@ -207,7 +209,7 @@ describe('BasePool', function () {
       });
 
       it('can change the emergency period status', async () => {
-        expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
 
         await pool.connect(admin).setEmergencyPeriod(true);
 
@@ -218,7 +220,7 @@ describe('BasePool', function () {
       it('can not change the emergency period if the role was revoked', async () => {
         await authorizer.connect(admin).revokeRole(role, admin.address);
 
-        expect(await authorizer.hasRole(role, admin.address)).to.be.false;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
 
         await expect(pool.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });

@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 interface IAuthorizer {
-    function hasRole(
+    function hasRoleIn(
         bytes32 role,
         address account,
         address where

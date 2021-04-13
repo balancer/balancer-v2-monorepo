@@ -116,7 +116,7 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
     }
 
     function _canPerform(bytes32 roleId, address user) internal view override returns (bool) {
-        return _authorizer.hasRole(roleId, user, address(this));
+        return _authorizer.hasRoleIn(roleId, user, address(this));
     }
 
     function _typeHash() internal pure override returns (bytes32 hash) {
