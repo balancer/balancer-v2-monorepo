@@ -15,7 +15,7 @@ import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPo
 import * as expectEvent from '../helpers/expectEvent';
 import { lastBlockNumber } from '../../lib/helpers/time';
 
-const OP_KIND = { DEPOSIT: 0, WITHDRAW: 1, UPDATE: 2 };
+const OP_KIND = { WITHDRAW: 0, DEPOSIT: 1, UPDATE: 2 };
 
 describe('Vault - asset manager', function () {
   let tokens: TokenList, otherToken: Token, vault: Contract;

@@ -323,10 +323,10 @@ abstract contract PoolAssets is
             uint256 amount = transfers[i].amount;
 
             int256 delta;
-            if (kind == AssetManagerOpKind.DEPOSIT) {
-                delta = _depositPoolBalance(poolId, specialization, token, amount);
-            } else if (kind == AssetManagerOpKind.WITHDRAW) {
+            if (kind == AssetManagerOpKind.WITHDRAW) {
                 delta = _withdrawPoolBalance(poolId, specialization, token, amount);
+            } else if (kind == AssetManagerOpKind.DEPOSIT) {
+                delta = _depositPoolBalance(poolId, specialization, token, amount);
             } else {
                 delta = _updateManagedBalance(poolId, specialization, token, amount);
             }

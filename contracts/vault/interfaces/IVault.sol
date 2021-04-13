@@ -687,14 +687,14 @@ interface IVault is ISignaturesValidator {
     event PoolBalanceManaged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     /**
-     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
-     *
      * Withdrawals decrease the Pool's cash, but increase its managed balance, leaving the total balance unchanged.
+     *
+     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
      *
      * Updates don't affect the Pool's cash balance, but because the managed balance changes, it does alter the total.
      * The external amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
      */
-    enum AssetManagerOpKind { DEPOSIT, WITHDRAW, UPDATE }
+    enum AssetManagerOpKind { WITHDRAW, DEPOSIT, UPDATE }
 
     // Protocol Fees
     //
