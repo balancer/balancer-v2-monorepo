@@ -13,7 +13,14 @@ import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish, bn, fp } from '../../lib/helpers/numbers';
 import { FundManagement, Swap, SWAP_KIND } from '../../lib/helpers/trading';
-import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
+import {
+  MAX_GAS_LIMIT,
+  MAX_INT256,
+  MAX_UINT112,
+  MAX_UINT256,
+  ZERO_ADDRESS,
+  ZERO_BYTES32,
+} from '../../lib/helpers/constants';
 import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
 import { encodeCalldataAuthorization, signBatchSwapAuthorization, signSwapAuthorization } from '../helpers/signatures';
 
@@ -423,7 +430,12 @@ describe('Vault - swaps', () => {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const assertSwap = async (data: string, sender: SignerWithAddress, expectedChanges: any[]): Promise<void> => {
-          await expectBalanceChange(() => sender.sendTransaction({ to: vault.address, data }), tokens, expectedChanges);
+          // Hardcoding a gas limit prevents (slow) gas estimation
+          await expectBalanceChange(
+            () => sender.sendTransaction({ to: vault.address, data, gasLimit: MAX_GAS_LIMIT }),
+            tokens,
+            expectedChanges
+          );
 
           if (expectedInternalBalance) {
             for (const symbol in expectedInternalBalance) {
