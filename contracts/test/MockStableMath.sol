@@ -17,7 +17,7 @@ pragma solidity ^0.7.0;
 import "../pools/stable/StableMath.sol";
 
 contract MockStableMath is StableMath {
-    function invariant(uint256 amp, uint256[] calldata balances) external pure returns (uint256) {
+    function invariant(uint256 amp, uint256[] memory balances) external pure returns (uint256) {
         return _calculateInvariant(amp, balances);
     }
 

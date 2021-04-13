@@ -423,7 +423,7 @@ contract StablePool is BaseGeneralPool, StableMath {
      * It's equivalent to Curve's get_virtual_price() function
      */
     function getRate() public view override returns (uint256) {
-        (, uint256[] memory balances, ) = _getVault().getPoolTokens(_getPoolId());
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
         return StableMath._calculateInvariant(_amplificationParameter, balances).div(totalSupply());
     }
 }

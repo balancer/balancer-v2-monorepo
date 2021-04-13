@@ -132,7 +132,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
      * @dev Returns the current value of the invariant.
      */
     function getInvariant() public view returns (uint256) {
-        (, uint256[] memory balances, ) = _getVault().getPoolTokens(_getPoolId());
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         // Since the Pool hooks always work with upscaled balances, we manually
         // upscale here for consistency

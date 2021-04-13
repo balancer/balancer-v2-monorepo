@@ -27,8 +27,7 @@ describe('WeightedPool', function () {
     await allTokens.mint({ to: [lp, trader], amount: fp(100) });
   });
 
-  // TODO: These fail due to a Hardhat error
-  context.skip('for a 1 token pool', () => {
+  context('for a 1 token pool', () => {
     it('reverts if there is a single token', async () => {
       const tokens = await TokenList.create(1);
       const weights = [fp(1)];
@@ -45,7 +44,6 @@ describe('WeightedPool', function () {
     itBehavesAsWeightedPool(3);
   });
 
-  // TODO: These fail due to a Hardhat error
   context('for a too-many token pool', () => {
     it('reverts if there are too many tokens', async () => {
       // The maximum number of tokens is 8
@@ -131,8 +129,7 @@ describe('WeightedPool', function () {
         });
       });
 
-      // TODO: These fail due to a Hardhat error
-      context.skip('when the creation fails', () => {
+      context('when the creation fails', () => {
         it('reverts if the number of tokens and weights do not match', async () => {
           const badWeights = weights.slice(1);
 
@@ -314,9 +311,6 @@ describe('WeightedPool', function () {
 
             await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('MAX_OUT_BPT_FOR_TOKEN_IN');
           });
-
-          // TODO: implement
-          it.skip('fails if not enough token in');
 
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();

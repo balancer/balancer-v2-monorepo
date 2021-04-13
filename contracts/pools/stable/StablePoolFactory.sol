@@ -22,7 +22,7 @@ import "../BasePoolFactory.sol";
 import "./StablePool.sol";
 
 contract StablePoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
+    constructor(IVault vault) BasePoolFactory(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -40,7 +40,7 @@ contract StablePoolFactory is BasePoolFactory {
     ) external returns (address) {
         address pool = address(
             new StablePool(
-                vault,
+                getVault(),
                 name,
                 symbol,
                 tokens,

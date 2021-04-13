@@ -35,7 +35,7 @@ abstract contract FlashLoanProvider is Fees, ReentrancyGuard, EmergencyPeriod {
         IFlashLoanReceiver receiver,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        bytes calldata receiverData
+        bytes memory receiverData
     ) external override nonReentrant noEmergencyPeriod {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
