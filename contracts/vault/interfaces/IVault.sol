@@ -482,10 +482,10 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Performs a swap with a single Pool.
      *
-     * If the swap is given out (the number of tokens to send to the Pool is known), returns the amount of tokens
+     * If the swap is given in (the number of tokens to send to the Pool is known), returns the amount of tokens
      * taken from the Pool, which must be greater than or equal to `limit`.
      *
-     * If the swap is given in (the number of tokens to take from the Pool is known), returns the amount of
+     * If the swap is given out (the number of tokens to take from the Pool is known), returns the amount of
      * tokens sent to the Pool, which must be less than or equal to `limit`.
      *
      * Internal Balance usage and the recipient are determined by the `funds` struct.
