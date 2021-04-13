@@ -94,7 +94,7 @@ describe('Vault - asset manager', function () {
       });
     });
 
-    describe('transfer to manager', () => {
+    describe('withdrawal', () => {
       context('when the sender the manager', () => {
         context('when trying to transfer less than the vault balance', () => {
           const amount = bn(10e18);
@@ -154,7 +154,8 @@ describe('Vault - asset manager', function () {
               poolId,
               token: tokens.DAI.address,
               assetManager: assetManager.address,
-              amount: amount.mul(-1),
+              cashDelta: amount.mul(-1),
+              managedDelta: amount,
             });
           });
         });
@@ -181,7 +182,7 @@ describe('Vault - asset manager', function () {
       });
     });
 
-    describe('deposit to pool', () => {
+    describe('deposit', () => {
       context('when the sender is an allowed manager', () => {
         const externalAmount = bn(75e18);
 
@@ -248,7 +249,8 @@ describe('Vault - asset manager', function () {
               poolId,
               token: tokens.DAI.address,
               assetManager: assetManager.address,
-              amount,
+              cashDelta: amount,
+              managedDelta: amount.mul(-1),
             });
           });
         });
@@ -383,7 +385,8 @@ describe('Vault - asset manager', function () {
               poolId,
               token: tokens.DAI.address,
               assetManager: assetManager.address,
-              amount: amount.sub(previousBalance.managed),
+              cashDelta: 0,
+              managedDelta: amount.sub(previousBalance.managed),
             });
           });
         });
@@ -445,7 +448,8 @@ describe('Vault - asset manager', function () {
               poolId,
               token: tokens.DAI.address,
               assetManager: assetManager.address,
-              amount: amount.sub(previousBalance.managed),
+              cashDelta: 0,
+              managedDelta: amount.sub(previousBalance.managed),
             });
           });
         });
