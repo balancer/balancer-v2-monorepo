@@ -326,20 +326,28 @@ abstract contract PoolAssets is
 
             uint256 amount = transfers[i].amount;
 
-            int256 delta;
+            int256 managedDelta;
             if (kind == AssetManagerOpKind.WITHDRAW) {
-                delta = _withdrawPoolBalance(poolId, specialization, token, amount);
+                managedDelta = _withdrawPoolBalance(poolId, specialization, token, amount);
             } else if (kind == AssetManagerOpKind.DEPOSIT) {
-                delta = _depositPoolBalance(poolId, specialization, token, amount);
+                managedDelta = _depositPoolBalance(poolId, specialization, token, amount);
             } else {
                 // AssetManagerOpKind.UPDATE
-                delta = _updateManagedBalance(poolId, specialization, token, amount);
+                managedDelta = _updateManagedBalance(poolId, specialization, token, amount);
             }
 
-            emit PoolBalanceManaged(poolId, msg.sender, token, delta);
+            emit PoolBalanceManaged(poolId, msg.sender, token, managedDelta);
         }
     }
 
+    /**
+     * @dev Withdraws `amount` 'cash' from a Pool, transferring it to the caller and increasing the 'managed' balance.
+     *
+     * This function assumes `poolId` exists, corresponds to the `specialization` setting, and that `token` is
+     * registered for that Pool.
+     *
+     * Returns the managed balance delta as a result of this call.
+     */
     function _withdrawPoolBalance(
         bytes32 poolId,
         PoolSpecialization specialization,
@@ -356,10 +364,18 @@ abstract contract PoolAssets is
 
         token.safeTransfer(msg.sender, amount);
 
-        // Due to how balances are stored internally we know `amount` will always fit in an int256
-        return -int256(amount);
+        // Since `amount` is actually a 112 bit delta, it will always fit in a 256 bit integer.
+        return int256(amount);
     }
 
+    /**
+     * @dev Deposits `amount` 'cash' into a Pool, transferring it from the caller and decreasing the 'managed' balance.
+     *
+     * This function assumes `poolId` exists, corresponds to the `specialization` setting, and that `token` is
+     * registered for that Pool.
+     *
+     * Returns the managed balance delta as a result of this call.
+     */
     function _depositPoolBalance(
         bytes32 poolId,
         PoolSpecialization specialization,
@@ -377,10 +393,18 @@ abstract contract PoolAssets is
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Due to how balances are stored internally we know `amount` will always fit in an int256
-        return int256(amount);
+        // Since `amount` is actually a 112 bit delta, it will always fit in a 256 bit integer.
+        return int256(-amount);
     }
 
+    /**
+     * @dev Sets `token`'s managed balance in a Pool to `amount`.
+     *
+     * This function assumes `poolId` exists, corresponds to the `specialization` setting, and that `token` is
+     * registered for that Pool.
+     *
+     * Returns the managed balance delta as a result of this call.
+     */
     function _updateManagedBalance(
         bytes32 poolId,
         PoolSpecialization specialization,
