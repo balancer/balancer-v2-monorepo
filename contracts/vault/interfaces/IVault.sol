@@ -425,7 +425,7 @@ interface IVault is ISignaturesValidator {
         bytes32 indexed poolId,
         address indexed liquidityProvider,
         IERC20[] tokens,
-        int256[] amounts,
+        int256[] deltas,
         uint256[] protocolFees
     );
 
