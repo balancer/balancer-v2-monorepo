@@ -335,7 +335,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             tokenOutBalance
         );
 
-        -// We check the token ordering again to create the new shared cash packed struct
+        // We check the token ordering again to create the new shared cash packed struct
         poolBalances.sharedCash = request.tokenIn < request.tokenOut
             ? BalanceAllocation.toSharedCash(tokenInBalance, tokenOutBalance) // in is A, out is B
             : BalanceAllocation.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
