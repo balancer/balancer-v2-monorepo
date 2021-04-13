@@ -1064,7 +1064,7 @@
           }
         ],
         "internalType": "struct IVault.SingleSwap",
-        "name": "request",
+        "name": "singleSwap",
         "type": "tuple"
       },
       {

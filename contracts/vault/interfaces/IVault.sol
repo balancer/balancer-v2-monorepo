@@ -496,7 +496,7 @@ interface IVault is ISignaturesValidator {
      * Emits a `Swap` event.
      */
     function swap(
-        SingleSwap memory request,
+        SingleSwap memory singleSwap,
         FundManagement memory funds,
         uint256 limit,
         uint256 deadline
