@@ -30,13 +30,13 @@ library Create2 {
      */
     function deploy(uint256 amount, bytes32 salt, bytes memory bytecode) internal returns (address) {
         address addr;
-        _require(address(this).balance >= amount, Errors.CREATE2_INSUFFICIENT_BALANCE);
-        _require(bytecode.length != 0, Errors.CREATE2_BYTECODE_ZERO);
+        require(address(this).balance >= amount, 'CREATE2_INSUFFICIENT_BALANCE');
+        require(bytecode.length != 0, 'CREATE2_BYTECODE_ZERO');
         // solhint-disable-next-line no-inline-assembly
         assembly {
             addr := create2(amount, add(bytecode, 0x20), mload(bytecode), salt)
         }
-        _require(addr != address(0), Errors.CREATE2_DEPLOY_FAILED);
+        require(addr != address(0), 'CREATE2_DEPLOY_FAILED');
         return addr;
     }
 

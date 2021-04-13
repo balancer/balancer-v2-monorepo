@@ -391,10 +391,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             return _exitExactBPTInForTokenOut(currentBalances, normalizedWeights, userData);
         } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(currentBalances, userData);
-        } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            return _exitBPTInForExactTokensOut(currentBalances, normalizedWeights, userData);
         } else {
-            _revert(Errors.UNHANDLED_EXIT_KIND);
+            // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
+            return _exitBPTInForExactTokensOut(currentBalances, normalizedWeights, userData);
         }
     }
 
