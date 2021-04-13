@@ -231,16 +231,16 @@ describe('Vault - swaps', () => {
             poolId: mainPoolId,
             tokenIn: tokens.WETH.address,
             tokenOut: tokens.DAI.address,
-            tokensIn: bn(1e18),
-            tokensOut: bn(2e18),
+            amountIn: bn(1e18),
+            amountOut: bn(2e18),
           });
 
           expectEvent.inReceipt(receipt, 'Swap', {
             poolId: mainPoolId,
             tokenIn: tokens.DAI.address,
             tokenOut: tokens.WETH.address,
-            tokensIn: bn(1e18),
-            tokensOut: bn(2e18),
+            amountIn: bn(1e18),
+            amountOut: bn(2e18),
           });
         });
 

@@ -477,7 +477,7 @@ describe('Vault - join pool', () => {
         expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
           poolId,
           liquidityProvider: lp.address,
-          amounts: joinAmounts,
+          deltas: joinAmounts,
           protocolFees: dueProtocolFeeAmounts,
         });
       });
