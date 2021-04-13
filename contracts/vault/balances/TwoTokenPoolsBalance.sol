@@ -55,7 +55,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
     //
     // If users query a token pair containing an unregistered token, the Pool will generate a hash for a mapping entry
     // that was not set, and return zero balances. Non-zero balances are only possible if both tokens in the pair
-    // are registered with the pool, which means we don't have to check the TwoTokenPoolTokens struct, and can save
+    // are registered with the Pool, which means we don't have to check the TwoTokenPoolTokens struct, and can save
     // storage reads.
 
     struct TwoTokenPoolTokens {
