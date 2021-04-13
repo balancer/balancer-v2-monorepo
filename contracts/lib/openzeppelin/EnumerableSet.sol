@@ -130,7 +130,7 @@ library EnumerableSet {
      */
     function at(AddressSet storage set, uint256 index) internal view returns (address) {
         _require(set._values.length > index, Errors.OUT_OF_BOUNDS);
-        return set._values[index];
+        return unchecked_at(set, index);
     }
 
     /**
