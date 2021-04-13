@@ -330,7 +330,7 @@ export default class StablePool {
     });
 
     const receipt = await (await tx).wait();
-    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'MockPoolBalanceChanged').args;
     return { amountsIn: amounts, dueProtocolFeeAmounts };
   }
 
@@ -356,7 +356,7 @@ export default class StablePool {
     });
 
     const receipt = await (await tx).wait();
-    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'MockPoolBalanceChanged').args;
     return { amountsOut: amounts, dueProtocolFeeAmounts };
   }
 
