@@ -14,7 +14,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { deploy } from '../../lib/helpers/deploy';
 import { roleId } from '../../lib/helpers/roles';
 import { lastBlockNumber, MONTH } from '../../lib/helpers/time';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { encodeCalldataAuthorization, signJoinAuthorization } from '../helpers/signatures';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
@@ -115,7 +115,12 @@ describe('Vault - join pool', () => {
         calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
       }
 
-      return (data.fromRelayer ? relayer : lp).sendTransaction({ to: vault.address, data: calldata });
+      // Hardcoding a gas limit prevents (slow) gas estimation
+      return (data.fromRelayer ? relayer : lp).sendTransaction({
+        to: vault.address,
+        data: calldata,
+        gasLimit: MAX_GAS_LIMIT,
+      });
     }
 
     context('when called incorrectly', () => {
@@ -346,7 +351,7 @@ describe('Vault - join pool', () => {
         });
 
         context('with enough internal balance', () => {
-          beforeEach('deposit to internal balance', async () => {
+          sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
                 kind: 0, // deposit
@@ -472,7 +477,7 @@ describe('Vault - join pool', () => {
         expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
           poolId,
           liquidityProvider: lp.address,
-          amounts: joinAmounts,
+          deltas: joinAmounts,
           protocolFees: dueProtocolFeeAmounts,
         });
       });
