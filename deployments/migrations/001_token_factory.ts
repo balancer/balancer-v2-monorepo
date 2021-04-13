@@ -6,23 +6,20 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
 
   const { deployer } = await getNamedAccounts();
 
-  const chainId = await getChainId();
+  // Deploy on mainnet to keep nonces synced
+  await deploy('TokenFactory', {
+    from: deployer,
+    log: true,
+  });
 
-  if (chainId != '1') {
-    await deploy('TokenFactory', {
-      from: deployer,
-      log: true,
-    });
+  await deploy('WETH', {
+    from: deployer,
+    args: [deployer],
+    log: true,
+  });
 
-    await deploy('WETH', {
-      from: deployer,
-      args: [deployer],
-      log: true,
-    });
-
-    await deploy('Multicall', {
-      from: deployer,
-      log: true,
-    });
-  }
+  await deploy('Multicall', {
+    from: deployer,
+    log: true,
+  });
 }

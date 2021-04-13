@@ -99,11 +99,11 @@ export default {
     admin: {
       default: 1, // here this will by default take the first account as deployer
       // We use explicit chain IDs so that export-all works correctly: https://github.com/wighawag/hardhat-deploy#options-2
-      [CHAIN_IDS.mainnet]: 1,
+      [CHAIN_IDS.mainnet]: '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f',
       [CHAIN_IDS.kovan]: 1,
       [CHAIN_IDS.ropsten]: 1,
       [CHAIN_IDS.goerli]: 1,
-      [CHAIN_IDS.rinkeby]: 1,
+      [CHAIN_IDS.rinkeby]: '0x44DDF1D6292F36B25230a72aBdc7159D37d317Cf',
       [CHAIN_IDS.dockerParity]: 1,
     },
   },

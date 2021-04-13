@@ -4,11 +4,11 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
-  const { deployer } = await getNamedAccounts();
+  const { deployer, admin } = await getNamedAccounts();
 
   await deploy('Authorizer', {
     from: deployer,
-    args: [deployer],
+    args: [admin],
     log: true,
   });
 }
