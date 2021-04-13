@@ -317,14 +317,15 @@ abstract contract PoolAssets is
         bytes32 poolId,
         AssetManagerOpKind kind,
         AssetManagerTransfer[] memory transfers
-    ) external override nonReentrant noEmergencyPeriod {
-        _ensureRegisteredPool(poolId);
+    ) external override nonReentrant noEmergencyPeriod withRegisteredPool(poolId) {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
 
         for (uint256 i = 0; i < transfers.length; ++i) {
             IERC20 token = transfers[i].token;
-            _ensurePoolAssetManagerIsSender(poolId, token);
             uint256 amount = transfers[i].amount;
+
+            _require(_isTokenRegistered(poolId, token), Errors.TOKEN_NOT_REGISTERED);
+            _require(_poolAssetManagers[poolId][token] == msg.sender, Errors.SENDER_NOT_ASSET_MANAGER);
 
             int256 delta;
             if (kind == AssetManagerOpKind.DEPOSIT) {
@@ -474,22 +475,6 @@ abstract contract PoolAssets is
 
             _payFee(_translateToIERC20(asset), protocolSwapFee);
         }
-    }
-
-    /**
-     * @dev Reverts unless `poolId` corresponds to a registered Pool, `token` is registered for that Pool, and the
-     * caller is the Pool's Asset Manager for `token`.
-     */
-    function _ensurePoolAssetManagerIsSender(bytes32 poolId, IERC20 token) private view {
-        _ensureTokenRegistered(poolId, token);
-        _require(_poolAssetManagers[poolId][token] == msg.sender, Errors.SENDER_NOT_ASSET_MANAGER);
-    }
-
-    /**
-     * @dev Reverts unless `token` is registered for `poolId`.
-     */
-    function _ensureTokenRegistered(bytes32 poolId, IERC20 token) private view {
-        _require(_isTokenRegistered(poolId, token), Errors.TOKEN_NOT_REGISTERED);
     }
 
     /**
