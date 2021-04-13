@@ -147,7 +147,7 @@ describe('Vault - pool registry', () => {
                   const addresses = tokens.addresses;
                   addresses[0] = ZERO_ADDRESS;
 
-                  const error = 'TOKEN_NOT_CONTRACT';
+                  const error = 'INVALID_TOKEN';
                   await expect(pool.registerTokens(addresses, assetManagers)).to.be.revertedWith(error);
                   await expect(pool.registerTokens(addresses.reverse(), assetManagers)).to.be.revertedWith(error);
                 });

@@ -63,7 +63,7 @@ interface IVault is ISignaturesValidator {
 
     // Relayers
     //
-    // Additionally, it is also possible for an account to perform certain actions on behalf of another one, using their
+    // Additionally, it is possible for an account to perform certain actions on behalf of another one, using their
     // Vault ERC20 allowance and Internal Balance. These accounts are said to be 'relayers' for these Vault functions,
     // and are expected to be smart contracts with sound authentication mechanisms. For an account to be able to wield
     // this power, two things must occur:
@@ -91,13 +91,13 @@ interface IVault is ISignaturesValidator {
 
     // Internal Balance
     //
-    // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance.
-    // Internal Balance can be withdrawn or transferred, and it can also be used when joining Pools or performing swaps.
-    // Swaps and Pool exits can also deposit to Internal Balance. Using Internal Balance in these ways results in
-    // greatly reduced gas costs, compared to relying on plain ERC20 transfers using allowance.
+    // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance, and later
+    // transferred or withdrawn. It can also be used as a source of tokens when joining Pools, as a destination
+    // when exiting them, and as either when performing swaps. This usage of Internal Balance results in greatly reduced
+    // gas costs when compared to relying on plain ERC20 transfers, leading to large savings for frequent users.
     //
-    // Internal Balance management features batching, which means each call can be used to perform multiple operations
-    // of the same kind (deposit, withdraw or transfer) at once.
+    // Internal Balance management features batching, which means each a single contract call can be used to perform
+    // multiple operations of the same kind (deposit, withdraw or transfer) at once.
 
     /**
      * @dev Returns `user`'s Internal Balance for a set of tokens.
@@ -114,7 +114,7 @@ interface IVault is ISignaturesValidator {
     function manageUserBalance(UserBalanceOp[] memory ops) external payable;
 
     /**
-     * @dev Data for `manageUserBalance` operations, which include the possibility for ETH to be sent and received 
+     * @dev Data for `manageUserBalance` operations, which include the possibility for ETH to be sent and received
      without manual WETH wrapping or unwrapping.
      */
     struct UserBalanceOp {
@@ -125,10 +125,10 @@ interface IVault is ISignaturesValidator {
         address payable recipient;
     }
 
-    // There are for possible operations in `manageUserBalance`:
+    // There are four possible operations in `manageUserBalance`:
     //
     // - DEPOSIT_INTERNAL
-    // Increases the Internal Balance of the `recipient` account by  transferring tokens from the corresponding
+    // Increases the Internal Balance of the `recipient` account by transferring tokens from the corresponding
     // `sender`. The sender must have allowed the Vault to use their tokens via `IERC20.approve()`.
     //
     // ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call: it will be wrapped
@@ -230,7 +230,8 @@ interface IVault is ISignaturesValidator {
      * exit by receiving registered tokens, and can only swap registered tokens.
      *
      * Each token can only be registered once. For Pools with the Two Token specialization, `tokens` must have a length
-     * of two, that is, both tokens must be registered in the same `registerTokens` call.
+     * of two, that is, both tokens must be registered in the same `registerTokens` call, and they must be sorted in
+     * ascending order.
      *
      * The `tokens` and `assetManagers` arrays must have the same length, and each entry in these indicates the Asset
      * Manager for each token. Asset Managers can manage a Pool's tokens via `managePoolBalance`, withdrawing and
@@ -246,8 +247,8 @@ interface IVault is ISignaturesValidator {
      */
     function registerTokens(
         bytes32 poolId,
-        IERC20[] calldata tokens,
-        address[] calldata assetManagers
+        IERC20[] memory tokens,
+        address[] memory assetManagers
     ) external;
 
     /**
@@ -266,7 +267,7 @@ interface IVault is ISignaturesValidator {
      *
      * Emits a `TokensDeregistered` event.
      */
-    function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+    function deregisterTokens(bytes32 poolId, IERC20[] memory tokens) external;
 
     /**
      * @dev Emitted when a Pool deregisters tokens by calling `deregisterTokens`.
@@ -301,6 +302,9 @@ interface IVault is ISignaturesValidator {
      * `cash` is the number of tokens the Vault currently holds for the Pool. `managed` is the number of tokens
      * withdrawn and held outside the Vault by the Pool's token Asset Manager. The Pool's total balance for `token`
      * equals the sum of `cash` and `managed`.
+     *
+     * Internally, `cash` and `managed` are stored using 112 bits. No action can ever cause a Pool's token `cash`,
+     * `managed` or `total` balance to be larger than 2^112 - 1.
      *
      * `blockNumber` is the number of the block in which `token`'s balance was last modified (via either a join, exit,
      * swap, or Asset Manager interaction). This value is useful to avoid so-called 'sandwich attacks', for example
@@ -481,11 +485,11 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Performs a swap with a single Pool.
      *
-     * If the swap is given out (the number of tokens to send to the Pool is known), returns the amount of tokens
-     * taken from the Pool, which must be larger or equal to `limit`.
+     * If the swap is given in (the number of tokens to send to the Pool is known), returns the amount of tokens
+     * taken from the Pool, which must be greater than or equal to `limit`.
      *
-     * If the swap is given in (the number of tokens to take from the Pool is known), returns the amount of
-     * tokens sent to the Pool, which must be smaller or equal to `limit`.
+     * If the swap is given out (the number of tokens to take from the Pool is known), returns the amount of
+     * tokens sent to the Pool, which must be less than or equal to `limit`.
      *
      * Internal Balance usage and the recipient are determined by the `funds` struct.
      *
@@ -549,9 +553,9 @@ interface IVault is ISignaturesValidator {
      */
     function batchSwap(
         SwapKind kind,
-        BatchSwapStep[] calldata swaps,
+        BatchSwapStep[] memory swaps,
         IAsset[] memory assets,
-        FundManagement calldata funds,
+        FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
     ) external payable returns (int256[] memory);
@@ -645,9 +649,9 @@ interface IVault is ISignaturesValidator {
      */
     function flashLoan(
         IFlashLoanReceiver receiver,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        bytes calldata receiverData
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        bytes memory receiverData
     ) external;
 
     // Asset Management
@@ -686,14 +690,14 @@ interface IVault is ISignaturesValidator {
     event PoolBalanceManaged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
 
     /**
-     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
-     *
      * Withdrawals decrease the Pool's cash, but increase its managed balance, leaving the total balance unchanged.
+     *
+     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
      *
      * Updates don't affect the Pool's cash balance, but because the managed balance changes, it does alter the total.
      * The external amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
      */
-    enum AssetManagerOpKind { DEPOSIT, WITHDRAW, UPDATE }
+    enum AssetManagerOpKind { WITHDRAW, DEPOSIT, UPDATE }
 
     // Protocol Fees
     //
