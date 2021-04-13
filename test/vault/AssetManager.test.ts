@@ -325,7 +325,7 @@ describe('Vault - asset manager', function () {
           if (specialization == TwoTokenPool) {
             it('updates both block numbers when updating token A', async () => {
               const transfers = [{ token: tokens.DAI.address, amount: amount }];
-              await vault.connect(otherAssetManager).managePoolBalance(poolId, OP_KIND.UPDATE, transfers);
+              await vault.connect(assetManager).managePoolBalance(poolId, OP_KIND.UPDATE, transfers);
 
               const blockNumber = await lastBlockNumber();
 
