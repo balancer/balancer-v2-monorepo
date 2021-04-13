@@ -171,9 +171,7 @@ library EnumerableMap {
      */
     function at(IERC20ToBytes32Map storage map, uint256 index) internal view returns (IERC20, bytes32) {
         _require(map._length > index, Errors.OUT_OF_BOUNDS);
-
-        IERC20ToBytes32MapEntry storage entry = map._entries[index];
-        return (entry._key, entry._value);
+        return unchecked_at(map, index);
     }
 
     /**
