@@ -14,7 +14,7 @@ import { expectBalanceChange } from '../helpers/tokenBalance';
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { lastBlockNumber, MONTH } from '../../lib/helpers/time';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '../../lib/helpers/numbers';
 import { encodeCalldataAuthorization, signExitAuthorization } from '../helpers/signatures';
 import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
@@ -136,7 +136,12 @@ describe('Vault - exit pool', () => {
         calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
       }
 
-      return (data.fromRelayer ? relayer : lp).sendTransaction({ to: vault.address, data: calldata });
+      // Hardcoding a gas limit prevents (slow) gas estimation
+      return (data.fromRelayer ? relayer : lp).sendTransaction({
+        to: vault.address,
+        data: calldata,
+        gasLimit: MAX_GAS_LIMIT,
+      });
     }
 
     context('when called incorrectly', () => {
@@ -477,7 +482,7 @@ describe('Vault - exit pool', () => {
           expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
             poolId,
             liquidityProvider: lp.address,
-            amounts: exitAmounts.map((amount) => amount.mul(-1)),
+            deltas: exitAmounts.map((amount) => amount.mul(-1)),
             protocolFees: dueProtocolFeeAmounts,
           });
         });

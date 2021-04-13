@@ -137,7 +137,7 @@
       {
         "indexed": false,
         "internalType": "int256[]",
-        "name": "amounts",
+        "name": "deltas",
         "type": "int256[]"
       },
       {
@@ -174,7 +174,13 @@
       {
         "indexed": false,
         "internalType": "int256",
-        "name": "amount",
+        "name": "cashDelta",
+        "type": "int256"
+      },
+      {
+        "indexed": false,
+        "internalType": "int256",
+        "name": "managedDelta",
         "type": "int256"
       }
     ],
@@ -243,13 +249,13 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "tokensIn",
+        "name": "amountIn",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "tokensOut",
+        "name": "amountOut",
         "type": "uint256"
       }
     ],
@@ -964,7 +970,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

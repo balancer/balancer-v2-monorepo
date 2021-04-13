@@ -402,9 +402,8 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         uint256 indexOut = poolBalances.unchecked_indexOf(request.tokenOut);
 
         if (indexIn == 0 || indexOut == 0) {
-            // The tokens might not be registered because the Pool itself is not registered. If so, we provide a more
-            // accurate revert reason. We only check this at this stage to save gas in the case where the tokens
-            // are registered, which implies the Pool is too.
+            // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
+            // more accurate revert reason.
             _ensureRegisteredPool(request.poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
