@@ -303,6 +303,9 @@ interface IVault is ISignaturesValidator {
      * withdrawn and held outside the Vault by the Pool's token Asset Manager. The Pool's total balance for `token`
      * equals the sum of `cash` and `managed`.
      *
+     * Internally, `cash` and `managed` are stored using 112 bits. No action can ever cause a Pool's token `cash`,
+     * `managed` or `total` balance to be larger than 2^112 - 1.
+     *
      * `blockNumber` is the number of the block in which `token`'s balance was last modified (via either a join, exit,
      * swap, or Asset Manager interaction). This value is useful to avoid so-called 'sandwich attacks', for example
      * when developing price oracles.
