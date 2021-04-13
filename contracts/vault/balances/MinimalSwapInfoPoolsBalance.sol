@@ -202,9 +202,9 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
     function _getMinimalSwapInfoPoolBalance(bytes32 poolId, IERC20 token) internal view returns (bytes32) {
         bytes32 balance = _minimalSwapInfoPoolsBalances[poolId][token];
 
-        // A non-zero balance guarantees that the token is registered. If zero, we manually instead check if the token
-        // is registered in the Pool. Token registration implies that the Pool is registered as well, which lets us
-        // save gas by not performing the check.
+        // A non-zero balance guarantees that the token is registered. If zero, we manually check if the token is
+        // registered in the Pool. Token registration implies that the Pool is registered as well, which lets us save
+        // gas by not performing the check.
         bool tokenRegistered = balance.isNotZero() || _minimalSwapInfoPoolsTokens[poolId].contains(address(token));
 
         if (!tokenRegistered) {
