@@ -105,8 +105,8 @@ abstract contract PoolAssets is
 
     function registerTokens(
         bytes32 poolId,
-        IERC20[] calldata tokens,
-        address[] calldata assetManagers
+        IERC20[] memory tokens,
+        address[] memory assetManagers
     ) external override nonReentrant noEmergencyPeriod onlyPool(poolId) {
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
@@ -133,7 +133,7 @@ abstract contract PoolAssets is
         emit TokensRegistered(poolId, tokens, assetManagers);
     }
 
-    function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
+    function deregisterTokens(bytes32 poolId, IERC20[] memory tokens)
         external
         override
         nonReentrant
