@@ -210,12 +210,11 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
             bytes32 newBalance = mutation(balanceA, amount);
             delta = newBalance.managedDelta(balanceA);
             balanceA = newBalance;
-        } else if (token == tokenB) {
+        } else {
+            // ttoken == tokenB
             bytes32 newBalance = mutation(balanceB, amount);
             delta = newBalance.managedDelta(balanceB);
             balanceB = newBalance;
-        } else {
-            _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
         balances.sharedCash = BalanceAllocation.toSharedCash(balanceA, balanceB);
