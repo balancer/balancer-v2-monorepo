@@ -199,6 +199,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         if (kind == SwapKind.GIVEN_IN) {
             (amountIn, amountOut) = (amountGiven, amountCalculated);
         } else {
+            // SwapKind.GIVEN_OUT
             (amountIn, amountOut) = (amountCalculated, amountGiven);
         }
     }
@@ -289,6 +290,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             amountCalculated = _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
         } else {
+            // PoolSpecialization.GENERAL
             amountCalculated = _processGeneralPoolSwapRequest(request, IGeneralPool(pool));
         }
 
