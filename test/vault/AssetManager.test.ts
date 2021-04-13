@@ -24,11 +24,11 @@ describe('Vault - asset manager', function () {
     otherAssetManager: SignerWithAddress,
     other: SignerWithAddress;
 
-  before('deploy base contracts', async () => {
+  before('setup signers', async () => {
     [, lp, assetManager, otherAssetManager, other] = await ethers.getSigners();
   });
 
-  sharedBeforeEach('set up asset manager', async () => {
+  sharedBeforeEach('set up asset managers', async () => {
     vault = await deploy('Vault', { args: [ZERO_ADDRESS, ZERO_ADDRESS, 0, 0] });
     tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
     otherToken = await Token.create('OTHER');
@@ -324,7 +324,7 @@ describe('Vault - asset manager', function () {
 
           if (specialization == TwoTokenPool) {
             it('updates both block numbers when updating token A', async () => {
-              const transfers = [{ token: tokens.MKR.address, amount: amount }];
+              const transfers = [{ token: tokens.DAI.address, amount: amount }];
               await vault.connect(otherAssetManager).managePoolBalance(poolId, OP_KIND.UPDATE, transfers);
 
               const blockNumber = await lastBlockNumber();
