@@ -96,6 +96,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         internalRequest.userData = request.userData;
         internalRequest.from = funds.sender;
         internalRequest.to = funds.recipient;
+        // The latestBlockNumber field is left uninitialized
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapWithPool(internalRequest);
         _require(request.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
@@ -199,6 +200,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         if (kind == SwapKind.GIVEN_IN) {
             (amountIn, amountOut) = (amountGiven, amountCalculated);
         } else {
+            // SwapKind.GIVEN_OUT
             (amountIn, amountOut) = (amountCalculated, amountGiven);
         }
     }
@@ -216,13 +218,12 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     ) private returns (int256[] memory assetDeltas) {
         assetDeltas = new int256[](assets.length);
 
-        // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
+        // These variables could be declared inside the loop, but that causes the compiler to allocate memory on each
         // loop iteration, increasing gas costs.
         BatchSwapStep memory request;
+        InternalSwapRequest memory internalRequest;
 
         // These store data about the previous swap here to implement multihop logic across swaps.
-        uint256 amountIn;
-        uint256 amountOut;
         IERC20 previousTokenCalculated;
         uint256 previousAmountCalculated;
 
@@ -247,7 +248,6 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             }
 
             // Initializing each struct field one-by-one uses less gas than setting all at once
-            InternalSwapRequest memory internalRequest;
             internalRequest.poolId = request.poolId;
             internalRequest.kind = kind;
             internalRequest.tokenIn = tokenIn;
@@ -256,11 +256,13 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             internalRequest.userData = request.userData;
             internalRequest.from = funds.sender;
             internalRequest.to = funds.recipient;
-            // latestBlockNumberUsed is not set here - that will be done later by the different Pool specialization
-            // handlers
+            // The latestBlockNumber field is left uninitialized
+
+            uint256 amountIn;
+            uint256 amountOut;
+            (previousAmountCalculated, amountIn, amountOut) = _swapWithPool(internalRequest);
 
             previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
-            (previousAmountCalculated, amountIn, amountOut) = _swapWithPool(internalRequest);
 
             // Accumulate Vault deltas across swaps
             assetDeltas[request.assetInIndex] = assetDeltas[request.assetInIndex].add(amountIn.toInt256());
@@ -289,6 +291,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             amountCalculated = _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
         } else {
+            // PoolSpecialization.GENERAL
             amountCalculated = _processGeneralPoolSwapRequest(request, IGeneralPool(pool));
         }
 
@@ -414,6 +417,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);
 
+        request.latestBlockNumberUsed = 0;
         for (uint256 i = 0; i < tokenAmount; i++) {
             // Because the iteration is bounded by `tokenAmount` and no tokens are registered or deregistered here, we
             // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
