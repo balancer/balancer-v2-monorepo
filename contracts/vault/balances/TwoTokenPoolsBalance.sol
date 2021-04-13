@@ -209,7 +209,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
             TwoTokenPoolBalances storage balances,
             IERC20 tokenA,
             bytes32 balanceA,
-            IERC20 tokenB,
+            ,
             bytes32 balanceB
         ) = _getTwoTokenPoolBalances(poolId);
 
@@ -218,12 +218,11 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
             bytes32 newBalance = mutation(balanceA, amount);
             delta = newBalance.managedDelta(balanceA);
             balanceA = newBalance;
-        } else if (token == tokenB) {
+        } else {
+            // token == tokenB
             bytes32 newBalance = mutation(balanceB, amount);
             delta = newBalance.managedDelta(balanceB);
             balanceB = newBalance;
-        } else {
-            _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
         balances.sharedCash = BalanceAllocation.toSharedCash(balanceA, balanceB);
