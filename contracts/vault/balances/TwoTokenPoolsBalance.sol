@@ -69,9 +69,10 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
     /**
      * @dev Registers tokens in a Two Token Pool.
      *
+     * This function assumes `poolId` exists and corresponds to the Two Token specialization setting.
+     *
      * Requirements:
      *
-     * - `poolId` must be a Two Token Pool
      * - `tokenX` and `tokenY` must not be the same
      * - The tokens must be ordered: tokenX < tokenY
      */
@@ -101,9 +102,10 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
     /**
      * @dev Deregisters tokens in a Two Token Pool.
      *
+     * This function assumes `poolId` exists and corresponds to the Two Token specialization setting.
+     *
      * Requirements:
      *
-     * - `poolId` must be a Two Token Pool
      * - `tokenX` and `tokenY` must be registered in the Pool
      * - both tokens must have zero balance in the Vault
      */

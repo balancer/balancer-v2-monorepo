@@ -47,7 +47,6 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
      *
      * Requirements:
      *
-     * - `poolId` must be a Minimal Swap Info Pool
      * - `tokens` must not be registered in the Pool
      * - `tokens` must not contain duplicates
      */
@@ -69,7 +68,6 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
      *
      * Requirements:
      *
-     * - `poolId` must be a Minimal Swap Info Pool
      * - `tokens` must be registered in the Pool
      * - `tokens` must have zero balance in the Vault
      * - `tokens` must not contain duplicates

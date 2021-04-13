@@ -46,7 +46,6 @@ abstract contract GeneralPoolsBalance {
      *
      * Requirements:
      *
-     * - `poolId` must be a General Pool
      * - `tokens` must not be registered in the Pool
      * - `tokens` must not contain duplicates
      */
@@ -68,7 +67,6 @@ abstract contract GeneralPoolsBalance {
      *
      * Requirements:
      *
-     * - `poolId` must be a General Pool
      * - `tokens` must be registered in the Pool
      * - `tokens` must have zero balance in the Vault
      * - `tokens` must not contain duplicates
