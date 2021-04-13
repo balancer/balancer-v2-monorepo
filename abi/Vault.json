@@ -243,13 +243,13 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "tokensIn",
+        "name": "amountIn",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "tokensOut",
+        "name": "amountOut",
         "type": "uint256"
       }
     ],

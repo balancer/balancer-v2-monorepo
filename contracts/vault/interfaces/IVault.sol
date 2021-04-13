@@ -582,8 +582,8 @@ interface IVault is ISignaturesValidator {
         bytes32 indexed poolId,
         IERC20 indexed tokenIn,
         IERC20 indexed tokenOut,
-        uint256 tokensIn,
-        uint256 tokensOut
+        uint256 amountIn,
+        uint256 amountOut
     );
 
     /**
