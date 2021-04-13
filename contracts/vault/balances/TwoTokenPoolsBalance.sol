@@ -201,7 +201,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
             TwoTokenPoolBalances storage balances,
             IERC20 tokenA,
             bytes32 balanceA,
-            IERC20 tokenB,
+            ,
             bytes32 balanceB
         ) = _getTwoTokenPoolBalances(poolId);
 
