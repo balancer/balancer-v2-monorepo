@@ -322,25 +322,30 @@ abstract contract PoolAssets is
             _ensurePoolAssetManagerIsSender(poolId, token);
             uint256 amount = transfers[i].amount;
 
-            int256 delta;
+            int256 cashDelta;
+            int256 managedDelta;
+
             if (kind == AssetManagerOpKind.DEPOSIT) {
-                delta = _depositPoolBalance(poolId, specialization, token, amount);
+                (cashDelta, managedDelta) = _depositPoolBalance(poolId, specialization, token, amount);
             } else if (kind == AssetManagerOpKind.WITHDRAW) {
-                delta = _withdrawPoolBalance(poolId, specialization, token, amount);
+                (cashDelta, managedDelta) = _withdrawPoolBalance(poolId, specialization, token, amount);
             } else {
-                delta = _updateManagedBalance(poolId, specialization, token, amount);
+                (cashDelta, managedDelta) = _updateManagedBalance(poolId, specialization, token, amount);
             }
 
-            emit PoolBalanceManaged(poolId, msg.sender, token, delta);
+            emit PoolBalanceManaged(poolId, msg.sender, token, cashDelta, managedDelta);
         }
     }
 
+    /**
+     * @dev Returns the cash and managed balance deltas as a result of this call.
+     */
     function _withdrawPoolBalance(
         bytes32 poolId,
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) private returns (int256) {
+    ) private returns (int256 cashDelta, int256 managedDelta) {
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
@@ -351,16 +356,20 @@ abstract contract PoolAssets is
 
         token.safeTransfer(msg.sender, amount);
 
-        // Due to how balances are stored internally we know `amount` will always fit in an int256
-        return -int256(amount);
+        // Since `amount` is actually a 112 bit delta, it will always fit in a 256 bit integer.
+        cashDelta = int256(-amount);
+        managedDelta = int256(amount);
     }
 
+    /**
+     * @dev Returns the cash and managed balance deltas as a result of this call.
+     */
     function _depositPoolBalance(
         bytes32 poolId,
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) private returns (int256) {
+    ) private returns (int256 cashDelta, int256 managedDelta) {
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
@@ -371,23 +380,29 @@ abstract contract PoolAssets is
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Due to how balances are stored internally we know `amount` will always fit in an int256
-        return int256(amount);
+        // Since `amount` is actually a 112 bit delta, it will always fit in a 256 bit integer.
+        cashDelta = int256(amount);
+        managedDelta = int256(-amount);
     }
 
+    /**
+     * @dev Returns the cash and managed balance deltas as a result of this call.
+     */
     function _updateManagedBalance(
         bytes32 poolId,
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) private returns (int256) {
+    ) private returns (int256 cashDelta, int256 managedDelta) {
         if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            return _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
+            managedDelta = _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
-            return _setTwoTokenPoolManagedBalance(poolId, token, amount);
+            managedDelta = _setTwoTokenPoolManagedBalance(poolId, token, amount);
         } else {
-            return _setGeneralPoolManagedBalance(poolId, token, amount);
+            managedDelta = _setGeneralPoolManagedBalance(poolId, token, amount);
         }
+
+        cashDelta = 0;
     }
 
     /**

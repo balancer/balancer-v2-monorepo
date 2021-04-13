@@ -681,10 +681,15 @@ interface IVault is ISignaturesValidator {
     }
 
     /**
-     * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `managePoolBalance`
-     * (using the AssetManagerOpKind to determine the type of update)
+     * @dev Emitted when a Pool's token Asset Manager alters its balance via `managePoolBalance`.
      */
-    event PoolBalanceManaged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
+    event PoolBalanceManaged(
+        bytes32 indexed poolId,
+        address indexed assetManager,
+        IERC20 indexed token,
+        int256 cashDelta,
+        int256 managedDelta
+    );
 
     /**
      * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
