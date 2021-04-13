@@ -57,7 +57,7 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
         IERC20[] memory tokens,
         uint256[] memory amounts,
         uint256[] memory feeAmounts,
-        bytes calldata receiverData
+        bytes memory receiverData
     ) external override {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];

@@ -69,6 +69,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         poolRequest.userData = singleSwap.userData;
         poolRequest.from = funds.sender;
         poolRequest.to = funds.recipient;
+        // The latestBlockNumber field is left uninitialized
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapWithPool(poolRequest);
         _require(singleSwap.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
@@ -172,6 +173,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         if (kind == SwapKind.GIVEN_IN) {
             (amountIn, amountOut) = (amountGiven, amountCalculated);
         } else {
+            // SwapKind.GIVEN_OUT
             (amountIn, amountOut) = (amountCalculated, amountGiven);
         }
     }
@@ -189,55 +191,58 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     ) private returns (int256[] memory assetDeltas) {
         assetDeltas = new int256[](assets.length);
 
-        // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
+        // These variables could be declared inside the loop, but that causes the compiler to allocate memory on each
         // loop iteration, increasing gas costs.
-        BatchSwapStep memory request;
+        BatchSwapStep memory batchSwapStep;
+        IPoolSwapStructs.SwapRequest memory poolRequest;
 
         // These store data about the previous swap here to implement multihop logic across swaps.
-        uint256 amountIn;
-        uint256 amountOut;
         IERC20 previousTokenCalculated;
         uint256 previousAmountCalculated;
 
         for (uint256 i = 0; i < swaps.length; ++i) {
-            request = swaps[i];
-            bool withinBounds = request.assetInIndex < assets.length && request.assetOutIndex < assets.length;
+            batchSwapStep = swaps[i];
+            bool withinBounds = batchSwapStep.assetInIndex < assets.length &&
+                batchSwapStep.assetOutIndex < assets.length;
             _require(withinBounds, Errors.OUT_OF_BOUNDS);
 
-            IERC20 tokenIn = _translateToIERC20(assets[request.assetInIndex]);
-            IERC20 tokenOut = _translateToIERC20(assets[request.assetOutIndex]);
+            IERC20 tokenIn = _translateToIERC20(assets[batchSwapStep.assetInIndex]);
+            IERC20 tokenOut = _translateToIERC20(assets[batchSwapStep.assetOutIndex]);
             _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
 
             // Sentinel value for multihop logic
-            if (request.amount == 0) {
+            if (batchSwapStep.amount == 0) {
                 // When the amount given is zero, we use the calculated amount for the previous swap, as long as the
                 // current swap's given token is the previous calculated token. This makes it possible to e.g. swap a
                 // given amount of token A for token B, and then use the resulting token B amount to swap for token C.
                 _require(i > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
                 bool usingPreviousToken = previousTokenCalculated == _tokenGiven(kind, tokenIn, tokenOut);
                 _require(usingPreviousToken, Errors.MALCONSTRUCTED_MULTIHOP_SWAP);
-                request.amount = previousAmountCalculated;
+                batchSwapStep.amount = previousAmountCalculated;
             }
 
             // Initializing each struct field one-by-one uses less gas than setting all at once
-            IPoolSwapStructs.SwapRequest memory poolRequest;
-            poolRequest.poolId = request.poolId;
+            poolRequest.poolId = batchSwapStep.poolId;
             poolRequest.kind = kind;
             poolRequest.tokenIn = tokenIn;
             poolRequest.tokenOut = tokenOut;
-            poolRequest.amount = request.amount;
-            poolRequest.userData = request.userData;
+            poolRequest.amount = batchSwapStep.amount;
+            poolRequest.userData = batchSwapStep.userData;
             poolRequest.from = funds.sender;
             poolRequest.to = funds.recipient;
-            // latestBlockNumberUsed is not set here - that will be done later by the different Pool specialization
-            // handlers
+            // The latestBlockNumber field is left uninitialized
 
-            previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
+            uint256 amountIn;
+            uint256 amountOut;
             (previousAmountCalculated, amountIn, amountOut) = _swapWithPool(poolRequest);
 
+            previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
+
             // Accumulate Vault deltas across swaps
-            assetDeltas[request.assetInIndex] = assetDeltas[request.assetInIndex].add(amountIn.toInt256());
-            assetDeltas[request.assetOutIndex] = assetDeltas[request.assetOutIndex].sub(amountOut.toInt256());
+            assetDeltas[batchSwapStep.assetInIndex] = assetDeltas[batchSwapStep.assetInIndex].add(amountIn.toInt256());
+            assetDeltas[batchSwapStep.assetOutIndex] = assetDeltas[batchSwapStep.assetOutIndex].sub(
+                amountOut.toInt256()
+            );
         }
     }
 
@@ -262,6 +267,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             amountCalculated = _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
         } else {
+            // PoolSpecialization.GENERAL
             amountCalculated = _processGeneralPoolSwapRequest(request, IGeneralPool(pool));
         }
 
@@ -386,6 +392,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);
 
+        request.latestBlockNumberUsed = 0;
         for (uint256 i = 0; i < tokenAmount; i++) {
             // Because the iteration is bounded by `tokenAmount` and no tokens are registered or deregistered here, we
             // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
