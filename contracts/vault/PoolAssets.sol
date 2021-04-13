@@ -341,10 +341,10 @@ abstract contract PoolAssets is
         IERC20 token,
         uint256 amount
     ) private returns (int256) {
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolCashToManaged(poolId, token, amount);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
         } else {
             _generalPoolCashToManaged(poolId, token, amount);
         }
@@ -361,10 +361,10 @@ abstract contract PoolAssets is
         IERC20 token,
         uint256 amount
     ) private returns (int256) {
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolManagedToCash(poolId, token, amount);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else {
             _generalPoolManagedToCash(poolId, token, amount);
         }
@@ -381,10 +381,10 @@ abstract contract PoolAssets is
         IERC20 token,
         uint256 amount
     ) private returns (int256) {
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            return _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             return _setTwoTokenPoolManagedBalance(poolId, token, amount);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            return _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
         } else {
             return _setGeneralPoolManagedBalance(poolId, token, amount);
         }
