@@ -31,9 +31,9 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
     // are only two balances to read), but there's a key difference in how data is stored. Keeping a set makes little
     // sense, as it will only ever hold two tokens, so we can just store those two directly.
     //
-    // The gas savings associated with using these Pools come from how token balances are stored: cash for token A and
-    // token B are packed together, as are managed amounts. Because only cash changes in a swap, there's no need to
-    // write to this second storage slot. A single last change block number for both tokens is stored with the packed
+    // The gas savings associated with using these Pools come from how token balances are stored: cash amounts for token
+    // A and token B are packed together, as are managed amounts. Because only cash changes in a swap, there's no need
+    // to write to this second storage slot. A single last change block number for both tokens is stored with the packed
     // cash fields.
 
     struct TwoTokenPoolBalances {
