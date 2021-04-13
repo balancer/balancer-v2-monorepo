@@ -137,7 +137,9 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
         balances = new bytes32[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = IERC20(poolTokens.at(i));
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableSet's length, we can use
+            // `unchecked_at` as we know `i` is a valid token index, saving storage reads.
+            IERC20 token = IERC20(poolTokens.unchecked_at(i));
             tokens[i] = token;
             balances[i] = _minimalSwapInfoPoolsBalances[poolId][token];
         }
