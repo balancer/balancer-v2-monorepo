@@ -23,12 +23,27 @@ import "../vault/interfaces/IAuthorizer.sol";
  * external accounts have to specific contract functions.
  */
 abstract contract BasePoolAuthorization is Authentication {
+    address private immutable _owner;
+
+    constructor(address owner) {
+        _owner = owner;
+    }
+
+    function getOwner() external view returns (address) {
+        return _owner;
+    }
+
     function getAuthorizer() external view returns (IAuthorizer) {
         return _getAuthorizer();
     }
 
     function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
-        return _getAuthorizer().hasRole(roleId, account);
+        // A non-zero owner overrides the default Authorizer flow - this address is instead authorized for all actions.
+        if (_owner != address(0)) {
+            return msg.sender == _owner;
+        } else {
+            return _getAuthorizer().hasRole(roleId, account);
+        }
     }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);

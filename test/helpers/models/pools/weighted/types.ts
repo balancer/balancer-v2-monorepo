@@ -13,7 +13,7 @@ export type RawWeightedPoolDeployment = {
   swapFee?: BigNumberish;
   emergencyPeriod?: BigNumberish;
   emergencyPeriodCheckExtension?: BigNumberish;
-  feeSetter?: Account;
+  owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
@@ -25,7 +25,7 @@ export type WeightedPoolDeployment = {
   swapFee: BigNumberish;
   emergencyPeriod: BigNumberish;
   emergencyPeriodCheckExtension: BigNumberish;
-  feeSetter: Account;
+  owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };

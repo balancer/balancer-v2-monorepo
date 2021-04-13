@@ -32,7 +32,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 swapFee,
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension,
-        address feeSetter
+        address owner
     )
         BasePool(
             vault,
@@ -43,7 +43,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
             swapFee,
             emergencyPeriod,
             emergencyPeriodCheckExtension,
-            feeSetter
+            owner
         )
     {
         // solhint-disable-previous-line no-empty-blocks

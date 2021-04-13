@@ -34,12 +34,12 @@ export async function deployPoolFromFactory(
   const symbol = 'BPT';
   const emergencyPeriod = 0;
   const emergencyPeriodCheckExtension = 0;
-  const feeSetter = ZERO_ADDRESS;
+  const owner = ZERO_ADDRESS;
 
   const receipt: ContractReceipt = await (
     await factory
       .connect(args.from)
-      .create(name, symbol, ...args.parameters, emergencyPeriod, emergencyPeriodCheckExtension, feeSetter)
+      .create(name, symbol, ...args.parameters, emergencyPeriod, emergencyPeriodCheckExtension, owner)
   ).wait();
 
   const event = receipt.events?.find((e) => e.event == 'PoolRegistered');

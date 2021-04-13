@@ -31,7 +31,7 @@ export default {
       swapFee,
       emergencyPeriod,
       emergencyPeriodCheckExtension,
-      feeSetter,
+      owner,
       from,
     } = params;
     return deploy('StablePool', {
@@ -44,7 +44,7 @@ export default {
         swapFee,
         emergencyPeriod,
         emergencyPeriodCheckExtension,
-        TypesConverter.toAddress(feeSetter),
+        TypesConverter.toAddress(owner),
       ],
       from,
     });
@@ -57,7 +57,7 @@ export default {
       swapFee,
       emergencyPeriod,
       emergencyPeriodCheckExtension,
-      feeSetter,
+      owner,
       from,
     } = params;
     const factory = await deploy('StablePoolFactory', { args: [vault.address], from });
@@ -69,7 +69,7 @@ export default {
       swapFee,
       emergencyPeriod,
       emergencyPeriodCheckExtension,
-      TypesConverter.toAddress(feeSetter)
+      TypesConverter.toAddress(owner)
     );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolRegistered');

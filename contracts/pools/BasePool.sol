@@ -57,7 +57,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     uint256 private constant _MINIMUM_BPT = 10**6;
 
-    address private immutable _feeSetter;
     uint256 internal _swapFee;
 
     IVault private immutable _vault;
@@ -98,7 +97,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension,
         address owner
-    ) BalancerPoolToken(name, symbol) EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension) {
+    )
+        BalancerPoolToken(name, symbol)
+        BasePoolAuthorization(owner)
+        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
+    {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
@@ -122,7 +125,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _vault = vault;
         _poolId = poolId;
         _swapFee = swapFee;
-        _feeSetter = owner;
         _totalTokens = tokens.length;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
@@ -173,13 +175,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     // Caller must be approved by the Vault's Authorizer
-    function setSwapFee(uint256 swapFee) external virtual {
-        if (_feeSetter == address(0)) {
-            _authenticateCaller();
-        } else {
-            _require(msg.sender == _feeSetter, Errors.SENDER_NOT_ALLOWED);
-        }
-
+    function setSwapFee(uint256 swapFee) external virtual authenticate {
         _require(swapFee >= _MIN_SWAP_FEE, Errors.MIN_SWAP_FEE);
         _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
 

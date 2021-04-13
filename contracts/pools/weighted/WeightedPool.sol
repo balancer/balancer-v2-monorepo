@@ -58,7 +58,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256 swapFee,
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension,
-        address feeSetter
+        address owner
     )
         BaseMinimalSwapInfoPool(
             vault,
@@ -68,7 +68,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             swapFee,
             emergencyPeriod,
             emergencyPeriodCheckExtension,
-            feeSetter
+            owner
         )
     {
         uint256 numTokens = tokens.length;
