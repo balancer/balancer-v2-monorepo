@@ -328,10 +328,10 @@ abstract contract PoolAssets is
             _require(_poolAssetManagers[poolId][token] == msg.sender, Errors.SENDER_NOT_ASSET_MANAGER);
 
             int256 delta;
-            if (kind == AssetManagerOpKind.DEPOSIT) {
-                delta = _depositPoolBalance(poolId, specialization, token, amount);
-            } else if (kind == AssetManagerOpKind.WITHDRAW) {
+            if (kind == AssetManagerOpKind.WITHDRAW) {
                 delta = _withdrawPoolBalance(poolId, specialization, token, amount);
+            } else if (kind == AssetManagerOpKind.DEPOSIT) {
+                delta = _depositPoolBalance(poolId, specialization, token, amount);
             } else {
                 // AssetManagerOpKind.UPDATE
                 delta = _updateManagedBalance(poolId, specialization, token, amount);
@@ -347,10 +347,10 @@ abstract contract PoolAssets is
         IERC20 token,
         uint256 amount
     ) private returns (int256) {
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolCashToManaged(poolId, token, amount);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
         } else {
             // PoolSpecialization.GENERAL
             _generalPoolCashToManaged(poolId, token, amount);
@@ -368,10 +368,10 @@ abstract contract PoolAssets is
         IERC20 token,
         uint256 amount
     ) private returns (int256) {
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolManagedToCash(poolId, token, amount);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else {
             // PoolSpecialization.GENERAL
             _generalPoolManagedToCash(poolId, token, amount);
@@ -389,10 +389,10 @@ abstract contract PoolAssets is
         IERC20 token,
         uint256 amount
     ) private returns (int256) {
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            return _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             return _setTwoTokenPoolManagedBalance(poolId, token, amount);
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            return _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
         } else {
             // PoolSpecialization.GENERAL
             return _setGeneralPoolManagedBalance(poolId, token, amount);
