@@ -79,6 +79,10 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
             IERC20 token = tokens[i];
             _require(_minimalSwapInfoPoolsBalances[poolId][token].isZero(), Errors.NONZERO_TOKEN_BALANCE);
 
+            // For consistency with other Pool specialization settings, we explicitly reset the balance (which may have
+            // a non-zero last change block number).
+            delete _minimalSwapInfoPoolsBalances[poolId][token];
+
             bool removed = poolTokens.remove(address(token));
             _require(removed, Errors.TOKEN_NOT_REGISTERED);
         }
