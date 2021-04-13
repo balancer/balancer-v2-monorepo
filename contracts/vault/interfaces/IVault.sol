@@ -247,8 +247,8 @@ interface IVault is ISignaturesValidator {
      */
     function registerTokens(
         bytes32 poolId,
-        IERC20[] calldata tokens,
-        address[] calldata assetManagers
+        IERC20[] memory tokens,
+        address[] memory assetManagers
     ) external;
 
     /**
@@ -267,7 +267,7 @@ interface IVault is ISignaturesValidator {
      *
      * Emits a `TokensDeregistered` event.
      */
-    function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+    function deregisterTokens(bytes32 poolId, IERC20[] memory tokens) external;
 
     /**
      * @dev Emitted when a Pool deregisters tokens by calling `deregisterTokens`.
@@ -553,9 +553,9 @@ interface IVault is ISignaturesValidator {
      */
     function batchSwap(
         SwapKind kind,
-        BatchSwapStep[] calldata swaps,
+        BatchSwapStep[] memory swaps,
         IAsset[] memory assets,
-        FundManagement calldata funds,
+        FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
     ) external payable returns (int256[] memory);
@@ -649,9 +649,9 @@ interface IVault is ISignaturesValidator {
      */
     function flashLoan(
         IFlashLoanReceiver receiver,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        bytes calldata receiverData
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        bytes memory receiverData
     ) external;
 
     // Asset Management
