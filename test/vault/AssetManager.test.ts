@@ -19,10 +19,13 @@ const OP_KIND = { DEPOSIT: 0, WITHDRAW: 1, UPDATE: 2 };
 
 describe('Vault - asset manager', function () {
   let tokens: TokenList, otherToken: Token, vault: Contract;
-  let lp: SignerWithAddress, assetManager: SignerWithAddress, other: SignerWithAddress;
+  let lp: SignerWithAddress,
+    assetManager: SignerWithAddress,
+    otherAssetManager: SignerWithAddress,
+    other: SignerWithAddress;
 
   before('deploy base contracts', async () => {
-    [, lp, assetManager, other] = await ethers.getSigners();
+    [, lp, assetManager, otherAssetManager, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('set up asset manager', async () => {
@@ -54,8 +57,7 @@ describe('Vault - asset manager', function () {
       await tokens.mint({ to: lp, amount: tokenInitialBalance });
       await tokens.approve({ to: vault, from: [lp, assetManager] });
 
-      // Assign assetManager to the DAI token, and other to the other token
-      const assetManagers = [assetManager.address, other.address];
+      const assetManagers = [assetManager.address, otherAssetManager.address];
 
       await pool.registerTokens(tokens.addresses, assetManagers);
 
@@ -73,7 +75,9 @@ describe('Vault - asset manager', function () {
     describe('setting', () => {
       it('different managers can be set for different tokens', async () => {
         expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).assetManager).to.equal(assetManager.address);
-        expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).assetManager).to.equal(other.address);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).assetManager).to.equal(
+          otherAssetManager.address
+        );
       });
 
       it('reverts when querying the asset manager of an unknown pool', async () => {
@@ -318,12 +322,40 @@ describe('Vault - asset manager', function () {
             expect(currentBalanceMKR).to.equal(previousBalanceMKR);
           });
 
-          it('updates the block number', async () => {
-            const transfers = [{ token: tokens.DAI.address, amount: amount }];
-            await vault.connect(assetManager).managePoolBalance(poolId, OP_KIND.UPDATE, transfers);
+          if (specialization == TwoTokenPool) {
+            it('updates both block numbers when updating token A', async () => {
+              const transfers = [{ token: tokens.MKR.address, amount: amount }];
+              await vault.connect(otherAssetManager).managePoolBalance(poolId, OP_KIND.UPDATE, transfers);
 
-            expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(await lastBlockNumber());
-          });
+              const blockNumber = await lastBlockNumber();
+
+              expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(blockNumber);
+              expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).blockNumber).to.equal(blockNumber);
+              expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).blockNumber).to.equal(blockNumber);
+            });
+
+            it('updates both block numbers when updating token B', async () => {
+              const transfers = [{ token: tokens.MKR.address, amount: amount }];
+              await vault.connect(otherAssetManager).managePoolBalance(poolId, OP_KIND.UPDATE, transfers);
+
+              const blockNumber = await lastBlockNumber();
+
+              expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(blockNumber);
+              expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).blockNumber).to.equal(blockNumber);
+              expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).blockNumber).to.equal(blockNumber);
+            });
+          } else {
+            it('updates the block number of the updated token only', async () => {
+              const transfers = [{ token: tokens.DAI.address, amount: amount }];
+              await vault.connect(assetManager).managePoolBalance(poolId, OP_KIND.UPDATE, transfers);
+
+              const blockNumber = await lastBlockNumber();
+
+              expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(blockNumber);
+              expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).blockNumber).to.equal(blockNumber);
+              expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).blockNumber).to.be.lt(blockNumber);
+            });
+          }
 
           it('sets the managed balance', async () => {
             const previousBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
@@ -429,7 +461,9 @@ describe('Vault - asset manager', function () {
       it('removes asset managers when deregistering', async () => {
         // First asset the managers are set
         expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).assetManager).to.equal(assetManager.address);
-        expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).assetManager).to.equal(other.address);
+        expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).assetManager).to.equal(
+          otherAssetManager.address
+        );
 
         const [poolAddress] = await vault.getPool(poolId);
         const pool = await ethers.getContractAt('MockPool', poolAddress);

@@ -230,9 +230,11 @@ library BalanceAllocation {
      * @dev Returns the sharedCash shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
-        // Both balances have the block number. Since both balances are always updated at the same time,
-        // it does not matter where we pick it from.
-        return _pack(cash(tokenABalance), cash(tokenBBalance), blockNumber(tokenABalance));
+        // Both balances are assigned the same block number. Since it is possible a single one of them has changed (for
+        // example, in an Asset Manager update), we keep the latest (largest) one.
+
+        uint32 newBlockNumber = uint32(Math.max(blockNumber(tokenABalance), blockNumber(tokenBBalance)));
+        return _pack(cash(tokenABalance), cash(tokenBBalance), newBlockNumber);
     }
 
     /**
