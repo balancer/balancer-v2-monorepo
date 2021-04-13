@@ -23,7 +23,12 @@ contract Authorizer is AccessControl, IAuthorizer {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    function hasRole(bytes32 role, address account) public view override(IAuthorizer, AccessControl) returns (bool) {
+    // This implementation ignores the 'where' field
+    function hasRole(
+        bytes32 role,
+        address account,
+        address
+    ) public view override returns (bool) {
         return AccessControl.hasRole(role, account);
     }
 
