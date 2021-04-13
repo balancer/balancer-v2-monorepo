@@ -150,6 +150,7 @@ describe('Vault - asset manager', function () {
               poolId,
               token: tokens.DAI.address,
               assetManager: assetManager.address,
+              cashDelta: amount.mul(-1),
               managedDelta: amount,
             });
           });
@@ -244,6 +245,7 @@ describe('Vault - asset manager', function () {
               poolId,
               token: tokens.DAI.address,
               assetManager: assetManager.address,
+              cashDelta: amount,
               managedDelta: amount.mul(-1),
             });
           });
@@ -351,6 +353,7 @@ describe('Vault - asset manager', function () {
               poolId,
               token: tokens.DAI.address,
               assetManager: assetManager.address,
+              cashDelta: 0,
               managedDelta: amount.sub(previousBalance.managed),
             });
           });
@@ -413,6 +416,7 @@ describe('Vault - asset manager', function () {
               poolId,
               token: tokens.DAI.address,
               assetManager: assetManager.address,
+              cashDelta: 0,
               managedDelta: amount.sub(previousBalance.managed),
             });
           });

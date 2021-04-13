@@ -320,23 +320,23 @@ abstract contract PoolAssets is
 
         for (uint256 i = 0; i < transfers.length; ++i) {
             IERC20 token = transfers[i].token;
+            uint256 amount = transfers[i].amount;
 
             _require(_isTokenRegistered(poolId, token), Errors.TOKEN_NOT_REGISTERED);
             _require(_poolAssetManagers[poolId][token] == msg.sender, Errors.SENDER_NOT_ASSET_MANAGER);
 
-            uint256 amount = transfers[i].amount;
-
+            int256 cashDelta;
             int256 managedDelta;
             if (kind == AssetManagerOpKind.WITHDRAW) {
-                managedDelta = _withdrawPoolBalance(poolId, specialization, token, amount);
+                (cashDelta, managedDelta) = _withdrawPoolBalance(poolId, specialization, token, amount);
             } else if (kind == AssetManagerOpKind.DEPOSIT) {
-                managedDelta = _depositPoolBalance(poolId, specialization, token, amount);
+                (cashDelta, managedDelta) = _depositPoolBalance(poolId, specialization, token, amount);
             } else {
                 // AssetManagerOpKind.UPDATE
-                managedDelta = _updateManagedBalance(poolId, specialization, token, amount);
+                (cashDelta, managedDelta) = _updateManagedBalance(poolId, specialization, token, amount);
             }
 
-            emit PoolBalanceManaged(poolId, msg.sender, token, managedDelta);
+            emit PoolBalanceManaged(poolId, msg.sender, token, cashDelta, managedDelta);
         }
     }
 
@@ -353,7 +353,7 @@ abstract contract PoolAssets is
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) private returns (int256) {
+    ) private returns (int256 cashDelta, int256 managedDelta) {
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolCashToManaged(poolId, token, amount);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
@@ -365,7 +365,8 @@ abstract contract PoolAssets is
         token.safeTransfer(msg.sender, amount);
 
         // Since `amount` is actually a 112 bit delta, it will always fit in a 256 bit integer.
-        return int256(amount);
+        cashDelta = int256(-amount);
+        managedDelta = int256(amount);
     }
 
     /**
@@ -381,7 +382,7 @@ abstract contract PoolAssets is
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) private returns (int256) {
+    ) private returns (int256 cashDelta, int256 managedDelta) {
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolManagedToCash(poolId, token, amount);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
@@ -394,7 +395,8 @@ abstract contract PoolAssets is
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         // Since `amount` is actually a 112 bit delta, it will always fit in a 256 bit integer.
-        return int256(-amount);
+        cashDelta = int256(amount);
+        managedDelta = int256(-amount);
     }
 
     /**
@@ -410,15 +412,17 @@ abstract contract PoolAssets is
         PoolSpecialization specialization,
         IERC20 token,
         uint256 amount
-    ) private returns (int256) {
+    ) private returns (int256 cashDelta, int256 managedDelta) {
         if (specialization == PoolSpecialization.TWO_TOKEN) {
-            return _setTwoTokenPoolManagedBalance(poolId, token, amount);
+            managedDelta = _setTwoTokenPoolManagedBalance(poolId, token, amount);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            return _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
+            managedDelta = _setMinimalSwapInfoPoolManagedBalance(poolId, token, amount);
         } else {
             // PoolSpecialization.GENERAL
-            return _setGeneralPoolManagedBalance(poolId, token, amount);
+            managedDelta = _setGeneralPoolManagedBalance(poolId, token, amount);
         }
+
+        cashDelta = 0;
     }
 
     /**

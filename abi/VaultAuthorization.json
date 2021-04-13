@@ -148,6 +148,12 @@
       {
         "indexed": false,
         "internalType": "int256",
+        "name": "cashDelta",
+        "type": "int256"
+      },
+      {
+        "indexed": false,
+        "internalType": "int256",
         "name": "managedDelta",
         "type": "int256"
       }
@@ -938,7 +944,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {

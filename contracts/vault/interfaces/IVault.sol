@@ -688,6 +688,7 @@ interface IVault is ISignaturesValidator {
         bytes32 indexed poolId,
         address indexed assetManager,
         IERC20 indexed token,
+        int256 cashDelta,
         int256 managedDelta
     );
 
