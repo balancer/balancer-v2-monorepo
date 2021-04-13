@@ -477,7 +477,7 @@ describe('Vault - exit pool', () => {
           expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
             poolId,
             liquidityProvider: lp.address,
-            amounts: exitAmounts.map((amount) => amount.mul(-1)),
+            deltas: exitAmounts.map((amount) => amount.mul(-1)),
             protocolFees: dueProtocolFeeAmounts,
           });
         });

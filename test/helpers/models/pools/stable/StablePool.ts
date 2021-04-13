@@ -330,8 +330,8 @@ export default class StablePool {
     });
 
     const receipt = await (await tx).wait();
-    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsIn: amounts, dueProtocolFeeAmounts };
+    const { deltas, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: deltas, dueProtocolFeeAmounts };
   }
 
   async queryExit(params: JoinExitStablePool): Promise<ExitQueryResult> {
@@ -356,8 +356,8 @@ export default class StablePool {
     });
 
     const receipt = await (await tx).wait();
-    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsOut: amounts, dueProtocolFeeAmounts };
+    const { deltas, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: deltas, dueProtocolFeeAmounts };
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
