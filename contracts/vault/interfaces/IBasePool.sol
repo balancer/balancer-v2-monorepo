@@ -49,10 +49,10 @@ interface IBasePool is IPoolSwapStructs {
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] calldata currentBalances,
+        uint256[] memory currentBalances,
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
-        bytes calldata userData
+        bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
 
     /**
@@ -82,10 +82,10 @@ interface IBasePool is IPoolSwapStructs {
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] calldata currentBalances,
+        uint256[] memory currentBalances,
         uint256 latestBlockNumberUsed,
         uint256 protocolSwapFee,
-        bytes calldata userData
+        bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
 
     /**

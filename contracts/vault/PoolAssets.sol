@@ -83,6 +83,7 @@ abstract contract PoolAssets is
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             balance = _getMinimalSwapInfoPoolBalance(poolId, token);
         } else {
+            // PoolSpecialization.GENERAL
             balance = _getGeneralPoolBalance(poolId, token);
         }
 
@@ -104,8 +105,8 @@ abstract contract PoolAssets is
 
     function registerTokens(
         bytes32 poolId,
-        IERC20[] calldata tokens,
-        address[] calldata assetManagers
+        IERC20[] memory tokens,
+        address[] memory assetManagers
     ) external override nonReentrant noEmergencyPeriod onlyPool(poolId) {
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
@@ -124,13 +125,14 @@ abstract contract PoolAssets is
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _registerMinimalSwapInfoPoolTokens(poolId, tokens);
         } else {
+            // PoolSpecialization.GENERAL
             _registerGeneralPoolTokens(poolId, tokens);
         }
 
         emit TokensRegistered(poolId, tokens, assetManagers);
     }
 
-    function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens)
+    function deregisterTokens(bytes32 poolId, IERC20[] memory tokens)
         external
         override
         nonReentrant
@@ -144,6 +146,7 @@ abstract contract PoolAssets is
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _deregisterMinimalSwapInfoPoolTokens(poolId, tokens);
         } else {
+            // PoolSpecialization.GENERAL
             _deregisterGeneralPoolTokens(poolId, tokens);
         }
 
@@ -233,6 +236,7 @@ abstract contract PoolAssets is
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _setMinimalSwapInfoPoolBalances(poolId, tokens, finalBalances);
         } else {
+            // PoolSpecialization.GENERAL
             _setGeneralPoolBalances(poolId, finalBalances);
         }
 
@@ -328,6 +332,7 @@ abstract contract PoolAssets is
             } else if (kind == AssetManagerOpKind.WITHDRAW) {
                 delta = _withdrawPoolBalance(poolId, specialization, token, amount);
             } else {
+                // AssetManagerOpKind.UPDATE
                 delta = _updateManagedBalance(poolId, specialization, token, amount);
             }
 
@@ -346,6 +351,7 @@ abstract contract PoolAssets is
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolCashToManaged(poolId, token, amount);
         } else {
+            // PoolSpecialization.GENERAL
             _generalPoolCashToManaged(poolId, token, amount);
         }
 
@@ -366,6 +372,7 @@ abstract contract PoolAssets is
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolManagedToCash(poolId, token, amount);
         } else {
+            // PoolSpecialization.GENERAL
             _generalPoolManagedToCash(poolId, token, amount);
         }
 
@@ -386,6 +393,7 @@ abstract contract PoolAssets is
         } else if (specialization == PoolSpecialization.TWO_TOKEN) {
             return _setTwoTokenPoolManagedBalance(poolId, token, amount);
         } else {
+            // PoolSpecialization.GENERAL
             return _setGeneralPoolManagedBalance(poolId, token, amount);
         }
     }
@@ -400,6 +408,7 @@ abstract contract PoolAssets is
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             return _getMinimalSwapInfoPoolTokens(poolId);
         } else {
+            // PoolSpecialization.GENERAL
             return _getGeneralPoolTokens(poolId);
         }
     }
@@ -493,6 +502,7 @@ abstract contract PoolAssets is
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             return _isMinimalSwapInfoPoolTokenRegistered(poolId, token);
         } else {
+            // PoolSpecialization.GENERAL
             return _isGeneralPoolTokenRegistered(poolId, token);
         }
     }

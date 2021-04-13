@@ -27,7 +27,7 @@ contract MockVault {
     }
 
     IAuthorizer private _authorizer;
-    mapping (bytes32 => Pool) private pools;
+    mapping(bytes32 => Pool) private pools;
 
     event PoolBalanceChanged(bool positive, uint256[] amounts, uint256[] dueProtocolFeeAmounts);
 
@@ -56,8 +56,8 @@ contract MockVault {
 
     function registerTokens(
         bytes32 poolId,
-        IERC20[] calldata tokens,
-        address[] calldata
+        IERC20[] memory tokens,
+        address[] memory
     ) external {
         Pool storage pool = pools[poolId];
         for (uint256 i = 0; i < tokens.length; i++) {

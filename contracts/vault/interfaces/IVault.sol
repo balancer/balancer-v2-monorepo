@@ -247,8 +247,8 @@ interface IVault is ISignaturesValidator {
      */
     function registerTokens(
         bytes32 poolId,
-        IERC20[] calldata tokens,
-        address[] calldata assetManagers
+        IERC20[] memory tokens,
+        address[] memory assetManagers
     ) external;
 
     /**
@@ -267,7 +267,7 @@ interface IVault is ISignaturesValidator {
      *
      * Emits a `TokensDeregistered` event.
      */
-    function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+    function deregisterTokens(bytes32 poolId, IERC20[] memory tokens) external;
 
     /**
      * @dev Emitted when a Pool deregisters tokens by calling `deregisterTokens`.
@@ -302,6 +302,9 @@ interface IVault is ISignaturesValidator {
      * `cash` is the number of tokens the Vault currently holds for the Pool. `managed` is the number of tokens
      * withdrawn and held outside the Vault by the Pool's token Asset Manager. The Pool's total balance for `token`
      * equals the sum of `cash` and `managed`.
+     *
+     * Internally, `cash` and `managed` are stored using 112 bits. No action can ever cause a Pool's token `cash`,
+     * `managed` or `total` balance to be larger than 2^112 - 1.
      *
      * `blockNumber` is the number of the block in which `token`'s balance was last modified (via either a join, exit,
      * swap, or Asset Manager interaction). This value is useful to avoid so-called 'sandwich attacks', for example
@@ -482,10 +485,10 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Performs a swap with a single Pool.
      *
-     * If the swap is given out (the number of tokens to send to the Pool is known), returns the amount of tokens
+     * If the swap is given in (the number of tokens to send to the Pool is known), returns the amount of tokens
      * taken from the Pool, which must be greater than or equal to `limit`.
      *
-     * If the swap is given in (the number of tokens to take from the Pool is known), returns the amount of
+     * If the swap is given out (the number of tokens to take from the Pool is known), returns the amount of
      * tokens sent to the Pool, which must be less than or equal to `limit`.
      *
      * Internal Balance usage and the recipient are determined by the `funds` struct.
@@ -550,9 +553,9 @@ interface IVault is ISignaturesValidator {
      */
     function batchSwap(
         SwapKind kind,
-        BatchSwapStep[] calldata swaps,
+        BatchSwapStep[] memory swaps,
         IAsset[] memory assets,
-        FundManagement calldata funds,
+        FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
     ) external payable returns (int256[] memory);
@@ -646,9 +649,9 @@ interface IVault is ISignaturesValidator {
      */
     function flashLoan(
         IFlashLoanReceiver receiver,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        bytes calldata receiverData
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        bytes memory receiverData
     ) external;
 
     // Asset Management
