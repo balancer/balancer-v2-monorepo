@@ -114,11 +114,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        (
-            bytes32 balanceA,
-            bytes32 balanceB,
-            TwoTokenPoolBalances storage poolBalances
-        ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
+        (bytes32 balanceA, bytes32 balanceB, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
 
         _require(balanceA.isZero() && balanceB.isZero(), Errors.NONZERO_TOKEN_BALANCE);
 

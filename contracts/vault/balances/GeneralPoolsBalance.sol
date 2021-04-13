@@ -25,7 +25,7 @@ abstract contract GeneralPoolsBalance {
     using BalanceAllocation for bytes32;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
 
-    // Data for Pools with the General Pool specialization setting
+    // Data for Pools with the General specialization setting
     //
     // These Pools use the IGeneralPool interface, which means the Vault must query the balance for *all* of their
     // tokens in every swap. If we kept a mapping of token to balance plus a set (array) of tokens, it'd be very gas
