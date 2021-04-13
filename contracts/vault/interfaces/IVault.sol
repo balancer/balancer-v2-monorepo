@@ -672,16 +672,24 @@ interface IVault is ISignaturesValidator {
      * @dev Called by a Pool's Asset Manager to perform an operation (withdraw, deposit, or update) in the Vault.
      * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
      */
-    function managePoolBalance(
-        bytes32 poolId,
-        AssetManagerOpKind kind,
-        AssetManagerTransfer[] memory transfers
-    ) external;
+    function managePoolBalance(PoolBalanceOp[] memory ops) external;
 
-    struct AssetManagerTransfer {
+    struct PoolBalanceOp {
+        PoolBalanceOpKind kind;
+        bytes32 poolId;
         IERC20 token;
         uint256 amount;
     }
+
+    /**
+     * Withdrawals decrease the Pool's cash, but increase its managed balance, leaving the total balance unchanged.
+     *
+     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
+     *
+     * Updates don't affect the Pool's cash balance, but because the managed balance changes, it does alter the total.
+     * The external amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
+     */
+    enum PoolBalanceOpKind { WITHDRAW, DEPOSIT, UPDATE }
 
     /**
      * @dev Emitted when a Pool's token Asset Manager alters its balance via `managePoolBalance`.
@@ -693,16 +701,6 @@ interface IVault is ISignaturesValidator {
         int256 cashDelta,
         int256 managedDelta
     );
-
-    /**
-     * Withdrawals decrease the Pool's cash, but increase its managed balance, leaving the total balance unchanged.
-     *
-     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
-     *
-     * Updates don't affect the Pool's cash balance, but because the managed balance changes, it does alter the total.
-     * The external amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
-     */
-    enum AssetManagerOpKind { WITHDRAW, DEPOSIT, UPDATE }
 
     // Protocol Fees
     //

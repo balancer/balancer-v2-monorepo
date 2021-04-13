@@ -313,32 +313,38 @@ abstract contract PoolAssets is
 
     // Assets under management
 
-    function managePoolBalance(
-        bytes32 poolId,
-        AssetManagerOpKind kind,
-        AssetManagerTransfer[] memory transfers
-    ) external override nonReentrant noEmergencyPeriod withRegisteredPool(poolId) {
-        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+    function managePoolBalance(PoolBalanceOp[] memory ops) external override nonReentrant noEmergencyPeriod {
+        for (uint256 i = 0; i < ops.length; ++i) {
+            bytes32 poolId = ops[i].poolId;
+            _ensureRegisteredPool(poolId);
 
-        for (uint256 i = 0; i < transfers.length; ++i) {
-            IERC20 token = transfers[i].token;
-            uint256 amount = transfers[i].amount;
-
+            IERC20 token = ops[i].token;
             _require(_isTokenRegistered(poolId, token), Errors.TOKEN_NOT_REGISTERED);
             _require(_poolAssetManagers[poolId][token] == msg.sender, Errors.SENDER_NOT_ASSET_MANAGER);
 
-            int256 cashDelta;
-            int256 managedDelta;
-            if (kind == AssetManagerOpKind.WITHDRAW) {
-                (cashDelta, managedDelta) = _withdrawPoolBalance(poolId, specialization, token, amount);
-            } else if (kind == AssetManagerOpKind.DEPOSIT) {
-                (cashDelta, managedDelta) = _depositPoolBalance(poolId, specialization, token, amount);
-            } else {
-                // AssetManagerOpKind.UPDATE
-                (cashDelta, managedDelta) = _updateManagedBalance(poolId, specialization, token, amount);
-            }
+            PoolBalanceOpKind kind = ops[i].kind;
+            uint256 amount = ops[i].amount;
+            (int256 cashDelta, int256 managedDelta) = _managePoolBalance(kind, poolId, token, amount);
 
             emit PoolBalanceManaged(poolId, msg.sender, token, cashDelta, managedDelta);
+        }
+    }
+
+    function _managePoolBalance(
+        PoolBalanceOpKind kind,
+        bytes32 poolId,
+        IERC20 token,
+        uint256 amount
+    ) private returns (int256, int256) {
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+
+        if (kind == PoolBalanceOpKind.WITHDRAW) {
+            return _withdrawPoolBalance(poolId, specialization, token, amount);
+        } else if (kind == PoolBalanceOpKind.DEPOSIT) {
+            return _depositPoolBalance(poolId, specialization, token, amount);
+        } else {
+            // PoolBalanceOpKind.UPDATE
+            return _updateManagedBalance(poolId, specialization, token, amount);
         }
     }
 
