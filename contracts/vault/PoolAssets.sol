@@ -362,7 +362,8 @@ abstract contract PoolAssets is
 
         token.safeTransfer(msg.sender, amount);
 
-        // Since `amount` is actually a 112 bit delta, it will always fit in a 256 bit integer.
+        // Since 'cash' and 'managed' are stored as uint112, `amount` is guaranteed to also fit in 112 bits. It will
+        // therefore always fit in a 256 bit integer.
         cashDelta = int256(-amount);
         managedDelta = int256(amount);
     }
@@ -387,7 +388,8 @@ abstract contract PoolAssets is
 
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Since `amount` is actually a 112 bit delta, it will always fit in a 256 bit integer.
+        // Since 'cash' and 'managed' are stored as uint112, `amount` is guaranteed to also fit in 112 bits. It will
+        // therefore always fit in a 256 bit integer.
         cashDelta = int256(amount);
         managedDelta = int256(-amount);
     }
