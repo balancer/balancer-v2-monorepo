@@ -96,6 +96,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         internalRequest.userData = request.userData;
         internalRequest.from = funds.sender;
         internalRequest.to = funds.recipient;
+        // The latestBlockNumber field is left uninitialized
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapWithPool(internalRequest);
         _require(request.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
@@ -256,8 +257,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             internalRequest.userData = request.userData;
             internalRequest.from = funds.sender;
             internalRequest.to = funds.recipient;
-            // latestBlockNumberUsed is not set here - that will be done later by the different Pool specialization
-            // handlers
+            // The latestBlockNumber field is left uninitialized
 
             previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
             (previousAmountCalculated, amountIn, amountOut) = _swapWithPool(internalRequest);
@@ -414,6 +414,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);
 
+        request.latestBlockNumberUsed = 0;
         for (uint256 i = 0; i < tokenAmount; i++) {
             // Because the iteration is bounded by `tokenAmount` and no tokens are registered or deregistered here, we
             // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
