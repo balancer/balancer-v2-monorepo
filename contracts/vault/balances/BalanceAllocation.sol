@@ -54,7 +54,9 @@ library BalanceAllocation {
      * @dev Returns the total amount of Pool tokens, including those that are not currently in the Vault ('managed').
      */
     function total(bytes32 balance) internal pure returns (uint256) {
-        return cash(balance).add(managed(balance));
+        // Since 'cash' and 'managed' are 112 bit values, we don't need checked arithmetic. Aditionally, `toBalance`
+        // ensures that 'total' always fits in 112 bits.
+        return cash(balance) + managed(balance);
     }
 
     /**
