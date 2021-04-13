@@ -25,7 +25,7 @@ import "../PoolRegistry.sol";
 abstract contract TwoTokenPoolsBalance is PoolRegistry {
     using BalanceAllocation for bytes32;
 
-    // Data for Pools with Two Tokens specialization setting
+    // Data for Pools with the Two Tokens specialization setting
     //
     // These are similar to the Minimal Swap Info Pool case (because the Pool only has two tokens, and therefore there
     // are only two balances to read), but there's a key difference in how data is stored. Keeping a set makes little
