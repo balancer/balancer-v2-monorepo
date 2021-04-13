@@ -216,13 +216,12 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     ) private returns (int256[] memory assetDeltas) {
         assetDeltas = new int256[](assets.length);
 
-        // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
+        // These variables could be declared inside the loop, but that causes the compiler to allocate memory on each
         // loop iteration, increasing gas costs.
         BatchSwapStep memory request;
+        InternalSwapRequest memory internalRequest;
 
         // These store data about the previous swap here to implement multihop logic across swaps.
-        uint256 amountIn;
-        uint256 amountOut;
         IERC20 previousTokenCalculated;
         uint256 previousAmountCalculated;
 
@@ -247,7 +246,6 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             }
 
             // Initializing each struct field one-by-one uses less gas than setting all at once
-            InternalSwapRequest memory internalRequest;
             internalRequest.poolId = request.poolId;
             internalRequest.kind = kind;
             internalRequest.tokenIn = tokenIn;
@@ -259,8 +257,11 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             // latestBlockNumberUsed is not set here - that will be done later by the different Pool specialization
             // handlers
 
-            previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
+            uint256 amountIn;
+            uint256 amountOut;
             (previousAmountCalculated, amountIn, amountOut) = _swapWithPool(internalRequest);
+
+            previousTokenCalculated = _tokenCalculated(kind, tokenIn, tokenOut);
 
             // Accumulate Vault deltas across swaps
             assetDeltas[request.assetInIndex] = assetDeltas[request.assetInIndex].add(amountIn.toInt256());
