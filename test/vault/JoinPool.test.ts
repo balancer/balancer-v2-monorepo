@@ -19,7 +19,7 @@ import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { encodeCalldataAuthorization, signJoinAuthorization } from '../helpers/signatures';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 
-describe.only('Vault - join pool', () => {
+describe('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
   let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let allTokens: TokenList;
