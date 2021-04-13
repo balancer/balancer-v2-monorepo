@@ -27,9 +27,9 @@ contract MockVault {
     }
 
     IAuthorizer private _authorizer;
-    mapping (bytes32 => Pool) private pools;
+    mapping(bytes32 => Pool) private pools;
 
-    event PoolBalanceChanged(bool positive, uint256[] amounts, uint256[] dueProtocolFeeAmounts);
+    event MockVaultPoolBalanceChanged(bool positive, uint256[] amounts, uint256[] dueProtocolFeeAmounts);
 
     constructor(IAuthorizer authorizer) {
         _authorizer = authorizer;
@@ -89,7 +89,7 @@ contract MockVault {
             pool.balances[pool.tokens[i]] += amountsIn[i];
         }
 
-        emit PoolBalanceChanged(true, amountsIn, dueProtocolFeeAmounts);
+        emit MockVaultPoolBalanceChanged(true, amountsIn, dueProtocolFeeAmounts);
     }
 
     function callExitPool(
@@ -116,6 +116,6 @@ contract MockVault {
             pool.balances[pool.tokens[i]] -= amountsOut[i];
         }
 
-        emit PoolBalanceChanged(false, amountsOut, dueProtocolFeeAmounts);
+        emit MockVaultPoolBalanceChanged(false, amountsOut, dueProtocolFeeAmounts);
     }
 }
