@@ -17,11 +17,7 @@ pragma solidity ^0.7.0;
 import "../pools/weighted/WeightedMath.sol";
 
 contract MockWeightedMath is WeightedMath {
-    function invariant(uint256[] calldata normalizedWeights, uint256[] calldata balances)
-        external
-        pure
-        returns (uint256)
-    {
+    function invariant(uint256[] memory normalizedWeights, uint256[] memory balances) external pure returns (uint256) {
         return _calculateInvariant(normalizedWeights, balances);
     }
 
@@ -46,9 +42,9 @@ contract MockWeightedMath is WeightedMath {
     }
 
     function exactTokensInForBPTOut(
-        uint256[] calldata balances,
-        uint256[] calldata normalizedWeights,
-        uint256[] calldata amountsIn,
+        uint256[] memory balances,
+        uint256[] memory normalizedWeights,
+        uint256[] memory amountsIn,
         uint256 bptTotalSupply,
         uint256 swapFee
     ) external pure returns (uint256) {
@@ -76,7 +72,7 @@ contract MockWeightedMath is WeightedMath {
     }
 
     function exactBPTInForTokensOut(
-        uint256[] calldata currentBalances,
+        uint256[] memory currentBalances,
         uint256 bptAmountIn,
         uint256 totalBPT
     ) external pure returns (uint256[] memory) {
@@ -84,9 +80,9 @@ contract MockWeightedMath is WeightedMath {
     }
 
     function bptInForExactTokensOut(
-        uint256[] calldata balances,
-        uint256[] calldata normalizedWeights,
-        uint256[] calldata amountsOut,
+        uint256[] memory balances,
+        uint256[] memory normalizedWeights,
+        uint256[] memory amountsOut,
         uint256 bptTotalSupply,
         uint256 swapFee
     ) external pure returns (uint256) {
