@@ -81,7 +81,7 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
 
             // For consistency with other Pool specialization settings, we explicitly reset the balance (which may have
             // a non-zero last change block number).
-            _minimalSwapInfoPoolsBalances[poolId][token] = 0;
+            delete _minimalSwapInfoPoolsBalances[poolId][token];
 
             bool removed = poolTokens.remove(address(token));
             _require(removed, Errors.TOKEN_NOT_REGISTERED);
