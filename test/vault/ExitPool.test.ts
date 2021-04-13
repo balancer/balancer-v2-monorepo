@@ -6,17 +6,18 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import Token from '../helpers/models/tokens/Token';
 import TokenList from '../helpers/models/tokens/TokenList';
+import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
 import * as expectEvent from '../helpers/expectEvent';
 import { encodeExit } from '../helpers/mockPool';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
+import { lastBlockNumber, MONTH } from '../../lib/helpers/time';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '../../lib/helpers/numbers';
+import { encodeCalldataAuthorization, signExitAuthorization } from '../helpers/signatures';
 import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
-import { lastBlockNumber, MONTH } from '../../lib/helpers/time';
 
 describe('Vault - exit pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -115,17 +116,27 @@ describe('Vault - exit pool', () => {
       exitAmounts?: BigNumberish[];
       dueProtocolFeeAmounts?: BigNumberish[];
       fromRelayer?: boolean;
+      signature?: boolean;
     };
 
-    function exitPool(data: ExitPoolData): Promise<ContractTransaction> {
-      return vault
-        .connect(data.fromRelayer ?? false ? relayer : lp)
-        .exitPool(data.poolId ?? poolId, lp.address, recipient.address, {
-          assets: data.tokenAddresses ?? tokens.addresses,
-          minAmountsOut: data.minAmountsOut ?? array(0),
-          toInternalBalance: data.toInternalBalance ?? false,
-          userData: encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts),
-        });
+    async function exitPool(data: ExitPoolData): Promise<ContractTransaction> {
+      const request = {
+        assets: data.tokenAddresses ?? tokens.addresses,
+        minAmountsOut: data.minAmountsOut ?? array(0),
+        toInternalBalance: data.toInternalBalance ?? false,
+        userData: encodeExit(data.exitAmounts ?? exitAmounts, data.dueProtocolFeeAmounts ?? dueProtocolFeeAmounts),
+      };
+
+      const args = [data.poolId ?? poolId, lp.address, recipient.address, request];
+      let calldata = vault.interface.encodeFunctionData('exitPool', args);
+
+      if (data.signature) {
+        const nonce = await vault.getNextNonce(lp.address);
+        const signature = await signExitAuthorization(vault, lp, relayer, calldata, nonce, MAX_UINT256);
+        calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
+      }
+
+      return (data.fromRelayer ? relayer : lp).sendTransaction({ to: vault.address, data: calldata });
     }
 
     context('when called incorrectly', () => {
@@ -235,10 +246,20 @@ describe('Vault - exit pool', () => {
                 await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, false);
               });
 
-              it('reverts', async () => {
-                await expect(exitPool({ dueProtocolFeeAmounts, fromRelayer })).to.be.revertedWith(
-                  'USER_DOESNT_ALLOW_RELAYER'
-                );
+              context('when the relayer is not eternally-allowed by the user', () => {
+                const signature = false;
+
+                it('reverts', async () => {
+                  await expect(exitPool({ dueProtocolFeeAmounts, fromRelayer, signature })).to.be.revertedWith(
+                    'USER_DOESNT_ALLOW_RELAYER'
+                  );
+                });
+              });
+
+              context('when the relayer is allowed by signature', () => {
+                const signature = true;
+
+                itExitsCorrectlyWithAndWithoutInternalBalance(dueProtocolFeeAmounts, fromRelayer, signature);
               });
             });
           });
@@ -282,13 +303,14 @@ describe('Vault - exit pool', () => {
 
     function itExitsCorrectlyWithAndWithoutInternalBalance(
       dueProtocolFeeAmounts: BigNumberish[],
-      fromRelayer: boolean
+      fromRelayer: boolean,
+      signature?: boolean
     ) {
       context('not using internal balance', () => {
         const toInternalBalance = false;
 
         context('without internal balance', () => {
-          itExitsCorrectlyWithAndWithoutEmergencyPeriod(dueProtocolFeeAmounts, fromRelayer, toInternalBalance);
+          itExitsCorrectlyNeverthelessEmergencyPeriod(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
         });
 
         context('with some internal balance', () => {
@@ -304,7 +326,7 @@ describe('Vault - exit pool', () => {
             );
           });
 
-          itExitsCorrectlyWithAndWithoutEmergencyPeriod(dueProtocolFeeAmounts, fromRelayer, toInternalBalance);
+          itExitsCorrectlyNeverthelessEmergencyPeriod(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
         });
       });
 
@@ -312,7 +334,7 @@ describe('Vault - exit pool', () => {
         const toInternalBalance = true;
 
         context('with no internal balance', () => {
-          itExitsCorrectlyWithAndWithoutEmergencyPeriod(dueProtocolFeeAmounts, fromRelayer, toInternalBalance);
+          itExitsCorrectlyNeverthelessEmergencyPeriod(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
         });
 
         context('with some internal balance', () => {
@@ -328,18 +350,19 @@ describe('Vault - exit pool', () => {
             );
           });
 
-          itExitsCorrectlyWithAndWithoutEmergencyPeriod(dueProtocolFeeAmounts, fromRelayer, toInternalBalance);
+          itExitsCorrectlyNeverthelessEmergencyPeriod(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
         });
       });
     }
 
-    function itExitsCorrectlyWithAndWithoutEmergencyPeriod(
+    function itExitsCorrectlyNeverthelessEmergencyPeriod(
       dueProtocolFeeAmounts: BigNumberish[],
       fromRelayer: boolean,
-      toInternalBalance: boolean
+      toInternalBalance: boolean,
+      signature?: boolean
     ) {
       context('when there is no emergency', () => {
-        itExitsCorrectly(dueProtocolFeeAmounts, fromRelayer, toInternalBalance);
+        itExitsCorrectly(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
       });
 
       context('when there is an emergency', () => {
@@ -349,13 +372,14 @@ describe('Vault - exit pool', () => {
           await vault.connect(admin).setEmergencyPeriod(true);
         });
 
-        itExitsCorrectly(dueProtocolFeeAmounts, fromRelayer, toInternalBalance);
+        itExitsCorrectly(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
       });
 
       function itExitsCorrectly(
         dueProtocolFeeAmounts: BigNumberish[],
         fromRelayer: boolean,
-        toInternalBalance: boolean
+        toInternalBalance: boolean,
+        signature?: boolean
       ) {
         it('sends tokens from the vault to the recipient', async () => {
           // Tokens are sent to the recipient, so the expected change is positive
@@ -381,16 +405,20 @@ describe('Vault - exit pool', () => {
             {}
           );
 
-          await expectBalanceChange(() => exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance }), tokens, [
-            { account: vault, changes: vaultChanges },
-            { account: recipient, changes: recipientChanges },
-            { account: feesCollector, changes: protocolFeesChanges },
-          ]);
+          await expectBalanceChange(
+            () => exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature }),
+            tokens,
+            [
+              { account: vault, changes: vaultChanges },
+              { account: recipient, changes: recipientChanges },
+              { account: feesCollector, changes: protocolFeesChanges },
+            ]
+          );
         });
 
         it('assigns internal balance to the recipient', async () => {
           const previousInternalBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
-          await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance });
+          await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature });
           const currentInternalBalances = await vault.getInternalBalance(recipient.address, tokens.addresses);
 
           // Internal balance is expected to increase: current - previous should equal expected.
@@ -402,7 +430,7 @@ describe('Vault - exit pool', () => {
 
         it('deducts tokens from the pool', async () => {
           const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
-          await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance });
+          await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature });
           const { balances: currentPoolBalances } = await vault.getPoolTokens(poolId);
 
           // The Pool balance is expected to decrease by exit amounts plus due protocol fees.
@@ -415,7 +443,9 @@ describe('Vault - exit pool', () => {
           const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
           const { blockNumber: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
 
-          const receipt = await (await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance })).wait();
+          const receipt = await (
+            await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature })
+          ).wait();
 
           expectEvent.inIndirectReceipt(receipt, pool.interface, 'OnExitPoolCalled', {
             poolId,
@@ -431,7 +461,7 @@ describe('Vault - exit pool', () => {
         it('updates the latest block number used for all tokens', async () => {
           const currentBlockNumber = await lastBlockNumber();
 
-          await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance });
+          await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature });
 
           await tokens.asyncEach(async (token: Token) => {
             const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
@@ -440,9 +470,11 @@ describe('Vault - exit pool', () => {
         });
 
         it('emits PoolBalanceChanged from the vault', async () => {
-          const receipt = await (await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance })).wait();
+          const receipt = await (
+            await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature })
+          ).wait();
 
-          expectEvent.inReceipt(receipt, 'PoolBalanceChanged', {
+          expectEvent.inIndirectReceipt(receipt, vault.interface, 'PoolBalanceChanged', {
             poolId,
             liquidityProvider: lp.address,
             amounts: exitAmounts.map((amount) => amount.mul(-1)),
@@ -452,7 +484,7 @@ describe('Vault - exit pool', () => {
 
         it('collects protocol fees', async () => {
           const previousCollectedFees = await feesCollector.getCollectedFees(tokens.addresses);
-          await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance });
+          await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature });
           const currentCollectedFees = await feesCollector.getCollectedFees(tokens.addresses);
 
           // Fees from both sources are lumped together.
@@ -462,7 +494,7 @@ describe('Vault - exit pool', () => {
         it('exits multiple times', async () => {
           await Promise.all(
             times(3, () => async () => {
-              const receipt = await (await exitPool({ toInternalBalance, dueProtocolFeeAmounts })).wait();
+              const receipt = await (await exitPool({ toInternalBalance, dueProtocolFeeAmounts, signature })).wait();
               expectEvent.inIndirectReceipt(receipt, pool.interface, 'OnExitPoolCalled');
             })
           );
@@ -472,7 +504,13 @@ describe('Vault - exit pool', () => {
           const { balances: poolBalances } = await vault.getPoolTokens(poolId);
           const fullExitAmounts = arraySub(poolBalances, dueProtocolFeeAmounts);
 
-          await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, exitAmounts: fullExitAmounts });
+          await exitPool({
+            dueProtocolFeeAmounts,
+            fromRelayer,
+            toInternalBalance,
+            exitAmounts: fullExitAmounts,
+            signature,
+          });
 
           const { balances: currentBalances } = await vault.getPoolTokens(poolId);
           expect(currentBalances).to.deep.equal(array(0));
@@ -485,7 +523,7 @@ describe('Vault - exit pool', () => {
               minAmountsOut[i] = amount.add(1);
 
               return expect(
-                exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, minAmountsOut })
+                exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, minAmountsOut, signature })
               ).to.be.revertedWith('EXIT_BELOW_MIN');
             })
           );
@@ -500,7 +538,13 @@ describe('Vault - exit pool', () => {
               excessiveExitAmounts[i] = balance.sub(dueProtocolFeeAmounts[i]).add(1);
 
               return expect(
-                exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, exitAmounts: excessiveExitAmounts })
+                exitPool({
+                  dueProtocolFeeAmounts,
+                  fromRelayer,
+                  toInternalBalance,
+                  exitAmounts: excessiveExitAmounts,
+                  signature,
+                })
               ).to.be.revertedWith('SUB_OVERFLOW');
             })
           );
