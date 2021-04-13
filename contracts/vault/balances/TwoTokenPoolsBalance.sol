@@ -280,7 +280,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
     }
 
     /*
-     * @dev Returns an array with all the tokens and balances in a Two Token Pool. This order may change when
+     * @dev Returns an array with all the tokens and balances in a Two Token Pool. The order may change when
      * tokens are registered or deregistered.
      *
      * This function assumes `poolId` exists and corresponds to the Two Token specialization setting.

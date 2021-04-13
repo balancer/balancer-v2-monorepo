@@ -167,7 +167,7 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
     }
 
     /**
-     * @dev Returns an array with all the tokens and balances in a Minimal Swap Info Pool. This order may change when
+     * @dev Returns an array with all the tokens and balances in a Minimal Swap Info Pool. The order may change when
      * tokens are registered or deregistered.
      *
      * This function assumes `poolId` exists and corresponds to the Minimal Swap Info specialization setting.

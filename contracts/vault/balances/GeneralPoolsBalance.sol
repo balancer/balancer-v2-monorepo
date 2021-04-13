@@ -169,7 +169,7 @@ abstract contract GeneralPoolsBalance {
     }
 
     /**
-     * @dev Returns an array with all the tokens and balances in a General Pool. This order may change when tokens are
+     * @dev Returns an array with all the tokens and balances in a General Pool. The order may change when tokens are
      * registered or deregistered.
      *
      * This function assumes `poolId` exists and corresponds to the General specialization setting.
