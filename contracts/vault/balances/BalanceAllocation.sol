@@ -109,8 +109,8 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev Returns true if `balance`'s 'total balance is zero. Costs less gas than computing 'total' and comparing with
-     * zero.
+     * @dev Returns true if `balance`'s 'total' balance is zero. Costs less gas than computing 'total' and comparing
+     * with zero.
      */
     function isZero(bytes32 balance) internal pure returns (bool) {
         // We simply need to check the least significant 224 bytes of the word: the block number does not affect this.
