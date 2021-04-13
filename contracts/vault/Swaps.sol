@@ -77,6 +77,9 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
+
+        // This revert reason is for consistency with `batchSwap`: an equivalent `swap` performed using that function
+        // would result in this error.
         _require(request.amount > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
 
         IERC20 tokenIn = _translateToIERC20(request.assetIn);

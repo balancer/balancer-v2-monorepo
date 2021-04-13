@@ -84,12 +84,12 @@ library EnumerableSet {
             // When the value to delete is the last one, the swap operation is unnecessary. However, since this occurs
             // so rarely, we still do the swap anyway to avoid the gas cost of adding an 'if' statement.
 
-            address lastvalue = set._values[lastIndex];
+            address lastValue = set._values[lastIndex];
 
             // Move the last value to the index where the value to delete is
-            set._values[toDeleteIndex] = lastvalue;
+            set._values[toDeleteIndex] = lastValue;
             // Update the index for the moved value
-            set._indexes[lastvalue] = toDeleteIndex + 1; // All indexes are 1-based
+            set._indexes[lastValue] = toDeleteIndex + 1; // All indexes are 1-based
 
             // Delete the slot where the moved value was stored
             set._values.pop();

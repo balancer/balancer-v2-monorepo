@@ -9,6 +9,7 @@ import {
   calcOutGivenIn,
   calculateOneTokenSwapFee,
 } from '../../helpers/math/weighted';
+import { expect } from 'chai';
 
 const MAX_RELATIVE_ERROR = 0.0001; //Max relative error
 
@@ -20,6 +21,12 @@ describe('WeightedMath', function () {
   });
 
   context('invariant', () => {
+    context('zero invariant', () => {
+      it('reverts', async () => {
+        await expect(mock.invariant([bn(1)], [0])).to.be.revertedWith('ZERO_INVARIANT');
+      });
+    });
+
     context('two tokens', () => {
       it('returns invariant', async () => {
         const normalizedWeights = [bn(0.3e18), bn(0.7e18)];
