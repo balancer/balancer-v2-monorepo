@@ -42,23 +42,21 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
     }
 
     // We could just keep a mapping from Pool ID to TwoTokenSharedBalances, but there's an issue: we wouldn't know to
-    // which tokens those balances correspond. This would mean having to also check which are the Pool's registered
-    // tokens.
+    // which tokens those balances correspond. This would mean having to also check which are registered with the Pool.
     //
     // What we do instead to save those storage reads is keep a nested mapping from token pair hash to the balances
     // struct. The Pool only has two tokens, so only a single entry of this mapping is set (the one that corresponds to
     // that pair's hash).
     //
-    // This has the tradeoff of making Vault code that interacts with these Pools cumbersome: both balances must be
+    // This has the trade-off of making Vault code that interacts with these Pools cumbersome: both balances must be
     // accessed at the same time by using both token addresses, and some logic is needed to determine how the pair hash
-    // is computed. We do this by sorting the tokens, calling token A the token with the lowest numerical address value,
-    // and token B the other one. The token X and token Y names are used in functions when it is unknown which one is A
-    // and which one is B.
+    // is computed. We do this by sorting the tokens, calling the token with the lowest numerical address value token A,
+    // and the other one token B. In functions where the token arguments could be either A or B, we use X and Y instead.
     //
-    // Queries for token pairs where any of the tokens is not registered in the Pool will generate a hash for a mapping
-    // entry that was not set, containing zero balances. Non-zero balances are only possible if both tokens in the pair
-    // are the Pool's tokens, which means we don't have to check the TwoTokenPoolTokens struct and can save storage
-    // reads.
+    // If users query a token pair containing an unregistered token, the Pool will generate a hash for a mapping entry
+    // that was not set, and return zero balances. Non-zero balances are only possible if both tokens in the pair
+    // are registered with the pool, which means we don't have to check the TwoTokenPoolTokens struct, and can save
+    // storage reads.
 
     struct TwoTokenPoolTokens {
         IERC20 tokenA;
@@ -261,8 +259,8 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         bytes32 sharedCash = poolBalances.sharedCash;
         bytes32 sharedManaged = poolBalances.sharedManaged;
 
-        // A non-zero balance guarantees that both tokens are registered. If zero, we manually instead check if each of
-        // the tokens are registered in the Pool. Token registration implies that the Pool is registered as well, which
+        // A non-zero balance guarantees that both tokens are registered. If zero, we manually check whether each
+        // token is registered in the Pool. Token registration implies that the Pool is registered as well, which
         // lets us save gas by not performing the check.
         bool tokensRegistered = sharedCash.isNotZero() ||
             sharedManaged.isNotZero() ||
