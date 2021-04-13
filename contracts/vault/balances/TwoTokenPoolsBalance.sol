@@ -269,8 +269,8 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
             _hasPoolTwoTokens(poolId, tokenA, tokenB);
 
         if (!tokensRegistered) {
-            // The tokens might not be registered because the Pool itself is not registered. We check for this to
-            // provide a more accurate revert reason.
+            // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
+            // more accurate revert reason.
             _ensureRegisteredPool(poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }

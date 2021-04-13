@@ -206,8 +206,8 @@ abstract contract MinimalSwapInfoPoolsBalance is PoolRegistry {
         bool tokenRegistered = balance.isNotZero() || _minimalSwapInfoPoolsTokens[poolId].contains(address(token));
 
         if (!tokenRegistered) {
-            // The token might not be registered because the Pool itself is not registered. We check for this to provide
-            // a more accurate revert reason.
+            // The token might not be registered because the Pool itself is not registered. We check this to provide a
+            // more accurate revert reason.
             _ensureRegisteredPool(poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }

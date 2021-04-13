@@ -332,7 +332,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             tokenOutBalance
         );
 
-        // We check the token ordering again to create the new shared cash packed struct
+        -// We check the token ordering again to create the new shared cash packed struct
         poolBalances.sharedCash = request.tokenIn < request.tokenOut
             ? BalanceAllocation.toSharedCash(tokenInBalance, tokenOutBalance) // in is A, out is B
             : BalanceAllocation.toSharedCash(tokenOutBalance, tokenInBalance); // in is B, out is A
@@ -399,9 +399,8 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         uint256 indexOut = poolBalances.unchecked_indexOf(request.tokenOut);
 
         if (indexIn == 0 || indexOut == 0) {
-            // The tokens might not be registered because the Pool itself is not registered. If so, we provide a more
-            // accurate revert reason. We only check this at this stage to save gas in the case where the tokens
-            // are registered, which implies the Pool is too.
+            // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
+            // more accurate revert reason.
             _ensureRegisteredPool(request.poolId);
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
