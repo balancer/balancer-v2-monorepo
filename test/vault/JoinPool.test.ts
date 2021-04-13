@@ -19,7 +19,7 @@ import { arraySub, bn, BigNumberish, min, fp } from '../../lib/helpers/numbers';
 import { encodeCalldataAuthorization, signJoinAuthorization } from '../helpers/signatures';
 import { PoolSpecializationSetting, MinimalSwapInfoPool, GeneralPool, TwoTokenPool } from '../../lib/helpers/pools';
 
-describe('Vault - join pool', () => {
+describe.only('Vault - join pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
   let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let allTokens: TokenList;
@@ -346,7 +346,7 @@ describe('Vault - join pool', () => {
         });
 
         context('with enough internal balance', () => {
-          beforeEach('deposit to internal balance', async () => {
+          sharedBeforeEach('deposit to internal balance', async () => {
             await vault.connect(lp).manageUserBalance(
               tokens.map((token) => ({
                 kind: 0, // deposit
