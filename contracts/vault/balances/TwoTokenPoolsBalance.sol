@@ -266,7 +266,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         // lets us save gas by not performing the check.
         bool tokensRegistered = sharedCash.isNotZero() ||
             sharedManaged.isNotZero() ||
-            _hasPoolTwoTokens(poolId, tokenA, tokenB);
+            (_isTwoTokenPoolTokenRegistered(poolId, tokenA) && _isTwoTokenPoolTokenRegistered(poolId, tokenB));
 
         if (!tokensRegistered) {
             // The tokens might not be registered because the Pool itself is not registered. We check this to provide a
@@ -334,15 +334,6 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         } else {
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
-    }
-
-    function _hasPoolTwoTokens(
-        bytes32 poolId,
-        IERC20 tokenA,
-        IERC20 tokenB
-    ) internal view returns (bool) {
-        TwoTokenPoolTokens storage poolTokens = _twoTokenPoolTokens[poolId];
-        return poolTokens.tokenA == tokenA && tokenB == poolTokens.tokenB;
     }
 
     /**

@@ -286,10 +286,10 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         address pool = _getPoolAddress(request.poolId);
         PoolSpecialization specialization = _getPoolSpecialization(request.poolId);
 
-        if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            amountCalculated = _processMinimalSwapInfoPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
-        } else if (specialization == PoolSpecialization.TWO_TOKEN) {
+        if (specialization == PoolSpecialization.TWO_TOKEN) {
             amountCalculated = _processTwoTokenPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
+        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
+            amountCalculated = _processMinimalSwapInfoPoolSwapRequest(request, IMinimalSwapInfoPool(pool));
         } else {
             // PoolSpecialization.GENERAL
             amountCalculated = _processGeneralPoolSwapRequest(request, IGeneralPool(pool));
