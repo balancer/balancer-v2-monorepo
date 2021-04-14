@@ -19,7 +19,7 @@ import { roleId } from '../../lib/helpers/roles';
 const OP_KIND = { WITHDRAW: 0, DEPOSIT: 1, UPDATE: 2 };
 
 describe('Vault - asset manager', function () {
-  let tokens: TokenList, otherToken: Token, authorizer: Contract, vault: Contract;
+  let authorizer: Contract, vault: Contract;
   let admin: SignerWithAddress,
     lp: SignerWithAddress,
     assetManager: SignerWithAddress,
@@ -30,11 +30,9 @@ describe('Vault - asset manager', function () {
     [, admin, lp, assetManager, otherAssetManager, other] = await ethers.getSigners();
   });
 
-  sharedBeforeEach('set up asset managers', async () => {
+  sharedBeforeEach('deploy vault', async () => {
     authorizer = await deploy('Authorizer', { args: [admin.address] });
     vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, MONTH, MONTH] });
-    tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
-    otherToken = await Token.create('OTHER');
   });
 
   context('with general pool', () => {
@@ -50,11 +48,15 @@ describe('Vault - asset manager', function () {
   });
 
   function itManagesAssetsCorrectly(specialization: PoolSpecializationSetting) {
-    let poolId: string;
-    const tokenInitialBalance = bn(200e18);
+    let tokens: TokenList;
+    const tokenNumber = specialization == TwoTokenPool ? 2 : 4;
+
+    sharedBeforeEach('deploy tokens', async () => {
+      tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'].slice(0, tokenNumber), { sorted: true });
+    });
 
     context('with unregistered pool', () => {
-      poolId = '0x1234123412341234123412341234123412341234123412341234123412341234';
+      const poolId = '0x1234123412341234123412341234123412341234123412341234123412341234';
 
       describe('withdraw', () => {
         const kind = OP_KIND.WITHDRAW;
@@ -88,6 +90,7 @@ describe('Vault - asset manager', function () {
     });
 
     context('with registered pool', () => {
+      let poolId: string;
       let pool: Contract;
 
       sharedBeforeEach('deploy pool', async () => {
@@ -134,11 +137,14 @@ describe('Vault - asset manager', function () {
       });
 
       context('with registered token', () => {
-        sharedBeforeEach('add liquidity', async () => {
+        const tokenInitialBalance = bn(200e18);
+
+        sharedBeforeEach('register tokens and add liquidity', async () => {
           await tokens.mint({ to: lp, amount: tokenInitialBalance });
           await tokens.approve({ to: vault, from: [lp, assetManager] });
 
-          const assetManagers = [assetManager.address, otherAssetManager.address];
+          const assetManagers = tokens.addresses.map(() => otherAssetManager.address);
+          assetManagers[0] = assetManager.address;
 
           await pool.registerTokens(tokens.addresses, assetManagers);
 
@@ -186,7 +192,7 @@ describe('Vault - asset manager', function () {
             });
 
             // Deregistering tokens should remove the asset managers
-            await pool.deregisterTokens([tokens.DAI.address, tokens.MKR.address]);
+            await pool.deregisterTokens(tokens.addresses);
 
             await tokens.asyncEach((token: Token) =>
               expect(vault.getPoolTokenInfo(poolId, token.address)).to.be.revertedWith('TOKEN_NOT_REGISTERED')
@@ -207,11 +213,8 @@ describe('Vault - asset manager', function () {
             await expect(vault.getPoolTokenInfo(ZERO_BYTES32, token)).to.be.revertedWith(error);
           });
 
-          it('reverts when querying the asset manager of an unknown token', async () => {
-            for (const token of [ZERO_ADDRESS, otherToken.address]) {
-              const error = 'TOKEN_NOT_REGISTERED';
-              await expect(vault.getPoolTokenInfo(poolId, token)).to.be.revertedWith(error);
-            }
+          it('reverts when querying the asset manager of an unregistered token', async () => {
+            await expect(vault.getPoolTokenInfo(poolId, ZERO_ADDRESS)).to.be.revertedWith('TOKEN_NOT_REGISTERED');
           });
         });
 
