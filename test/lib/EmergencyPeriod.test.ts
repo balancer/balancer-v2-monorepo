@@ -17,11 +17,11 @@ describe('EmergencyPeriod', function () {
     expectedResponseWindow?: BigNumberish,
     expectedBufferPeriod?: BigNumberish
   ): Promise<void> => {
-    const { paused, responseWindowEndDate, bufferPeriodEndDate } = await emergency.getPausedState();
+    const { paused, responseWindowEndTime, bufferPeriodEndTime } = await emergency.getPausedState();
 
     expect(paused).to.equal(expectedStatus);
-    if (expectedResponseWindow) expect(responseWindowEndDate).to.equal(expectedResponseWindow);
-    if (expectedBufferPeriod) expect(bufferPeriodEndDate).to.equal(responseWindowEndDate.add(expectedBufferPeriod));
+    if (expectedResponseWindow) expect(responseWindowEndTime).to.equal(expectedResponseWindow);
+    if (expectedBufferPeriod) expect(bufferPeriodEndTime).to.equal(responseWindowEndTime.add(expectedBufferPeriod));
   };
 
   describe('initialization', () => {
@@ -46,7 +46,7 @@ describe('EmergencyPeriod', function () {
     it('cannot be initialized with an emergency period greater than 90 days', async () => {
       const emergencyResponseWindow = DAY * 91;
 
-      await expect(deployEmergencyPeriod({ emergencyResponseWindow })).to.be.revertedWith('MAX_RESPONSE_WINDOW');
+      await expect(deployEmergencyPeriod({ emergencyResponseWindow })).to.be.revertedWith('MAX_RESPONSE_WINDOW_DURATION');
     });
 
     it('cannot be initialized with an emergency period check extension greater than 30 days', async () => {
@@ -54,7 +54,7 @@ describe('EmergencyPeriod', function () {
       const emergencyBufferPeriod = DAY * 31;
 
       await expect(deployEmergencyPeriod({ emergencyResponseWindow, emergencyBufferPeriod })).to.be.revertedWith(
-        'MAX_BUFFER_PERIOD'
+        'MAX_BUFFER_PERIOD_DURATION'
       );
     });
   });
@@ -78,7 +78,7 @@ describe('EmergencyPeriod', function () {
       it('can change the emergency period status', async () => {
         const { endDate: previousEndDate } = await emergency.getPausedState();
 
-        await emergency.setPausedState(true);
+        await emergency.setPaused(true);
 
         await assertEmergencyPeriod(true, previousEndDate, EMERGENCY_BUFFER_PERIOD);
       });
@@ -86,12 +86,12 @@ describe('EmergencyPeriod', function () {
       it('can change the emergency period status multiple times', async () => {
         const { endDate: previousEndDate } = await emergency.getPausedState();
 
-        await emergency.setPausedState(true);
+        await emergency.setPaused(true);
         await assertEmergencyPeriod(true, previousEndDate, EMERGENCY_BUFFER_PERIOD);
 
         await advanceTime(EMERGENCY_RESPONSE_WINDOW / 4);
 
-        await emergency.setPausedState(false);
+        await emergency.setPaused(false);
         await assertEmergencyPeriod(false, previousEndDate, EMERGENCY_BUFFER_PERIOD);
       });
     });
@@ -108,7 +108,7 @@ describe('EmergencyPeriod', function () {
           });
 
           it('cannot change the emergency period', async () => {
-            await expect(emergency.setPausedState(true)).to.be.revertedWith('EMERGENCY_WINDOW_EXPIRED');
+            await expect(emergency.setPaused(true)).to.be.revertedWith('EMERGENCY_WINDOW_EXPIRED');
           });
         }
 
@@ -131,7 +131,7 @@ describe('EmergencyPeriod', function () {
 
       context('when the emergency period was on', () => {
         sharedBeforeEach('turn on and advance time', async () => {
-          await emergency.setPausedState(true);
+          await emergency.setPaused(true);
           await advanceTime(EMERGENCY_RESPONSE_WINDOW);
         });
 
@@ -145,7 +145,7 @@ describe('EmergencyPeriod', function () {
           });
 
           it('can be turned off', async () => {
-            await emergency.setPausedState(false);
+            await emergency.setPaused(false);
             await assertEmergencyPeriod(false);
           });
         });
@@ -160,7 +160,7 @@ describe('EmergencyPeriod', function () {
           });
 
           it('cannot be turned off', async () => {
-            await expect(emergency.setPausedState(false)).to.be.revertedWith('EMERGENCY_WINDOW_EXPIRED');
+            await expect(emergency.setPaused(false)).to.be.revertedWith('EMERGENCY_WINDOW_EXPIRED');
           });
         });
       });

@@ -286,9 +286,9 @@ describe('Vault - join pool', () => {
 
         context('when there is an emergency', () => {
           sharedBeforeEach('activate emergency period', async () => {
-            const role = roleId(vault, 'setPausedState');
+            const role = roleId(vault, 'setPaused');
             await authorizer.connect(admin).grantRole(role, admin.address);
-            await vault.connect(admin).setPausedState(true);
+            await vault.connect(admin).setPaused(true);
           });
 
           it('reverts', async () => {

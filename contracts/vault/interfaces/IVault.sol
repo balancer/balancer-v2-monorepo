@@ -738,7 +738,7 @@ interface IVault is ISignaturesValidator {
      *
      * Internal balance can still be withdrawn, and Pools exited.
      */
-    function setPausedState(bool paused) external;
+    function setPaused(bool paused) external;
 
     /**
      * @dev Returns the Vault's WETH instance.

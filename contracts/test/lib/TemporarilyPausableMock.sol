@@ -21,7 +21,7 @@ contract TemporarilyPausableMock is TemporarilyPausable {
         TemporarilyPausable(responseWindow, bufferPeriod)
     {}
 
-    function setPausedState(bool paused) external {
-        _setPausedState(paused);
+    function setPaused(bool paused) external {
+        _setPaused(paused);
     }
 }

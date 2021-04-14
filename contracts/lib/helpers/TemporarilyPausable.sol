@@ -17,30 +17,28 @@ pragma solidity ^0.7.0;
 import "./BalancerErrors.sol";
 
 /**
- * @dev Provide "Emergency Stop" functionality that allows pausing a contract: for example, the Vault, or a Pool.
+ * @dev Provide "Emergency Stop" functionality that allows pausing a contract during an emergency.
  *
- * The Emergency Response Window end date is initialized on creation, and cannot be set longer than _MAX_RESPONSE_WINDOW
- * days in the future. During this period, `setPausedState` can be called to set the `_paused` state variable.
+ * The Response Window begins at contract deployment: the contract can only be paused during this time period.
  *
- * If the contract is paused when the end date passes (and it is not deliberately unpaused), it will remain in the
- * paused state through an additional Buffer Period, after which it will be automatically deactivated forever.
- * This additional time period is also set on creation, and is limited to _MAX_BUFFER_PERIOD days. This is designed
- * to provide enough time to react to the emergency, even if it is discovered shortly before the Response Window is
- * set to expire.
+ * If the contract is paused when the Response Window end time passes, it will remain in the paused state through
+ * an additional Buffer Period, after which it will be automatically unpaused forever. This is to ensure there is
+ * enough time to react to the emergency, even if the threat is discovered shortly before the Response Window expires.
  *
- * The contract may be unpaused at any time before the end of the Buffer Period. This is a safety measure: it lets
- * the emergency managers react quickly to potentially dangerous situations, knowing that this action is reversible
- * if careful analysis determines it was a false alarm.
+ * The contract may be unpaused at any time before the end of the Buffer Period. This is a safety measure:
+ * it lets the emergency managers react quickly to potentially dangerous situations, knowing that this action is
+ * reversible if careful analysis determines there was a false alarm. Note that since the contract can only be paused
+ * within the Response Window, unpausing during the Buffer Period is irrevocable.
  */
 abstract contract TemporarilyPausable {
     // This contract uses timestamps
     // solhint-disable not-rely-on-time
 
-    uint256 private constant _MAX_RESPONSE_WINDOW = 90 days;
-    uint256 private constant _MAX_BUFFER_PERIOD = 30 days;
+    uint256 private constant _MAX_RESPONSE_WINDOW_DURATION = 90 days;
+    uint256 private constant _MAX_BUFFER_PERIOD_DURATION = 30 days;
 
-    uint256 private immutable _responseWindowEndDate;
-    uint256 private immutable _bufferPeriodEndDate;
+    uint256 private immutable _responseWindowEndTime;
+    uint256 private immutable _bufferPeriodEndTime;
 
     bool private _paused;
 
@@ -51,14 +49,14 @@ abstract contract TemporarilyPausable {
         _;
     }
 
-    constructor(uint256 responseWindow, uint256 bufferPeriod) {
-        _require(responseWindow <= _MAX_RESPONSE_WINDOW, Errors.MAX_RESPONSE_WINDOW);
-        _require(bufferPeriod <= _MAX_BUFFER_PERIOD, Errors.MAX_BUFFER_PERIOD);
+    constructor(uint256 responseWindowDuration, uint256 bufferPeriodDuration) {
+        _require(responseWindowDuration <= _MAX_RESPONSE_WINDOW_DURATION, Errors.MAX_RESPONSE_WINDOW_DURATION);
+        _require(bufferPeriodDuration <= _MAX_BUFFER_PERIOD_DURATION, Errors.MAX_BUFFER_PERIOD_DURATION);
 
-        uint256 timestamp = block.timestamp;
+        uint256 responseWindowEndTime = block.timestamp + responseWindowDuration;
 
-        _responseWindowEndDate = timestamp + responseWindow;
-        _bufferPeriodEndDate = timestamp + responseWindow + bufferPeriod;
+        _responseWindowEndTime = responseWindowEndTime;
+        _bufferPeriodEndTime = responseWindowEndTime + bufferPeriodDuration;
     }
 
     function getPausedState()
@@ -66,13 +64,13 @@ abstract contract TemporarilyPausable {
         view
         returns (
             bool paused,
-            uint256 responseWindowEndDate,
-            uint256 bufferPeriodEndDate
+            uint256 responseWindowEndTime,
+            uint256 bufferPeriodEndTime
         )
     {
         paused = _isPaused();
-        responseWindowEndDate = _getResponseWindowEndDate();
-        bufferPeriodEndDate = _getBufferPeriodEndDate();
+        responseWindowEndTime = _getResponseWindowEndTime();
+        bufferPeriodEndTime = _getBufferPeriodEndTime();
     }
 
     // The contract can only be paused during the initial response window. It can be unpaused at
@@ -80,10 +78,10 @@ abstract contract TemporarilyPausable {
     //
     // Regardless of the final state of the flag, the contract is considered permanently unpaused
     // after the buffer period expires. It is then fully functional and trustless.
-    function _setPausedState(bool paused) internal {
-        uint256 endDate = paused ? _getResponseWindowEndDate() : _getBufferPeriodEndDate();
+    function _setPaused(bool paused) internal {
+        uint256 endTime = paused ? _getResponseWindowEndTime() : _getBufferPeriodEndTime();
 
-        _require(block.timestamp < endDate, Errors.EMERGENCY_WINDOW_EXPIRED);
+        _require(block.timestamp < endTime, Errors.EMERGENCY_WINDOW_EXPIRED);
 
         _paused = paused;
 
@@ -95,14 +93,14 @@ abstract contract TemporarilyPausable {
     }
 
     function _isPaused() internal view returns (bool) {
-        return (_paused && block.timestamp < _getBufferPeriodEndDate());
+        return (_paused && block.timestamp < _getBufferPeriodEndTime());
     }
 
-    function _getResponseWindowEndDate() internal view returns (uint256) {
-        return _responseWindowEndDate;
+    function _getResponseWindowEndTime() internal view returns (uint256) {
+        return _responseWindowEndTime;
     }
 
-    function _getBufferPeriodEndDate() internal view returns (uint256) {
-        return _bufferPeriodEndDate;
+    function _getBufferPeriodEndTime() internal view returns (uint256) {
+        return _bufferPeriodEndTime;
     }
 }

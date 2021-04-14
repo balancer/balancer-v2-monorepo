@@ -202,14 +202,14 @@ describe('BasePool', function () {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = roleId(pool, 'setPausedState');
+        role = roleId(pool, 'setPaused');
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 
       it('can change the emergency period status', async () => {
         expect(await authorizer.hasRole(role, admin.address)).to.be.true;
 
-        await pool.connect(admin).setPausedState(true);
+        await pool.connect(admin).setPaused(true);
 
         const { paused } = await pool.getPausedState();
         expect(paused).to.be.true;
@@ -220,13 +220,13 @@ describe('BasePool', function () {
 
         expect(await authorizer.hasRole(role, admin.address)).to.be.false;
 
-        await expect(pool.connect(admin).setPausedState(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.connect(admin).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
     context('when the sender does not have the role to do it', () => {
       it('reverts', async () => {
-        await expect(pool.connect(other).setPausedState(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.connect(other).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });

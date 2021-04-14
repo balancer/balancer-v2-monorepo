@@ -129,8 +129,8 @@ library Errors {
     uint256 internal constant SENDER_NOT_ALLOWED = 401;
     uint256 internal constant PAUSED = 402;
     uint256 internal constant EMERGENCY_WINDOW_EXPIRED = 403;
-    uint256 internal constant MAX_RESPONSE_WINDOW = 404;
-    uint256 internal constant MAX_BUFFER_PERIOD = 405;
+    uint256 internal constant MAX_RESPONSE_WINDOW_DURATION = 404;
+    uint256 internal constant MAX_BUFFER_PERIOD_DURATION = 405;
     uint256 internal constant INSUFFICIENT_BALANCE = 406;
     uint256 internal constant INSUFFICIENT_ALLOWANCE = 407;
     uint256 internal constant ERC20_TRANSFER_FROM_ZERO_ADDRESS = 408;

@@ -62,8 +62,8 @@ contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function setPausedState(bool paused) external override nonReentrant authenticate {
-        _setPausedState(paused);
+    function setPaused(bool paused) external override nonReentrant authenticate {
+        _setPaused(paused);
     }
 
     // solhint-disable-next-line func-name-mixedcase

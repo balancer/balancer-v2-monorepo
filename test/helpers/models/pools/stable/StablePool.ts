@@ -465,8 +465,8 @@ export default class StablePool {
   }
 
   async activateEmergencyPeriod(): Promise<void> {
-    const role = roleId(this.instance, 'setPausedState');
+    const role = roleId(this.instance, 'setPaused');
     await this.vault.grantRole(role);
-    await this.instance.setPausedState(true);
+    await this.instance.setPaused(true);
   }
 }

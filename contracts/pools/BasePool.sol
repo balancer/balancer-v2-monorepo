@@ -171,8 +171,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     // Caller must be approved by the Vault's Authorizer
-    function setPausedState(bool paused) external authenticate {
-        _setPausedState(paused);
+    function setPaused(bool paused) external authenticate {
+        _setPaused(paused);
     }
 
     // Join / Exit Hooks

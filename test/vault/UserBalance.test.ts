@@ -1351,9 +1351,9 @@ describe('Vault - user balance', () => {
       });
 
       sharedBeforeEach('activate emergency period', async () => {
-        const role = roleId(vault, 'setPausedState');
+        const role = roleId(vault, 'setPaused');
         await authorizer.connect(admin).grantRole(role, admin.address);
-        await vault.connect(admin).setPausedState(true);
+        await vault.connect(admin).setPaused(true);
       });
 
       context('when only withdrawing internal balance', () => {

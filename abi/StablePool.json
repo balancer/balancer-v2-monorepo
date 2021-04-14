@@ -262,12 +262,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowEndDate",
+        "name": "responseWindowEndTime",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "bufferPeriodEndDate",
+        "name": "bufferPeriodEndTime",
         "type": "uint256"
       }
     ],
@@ -668,7 +668,7 @@
         "type": "bool"
       }
     ],
-    "name": "setPausedState",
+    "name": "setPaused",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -162,14 +162,14 @@ describe('VaultAuthorization', function () {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = roleId(vault, 'setPausedState');
+        role = roleId(vault, 'setPaused');
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 
       it('can change the emergency period status', async () => {
         expect(await authorizer.hasRole(role, admin.address)).to.be.true;
 
-        await vault.connect(admin).setPausedState(true);
+        await vault.connect(admin).setPaused(true);
 
         const { paused } = await vault.getPausedState();
         expect(paused).to.be.true;
@@ -180,13 +180,13 @@ describe('VaultAuthorization', function () {
 
         expect(await authorizer.hasRole(role, admin.address)).to.be.false;
 
-        await expect(vault.connect(admin).setPausedState(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(vault.connect(admin).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
     context('when the sender does not have the role to do it', () => {
       it('reverts', async () => {
-        await expect(vault.connect(other).setPausedState(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(vault.connect(other).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });
