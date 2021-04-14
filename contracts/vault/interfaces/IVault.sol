@@ -97,7 +97,7 @@ interface IVault is ISignaturesValidator {
     // gas costs when compared to relying on plain ERC20 transfers, leading to large savings for frequent users.
     //
     // Internal Balance management features batching, which means each a single contract call can be used to perform
-    // multiple operations of the same kind (deposit, withdraw or transfer) at once.
+    // multiple operations of different kinds, with different senders and recipients, at once.
 
     /**
      * @dev Returns `user`'s Internal Balance for a set of tokens.
@@ -669,8 +669,12 @@ interface IVault is ISignaturesValidator {
     // This concept is unrelated to the IAsset interface.
 
     /**
-     * @dev Called by a Pool's Asset Manager to perform an operation (withdraw, deposit, or update) in the Vault.
-     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
+     * @dev Performs a set of Pool balance operations, which may be either withdrawals, deposits or updates.
+     *
+     * Pool Balance management features batching, which means each a single contract call can be used to perform
+     * multiple operations of of different kinds, with different Pools and tokens, at once.
+     *
+     * For each operation, the caller must be registered as the Asset Manager for `token` in `poolId`.
      */
     function managePoolBalance(PoolBalanceOp[] memory ops) external;
 

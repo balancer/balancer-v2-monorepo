@@ -17,6 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import "hardhat/console.sol";
+
 import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
@@ -311,7 +313,7 @@ abstract contract PoolAssets is
         return balances;
     }
 
-    // Assets under management
+    // Asset Manager
 
     function managePoolBalance(PoolBalanceOp[] memory ops) external override nonReentrant noEmergencyPeriod {
         for (uint256 i = 0; i < ops.length; ++i) {
@@ -324,13 +326,21 @@ abstract contract PoolAssets is
 
             PoolBalanceOpKind kind = ops[i].kind;
             uint256 amount = ops[i].amount;
-            (int256 cashDelta, int256 managedDelta) = _managePoolBalance(kind, poolId, token, amount);
+            (int256 cashDelta, int256 managedDelta) = _performPoolManagementOperation(kind, poolId, token, amount);
 
             emit PoolBalanceManaged(poolId, msg.sender, token, cashDelta, managedDelta);
         }
     }
 
-    function _managePoolBalance(
+    /**
+     * @dev Performs the `kind` Asset Manager operation on a Pool.
+     *
+     * Withdrawals will transfer `amount` tokens to the caller, deposits will transfer `amount` tokens from the caller,
+     * and updates will set the managed balance to `amount`.
+     *
+     * Returns a tuple with the 'cash' and 'managed' balance deltas as a result of this call.
+     */
+    function _performPoolManagementOperation(
         PoolBalanceOpKind kind,
         bytes32 poolId,
         IERC20 token,
@@ -349,7 +359,9 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Returns the cash and managed balance deltas as a result of this call.
+     * @dev Moves `amount` tokens from a Pool's 'cash' to 'managed' balance, and transfers them to the caller.
+     *
+     * Returns the 'cash' and 'managed' balance deltas as a result of this call, which will be complementary.
      */
     function _withdrawPoolBalance(
         bytes32 poolId,
@@ -377,7 +389,9 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Returns the cash and managed balance deltas as a result of this call.
+     * @dev Moves `amount` tokens from a Pool's 'managed' to 'cash' balance, and transfers them from the caller.
+     *
+     * Returns the 'cash' and 'managed' balance deltas as a result of this call, which will be complementary.
      */
     function _depositPoolBalance(
         bytes32 poolId,
@@ -405,7 +419,9 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Returns the cash and managed balance deltas as a result of this call.
+     * @dev Sets a Pool's 'managed' balance to `amount`.
+     *
+     * Returns the 'cash' and 'managed' balance deltas as a result of this call (the 'cash' delta will always be zero).
      */
     function _updateManagedBalance(
         bytes32 poolId,
