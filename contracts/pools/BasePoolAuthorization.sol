@@ -48,7 +48,7 @@ abstract contract BasePoolAuthorization is Authentication {
             return msg.sender == _owner;
         } else {
             // Alternatively, we query the Authorizer for permission.
-            return _getAuthorizer().hasRole(roleId, account);
+            return _getAuthorizer().hasRoleIn(roleId, account, address(this));
         }
     }
 

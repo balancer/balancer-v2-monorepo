@@ -19,8 +19,10 @@ describe('BasePool', function () {
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
-  const MAX_SWAP_FEE = fp(0.1);
+  const WHERE = ZERO_ADDRESS;
+
   const MIN_SWAP_FEE = fp(0.000001);
+  const MAX_SWAP_FEE = fp(0.1);
 
   before(async () => {
     [, admin, poolOwner, other] = await ethers.getSigners();
@@ -234,7 +236,7 @@ describe('BasePool', function () {
       });
 
       it('can change the emergency period status', async () => {
-        expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
 
         await pool.connect(admin).setEmergencyPeriod(true);
 
@@ -245,7 +247,7 @@ describe('BasePool', function () {
       it('can not change the emergency period if the role is revoked', async () => {
         await authorizer.connect(admin).revokeRole(role, admin.address);
 
-        expect(await authorizer.hasRole(role, admin.address)).to.be.false;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
 
         await expect(pool.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });

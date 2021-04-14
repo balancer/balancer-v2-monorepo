@@ -15,5 +15,9 @@
 pragma solidity ^0.7.0;
 
 interface IAuthorizer {
-    function hasRole(bytes32 role, address account) external view returns (bool);
+    function hasRoleIn(
+        bytes32 role,
+        address account,
+        address where
+    ) external view returns (bool);
 }
