@@ -568,10 +568,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         }
     }
 
-    /**
-     * @dev This contract relies on the roles defined by the Vault's own Authorizer.
-     */
     function _getAuthorizer() internal view override returns (IAuthorizer) {
+        // If the Pool has no owner, we rely on the Vault's Authorizer instead. This lets Balancer Governance manage
+        // which accounts can call permissioned functions, used to e.g. set swap fees.
         return _getVault().getAuthorizer();
     }
 
