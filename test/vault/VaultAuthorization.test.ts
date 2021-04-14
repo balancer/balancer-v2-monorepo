@@ -14,6 +14,8 @@ describe('VaultAuthorization', function () {
   let admin: SignerWithAddress, other: SignerWithAddress;
   let relayer: SignerWithAddress;
 
+  const WHERE = ZERO_ADDRESS;
+
   before('setup signers', async () => {
     [, admin, other, relayer] = await ethers.getSigners();
   });
@@ -54,7 +56,7 @@ describe('VaultAuthorization', function () {
       });
 
       it('can change the authorizer to another address', async () => {
-        expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
 
         await vault.connect(admin).changeAuthorizer(other.address);
 
@@ -62,7 +64,7 @@ describe('VaultAuthorization', function () {
       });
 
       it('emits an event when authorizer changed', async () => {
-        expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
 
         const receipt = await (await vault.connect(admin).changeAuthorizer(other.address)).wait();
         expectEvent.inReceipt(receipt, 'AuthorizerChanged', {
@@ -72,7 +74,7 @@ describe('VaultAuthorization', function () {
       });
 
       it('can change the authorizer to the zero address', async () => {
-        expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
 
         await vault.connect(admin).changeAuthorizer(ZERO_ADDRESS);
 
@@ -82,7 +84,7 @@ describe('VaultAuthorization', function () {
       it('can not change the authorizer if the role was revoked', async () => {
         await authorizer.connect(admin).revokeRole(role, admin.address);
 
-        expect(await authorizer.hasRole(role, admin.address)).to.be.false;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
 
         await expect(vault.connect(admin).changeAuthorizer(other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
@@ -167,7 +169,7 @@ describe('VaultAuthorization', function () {
       });
 
       it('can change the emergency period status', async () => {
-        expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
 
         await vault.connect(admin).setEmergencyPeriod(true);
 
@@ -178,7 +180,7 @@ describe('VaultAuthorization', function () {
       it('can not change the emergency period if the role was revoked', async () => {
         await authorizer.connect(admin).revokeRole(role, admin.address);
 
-        expect(await authorizer.hasRole(role, admin.address)).to.be.false;
+        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
 
         await expect(vault.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });

@@ -39,7 +39,8 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
     // bytes32 internal constant BATCH_SWAP_TYPE_HASH = keccak256("BatchSwapAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
     bytes32 internal constant BATCH_SWAP_TYPE_HASH = 0x19798cf6a20b933b5582bab474b88a347f49600d7885bea767cebdf93e67e25b;
     // bytes32 internal constant CHANGE_RELAYER_TYPE_HASH = keccak256("ChangeRelayerAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32 internal constant CHANGE_RELAYER_TYPE_HASH = 0xa287a6d125737644e801d3f7878ec24503dc3f766efac5bdc0fe4932726c75f9;
+    bytes32
+        internal constant CHANGE_RELAYER_TYPE_HASH = 0xa287a6d125737644e801d3f7878ec24503dc3f766efac5bdc0fe4932726c75f9;
     /* solhint-enable max-line-length */
     /* solhint-enable prettier/prettier */
     /* solhint-enable var-name-mixedcase */
@@ -115,7 +116,7 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
     }
 
     function _canPerform(bytes32 roleId, address user) internal view override returns (bool) {
-        return _authorizer.hasRole(roleId, user);
+        return _authorizer.hasRoleIn(roleId, user, address(this));
     }
 
     function _typeHash() internal pure override returns (bytes32 hash) {
