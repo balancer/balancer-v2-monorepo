@@ -79,9 +79,11 @@ abstract contract TemporarilyPausable {
     // Regardless of the final state of the flag, the contract is considered permanently unpaused
     // after the buffer period expires. It is then fully functional and trustless.
     function _setPaused(bool paused) internal {
-        uint256 endTime = paused ? _getResponseWindowEndTime() : _getBufferPeriodEndTime();
-
-        _require(block.timestamp < endTime, Errors.EMERGENCY_WINDOW_EXPIRED);
+        if (paused) {
+            _require(block.timestamp < _getResponseWindowEndTime(), Errors.EMERGENCY_WINDOW_EXPIRED);
+        } else {
+            _require(block.timestamp < _getBufferPeriodEndTime(), Errors.BUFFER_PERIOD_EXPIRED);
+        }
 
         _paused = paused;
 

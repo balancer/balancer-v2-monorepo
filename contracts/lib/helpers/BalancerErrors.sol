@@ -150,6 +150,7 @@ library Errors {
     uint256 internal constant GRANT_SENDER_NOT_ADMIN = 422;
     uint256 internal constant REVOKE_SENDER_NOT_ADMIN = 423;
     uint256 internal constant RENOUNCE_SENDER_NOT_ALLOWED = 424;
+    uint256 internal constant BUFFER_PERIOD_EXPIRED = 425;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

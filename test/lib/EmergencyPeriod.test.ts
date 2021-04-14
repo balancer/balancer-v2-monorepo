@@ -162,7 +162,7 @@ describe('EmergencyPeriod', function () {
           });
 
           it('cannot be turned off', async () => {
-            await expect(emergency.setPaused(false)).to.be.revertedWith('EMERGENCY_WINDOW_EXPIRED');
+            await expect(emergency.setPaused(false)).to.be.revertedWith('BUFFER_PERIOD_EXPIRED');
           });
         });
       });
