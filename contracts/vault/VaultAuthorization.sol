@@ -61,7 +61,7 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
         _;
     }
 
-    constructor(IAuthorizer authorizer) {
+    constructor(IAuthorizer authorizer) Authentication(bytes32(uint256(address(this)))) {
         _authorizer = authorizer;
     }
 
@@ -118,11 +118,6 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
     function _canPerform(bytes32 roleId, address user) internal view override returns (bool) {
         // Role management is delegated to the Authorizer.
         return _authorizer.hasRoleIn(roleId, user, address(this));
-    }
-
-    function _getRole(bytes4 selector) internal view override returns (bytes32) {
-        // The Vault uses its own address to make its roles unique among all contracts that rely on the Authorizer.
-        return keccak256(abi.encodePacked(address(this), selector));
     }
 
     function _typeHash() internal pure override returns (bytes32 hash) {

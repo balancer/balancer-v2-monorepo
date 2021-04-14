@@ -55,7 +55,7 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     event SwapFeeChanged(uint256 newSwapFee);
     event FlashLoanFeeChanged(uint256 newFlashLoanFee);
 
-    constructor(IVault _vault) {
+    constructor(IVault _vault) Authentication(bytes32(uint256(address(this)))) {
         vault = _vault;
     }
 
@@ -102,10 +102,6 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
 
     function getAuthorizer() external view returns (IAuthorizer) {
         return _getAuthorizer();
-    }
-
-    function _getRole(bytes4 selector) internal view override returns (bytes32) {
-        return keccak256(abi.encodePacked(address(this), selector));
     }
 
     function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
