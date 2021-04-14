@@ -8,98 +8,98 @@ import { advanceTime, currentTimestamp, fromNow, DAY, MONTH } from '../../lib/he
 describe('EmergencyPeriod', function () {
   let emergency: Contract;
 
-  const deployEmergencyPeriod = async ({ emergencyPeriod = 0, emergencyPeriodCheckExtension = 0 }) => {
-    emergency = await deploy('EmergencyPeriodMock', { args: [emergencyPeriod, emergencyPeriodCheckExtension] });
+  const deployEmergencyPeriod = async ({ emergencyResponseWindow = 0, emergencyBufferPeriod = 0 }) => {
+    emergency = await deploy('TemporarilyPausableMock', { args: [emergencyResponseWindow, emergencyBufferPeriod] });
   };
 
   const assertEmergencyPeriod = async (
     expectedStatus: boolean,
-    expectedEndDate?: BigNumberish,
-    expectedCheckExtension?: BigNumberish
+    expectedResponseWindow?: BigNumberish,
+    expectedBufferPeriod?: BigNumberish
   ): Promise<void> => {
-    const { active, endDate, checkEndDate } = await emergency.getEmergencyPeriod();
+    const { paused, responseWindowEndDate, bufferPeriodEndDate } = await emergency.getPausedState();
 
-    expect(active).to.equal(expectedStatus);
-    if (expectedEndDate) expect(endDate).to.equal(expectedEndDate);
-    if (expectedCheckExtension) expect(checkEndDate).to.equal(endDate.add(expectedCheckExtension));
+    expect(paused).to.equal(expectedStatus);
+    if (expectedResponseWindow) expect(responseWindowEndDate).to.equal(expectedResponseWindow);
+    if (expectedBufferPeriod) expect(bufferPeriodEndDate).to.equal(responseWindowEndDate.add(expectedBufferPeriod));
   };
 
   describe('initialization', () => {
     it('can be initialized with an emergency period', async () => {
-      const emergencyPeriod = MONTH;
-      const emergencyPeriodCheckExtension = MONTH;
+      const emergencyResponseWindow = MONTH;
+      const emergencyBufferPeriod = MONTH;
 
-      await deployEmergencyPeriod({ emergencyPeriod, emergencyPeriodCheckExtension });
+      await deployEmergencyPeriod({ emergencyResponseWindow, emergencyBufferPeriod });
 
-      await assertEmergencyPeriod(false, await fromNow(emergencyPeriod), emergencyPeriodCheckExtension);
+      await assertEmergencyPeriod(false, await fromNow(emergencyResponseWindow), emergencyBufferPeriod);
     });
 
     it('can be initialized without emergency period', async () => {
-      const emergencyPeriod = 0;
-      const emergencyPeriodCheckExtension = 0;
+      const emergencyResponseWindow = 0;
+      const emergencyBufferPeriod = 0;
 
-      await deployEmergencyPeriod({ emergencyPeriod, emergencyPeriodCheckExtension });
+      await deployEmergencyPeriod({ emergencyResponseWindow, emergencyBufferPeriod });
 
-      await assertEmergencyPeriod(false, await currentTimestamp(), emergencyPeriodCheckExtension);
+      await assertEmergencyPeriod(false, await currentTimestamp(), emergencyBufferPeriod);
     });
 
     it('cannot be initialized with an emergency period greater than 90 days', async () => {
-      const emergencyPeriod = DAY * 91;
+      const emergencyResponseWindow = DAY * 91;
 
-      await expect(deployEmergencyPeriod({ emergencyPeriod })).to.be.revertedWith('MAX_EMERGENCY_PERIOD');
+      await expect(deployEmergencyPeriod({ emergencyResponseWindow })).to.be.revertedWith('MAX_RESPONSE_WINDOW');
     });
 
     it('cannot be initialized with an emergency period check extension greater than 30 days', async () => {
-      const emergencyPeriod = MONTH;
-      const emergencyPeriodCheckExtension = DAY * 31;
+      const emergencyResponseWindow = MONTH;
+      const emergencyBufferPeriod = DAY * 31;
 
-      await expect(deployEmergencyPeriod({ emergencyPeriod, emergencyPeriodCheckExtension })).to.be.revertedWith(
-        'MAX_EMERGENCY_PERIOD_CHECK_EXT'
+      await expect(deployEmergencyPeriod({ emergencyResponseWindow, emergencyBufferPeriod })).to.be.revertedWith(
+        'MAX_BUFFER_PERIOD'
       );
     });
   });
 
   describe('set emergency period', () => {
-    const EMERGENCY_PERIOD = MONTH * 3;
-    const EMERGENCY_PERIOD_CHECK_EXTENSION = MONTH;
+    const EMERGENCY_RESPONSE_WINDOW = MONTH * 3;
+    const EMERGENCY_BUFFER_PERIOD = MONTH;
 
     sharedBeforeEach('deploy emergency period', async () => {
       await deployEmergencyPeriod({
-        emergencyPeriod: EMERGENCY_PERIOD,
-        emergencyPeriodCheckExtension: EMERGENCY_PERIOD_CHECK_EXTENSION,
+        emergencyResponseWindow: EMERGENCY_RESPONSE_WINDOW,
+        emergencyBufferPeriod: EMERGENCY_BUFFER_PERIOD,
       });
     });
 
     context('before the emergency period end date', () => {
       sharedBeforeEach('advance some time', async () => {
-        await advanceTime(EMERGENCY_PERIOD / 2);
+        await advanceTime(EMERGENCY_RESPONSE_WINDOW / 2);
       });
 
       it('can change the emergency period status', async () => {
-        const { endDate: previousEndDate } = await emergency.getEmergencyPeriod();
+        const { endDate: previousEndDate } = await emergency.getPausedState();
 
-        await emergency.setEmergencyPeriod(true);
+        await emergency.setPausedState(true);
 
-        await assertEmergencyPeriod(true, previousEndDate, EMERGENCY_PERIOD_CHECK_EXTENSION);
+        await assertEmergencyPeriod(true, previousEndDate, EMERGENCY_BUFFER_PERIOD);
       });
 
       it('can change the emergency period status multiple times', async () => {
-        const { endDate: previousEndDate } = await emergency.getEmergencyPeriod();
+        const { endDate: previousEndDate } = await emergency.getPausedState();
 
-        await emergency.setEmergencyPeriod(true);
-        await assertEmergencyPeriod(true, previousEndDate, EMERGENCY_PERIOD_CHECK_EXTENSION);
+        await emergency.setPausedState(true);
+        await assertEmergencyPeriod(true, previousEndDate, EMERGENCY_BUFFER_PERIOD);
 
-        await advanceTime(EMERGENCY_PERIOD / 4);
+        await advanceTime(EMERGENCY_RESPONSE_WINDOW / 4);
 
-        await emergency.setEmergencyPeriod(false);
-        await assertEmergencyPeriod(false, previousEndDate, EMERGENCY_PERIOD_CHECK_EXTENSION);
+        await emergency.setPausedState(false);
+        await assertEmergencyPeriod(false, previousEndDate, EMERGENCY_BUFFER_PERIOD);
       });
     });
 
     context('when the emergency period end date has been reached', () => {
       context('when the emergency period was off', () => {
         sharedBeforeEach('advance time', async () => {
-          await advanceTime(EMERGENCY_PERIOD);
+          await advanceTime(EMERGENCY_RESPONSE_WINDOW);
         });
 
         function itCannotChangeTheEmergencyPeriod() {
@@ -108,13 +108,13 @@ describe('EmergencyPeriod', function () {
           });
 
           it('cannot change the emergency period', async () => {
-            await expect(emergency.setEmergencyPeriod(true)).to.be.revertedWith('EMERGENCY_PERIOD_FINISHED');
+            await expect(emergency.setPausedState(true)).to.be.revertedWith('EMERGENCY_WINDOW_EXPIRED');
           });
         }
 
         context('before the check extension', () => {
           sharedBeforeEach('advance some time', async () => {
-            await advanceTime(EMERGENCY_PERIOD_CHECK_EXTENSION / 2);
+            await advanceTime(EMERGENCY_BUFFER_PERIOD / 2);
           });
 
           itCannotChangeTheEmergencyPeriod();
@@ -122,7 +122,7 @@ describe('EmergencyPeriod', function () {
 
         context('after the check extension', () => {
           sharedBeforeEach('reach the check extension', async () => {
-            await advanceTime(EMERGENCY_PERIOD_CHECK_EXTENSION);
+            await advanceTime(EMERGENCY_BUFFER_PERIOD);
           });
 
           itCannotChangeTheEmergencyPeriod();
@@ -131,13 +131,13 @@ describe('EmergencyPeriod', function () {
 
       context('when the emergency period was on', () => {
         sharedBeforeEach('turn on and advance time', async () => {
-          await emergency.setEmergencyPeriod(true);
-          await advanceTime(EMERGENCY_PERIOD);
+          await emergency.setPausedState(true);
+          await advanceTime(EMERGENCY_RESPONSE_WINDOW);
         });
 
         context('before the check extension', () => {
           sharedBeforeEach('advance some time', async () => {
-            await advanceTime(EMERGENCY_PERIOD_CHECK_EXTENSION / 2);
+            await advanceTime(EMERGENCY_BUFFER_PERIOD / 2);
           });
 
           it('considers the emergency period on', async () => {
@@ -145,14 +145,14 @@ describe('EmergencyPeriod', function () {
           });
 
           it('can be turned off', async () => {
-            await emergency.setEmergencyPeriod(false);
+            await emergency.setPausedState(false);
             await assertEmergencyPeriod(false);
           });
         });
 
         context('after the check extension', () => {
           sharedBeforeEach('reach the check extension', async () => {
-            await advanceTime(EMERGENCY_PERIOD_CHECK_EXTENSION);
+            await advanceTime(EMERGENCY_BUFFER_PERIOD);
           });
 
           it('considers the emergency period off', async () => {
@@ -160,7 +160,7 @@ describe('EmergencyPeriod', function () {
           });
 
           it('cannot be turned off', async () => {
-            await expect(emergency.setEmergencyPeriod(false)).to.be.revertedWith('EMERGENCY_PERIOD_FINISHED');
+            await expect(emergency.setPausedState(false)).to.be.revertedWith('EMERGENCY_WINDOW_EXPIRED');
           });
         });
       });

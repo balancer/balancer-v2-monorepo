@@ -139,14 +139,14 @@ describe('Vault - swap validation', () => {
 
       context('when there is an emergency', () => {
         sharedBeforeEach('activate emergency period', async () => {
-          const role = roleId(vault, 'setEmergencyPeriod');
+          const role = roleId(vault, 'setPausedState');
           await authorizer.connect(admin).grantRole(role, admin.address);
-          await vault.connect(admin).setEmergencyPeriod(true);
+          await vault.connect(admin).setPausedState(true);
         });
 
         it('reverts', async () => {
           await expect(doSwap(funds, Array(tokens.length).fill(MAX_INT256), await fromNow(60))).to.be.revertedWith(
-            'EMERGENCY_PERIOD_ON'
+            'PAUSED'
           );
         });
       });

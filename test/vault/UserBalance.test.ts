@@ -1351,9 +1351,9 @@ describe('Vault - user balance', () => {
       });
 
       sharedBeforeEach('activate emergency period', async () => {
-        const role = roleId(vault, 'setEmergencyPeriod');
+        const role = roleId(vault, 'setPausedState');
         await authorizer.connect(admin).grantRole(role, admin.address);
-        await vault.connect(admin).setEmergencyPeriod(true);
+        await vault.connect(admin).setPausedState(true);
       });
 
       context('when only withdrawing internal balance', () => {
@@ -1393,7 +1393,7 @@ describe('Vault - user balance', () => {
             op(OP_KIND.WITHDRAW_INTERNAL, tokens.MKR, 1, otherRecipient, recipient),
           ];
 
-          await expect(vault.connect(relayer).manageUserBalance(ops)).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(vault.connect(relayer).manageUserBalance(ops)).to.be.revertedWith('PAUSED');
         });
       });
     });

@@ -52,7 +52,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
 
         // Cache for these checks so we only perform them once (if at all).
         bool checkedCallerIsRelayer = false;
-        bool checkedEmergencySwitchIsOff = false;
+        bool checkedNotPaused = false;
 
         for (uint256 i = 0; i < ops.length; i++) {
             UserBalanceOpKind kind;
@@ -75,9 +75,9 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
 
                 // We cache the result of the Emergency Switch check and skip it for other operations in this same
                 // transaction (if any).
-                if (!checkedEmergencySwitchIsOff) {
-                    _ensureInactiveEmergencyPeriod();
-                    checkedEmergencySwitchIsOff = true;
+                if (!checkedNotPaused) {
+                    _ensureNotPaused();
+                    checkedNotPaused = true;
                 }
 
                 if (kind == UserBalanceOpKind.DEPOSIT_INTERNAL) {

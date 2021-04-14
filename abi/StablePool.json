@@ -76,11 +76,11 @@
       {
         "indexed": false,
         "internalType": "bool",
-        "name": "active",
+        "name": "paused",
         "type": "bool"
       }
     ],
-    "name": "EmergencyPeriodChanged",
+    "name": "PausedStateChanged",
     "type": "event"
   },
   {
@@ -253,21 +253,21 @@
   },
   {
     "inputs": [],
-    "name": "getEmergencyPeriod",
+    "name": "getPausedState",
     "outputs": [
       {
         "internalType": "bool",
-        "name": "active",
+        "name": "paused",
         "type": "bool"
       },
       {
         "internalType": "uint256",
-        "name": "endDate",
+        "name": "responseWindowEndDate",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "checkEndDate",
+        "name": "bufferPeriodEndDate",
         "type": "uint256"
       }
     ],
@@ -664,11 +664,11 @@
     "inputs": [
       {
         "internalType": "bool",
-        "name": "active",
+        "name": "paused",
         "type": "bool"
       }
     ],
-    "name": "setEmergencyPeriod",
+    "name": "setPausedState",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

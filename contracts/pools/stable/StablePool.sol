@@ -65,7 +65,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override whenNotPaused returns (uint256) {
         uint256 amountOut = StableMath._calcOutGivenIn(
             _amplificationParameter,
             balances,
@@ -82,7 +82,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override whenNotPaused returns (uint256) {
         uint256 amountIn = StableMath._calcInGivenOut(
             _amplificationParameter,
             balances,
@@ -101,7 +101,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         address,
         address,
         bytes memory userData
-    ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
+    ) internal virtual override whenNotPaused returns (uint256, uint256[] memory) {
         StablePool.JoinKind kind = userData.joinKind();
         _require(kind == StablePool.JoinKind.INIT, Errors.UNINITIALIZED);
 
@@ -131,7 +131,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         internal
         virtual
         override
-        noEmergencyPeriod
+        whenNotPaused
         returns (
             uint256,
             uint256[] memory,
@@ -244,8 +244,10 @@ contract StablePool is BaseGeneralPool, StableMath {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        // To avoid extra calculations, protocol fees are not charged when the emergency period is active
-        if (_isEmergencyPeriodInactive()) {
+        // To avoid extra calculations, protocol fees are not charged whem the contract is paused
+        if (_isPaused()) {
+            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
+        } else {
             // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
             // spending gas calculating fees during each individual swap
@@ -256,8 +258,6 @@ contract StablePool is BaseGeneralPool, StableMath {
             for (uint256 i = 0; i < _getTotalTokens(); ++i) {
                 balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
             }
-        } else {
-            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 
         (bptAmountIn, amountsOut) = _doExit(balances, userData);
@@ -289,7 +289,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     function _exitExactBPTInForTokenOut(uint256[] memory balances, bytes memory userData)
         private
         view
-        noEmergencyPeriod
+        whenNotPaused
         returns (uint256, uint256[] memory)
     {
         // This exit function is disabled if the emergency period is active.
@@ -332,7 +332,7 @@ contract StablePool is BaseGeneralPool, StableMath {
     function _exitBPTInForExactTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
-        noEmergencyPeriod
+        whenNotPaused
         returns (uint256, uint256[] memory)
     {
         // This exit function is disabled if the emergency period is active.

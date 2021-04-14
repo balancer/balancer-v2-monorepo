@@ -199,7 +199,7 @@ describe('StablePool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.init({ initialBalances })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(pool.init({ initialBalances })).to.be.revertedWith('PAUSED');
         });
       });
 
@@ -253,7 +253,7 @@ describe('StablePool', function () {
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();
 
-            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('PAUSED');
           });
         });
       });
@@ -302,7 +302,7 @@ describe('StablePool', function () {
           it('fails if the emergency period is active', async () => {
             await pool.activateEmergencyPeriod();
 
-            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('PAUSED');
           });
         });
       });
@@ -466,7 +466,7 @@ describe('StablePool', function () {
           await pool.activateEmergencyPeriod();
 
           const amountsOut = initialBalances;
-          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
         });
       });
     });
@@ -500,7 +500,7 @@ describe('StablePool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('PAUSED');
         });
       });
 
@@ -525,7 +525,7 @@ describe('StablePool', function () {
         it('fails if the emergency period is active', async () => {
           await pool.activateEmergencyPeriod();
 
-          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('PAUSED');
         });
       });
     });

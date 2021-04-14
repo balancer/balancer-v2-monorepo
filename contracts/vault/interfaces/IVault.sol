@@ -728,9 +728,9 @@ interface IVault is ISignaturesValidator {
      * @dev Safety mechanism to halt most Vault operations in the event of an emergency - typically detection
      * of an error in some part of the system.
      *
-     * The emergency stop can only be activated during an initial time period, after which it is forever disabled.
+     * The Vault can only be paused during an initial time period, after which pausing is forever disabled.
      *
-     * While the emergency stop is active, the following features are disabled:
+     * While the contract is paused, the following features are disabled:
      * - depositing and transferring internal balance
      * - transferring external balance (using the Vault's allowance)
      * - swaps
@@ -738,7 +738,7 @@ interface IVault is ISignaturesValidator {
      *
      * Internal balance can still be withdrawn, and Pools exited.
      */
-    function setEmergencyPeriod(bool active) external;
+    function setPausedState(bool paused) external;
 
     /**
      * @dev Returns the Vault's WETH instance.

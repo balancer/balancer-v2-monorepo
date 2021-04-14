@@ -18,14 +18,20 @@ pragma experimental ABIEncoderV2;
 import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/Authentication.sol";
-import "../lib/helpers/EmergencyPeriod.sol";
+import "../lib/helpers/TemporarilyPausable.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/SignaturesValidator.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
 
-abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication, SignaturesValidator, EmergencyPeriod {
+abstract contract VaultAuthorization is
+    IVault,
+    ReentrancyGuard,
+    Authentication,
+    SignaturesValidator,
+    TemporarilyPausable
+{
     /* solhint-disable max-line-length */
     /* solhint-disable prettier/prettier */
     /* solhint-disable var-name-mixedcase */
@@ -80,7 +86,7 @@ abstract contract VaultAuthorization is IVault, ReentrancyGuard, Authentication,
         address sender,
         address relayer,
         bool allowed
-    ) external override nonReentrant noEmergencyPeriod authenticateFor(sender) {
+    ) external override nonReentrant whenNotPaused authenticateFor(sender) {
         _allowedRelayers[sender][relayer] = allowed;
         emit RelayerAllowanceChanged(relayer, sender, allowed);
     }

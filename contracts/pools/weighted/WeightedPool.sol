@@ -154,7 +154,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view virtual override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override whenNotPaused returns (uint256) {
         // Swaps are disabled while the emergency period is active.
 
         return
@@ -171,7 +171,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view virtual override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override whenNotPaused returns (uint256) {
         // Swaps are disabled while the emergency period is active.
 
         return
@@ -191,7 +191,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         address,
         address,
         bytes memory userData
-    ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
+    ) internal virtual override whenNotPaused returns (uint256, uint256[] memory) {
         // It would be strange for a Pool's emergency period to be active before it is initialized,
         // but for consistency we prevent initialization in this case.
 
@@ -229,7 +229,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         internal
         virtual
         override
-        noEmergencyPeriod
+        whenNotPaused
         returns (
             uint256,
             uint256[] memory,
@@ -350,7 +350,11 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         uint256[] memory normalizedWeights = _normalizedWeights();
 
-        if (_isEmergencyPeriodInactive()) {
+        if (_isPaused()) {
+            // If the contract is paused, protocol fees are not charged to avoid extra calculations and
+            // reduce the potential for errors.
+            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
+        } else {
             // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
             // spending gas calculating the fees on each individual swap.
@@ -365,10 +369,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
             // Update current balances by subtracting the protocol fee amounts
             _subtractFromAmounts(currentBalances, dueProtocolFeeAmounts);
-        } else {
-            // If the emergency period is active, protocol fees are not charged to avoid extra calculations and
-            // reduce the potential for errors.
-            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 
         (bptAmountIn, amountsOut) = _doExit(currentBalances, normalizedWeights, userData);
@@ -401,7 +401,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory currentBalances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private view noEmergencyPeriod returns (uint256, uint256[] memory) {
+    ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the emergency period is active.
 
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
@@ -451,7 +451,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory currentBalances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private view noEmergencyPeriod returns (uint256, uint256[] memory) {
+    ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the emergency period is active.
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
