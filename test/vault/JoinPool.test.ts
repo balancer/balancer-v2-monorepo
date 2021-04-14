@@ -35,7 +35,7 @@ describe('Vault - join pool', () => {
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
     feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const role = roleId(feesCollector, 'setSwapFee');
+    const role = await roleId(feesCollector, 'setSwapFee');
     await authorizer.connect(admin).grantRole(role, admin.address);
     await feesCollector.connect(admin).setSwapFee(fp(0.1));
 
@@ -208,7 +208,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is whitelisted by the authorizer', () => {
                 sharedBeforeEach('grant role to relayer', async () => {
-                  const role = roleId(vault, 'joinPool');
+                  const role = await roleId(vault, 'joinPool');
                   await authorizer.connect(admin).grantRole(role, relayer.address);
                 });
 
@@ -245,7 +245,7 @@ describe('Vault - join pool', () => {
 
               context('when the relayer is not whitelisted by the authorizer', () => {
                 sharedBeforeEach('revoke role from relayer', async () => {
-                  const role = roleId(vault, 'joinPool');
+                  const role = await roleId(vault, 'joinPool');
                   await authorizer.connect(admin).revokeRole(role, relayer.address);
                 });
 
@@ -286,7 +286,7 @@ describe('Vault - join pool', () => {
 
         context('when there is an emergency', () => {
           sharedBeforeEach('activate emergency period', async () => {
-            const role = roleId(vault, 'setEmergencyPeriod');
+            const role = await roleId(vault, 'setEmergencyPeriod');
             await authorizer.connect(admin).grantRole(role, admin.address);
             await vault.connect(admin).setEmergencyPeriod(true);
           });

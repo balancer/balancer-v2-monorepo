@@ -15,8 +15,9 @@
 pragma solidity ^0.7.0;
 
 import "./BalancerErrors.sol";
+import "./IAuthentication.sol";
 
-abstract contract Authentication {
+abstract contract Authentication is IAuthentication {
     /**
      * @dev Reverts unless the caller is allowed to call this function. Should only be applied to external functions.
      */
@@ -31,9 +32,21 @@ abstract contract Authentication {
     function _authenticateCaller() internal view {
         // Each external function is dynamically assigned a role ID as the hash of the contract address
         // and the function selector.
-        bytes32 roleId = keccak256(abi.encodePacked(address(this), msg.sig));
+        bytes32 roleId = _getRole(msg.sig);
         _require(_canPerform(roleId, msg.sender), Errors.SENDER_NOT_ALLOWED);
     }
+
+    // Ideally we wouldn't need this and would simply have children override the `getRole` function directly as a public
+    // function (so we can call it in `_authenticallyCaller`), but because in this context all we have is the external
+    // version from the interface, we manually perform the handoff from the external to the internal one.
+    function getRole(bytes4 selector) external view override returns (bytes32) {
+        return _getRole(selector);
+    }
+
+    /**
+     * @dev Returns the role required to call the function described by `selector`.
+     */
+    function _getRole(bytes4 selector) internal view virtual returns (bytes32);
 
     function _canPerform(bytes32 roleId, address user) internal view virtual returns (bool);
 }

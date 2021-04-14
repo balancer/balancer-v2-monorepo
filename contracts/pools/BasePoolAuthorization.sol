@@ -28,9 +28,11 @@ import "../vault/interfaces/IAuthorizer.sol";
  * Authorizer.
  */
 abstract contract BasePoolAuthorization is Authentication {
+    address private immutable _factory;
     address private immutable _owner;
 
     constructor(address owner) {
+        _factory = msg.sender;
         _owner = owner;
     }
 
@@ -50,6 +52,14 @@ abstract contract BasePoolAuthorization is Authentication {
             // Alternatively, we query the Authorizer for permission.
             return _getAuthorizer().hasRoleIn(roleId, account, address(this));
         }
+    }
+
+    function _getRole(bytes4 selector) internal view override returns (bytes32) {
+        // Base Pools are expected to be deployed using factories. By embedding the factory address in the role
+        // generation process, we make all Pools deployed by the same factory share role identifiers, which allows for
+        // sophisticated role management schemes (such as being able to grant the 'set fee' role in any Pool created
+        // from the same factory), while making roles unique among different factories.
+        return keccak256(abi.encodePacked(_factory, selector));
     }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);

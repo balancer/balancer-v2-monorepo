@@ -139,7 +139,7 @@ describe('Vault - swap validation', () => {
 
       context('when there is an emergency', () => {
         sharedBeforeEach('activate emergency period', async () => {
-          const role = roleId(vault, 'setEmergencyPeriod');
+          const role = await roleId(vault, 'setEmergencyPeriod');
           await authorizer.connect(admin).grantRole(role, admin.address);
           await vault.connect(admin).setEmergencyPeriod(true);
         });

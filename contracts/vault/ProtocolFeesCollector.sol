@@ -104,6 +104,10 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
         return _getAuthorizer();
     }
 
+    function _getRole(bytes4 selector) internal view override returns (bytes32) {
+        return keccak256(abi.encodePacked(address(this), selector));
+    }
+
     function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
         return _getAuthorizer().hasRoleIn(roleId, account, address(this));
     }
