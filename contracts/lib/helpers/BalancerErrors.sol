@@ -109,6 +109,7 @@ library Errors {
     uint256 internal constant UNINITIALIZED = 206;
     uint256 internal constant BPT_IN_MAX_AMOUNT = 207;
     uint256 internal constant BPT_OUT_MIN_AMOUNT = 208;
+    uint256 internal constant EXPIRED_PERMIT = 209;
 
     // Pools
     uint256 internal constant MIN_AMP = 300;
