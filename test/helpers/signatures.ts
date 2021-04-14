@@ -1,5 +1,5 @@
 import { ethers, network } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { MAX_UINT256 } from '../../lib/helpers/constants';
@@ -118,7 +118,7 @@ export async function signPermit(
   amount: BigNumberish,
   nonce?: BigNumberish,
   deadline?: BigNumberish
-): Promise<{ v: number; r: string; s: string }> {
+): Promise<{ v: number; r: string; s: string; deadline: BigNumber }> {
   if (!deadline) deadline = MAX_DEADLINE;
   if (!nonce) nonce = (await token.nonces(owner.address)) as BigNumberish;
 
@@ -148,5 +148,5 @@ export async function signPermit(
   };
 
   const signature = await owner._signTypedData(domain, types, value);
-  return splitSignature(signature);
+  return { ...splitSignature(signature), deadline: bn(deadline) };
 }

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../helpers/expectEvent';
@@ -377,63 +377,90 @@ describe('BalancerPoolToken', () => {
     const amount = bn(42);
 
     it('accepts holder signature', async function () {
+      const previousNonce = await token.nonces(holder.address);
       const { v, r, s } = await signPermit(token, holder, spender, amount);
 
       const receipt = await (await token.permit(holder.address, spender.address, amount, MAX_DEADLINE, v, r, s)).wait();
       expectEvent.inReceipt(receipt, 'Approval', { owner: holder.address, spender: spender.address, value: amount });
 
-      expect(await token.nonces(holder.address)).to.equal(1);
+      expect(await token.nonces(holder.address)).to.equal(previousNonce.add(1));
       expect(await token.allowance(holder.address, spender.address)).to.equal(amount);
     });
 
-    it('rejects reused signature', async function () {
-      const { v, r, s } = await signPermit(token, holder, spender, amount);
+    context('with invalid signature', () => {
+      let v: number, r: string, s: string, deadline: BigNumber;
 
-      await token.permit(holder.address, spender.address, amount, MAX_DEADLINE, v, r, s);
-      await expect(token.permit(holder.address, spender.address, amount, MAX_DEADLINE, v, r, s)).to.be.revertedWith(
-        'INVALID_SIGNATURE'
-      );
-    });
+      context('with reused signature', () => {
+        beforeEach(async () => {
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount));
+          await token.permit(holder.address, spender.address, amount, deadline, v, r, s);
+        });
 
-    it('rejects signature for other holder', async function () {
-      const { v, r, s } = await signPermit(token, spender, spender, amount);
-      await expect(token.permit(holder.address, spender.address, amount, MAX_DEADLINE, v, r, s)).to.be.revertedWith(
-        'INVALID_SIGNATURE'
-      );
-    });
+        itRevertsWithInvalidSignature();
+      });
 
-    it('rejects signature for other spender', async function () {
-      const { v, r, s } = await signPermit(token, holder, holder, amount);
-      await expect(token.permit(holder.address, spender.address, amount, MAX_DEADLINE, v, r, s)).to.be.revertedWith(
-        'INVALID_SIGNATURE'
-      );
-    });
+      context('with signature for other holder', () => {
+        beforeEach(async () => {
+          ({ v, r, s, deadline } = await signPermit(token, spender, spender, amount));
+        });
 
-    it('rejects signature for other amount', async function () {
-      const { v, r, s } = await signPermit(token, holder, spender, amount.add(1));
-      await expect(token.permit(holder.address, spender.address, amount, MAX_DEADLINE, v, r, s)).to.be.revertedWith(
-        'INVALID_SIGNATURE'
-      );
-    });
+        itRevertsWithInvalidSignature();
+      });
 
-    it('rejects signature for other token', async function () {
-      const nonce = await token.nonces(holder.address);
-      const otherToken = await deploy('MockBalancerPoolToken', { args: ['Token', 'TKN'] });
+      context('with signature for other spender', () => {
+        beforeEach(async () => {
+          ({ v, r, s, deadline } = await signPermit(token, holder, holder, amount));
+        });
 
-      const { v, r, s } = await signPermit(otherToken, holder, spender, amount, nonce);
-      await expect(token.permit(holder.address, spender.address, amount, MAX_DEADLINE, v, r, s)).to.be.revertedWith(
-        'INVALID_SIGNATURE'
-      );
-    });
+        itRevertsWithInvalidSignature();
+      });
 
-    it('rejects expired signature', async function () {
-      const nonce = await token.nonces(holder.address);
-      const deadline = (await currentTimestamp()).sub(1);
+      context('with signature for other amount', () => {
+        beforeEach(async () => {
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount.add(1)));
+        });
 
-      const { v, r, s } = await signPermit(token, holder, spender, amount, nonce, deadline);
-      await expect(token.permit(holder.address, spender.address, amount, deadline, v, r, s)).to.be.revertedWith(
-        'INVALID_SIGNATURE'
-      );
+        itRevertsWithInvalidSignature();
+      });
+
+      context('with signature for other token', () => {
+        beforeEach(async () => {
+          const currentNonce = await token.nonces(holder.address);
+          const otherToken = await deploy('MockBalancerPoolToken', { args: ['Token', 'TKN'] });
+
+          ({ v, r, s, deadline } = await signPermit(otherToken, holder, spender, amount, currentNonce));
+        });
+
+        itRevertsWithInvalidSignature();
+      });
+
+      context('with signature with invalid nonce', () => {
+        beforeEach(async () => {
+          const currentNonce = await token.nonces(holder.address);
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, currentNonce.add(1)));
+        });
+
+        itRevertsWithInvalidSignature();
+      });
+
+      context('with expired deadline', () => {
+        beforeEach(async () => {
+          const nonce = await token.nonces(holder.address);
+          const now = await currentTimestamp();
+
+          ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, nonce, now.sub(1)));
+        });
+
+        itRevertsWithInvalidSignature();
+      });
+
+      function itRevertsWithInvalidSignature() {
+        it('reverts', async () => {
+          await expect(token.permit(holder.address, spender.address, amount, deadline, v, r, s)).to.be.revertedWith(
+            'INVALID_SIGNATURE'
+          );
+        });
+      }
     });
   });
 
