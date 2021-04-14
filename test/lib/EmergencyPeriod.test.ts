@@ -46,7 +46,9 @@ describe('EmergencyPeriod', function () {
     it('cannot be initialized with an emergency period greater than 90 days', async () => {
       const emergencyResponseWindow = DAY * 91;
 
-      await expect(deployEmergencyPeriod({ emergencyResponseWindow })).to.be.revertedWith('MAX_RESPONSE_WINDOW_DURATION');
+      await expect(deployEmergencyPeriod({ emergencyResponseWindow })).to.be.revertedWith(
+        'MAX_RESPONSE_WINDOW_DURATION'
+      );
     });
 
     it('cannot be initialized with an emergency period check extension greater than 30 days', async () => {
