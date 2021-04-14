@@ -26,8 +26,21 @@ contract MockBasePool is BasePool {
         IERC20[] memory tokens,
         uint256 swapFee,
         uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
-    ) BasePool(vault, specialization, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {}
+        uint256 emergencyPeriodCheckExtension,
+        address owner
+    )
+        BasePool(
+            vault,
+            specialization,
+            name,
+            symbol,
+            tokens,
+            swapFee,
+            emergencyPeriod,
+            emergencyPeriodCheckExtension,
+            owner
+        )
+    {}
 
     function _onInitializePool(
         bytes32 poolId,

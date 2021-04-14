@@ -36,7 +36,8 @@ contract StablePoolFactory is BasePoolFactory {
         uint256 amplificationParameter,
         uint256 swapFee,
         uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
+        uint256 emergencyPeriodCheckExtension,
+        address owner
     ) external returns (address) {
         address pool = address(
             new StablePool(
@@ -47,7 +48,8 @@ contract StablePoolFactory is BasePoolFactory {
                 amplificationParameter,
                 swapFee,
                 emergencyPeriod,
-                emergencyPeriodCheckExtension
+                emergencyPeriodCheckExtension,
+                owner
             )
         );
         _register(pool);
