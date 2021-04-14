@@ -17,8 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "hardhat/console.sol";
-
 import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
@@ -316,16 +314,23 @@ abstract contract PoolAssets is
     // Asset Manager
 
     function managePoolBalance(PoolBalanceOp[] memory ops) external override nonReentrant noEmergencyPeriod {
+        // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
+        // loop iteration, increasing gas costs.
+        PoolBalanceOp memory op;
+
         for (uint256 i = 0; i < ops.length; ++i) {
-            bytes32 poolId = ops[i].poolId;
+            // By indexing the array only once, we don't spend extra gas in the same bounds check.
+            op = ops[i];
+
+            bytes32 poolId = op.poolId;
             _ensureRegisteredPool(poolId);
 
-            IERC20 token = ops[i].token;
+            IERC20 token = op.token;
             _require(_isTokenRegistered(poolId, token), Errors.TOKEN_NOT_REGISTERED);
             _require(_poolAssetManagers[poolId][token] == msg.sender, Errors.SENDER_NOT_ASSET_MANAGER);
 
-            PoolBalanceOpKind kind = ops[i].kind;
-            uint256 amount = ops[i].amount;
+            PoolBalanceOpKind kind = op.kind;
+            uint256 amount = op.amount;
             (int256 cashDelta, int256 managedDelta) = _performPoolManagementOperation(kind, poolId, token, amount);
 
             emit PoolBalanceManaged(poolId, msg.sender, token, cashDelta, managedDelta);
