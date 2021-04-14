@@ -36,7 +36,8 @@ contract WeightedPoolFactory is BasePoolFactory {
         uint256[] memory weights,
         uint256 swapFee,
         uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
+        uint256 emergencyPeriodCheckExtension,
+        address owner
     ) external returns (address) {
         address pool = address(
             new WeightedPool(
@@ -47,7 +48,8 @@ contract WeightedPoolFactory is BasePoolFactory {
                 weights,
                 swapFee,
                 emergencyPeriod,
-                emergencyPeriodCheckExtension
+                emergencyPeriodCheckExtension,
+                owner
             )
         );
         _register(pool);
