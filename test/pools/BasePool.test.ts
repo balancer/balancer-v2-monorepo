@@ -107,7 +107,7 @@ describe('BasePool', function () {
         const swapFee = fp(0.003);
         const pool = await deployBasePool({ swapFee });
 
-        expect(await pool.getSwapFee()).to.equal(swapFee);
+        expect(await pool.getSwapFeePercentage()).to.equal(swapFee);
       });
     });
 
@@ -120,15 +120,15 @@ describe('BasePool', function () {
           const newSwapFee = MAX_SWAP_FEE.sub(1);
 
           it('can change the swap fee', async () => {
-            await pool.connect(sender).setSwapFee(newSwapFee);
+            await pool.connect(sender).setSwapFeePercentage(newSwapFee);
 
-            expect(await pool.getSwapFee()).to.equal(newSwapFee);
+            expect(await pool.getSwapFeePercentage()).to.equal(newSwapFee);
           });
 
           it('emits an event', async () => {
-            const receipt = await (await pool.connect(sender).setSwapFee(newSwapFee)).wait();
+            const receipt = await (await pool.connect(sender).setSwapFeePercentage(newSwapFee)).wait();
 
-            expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFee: newSwapFee });
+            expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFeePercentage: newSwapFee });
           });
         });
 
@@ -136,7 +136,7 @@ describe('BasePool', function () {
           const swapFee = MAX_SWAP_FEE.add(1);
 
           it('reverts', async () => {
-            await expect(pool.connect(sender).setSwapFee(swapFee)).to.be.revertedWith('MAX_SWAP_FEE');
+            await expect(pool.connect(sender).setSwapFeePercentage(swapFee)).to.be.revertedWith('MAX_SWAP_FEE');
           });
         });
 
@@ -144,14 +144,16 @@ describe('BasePool', function () {
           const swapFee = MIN_SWAP_FEE.sub(1);
 
           it('reverts', async () => {
-            await expect(pool.connect(sender).setSwapFee(swapFee)).to.be.revertedWith('MIN_SWAP_FEE');
+            await expect(pool.connect(sender).setSwapFeePercentage(swapFee)).to.be.revertedWith('MIN_SWAP_FEE');
           });
         });
       }
 
       function itRevertsWithUnallowedSender() {
         it('reverts', async () => {
-          await expect(pool.connect(sender).setSwapFee(MIN_SWAP_FEE)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(pool.connect(sender).setSwapFeePercentage(MIN_SWAP_FEE)).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
         });
       }
 
@@ -164,7 +166,7 @@ describe('BasePool', function () {
 
         context('when the sender has a set fee role in the authorizer', () => {
           sharedBeforeEach('grant permission', async () => {
-            const role = roleId(pool, 'setSwapFee');
+            const role = roleId(pool, 'setSwapFeePercentage');
             await authorizer.connect(admin).grantRole(role, admin.address);
             sender = admin;
           });
@@ -204,7 +206,7 @@ describe('BasePool', function () {
 
           context('when the sender has the set fee role in the authorizer', () => {
             sharedBeforeEach(async () => {
-              const role = roleId(pool, 'setSwapFee');
+              const role = roleId(pool, 'setSwapFeePercentage');
               await authorizer.connect(admin).grantRole(role, sender.address);
             });
 

@@ -52,12 +52,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _MAX_TOKENS = 8;
 
     // 1e18 corresponds to 1.0, or a 100% fee
-    uint256 private constant _MIN_SWAP_FEE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE = 1e17; // 10%
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10%
 
     uint256 private constant _MINIMUM_BPT = 10**6;
 
-    uint256 internal _swapFee;
+    uint256 internal _swapFeePercentage;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -85,7 +85,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor6;
     uint256 internal immutable _scalingFactor7;
 
-    event SwapFeeChanged(uint256 swapFee);
+    event SwapFeeChanged(uint256 swapFeePercentage);
 
     constructor(
         IVault vault,
@@ -93,7 +93,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 emergencyPeriod,
         uint256 emergencyPeriodCheckExtension,
         address owner
@@ -112,8 +112,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // order of token-specific parameters (such as token weights) will not change.
         InputHelpers.ensureArrayIsSorted(tokens);
 
-        _require(swapFee >= _MIN_SWAP_FEE, Errors.MIN_SWAP_FEE);
-        _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE);
 
         bytes32 poolId = vault.registerPool(specialization);
 
@@ -124,7 +124,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         _vault = vault;
         _poolId = poolId;
-        _swapFee = swapFee;
+        _swapFeePercentage = swapFeePercentage;
         _totalTokens = tokens.length;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
@@ -162,17 +162,17 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _totalTokens;
     }
 
-    function getSwapFee() external view returns (uint256) {
-        return _swapFee;
+    function getSwapFeePercentage() external view returns (uint256) {
+        return _swapFeePercentage;
     }
 
     // Caller must be approved by the Vault's Authorizer
-    function setSwapFee(uint256 swapFee) external virtual authenticate {
-        _require(swapFee >= _MIN_SWAP_FEE, Errors.MIN_SWAP_FEE);
-        _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
+    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate {
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE);
 
-        _swapFee = swapFee;
-        emit SwapFeeChanged(swapFee);
+        _swapFeePercentage = swapFeePercentage;
+        emit SwapFeeChanged(swapFeePercentage);
     }
 
     // Caller must be approved by the Vault's Authorizer
@@ -437,7 +437,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _addSwapFee(uint256 amount) internal view returns (uint256) {
         // This returns amount + fees, so we round up (favoring fees).
-        return amount.divUp(_swapFee.complement());
+        return amount.divUp(_swapFeePercentage.complement());
     }
 
     /**
@@ -445,8 +445,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _subtractSwapFee(uint256 amount) internal view returns (uint256) {
         // Round up, favoring fees.
-        uint256 fees = amount.mulUp(_swapFee);
-        return amount.sub(fees);
+        uint256 feeAmounts = amount.mulUp(_swapFeePercentage);
+        return amount.sub(feeAmounts);
     }
 
     // Scaling

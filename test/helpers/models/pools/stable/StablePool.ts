@@ -109,7 +109,7 @@ export default class StablePool {
   }
 
   async getSwapFee(): Promise<BigNumber> {
-    return this.instance.getSwapFee();
+    return this.instance.getSwapFeePercentage();
   }
 
   async getAmplificationParameter(): Promise<BigNumber> {

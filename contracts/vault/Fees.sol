@@ -44,21 +44,21 @@ abstract contract Fees is IVault {
     /**
      * @dev Returns the percentage protocol swap fee.
      */
-    function _getProtocolSwapFee() internal view returns (uint256) {
-        return getProtocolFeesCollector().getSwapFee();
+    function _getProtocolSwapFeePercentage() internal view returns (uint256) {
+        return getProtocolFeesCollector().getSwapFeePercentage();
     }
 
     /**
      * @dev Returns the protocol fee to charge for a flash loan of `amount`.
      */
-    function _calculateFlashLoanFee(uint256 amount) internal view returns (uint256) {
-        return _calculateFee(amount, getProtocolFeesCollector().getFlashLoanFee());
+    function _calculateFlashLoanFeeAmount(uint256 amount) internal view returns (uint256) {
+        return _calculateFeeAmount(amount, getProtocolFeesCollector().getFlashLoanFeePercentage());
     }
 
-    function _calculateFee(uint256 amount, uint256 pct) internal pure returns (uint256) {
+    function _calculateFeeAmount(uint256 amount, uint256 percentage) internal pure returns (uint256) {
         // Fixed point multiplication introduces error: we round up, which means in certain scenarios the charged
         // percentage can be slightly higher than intended.
-        return FixedPoint.mulUp(amount, pct);
+        return FixedPoint.mulUp(amount, percentage);
     }
 
     function _payFee(IERC20 token, uint256 amount) internal {

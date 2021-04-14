@@ -307,7 +307,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             normalizedWeights,
             amountsIn,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -331,7 +331,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             normalizedWeights[tokenIndex],
             bptAmountOut,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         return (bptAmountOut, amountsIn);
@@ -430,7 +430,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             normalizedWeights[tokenIndex],
             bptAmountIn,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         return (bptAmountIn, amountsOut);
@@ -475,7 +475,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             normalizedWeights,
             amountsOut,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 

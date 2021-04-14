@@ -193,7 +193,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             balances,
             amountsIn,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -214,7 +214,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             tokenIndex,
             bptAmountOut,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         // We are joining with a single token, so initialize downscaledAmountsIn with zeros, and
@@ -307,7 +307,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             tokenIndex,
             bptAmountIn,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         return (bptAmountIn, amountsOut);
@@ -348,7 +348,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             balances,
             amountsOut,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);

@@ -142,7 +142,7 @@ export default class WeightedPool {
   }
 
   async getSwapFee(): Promise<BigNumber> {
-    return this.instance.getSwapFee();
+    return this.instance.getSwapFeePercentage();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {

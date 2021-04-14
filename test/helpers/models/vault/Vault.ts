@@ -92,7 +92,7 @@ export default class Vault {
 
   async getCollectedFees(tokens: TokenList | string[]): Promise<BigNumber[]> {
     const feesCollector = await this.getFeesCollector();
-    return feesCollector.getCollectedFees(Array.isArray(tokens) ? tokens : tokens.addresses);
+    return feesCollector.getCollectedFeeAmounts(Array.isArray(tokens) ? tokens : tokens.addresses);
   }
 
   async withdrawCollectedFees(
@@ -113,11 +113,11 @@ export default class Vault {
   }
 
   async getSwapFee(): Promise<BigNumber> {
-    return (await this.getFeesCollector()).getSwapFee();
+    return (await this.getFeesCollector()).getSwapFeePercentage();
   }
 
   async getFlashLoanFee(): Promise<BigNumber> {
-    return (await this.getFeesCollector()).getFlashLoanFee();
+    return (await this.getFeesCollector()).getFlashLoanFeePercentage();
   }
 
   async getFeesCollector(): Promise<Contract> {
@@ -132,24 +132,24 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(roleId(feesCollector, 'setSwapFee'), this.admin);
+      await this.grantRole(roleId(feesCollector, 'setSwapFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
     const instance = sender ? feesCollector.connect(sender) : feesCollector;
-    return instance.setSwapFee(fee);
+    return instance.setSwapFeePercentage(fee);
   }
 
   async setFlashLoanFee(fee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(roleId(feesCollector, 'setFlashLoanFee'), this.admin);
+      await this.grantRole(roleId(feesCollector, 'setFlashLoanFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
     const instance = sender ? feesCollector.connect(sender) : feesCollector;
-    return instance.setFlashLoanFee(fee);
+    return instance.setFlashLoanFeePercentage(fee);
   }
 
   async grantRole(roleId: string, to?: Account): Promise<ContractTransaction> {

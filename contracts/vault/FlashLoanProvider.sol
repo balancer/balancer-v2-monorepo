@@ -53,7 +53,7 @@ abstract contract FlashLoanProvider is Fees, ReentrancyGuard, EmergencyPeriod {
 
             // Not checking amount against current balance, transfer will revert if it is exceeded
             preLoanBalances[i] = token.balanceOf(address(this));
-            feeAmounts[i] = _calculateFlashLoanFee(amount);
+            feeAmounts[i] = _calculateFlashLoanFeeAmount(amount);
 
             token.safeTransfer(address(receiver), amount);
         }

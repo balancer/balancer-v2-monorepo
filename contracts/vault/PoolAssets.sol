@@ -270,7 +270,7 @@ abstract contract PoolAssets is
                 recipient,
                 totalBalances,
                 latestBlockNumberUsed,
-                _getProtocolSwapFee(),
+                _getProtocolSwapFeePercentage(),
                 change.userData
             )
             : pool.onExitPool(
@@ -279,7 +279,7 @@ abstract contract PoolAssets is
                 recipient,
                 totalBalances,
                 latestBlockNumberUsed,
-                _getProtocolSwapFee(),
+                _getProtocolSwapFeePercentage(),
                 change.userData
             );
 
