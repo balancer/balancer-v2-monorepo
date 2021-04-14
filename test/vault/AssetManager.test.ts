@@ -128,69 +128,29 @@ describe.only('Vault - asset manager', function () {
       });
     });
 
-    describe('withdrawal', () => {
+    describe('withdraw', () => {
       const kind = OP_KIND.WITHDRAW;
 
-      context('when the sender the manager', () => {
-        context('when trying to withdraw less than the pool balance', () => {
-          const amount = bn(10e18);
+      context('when the sender is the asset manager', () => {
+        let sender: SignerWithAddress;
 
-          it('transfers the requested token from the vault to the manager', async () => {
-            const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
-
-            await expectBalanceChange(() => vault.connect(assetManager).managePoolBalance(ops), tokens, [
-              { account: assetManager, changes: { DAI: amount } },
-              { account: vault, changes: { DAI: amount.mul(-1) } },
-            ]);
-          });
-
-          it('does not affect the balance of the pools', async () => {
-            const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
-
-            const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
-            await vault.connect(assetManager).managePoolBalance(ops);
-
-            const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
-            expect(currentBalanceDAI).to.equal(previousBalanceDAI);
-            expect(currentBalanceMKR).to.equal(previousBalanceMKR);
-          });
-
-          it('does not update the block number', async () => {
-            const previousBlockNumber = (await vault.getPoolTokens(poolId)).maxBlockNumber;
-
-            const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
-            await vault.connect(assetManager).managePoolBalance(ops);
-
-            expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(previousBlockNumber);
-          });
-
-          it('moves the balance from cash to managed', async () => {
-            const previousBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-
-            const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
-            await vault.connect(assetManager).managePoolBalance(ops);
-
-            const currentBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
-            expect(currentBalance.cash).to.equal(previousBalance.cash.sub(amount));
-            expect(currentBalance.managed).to.equal(previousBalance.managed.add(amount));
-            expect(currentBalance.blockNumber).to.equal(previousBalance.blockNumber);
-          });
-
-          it('emits an event', async () => {
-            const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
-            const receipt = await (await vault.connect(assetManager).managePoolBalance(ops)).wait();
-
-            expectEvent.inReceipt(receipt, 'PoolBalanceManaged', {
-              poolId,
-              token: tokens.DAI.address,
-              assetManager: assetManager.address,
-              cashDelta: amount.mul(-1),
-              managedDelta: amount,
-            });
-          });
+        beforeEach(() => {
+          sender = assetManager;
         });
 
-        context('when trying to withdraw more than the pool balance', () => {
+        context('when withdrawing zero', () => {
+          itWithdrawsPoolBalance(bn(0));
+        });
+
+        context('when withdrawing less than the pool balance', () => {
+          itWithdrawsPoolBalance(tokenInitialBalance.sub(1));
+        });
+
+        context('when withdrawing all the pool balance', () => {
+          itWithdrawsPoolBalance(tokenInitialBalance);
+        });
+
+        context('when withdrawing more than the pool balance', () => {
           const amount = tokenInitialBalance.add(1);
 
           it('reverts', async () => {
@@ -201,25 +161,73 @@ describe.only('Vault - asset manager', function () {
           });
         });
 
-        context('when withdrawing a zero amount', () => {
-          const amount = 0;
-
-          it('does nothing', async () => {
+        function itWithdrawsPoolBalance(amount: BigNumber) {
+          it('transfers the requested token from the vault to the manager', async () => {
             const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
 
-            await expectBalanceChange(() => vault.connect(assetManager).managePoolBalance(ops), tokens, {
-              account: vault.address,
+            await expectBalanceChange(() => vault.connect(sender).managePoolBalance(ops), tokens, [
+              { account: assetManager, changes: { DAI: amount } },
+              { account: vault, changes: { DAI: amount.mul(-1) } },
+            ]);
+          });
+
+          it('does not affect the balance of the pools', async () => {
+            const [previousBalanceDAI, previousBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
+
+            const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
+            await vault.connect(sender).managePoolBalance(ops);
+
+            const [currentBalanceDAI, currentBalanceMKR] = (await vault.getPoolTokens(poolId)).balances;
+            expect(currentBalanceDAI).to.equal(previousBalanceDAI);
+            expect(currentBalanceMKR).to.equal(previousBalanceMKR);
+          });
+
+          it('does not update the block number', async () => {
+            const previousBlockNumber = (await vault.getPoolTokens(poolId)).maxBlockNumber;
+
+            const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
+            await vault.connect(sender).managePoolBalance(ops);
+
+            expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(previousBlockNumber);
+          });
+
+          it('moves the balance from cash to managed', async () => {
+            const previousBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+
+            const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
+            await vault.connect(sender).managePoolBalance(ops);
+
+            const currentBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
+            expect(currentBalance.cash).to.equal(previousBalance.cash.sub(amount));
+            expect(currentBalance.managed).to.equal(previousBalance.managed.add(amount));
+            expect(currentBalance.blockNumber).to.equal(previousBalance.blockNumber);
+          });
+
+          it('emits an event', async () => {
+            const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
+            const receipt = await (await vault.connect(sender).managePoolBalance(ops)).wait();
+
+            expectEvent.inReceipt(receipt, 'PoolBalanceManaged', {
+              poolId,
+              token: tokens.DAI.address,
+              assetManager: assetManager.address,
+              cashDelta: amount.mul(-1),
+              managedDelta: amount,
             });
           });
-        });
+        }
       });
 
       context('when the sender is not the asset manager', () => {
-        it('reverts', async () => {
-          const ops = [{ kind, poolId, token: tokens.DAI.address, amount: 0 }];
-          const withdraw = vault.connect(other).managePoolBalance(ops);
+        let sender: SignerWithAddress;
 
-          await expect(withdraw).to.be.revertedWith('SENDER_NOT_ASSET_MANAGER');
+        beforeEach(() => {
+          sender = other;
+        });
+
+        it('reverts', async () => {
+          const ops = [{ kind, poolId, token: tokens.DAI.address, amount: bn(0) }];
+          await expect(vault.connect(sender).managePoolBalance(ops)).to.be.revertedWith('SENDER_NOT_ASSET_MANAGER');
         });
       });
     });
@@ -247,7 +255,7 @@ describe.only('Vault - asset manager', function () {
           });
 
           context('when depositing less than the managed balance', () => {
-            itDepositsManagedBalance(managedAmount.div(2).add(1));
+            itDepositsManagedBalance(managedAmount.sub(1));
           });
 
           context('when depositing all the managed balance', () => {
