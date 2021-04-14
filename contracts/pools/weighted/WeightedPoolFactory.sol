@@ -22,7 +22,7 @@ import "../BasePoolFactory.sol";
 import "./WeightedPool.sol";
 
 contract WeightedPoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
+    constructor(IVault vault) BasePoolFactory(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -41,7 +41,7 @@ contract WeightedPoolFactory is BasePoolFactory {
     ) external returns (address) {
         address pool = address(
             new WeightedPool(
-                vault,
+                getVault(),
                 name,
                 symbol,
                 tokens,

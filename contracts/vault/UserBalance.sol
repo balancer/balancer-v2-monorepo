@@ -17,22 +17,21 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
-import "../lib/helpers/InputHelpers.sol";
+import "../lib/math/Math.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
-import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/SafeCast.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
 
-import "./VaultAuthorization.sol";
 import "./AssetTransfersHandler.sol";
+import "./VaultAuthorization.sol";
 
 abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAuthorization {
     using Math for uint256;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
-    // Stores all accounts' Internal Balances for each token.
+    // Internal Balance for each token, for each account.
     mapping(address => mapping(IERC20 => uint256)) private _internalTokenBalance;
 
     function getInternalBalance(address user, IERC20[] memory tokens)
@@ -48,54 +47,63 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     }
 
     function manageUserBalance(UserBalanceOp[] memory ops) external payable override nonReentrant {
-        // Declaring these variables outside of the loop results in a more gas-efficient implementation
-        IAsset asset;
-        address sender;
-        uint256 amount;
-        address payable recipient;
-        uint256 wrappedEth = 0;
-        bool noEmergency = false;
-        bool authenticated = false;
+        // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
+        uint256 ethWrapped = 0;
 
-        UserBalanceOp memory op;
+        // Cache for these checks so we only perform them once (if at all).
+        bool checkedCallerIsRelayer = false;
+        bool checkedEmergencySwitchIsOff = false;
+
         for (uint256 i = 0; i < ops.length; i++) {
-            op = ops[i];
-            (asset, sender, recipient, amount, authenticated) = _validateUserBalanceOp(op, authenticated);
+            UserBalanceOpKind kind;
+            IAsset asset;
+            uint256 amount;
+            address sender;
+            address payable recipient;
 
-            if (op.kind == UserBalanceOpKind.WITHDRAW_INTERNAL) {
+            // This destructuring by calling `_validateUserBalanceOp` seems odd, but results in reduced bytecode size.
+            (kind, asset, amount, sender, recipient, checkedCallerIsRelayer) = _validateUserBalanceOp(
+                ops[i],
+                checkedCallerIsRelayer
+            );
+
+            if (kind == UserBalanceOpKind.WITHDRAW_INTERNAL) {
+                // Internal Balance withdrawals can always be performed by an authorized account.
                 _withdrawFromInternalBalance(asset, sender, recipient, amount);
             } else {
-                // Check emergency period for any other operation that is not a withdrawal
-                if (!noEmergency) {
-                    // This will revert in case the emergency period was triggered
+                // All other operations are blocked if the Emergency Switch has been activated.
+
+                // We cache the result of the Emergency Switch check and skip it for other operations in this same
+                // transaction (if any).
+                if (!checkedEmergencySwitchIsOff) {
                     _ensureInactiveEmergencyPeriod();
-                    // Cache result to avoid repeated checks
-                    noEmergency = true;
+                    checkedEmergencySwitchIsOff = true;
                 }
 
-                if (op.kind == UserBalanceOpKind.DEPOSIT_INTERNAL) {
+                if (kind == UserBalanceOpKind.DEPOSIT_INTERNAL) {
                     _depositToInternalBalance(asset, sender, recipient, amount);
 
-                    // Only deposits wrap ETH, in case some value was sent and there was no deposit it will be returned
-                    // back to the msg.sender at the end of function
+                    // Keep track of all ETH wrapped into WETH as part of a deposit.
                     if (_isETH(asset)) {
-                        wrappedEth = wrappedEth.add(amount);
+                        ethWrapped = ethWrapped.add(amount);
                     }
                 } else {
-                    // Transfers don't support assets. Therefore, we check no ETH sentinel was used before casting
+                    // Transfers don't support ETH.
                     _require(!_isETH(asset), Errors.CANNOT_USE_ETH_SENTINEL);
-                    // Cast asset into IERC20 with no translation.
                     IERC20 token = _asIERC20(asset);
 
-                    (op.kind == UserBalanceOpKind.TRANSFER_INTERNAL)
-                        ? _transferInternalBalance(token, sender, recipient, amount)
-                        : _transferToExternalBalance(token, sender, recipient, amount); // TRANSFER_EXTERNAL
+                    if (kind == UserBalanceOpKind.TRANSFER_INTERNAL) {
+                        _transferInternalBalance(token, sender, recipient, amount);
+                    } else {
+                        // TRANSFER_EXTERNAL
+                        _transferToExternalBalance(token, sender, recipient, amount);
+                    }
                 }
             }
         }
 
-        // Handle any used and remaining ETH.
-        _handleRemainingEth(wrappedEth);
+        // Handle any remaining ETH.
+        _handleRemainingEth(ethWrapped);
     }
 
     function _depositToInternalBalance(
@@ -103,7 +111,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
         address sender,
         address recipient,
         uint256 amount
-    ) internal {
+    ) private {
         _increaseInternalBalance(recipient, _translateToIERC20(asset), amount);
         _receiveAsset(asset, amount, sender, false);
     }
@@ -114,6 +122,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
         address payable recipient,
         uint256 amount
     ) private {
+        // A partial decrease of Internal Balance is disallowed: `sender` must have `amount` in full.
         _decreaseInternalBalance(sender, _translateToIERC20(asset), amount, false);
         _sendAsset(asset, amount, recipient, false);
     }
@@ -124,6 +133,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
         address recipient,
         uint256 amount
     ) private {
+        // A partial decrease of Internal Balance is disallowed: `sender` must have `amount` in full.
         _decreaseInternalBalance(sender, token, amount, false);
         _increaseInternalBalance(recipient, token, amount);
     }
@@ -152,26 +162,33 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     }
 
     /**
-     * @dev Decreases `account`'s Internal Balance for `token` by `amount`.
-     * When `capped` the internal balance will be decreased as much as possible without reverting.
-     *
-     * Returns the amount that was actually deducted from Internal Balance. Note this might not be equal to `amount`
-     * in case it was `capped` and the Internal Balance was actually lower.
+     * @dev Decreases `account`'s Internal Balance for `token` by `amount`. If `allowPartial` is true, this function
+     * doesn't revert if `account` doesn't have enough balance, and sets it to zero and returns the deducted amount
+     * instead.
      */
     function _decreaseInternalBalance(
         address account,
         IERC20 token,
         uint256 amount,
-        bool capped
+        bool allowPartial
     ) internal override returns (uint256 deducted) {
         uint256 currentBalance = _getInternalBalance(account, token);
-        _require(capped || (currentBalance >= amount), Errors.INSUFFICIENT_INTERNAL_BALANCE);
+        _require(allowPartial || (currentBalance >= amount), Errors.INSUFFICIENT_INTERNAL_BALANCE);
 
         deducted = Math.min(currentBalance, amount);
+        // By construction, `deducted` is lower or equal to `currentBalance`, so we don't need to use checked
+        // arithmetic.
         uint256 newBalance = currentBalance - deducted;
         _setInternalBalance(account, token, newBalance, -(deducted.toInt256()));
     }
 
+    /**
+     * @dev Set's `account`'s Internal Balance for `token` to `newBalance`.
+     *
+     * Emits an `InternalBalanceChanged` event. This event includes `delta`, which is by how much the balance increased
+     * (if positive) or decreased (if negative). To avoid reading the current balance in order to compute the delta,
+     * this function relies on the caller providing it directly.
+     */
     function _setInternalBalance(
         address account,
         IERC20 token,
@@ -190,39 +207,37 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     }
 
     /**
-     * @dev Decodes a user balance operation and validates that the contract caller is allowed to operate.
+     * @dev Destructures a user balance operation, validating that the contract caller is allowed to perform it.
      */
-    function _validateUserBalanceOp(UserBalanceOp memory op, bool wasAuthenticated)
+    function _validateUserBalanceOp(UserBalanceOp memory op, bool checkedCallerIsRelayer)
         private
         view
         returns (
-            IAsset asset,
-            address sender,
-            address payable recipient,
-            uint256 amount,
-            bool authenticated
+            UserBalanceOpKind,
+            IAsset,
+            uint256,
+            address,
+            address payable,
+            bool
         )
     {
-        sender = op.sender;
-        authenticated = wasAuthenticated;
+        // The only argument we need to validate is `sender`, which can only be either the contract caller, or a
+        // relayer approved by `sender`.
+        address sender = op.sender;
 
         if (sender != msg.sender) {
-            // In case we found a `sender` address that is not the actual sender (msg.sender)
-            // we ensure it's a relayer allowed by the protocol. Note that we are not computing this check
-            // for the next senders, it's a global authorization, we only need to check it once.
-            if (!wasAuthenticated) {
-                // This will revert in case the actual sender is not allowed by the protocol
+            // We need to check both that the contract caller is a relayer, and that `sender` approved them.
+
+            // Because the relayer check is global (i.e. independent of `sender`), we cache that result and skip it for
+            // other operations in this same transaction (if any).
+            if (!checkedCallerIsRelayer) {
                 _authenticateCaller();
-                // Cache result to avoid repeated checks
-                authenticated = true;
+                checkedCallerIsRelayer = true;
             }
 
-            // Finally we check the actual msg.sender was also allowed by the `sender`
             _authenticateCallerFor(sender);
         }
 
-        asset = op.asset;
-        amount = op.amount;
-        recipient = op.recipient;
+        return (op.kind, op.asset, op.amount, sender, op.recipient, checkedCallerIsRelayer);
     }
 }

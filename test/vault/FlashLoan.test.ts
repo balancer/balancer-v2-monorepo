@@ -209,7 +209,7 @@ describe('Vault - flash loans', () => {
           vault
             .connect(other)
             .flashLoan(receiver.address, [tokens.MKR.address, ZERO_ADDRESS], [bn(100e18), bn(100e18)], '0x10')
-        ).to.be.revertedWith('INVALID_TOKEN');
+        ).to.be.revertedWith('ZERO_TOKEN');
       });
     });
   });

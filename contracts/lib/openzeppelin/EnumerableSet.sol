@@ -7,6 +7,7 @@ import "../helpers/BalancerErrors.sol";
 // Based on the EnumerableSet library from OpenZeppelin contracts, altered to remove the base private functions that
 // work on bytes32, replacing them with a native implementation for address values, to reduce bytecode size and runtime
 // costs.
+// The `unchecked_at` function was also added, which allows for more gas efficient data reads in some scenarios.
 
 /**
  * @dev Library for managing
@@ -84,12 +85,12 @@ library EnumerableSet {
             // When the value to delete is the last one, the swap operation is unnecessary. However, since this occurs
             // so rarely, we still do the swap anyway to avoid the gas cost of adding an 'if' statement.
 
-            address lastvalue = set._values[lastIndex];
+            address lastValue = set._values[lastIndex];
 
             // Move the last value to the index where the value to delete is
-            set._values[toDeleteIndex] = lastvalue;
+            set._values[toDeleteIndex] = lastValue;
             // Update the index for the moved value
-            set._indexes[lastvalue] = toDeleteIndex + 1; // All indexes are 1-based
+            set._indexes[lastValue] = toDeleteIndex + 1; // All indexes are 1-based
 
             // Delete the slot where the moved value was stored
             set._values.pop();
@@ -129,6 +130,17 @@ library EnumerableSet {
      */
     function at(AddressSet storage set, uint256 index) internal view returns (address) {
         _require(set._values.length > index, Errors.OUT_OF_BOUNDS);
+        return unchecked_at(set, index);
+    }
+
+    /**
+     * @dev Same as {at}, except this doesn't revert if `index` it outside of the set (i.e. if it is equal or larger
+     * than {length}). O(1).
+     *
+     * This function performs one less storage read than {at}, but should only be used when `index` is known to be
+     * within bounds.
+     */
+    function unchecked_at(AddressSet storage set, uint256 index) internal view returns (address) {
         return set._values[index];
     }
 }

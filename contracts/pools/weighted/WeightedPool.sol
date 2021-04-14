@@ -144,7 +144,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
      * @dev Returns the current value of the invariant.
      */
     function getInvariant() public view returns (uint256) {
-        (, uint256[] memory balances, ) = _getVault().getPoolTokens(_getPoolId());
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         // Since the Pool hooks always work with upscaled balances, we manually
         // upscale here for consistency
@@ -403,10 +403,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             return _exitExactBPTInForTokenOut(currentBalances, normalizedWeights, userData);
         } else if (kind == ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(currentBalances, userData);
-        } else if (kind == ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            return _exitBPTInForExactTokensOut(currentBalances, normalizedWeights, userData);
         } else {
-            _revert(Errors.UNHANDLED_EXIT_KIND);
+            // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
+            return _exitBPTInForExactTokensOut(currentBalances, normalizedWeights, userData);
         }
     }
 

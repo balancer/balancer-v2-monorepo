@@ -60,6 +60,8 @@ contract WeightedMath {
         for (uint256 i = 0; i < normalizedWeights.length; i++) {
             invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
         }
+
+        _require(invariant > 0, Errors.ZERO_INVARIANT);
     }
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the
@@ -87,7 +89,7 @@ contract WeightedMath {
         // Because bI / (bI + aI) <= 1, the exponent rounds down.
 
         // Cannot exceed maximum in ratio
-        _require(tokenAmountIn <= tokenBalanceIn.mul(_MAX_IN_RATIO), Errors.MAX_IN_RATIO);
+        _require(tokenAmountIn <= tokenBalanceIn.mulDown(_MAX_IN_RATIO), Errors.MAX_IN_RATIO);
 
         uint256 denominator = tokenBalanceIn.add(tokenAmountIn);
         uint256 base = tokenBalanceIn.divUp(denominator);
@@ -122,7 +124,7 @@ contract WeightedMath {
         // Because b0 / (b0 - a0) >= 1, the exponent rounds up.
 
         // Cannot exceed maximum out ratio
-        _require(tokenAmountOut <= tokenBalanceOut.mul(_MAX_OUT_RATIO), Errors.MAX_OUT_RATIO);
+        _require(tokenAmountOut <= tokenBalanceOut.mulDown(_MAX_OUT_RATIO), Errors.MAX_OUT_RATIO);
 
         uint256 base = tokenBalanceOut.divUp(tokenBalanceOut.sub(tokenAmountOut));
         uint256 exponent = tokenWeightOut.divUp(tokenWeightIn);
