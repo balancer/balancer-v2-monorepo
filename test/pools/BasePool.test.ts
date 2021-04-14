@@ -14,7 +14,7 @@ import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import { Account } from '../helpers/models/types/types';
 import TypesConverter from '../helpers/models/types/TypesConverter';
 
-describe.only('BasePool', function () {
+describe('BasePool', function () {
   let admin: SignerWithAddress, poolOwner: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
