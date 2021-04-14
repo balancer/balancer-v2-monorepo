@@ -266,7 +266,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         );
 
         // Update current balances by subtracting the protocol fee amounts
-        _subtractFromAmounts(currentBalances, dueProtocolFeeAmounts);
+        _mutateAmounts(currentBalances, dueProtocolFeeAmounts, FixedPoint.sub);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(currentBalances, normalizedWeights, userData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
@@ -376,7 +376,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             );
 
             // Update current balances by subtracting the protocol fee amounts
-            _subtractFromAmounts(currentBalances, dueProtocolFeeAmounts);
+            _mutateAmounts(currentBalances, dueProtocolFeeAmounts, FixedPoint.sub);
         } else {
             // If the emergency period is active, protocol fees are not charged to avoid extra calculations and
             // reduce the potential for errors.
@@ -521,10 +521,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory amountsIn,
         uint256[] memory normalizedWeights
     ) private view returns (uint256) {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            currentBalances[i] = currentBalances[i].add(amountsIn[i]);
-        }
-
+        _mutateAmounts(currentBalances, amountsIn, FixedPoint.add);
         return WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
     }
 
@@ -533,16 +530,22 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory amountsOut,
         uint256[] memory normalizedWeights
     ) private view returns (uint256) {
-        _subtractFromAmounts(currentBalances, amountsOut);
+        _mutateAmounts(currentBalances, amountsOut, FixedPoint.sub);
         return WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
     }
 
     /**
-     * @dev Mutates `amounts` by subtracting `toSubtract` from it.
+     * @dev Mutates `amounts` by applying `mutation` with each entry in `arguments`.
+     *
+     * Equivalent to `amounts = amounts.map(mutation)`.
      */
-    function _subtractFromAmounts(uint256[] memory amounts, uint256[] memory toSubtract) private view {
+    function _mutateAmounts(
+        uint256[] memory toMutate,
+        uint256[] memory arguments,
+        function(uint256, uint256) pure returns (uint256) mutation
+    ) private view {
         for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            amounts[i] = amounts[i].sub(toSubtract[i]);
+            toMutate[i] = mutation(toMutate[i], arguments[i]);
         }
     }
 

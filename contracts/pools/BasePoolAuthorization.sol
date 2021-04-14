@@ -34,7 +34,7 @@ abstract contract BasePoolAuthorization is Authentication {
         _owner = owner;
     }
 
-    function getOwner() external view returns (address) {
+    function getOwner() public view returns (address) {
         return _owner;
     }
 
@@ -43,9 +43,9 @@ abstract contract BasePoolAuthorization is Authentication {
     }
 
     function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
-        if (_owner != address(0)) {
+        if (getOwner() != address(0)) {
             // A non-zero owner overrides the Authorizer flow - the owner is instead authorized for all actions.
-            return msg.sender == _owner;
+            return msg.sender == getOwner();
         } else {
             // Alternatively, we query the Authorizer for permission.
             return _getAuthorizer().hasRoleIn(roleId, account, address(this));
