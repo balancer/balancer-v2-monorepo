@@ -114,11 +114,19 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         IERC20 tokenX,
         IERC20 tokenY
     ) internal {
-        (bytes32 balanceA, bytes32 balanceB, ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
+        (
+            bytes32 balanceA,
+            bytes32 balanceB,
+            TwoTokenPoolBalances storage poolBalances
+        ) = _getTwoTokenPoolSharedBalances(poolId, tokenX, tokenY);
 
         _require(balanceA.isZero() && balanceB.isZero(), Errors.NONZERO_TOKEN_BALANCE);
 
         delete _twoTokenPoolTokens[poolId];
+
+        // For consistency with other Pool specialization settings, we explicitly reset the packed cash field (which may
+        // have a non-zero last change block number).
+        delete poolBalances.sharedCash;
     }
 
     /**
@@ -201,7 +209,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
             TwoTokenPoolBalances storage balances,
             IERC20 tokenA,
             bytes32 balanceA,
-            IERC20 tokenB,
+            ,
             bytes32 balanceB
         ) = _getTwoTokenPoolBalances(poolId);
 
@@ -210,12 +218,11 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
             bytes32 newBalance = mutation(balanceA, amount);
             delta = newBalance.managedDelta(balanceA);
             balanceA = newBalance;
-        } else if (token == tokenB) {
+        } else {
+            // token == tokenB
             bytes32 newBalance = mutation(balanceB, amount);
             delta = newBalance.managedDelta(balanceB);
             balanceB = newBalance;
-        } else {
-            _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
         balances.sharedCash = BalanceAllocation.toSharedCash(balanceA, balanceB);
