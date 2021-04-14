@@ -451,13 +451,13 @@ describe('BalancerPoolToken', () => {
           ({ v, r, s, deadline } = await signPermit(token, holder, spender, amount, nonce, now.sub(1)));
         });
 
-        itRevertsWithInvalidSignature();
+        itRevertsWithInvalidSignature('EXPIRED_PERMIT');
       });
 
-      function itRevertsWithInvalidSignature() {
+      function itRevertsWithInvalidSignature(reason?: string) {
         it('reverts', async () => {
           await expect(token.permit(holder.address, spender.address, amount, deadline, v, r, s)).to.be.revertedWith(
-            'INVALID_SIGNATURE'
+            reason ?? 'INVALID_SIGNATURE'
           );
         });
       }

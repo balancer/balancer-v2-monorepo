@@ -129,7 +129,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         bytes32 s
     ) public virtual override {
         // solhint-disable-next-line not-rely-on-time
-        _require(block.timestamp <= deadline, Errors.INVALID_SIGNATURE);
+        _require(block.timestamp <= deadline, Errors.EXPIRED_PERMIT);
 
         uint256 nonce = _nonces[owner];
 
