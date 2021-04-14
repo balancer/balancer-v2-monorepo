@@ -27,7 +27,9 @@ import "../../vault/interfaces/ISignaturesValidator.sol";
 abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
     uint256 internal constant EXTRA_CALLDATA_LENGTH = 32 * 4; // deadline + [v,r,s] signature
 
-    constructor() EIP712("Balancer Protocol", "1") {}
+    constructor() EIP712("Balancer Protocol", "1") {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     mapping(address => uint256) internal _nextNonce;
 

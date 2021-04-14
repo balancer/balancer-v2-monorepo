@@ -166,6 +166,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         return _nonces[owner];
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view override returns (bytes32) {
         return _domainSeparatorV4();
     }
