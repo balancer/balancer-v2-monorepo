@@ -25,7 +25,7 @@ describe('Vault - exit pool', () => {
   let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let allTokens: TokenList;
 
-  const SWAP_FEE = fp(0.1);
+  const SWAP_FEE_PERCENTAGE = fp(0.1);
 
   before(async () => {
     [, admin, creator, lp, recipient, relayer] = await ethers.getSigners();
@@ -39,9 +39,9 @@ describe('Vault - exit pool', () => {
     vault = vault.connect(lp);
     feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const role = await roleId(feesCollector, 'setSwapFee');
+    const role = await roleId(feesCollector, 'setSwapFeePercentage');
     await authorizer.connect(admin).grantRole(role, admin.address);
-    await feesCollector.connect(admin).setSwapFee(SWAP_FEE);
+    await feesCollector.connect(admin).setSwapFeePercentage(SWAP_FEE_PERCENTAGE);
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [creator, recipient], amount: bn(100e18) });
@@ -478,7 +478,7 @@ describe('Vault - exit pool', () => {
               sender: lp.address,
               recipient: recipient.address,
               currentBalances: previousPoolBalances,
-              protocolSwapFee: await feesCollector.getSwapFee(),
+              protocolSwapFeePercentage: await feesCollector.getSwapFeePercentage(),
               latestBlockNumberUsed: previousBlockNumber,
               userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
             });
@@ -509,9 +509,9 @@ describe('Vault - exit pool', () => {
           });
 
           it('collects protocol fees', async () => {
-            const previousCollectedFees = await feesCollector.getCollectedFees(tokens.addresses);
+            const previousCollectedFees = await feesCollector.getCollectedFeeAmounts(tokens.addresses);
             await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature });
-            const currentCollectedFees = await feesCollector.getCollectedFees(tokens.addresses);
+            const currentCollectedFees = await feesCollector.getCollectedFeeAmounts(tokens.addresses);
 
             // Fees from both sources are lumped together.
             expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(dueProtocolFeeAmounts);

@@ -33,11 +33,11 @@ import "../vault/interfaces/IBasePool.sol";
 
 /**
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with an immutable set
- * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency pause mechanism.
+ * of registered tokens, no Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
  *
  * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
- * derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the `whenNotPaused`
- * modifier.
+ * derived contracts can use them via the `_addSwapFeeAmount` and `_subtractSwapFeeAmount` functions, and the
+ * `whenNotPaused` modifier.
  *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.
  *
@@ -52,12 +52,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _MAX_TOKENS = 8;
 
     // 1e18 corresponds to 1.0, or a 100% fee
-    uint256 private constant _MIN_SWAP_FEE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE = 1e17; // 10%
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10%
 
     uint256 private constant _MINIMUM_BPT = 10**6;
 
-    uint256 internal _swapFee;
+    uint256 internal _swapFeePercentage;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -85,7 +85,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor6;
     uint256 internal immutable _scalingFactor7;
 
-    event SwapFeeChanged(uint256 swapFee);
+    event SwapFeeChanged(uint256 swapFeePercentage);
 
     constructor(
         IVault vault,
@@ -93,7 +93,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -117,8 +117,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // order of token-specific parameters (such as token weights) will not change.
         InputHelpers.ensureArrayIsSorted(tokens);
 
-        _require(swapFee >= _MIN_SWAP_FEE, Errors.MIN_SWAP_FEE);
-        _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         bytes32 poolId = vault.registerPool(specialization);
 
@@ -129,7 +129,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         _vault = vault;
         _poolId = poolId;
-        _swapFee = swapFee;
+        _swapFeePercentage = swapFeePercentage;
         _totalTokens = tokens.length;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
@@ -167,17 +167,17 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _totalTokens;
     }
 
-    function getSwapFee() external view returns (uint256) {
-        return _swapFee;
+    function getSwapFeePercentage() external view returns (uint256) {
+        return _swapFeePercentage;
     }
 
     // Caller must be approved by the Vault's Authorizer
-    function setSwapFee(uint256 swapFee) external virtual authenticate {
-        _require(swapFee >= _MIN_SWAP_FEE, Errors.MIN_SWAP_FEE);
-        _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
+    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate {
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _swapFee = swapFee;
-        emit SwapFeeChanged(swapFee);
+        _swapFeePercentage = swapFeePercentage;
+        emit SwapFeeChanged(swapFeePercentage);
     }
 
     // Caller must be approved by the Vault's Authorizer
@@ -283,7 +283,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * Vault with the same arguments, along with the number of tokens `sender` would have to supply.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
-     * data, such as the protocol swap fee and Pool balances.
+     * data, such as the protocol swap fee percentage and Pool balances.
      *
      * Like `IVault.queryBatchSwap`, this function is not view due to internal implementation details: the caller must
      * explicitly use eth_call instead of eth_sendTransaction.
@@ -316,7 +316,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * Vault with the same arguments, along with the number of tokens `recipient` would receive.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
-     * data, such as the protocol swap fee and Pool balances.
+     * data, such as the protocol swap fee percentage and Pool balances.
      *
      * Like `IVault.queryBatchSwap`, this function is not view due to internal implementation details: the caller must
      * explicitly use eth_call instead of eth_sendTransaction.
@@ -438,20 +438,20 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Internal functions
 
     /**
-     * @dev Adds swap fees to `amount`, returning a larger value.
+     * @dev Adds swap fee amount to `amount`, returning a higher value.
      */
-    function _addSwapFee(uint256 amount) internal view returns (uint256) {
-        // This returns amount + fees, so we round up (favoring fees).
-        return amount.divUp(_swapFee.complement());
+    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+        return amount.divUp(_swapFeePercentage.complement());
     }
 
     /**
-     * @dev Subtracts swap fees from `amount`, returning a lower value.
+     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
      */
-    function _subtractSwapFee(uint256 amount) internal view returns (uint256) {
-        // Round up, favoring fees.
-        uint256 fees = amount.mulUp(_swapFee);
-        return amount.sub(fees);
+    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
+        uint256 feeAmount = amount.mulUp(_swapFeePercentage);
+        return amount.sub(feeAmount);
     }
 
     // Scaling
@@ -567,7 +567,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function _getAuthorizer() internal view override returns (IAuthorizer) {
         // Role management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which accounts
-        // can call permissioned functions, used to e.g. set swap fees.
+        // can call permissioned functions, used to e.g. set swap fee percentages.
         // If there is a non-zero Pool `owner`, some of these functions will only be callable by the owner instead of
         // relying on the Authorizer for them.
         return getVault().getAuthorizer();

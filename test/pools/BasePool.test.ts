@@ -19,8 +19,8 @@ describe('BasePool', function () {
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
-  const MIN_SWAP_FEE = fp(0.000001);
-  const MAX_SWAP_FEE = fp(0.1);
+  const MIN_SWAP_FEE_PERCENTAGE = fp(0.000001);
+  const MAX_SWAP_FEE_PERCENTAGE = fp(0.1);
 
   before(async () => {
     [, admin, poolOwner, deployer, other] = await ethers.getSigners();
@@ -35,16 +35,16 @@ describe('BasePool', function () {
   function deployBasePool(
     params: {
       tokens?: TokenList | string[];
-      swapFee?: BigNumberish;
+      swapFeePercentage?: BigNumberish;
       pauseWindowDuration?: number;
       bufferPeriodDuration?: number;
       owner?: Account;
       from?: SignerWithAddress;
     } = {}
   ): Promise<Contract> {
-    let { tokens: poolTokens, swapFee, pauseWindowDuration, bufferPeriodDuration, owner } = params;
+    let { tokens: poolTokens, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!poolTokens) poolTokens = tokens;
-    if (!swapFee) swapFee = MIN_SWAP_FEE;
+    if (!swapFeePercentage) swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!owner) owner = ZERO_ADDRESS;
@@ -57,7 +57,7 @@ describe('BasePool', function () {
         'Balancer Pool Token',
         'BPT',
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
-        swapFee,
+        swapFeePercentage,
         pauseWindowDuration,
         bufferPeriodDuration,
         TypesConverter.toAddress(owner),
@@ -126,54 +126,60 @@ describe('BasePool', function () {
   describe('swap fee', () => {
     context('initialization', () => {
       it('has an initial swap fee', async () => {
-        const swapFee = fp(0.003);
-        const pool = await deployBasePool({ swapFee });
+        const swapFeePercentage = fp(0.003);
+        const pool = await deployBasePool({ swapFeePercentage });
 
-        expect(await pool.getSwapFee()).to.equal(swapFee);
+        expect(await pool.getSwapFeePercentage()).to.equal(swapFeePercentage);
       });
     });
 
-    context('set swap fee', () => {
+    context('set swap fee percentage', () => {
       let pool: Contract;
       let sender: SignerWithAddress;
 
-      function itSetsSwapFee() {
-        context('when the new swap fee is within bounds', () => {
-          const newSwapFee = MAX_SWAP_FEE.sub(1);
+      function itSetsSwapFeePercentage() {
+        context('when the new swap fee percentage is within bounds', () => {
+          const newSwapFeePercentage = MAX_SWAP_FEE_PERCENTAGE.sub(1);
 
           it('can change the swap fee', async () => {
-            await pool.connect(sender).setSwapFee(newSwapFee);
+            await pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage);
 
-            expect(await pool.getSwapFee()).to.equal(newSwapFee);
+            expect(await pool.getSwapFeePercentage()).to.equal(newSwapFeePercentage);
           });
 
           it('emits an event', async () => {
-            const receipt = await (await pool.connect(sender).setSwapFee(newSwapFee)).wait();
+            const receipt = await (await pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage)).wait();
 
-            expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFee: newSwapFee });
+            expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFeePercentage: newSwapFeePercentage });
           });
         });
 
-        context('when the new swap fee is above the maximum', () => {
-          const swapFee = MAX_SWAP_FEE.add(1);
+        context('when the new swap fee percentage is above the maximum', () => {
+          const swapFeePercentage = MAX_SWAP_FEE_PERCENTAGE.add(1);
 
           it('reverts', async () => {
-            await expect(pool.connect(sender).setSwapFee(swapFee)).to.be.revertedWith('MAX_SWAP_FEE');
+            await expect(pool.connect(sender).setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith(
+              'MAX_SWAP_FEE_PERCENTAGE'
+            );
           });
         });
 
-        context('when the new swap fee is below the minimum', () => {
-          const swapFee = MIN_SWAP_FEE.sub(1);
+        context('when the new swap fee percentage is below the minimum', () => {
+          const swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE.sub(1);
 
           it('reverts', async () => {
-            await expect(pool.connect(sender).setSwapFee(swapFee)).to.be.revertedWith('MIN_SWAP_FEE');
+            await expect(pool.connect(sender).setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith(
+              'MIN_SWAP_FEE_PERCENTAGE'
+            );
           });
         });
       }
 
       function itRevertsWithUnallowedSender() {
         it('reverts', async () => {
-          await expect(pool.connect(sender).setSwapFee(MIN_SWAP_FEE)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(pool.connect(sender).setSwapFeePercentage(MIN_SWAP_FEE_PERCENTAGE)).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
         });
       }
 
@@ -181,7 +187,7 @@ describe('BasePool', function () {
         const owner = ZERO_ADDRESS;
 
         sharedBeforeEach('deploy pool', async () => {
-          pool = await deployBasePool({ swapFee: fp(0.01), owner });
+          pool = await deployBasePool({ swapFeePercentage: fp(0.01), owner });
         });
 
         beforeEach(() => {
@@ -190,11 +196,11 @@ describe('BasePool', function () {
 
         context('when the sender has the set fee role in the authorizer', () => {
           sharedBeforeEach('grant permission', async () => {
-            const role = await roleId(pool, 'setSwapFee');
+            const role = await roleId(pool, 'setSwapFeePercentage');
             await authorizer.connect(admin).grantRole(role, sender.address);
           });
 
-          itSetsSwapFee();
+          itSetsSwapFeePercentage();
         });
 
         context('when the sender does not have the set fee role in the authorizer', () => {
@@ -207,7 +213,7 @@ describe('BasePool', function () {
 
         sharedBeforeEach('deploy pool', async () => {
           owner = poolOwner;
-          pool = await deployBasePool({ swapFee: fp(0.01), owner });
+          pool = await deployBasePool({ swapFeePercentage: fp(0.01), owner });
         });
 
         context('when the sender is the owner', () => {
@@ -215,7 +221,7 @@ describe('BasePool', function () {
             sender = owner;
           });
 
-          itSetsSwapFee();
+          itSetsSwapFeePercentage();
         });
 
         context('when the sender is not the owner', () => {
@@ -229,7 +235,7 @@ describe('BasePool', function () {
 
           context('when the sender has the set fee role in the authorizer', () => {
             sharedBeforeEach(async () => {
-              const role = await roleId(pool, 'setSwapFee');
+              const role = await roleId(pool, 'setSwapFeePercentage');
               await authorizer.connect(admin).grantRole(role, sender.address);
             });
 

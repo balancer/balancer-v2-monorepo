@@ -14,7 +14,7 @@ describe('StablePool', function () {
   let allTokens: TokenList;
   let trader: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
 
-  const POOL_SWAP_FEE = fp(0.01);
+  const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const AMPLIFICATION_PARAMETER = fp(200);
   const INITIAL_BALANCES = [fp(1), fp(0.9), fp(0.8), fp(1.1)];
 
@@ -48,7 +48,9 @@ describe('StablePool', function () {
       // The maximum number of tokens is 5
       const tokens = await TokenList.create(6, { sorted: true });
 
-      await expect(StablePool.create({ tokens, swapFee: POOL_SWAP_FEE })).to.be.revertedWith('MAX_STABLE_TOKENS');
+      await expect(StablePool.create({ tokens, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE })).to.be.revertedWith(
+        'MAX_STABLE_TOKENS'
+      );
     });
   });
 
@@ -61,7 +63,7 @@ describe('StablePool', function () {
     async function deployPool(params: RawStablePoolDeployment = {}): Promise<void> {
       params = Object.assign(
         {},
-        { tokens, amplificationParameter: AMPLIFICATION_PARAMETER, swapFee: POOL_SWAP_FEE },
+        { tokens, amplificationParameter: AMPLIFICATION_PARAMETER, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE },
         params
       );
       pool = await StablePool.create(params);
@@ -110,7 +112,7 @@ describe('StablePool', function () {
         });
 
         it('sets swap fee', async () => {
-          expect(await pool.getSwapFee()).to.equal(POOL_SWAP_FEE);
+          expect(await pool.getSwapFeePercentage()).to.equal(POOL_SWAP_FEE_PERCENTAGE);
         });
 
         it('sets the name', async () => {
@@ -134,9 +136,11 @@ describe('StablePool', function () {
         });
 
         it('reverts if the swap fee is too high', async () => {
-          const badSwapFee = fp(0.1).add(1);
+          const badSwapFeePercentage = fp(0.1).add(1);
 
-          await expect(deployPool({ swapFee: badSwapFee })).to.be.revertedWith('MAX_SWAP_FEE');
+          await expect(deployPool({ swapFeePercentage: badSwapFeePercentage })).to.be.revertedWith(
+            'MAX_SWAP_FEE_PERCENTAGE'
+          );
         });
 
         it('reverts if amplification coefficient is too high', async () => {
@@ -480,7 +484,7 @@ describe('StablePool', function () {
       context('given in', () => {
         it('calculates amount out', async () => {
           const amount = fp(0.1);
-          const amountWithFees = amount.mul(POOL_SWAP_FEE.add(fp(1))).div(fp(1));
+          const amountWithFees = amount.mul(POOL_SWAP_FEE_PERCENTAGE.add(fp(1))).div(fp(1));
           const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
           const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
@@ -571,7 +575,11 @@ describe('StablePool', function () {
         sharedBeforeEach('compute expected due protocol fees', async () => {
           const maxBalance = currentBalances.reduce((max, balance) => (balance.gt(max) ? balance : max), bn(0));
           const paidTokenIndex = currentBalances.indexOf(maxBalance);
-          const protocolFeeAmount = await pool.estimateSwapFee(paidTokenIndex, protocolFeePercentage, currentBalances);
+          const protocolFeeAmount = await pool.estimateSwapFeeAmount(
+            paidTokenIndex,
+            protocolFeePercentage,
+            currentBalances
+          );
           expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? protocolFeeAmount : n));
         });
 

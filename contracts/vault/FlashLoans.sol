@@ -53,7 +53,7 @@ abstract contract FlashLoans is Fees, ReentrancyGuard, TemporarilyPausable {
             previousToken = token;
 
             preLoanBalances[i] = token.balanceOf(address(this));
-            feeAmounts[i] = _calculateFlashLoanFee(amount);
+            feeAmounts[i] = _calculateFlashLoanFeeAmount(amount);
 
             _require(preLoanBalances[i] >= amount, Errors.INSUFFICIENT_FLASH_LOAN_BALANCE);
             token.safeTransfer(address(recipient), amount);

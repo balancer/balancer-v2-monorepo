@@ -34,7 +34,7 @@ import {
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
   calcOutGivenIn,
-  calculateOneTokenSwapFee,
+  calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
 } from '../../../math/stable';
 
@@ -44,7 +44,7 @@ export default class StablePool {
   instance: Contract;
   poolId: string;
   tokens: TokenList;
-  swapFee: BigNumberish;
+  swapFeePercentage: BigNumberish;
   amplificationParameter: BigNumberish;
   vault: Vault;
 
@@ -58,14 +58,14 @@ export default class StablePool {
     vault: Vault,
     tokens: TokenList,
     amplificationParameter: BigNumberish,
-    swapFee: BigNumberish
+    swapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
     this.tokens = tokens;
     this.amplificationParameter = amplificationParameter;
-    this.swapFee = swapFee;
+    this.swapFeePercentage = swapFeePercentage;
   }
 
   get address(): string {
@@ -108,8 +108,8 @@ export default class StablePool {
     return this.instance.getLastInvariant();
   }
 
-  async getSwapFee(): Promise<BigNumber> {
-    return this.instance.getSwapFee();
+  async getSwapFeePercentage(): Promise<BigNumber> {
+    return this.instance.getSwapFeePercentage();
   }
 
   async getAmplificationParameter(): Promise<BigNumber> {
@@ -137,7 +137,7 @@ export default class StablePool {
     return calculateInvariant(currentBalances, this.amplificationParameter);
   }
 
-  async estimateSwapFee(
+  async estimateSwapFeeAmount(
     paidToken: number | Token,
     protocolFeePercentage: BigNumberish,
     currentBalances?: BigNumberish[]
@@ -145,7 +145,7 @@ export default class StablePool {
     if (!currentBalances) currentBalances = await this.getBalances();
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const feeAmount = calculateOneTokenSwapFee(
+    const feeAmount = calculateOneTokenSwapFeeAmount(
       currentBalances,
       this.amplificationParameter,
       lastInvariant,
@@ -177,7 +177,13 @@ export default class StablePool {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
 
-    return calcBptOutGivenExactTokensIn(currentBalances, this.amplificationParameter, amountsIn, supply, this.swapFee);
+    return calcBptOutGivenExactTokensIn(
+      currentBalances,
+      this.amplificationParameter,
+      amountsIn,
+      supply,
+      this.swapFeePercentage
+    );
   }
 
   async estimateTokenIn(
@@ -196,7 +202,7 @@ export default class StablePool {
       this.amplificationParameter,
       bptOut,
       supply,
-      this.swapFee
+      this.swapFeePercentage
     );
   }
 
@@ -216,7 +222,7 @@ export default class StablePool {
       this.amplificationParameter,
       bptIn,
       supply,
-      this.swapFee
+      this.swapFeePercentage
     );
   }
 

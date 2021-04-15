@@ -55,11 +55,22 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
-    ) BaseMinimalSwapInfoPool(vault, name, symbol, tokens, swapFee, pauseWindowDuration, bufferPeriodDuration, owner) {
+    )
+        BaseMinimalSwapInfoPool(
+            vault,
+            name,
+            symbol,
+            tokens,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
+    {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
 
@@ -241,8 +252,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
 
         uint256[] memory normalizedWeights = _normalizedWeights();
 
-        // Due protocol swap fees are computed by measuring the growth of the invariant between the previous join or
-        // exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas
+        // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
+        // or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas
         // computing them on each individual swap
         uint256 invariantBeforeJoin = WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
 
@@ -259,7 +270,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(currentBalances, normalizedWeights, userData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
-        // protocol swap fees due in future joins and exits.
+        // protocol swap fee amounts due in future joins and exits.
         _lastInvariant = _invariantAfterJoin(currentBalances, amountsIn, normalizedWeights);
 
         return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
@@ -296,7 +307,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             normalizedWeights,
             amountsIn,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -320,7 +331,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             normalizedWeights[tokenIndex],
             bptAmountOut,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         return (bptAmountOut, amountsIn);
@@ -419,7 +430,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             normalizedWeights[tokenIndex],
             bptAmountIn,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         return (bptAmountIn, amountsOut);
@@ -463,7 +474,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             normalizedWeights,
             amountsOut,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
@@ -482,14 +493,14 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         // Initialize with zeros
         uint256[] memory dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
 
-        // Early return if the protocol swap fee is zero, saving gas.
+        // Early return if the protocol swap fee percentage is zero, saving gas.
         if (protocolSwapFeePercentage == 0) {
             return dueProtocolFeeAmounts;
         }
 
-        // The protocol swap fee are always paid using the token with the largest weight in the Pool. As this is the
+        // The protocol swap fees are always paid using the token with the largest weight in the Pool. As this is the
         // token that is expected to have the largest balance, using it to pay fees should not unbalance the Pool.
-        dueProtocolFeeAmounts[_maxWeightTokenIndex] = WeightedMath._calcDueTokenProtocolSwapFee(
+        dueProtocolFeeAmounts[_maxWeightTokenIndex] = WeightedMath._calcDueTokenprotocolSwapFeePercentageAmount(
             currentBalances[_maxWeightTokenIndex],
             normalizedWeights[_maxWeightTokenIndex],
             previousInvariant,

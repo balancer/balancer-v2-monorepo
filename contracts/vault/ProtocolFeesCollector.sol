@@ -37,23 +37,23 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
-    uint256 private constant _MAX_PROTOCOL_SWAP_FEE = 50e16; // 50%
-    uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE = 1e16; // 1%
+    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
+    uint256 private constant _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE = 1e16; // 1%
 
     IVault public immutable vault;
 
-    // All fees are 18-decimal fixed point numbers.
+    // All fee percentages are 18-decimal fixed point numbers.
 
     // The swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool. These are not
     // actually charged on each individual swap: the `Vault` relies on the Pools being honest and reporting fees due
     // when users join and exit them.
-    uint256 private _swapFee;
+    uint256 private _swapFeePercentage;
 
     // The flash loan fee is charged whenever a flash loan occurs, as a percentage of the tokens lent.
-    uint256 private _flashLoanFee;
+    uint256 private _flashLoanFeePercentage;
 
-    event SwapFeeChanged(uint256 newSwapFee);
-    event FlashLoanFeeChanged(uint256 newFlashLoanFee);
+    event SwapFeeChanged(uint256 newSwapFeePercentage);
+    event FlashLoanFeeChanged(uint256 newFlashLoanFeePercentage);
 
     constructor(IVault _vault) Authentication(bytes32(uint256(address(this)))) {
         vault = _vault;
@@ -73,30 +73,30 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
         }
     }
 
-    function setSwapFee(uint256 newSwapFee) external authenticate {
-        _require(newSwapFee <= _MAX_PROTOCOL_SWAP_FEE, Errors.SWAP_FEE_TOO_HIGH);
-        _swapFee = newSwapFee;
-        emit SwapFeeChanged(newSwapFee);
+    function setSwapFeePercentage(uint256 newSwapFeePercentage) external authenticate {
+        _require(newSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, Errors.SWAP_FEE_TOO_HIGH);
+        _swapFeePercentage = newSwapFeePercentage;
+        emit SwapFeeChanged(newSwapFeePercentage);
     }
 
-    function setFlashLoanFee(uint256 newFlashLoanFee) external authenticate {
-        _require(newFlashLoanFee <= _MAX_PROTOCOL_FLASH_LOAN_FEE, Errors.FLASH_LOAN_FEE_TOO_HIGH);
-        _flashLoanFee = newFlashLoanFee;
-        emit FlashLoanFeeChanged(newFlashLoanFee);
+    function setFlashLoanFeePercentage(uint256 newFlashLoanFeePercentage) external authenticate {
+        _require(newFlashLoanFeePercentage <= _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE, Errors.FLASH_LOAN_FEE_TOO_HIGH);
+        _flashLoanFeePercentage = newFlashLoanFeePercentage;
+        emit FlashLoanFeeChanged(newFlashLoanFeePercentage);
     }
 
-    function getSwapFee() external view returns (uint256) {
-        return _swapFee;
+    function getSwapFeePercentage() external view returns (uint256) {
+        return _swapFeePercentage;
     }
 
-    function getFlashLoanFee() external view returns (uint256) {
-        return _flashLoanFee;
+    function getFlashLoanFeePercentage() external view returns (uint256) {
+        return _flashLoanFeePercentage;
     }
 
-    function getCollectedFees(IERC20[] memory tokens) external view returns (uint256[] memory fees) {
-        fees = new uint256[](tokens.length);
+    function getCollectedFeeAmounts(IERC20[] memory tokens) external view returns (uint256[] memory feeAmounts) {
+        feeAmounts = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            fees[i] = tokens[i].balanceOf(address(this));
+            feeAmounts[i] = tokens[i].balanceOf(address(this));
         }
     }
 

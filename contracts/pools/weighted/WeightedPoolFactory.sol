@@ -34,7 +34,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory weights,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -46,7 +46,7 @@ contract WeightedPoolFactory is BasePoolFactory {
                 symbol,
                 tokens,
                 weights,
-                swapFee,
+                swapFeePercentage,
                 pauseWindowDuration,
                 bufferPeriodDuration,
                 owner
