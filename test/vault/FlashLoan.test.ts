@@ -29,7 +29,7 @@ describe('Vault - flash loans', () => {
     receiver = await deploy('MockFlashLoanReceiver', { from: other, args: [vault.address] });
     feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const SET_FLASH_LOAN_ROLE = roleId(feesCollector, 'setFlashLoanFeePercentage');
+    const SET_FLASH_LOAN_ROLE = await roleId(feesCollector, 'setFlashLoanFeePercentage');
     await authorizer.connect(admin).grantRole(SET_FLASH_LOAN_ROLE, feeSetter.address);
 
     tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
