@@ -15,7 +15,7 @@ import { Account } from '../helpers/models/types/types';
 import TypesConverter from '../helpers/models/types/TypesConverter';
 
 describe('BasePool', function () {
-  let admin: SignerWithAddress, poolOwner: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
@@ -25,7 +25,7 @@ describe('BasePool', function () {
   const MAX_SWAP_FEE_PERCENTAGE = fp(0.1);
 
   before(async () => {
-    [, admin, poolOwner, other] = await ethers.getSigners();
+    [, admin, poolOwner, deployer, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach(async () => {
@@ -41,6 +41,7 @@ describe('BasePool', function () {
       responseWindowDuration?: number;
       bufferPeriodDuration?: number;
       owner?: Account;
+      from?: SignerWithAddress;
     } = {}
   ): Promise<Contract> {
     let { tokens: poolTokens, swapFeePercentage, responseWindowDuration, bufferPeriodDuration, owner } = params;
@@ -51,6 +52,7 @@ describe('BasePool', function () {
     if (!owner) owner = ZERO_ADDRESS;
 
     return deploy('MockBasePool', {
+      from: params.from,
       args: [
         vault.address,
         GeneralPool,
@@ -92,12 +94,34 @@ describe('BasePool', function () {
     });
 
     it('tracks authorizer changes in the vault', async () => {
-      const role = roleId(vault, 'changeAuthorizer');
+      const role = await roleId(vault, 'changeAuthorizer');
       await authorizer.connect(admin).grantRole(role, admin.address);
 
       await vault.connect(admin).changeAuthorizer(other.address);
 
       expect(await pool.getAuthorizer()).to.equal(other.address);
+    });
+
+    describe('role identifiers', () => {
+      const selector = '0x12345678';
+
+      context('with same pool creator', () => {
+        it('pools share role identifiers', async () => {
+          const pool = await deployBasePool({ tokens, from: deployer });
+          const otherPool = await deployBasePool({ tokens, from: deployer });
+
+          expect(await pool.getRole(selector)).to.equal(await otherPool.getRole(selector));
+        });
+      });
+
+      context('with different pool creators', () => {
+        it('pools have unique role identifiers', async () => {
+          const pool = await deployBasePool({ tokens, from: deployer });
+          const otherPool = await deployBasePool({ tokens, from: other });
+
+          expect(await pool.getRole(selector)).to.not.equal(await otherPool.getRole(selector));
+        });
+      });
     });
   });
 
@@ -170,7 +194,7 @@ describe('BasePool', function () {
 
         context('when the sender has a set fee role in the authorizer', () => {
           sharedBeforeEach('grant permission', async () => {
-            const role = roleId(pool, 'setSwapFeePercentage');
+            const role = await roleId(pool, 'setSwapFeePercentage');
             await authorizer.connect(admin).grantRole(role, admin.address);
             sender = admin;
           });
@@ -210,7 +234,7 @@ describe('BasePool', function () {
 
           context('when the sender has the set fee role in the authorizer', () => {
             sharedBeforeEach(async () => {
-              const role = roleId(pool, 'setSwapFeePercentage');
+              const role = await roleId(pool, 'setSwapFeePercentage');
               await authorizer.connect(admin).grantRole(role, sender.address);
             });
 
@@ -237,7 +261,7 @@ describe('BasePool', function () {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = roleId(pool, 'setPaused');
+        role = await roleId(pool, 'setPaused');
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 

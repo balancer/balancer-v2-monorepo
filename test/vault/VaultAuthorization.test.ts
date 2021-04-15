@@ -51,7 +51,7 @@ describe('VaultAuthorization', function () {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = roleId(vault, 'changeAuthorizer');
+        role = await roleId(vault, 'changeAuthorizer');
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 
@@ -158,7 +158,7 @@ describe('VaultAuthorization', function () {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = roleId(vault, 'setPaused');
+        role = await roleId(vault, 'setPaused');
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 

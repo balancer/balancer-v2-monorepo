@@ -55,7 +55,7 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     event SwapFeeChanged(uint256 newSwapFeePercentage);
     event FlashLoanFeeChanged(uint256 newFlashLoanFeePercentage);
 
-    constructor(IVault _vault) {
+    constructor(IVault _vault) Authentication(bytes32(uint256(address(this)))) {
         vault = _vault;
     }
 

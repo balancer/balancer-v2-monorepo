@@ -101,7 +101,7 @@ describe('Vault - protocol fees', () => {
       });
 
       it('authorized accounts can withdraw protocol fees to any recipient', async () => {
-        const role = roleId(feesCollector, 'withdrawCollectedFees');
+        const role = await roleId(feesCollector, 'withdrawCollectedFees');
         await vault.grantRole(role, feeCollector);
 
         await expectBalanceChange(
@@ -118,7 +118,7 @@ describe('Vault - protocol fees', () => {
       });
 
       it('protocol fees cannot be over-withdrawn', async () => {
-        const role = roleId(feesCollector, 'withdrawCollectedFees');
+        const role = await roleId(feesCollector, 'withdrawCollectedFees');
         await vault.grantRole(role, feeCollector);
 
         await expect(

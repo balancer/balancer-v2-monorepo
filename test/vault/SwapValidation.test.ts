@@ -139,7 +139,7 @@ describe('Vault - swap validation', () => {
 
       context('when paused', () => {
         sharedBeforeEach('pause', async () => {
-          const role = roleId(vault, 'setPaused');
+          const role = await roleId(vault, 'setPaused');
           await authorizer.connect(admin).grantRole(role, admin.address);
           await vault.connect(admin).setPaused(true);
         });

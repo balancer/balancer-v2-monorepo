@@ -135,7 +135,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(roleId(feesCollector, 'setSwapFeePercentage'), this.admin);
+      await this.grantRole(await roleId(feesCollector, 'setSwapFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
@@ -150,7 +150,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(roleId(feesCollector, 'setFlashLoanFeePercentage'), this.admin);
+      await this.grantRole(await roleId(feesCollector, 'setFlashLoanFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
