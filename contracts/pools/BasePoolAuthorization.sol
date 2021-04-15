@@ -56,7 +56,7 @@ abstract contract BasePoolAuthorization is Authentication {
     }
 
     function _isOwnerOverrideableRole(bytes32 roleId) private view returns (bool) {
-        return roleId == getRole(BasePool.setSwapFee.selector);
+        return roleId == getRole(BasePool.setSwapFeePercentage.selector);
     }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);
