@@ -303,6 +303,7 @@ abstract contract PoolAssets is
     {
         (IERC20[] memory actualTokens, bytes32[] memory balances) = _getPoolTokens(poolId);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
+        _require(actualTokens.length > 0, Errors.POOL_NO_TOKENS);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             _require(actualTokens[i] == expectedTokens[i], Errors.TOKENS_MISMATCH);
