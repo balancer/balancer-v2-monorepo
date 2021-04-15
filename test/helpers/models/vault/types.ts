@@ -5,15 +5,15 @@ import { BigNumberish } from '../../../../lib/helpers/numbers';
 export type RawVaultDeployment = {
   mocked?: boolean;
   admin?: SignerWithAddress;
-  emergencyPeriod?: BigNumberish;
-  emergencyPeriodCheckExtension?: BigNumberish;
+  responseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
   from?: SignerWithAddress;
 };
 
 export type VaultDeployment = {
   mocked: boolean;
-  emergencyPeriod: BigNumberish;
-  emergencyPeriodCheckExtension: BigNumberish;
+  responseWindowDuration: BigNumberish;
+  bufferPeriodDuration: BigNumberish;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };

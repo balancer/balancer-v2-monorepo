@@ -56,8 +56,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
         uint256 swapFee,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension,
+        uint256 responseWindowDuration,
+        uint256 bufferPeriodDuration,
         address owner
     )
         BaseMinimalSwapInfoPool(
@@ -66,8 +66,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             symbol,
             tokens,
             swapFee,
-            emergencyPeriod,
-            emergencyPeriodCheckExtension,
+            responseWindowDuration,
+            bufferPeriodDuration,
             owner
         )
     {
@@ -166,8 +166,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view virtual override noEmergencyPeriod returns (uint256) {
-        // Swaps are disabled while the emergency period is active.
+    ) internal view virtual override whenNotPaused returns (uint256) {
+        // Swaps are disabled while the contract is paused.
 
         return
             WeightedMath._calcOutGivenIn(
@@ -183,8 +183,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal view virtual override noEmergencyPeriod returns (uint256) {
-        // Swaps are disabled while the emergency period is active.
+    ) internal view virtual override whenNotPaused returns (uint256) {
+        // Swaps are disabled while the contract is paused.
 
         return
             WeightedMath._calcInGivenOut(
@@ -203,9 +203,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         address,
         address,
         bytes memory userData
-    ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
-        // It would be strange for a Pool's emergency period to be active before it is initialized,
-        // but for consistency we prevent initialization in this case.
+    ) internal virtual override whenNotPaused returns (uint256, uint256[] memory) {
+        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
+        // initialization in this case.
 
         WeightedPool.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPool.JoinKind.INIT, Errors.UNINITIALIZED);
@@ -241,14 +241,14 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         internal
         virtual
         override
-        noEmergencyPeriod
+        whenNotPaused
         returns (
             uint256,
             uint256[] memory,
             uint256[] memory
         )
     {
-        // All joins are disabled while the emergency period is active.
+        // All joins are disabled while the contract is paused.
 
         uint256[] memory normalizedWeights = _normalizedWeights();
 
@@ -357,13 +357,13 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        // Exits are not completely disabled while the emergency period is active: proportional exits (exact BPT in
-        // for tokens out) remain functional.
+        // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
+        // out) remain functional.
 
         uint256[] memory normalizedWeights = _normalizedWeights();
 
-        if (_isEmergencyPeriodInactive()) {
-            // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
+        if (_isNotPaused()) {
+            // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
             // spending gas calculating the fees on each individual swap.
             uint256 invariantBeforeExit = WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
@@ -378,8 +378,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             // Update current balances by subtracting the protocol fee amounts
             _mutateAmounts(currentBalances, dueProtocolFeeAmounts, FixedPoint.sub);
         } else {
-            // If the emergency period is active, protocol fees are not charged to avoid extra calculations and
-            // reduce the potential for errors.
+            // If the contract is paused, protocol fees are not charged to avoid extra calculations and reduce the
+            // potential for errors.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 
@@ -413,8 +413,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory currentBalances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private view noEmergencyPeriod returns (uint256, uint256[] memory) {
-        // This exit function is disabled if the emergency period is active.
+    ) private view whenNotPaused returns (uint256, uint256[] memory) {
+        // This exit function is disabled if the contract is paused.
 
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
@@ -441,11 +441,10 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         view
         returns (uint256, uint256[] memory)
     {
-        // This exit function is the only one that is not disabled if the emergency period is active: it remains
-        // unrestricted in an attempt to provide users with a mechanism to retrieve their tokens in case of an
-        // emergency.
-        //
-        // This particular exit function remains available because it is the simplest (and therefore safest) one
+        // This exit function is the only one that is not disabled if the contract is paused: it remains unrestricted
+        // in an attempt to provide users with a mechanism to retrieve their tokens in case of an emergency.
+        // This particular exit function is the only one that remains available because it is the simplest one, and
+        // therefore the one with the lowest likelihood of errors.
 
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
@@ -463,8 +462,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory currentBalances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private view noEmergencyPeriod returns (uint256, uint256[] memory) {
-        // This exit function is disabled if the emergency period is active.
+    ) private view whenNotPaused returns (uint256, uint256[] memory) {
+        // This exit function is disabled if the contract is paused.
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());

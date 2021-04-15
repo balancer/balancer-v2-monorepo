@@ -29,11 +29,12 @@ export default {
       tokens,
       amplificationParameter,
       swapFee,
-      emergencyPeriod,
-      emergencyPeriodCheckExtension,
+      responseWindowDuration,
+      bufferPeriodDuration,
       owner,
       from,
     } = params;
+
     return deploy('StablePool', {
       args: [
         vault.address,
@@ -42,8 +43,8 @@ export default {
         tokens.addresses,
         amplificationParameter,
         swapFee,
-        emergencyPeriod,
-        emergencyPeriodCheckExtension,
+        responseWindowDuration,
+        bufferPeriodDuration,
         TypesConverter.toAddress(owner),
       ],
       from,
@@ -55,11 +56,12 @@ export default {
       tokens,
       amplificationParameter,
       swapFee,
-      emergencyPeriod,
-      emergencyPeriodCheckExtension,
+      responseWindowDuration,
+      bufferPeriodDuration,
       owner,
       from,
     } = params;
+
     const factory = await deploy('StablePoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
@@ -67,8 +69,9 @@ export default {
       tokens.addresses,
       amplificationParameter,
       swapFee,
-      emergencyPeriod,
-      emergencyPeriodCheckExtension,
+
+      responseWindowDuration,
+      bufferPeriodDuration,
       TypesConverter.toAddress(owner)
     );
     const receipt = await tx.wait();

@@ -38,16 +38,16 @@ describe('BasePool', function () {
     params: {
       tokens?: TokenList | string[];
       swapFee?: BigNumberish;
-      emergencyPeriod?: number;
-      emergencyPeriodCheckExtension?: number;
+      responseWindowDuration?: number;
+      bufferPeriodDuration?: number;
       owner?: Account;
     } = {}
   ): Promise<Contract> {
-    let { tokens: poolTokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, owner } = params;
+    let { tokens: poolTokens, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!poolTokens) poolTokens = tokens;
     if (!swapFee) swapFee = MIN_SWAP_FEE;
-    if (!emergencyPeriod) emergencyPeriod = 0;
-    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = 0;
+    if (!responseWindowDuration) responseWindowDuration = 0;
+    if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!owner) owner = ZERO_ADDRESS;
 
     return deploy('MockBasePool', {
@@ -58,8 +58,8 @@ describe('BasePool', function () {
         'BPT',
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
         swapFee,
-        emergencyPeriod,
-        emergencyPeriodCheckExtension,
+        responseWindowDuration,
+        bufferPeriodDuration,
         TypesConverter.toAddress(owner),
       ],
     });
@@ -217,47 +217,52 @@ describe('BasePool', function () {
     });
   });
 
-  describe('emergency period', () => {
+  describe('temporarily pausable', () => {
     let pool: Contract;
-    const EMERGENCY_PERIOD = MONTH * 3;
-    const EMERGENCY_PERIOD_CHECK_EXTENSION = MONTH;
+    const RESPONSE_WINDOW_DURATION = MONTH * 3;
+    const BUFFER_PERIOD_DURATION = MONTH;
 
     sharedBeforeEach('deploy pool', async () => {
       pool = await deployBasePool({
-        emergencyPeriod: EMERGENCY_PERIOD,
-        emergencyPeriodCheckExtension: EMERGENCY_PERIOD_CHECK_EXTENSION,
+        responseWindowDuration: RESPONSE_WINDOW_DURATION,
+        bufferPeriodDuration: BUFFER_PERIOD_DURATION,
       });
     });
 
-    context('when the sender has the set emergency period role in the authorizer', () => {
+    context('when the sender is has the role to pause and unpause in the authorizer', () => {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = roleId(pool, 'setEmergencyPeriod');
+        role = roleId(pool, 'setPaused');
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 
-      it('can change the emergency period status', async () => {
-        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
+      it('can pause', async () => {
+        await pool.connect(admin).setPaused(true);
 
-        await pool.connect(admin).setEmergencyPeriod(true);
-
-        const { active } = await pool.getEmergencyPeriod();
-        expect(active).to.be.true;
+        const { paused } = await pool.getPausedState();
+        expect(paused).to.be.true;
       });
 
-      it('can not change the emergency period if the role is revoked', async () => {
-        await authorizer.connect(admin).revokeRole(role, admin.address);
+      it('can unpause', async () => {
+        await pool.connect(admin).setPaused(true);
+        await pool.connect(admin).setPaused(false);
 
+        const { paused } = await pool.getPausedState();
+        expect(paused).to.be.false;
+      });
+
+      it('cannot pause if the role is revoked in the authorizer', async () => {
+        await authorizer.connect(admin).revokeRole(role, admin.address);
         expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
 
-        await expect(pool.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.connect(admin).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
-    context('when the sender does not have the set emergency period role in the authorizer', () => {
+    context('when the sender does not have the role to pause in the authorizer', () => {
       it('reverts', async () => {
-        await expect(pool.connect(other).setEmergencyPeriod(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.connect(other).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });

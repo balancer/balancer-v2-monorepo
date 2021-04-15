@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/InputHelpers.sol";
-import "../lib/helpers/EmergencyPeriod.sol";
+import "../lib/helpers/TemporarilyPausable.sol";
 import "../lib/openzeppelin/ERC20.sol";
 
 import "./BalancerPoolToken.sol";
@@ -33,11 +33,11 @@ import "../vault/interfaces/IBasePool.sol";
 
 /**
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with an immutable set
- * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency stop mechanisms.
+ * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency pause mechanism.
  *
- * Note that neither swap fees nor the emergency stop mechanism are used by this contract. They are passed through so
- * that derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the
- * `noEmergencyPeriod` modifier.
+ * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
+ * derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the `whenNotPaused`
+ * modifier.
  *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.
  *
@@ -45,7 +45,7 @@ import "../vault/interfaces/IBasePool.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, EmergencyPeriod {
+abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
@@ -94,13 +94,13 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFeePercentage,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension,
+        uint256 responseWindowDuration,
+        uint256 bufferPeriodDuration,
         address owner
     )
         BalancerPoolToken(name, symbol)
         BasePoolAuthorization(owner)
-        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
+        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
     {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
@@ -176,8 +176,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     // Caller must be approved by the Vault's Authorizer
-    function setEmergencyPeriod(bool active) external authenticate {
-        _setEmergencyPeriod(active);
+    function setPaused(bool paused) external authenticate {
+        _setPaused(paused);
     }
 
     // Join / Exit Hooks

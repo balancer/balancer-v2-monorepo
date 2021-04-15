@@ -64,7 +64,7 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
         external
         override
         nonReentrant
-        noEmergencyPeriod
+        whenNotPaused
         returns (bytes32)
     {
         // Each Pool is assigned a unique ID based on an incrementing nonce. This assumes there will never be more than

@@ -1269,7 +1269,7 @@ describe('Vault - user balance', () => {
       await vault.connect(recipient).changeRelayerAllowance(recipient.address, relayer.address, true);
     });
 
-    context('when there is no emergency', () => {
+    context('when unpaused', () => {
       context('when all the senders allowed the relayer', () => {
         context('when all ops add up', () => {
           it('succeeds', async () => {
@@ -1336,7 +1336,7 @@ describe('Vault - user balance', () => {
       });
     });
 
-    context('when there is an emergency', () => {
+    context('when paused', () => {
       sharedBeforeEach('deposit some internal balances', async () => {
         const ops = [
           op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 1, sender, sender),
@@ -1350,10 +1350,10 @@ describe('Vault - user balance', () => {
         await vault.connect(otherRecipient).changeRelayerAllowance(otherRecipient.address, relayer.address, true);
       });
 
-      sharedBeforeEach('activate emergency period', async () => {
-        const role = roleId(vault, 'setEmergencyPeriod');
+      sharedBeforeEach('pause', async () => {
+        const role = roleId(vault, 'setPaused');
         await authorizer.connect(admin).grantRole(role, admin.address);
-        await vault.connect(admin).setEmergencyPeriod(true);
+        await vault.connect(admin).setPaused(true);
       });
 
       context('when only withdrawing internal balance', () => {
@@ -1393,7 +1393,7 @@ describe('Vault - user balance', () => {
             op(OP_KIND.WITHDRAW_INTERNAL, tokens.MKR, 1, otherRecipient, recipient),
           ];
 
-          await expect(vault.connect(relayer).manageUserBalance(ops)).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(vault.connect(relayer).manageUserBalance(ops)).to.be.revertedWith('PAUSED');
         });
       });
     });
