@@ -13,12 +13,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindow",
+        "name": "pauseWindowDuration",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "bufferPeriod",
+        "name": "bufferPeriodDuration",
         "type": "uint256"
       }
     ],
@@ -624,7 +624,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowEndTime",
+        "name": "pauseWindowEndTime",
         "type": "uint256"
       },
       {
@@ -818,17 +818,17 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "enum IVault.AssetManagerOpKind",
-        "name": "kind",
-        "type": "uint8"
-      },
-      {
         "components": [
+          {
+            "internalType": "enum IVault.PoolBalanceOpKind",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "poolId",
+            "type": "bytes32"
+          },
           {
             "internalType": "contract IERC20",
             "name": "token",
@@ -840,8 +840,8 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct IVault.AssetManagerTransfer[]",
-        "name": "transfers",
+        "internalType": "struct IVault.PoolBalanceOp[]",
+        "name": "ops",
         "type": "tuple[]"
       }
     ],
