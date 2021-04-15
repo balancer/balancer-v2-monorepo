@@ -36,8 +36,8 @@ import "../vault/interfaces/IBasePool.sol";
  * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency pause mechanism.
  *
  * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
- * derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the `whenNotPaused`
- * modifier.
+ * derived contracts can use them via the `_addSwapFeeAmount` and `_subtractSwapFeeAmount` functions, and the
+ * `whenNotPaused` modifier.
  *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.
  *
@@ -435,7 +435,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     /**
      * @dev Adds swap fee amount to `amount`, returning a higher value.
      */
-    function _addSwapFee(uint256 amount) internal view returns (uint256) {
+    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
         return amount.divUp(_swapFeePercentage.complement());
     }
@@ -443,7 +443,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     /**
      * @dev Subtracts swap fee amount from `amount`, returning a lower value.
      */
-    function _subtractSwapFee(uint256 amount) internal view returns (uint256) {
+    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount - fee amount, so we round up (favoring a higher fee amount).
         uint256 feeAmount = amount.mulUp(_swapFeePercentage);
         return amount.sub(feeAmount);
