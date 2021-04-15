@@ -498,9 +498,9 @@ export default class WeightedPool {
     };
   }
 
-  async activateEmergencyPeriod(): Promise<void> {
-    const role = await roleId(this.instance, 'setEmergencyPeriod');
+  async pause(): Promise<void> {
+    const role = await roleId(this.instance, 'setPaused');
     await this.vault.grantRole(role);
-    await this.instance.setEmergencyPeriod(true);
+    await this.instance.setPaused(true);
   }
 }

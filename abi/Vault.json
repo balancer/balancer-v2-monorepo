@@ -13,12 +13,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "emergencyPeriod",
+        "name": "responseWindowDuration",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "emergencyPeriodCheckExtension",
+        "name": "bufferPeriodDuration",
         "type": "uint256"
       }
     ],
@@ -42,19 +42,6 @@
       }
     ],
     "name": "AuthorizerChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "active",
-        "type": "bool"
-      }
-    ],
-    "name": "EmergencyPeriodChanged",
     "type": "event"
   },
   {
@@ -111,6 +98,19 @@
       }
     ],
     "name": "InternalBalanceChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "paused",
+        "type": "bool"
+      }
+    ],
+    "name": "PausedStateChanged",
     "type": "event"
   },
   {
@@ -571,29 +571,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getEmergencyPeriod",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "active",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "endDate",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "checkEndDate",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -630,6 +607,29 @@
       {
         "internalType": "uint256",
         "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPausedState",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "paused",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "responseWindowEndTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "bufferPeriodEndTime",
         "type": "uint256"
       }
     ],
@@ -744,6 +744,25 @@
   {
     "inputs": [
       {
+        "internalType": "bytes4",
+        "name": "selector",
+        "type": "bytes4"
+      }
+    ],
+    "name": "getRole",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "user",
         "type": "address"
@@ -818,17 +837,17 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "enum IVault.AssetManagerOpKind",
-        "name": "kind",
-        "type": "uint8"
-      },
-      {
         "components": [
+          {
+            "internalType": "enum IVault.PoolBalanceOpKind",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "poolId",
+            "type": "bytes32"
+          },
           {
             "internalType": "contract IERC20",
             "name": "token",
@@ -840,8 +859,8 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct IVault.AssetManagerTransfer[]",
-        "name": "transfers",
+        "internalType": "struct IVault.PoolBalanceOp[]",
+        "name": "ops",
         "type": "tuple[]"
       }
     ],
@@ -970,7 +989,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -1019,11 +1038,11 @@
     "inputs": [
       {
         "internalType": "bool",
-        "name": "active",
+        "name": "paused",
         "type": "bool"
       }
     ],
-    "name": "setEmergencyPeriod",
+    "name": "setPaused",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -14,14 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-import "../../lib/helpers/EmergencyPeriod.sol";
+import "../../lib/helpers/TemporarilyPausable.sol";
 
-contract EmergencyPeriodMock is EmergencyPeriod {
-    constructor (uint256 emergencyPeriod, uint256 emergencyPeriodCheckExtension)
-        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
+contract TemporarilyPausableMock is TemporarilyPausable {
+    constructor(uint256 responseWindowDuration, uint256 bufferPeriodDuration)
+        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
     {}
 
-    function setEmergencyPeriod(bool active) external {
-        _setEmergencyPeriod(active);
+    function setPaused(bool paused) external {
+        _setPaused(paused);
     }
 }

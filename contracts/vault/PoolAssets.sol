@@ -107,7 +107,7 @@ abstract contract PoolAssets is
         bytes32 poolId,
         IERC20[] memory tokens,
         address[] memory assetManagers
-    ) external override nonReentrant noEmergencyPeriod onlyPool(poolId) {
+    ) external override nonReentrant whenNotPaused onlyPool(poolId) {
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
         // Validates token addresses and assigns asset managers
@@ -136,7 +136,7 @@ abstract contract PoolAssets is
         external
         override
         nonReentrant
-        noEmergencyPeriod
+        whenNotPaused
         onlyPool(poolId)
     {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -164,7 +164,7 @@ abstract contract PoolAssets is
         address sender,
         address recipient,
         JoinPoolRequest memory request
-    ) external payable override noEmergencyPeriod {
+    ) external payable override whenNotPaused {
         _joinOrExit(PoolBalanceChangeKind.JOIN, poolId, sender, recipient, _toPoolBalanceChange(request));
     }
 
@@ -311,39 +311,62 @@ abstract contract PoolAssets is
         return balances;
     }
 
-    // Assets under management
+    // Asset Manager
 
-    function managePoolBalance(
-        bytes32 poolId,
-        AssetManagerOpKind kind,
-        AssetManagerTransfer[] memory transfers
-    ) external override nonReentrant noEmergencyPeriod withRegisteredPool(poolId) {
-        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+    function managePoolBalance(PoolBalanceOp[] memory ops) external override nonReentrant whenNotPaused {
+        // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
+        // loop iteration, increasing gas costs.
+        PoolBalanceOp memory op;
 
-        for (uint256 i = 0; i < transfers.length; ++i) {
-            IERC20 token = transfers[i].token;
-            uint256 amount = transfers[i].amount;
+        for (uint256 i = 0; i < ops.length; ++i) {
+            // By indexing the array only once, we don't spend extra gas in the same bounds check.
+            op = ops[i];
 
+            bytes32 poolId = op.poolId;
+            _ensureRegisteredPool(poolId);
+
+            IERC20 token = op.token;
             _require(_isTokenRegistered(poolId, token), Errors.TOKEN_NOT_REGISTERED);
             _require(_poolAssetManagers[poolId][token] == msg.sender, Errors.SENDER_NOT_ASSET_MANAGER);
 
-            int256 cashDelta;
-            int256 managedDelta;
-            if (kind == AssetManagerOpKind.WITHDRAW) {
-                (cashDelta, managedDelta) = _withdrawPoolBalance(poolId, specialization, token, amount);
-            } else if (kind == AssetManagerOpKind.DEPOSIT) {
-                (cashDelta, managedDelta) = _depositPoolBalance(poolId, specialization, token, amount);
-            } else {
-                // AssetManagerOpKind.UPDATE
-                (cashDelta, managedDelta) = _updateManagedBalance(poolId, specialization, token, amount);
-            }
+            PoolBalanceOpKind kind = op.kind;
+            uint256 amount = op.amount;
+            (int256 cashDelta, int256 managedDelta) = _performPoolManagementOperation(kind, poolId, token, amount);
 
             emit PoolBalanceManaged(poolId, msg.sender, token, cashDelta, managedDelta);
         }
     }
 
     /**
-     * @dev Returns the cash and managed balance deltas as a result of this call.
+     * @dev Performs the `kind` Asset Manager operation on a Pool.
+     *
+     * Withdrawals will transfer `amount` tokens to the caller, deposits will transfer `amount` tokens from the caller,
+     * and updates will set the managed balance to `amount`.
+     *
+     * Returns a tuple with the 'cash' and 'managed' balance deltas as a result of this call.
+     */
+    function _performPoolManagementOperation(
+        PoolBalanceOpKind kind,
+        bytes32 poolId,
+        IERC20 token,
+        uint256 amount
+    ) private returns (int256, int256) {
+        PoolSpecialization specialization = _getPoolSpecialization(poolId);
+
+        if (kind == PoolBalanceOpKind.WITHDRAW) {
+            return _withdrawPoolBalance(poolId, specialization, token, amount);
+        } else if (kind == PoolBalanceOpKind.DEPOSIT) {
+            return _depositPoolBalance(poolId, specialization, token, amount);
+        } else {
+            // PoolBalanceOpKind.UPDATE
+            return _updateManagedBalance(poolId, specialization, token, amount);
+        }
+    }
+
+    /**
+     * @dev Moves `amount` tokens from a Pool's 'cash' to 'managed' balance, and transfers them to the caller.
+     *
+     * Returns the 'cash' and 'managed' balance deltas as a result of this call, which will be complementary.
      */
     function _withdrawPoolBalance(
         bytes32 poolId,
@@ -371,7 +394,9 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Returns the cash and managed balance deltas as a result of this call.
+     * @dev Moves `amount` tokens from a Pool's 'managed' to 'cash' balance, and transfers them from the caller.
+     *
+     * Returns the 'cash' and 'managed' balance deltas as a result of this call, which will be complementary.
      */
     function _depositPoolBalance(
         bytes32 poolId,
@@ -399,7 +424,9 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Returns the cash and managed balance deltas as a result of this call.
+     * @dev Sets a Pool's 'managed' balance to `amount`.
+     *
+     * Returns the 'cash' and 'managed' balance deltas as a result of this call (the 'cash' delta will always be zero).
      */
     function _updateManagedBalance(
         bytes32 poolId,

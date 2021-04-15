@@ -97,7 +97,7 @@ interface IVault is ISignaturesValidator {
     // gas costs when compared to relying on plain ERC20 transfers, leading to large savings for frequent users.
     //
     // Internal Balance management features batching, which means each a single contract call can be used to perform
-    // multiple operations of the same kind (deposit, withdraw or transfer) at once.
+    // multiple operations of different kinds, with different senders and recipients, at once.
 
     /**
      * @dev Returns `user`'s Internal Balance for a set of tokens.
@@ -669,19 +669,31 @@ interface IVault is ISignaturesValidator {
     // This concept is unrelated to the IAsset interface.
 
     /**
-     * @dev Called by a Pool's Asset Manager to perform an operation (withdraw, deposit, or update) in the Vault.
-     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
+     * @dev Performs a set of Pool balance operations, which may be either withdrawals, deposits or updates.
+     *
+     * Pool Balance management features batching, which means each a single contract call can be used to perform
+     * multiple operations of of different kinds, with different Pools and tokens, at once.
+     *
+     * For each operation, the caller must be registered as the Asset Manager for `token` in `poolId`.
      */
-    function managePoolBalance(
-        bytes32 poolId,
-        AssetManagerOpKind kind,
-        AssetManagerTransfer[] memory transfers
-    ) external;
+    function managePoolBalance(PoolBalanceOp[] memory ops) external;
 
-    struct AssetManagerTransfer {
+    struct PoolBalanceOp {
+        PoolBalanceOpKind kind;
+        bytes32 poolId;
         IERC20 token;
         uint256 amount;
     }
+
+    /**
+     * Withdrawals decrease the Pool's cash, but increase its managed balance, leaving the total balance unchanged.
+     *
+     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
+     *
+     * Updates don't affect the Pool's cash balance, but because the managed balance changes, it does alter the total.
+     * The external amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
+     */
+    enum PoolBalanceOpKind { WITHDRAW, DEPOSIT, UPDATE }
 
     /**
      * @dev Emitted when a Pool's token Asset Manager alters its balance via `managePoolBalance`.
@@ -693,16 +705,6 @@ interface IVault is ISignaturesValidator {
         int256 cashDelta,
         int256 managedDelta
     );
-
-    /**
-     * Withdrawals decrease the Pool's cash, but increase its managed balance, leaving the total balance unchanged.
-     *
-     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
-     *
-     * Updates don't affect the Pool's cash balance, but because the managed balance changes, it does alter the total.
-     * The external amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
-     */
-    enum AssetManagerOpKind { WITHDRAW, DEPOSIT, UPDATE }
 
     // Protocol Fees
     //
@@ -725,20 +727,21 @@ interface IVault is ISignaturesValidator {
     function getProtocolFeesCollector() external view returns (ProtocolFeesCollector);
 
     /**
-     * @dev Safety mechanism to halt most Vault operations in the event of an emergency - typically detection
-     * of an error in some part of the system.
+     * @dev Safety mechanism to pause most Vault operations in the event of an emergency - typically detection of an
+     * error in some part of the system.
      *
-     * The emergency stop can only be activated during an initial time period, after which it is forever disabled.
+     * The Vault can only be paused during an initial time period, after which pausing is forever disabled.
      *
-     * While the emergency stop is active, the following features are disabled:
+     * While the contract is paused, the following features are disabled:
      * - depositing and transferring internal balance
      * - transferring external balance (using the Vault's allowance)
      * - swaps
      * - joining Pools
+     * - Asset Manager interactions
      *
-     * Internal balance can still be withdrawn, and Pools exited.
+     * Internal Balance can still be withdrawn, and Pools exited.
      */
-    function setEmergencyPeriod(bool active) external;
+    function setPaused(bool paused) external;
 
     /**
      * @dev Returns the Vault's WETH instance.

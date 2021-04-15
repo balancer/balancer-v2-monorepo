@@ -32,14 +32,14 @@ export async function deployPoolFromFactory(
 
   const name = 'Balancer Pool Token';
   const symbol = 'BPT';
-  const emergencyPeriod = 0;
-  const emergencyPeriodCheckExtension = 0;
+  const responseWindowDuration = 0;
+  const bufferPeriodDuration = 0;
   const owner = ZERO_ADDRESS;
 
   const receipt: ContractReceipt = await (
     await factory
       .connect(args.from)
-      .create(name, symbol, ...args.parameters, emergencyPeriod, emergencyPeriodCheckExtension, owner)
+      .create(name, symbol, ...args.parameters, responseWindowDuration, bufferPeriodDuration, owner)
   ).wait();
 
   const event = receipt.events?.find((e) => e.event == 'PoolRegistered');

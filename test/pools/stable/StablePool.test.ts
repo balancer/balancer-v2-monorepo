@@ -196,10 +196,10 @@ describe('StablePool', function () {
           await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_JOIN_KIND');
         });
 
-        it('fails if the emergency period is active', async () => {
-          await pool.activateEmergencyPeriod();
+        it('reverts if paused', async () => {
+          await pool.pause();
 
-          await expect(pool.init({ initialBalances })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(pool.init({ initialBalances })).to.be.revertedWith('PAUSED');
         });
       });
 
@@ -250,10 +250,10 @@ describe('StablePool', function () {
             await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
           });
 
-          it('fails if the emergency period is active', async () => {
-            await pool.activateEmergencyPeriod();
+          it('reverts if paused', async () => {
+            await pool.pause();
 
-            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+            await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('PAUSED');
           });
         });
       });
@@ -299,10 +299,10 @@ describe('StablePool', function () {
             expect(result.amountsIn.filter((_, i) => i != token)).to.be.zeros;
           });
 
-          it('fails if the emergency period is active', async () => {
-            await pool.activateEmergencyPeriod();
+          it('reverts if paused', async () => {
+            await pool.pause();
 
-            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+            await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('PAUSED');
           });
         });
       });
@@ -413,8 +413,8 @@ describe('StablePool', function () {
           expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
         });
 
-        it('does not revert if the emergency period is active', async () => {
-          await pool.activateEmergencyPeriod();
+        it('does not revert if paused', async () => {
+          await pool.pause();
 
           const bptIn = previousBptBalance.div(2);
           await expect(pool.multiExitGivenIn({ from: lp, bptIn })).not.to.be.reverted;
@@ -462,11 +462,11 @@ describe('StablePool', function () {
           );
         });
 
-        it('fails if the emergency period is active', async () => {
-          await pool.activateEmergencyPeriod();
+        it('reverts if paused', async () => {
+          await pool.pause();
 
           const amountsOut = initialBalances;
-          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
         });
       });
     });
@@ -497,10 +497,10 @@ describe('StablePool', function () {
           await expect(pool.swapGivenIn({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
         });
 
-        it('fails if the emergency period is active', async () => {
-          await pool.activateEmergencyPeriod();
+        it('reverts if paused', async () => {
+          await pool.pause();
 
-          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('PAUSED');
         });
       });
 
@@ -522,10 +522,10 @@ describe('StablePool', function () {
           await expect(pool.swapGivenOut({ in: 1, out: 10, amount: 1 })).to.be.revertedWith('OUT_OF_BOUNDS');
         });
 
-        it('fails if the emergency period is active', async () => {
-          await pool.activateEmergencyPeriod();
+        it('reverts if paused', async () => {
+          await pool.pause();
 
-          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('PAUSED');
         });
       });
     });
@@ -615,8 +615,8 @@ describe('StablePool', function () {
           expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
         });
 
-        it('does not charges fee on exit if the emergency period is active', async () => {
-          await pool.activateEmergencyPeriod();
+        it('does not charges fee on exit if paused', async () => {
+          await pool.pause();
 
           const exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(0.5), protocolFeePercentage });
           expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;

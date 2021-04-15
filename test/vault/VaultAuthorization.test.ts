@@ -56,16 +56,12 @@ describe('VaultAuthorization', function () {
       });
 
       it('can change the authorizer to another address', async () => {
-        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
-
         await vault.connect(admin).changeAuthorizer(other.address);
 
         expect(await vault.getAuthorizer()).to.equal(other.address);
       });
 
       it('emits an event when authorizer changed', async () => {
-        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
-
         const receipt = await (await vault.connect(admin).changeAuthorizer(other.address)).wait();
         expectEvent.inReceipt(receipt, 'AuthorizerChanged', {
           oldAuthorizer: authorizer.address,
@@ -74,8 +70,6 @@ describe('VaultAuthorization', function () {
       });
 
       it('can change the authorizer to the zero address', async () => {
-        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
-
         await vault.connect(admin).changeAuthorizer(ZERO_ADDRESS);
 
         expect(await vault.getAuthorizer()).to.equal(ZERO_ADDRESS);
@@ -149,46 +143,51 @@ describe('VaultAuthorization', function () {
     });
   });
 
-  describe('emergency period', () => {
-    const EMERGENCY_PERIOD = MONTH * 3;
-    const EMERGENCY_PERIOD_CHECK_EXTENSION = MONTH;
+  describe('temporarily pausable', () => {
+    const RESPONSE_WINDOW = MONTH * 3;
+    const BUFFER_PERIOD_DURATION = MONTH;
 
     sharedBeforeEach(async () => {
       authorizer = await deploy('Authorizer', { args: [admin.address] });
       vault = await deploy('Vault', {
-        args: [authorizer.address, ZERO_ADDRESS, EMERGENCY_PERIOD, EMERGENCY_PERIOD_CHECK_EXTENSION],
+        args: [authorizer.address, ZERO_ADDRESS, RESPONSE_WINDOW, BUFFER_PERIOD_DURATION],
       });
     });
 
-    context('when the sender is has the role to do it', () => {
+    context('when the sender has the role to pause and unpause', () => {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = await roleId(vault, 'setEmergencyPeriod');
+        role = await roleId(vault, 'setPaused');
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 
-      it('can change the emergency period status', async () => {
-        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
+      it('can pause', async () => {
+        await vault.connect(admin).setPaused(true);
 
-        await vault.connect(admin).setEmergencyPeriod(true);
-
-        const { active } = await vault.getEmergencyPeriod();
-        expect(active).to.be.true;
+        const { paused } = await vault.getPausedState();
+        expect(paused).to.be.true;
       });
 
-      it('can not change the emergency period if the role was revoked', async () => {
-        await authorizer.connect(admin).revokeRole(role, admin.address);
+      it('can unpause', async () => {
+        await vault.connect(admin).setPaused(true);
+        await vault.connect(admin).setPaused(false);
 
+        const { paused } = await vault.getPausedState();
+        expect(paused).to.be.false;
+      });
+
+      it('cannot pause if the role is revoked', async () => {
+        await authorizer.connect(admin).revokeRole(role, admin.address);
         expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
 
-        await expect(vault.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(vault.connect(admin).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
-    context('when the sender does not have the role to do it', () => {
+    context('when the sender does not have the role to unpause', () => {
       it('reverts', async () => {
-        await expect(vault.connect(other).setEmergencyPeriod(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(vault.connect(other).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });
