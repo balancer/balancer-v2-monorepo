@@ -200,7 +200,7 @@ describe('WeightedPool', function () {
           await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_JOIN_KIND');
         });
 
-        it('fails if paused', async () => {
+        it('reverts if paused', async () => {
           await pool.pause();
 
           await expect(pool.init({ initialBalances })).to.be.revertedWith('PAUSED');
@@ -254,7 +254,7 @@ describe('WeightedPool', function () {
             await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
           });
 
-          it('fails if paused', async () => {
+          it('reverts if paused', async () => {
             await pool.pause();
 
             await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('PAUSED');
@@ -312,7 +312,7 @@ describe('WeightedPool', function () {
             await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('MAX_OUT_BPT_FOR_TOKEN_IN');
           });
 
-          it('fails if paused', async () => {
+          it('reverts if paused', async () => {
             await pool.pause();
 
             await expect(pool.joinGivenOut({ bptOut, token })).to.be.revertedWith('PAUSED');
@@ -387,7 +387,7 @@ describe('WeightedPool', function () {
           await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('MIN_BPT_IN_FOR_TOKEN_OUT');
         });
 
-        it('fails if paused', async () => {
+        it('reverts if paused', async () => {
           await pool.pause();
 
           const bptIn = await pool.getMaxInvariantDecrease();
@@ -489,7 +489,7 @@ describe('WeightedPool', function () {
           );
         });
 
-        it('fails if paused', async () => {
+        it('reverts if paused', async () => {
           await pool.pause();
 
           const amountsOut = initialBalances;
@@ -541,7 +541,7 @@ describe('WeightedPool', function () {
           await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
-        it('fails if paused', async () => {
+        it('reverts if paused', async () => {
           await pool.pause();
 
           await expect(pool.swapGivenIn({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('PAUSED');
@@ -581,7 +581,7 @@ describe('WeightedPool', function () {
           await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
         });
 
-        it('fails if paused', async () => {
+        it('reverts if paused', async () => {
           await pool.pause();
 
           await expect(pool.swapGivenOut({ in: 1, out: 0, amount: 1 })).to.be.revertedWith('PAUSED');

@@ -46,7 +46,6 @@ export default {
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
     if (!swapFee) swapFee = bn(0);
-
     if (!responseWindowDuration) responseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!owner) owner = ZERO_ADDRESS;
