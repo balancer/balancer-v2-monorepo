@@ -41,7 +41,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         IERC20[] memory tokens,
         uint256 amplificationParameter,
         uint256 swapFeePercentage,
-        uint256 responseWindowDuration,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
     )
@@ -51,7 +51,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             symbol,
             tokens,
             swapFeePercentage,
-            responseWindowDuration,
+            pauseWindowDuration,
             bufferPeriodDuration,
             owner
         )

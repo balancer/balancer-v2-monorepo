@@ -29,7 +29,7 @@ export default {
       tokens,
       amplificationParameter,
       swapFeePercentage,
-      responseWindowDuration,
+      pauseWindowDuration,
       bufferPeriodDuration,
       owner,
       from,
@@ -43,7 +43,7 @@ export default {
         tokens.addresses,
         amplificationParameter,
         swapFeePercentage,
-        responseWindowDuration,
+        pauseWindowDuration,
         bufferPeriodDuration,
         TypesConverter.toAddress(owner),
       ],
@@ -56,7 +56,7 @@ export default {
       tokens,
       amplificationParameter,
       swapFeePercentage,
-      responseWindowDuration,
+      pauseWindowDuration,
       bufferPeriodDuration,
       owner,
       from,
@@ -70,7 +70,7 @@ export default {
       amplificationParameter,
       swapFeePercentage,
 
-      responseWindowDuration,
+      pauseWindowDuration,
       bufferPeriodDuration,
       TypesConverter.toAddress(owner)
     );

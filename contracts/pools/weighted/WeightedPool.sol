@@ -56,7 +56,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
         uint256 swapFeePercentage,
-        uint256 responseWindowDuration,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
     )
@@ -66,7 +66,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             symbol,
             tokens,
             swapFeePercentage,
-            responseWindowDuration,
+            pauseWindowDuration,
             bufferPeriodDuration,
             owner
         )

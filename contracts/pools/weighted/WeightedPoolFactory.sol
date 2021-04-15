@@ -35,7 +35,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         IERC20[] memory tokens,
         uint256[] memory weights,
         uint256 swapFeePercentage,
-        uint256 responseWindowDuration,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
     ) external returns (address) {
@@ -47,7 +47,7 @@ contract WeightedPoolFactory is BasePoolFactory {
                 tokens,
                 weights,
                 swapFeePercentage,
-                responseWindowDuration,
+                pauseWindowDuration,
                 bufferPeriodDuration,
                 owner
             )
