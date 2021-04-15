@@ -28,7 +28,7 @@ interface IBasePool is IPoolSwapStructs {
      * @dev Called by the Vault when a user calls `IVault.joinPool` to add liquidity to this Pool. Returns how many of
      * each registered token the user should provide, as well as the amount of protocol fees the Pool owes to the Vault.
      * The Vault will then take tokens from `sender` and add them to the Pool's balances, as well as collect
-     * the reported amount in protocol fees, which the pool should calculate based on the `protocolSwapFee` percentage.
+     * the reported amount in protocol fees, which the pool should calculate based on the `protocolSwapFeePercentage`.
      *
      * Protocol fees are reported and charged on join events so that the Pool is free of debt whenever new users join.
      *

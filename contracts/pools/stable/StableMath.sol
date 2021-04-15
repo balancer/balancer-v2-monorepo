@@ -169,19 +169,19 @@ contract StableMath {
     amountsInPercentageExcess -> amountsInAfterFee -> newInvariant -> amountBPTOut
     TODO: remove equations below and save them to Notion documentation 
     amountInPercentageExcess = 1 - amountInProportional/amountIn (if amountIn>amountInProportional)
-    amountInAfterFee = amountIn * (1 - swapFee * amountInPercentageExcess)
-    amountInAfterFee = amountIn - fees 
-    fees = (amountIn - amountInProportional) * swapFee
-    amountInAfterFee = amountIn - (amountIn - amountInProportional) * swapFee
-    amountInAfterFee = amountIn * (1 - (1 - amountInProportional/amountIn) * swapFee)
-    amountInAfterFee = amountIn * (1 - amountInPercentageExcess * swapFee)
+    amountInAfterFee = amountIn * (1 - swapFeePercentage * amountInPercentageExcess)
+    amountInAfterFee = amountIn - fee amount 
+    fee amount = (amountIn - amountInProportional) * swapFeePercentage
+    amountInAfterFee = amountIn - (amountIn - amountInProportional) * swapFeePercentage
+    amountInAfterFee = amountIn * (1 - (1 - amountInProportional/amountIn) * swapFeePercentage)
+    amountInAfterFee = amountIn * (1 - amountInPercentageExcess * swapFeePercentage)
     */
     function _calcBptOutGivenExactTokensIn(
         uint256 amp,
         uint256[] memory balances,
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
-        uint256 swapFee
+        uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // BPT out, so we round down overall.
 
@@ -197,7 +197,7 @@ contract StableMath {
 
         // Calculate the weighted balance ratio without considering fees
         uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsIn.length);
-        // The weighted sum of token balance ratios sans fee
+        // The weighted sum of token balance ratios without fee
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = balances[i].divDown(sumBalances);
@@ -211,8 +211,8 @@ contract StableMath {
             // Percentage of the amount supplied that will be implicitly swapped for other tokens in the pool
             uint256 tokenBalancePercentageExcess;
             // Some tokens might have amounts supplied in excess of a 'balanced' join: these are identified if
-            // the token's balance ratio sans fee is larger than the weighted balance ratio, and swap fees are charged
-            // on the swap amount
+            // the token's balance ratio without fee is larger than the weighted balance ratio, and swap fees are
+            // charged on the swap amount
             if (weightedBalanceRatio >= tokenBalanceRatiosWithoutFee[i]) {
                 tokenBalancePercentageExcess = 0;
             } else {
@@ -221,7 +221,7 @@ contract StableMath {
                 );
             }
 
-            uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+            uint256 swapFeeExcess = swapFeePercentage.mulUp(tokenBalancePercentageExcess);
 
             uint256 amountInAfterFee = amountsIn[i].mulDown(swapFeeExcess.complement());
 
@@ -247,7 +247,7 @@ contract StableMath {
         uint256 tokenIndex,
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
-        uint256 swapFee
+        uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // Token in, so we round up overall.
 
@@ -277,7 +277,7 @@ contract StableMath {
         uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
         uint256 tokenBalancePercentageExcess = currentWeight.complement();
 
-        uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+        uint256 swapFeeExcess = swapFeePercentage.mulUp(tokenBalancePercentageExcess);
 
         return amountInAfterFee.divUp(swapFeeExcess.complement());
     }
@@ -355,7 +355,7 @@ contract StableMath {
         uint256 tokenIndex,
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
-        uint256 swapFee
+        uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // Get the current invariant
         uint256 currentInvariant = _calculateInvariant(amp, balances);
@@ -382,7 +382,7 @@ contract StableMath {
         uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
         uint256 tokenBalancePercentageExcess = currentWeight.complement();
 
-        uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+        uint256 swapFeeExcess = swapFeePercentage.mulUp(tokenBalancePercentageExcess);
 
         return amountOutBeforeFee.mulDown(swapFeeExcess.complement());
     }
@@ -434,7 +434,7 @@ contract StableMath {
         // P = product of final balances but f                                                                       //
         **************************************************************************************************************/
 
-        // Protocol swap fee, so we round down overall.
+        // Protocol swap fee amount, so we round down overall.
 
         uint256 finalBalanceFeeToken = _getTokenBalanceGivenInvariantAndAllOtherBalances(
             amplificationParameter,

@@ -147,7 +147,7 @@ export function calcBptOutGivenExactTokensIn(
 
   // Calculate the weighted balance ratio without considering fees
   const tokenBalanceRatiosWithoutFee = [];
-  // The weighted sum of token balance rations sans fee
+  // The weighted sum of token balance ratios without fees
   let weightedBalanceRatio = new Decimal(0);
   for (let i = 0; i < balances.length; i++) {
     const currentWeight = balances[i].div(sumBalances);
@@ -160,7 +160,7 @@ export function calcBptOutGivenExactTokensIn(
     // Percentage of the amount supplied that will be implicitly swapped for other tokens in the pool
     let tokenBalancePercentageExcess;
     // Some tokens might have amounts supplied in excess of a 'balanced' join: these are identified if
-    // the token's balance ratio sans fee is larger than the weighted balance ratio, and swap fees charged
+    // the token's balance ratio without fee is larger than the weighted balance ratio, and swap fees charged
     // on the amount to swap
     if (weightedBalanceRatio >= tokenBalanceRatiosWithoutFee[i]) {
       tokenBalancePercentageExcess = new Decimal(0);
@@ -373,7 +373,7 @@ function _getTokenBalanceGivenInvariantAndAllOtherBalances(
 
   //We iterate to find the balance
   let prevTokenBalance = new Decimal(0);
-  //We apply first iteration outside the loop with the invariant as the starting aproximation value.
+  //We apply first iteration outside the loop with the invariant as the starting approximation value.
   let tokenBalance: Decimal = invariant.mul(invariant).add(c).div(invariant.add(b));
 
   for (let i = 0; i < 255; i++) {

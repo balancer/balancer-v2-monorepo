@@ -278,7 +278,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * Vault with the same arguments, along with the number of tokens `sender` would have to supply.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
-     * data, such as the protocol swap fee and Pool balances.
+     * data, such as the protocol swap fee percentage and Pool balances.
      *
      * Like `IVault.queryBatchSwap`, this function is not view due to internal implementation details: the caller must
      * explicitly use eth_call instead of eth_sendTransaction.
@@ -311,7 +311,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * Vault with the same arguments, along with the number of tokens `recipient` would receive.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
-     * data, such as the protocol swap fee and Pool balances.
+     * data, such as the protocol swap fee percentage and Pool balances.
      *
      * Like `IVault.queryBatchSwap`, this function is not view due to internal implementation details: the caller must
      * explicitly use eth_call instead of eth_sendTransaction.
@@ -433,20 +433,20 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Internal functions
 
     /**
-     * @dev Adds swap fees to `amount`, returning a larger value.
+     * @dev Adds swap fee amount to `amount`, returning a higher value.
      */
     function _addSwapFee(uint256 amount) internal view returns (uint256) {
-        // This returns amount + fees, so we round up (favoring fees).
+        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
         return amount.divUp(_swapFeePercentage.complement());
     }
 
     /**
-     * @dev Subtracts swap fees from `amount`, returning a lower value.
+     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
      */
     function _subtractSwapFee(uint256 amount) internal view returns (uint256) {
-        // Round up, favoring fees.
-        uint256 feeAmounts = amount.mulUp(_swapFeePercentage);
-        return amount.sub(feeAmounts);
+        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
+        uint256 feeAmount = amount.mulUp(_swapFeePercentage);
+        return amount.sub(feeAmount);
     }
 
     // Scaling
@@ -562,7 +562,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function _getAuthorizer() internal view override returns (IAuthorizer) {
         // If the Pool has no owner, we rely on the Vault's Authorizer instead. This lets Balancer Governance manage
-        // which accounts can call permissioned functions, used to e.g. set swap fees.
+        // which accounts can call permissioned functions, used to e.g. set swap fee percentages.
         return getVault().getAuthorizer();
     }
 

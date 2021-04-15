@@ -42,14 +42,14 @@ abstract contract Fees is IVault {
     }
 
     /**
-     * @dev Returns the percentage protocol swap fee.
+     * @dev Returns the protocol swap fee percentage.
      */
     function _getProtocolSwapFeePercentage() internal view returns (uint256) {
         return getProtocolFeesCollector().getSwapFeePercentage();
     }
 
     /**
-     * @dev Returns the protocol fee to charge for a flash loan of `amount`.
+     * @dev Returns the protocol fee amount to charge for a flash loan of `amount`.
      */
     function _calculateFlashLoanFeeAmount(uint256 amount) internal view returns (uint256) {
         return _calculateFeeAmount(amount, getProtocolFeesCollector().getFlashLoanFeePercentage());

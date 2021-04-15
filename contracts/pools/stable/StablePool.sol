@@ -139,17 +139,17 @@ contract StablePool is BaseGeneralPool, StableMath {
             uint256[] memory
         )
     {
-        // Due protocol swap fees are computed by measuring the growth of the invariant between the previous join or
-        // exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas to
-        // calculate the fees during each individual swap.
+        // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
+        // or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas to
+        // calculate the fee amounts during each individual swap.
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             balances,
             _lastInvariant,
             protocolSwapFeePercentage
         );
 
-        // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
-        // returns.
+        // Update the balances by subtracting the protocol fee amounts that will be charged by the Vault once this
+        // function returns.
         for (uint256 i = 0; i < _getTotalTokens(); ++i) {
             balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
         }
@@ -157,7 +157,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, userData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
-        // protocol swap fees due in future joins and exits.
+        // protocol swap fee amounts due in future joins and exits.
         _lastInvariant = _invariantAfterJoin(balances, amountsIn);
 
         return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
@@ -247,13 +247,13 @@ contract StablePool is BaseGeneralPool, StableMath {
     {
         // To avoid extra calculations, protocol fees are not charged when the emergency period is active
         if (_isEmergencyPeriodInactive()) {
-            // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
+            // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
-            // spending gas calculating fees during each individual swap
+            // spending gas calculating fee amounts during each individual swap
             dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, _lastInvariant, protocolSwapFeePercentage);
 
-            // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
-            // returns.
+            // Update the balances by subtracting the protocol fee amounts that will be charged by the Vault once this
+            // function returns.
             for (uint256 i = 0; i < _getTotalTokens(); ++i) {
                 balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
             }
@@ -264,7 +264,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         (bptAmountIn, amountsOut) = _doExit(balances, userData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
-        // protocol swap fees due in future joins and exits.
+        // protocol swap fee amounts due in future joins and exits.
         _lastInvariant = _invariantAfterExit(balances, amountsOut);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
@@ -386,7 +386,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             }
         }
 
-        // Set the fee to pay in the selected token
+        // Set the fee amount to pay in the selected token
         dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFee(
             _amplificationParameter,
             balances,

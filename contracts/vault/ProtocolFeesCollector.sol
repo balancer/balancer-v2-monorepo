@@ -42,7 +42,7 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
 
     IVault public immutable vault;
 
-    // All fees are 18-decimal fixed point numbers.
+    // All fee percentages are 18-decimal fixed point numbers.
 
     // The swap fee is charged whenever a swap occurs, as a percentage of the fee charged by the Pool. These are not
     // actually charged on each individual swap: the `Vault` relies on the Pools being honest and reporting fees due

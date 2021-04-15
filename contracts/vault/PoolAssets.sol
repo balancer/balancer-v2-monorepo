@@ -456,15 +456,15 @@ abstract contract PoolAssets is
                 wrappedEth = wrappedEth.add(amountIn);
             }
 
-            uint256 feeToPay = dueProtocolFeeAmounts[i];
+            uint256 feeAmountToPay = dueProtocolFeeAmounts[i];
 
             // Compute the new Pool balances. Note that due protocol fees might be larger than amounts in,
             // resulting in an overall decrease of the Pool's balance for a token.
-            finalBalances[i] = (amountIn >= feeToPay)
-                ? balances[i].increaseCash(amountIn - feeToPay) // Don't need checked arithmetic
-                : balances[i].decreaseCash(feeToPay - amountIn); // Same as -(int256(amountIn) - int256(feeToPay))
+            finalBalances[i] = (amountIn >= feeAmountToPay)
+                ? balances[i].increaseCash(amountIn - feeAmountToPay) // Don't need checked arithmetic
+                : balances[i].decreaseCash(feeAmountToPay - amountIn); // -(int256(amountIn) - int256(feeAmountToPay))
 
-            _payFee(_translateToIERC20(asset), feeToPay);
+            _payFee(_translateToIERC20(asset), feeAmountToPay);
         }
 
         // Handle any used and remaining ETH.
