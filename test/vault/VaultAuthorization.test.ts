@@ -97,27 +97,27 @@ describe('VaultAuthorization', function () {
     });
 
     context('when the sender is the user', () => {
-      const itChangesTheRelayerAllowance = (allowed: boolean) => {
+      const itChangesTheRelayerAllowance = (approved: boolean) => {
         it('changes the allowance', async () => {
-          await vault.connect(other).changeRelayerAllowance(other.address, relayer.address, allowed);
+          await vault.connect(other).setRelayerApproval(other.address, relayer.address, approved);
 
-          expect(await vault.hasAllowedRelayer(other.address, relayer.address)).to.eq(allowed);
+          expect(await vault.hasApprovedRelayer(other.address, relayer.address)).to.eq(approved);
         });
 
         it('should emit an event when changing relayer allowance', async () => {
-          const tx = await vault.connect(other).changeRelayerAllowance(other.address, relayer.address, allowed);
+          const tx = await vault.connect(other).setRelayerApproval(other.address, relayer.address, approved);
 
-          expectEvent.inReceipt(await tx.wait(), 'RelayerAllowanceChanged', {
+          expectEvent.inReceipt(await tx.wait(), 'RelayerApprovalChanged', {
             relayer: relayer.address,
             sender: other.address,
-            allowed,
+            approved,
           });
         });
       };
 
       context('when the relayer was not allowed', () => {
         sharedBeforeEach('disallow relayer', async () => {
-          await vault.connect(other).changeRelayerAllowance(other.address, relayer.address, false);
+          await vault.connect(other).setRelayerApproval(other.address, relayer.address, false);
         });
 
         itChangesTheRelayerAllowance(true);
@@ -126,7 +126,7 @@ describe('VaultAuthorization', function () {
 
       context('when the relayer was allowed', () => {
         sharedBeforeEach('allow relayer', async () => {
-          await vault.connect(other).changeRelayerAllowance(other.address, relayer.address, true);
+          await vault.connect(other).setRelayerApproval(other.address, relayer.address, true);
         });
 
         itChangesTheRelayerAllowance(true);
@@ -137,7 +137,7 @@ describe('VaultAuthorization', function () {
     context('when the sender is not the user', () => {
       it('reverts', async () => {
         await expect(
-          vault.connect(relayer).changeRelayerAllowance(other.address, relayer.address, true)
+          vault.connect(relayer).setRelayerApproval(other.address, relayer.address, true)
         ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
