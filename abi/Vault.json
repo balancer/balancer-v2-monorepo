@@ -13,12 +13,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindow",
+        "name": "responseWindowDuration",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "bufferPeriod",
+        "name": "bufferPeriodDuration",
         "type": "uint256"
       }
     ],
