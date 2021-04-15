@@ -47,7 +47,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         FundManagement memory funds,
         uint256 limit,
         uint256 deadline
-    ) external payable override nonReentrant noEmergencyPeriod authenticateFor(funds.sender) returns (uint256) {
+    ) external payable override nonReentrant whenNotPaused authenticateFor(funds.sender) returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
 
@@ -98,7 +98,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         payable
         override
         nonReentrant
-        noEmergencyPeriod
+        whenNotPaused
         authenticateFor(funds.sender)
         returns (int256[] memory assetDeltas)
     {

@@ -41,9 +41,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         IERC20[] memory tokens,
         uint256 amplificationParameter,
         uint256 swapFee,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
-    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {
+        uint256 responseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, responseWindowDuration, bufferPeriodDuration, owner) {
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
 
@@ -65,7 +66,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override whenNotPaused returns (uint256) {
         uint256 amountOut = StableMath._calcOutGivenIn(
             _amplificationParameter,
             balances,
@@ -82,7 +83,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal view virtual override noEmergencyPeriod returns (uint256) {
+    ) internal view virtual override whenNotPaused returns (uint256) {
         uint256 amountIn = StableMath._calcInGivenOut(
             _amplificationParameter,
             balances,
@@ -101,7 +102,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         address,
         address,
         bytes memory userData
-    ) internal virtual override noEmergencyPeriod returns (uint256, uint256[] memory) {
+    ) internal virtual override whenNotPaused returns (uint256, uint256[] memory) {
         StablePool.JoinKind kind = userData.joinKind();
         _require(kind == StablePool.JoinKind.INIT, Errors.UNINITIALIZED);
 
@@ -131,7 +132,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         internal
         virtual
         override
-        noEmergencyPeriod
+        whenNotPaused
         returns (
             uint256,
             uint256[] memory,
@@ -244,8 +245,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        // To avoid extra calculations, protocol fees are not charged when the emergency period is active
-        if (_isEmergencyPeriodInactive()) {
+        if (_isNotPaused()) {
             // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
             // spending gas calculating fees during each individual swap
@@ -257,6 +257,7 @@ contract StablePool is BaseGeneralPool, StableMath {
                 balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
             }
         } else {
+            // To avoid extra calculations, protocol fees are not charged whem the contract is paused.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 
@@ -289,10 +290,10 @@ contract StablePool is BaseGeneralPool, StableMath {
     function _exitExactBPTInForTokenOut(uint256[] memory balances, bytes memory userData)
         private
         view
-        noEmergencyPeriod
+        whenNotPaused
         returns (uint256, uint256[] memory)
     {
-        // This exit function is disabled if the emergency period is active.
+        // This exit function is disabled if the contract is paused.
         uint256 totalTokens = _getTotalTokens();
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         _require(tokenIndex < totalTokens, Errors.OUT_OF_BOUNDS);
@@ -317,10 +318,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256, uint256[] memory)
     {
-        // This exit function is the only one that is not disabled if the emergency period is active: it remains
-        // unrestricted as an attempt to provide users with a mechanism to retrieve their tokens in case of an
-        // emergency.
-        // The reason why exit function is the one that remains available is because it is the simplest one, and
+        // This exit function is the only one that is not disabled if the contract is paused: it remains unrestricted
+        // in an attempt to provide users with a mechanism to retrieve their tokens in case of an emergency.
+        // This particular exit function is the only one that remains available because it is the simplest one, and
         // therefore the one with the lowest likelihood of errors.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
@@ -332,10 +332,10 @@ contract StablePool is BaseGeneralPool, StableMath {
     function _exitBPTInForExactTokensOut(uint256[] memory balances, bytes memory userData)
         private
         view
-        noEmergencyPeriod
+        whenNotPaused
         returns (uint256, uint256[] memory)
     {
-        // This exit function is disabled if the emergency period is active.
+        // This exit function is disabled if the contract is paused.
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());

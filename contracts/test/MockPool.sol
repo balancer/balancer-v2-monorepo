@@ -127,9 +127,10 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256,
         uint256
     ) external view override returns (uint256 amount) {
-        return swapRequest.kind == IVault.SwapKind.GIVEN_IN
-            ? swapRequest.amount.mul(_multiplier)
-            : swapRequest.amount.div(_multiplier);
+        return
+            swapRequest.kind == IVault.SwapKind.GIVEN_IN
+                ? swapRequest.amount.mul(_multiplier)
+                : swapRequest.amount.div(_multiplier);
     }
 
     // IMinimalSwapInfoPool
@@ -138,9 +139,10 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256,
         uint256
     ) external view override returns (uint256) {
-        return swapRequest.kind == IVault.SwapKind.GIVEN_IN
-            ? swapRequest.amount.mul(_multiplier)
-            : swapRequest.amount.div(_multiplier);
+        return
+            swapRequest.kind == IVault.SwapKind.GIVEN_IN
+                ? swapRequest.amount.mul(_multiplier)
+                : swapRequest.amount.div(_multiplier);
     }
 
     function getRate() external pure override returns (uint256) {

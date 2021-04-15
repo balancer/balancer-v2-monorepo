@@ -107,7 +107,7 @@ abstract contract PoolAssets is
         bytes32 poolId,
         IERC20[] memory tokens,
         address[] memory assetManagers
-    ) external override nonReentrant noEmergencyPeriod onlyPool(poolId) {
+    ) external override nonReentrant whenNotPaused onlyPool(poolId) {
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
         // Validates token addresses and assigns asset managers
@@ -136,7 +136,7 @@ abstract contract PoolAssets is
         external
         override
         nonReentrant
-        noEmergencyPeriod
+        whenNotPaused
         onlyPool(poolId)
     {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -164,7 +164,7 @@ abstract contract PoolAssets is
         address sender,
         address recipient,
         JoinPoolRequest memory request
-    ) external payable override noEmergencyPeriod {
+    ) external payable override whenNotPaused {
         _joinOrExit(PoolBalanceChangeKind.JOIN, poolId, sender, recipient, _toPoolBalanceChange(request));
     }
 
@@ -313,7 +313,7 @@ abstract contract PoolAssets is
 
     // Asset Manager
 
-    function managePoolBalance(PoolBalanceOp[] memory ops) external override nonReentrant noEmergencyPeriod {
+    function managePoolBalance(PoolBalanceOp[] memory ops) external override nonReentrant whenNotPaused {
         // This variable could be declared inside the loop, but that causes the compiler to allocate memory on each
         // loop iteration, increasing gas costs.
         PoolBalanceOp memory op;

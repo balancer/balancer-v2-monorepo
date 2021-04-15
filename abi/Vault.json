@@ -13,12 +13,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "emergencyPeriod",
+        "name": "responseWindow",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "emergencyPeriodCheckExtension",
+        "name": "bufferPeriod",
         "type": "uint256"
       }
     ],
@@ -42,19 +42,6 @@
       }
     ],
     "name": "AuthorizerChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "active",
-        "type": "bool"
-      }
-    ],
-    "name": "EmergencyPeriodChanged",
     "type": "event"
   },
   {
@@ -111,6 +98,19 @@
       }
     ],
     "name": "InternalBalanceChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "paused",
+        "type": "bool"
+      }
+    ],
+    "name": "PausedStateChanged",
     "type": "event"
   },
   {
@@ -571,29 +571,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getEmergencyPeriod",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "active",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "endDate",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "checkEndDate",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -630,6 +607,29 @@
       {
         "internalType": "uint256",
         "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPausedState",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "paused",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "responseWindowEndTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "bufferPeriodEndTime",
         "type": "uint256"
       }
     ],
@@ -1019,11 +1019,11 @@
     "inputs": [
       {
         "internalType": "bool",
-        "name": "active",
+        "name": "paused",
         "type": "bool"
       }
     ],
-    "name": "setEmergencyPeriod",
+    "name": "setPaused",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

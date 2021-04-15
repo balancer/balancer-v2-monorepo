@@ -229,7 +229,7 @@ describe('Vault - asset manager', function () {
               sender = assetManager;
             });
 
-            context('when there is no emergency', () => {
+            context('when unpaused', () => {
               context('when withdrawing zero', () => {
                 itWithdrawsPoolBalance(bn(0));
               });
@@ -310,16 +310,16 @@ describe('Vault - asset manager', function () {
               }
             });
 
-            context('when there is an emergency', () => {
-              sharedBeforeEach('activate emergency period', async () => {
-                const role = roleId(vault, 'setEmergencyPeriod');
+            context('when paused', () => {
+              sharedBeforeEach('pause', async () => {
+                const role = roleId(vault, 'setPaused');
                 await authorizer.connect(admin).grantRole(role, admin.address);
-                await vault.connect(admin).setEmergencyPeriod(true);
+                await vault.connect(admin).setPaused(true);
               });
 
               it('reverts', async () => {
                 const ops = [{ kind, poolId, token: tokens.DAI.address, amount: bn(0) }];
-                await expect(vault.connect(sender).managePoolBalance(ops)).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+                await expect(vault.connect(sender).managePoolBalance(ops)).to.be.revertedWith('PAUSED');
               });
             });
           });
@@ -356,7 +356,7 @@ describe('Vault - asset manager', function () {
                 await vault.connect(sender).managePoolBalance(ops);
               });
 
-              context('when there is no emergency', () => {
+              context('when unpaused', () => {
                 context('when depositing zero', () => {
                   itDepositsManagedBalance(bn(0));
                 });
@@ -435,16 +435,16 @@ describe('Vault - asset manager', function () {
                 }
               });
 
-              context('when there is an emergency', () => {
-                sharedBeforeEach('activate emergency period', async () => {
-                  const role = roleId(vault, 'setEmergencyPeriod');
+              context('when paused', () => {
+                sharedBeforeEach('pause', async () => {
+                  const role = roleId(vault, 'setPaused');
                   await authorizer.connect(admin).grantRole(role, admin.address);
-                  await vault.connect(admin).setEmergencyPeriod(true);
+                  await vault.connect(admin).setPaused(true);
                 });
 
                 it('reverts', async () => {
                   const ops = [{ kind, poolId, token: tokens.DAI.address, amount: bn(0) }];
-                  await expect(vault.connect(sender).managePoolBalance(ops)).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+                  await expect(vault.connect(sender).managePoolBalance(ops)).to.be.revertedWith('PAUSED');
                 });
               });
             });
@@ -482,7 +482,7 @@ describe('Vault - asset manager', function () {
                 await vault.connect(sender).managePoolBalance(ops);
               });
 
-              context('when there is no emergency', () => {
+              context('when unpaused', () => {
                 context('with gains', () => {
                   itUpdatesManagedBalance(bn(1));
                 });
@@ -595,16 +595,16 @@ describe('Vault - asset manager', function () {
                 }
               });
 
-              context('when there is an emergency', () => {
-                sharedBeforeEach('activate emergency period', async () => {
-                  const role = roleId(vault, 'setEmergencyPeriod');
+              context('when paused', () => {
+                sharedBeforeEach('pause', async () => {
+                  const role = roleId(vault, 'setPaused');
                   await authorizer.connect(admin).grantRole(role, admin.address);
-                  await vault.connect(admin).setEmergencyPeriod(true);
+                  await vault.connect(admin).setPaused(true);
                 });
 
                 it('reverts', async () => {
                   const ops = [{ kind, poolId, token: tokens.DAI.address, amount: bn(0) }];
-                  await expect(vault.connect(sender).managePoolBalance(ops)).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+                  await expect(vault.connect(sender).managePoolBalance(ops)).to.be.revertedWith('PAUSED');
                 });
               });
             });
