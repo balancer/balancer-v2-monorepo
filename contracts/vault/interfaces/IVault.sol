@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IWETH.sol";
 import "./IAsset.sol";
 import "./IAuthorizer.sol";
-import "./IFlashLoanReceiver.sol";
+import "./IFlashLoanRecipient.sol";
 import "./ISignaturesValidator.sol";
 import "../ProtocolFeesCollector.sol";
 
@@ -638,20 +638,20 @@ interface IVault is ISignaturesValidator {
     // Flash Loans
 
     /**
-     * @dev Performs a 'flash loan', sending tokens to `receiver` and executing the `receiveFlashLoan` hook on it,
+     * @dev Performs a 'flash loan', sending tokens to `recipient` and executing the `receiveFlashLoan` hook on it,
      * and then reverting unless the tokens plus a proportional protocol fee have been returned.
      *
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
      * loan for each token contract. `tokens` must be sorted in ascending order.
      *
-     * The 'receiverData' field is ignored by the Vault, and forwarded as-is to `receiver` as part of the
+     * The 'userData' field is ignored by the Vault, and forwarded as-is to `recipient` as part of the
      * `receiveFlashLoan` call.
      */
     function flashLoan(
-        IFlashLoanReceiver receiver,
+        IFlashLoanRecipient recipient,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        bytes memory receiverData
+        bytes memory userData
     ) external;
 
     // Asset Management

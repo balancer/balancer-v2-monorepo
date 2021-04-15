@@ -26,16 +26,16 @@ import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./Fees.sol";
-import "./interfaces/IFlashLoanReceiver.sol";
+import "./interfaces/IFlashLoanRecipient.sol";
 
-abstract contract FlashLoanProvider is Fees, ReentrancyGuard, TemporarilyPausable {
+abstract contract FlashLoans is Fees, ReentrancyGuard, TemporarilyPausable {
     using SafeERC20 for IERC20;
 
     function flashLoan(
-        IFlashLoanReceiver receiver,
+        IFlashLoanRecipient recipient,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        bytes memory receiverData
+        bytes memory userData
     ) external override nonReentrant whenNotPaused {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
@@ -56,10 +56,10 @@ abstract contract FlashLoanProvider is Fees, ReentrancyGuard, TemporarilyPausabl
             feeAmounts[i] = _calculateFlashLoanFee(amount);
 
             _require(preLoanBalances[i] >= amount, Errors.INSUFFICIENT_FLASH_LOAN_BALANCE);
-            token.safeTransfer(address(receiver), amount);
+            token.safeTransfer(address(recipient), amount);
         }
 
-        receiver.receiveFlashLoan(tokens, amounts, feeAmounts, receiverData);
+        recipient.receiveFlashLoan(tokens, amounts, feeAmounts, userData);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
