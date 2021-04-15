@@ -84,7 +84,7 @@ async function deployPools(filteredPools: Pool[], tokens: TokenList): Promise<(C
     const tokensList: Array<string> = [];
     const weights: Array<BigNumber> = [];
     const balances: Array<BigNumber> = [];
-    const swapFeePercentage: BigNumber = p.swapFeePercentage;
+    const swapFeePercentage: BigNumber = p.swapFee;
 
     p.tokens
       .sort((a, b) => compareAddresses(tokens[a.symbol].address, tokens[b.symbol].address))

@@ -9,7 +9,7 @@ export interface Pool {
   finalized: boolean;
   publicSwap: boolean;
   liquidity: number;
-  swapFeePercentage: BigNumber;
+  swapFee: BigNumber;
   totalWeight: BigNumber;
   tokens: Token[];
   tokensList: string[];
@@ -38,7 +38,7 @@ interface PoolJSON {
   finalized: boolean;
   publicSwap: boolean;
   liquidity: string;
-  swapFeePercentage: string;
+  swapFee: string;
   totalWeight: string;
   tokens: TokenJSON[];
   tokensList: string[];
@@ -62,7 +62,7 @@ export function formatPools(allPools: allPoolsJSON): Pool[] {
       finalized: allPools.pools[i].finalized,
       publicSwap: allPools.pools[i].publicSwap,
       liquidity: Number(allPools.pools[i].liquidity),
-      swapFeePercentage: utils.parseUnits(allPools.pools[i].swapFeePercentage, 18),
+      swapFee: utils.parseUnits(allPools.pools[i].swapFee, 18),
       totalWeight: utils.parseUnits(allPools.pools[i].totalWeight, 18),
       tokens: tokens,
       tokensList: allPools.pools[i].tokensList,
