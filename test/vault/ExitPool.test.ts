@@ -336,12 +336,7 @@ describe('Vault - exit pool', () => {
           const toInternalBalance = false;
 
           context('without internal balance', () => {
-            itExitsCorrectlyNeverthelessEmergencyPeriod(
-              dueProtocolFeeAmounts,
-              fromRelayer,
-              toInternalBalance,
-              signature
-            );
+            itExitsCorrectlyDespitePause(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
           });
 
           context('with some internal balance', () => {
@@ -357,12 +352,7 @@ describe('Vault - exit pool', () => {
               );
             });
 
-            itExitsCorrectlyNeverthelessEmergencyPeriod(
-              dueProtocolFeeAmounts,
-              fromRelayer,
-              toInternalBalance,
-              signature
-            );
+            itExitsCorrectlyDespitePause(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
           });
         });
 
@@ -370,12 +360,7 @@ describe('Vault - exit pool', () => {
           const toInternalBalance = true;
 
           context('with no internal balance', () => {
-            itExitsCorrectlyNeverthelessEmergencyPeriod(
-              dueProtocolFeeAmounts,
-              fromRelayer,
-              toInternalBalance,
-              signature
-            );
+            itExitsCorrectlyDespitePause(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
           });
 
           context('with some internal balance', () => {
@@ -391,31 +376,26 @@ describe('Vault - exit pool', () => {
               );
             });
 
-            itExitsCorrectlyNeverthelessEmergencyPeriod(
-              dueProtocolFeeAmounts,
-              fromRelayer,
-              toInternalBalance,
-              signature
-            );
+            itExitsCorrectlyDespitePause(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
           });
         });
       }
 
-      function itExitsCorrectlyNeverthelessEmergencyPeriod(
+      function itExitsCorrectlyDespitePause(
         dueProtocolFeeAmounts: BigNumberish[],
         fromRelayer: boolean,
         toInternalBalance: boolean,
         signature?: boolean
       ) {
-        context('when there is no emergency', () => {
+        context('when unpaused', () => {
           itExitsCorrectly(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);
         });
 
-        context('when there is an emergency', () => {
-          sharedBeforeEach('activate emergency period', async () => {
-            const role = roleId(vault, 'setEmergencyPeriod');
+        context('when paused', () => {
+          sharedBeforeEach('pause', async () => {
+            const role = roleId(vault, 'setPaused');
             await authorizer.connect(admin).grantRole(role, admin.address);
-            await vault.connect(admin).setEmergencyPeriod(true);
+            await vault.connect(admin).setPaused(true);
           });
 
           itExitsCorrectly(dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature);

@@ -56,18 +56,18 @@ contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
     constructor(
         IAuthorizer authorizer,
         IWETH weth,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
+        uint256 responseWindowDuration,
+        uint256 bufferPeriodDuration
     )
         VaultAuthorization(authorizer)
         AssetHelpers(weth)
-        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
+        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function setEmergencyPeriod(bool active) external override nonReentrant authenticate {
-        _setEmergencyPeriod(active);
+    function setPaused(bool paused) external override nonReentrant authenticate {
+        _setPaused(paused);
     }
 
     // solhint-disable-next-line func-name-mixedcase

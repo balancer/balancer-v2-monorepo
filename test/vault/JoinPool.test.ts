@@ -210,7 +210,7 @@ describe('Vault - join pool', () => {
         });
 
         context('with correct pool return values', () => {
-          context('when there is no emergency', () => {
+          context('when unpaused', () => {
             context('with no due protocol fees', () => {
               const dueProtocolFeeAmounts = array(0);
 
@@ -301,15 +301,15 @@ describe('Vault - join pool', () => {
             });
           });
 
-          context('when there is an emergency', () => {
-            sharedBeforeEach('activate emergency period', async () => {
-              const role = roleId(vault, 'setEmergencyPeriod');
+          context('when paused', () => {
+            sharedBeforeEach('pause', async () => {
+              const role = roleId(vault, 'setPaused');
               await authorizer.connect(admin).grantRole(role, admin.address);
-              await vault.connect(admin).setEmergencyPeriod(true);
+              await vault.connect(admin).setPaused(true);
             });
 
             it('reverts', async () => {
-              await expect(joinPool()).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+              await expect(joinPool()).to.be.revertedWith('PAUSED');
             });
           });
         });

@@ -107,7 +107,7 @@ abstract contract PoolAssets is
         bytes32 poolId,
         IERC20[] memory tokens,
         address[] memory assetManagers
-    ) external override nonReentrant noEmergencyPeriod onlyPool(poolId) {
+    ) external override nonReentrant whenNotPaused onlyPool(poolId) {
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
         // Validates token addresses and assigns asset managers
@@ -136,7 +136,7 @@ abstract contract PoolAssets is
         external
         override
         nonReentrant
-        noEmergencyPeriod
+        whenNotPaused
         onlyPool(poolId)
     {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
@@ -164,7 +164,7 @@ abstract contract PoolAssets is
         address sender,
         address recipient,
         JoinPoolRequest memory request
-    ) external payable override noEmergencyPeriod {
+    ) external payable override whenNotPaused {
         _joinOrExit(PoolBalanceChangeKind.JOIN, poolId, sender, recipient, _toPoolBalanceChange(request));
     }
 
@@ -318,7 +318,7 @@ abstract contract PoolAssets is
         bytes32 poolId,
         AssetManagerOpKind kind,
         AssetManagerTransfer[] memory transfers
-    ) external override nonReentrant noEmergencyPeriod withRegisteredPool(poolId) {
+    ) external override nonReentrant whenNotPaused withRegisteredPool(poolId) {
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
 
         for (uint256 i = 0; i < transfers.length; ++i) {
