@@ -42,19 +42,20 @@ abstract contract FlashLoanProvider is Fees, ReentrancyGuard, TemporarilyPausabl
         uint256[] memory feeAmounts = new uint256[](tokens.length);
         uint256[] memory preLoanBalances = new uint256[](tokens.length);
 
+        // Used to ensure `tokens` is sorted in ascending order, which ensures token uniqueness.
         IERC20 previousToken = IERC20(0);
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
 
-            // Prevents duplicate tokens
-            _require(token > previousToken, IERC20(0) == token ? Errors.ZERO_TOKEN : Errors.UNSORTED_TOKENS);
+            _require(token > previousToken, token == IERC20(0) ? Errors.ZERO_TOKEN : Errors.UNSORTED_TOKENS);
             previousToken = token;
 
-            // Not checking amount against current balance, transfer will revert if it is exceeded
             preLoanBalances[i] = token.balanceOf(address(this));
             feeAmounts[i] = _calculateFlashLoanFee(amount);
 
+            _require(preLoanBalances[i] >= amount, Errors.INSUFFICIENT_FLASH_LOAN_BALANCE);
             token.safeTransfer(address(receiver), amount);
         }
 
@@ -64,9 +65,12 @@ abstract contract FlashLoanProvider is Fees, ReentrancyGuard, TemporarilyPausabl
             IERC20 token = tokens[i];
             uint256 preLoanBalance = preLoanBalances[i];
 
+            // Checking for loan repayment first (without accounting for fees) makes for simpler debugging, and results
+            // in more accurate revert reasons if the flash loan protocol fee percentage is zero.
             uint256 postLoanBalance = token.balanceOf(address(this));
             _require(postLoanBalance >= preLoanBalance, Errors.INVALID_POST_LOAN_BALANCE);
 
+            // No need for checked arithmetic since we know the loan was fully repaid.
             uint256 receivedFees = postLoanBalance - preLoanBalance;
             _require(receivedFees >= feeAmounts[i], Errors.INSUFFICIENT_COLLECTED_FEES);
 

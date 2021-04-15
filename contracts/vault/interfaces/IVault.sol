@@ -639,7 +639,7 @@ interface IVault is ISignaturesValidator {
 
     /**
      * @dev Performs a 'flash loan', sending tokens to `receiver` and executing the `receiveFlashLoan` hook on it,
-     * and then reverting unless the tokens plus a protocol fee have been returned.
+     * and then reverting unless the tokens plus a proportional protocol fee have been returned.
      *
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
      * loan for each token contract. `tokens` must be sorted in ascending order.
