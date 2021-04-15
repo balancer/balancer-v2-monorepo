@@ -94,13 +94,18 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFee,
-        uint256 responseWindowDuration,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
     )
+        // Base Pools are expected to be deployed using factories. By using the factory address as the role
+        // disambiguator, we make all Pools deployed by the same factory share role identifiers. This allows for simpler
+        // management of permissions (such as being able to grant the 'set fee' role in any Pool created by the same
+        // factory), while making roles unique among different factories, preventing accidental errors.
+        Authentication(bytes32(uint256(msg.sender)))
         BalancerPoolToken(name, symbol)
         BasePoolAuthorization(owner)
-        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
+        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);

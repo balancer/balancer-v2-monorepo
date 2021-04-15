@@ -41,10 +41,10 @@ contract StablePool is BaseGeneralPool, StableMath {
         IERC20[] memory tokens,
         uint256 amplificationParameter,
         uint256 swapFee,
-        uint256 responseWindowDuration,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
-    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, responseWindowDuration, bufferPeriodDuration, owner) {
+    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, pauseWindowDuration, bufferPeriodDuration, owner) {
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
 

@@ -33,7 +33,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowDuration",
+        "name": "pauseWindowDuration",
         "type": "uint256"
       },
       {
@@ -293,7 +293,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowEndTime",
+        "name": "pauseWindowEndTime",
         "type": "uint256"
       },
       {
@@ -326,6 +326,25 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes4",
+        "name": "selector",
+        "type": "bytes4"
+      }
+    ],
+    "name": "getRole",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",

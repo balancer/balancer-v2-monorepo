@@ -67,7 +67,7 @@ abstract contract VaultAuthorization is
         _;
     }
 
-    constructor(IAuthorizer authorizer) {
+    constructor(IAuthorizer authorizer) Authentication(bytes32(uint256(address(this)))) {
         _authorizer = authorizer;
     }
 
@@ -123,6 +123,7 @@ abstract contract VaultAuthorization is
     }
 
     function _canPerform(bytes32 roleId, address user) internal view override returns (bool) {
+        // Role management is delegated to the Authorizer.
         return _authorizer.hasRoleIn(roleId, user, address(this));
     }
 

@@ -11,7 +11,7 @@ export type RawStablePoolDeployment = {
   tokens?: TokenList;
   amplificationParameter?: BigNumberish;
   swapFee?: BigNumberish;
-  responseWindowDuration?: BigNumberish;
+  pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   owner?: Account;
   admin?: SignerWithAddress;
@@ -23,7 +23,7 @@ export type StablePoolDeployment = {
   tokens: TokenList;
   amplificationParameter: BigNumberish;
   swapFee: BigNumberish;
-  responseWindowDuration: BigNumberish;
+  pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
   owner: Account;
   admin?: SignerWithAddress;

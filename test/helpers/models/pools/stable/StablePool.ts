@@ -465,7 +465,7 @@ export default class StablePool {
   }
 
   async pause(): Promise<void> {
-    const role = roleId(this.instance, 'setPaused');
+    const role = await roleId(this.instance, 'setPaused');
     await this.vault.grantRole(role);
     await this.instance.setPaused(true);
   }
