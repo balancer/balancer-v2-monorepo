@@ -292,7 +292,7 @@ describe('Vault - swaps', () => {
 
       context('when the sender is an approved relayer', () => {
         sharedBeforeEach(async () => {
-          const role = roleId(vault, 'batchSwap');
+          const role = await roleId(vault, 'batchSwap');
           await authorizer.connect(admin).grantRole(role, other.address);
 
           await vault.connect(trader).changeRelayerAllowance(trader.address, other.address, true);
@@ -537,8 +537,8 @@ describe('Vault - swaps', () => {
 
                           context('when the relayer is whitelisted by the authorizer', () => {
                             sharedBeforeEach('grant role to relayer', async () => {
-                              const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwap');
+                              const single = await roleId(vault, 'swap');
+                              const batch = await roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).grantRoles([single, batch], other.address);
                             });
 
@@ -576,8 +576,8 @@ describe('Vault - swaps', () => {
 
                           context('when the relayer is not whitelisted by the authorizer', () => {
                             sharedBeforeEach('revoke role from relayer', async () => {
-                              const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwap');
+                              const single = await roleId(vault, 'swap');
+                              const batch = await roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).revokeRoles([single, batch], other.address);
                             });
 
@@ -1036,8 +1036,8 @@ describe('Vault - swaps', () => {
 
                           context('when the relayer is whitelisted by the authorizer', () => {
                             sharedBeforeEach('grant role to relayer', async () => {
-                              const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwap');
+                              const single = await roleId(vault, 'swap');
+                              const batch = await roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).grantRoles([single, batch], other.address);
                             });
 
@@ -1062,8 +1062,8 @@ describe('Vault - swaps', () => {
 
                           context('when the relayer is not whitelisted by the authorizer', () => {
                             sharedBeforeEach('revoke role from relayer', async () => {
-                              const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwap');
+                              const single = await roleId(vault, 'swap');
+                              const batch = await roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).revokeRoles([single, batch], other.address);
                             });
 

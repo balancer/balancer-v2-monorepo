@@ -22,45 +22,45 @@ import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
 
 export default {
   toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
-    let { mocked, admin, responseWindowDuration, bufferPeriodDuration } = params;
+    let { mocked, admin, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!mocked) mocked = false;
     if (!admin) admin = params.from;
-    if (!responseWindowDuration) responseWindowDuration = 0;
+    if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
-    return { mocked, admin, responseWindowDuration, bufferPeriodDuration };
+    return { mocked, admin, pauseWindowDuration, bufferPeriodDuration };
   },
 
   toRawVaultDeployment(params: RawWeightedPoolDeployment): RawVaultDeployment {
-    let { admin, responseWindowDuration, bufferPeriodDuration } = params;
+    let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!admin) admin = params.from;
-    if (!responseWindowDuration) responseWindowDuration = 0;
+    if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
 
     const mocked = params.fromFactory !== undefined ? !params.fromFactory : true;
-    return { mocked, admin, responseWindowDuration, bufferPeriodDuration };
+    return { mocked, admin, pauseWindowDuration, bufferPeriodDuration };
   },
 
   toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
-    let { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
+    let { tokens, weights, swapFee, pauseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
     if (!swapFee) swapFee = bn(0);
-    if (!responseWindowDuration) responseWindowDuration = 3 * MONTH;
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!owner) owner = ZERO_ADDRESS;
-    return { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner };
+    return { tokens, weights, swapFee, pauseWindowDuration, bufferPeriodDuration, owner };
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
+    let { tokens, amplificationParameter, swapFee, pauseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!tokens) tokens = new TokenList();
     if (!amplificationParameter) amplificationParameter = bn(200 * 1e18);
     if (!swapFee) swapFee = bn(0);
-    if (!responseWindowDuration) responseWindowDuration = 3 * MONTH;
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!owner) owner = ZERO_ADDRESS;
-    return { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration, owner };
+    return { tokens, amplificationParameter, swapFee, pauseWindowDuration, bufferPeriodDuration, owner };
   },
 
   /***

@@ -25,15 +25,7 @@ export default {
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const {
-      tokens,
-      amplificationParameter,
-      swapFee,
-      responseWindowDuration,
-      bufferPeriodDuration,
-      owner,
-      from,
-    } = params;
+    const { tokens, amplificationParameter, swapFee, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
 
     return deploy('StablePool', {
       args: [
@@ -43,7 +35,7 @@ export default {
         tokens.addresses,
         amplificationParameter,
         swapFee,
-        responseWindowDuration,
+        pauseWindowDuration,
         bufferPeriodDuration,
         TypesConverter.toAddress(owner),
       ],
@@ -52,15 +44,7 @@ export default {
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const {
-      tokens,
-      amplificationParameter,
-      swapFee,
-      responseWindowDuration,
-      bufferPeriodDuration,
-      owner,
-      from,
-    } = params;
+    const { tokens, amplificationParameter, swapFee, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
 
     const factory = await deploy('StablePoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
@@ -70,7 +54,7 @@ export default {
       amplificationParameter,
       swapFee,
 
-      responseWindowDuration,
+      pauseWindowDuration,
       bufferPeriodDuration,
       TypesConverter.toAddress(owner)
     );

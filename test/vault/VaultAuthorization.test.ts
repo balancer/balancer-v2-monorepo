@@ -51,7 +51,7 @@ describe('VaultAuthorization', function () {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = roleId(vault, 'changeAuthorizer');
+        role = await roleId(vault, 'changeAuthorizer');
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 
@@ -144,13 +144,13 @@ describe('VaultAuthorization', function () {
   });
 
   describe('temporarily pausable', () => {
-    const RESPONSE_WINDOW = MONTH * 3;
+    const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
 
     sharedBeforeEach(async () => {
       authorizer = await deploy('Authorizer', { args: [admin.address] });
       vault = await deploy('Vault', {
-        args: [authorizer.address, ZERO_ADDRESS, RESPONSE_WINDOW, BUFFER_PERIOD_DURATION],
+        args: [authorizer.address, ZERO_ADDRESS, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
       });
     });
 
@@ -158,7 +158,7 @@ describe('VaultAuthorization', function () {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = roleId(vault, 'setPaused');
+        role = await roleId(vault, 'setPaused');
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 
