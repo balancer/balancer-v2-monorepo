@@ -66,7 +66,8 @@ abstract contract TemporarilyPausable {
     }
 
     /**
-     * @dev Returns the current contract pause status, as well as the end times of the Response Window and Buffer Period.
+     * @dev Returns the current contract pause status, as well as the end times of the Response Window and Buffer
+     * Period.
      */
     function getPausedState()
         external

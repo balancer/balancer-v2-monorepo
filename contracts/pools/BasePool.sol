@@ -35,8 +35,8 @@ import "../vault/interfaces/IBasePool.sol";
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with an immutable set
  * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency pause mechanism.
  *
- * Note that neither swap fees nor the emergency pause mechanism are used by this contract. They are passed through so
- * that derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the `whenNotPaused`
+ * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
+ * derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the `whenNotPaused`
  * modifier.
  *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.

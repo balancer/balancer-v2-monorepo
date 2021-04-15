@@ -11,8 +11,8 @@ export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
   weights?: BigNumberish[];
   swapFee?: BigNumberish;
-  emergencyPeriod?: BigNumberish;
-  emergencyPeriodCheckExtension?: BigNumberish;
+  responseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
@@ -22,8 +22,8 @@ export type WeightedPoolDeployment = {
   tokens: TokenList;
   weights: BigNumberish[];
   swapFee: BigNumberish;
-  emergencyPeriod: BigNumberish;
-  emergencyPeriodCheckExtension: BigNumberish;
+  responseWindowDuration: BigNumberish;
+  bufferPeriodDuration: BigNumberish;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };

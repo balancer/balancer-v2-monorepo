@@ -137,8 +137,8 @@ describe('Vault - swap validation', () => {
         deadline = await fromNow(60);
       });
 
-      context('when there is an emergency', () => {
-        sharedBeforeEach('activate emergency period', async () => {
+      context('when paused', () => {
+        sharedBeforeEach('pause', async () => {
           const role = roleId(vault, 'setPaused');
           await authorizer.connect(admin).grantRole(role, admin.address);
           await vault.connect(admin).setPaused(true);
@@ -151,7 +151,7 @@ describe('Vault - swap validation', () => {
         });
       });
 
-      context('with no emergency', () => {
+      context('when unpaused', () => {
         it('reverts if there are less limits than tokens', async () => {
           await expect(doSwap(funds, Array(tokens.length - 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
             'INPUT_LENGTH_MISMATCH'

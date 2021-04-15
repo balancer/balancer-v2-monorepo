@@ -36,15 +36,15 @@ describe('BasePool', function () {
     params: {
       tokens?: TokenList | string[];
       swapFee?: BigNumberish;
-      emergencyResponseWindow?: number;
-      emergencyBufferPeriod?: number;
+      responseWindowDuration?: number;
+      bufferPeriodDuration?: number;
     } = {}
   ): Promise<Contract> {
-    let { tokens: poolTokens, swapFee, emergencyResponseWindow, emergencyBufferPeriod } = params;
+    let { tokens: poolTokens, swapFee, responseWindowDuration, bufferPeriodDuration } = params;
     if (!poolTokens) poolTokens = tokens;
     if (!swapFee) swapFee = MIN_SWAP_FEE;
-    if (!emergencyResponseWindow) emergencyResponseWindow = 0;
-    if (!emergencyBufferPeriod) emergencyBufferPeriod = 0;
+    if (!responseWindowDuration) responseWindowDuration = 0;
+    if (!bufferPeriodDuration) bufferPeriodDuration = 0;
 
     return deploy('MockBasePool', {
       args: [
@@ -54,8 +54,8 @@ describe('BasePool', function () {
         'BPT',
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
         swapFee,
-        emergencyResponseWindow,
-        emergencyBufferPeriod,
+        responseWindowDuration,
+        bufferPeriodDuration,
       ],
     });
   }
@@ -188,19 +188,19 @@ describe('BasePool', function () {
     });
   });
 
-  describe('emergency period', () => {
+  describe('temporarily pausable', () => {
     let pool: Contract;
-    const EMERGENCY_RESPONSE_WINDOW = MONTH * 3;
-    const EMERGENCY_BUFFER_PERIOD = MONTH;
+    const RESPONSE_WINDOW_DURATION = MONTH * 3;
+    const BUFFER_PERIOD_DURATION = MONTH;
 
     sharedBeforeEach('deploy pool', async () => {
       pool = await deployBasePool({
-        emergencyResponseWindow: EMERGENCY_RESPONSE_WINDOW,
-        emergencyBufferPeriod: EMERGENCY_BUFFER_PERIOD,
+        responseWindowDuration: RESPONSE_WINDOW_DURATION,
+        bufferPeriodDuration: BUFFER_PERIOD_DURATION,
       });
     });
 
-    context('when the sender is has the role to do it', () => {
+    context('when the sender is has the role to pause and unpause', () => {
       let role: string;
 
       sharedBeforeEach('grant permission', async () => {
@@ -208,18 +208,23 @@ describe('BasePool', function () {
         await authorizer.connect(admin).grantRole(role, admin.address);
       });
 
-      it('can change the emergency period status', async () => {
-        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.true;
-
+      it('can pause', async () => {
         await pool.connect(admin).setPaused(true);
 
         const { paused } = await pool.getPausedState();
         expect(paused).to.be.true;
       });
 
-      it('can not change the emergency period if the role was revoked', async () => {
-        await authorizer.connect(admin).revokeRole(role, admin.address);
+      it('can unpause', async () => {
+        await pool.connect(admin).setPaused(true);
+        await pool.connect(admin).setPaused(false);
 
+        const { paused } = await pool.getPausedState();
+        expect(paused).to.be.false;
+      });
+
+      it('cannot pause if the role is revoked', async () => {
+        await authorizer.connect(admin).revokeRole(role, admin.address);
         expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
 
         await expect(pool.connect(admin).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
