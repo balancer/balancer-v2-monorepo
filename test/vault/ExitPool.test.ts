@@ -39,7 +39,7 @@ describe('Vault - exit pool', () => {
     vault = vault.connect(lp);
     feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const role = roleId(feesCollector, 'setSwapFee');
+    const role = await roleId(feesCollector, 'setSwapFee');
     await authorizer.connect(admin).grantRole(role, admin.address);
     await feesCollector.connect(admin).setSwapFee(SWAP_FEE);
 
@@ -251,7 +251,7 @@ describe('Vault - exit pool', () => {
 
             context('when the relayer is whitelisted by the authorizer', () => {
               sharedBeforeEach('grant role to relayer', async () => {
-                const role = roleId(vault, 'exitPool');
+                const role = await roleId(vault, 'exitPool');
                 await authorizer.connect(admin).grantRole(role, relayer.address);
               });
 
@@ -288,7 +288,7 @@ describe('Vault - exit pool', () => {
 
             context('when the relayer is not whitelisted by the authorizer', () => {
               sharedBeforeEach('revoke role from relayer', async () => {
-                const role = roleId(vault, 'exitPool');
+                const role = await roleId(vault, 'exitPool');
                 await authorizer.connect(admin).revokeRole(role, relayer.address);
               });
 
@@ -393,7 +393,7 @@ describe('Vault - exit pool', () => {
 
         context('when paused', () => {
           sharedBeforeEach('pause', async () => {
-            const role = roleId(vault, 'setPaused');
+            const role = await roleId(vault, 'setPaused');
             await authorizer.connect(admin).grantRole(role, admin.address);
             await vault.connect(admin).setPaused(true);
           });
