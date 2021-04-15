@@ -35,7 +35,7 @@ describe('Vault - flash loans', () => {
     tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
     await tokens.mint({ to: vault, amount: bn(100e18) });
 
-    // The recipient will mint the fees it
+    // The recipient will mint the fees it pays
     const MINTER_ROLE = ethers.utils.id('MINTER_ROLE');
     await tokens.asyncEach((token) => token.instance.connect(minter).grantRole(MINTER_ROLE, recipient.address));
   });

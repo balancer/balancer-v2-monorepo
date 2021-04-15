@@ -34,7 +34,7 @@ import "./Swaps.sol";
  *
  *  - `UserBalance`: manage user balances (Internal Balance operations and external balance transfers)
  *  - `Fees`: set and compute protocol fees.
- *  - `FlashLoans`: base class for flash loan contracts.
+ *  - `FlashLoans`: flash loan transfers and fees.
  *  - `PoolRegistry`: Pool registration, joining, exiting, and Asset Manager interactions.
  *  - `Swaps`: Pool swaps.
  *
