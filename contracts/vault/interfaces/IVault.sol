@@ -76,17 +76,17 @@ interface IVault is ISignaturesValidator {
     // Authorizer or governance drain user funds, since they would also need to be approved by each individual user.
 
     /**
-     * @dev Returns true if `user` has allowed `relayer` to act as a relayer for them.
+     * @dev Returns true if `user` has approved `relayer` to act as a relayer for them.
      */
-    function hasAllowedRelayer(address user, address relayer) external view returns (bool);
+    function hasApprovedRelayer(address user, address relayer) external view returns (bool);
 
     /**
-     * @dev Allows `relayer` to act as a relayer for `sender` if `allowed` is true, and disallows it otherwise.
+     * @dev Allows `relayer` to act as a relayer for `sender` if `approved` is true, and disallows it otherwise.
      */
-    function changeRelayerAllowance(
+    function setRelayerApproval(
         address sender,
         address relayer,
-        bool allowed
+        bool approved
     ) external;
 
     // Internal Balance

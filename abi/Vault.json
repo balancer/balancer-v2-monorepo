@@ -13,12 +13,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindow",
+        "name": "responseWindowDuration",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "bufferPeriod",
+        "name": "bufferPeriodDuration",
         "type": "uint256"
       }
     ],
@@ -218,11 +218,11 @@
       {
         "indexed": false,
         "internalType": "bool",
-        "name": "allowed",
+        "name": "approved",
         "type": "bool"
       }
     ],
-    "name": "RelayerAllowanceChanged",
+    "name": "RelayerApprovalChanged",
     "type": "event"
   },
   {
@@ -421,29 +421,6 @@
       }
     ],
     "name": "changeAuthorizer",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "sender",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "relayer",
-        "type": "address"
-      },
-      {
-        "internalType": "bool",
-        "name": "allowed",
-        "type": "bool"
-      }
-    ],
-    "name": "changeRelayerAllowance",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -754,7 +731,7 @@
         "type": "address"
       }
     ],
-    "name": "hasAllowedRelayer",
+    "name": "hasApprovedRelayer",
     "outputs": [
       {
         "internalType": "bool",
@@ -818,17 +795,17 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "enum IVault.AssetManagerOpKind",
-        "name": "kind",
-        "type": "uint8"
-      },
-      {
         "components": [
+          {
+            "internalType": "enum IVault.PoolBalanceOpKind",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "poolId",
+            "type": "bytes32"
+          },
           {
             "internalType": "contract IERC20",
             "name": "token",
@@ -840,8 +817,8 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct IVault.AssetManagerTransfer[]",
-        "name": "transfers",
+        "internalType": "struct IVault.PoolBalanceOp[]",
+        "name": "ops",
         "type": "tuple[]"
       }
     ],
@@ -1024,6 +1001,29 @@
       }
     ],
     "name": "setPaused",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "relayer",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "setRelayerApproval",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

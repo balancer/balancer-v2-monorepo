@@ -53,14 +53,14 @@ abstract contract VaultAuthorization is
     /* solhint-enable private-vars-leading-underscore */
 
     IAuthorizer private _authorizer;
-    mapping(address => mapping(address => bool)) private _allowedRelayers;
+    mapping(address => mapping(address => bool)) private _approvedRelayers;
 
     event AuthorizerChanged(IAuthorizer indexed oldAuthorizer, IAuthorizer indexed newAuthorizer);
-    event RelayerAllowanceChanged(address indexed relayer, address indexed sender, bool allowed);
+    event RelayerApprovalChanged(address indexed relayer, address indexed sender, bool approved);
 
     /**
-     * @dev Reverts unless `user` has allowed the caller as a relayer, and the caller is allowed by the Authorizer to
-     * call this function. Should only be applied to external functions.
+     * @dev Reverts unless `user` has approved the caller as a relayer, and the relayer was approved by the Authorizer
+     * to call this function. Should only be applied to external functions.
      */
     modifier authenticateFor(address user) {
         _authenticateFor(user);
@@ -81,19 +81,20 @@ abstract contract VaultAuthorization is
     }
 
     /**
-     * @dev Change a relayer allowance for `msg.sender`
+     * @dev Grant or revoke approval for the given `relayer` to call Authorizer-approved functions on behalf
+     * of `sender`.
      */
-    function changeRelayerAllowance(
+    function setRelayerApproval(
         address sender,
         address relayer,
-        bool allowed
+        bool approved
     ) external override nonReentrant whenNotPaused authenticateFor(sender) {
-        _allowedRelayers[sender][relayer] = allowed;
-        emit RelayerAllowanceChanged(relayer, sender, allowed);
+        _approvedRelayers[sender][relayer] = approved;
+        emit RelayerApprovalChanged(relayer, sender, approved);
     }
 
-    function hasAllowedRelayer(address user, address relayer) external view override returns (bool) {
-        return _hasAllowedRelayer(user, relayer);
+    function hasApprovedRelayer(address user, address relayer) external view override returns (bool) {
+        return _hasApprovedRelayer(user, relayer);
     }
 
     /**
@@ -104,7 +105,7 @@ abstract contract VaultAuthorization is
         if (msg.sender != user) {
             _authenticateCaller();
             // Validate signature only if the user didn't grant allowance to the relayer
-            if (!_hasAllowedRelayer(user, msg.sender)) {
+            if (!_hasApprovedRelayer(user, msg.sender)) {
                 _validateSignature(user, Errors.USER_DOESNT_ALLOW_RELAYER);
             }
         }
@@ -114,11 +115,11 @@ abstract contract VaultAuthorization is
      * @dev Reverts unless `user` has allowed the caller as a relayer.
      */
     function _authenticateCallerFor(address user) internal view {
-        _require(_hasAllowedRelayer(user, msg.sender), Errors.USER_DOESNT_ALLOW_RELAYER);
+        _require(_hasApprovedRelayer(user, msg.sender), Errors.USER_DOESNT_ALLOW_RELAYER);
     }
 
-    function _hasAllowedRelayer(address user, address relayer) internal view returns (bool) {
-        return _allowedRelayers[user][relayer];
+    function _hasApprovedRelayer(address user, address relayer) internal view returns (bool) {
+        return _approvedRelayers[user][relayer];
     }
 
     function _canPerform(bytes32 roleId, address user) internal view override returns (bool) {
