@@ -95,8 +95,13 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         IERC20[] memory tokens,
         uint256 swapFee,
         uint256 responseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) BalancerPoolToken(name, symbol) TemporarilyPausable(responseWindowDuration, bufferPeriodDuration) {
+        uint256 bufferPeriodDuration,
+        address owner
+    )
+        BalancerPoolToken(name, symbol)
+        BasePoolAuthorization(owner)
+        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
+    {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
@@ -555,10 +560,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         }
     }
 
-    /**
-     * @dev This contract relies on the roles defined by the Vault's own Authorizer.
-     */
     function _getAuthorizer() internal view override returns (IAuthorizer) {
+        // If the Pool has no owner, we rely on the Vault's Authorizer instead. This lets Balancer Governance manage
+        // which accounts can call permissioned functions, used to e.g. set swap fees.
         return getVault().getAuthorizer();
     }
 

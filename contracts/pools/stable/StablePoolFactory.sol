@@ -36,7 +36,8 @@ contract StablePoolFactory is BasePoolFactory {
         uint256 amplificationParameter,
         uint256 swapFee,
         uint256 responseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint256 bufferPeriodDuration,
+        address owner
     ) external returns (address) {
         address pool = address(
             new StablePool(
@@ -47,7 +48,8 @@ contract StablePoolFactory is BasePoolFactory {
                 amplificationParameter,
                 swapFee,
                 responseWindowDuration,
-                bufferPeriodDuration
+                bufferPeriodDuration,
+                owner
             )
         );
         _register(pool);

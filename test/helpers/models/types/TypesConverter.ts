@@ -18,6 +18,7 @@ import {
   TokenDeployment,
   RawTokenDeployment,
 } from '../tokens/types';
+import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
 
 export default {
   toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
@@ -40,24 +41,27 @@ export default {
   },
 
   toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
-    let { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration } = params;
+    let { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
     if (!swapFee) swapFee = bn(0);
+
     if (!responseWindowDuration) responseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    return { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration };
+    if (!owner) owner = ZERO_ADDRESS;
+    return { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner };
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration } = params;
+    let { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!tokens) tokens = new TokenList();
     if (!amplificationParameter) amplificationParameter = bn(200 * 1e18);
     if (!swapFee) swapFee = bn(0);
     if (!responseWindowDuration) responseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    return { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration };
+    if (!owner) owner = ZERO_ADDRESS;
+    return { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration, owner };
   },
 
   /***

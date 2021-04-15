@@ -3,6 +3,7 @@ import { Contract, ContractReceipt, Signer } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from './deploy';
+import { ZERO_ADDRESS } from './constants';
 
 export const GeneralPool = 0;
 export const MinimalSwapInfoPool = 1;
@@ -33,11 +34,12 @@ export async function deployPoolFromFactory(
   const symbol = 'BPT';
   const responseWindowDuration = 0;
   const bufferPeriodDuration = 0;
+  const owner = ZERO_ADDRESS;
 
   const receipt: ContractReceipt = await (
     await factory
       .connect(args.from)
-      .create(name, symbol, ...args.parameters, responseWindowDuration, bufferPeriodDuration)
+      .create(name, symbol, ...args.parameters, responseWindowDuration, bufferPeriodDuration, owner)
   ).wait();
 
   const event = receipt.events?.find((e) => e.event == 'PoolRegistered');

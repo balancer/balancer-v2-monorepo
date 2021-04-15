@@ -185,7 +185,7 @@ describe('VaultAuthorization', function () {
       });
     });
 
-    context('when the sender does not have the role to do it', () => {
+    context('when the sender does not have the role to unpause', () => {
       it('reverts', async () => {
         await expect(vault.connect(other).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });

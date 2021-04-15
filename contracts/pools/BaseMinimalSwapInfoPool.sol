@@ -31,7 +31,8 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         IERC20[] memory tokens,
         uint256 swapFee,
         uint256 responseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint256 bufferPeriodDuration,
+        address owner
     )
         BasePool(
             vault,
@@ -41,7 +42,8 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
             tokens,
             swapFee,
             responseWindowDuration,
-            bufferPeriodDuration
+            bufferPeriodDuration,
+            owner
         )
     {
         // solhint-disable-previous-line no-empty-blocks

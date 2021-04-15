@@ -13,6 +13,7 @@ export type RawStablePoolDeployment = {
   swapFee?: BigNumberish;
   responseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
+  owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
@@ -24,6 +25,7 @@ export type StablePoolDeployment = {
   swapFee: BigNumberish;
   responseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
+  owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };

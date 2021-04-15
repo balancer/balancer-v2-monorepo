@@ -42,8 +42,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         uint256 amplificationParameter,
         uint256 swapFee,
         uint256 responseWindowDuration,
-        uint256 bufferPeriodDuration
-    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, responseWindowDuration, bufferPeriodDuration) {
+        uint256 bufferPeriodDuration,
+        address owner
+    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, responseWindowDuration, bufferPeriodDuration, owner) {
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
 
