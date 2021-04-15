@@ -143,6 +143,16 @@ library FixedPoint {
         return add(raw, maxError);
     }
 
+    function n_log(uint256 x) internal pure returns (int256) {
+        // can safely cast to int256 because n_log requires a > 0
+        return LogExpMath.n_log(int256(x));
+    }
+
+    function n_exp(int256 x) internal pure returns (uint256) {
+        // can safely cast to uint256 because e^x is always positive
+        return uint256(LogExpMath.n_exp(x));
+    }
+
     /**
      * @dev Returns the complement of a value (1 - x), capped to 0 if x is larger than 1.
      *
