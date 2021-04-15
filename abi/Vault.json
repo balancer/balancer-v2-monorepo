@@ -519,8 +519,8 @@
   {
     "inputs": [
       {
-        "internalType": "contract IFlashLoanReceiver",
-        "name": "receiver",
+        "internalType": "contract IFlashLoanRecipient",
+        "name": "recipient",
         "type": "address"
       },
       {
@@ -535,7 +535,7 @@
       },
       {
         "internalType": "bytes",
-        "name": "receiverData",
+        "name": "userData",
         "type": "bytes"
       }
     ],
@@ -989,7 +989,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {

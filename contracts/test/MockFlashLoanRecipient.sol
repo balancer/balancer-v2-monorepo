@@ -19,12 +19,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../lib/math/Math.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
-import "../vault/interfaces/IFlashLoanReceiver.sol";
+import "../vault/interfaces/IFlashLoanRecipient.sol";
 import "../vault/interfaces/IVault.sol";
 
 import "./TestToken.sol";
 
-contract MockFlashLoanReceiver is IFlashLoanReceiver {
+contract MockFlashLoanRecipient is IFlashLoanRecipient {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
@@ -57,7 +57,7 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
         IERC20[] memory tokens,
         uint256[] memory amounts,
         uint256[] memory feeAmounts,
-        bytes memory receiverData
+        bytes memory userData
     ) external override {
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
@@ -67,7 +67,7 @@ contract MockFlashLoanReceiver is IFlashLoanReceiver {
             require(token.balanceOf(address(this)) == amount, "INVALID_FLASHLOAN_BALANCE");
 
             if (reenter) {
-                IVault(msg.sender).flashLoan(IFlashLoanReceiver(address(this)), tokens, amounts, receiverData);
+                IVault(msg.sender).flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, userData);
             }
 
             TestToken(address(token)).mint(address(this), repayInExcess ? feeAmount.add(1) : feeAmount);
