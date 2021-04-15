@@ -33,11 +33,11 @@ import "../vault/interfaces/IBasePool.sol";
 
 /**
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with an immutable set
- * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency stop mechanisms.
+ * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency pause mechanism.
  *
- * Note that neither swap fees nor the emergency stop mechanism are used by this contract. They are passed through so
- * that derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the
- * `whenNotPaused` modifier.
+ * Note that neither swap fees nor the emergency pause mechanism are used by this contract. They are passed through so
+ * that derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the `whenNotPaused`
+ * modifier.
  *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.
  *
@@ -94,9 +94,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFee,
-        uint256 responseWindow,
-        uint256 bufferPeriod
-    ) BalancerPoolToken(name, symbol) TemporarilyPausable(responseWindow, bufferPeriod) {
+        uint256 responseWindowDuration,
+        uint256 bufferPeriodDuration
+    ) BalancerPoolToken(name, symbol) TemporarilyPausable(responseWindowDuration, bufferPeriodDuration) {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 

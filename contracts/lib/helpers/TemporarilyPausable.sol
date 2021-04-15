@@ -17,21 +17,24 @@ pragma solidity ^0.7.0;
 import "./BalancerErrors.sol";
 
 /**
- * @dev Provide "Emergency Stop" functionality that allows pausing a contract during an emergency.
+ * @dev Allows for a contract to be paused during an initial period after deployment, disabling functionality. Can be
+ * used as an emergency switch in case a security vulnerability or threat is identified.
  *
- * The Response Window begins at contract deployment: the contract can only be paused during this time period.
+ * The contract can only be paused during the Response Window, a period that starts at deployment. It can also be
+ * unpaused and repaused any number of times during this period. This is intended to serve as a safety measure: it lets
+ * system managers react quickly to potentially dangerous situations, knowing that this action is reversible if careful
+ * analysis later determines there was a false alarm.
  *
- * If the contract is paused when the Response Window end time passes, it will remain in the paused state through
- * an additional Buffer Period, after which it will be automatically unpaused forever. This is to ensure there is
- * enough time to react to the emergency, even if the threat is discovered shortly before the Response Window expires.
+ * If the contract is paused when the Response Window finishes, it will remain in the paused state through an additional
+ * Buffer Period, after which it will be automatically unpaused forever. This is to ensure there is always enough time
+ * to react to an emergency, even if the threat is discovered shortly before the Response Window expires.
  *
- * The contract may be unpaused at any time before the end of the Buffer Period. This is a safety measure:
- * it lets the emergency managers react quickly to potentially dangerous situations, knowing that this action is
- * reversible if careful analysis determines there was a false alarm. Note that since the contract can only be paused
- * within the Response Window, unpausing during the Buffer Period is irrevocable.
+ * Note that since the contract can only be paused within the Response Window, unpausing during the Buffer Period is
+ * irreversible.
  */
 abstract contract TemporarilyPausable {
-    // This contract uses timestamps
+    // The Response Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute
+    // accuracy.
     // solhint-disable not-rely-on-time
 
     uint256 private constant _MAX_RESPONSE_WINDOW_DURATION = 90 days;
@@ -44,11 +47,6 @@ abstract contract TemporarilyPausable {
 
     event PausedStateChanged(bool paused);
 
-    modifier whenNotPaused() {
-        _ensureNotPaused();
-        _;
-    }
-
     constructor(uint256 responseWindowDuration, uint256 bufferPeriodDuration) {
         _require(responseWindowDuration <= _MAX_RESPONSE_WINDOW_DURATION, Errors.MAX_RESPONSE_WINDOW_DURATION);
         _require(bufferPeriodDuration <= _MAX_BUFFER_PERIOD_DURATION, Errors.MAX_BUFFER_PERIOD_DURATION);
@@ -59,6 +57,17 @@ abstract contract TemporarilyPausable {
         _bufferPeriodEndTime = responseWindowEndTime + bufferPeriodDuration;
     }
 
+    /**
+     * @dev Reverts if the contract is paused.
+     */
+    modifier whenNotPaused() {
+        _ensureNotPaused();
+        _;
+    }
+
+    /**
+     * @dev Returns the current contract pause status, as well as the end times of the Response Window and Buffer Period.
+     */
     function getPausedState()
         external
         view
@@ -68,41 +77,53 @@ abstract contract TemporarilyPausable {
             uint256 bufferPeriodEndTime
         )
     {
-        paused = _isPaused();
+        paused = !_isNotPaused();
         responseWindowEndTime = _getResponseWindowEndTime();
         bufferPeriodEndTime = _getBufferPeriodEndTime();
     }
 
-    // The contract can only be paused during the initial response window. It can be unpaused at
-    // any time through the end of the buffer period.
-    //
-    // Regardless of the final state of the flag, the contract is considered permanently unpaused
-    // after the buffer period expires. It is then fully functional and trustless.
+    /**
+     * @dev Sets the pause state to `paused`. The contract can only be paused until the end of the Response Window, and
+     * unpaused until the end of the Buffer Period.
+     *
+     * Once the Buffer Period expires, this function reverts unconditionally.
+     */
     function _setPaused(bool paused) internal {
         if (paused) {
-            _require(block.timestamp < _getResponseWindowEndTime(), Errors.EMERGENCY_WINDOW_EXPIRED);
+            _require(block.timestamp < _getResponseWindowEndTime(), Errors.RESPONSE_WINDOW_EXPIRED);
         } else {
             _require(block.timestamp < _getBufferPeriodEndTime(), Errors.BUFFER_PERIOD_EXPIRED);
         }
 
         _paused = paused;
-
         emit PausedStateChanged(paused);
     }
 
+    /**
+     * @dev Reverts if the contract is paused.
+     */
     function _ensureNotPaused() internal view {
-        _require(!_isPaused(), Errors.PAUSED);
+        _require(_isNotPaused(), Errors.PAUSED);
     }
 
-    function _isPaused() internal view returns (bool) {
-        return (_paused && block.timestamp < _getBufferPeriodEndTime());
+    /**
+     * @dev Returns true if the contract is unpaused.
+     *
+     * Once the Buffer Period expires, the gas cost of calling this function is reduced dramatically, as storage is no
+     * longer accessed.
+     */
+    function _isNotPaused() internal view returns (bool) {
+        // After the Buffer Period, the (inexpensive) timestamp check shortcircuits the storage access.
+        return block.timestamp > _getBufferPeriodEndTime() || !_paused;
     }
 
-    function _getResponseWindowEndTime() internal view returns (uint256) {
+    // These getters lead to reduced bytecode size by inlining the immutable variables in a single place.
+
+    function _getResponseWindowEndTime() private view returns (uint256) {
         return _responseWindowEndTime;
     }
 
-    function _getBufferPeriodEndTime() internal view returns (uint256) {
+    function _getBufferPeriodEndTime() private view returns (uint256) {
         return _bufferPeriodEndTime;
     }
 }

@@ -110,7 +110,7 @@ describe('EmergencyPeriod', function () {
           });
 
           it('cannot change the emergency period', async () => {
-            await expect(emergency.setPaused(true)).to.be.revertedWith('EMERGENCY_WINDOW_EXPIRED');
+            await expect(emergency.setPaused(true)).to.be.revertedWith('RESPONSE_WINDOW_EXPIRED');
           });
         }
 

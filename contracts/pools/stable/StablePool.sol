@@ -41,9 +41,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         IERC20[] memory tokens,
         uint256 amplificationParameter,
         uint256 swapFee,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
-    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {
+        uint256 responseWindowDuration,
+        uint256 bufferPeriodDuration
+    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, responseWindowDuration, bufferPeriodDuration) {
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
 
@@ -244,10 +244,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        // To avoid extra calculations, protocol fees are not charged whem the contract is paused
-        if (_isPaused()) {
-            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
-        } else {
+        if (_isNotPaused()) {
             // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
             // spending gas calculating fees during each individual swap
@@ -258,6 +255,9 @@ contract StablePool is BaseGeneralPool, StableMath {
             for (uint256 i = 0; i < _getTotalTokens(); ++i) {
                 balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
             }
+        } else {
+            // To avoid extra calculations, protocol fees are not charged whem the contract is paused.
+            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 
         (bptAmountIn, amountsOut) = _doExit(balances, userData);
@@ -292,7 +292,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         whenNotPaused
         returns (uint256, uint256[] memory)
     {
-        // This exit function is disabled if the emergency period is active.
+        // This exit function is disabled if the contract is paused.
         uint256 totalTokens = _getTotalTokens();
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         _require(tokenIndex < totalTokens, Errors.OUT_OF_BOUNDS);
@@ -317,10 +317,9 @@ contract StablePool is BaseGeneralPool, StableMath {
         view
         returns (uint256, uint256[] memory)
     {
-        // This exit function is the only one that is not disabled if the emergency period is active: it remains
-        // unrestricted as an attempt to provide users with a mechanism to retrieve their tokens in case of an
-        // emergency.
-        // The reason why exit function is the one that remains available is because it is the simplest one, and
+        // This exit function is the only one that is not disabled if the contract is paused: it remains unrestricted
+        // in an attempt to provide users with a mechanism to retrieve their tokens in case of an emergency.
+        // This particular exit function is the only one that remains available because it is the simplest one, and
         // therefore the one with the lowest likelihood of errors.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
 
@@ -335,7 +334,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         whenNotPaused
         returns (uint256, uint256[] memory)
     {
-        // This exit function is disabled if the emergency period is active.
+        // This exit function is disabled if the contract is paused.
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());

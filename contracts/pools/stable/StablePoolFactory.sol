@@ -35,8 +35,8 @@ contract StablePoolFactory is BasePoolFactory {
         IERC20[] memory tokens,
         uint256 amplificationParameter,
         uint256 swapFee,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
+        uint256 responseWindowDuration,
+        uint256 bufferPeriodDuration
     ) external returns (address) {
         address pool = address(
             new StablePool(
@@ -46,8 +46,8 @@ contract StablePoolFactory is BasePoolFactory {
                 tokens,
                 amplificationParameter,
                 swapFee,
-                emergencyPeriod,
-                emergencyPeriodCheckExtension
+                responseWindowDuration,
+                bufferPeriodDuration
             )
         );
         _register(pool);
