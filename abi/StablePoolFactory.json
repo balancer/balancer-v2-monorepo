@@ -52,7 +52,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowDuration",
+        "name": "pauseWindowDuration",
         "type": "uint256"
       },
       {

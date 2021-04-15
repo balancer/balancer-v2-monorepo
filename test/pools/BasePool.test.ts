@@ -38,16 +38,16 @@ describe('BasePool', function () {
     params: {
       tokens?: TokenList | string[];
       swapFee?: BigNumberish;
-      responseWindowDuration?: number;
+      pauseWindowDuration?: number;
       bufferPeriodDuration?: number;
       owner?: Account;
       from?: SignerWithAddress;
     } = {}
   ): Promise<Contract> {
-    let { tokens: poolTokens, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
+    let { tokens: poolTokens, swapFee, pauseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!poolTokens) poolTokens = tokens;
     if (!swapFee) swapFee = MIN_SWAP_FEE;
-    if (!responseWindowDuration) responseWindowDuration = 0;
+    if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!owner) owner = ZERO_ADDRESS;
 
@@ -60,7 +60,7 @@ describe('BasePool', function () {
         'BPT',
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
         swapFee,
-        responseWindowDuration,
+        pauseWindowDuration,
         bufferPeriodDuration,
         TypesConverter.toAddress(owner),
       ],
@@ -241,12 +241,12 @@ describe('BasePool', function () {
 
   describe('temporarily pausable', () => {
     let pool: Contract;
-    const RESPONSE_WINDOW_DURATION = MONTH * 3;
+    const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
 
     sharedBeforeEach('deploy pool', async () => {
       pool = await deployBasePool({
-        responseWindowDuration: RESPONSE_WINDOW_DURATION,
+        pauseWindowDuration: PAUSE_WINDOW_DURATION,
         bufferPeriodDuration: BUFFER_PERIOD_DURATION,
       });
     });

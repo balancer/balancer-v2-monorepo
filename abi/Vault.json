@@ -13,7 +13,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowDuration",
+        "name": "pauseWindowDuration",
         "type": "uint256"
       },
       {
@@ -624,7 +624,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowEndTime",
+        "name": "pauseWindowEndTime",
         "type": "uint256"
       },
       {

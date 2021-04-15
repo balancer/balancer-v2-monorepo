@@ -94,7 +94,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFee,
-        uint256 responseWindowDuration,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
     )
@@ -105,7 +105,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         Authentication(bytes32(uint256(msg.sender)))
         BalancerPoolToken(name, symbol)
         BasePoolAuthorization(owner)
-        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
+        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);

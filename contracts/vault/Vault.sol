@@ -56,13 +56,9 @@ contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
     constructor(
         IAuthorizer authorizer,
         IWETH weth,
-        uint256 responseWindowDuration,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    )
-        VaultAuthorization(authorizer)
-        AssetHelpers(weth)
-        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
-    {
+    ) VaultAuthorization(authorizer) AssetHelpers(weth) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

@@ -56,21 +56,10 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
         uint256 swapFee,
-        uint256 responseWindowDuration,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
-    )
-        BaseMinimalSwapInfoPool(
-            vault,
-            name,
-            symbol,
-            tokens,
-            swapFee,
-            responseWindowDuration,
-            bufferPeriodDuration,
-            owner
-        )
-    {
+    ) BaseMinimalSwapInfoPool(vault, name, symbol, tokens, swapFee, pauseWindowDuration, bufferPeriodDuration, owner) {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
 
