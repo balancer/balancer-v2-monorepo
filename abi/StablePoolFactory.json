@@ -52,12 +52,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "emergencyPeriod",
+        "name": "responseWindowDuration",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "emergencyPeriodCheckExtension",
+        "name": "bufferPeriodDuration",
         "type": "uint256"
       },
       {

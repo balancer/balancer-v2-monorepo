@@ -52,7 +52,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
 
         // Cache for these checks so we only perform them once (if at all).
         bool checkedCallerIsRelayer = false;
-        bool checkedEmergencySwitchIsOff = false;
+        bool checkedNotPaused = false;
 
         for (uint256 i = 0; i < ops.length; i++) {
             UserBalanceOpKind kind;
@@ -71,13 +71,13 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
                 // Internal Balance withdrawals can always be performed by an authorized account.
                 _withdrawFromInternalBalance(asset, sender, recipient, amount);
             } else {
-                // All other operations are blocked if the Emergency Switch has been activated.
+                // All other operations are blocked if the contract is paused.
 
-                // We cache the result of the Emergency Switch check and skip it for other operations in this same
-                // transaction (if any).
-                if (!checkedEmergencySwitchIsOff) {
-                    _ensureInactiveEmergencyPeriod();
-                    checkedEmergencySwitchIsOff = true;
+                // We cache the result of the pause check and skip it for other operations in this same transaction (if
+                // any).
+                if (!checkedNotPaused) {
+                    _ensureNotPaused();
+                    checkedNotPaused = true;
                 }
 
                 if (kind == UserBalanceOpKind.DEPOSIT_INTERNAL) {
