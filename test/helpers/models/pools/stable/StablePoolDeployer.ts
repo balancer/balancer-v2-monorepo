@@ -19,13 +19,21 @@ export default {
     const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { tokens, amplificationParameter, swapFee } = deployment;
+    const { tokens, amplificationParameter, swapFeePercentage } = deployment;
     const poolId = await pool.getPoolId();
-    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFee);
+    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage);
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParameter, swapFee, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
+    const {
+      tokens,
+      amplificationParameter,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner,
+      from,
+    } = params;
 
     return deploy('StablePool', {
       args: [
@@ -34,7 +42,7 @@ export default {
         SYMBOL,
         tokens.addresses,
         amplificationParameter,
-        swapFee,
+        swapFeePercentage,
         pauseWindowDuration,
         bufferPeriodDuration,
         TypesConverter.toAddress(owner),
@@ -44,7 +52,15 @@ export default {
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParameter, swapFee, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
+    const {
+      tokens,
+      amplificationParameter,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner,
+      from,
+    } = params;
 
     const factory = await deploy('StablePoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
@@ -52,7 +68,7 @@ export default {
       SYMBOL,
       tokens.addresses,
       amplificationParameter,
-      swapFee,
+      swapFeePercentage,
 
       pauseWindowDuration,
       bufferPeriodDuration,

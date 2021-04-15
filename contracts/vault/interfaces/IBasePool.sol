@@ -28,7 +28,7 @@ interface IBasePool is IPoolSwapStructs {
      * @dev Called by the Vault when a user calls `IVault.joinPool` to add liquidity to this Pool. Returns how many of
      * each registered token the user should provide, as well as the amount of protocol fees the Pool owes to the Vault.
      * The Vault will then take tokens from `sender` and add them to the Pool's balances, as well as collect
-     * the reported amount in protocol fees, which the pool should calculate based on the `protocolSwapFee` percentage.
+     * the reported amount in protocol fees, which the pool should calculate based on `protocolSwapFeePercentage`.
      *
      * Protocol fees are reported and charged on join events so that the Pool is free of debt whenever new users join.
      *
@@ -51,7 +51,7 @@ interface IBasePool is IPoolSwapStructs {
         address recipient,
         uint256[] memory currentBalances,
         uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
 
@@ -59,8 +59,8 @@ interface IBasePool is IPoolSwapStructs {
      * @dev Called by the Vault when a user calls `IVault.exitPool` to remove liquidity from this Pool. Returns how many
      * tokens the Vault should deduct from the Pool's balances, as well as the amount of protocol fees the Pool owes
      * to the Vault. The Vault will then take tokens from the Pool's balances and send them to `recipient`,
-     * as well as collect the reported amount in protocol fees, which the Pool should calculate based on the
-     * `protocolSwapFee` percentage.
+     * as well as collect the reported amount in protocol fees, which the Pool should calculate based on
+     * `protocolSwapFeePercentage`.
      *
      * Protocol fees are reported and charged on exit events to guarantee that users exiting the Pool have paid
      * their share.
@@ -84,7 +84,7 @@ interface IBasePool is IPoolSwapStructs {
         address recipient,
         uint256[] memory currentBalances,
         uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
 

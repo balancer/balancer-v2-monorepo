@@ -29,7 +29,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -40,7 +40,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
             name,
             symbol,
             tokens,
-            swapFee,
+            swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner
@@ -74,7 +74,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory scalingFactors
     ) internal view returns (uint256) {
         // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-        swapRequest.amount = _subtractSwapFee(swapRequest.amount);
+        swapRequest.amount = _subtractSwapFeeAmount(swapRequest.amount);
 
         _upscaleArray(balances, scalingFactors);
         swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexIn]);
@@ -101,7 +101,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         amountIn = _downscaleUp(amountIn, scalingFactors[indexIn]);
 
         // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-        return _addSwapFee(amountIn);
+        return _addSwapFeeAmount(amountIn);
     }
 
     function _onSwapGivenIn(

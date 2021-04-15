@@ -60,7 +60,7 @@ contract BalancerHelpers is AssetHelpers {
             recipient,
             balances,
             latestBlockNumber,
-            feesCollector.getSwapFee(),
+            feesCollector.getSwapFeePercentage(),
             request.userData
         );
     }
@@ -81,7 +81,7 @@ contract BalancerHelpers is AssetHelpers {
             recipient,
             balances,
             latestBlockNumber,
-            feesCollector.getSwapFee(),
+            feesCollector.getSwapFeePercentage(),
             request.userData
         );
     }

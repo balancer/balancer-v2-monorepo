@@ -40,11 +40,22 @@ contract StablePool is BaseGeneralPool, StableMath {
         string memory symbol,
         IERC20[] memory tokens,
         uint256 amplificationParameter,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
-    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, pauseWindowDuration, bufferPeriodDuration, owner) {
+    )
+        BaseGeneralPool(
+            vault,
+            name,
+            symbol,
+            tokens,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
+    {
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
 
@@ -139,17 +150,17 @@ contract StablePool is BaseGeneralPool, StableMath {
             uint256[] memory
         )
     {
-        // Due protocol swap fees are computed by measuring the growth of the invariant between the previous join or
-        // exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas to
-        // calculate the fees during each individual swap.
+        // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
+        // or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas to
+        // calculate the fee amounts during each individual swap.
         uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
             balances,
             _lastInvariant,
             protocolSwapFeePercentage
         );
 
-        // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
-        // returns.
+        // Update the balances by subtracting the protocol fee amounts that will be charged by the Vault once this
+        // function returns.
         for (uint256 i = 0; i < _getTotalTokens(); ++i) {
             balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
         }
@@ -157,7 +168,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, userData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
-        // protocol swap fees due in future joins and exits.
+        // protocol swap fee amounts due in future joins and exits.
         _lastInvariant = _invariantAfterJoin(balances, amountsIn);
 
         return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
@@ -193,7 +204,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             balances,
             amountsIn,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -214,7 +225,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             tokenIndex,
             bptAmountOut,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         // We are joining with a single token, so initialize downscaledAmountsIn with zeros, and
@@ -248,11 +259,11 @@ contract StablePool is BaseGeneralPool, StableMath {
         if (_isNotPaused()) {
             // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
-            // spending gas calculating fees during each individual swap
+            // spending gas calculating fee amounts during each individual swap
             dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, _lastInvariant, protocolSwapFeePercentage);
 
-            // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
-            // returns.
+            // Update the balances by subtracting the protocol fee amounts that will be charged by the Vault once this
+            // function returns.
             for (uint256 i = 0; i < _getTotalTokens(); ++i) {
                 balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
             }
@@ -264,7 +275,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         (bptAmountIn, amountsOut) = _doExit(balances, userData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
-        // protocol swap fees due in future joins and exits.
+        // protocol swap fee amounts due in future joins and exits.
         _lastInvariant = _invariantAfterExit(balances, amountsOut);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
@@ -307,7 +318,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             tokenIndex,
             bptAmountIn,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         return (bptAmountIn, amountsOut);
@@ -347,7 +358,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             balances,
             amountsOut,
             totalSupply(),
-            _swapFee
+            _swapFeePercentage
         );
 
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
@@ -385,8 +396,8 @@ contract StablePool is BaseGeneralPool, StableMath {
             }
         }
 
-        // Set the fee to pay in the selected token
-        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFee(
+        // Set the fee amount to pay in the selected token
+        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenprotocolSwapFeePercentageAmount(
             _amplificationParameter,
             balances,
             previousInvariant,

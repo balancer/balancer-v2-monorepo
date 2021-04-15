@@ -717,7 +717,7 @@ interface IVault is ISignaturesValidator {
     //
     //  - swap fees: a percentage of the fees charged by Pools when performing swaps. For a number of reasons, including
     // swap gas costs and interface simplicity, protocol swap fees are not charged on each individual swap. Rather,
-    // Pools are expected to keep track of how many swap fees they have charged, and pay any outstanding debts to the
+    // Pools are expected to keep track of how much they have charged in swap fees, and pay any outstanding debts to the
     // Vault when they are joined or exited. This prevents users from joining a Pool with unpaid debt, as well as
     // exiting a Pool in debt without first paying their share.
 

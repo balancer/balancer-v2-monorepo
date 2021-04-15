@@ -133,7 +133,7 @@ export function calcBptOutGivenExactTokensIn(
   fpAmplificationParameter: BigNumberish,
   fpAmountsIn: BigNumberish[],
   fpBptTotalSupply: BigNumberish,
-  fpSwapFee: BigNumberish
+  fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
   const currentInvariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
@@ -147,7 +147,7 @@ export function calcBptOutGivenExactTokensIn(
 
   // Calculate the weighted balance ratio without considering fees
   const tokenBalanceRatiosWithoutFee = [];
-  // The weighted sum of token balance rations sans fee
+  // The weighted sum of token balance ratios without fees
   let weightedBalanceRatio = new Decimal(0);
   for (let i = 0; i < balances.length; i++) {
     const currentWeight = balances[i].div(sumBalances);
@@ -160,7 +160,7 @@ export function calcBptOutGivenExactTokensIn(
     // Percentage of the amount supplied that will be implicitly swapped for other tokens in the pool
     let tokenBalancePercentageExcess;
     // Some tokens might have amounts supplied in excess of a 'balanced' join: these are identified if
-    // the token's balance ratio sans fee is larger than the weighted balance ratio, and swap fees charged
+    // the token's balance ratio without fee is larger than the weighted balance ratio, and swap fees charged
     // on the amount to swap
     if (weightedBalanceRatio >= tokenBalanceRatiosWithoutFee[i]) {
       tokenBalancePercentageExcess = new Decimal(0);
@@ -170,7 +170,7 @@ export function calcBptOutGivenExactTokensIn(
         .div(tokenBalanceRatiosWithoutFee[i].sub(1));
     }
 
-    const swapFeeExcess = fromFp(fpSwapFee).mul(tokenBalancePercentageExcess);
+    const swapFeeExcess = fromFp(fpSwapFeePercentage).mul(tokenBalancePercentageExcess);
 
     const amountInAfterFee = amountsIn[i].mul(new Decimal(1).sub(swapFeeExcess));
 
@@ -190,7 +190,7 @@ export function calcTokenInGivenExactBptOut(
   fpAmplificationParameter: BigNumberish,
   fpBptAmountOut: BigNumberish,
   fpBptTotalSupply: BigNumberish,
-  fpSwapFee: BigNumberish
+  fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
   const currentInvariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
@@ -220,7 +220,7 @@ export function calcTokenInGivenExactBptOut(
   const currentWeight = balances[tokenIndex].div(sumBalances);
   const tokenBalancePercentageExcess = new Decimal(1).sub(currentWeight);
 
-  const swapFeeExcess = fromFp(fpSwapFee).mul(tokenBalancePercentageExcess);
+  const swapFeeExcess = fromFp(fpSwapFeePercentage).mul(tokenBalancePercentageExcess);
 
   return fp(amountInAfterFee.div(new Decimal(1).sub(swapFeeExcess)));
 }
@@ -230,7 +230,7 @@ export function calcBptInGivenExactTokensOut(
   fpAmplificationParameter: BigNumberish,
   fpAmountsOut: BigNumber[],
   fpBptTotalSupply: BigNumber,
-  fpSwapFee: BigNumber
+  fpSwapFeePercentage: BigNumber
 ): BigNumber {
   // Get current invariant
   const currentInvariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
@@ -264,7 +264,7 @@ export function calcBptInGivenExactTokensOut(
         .div(new Decimal(1).sub(tokenBalanceRatiosWithoutFee[i]));
     }
 
-    const swapFeeExcess = fromFp(fpSwapFee).mul(tokenBalancePercentageExcess);
+    const swapFeeExcess = fromFp(fpSwapFeePercentage).mul(tokenBalancePercentageExcess);
 
     const amountOutBeforeFee = amountsOut[i].div(new Decimal(1).sub(swapFeeExcess));
 
@@ -284,7 +284,7 @@ export function calcTokenOutGivenExactBptIn(
   fpAmplificationParameter: BigNumberish,
   fpBptAmountIn: BigNumberish,
   fpBptTotalSupply: BigNumberish,
-  fpSwapFee: BigNumberish
+  fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
   const currentInvariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
@@ -314,7 +314,7 @@ export function calcTokenOutGivenExactBptIn(
   const currentWeight = balances[tokenIndex].div(sumBalances);
   const tokenBalancePercentageExcess = new Decimal(1).sub(currentWeight);
 
-  const swapFeeExcess = fromFp(fpSwapFee).mul(tokenBalancePercentageExcess);
+  const swapFeeExcess = fromFp(fpSwapFeePercentage).mul(tokenBalancePercentageExcess);
 
   return fp(amountOutBeforeFee.mul(new Decimal(1).sub(swapFeeExcess)));
 }
@@ -330,7 +330,7 @@ export function calcTokensOutGivenExactBptIn(
   return amountsOut.map(fp);
 }
 
-export function calculateOneTokenSwapFee(
+export function calculateOneTokenSwapFeeAmount(
   fpBalances: BigNumberish[],
   fpAmplificationParameter: BigNumberish,
   lastInvariant: BigNumberish,
@@ -373,7 +373,7 @@ function _getTokenBalanceGivenInvariantAndAllOtherBalances(
 
   //We iterate to find the balance
   let prevTokenBalance = new Decimal(0);
-  //We apply first iteration outside the loop with the invariant as the starting aproximation value.
+  //We apply first iteration outside the loop with the invariant as the starting approximation value.
   let tokenBalance: Decimal = invariant.mul(invariant).add(c).div(invariant.add(b));
 
   for (let i = 0; i < 255; i++) {
