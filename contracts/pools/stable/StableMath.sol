@@ -117,7 +117,7 @@ contract StableMath {
             tokenIndexOut
         );
 
-        balances[tokenIndexIn] = balances[tokenIndexIn].sub(tokenAmountIn);
+        balances[tokenIndexIn] = balances[tokenIndexIn].sub(tokenAmountIn, Errors.INSUFFICIENT_BALANCE);
 
         return balances[tokenIndexOut].sub(finalBalanceOut).sub(1);
     }
@@ -148,7 +148,7 @@ contract StableMath {
 
         uint256 invariant = _calculateInvariant(amplificationParameter, balances);
 
-        balances[tokenIndexOut] = balances[tokenIndexOut].sub(tokenAmountOut);
+        balances[tokenIndexOut] = balances[tokenIndexOut].sub(tokenAmountOut, Errors.INSUFFICIENT_BALANCE);
 
         uint256 finalBalanceIn = _getTokenBalanceGivenInvariantAndAllOtherBalances(
             amplificationParameter,
@@ -271,7 +271,7 @@ contract StableMath {
             newInvariant,
             tokenIndex
         );
-        uint256 amountInAfterFee = newBalanceTokenIndex.sub(balances[tokenIndex]);
+        uint256 amountInAfterFee = newBalanceTokenIndex.sub(balances[tokenIndex], Errors.INSUFFICIENT_BALANCE);
 
         // Get tokenBalancePercentageExcess
         uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
@@ -310,9 +310,10 @@ contract StableMath {
         uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsOut.length);
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
-            uint256 currentWeight = balances[i].divUp(sumBalances);
-            tokenBalanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).divUp(balances[i]);
-            weightedBalanceRatio = weightedBalanceRatio.add(tokenBalanceRatiosWithoutFee[i].mulUp(currentWeight));
+            tokenBalanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i], Errors.INSUFFICIENT_BALANCE)
+                .divUp(balances[i]);
+            weightedBalanceRatio = weightedBalanceRatio
+                .add(tokenBalanceRatiosWithoutFee[i].mulUp(balances[i].divUp(sumBalances)));
         }
 
         // Second loop calculates new amounts in, taking into account the fee on the percentage excess
@@ -329,11 +330,10 @@ contract StableMath {
                 );
             }
 
-            uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
-
-            uint256 amountOutBeforeFee = amountsOut[i].divUp(swapFeeExcess.complement());
-
-            newBalances[i] = balances[i].sub(amountOutBeforeFee);
+            newBalances[i] = balances[i].sub(
+                amountsOut[i].divUp(swapFee.mulUp(tokenBalancePercentageExcess).complement()),
+                Errors.INSUFFICIENT_BALANCE
+            );
         }
 
         // get the new invariant, taking into account swap fees
@@ -360,7 +360,8 @@ contract StableMath {
         // Get the current invariant
         uint256 currentInvariant = _calculateInvariant(amp, balances);
         // Calculate the new invariant
-        uint256 newInvariant = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
+        uint256 newBptSupply = bptTotalSupply.sub(bptAmountIn, Errors.INSUFFICIENT_SUPPLY);
+        uint256 newInvariant = newBptSupply.divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // First calculate the sum of all token balances, which will be used to calculate
         // the current weight of each token
@@ -376,7 +377,7 @@ contract StableMath {
             newInvariant,
             tokenIndex
         );
-        uint256 amountOutBeforeFee = balances[tokenIndex].sub(newBalanceTokenIndex);
+        uint256 amountOutBeforeFee = balances[tokenIndex].sub(newBalanceTokenIndex, Errors.INSUFFICIENT_BALANCE);
 
         // Calculate tokenBalancePercentageExcess
         uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
@@ -445,7 +446,7 @@ contract StableMath {
 
         // Result is rounded down
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] > finalBalanceFeeToken
-            ? balances[tokenIndex].sub(finalBalanceFeeToken)
+            ? balances[tokenIndex].sub(finalBalanceFeeToken, Errors.INSUFFICIENT_BALANCE)
             : 0;
         return accumulatedTokenSwapFees.mul(protocolSwapFeePercentage).divDown(FixedPoint.ONE);
     }
@@ -469,7 +470,7 @@ contract StableMath {
             P_D = Math.divDown(Math.mul(Math.mul(P_D, balances[j]), balances.length), invariant);
             sum = sum.add(balances[j]);
         }
-        sum = sum.sub(balances[tokenIndex]);
+        sum = sum.sub(balances[tokenIndex], Errors.INSUFFICIENT_BALANCE);
 
         uint256 c = Math.divUp(Math.mul(invariant, invariant), ampTimesTotal);
         // We remove the balance fromm c by multiplying it
@@ -489,10 +490,10 @@ contract StableMath {
             tokenBalance = tokenBalance.mul(tokenBalance).add(c).divUp(Math.mul(tokenBalance, 2).add(b).sub(invariant));
 
             if (tokenBalance > prevTokenBalance) {
-                if (tokenBalance.sub(prevTokenBalance) <= 1) {
+                if (tokenBalance.sub(prevTokenBalance, Errors.INSUFFICIENT_BALANCE) <= 1) {
                     break;
                 }
-            } else if (prevTokenBalance.sub(tokenBalance) <= 1) {
+            } else if (prevTokenBalance.sub(tokenBalance, Errors.INSUFFICIENT_BALANCE) <= 1) {
                 break;
             }
         }

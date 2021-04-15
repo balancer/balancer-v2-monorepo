@@ -270,7 +270,7 @@ contract ERC20 is IERC20 {
         _beforeTokenTransfer(account, address(0), amount);
 
         _balances[account] = _balances[account].sub(amount, Errors.ERC20_BURN_EXCEEDS_ALLOWANCE);
-        _totalSupply = _totalSupply.sub(amount, Errors.ERC20_INSUFFICIENT_SUPPLY);
+        _totalSupply = _totalSupply.sub(amount, Errors.INSUFFICIENT_SUPPLY);
         emit Transfer(account, address(0), amount);
     }
 

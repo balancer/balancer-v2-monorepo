@@ -126,7 +126,7 @@ contract WeightedMath {
         // Cannot exceed maximum out ratio
         _require(amountOut <= balanceOut.mulDown(_MAX_OUT_RATIO), Errors.MAX_OUT_RATIO);
 
-        uint256 base = balanceOut.divUp(balanceOut.sub(amountOut));
+        uint256 base = balanceOut.divUp(balanceOut.sub(amountOut, Errors.INSUFFICIENT_BALANCE));
         uint256 exponent = weightOut.divUp(weightIn);
         uint256 power = base.powUp(exponent);
 
@@ -275,7 +275,8 @@ contract WeightedMath {
         // rounds up). Because (totalBPT - bptIn) / totalBPT <= 1, the exponent rounds down.
 
         // Calculate the factor by which the invariant will decrease after burning BPTAmountIn
-        uint256 invariantRatio = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply);
+        uint256 newBptSupply = bptTotalSupply.sub(bptAmountIn, Errors.INSUFFICIENT_BALANCE);
+        uint256 invariantRatio = newBptSupply.divUp(bptTotalSupply);
         _require(invariantRatio >= _MIN_INVARIANT_RATIO, Errors.MIN_BPT_IN_FOR_TOKEN_OUT);
 
         // Calculate by how much the token balance has to decrease to match invariantRatio

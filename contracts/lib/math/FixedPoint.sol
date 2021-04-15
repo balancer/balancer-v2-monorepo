@@ -35,9 +35,13 @@ library FixedPoint {
     }
 
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, Errors.SUB_OVERFLOW);
+    }
+
+    function sub(uint256 a, uint256 b, uint256 errorCode) internal pure returns (uint256) {
         // Fixed Point addition is the same as regular checked addition
 
-        _require(b <= a, Errors.SUB_OVERFLOW);
+        _require(b <= a, errorCode);
         uint256 c = a - b;
         return c;
     }

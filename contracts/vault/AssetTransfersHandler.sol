@@ -30,6 +30,7 @@ import "./interfaces/IVault.sol";
 abstract contract AssetTransfersHandler is AssetHelpers {
     using SafeERC20 for IERC20;
     using Address for address payable;
+    using Math for uint256;
 
     /**
      * @dev Receives `amount` of `asset` from `sender`. If `fromInternalBalance` is true, it first withdraws as much
@@ -127,9 +128,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * returned ETH.
      */
     function _handleRemainingEth(uint256 amountUsed) internal {
-        _require(msg.value >= amountUsed, Errors.INSUFFICIENT_ETH);
-
-        uint256 excess = msg.value - amountUsed;
+        uint256 excess = msg.value.sub(amountUsed, Errors.INSUFFICIENT_ETH);
         if (excess > 0) {
             msg.sender.sendValue(excess);
         }

@@ -446,7 +446,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     function _subtractSwapFee(uint256 amount) internal view returns (uint256) {
         // Round up, favoring fees.
         uint256 fees = amount.mulUp(_swapFee);
-        return amount.sub(fees);
+        return amount.sub(fees, Errors.INSUFFICIENT_BALANCE);
     }
 
     // Scaling

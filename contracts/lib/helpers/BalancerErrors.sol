@@ -152,7 +152,7 @@ library Errors {
     uint256 internal constant REVOKE_SENDER_NOT_ADMIN = 423;
     uint256 internal constant RENOUNCE_SENDER_NOT_ALLOWED = 424;
     uint256 internal constant BUFFER_PERIOD_EXPIRED = 425;
-    uint256 internal constant ERC20_INSUFFICIENT_SUPPLY = 426;
+    uint256 internal constant INSUFFICIENT_SUPPLY = 426;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

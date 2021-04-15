@@ -266,7 +266,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         );
 
         // Update current balances by subtracting the protocol fee amounts
-        _mutateAmounts(currentBalances, dueProtocolFeeAmounts, FixedPoint.sub);
+        _mutateAmounts(currentBalances, dueProtocolFeeAmounts, _fixedPointSub);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(currentBalances, normalizedWeights, userData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
@@ -376,7 +376,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             );
 
             // Update current balances by subtracting the protocol fee amounts
-            _mutateAmounts(currentBalances, dueProtocolFeeAmounts, FixedPoint.sub);
+            _mutateAmounts(currentBalances, dueProtocolFeeAmounts, _fixedPointSub);
         } else {
             // If the contract is paused, protocol fees are not charged to avoid extra calculations and reduce the
             // potential for errors.
@@ -529,7 +529,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory amountsOut,
         uint256[] memory normalizedWeights
     ) private view returns (uint256) {
-        _mutateAmounts(currentBalances, amountsOut, FixedPoint.sub);
+        _mutateAmounts(currentBalances, amountsOut, _fixedPointSub);
         return WeightedMath._calculateInvariant(normalizedWeights, currentBalances);
     }
 
@@ -555,5 +555,9 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
     function getRate() public view override returns (uint256) {
         // The initial BPT supply is equal to the invariant times the number of tokens.
         return Math.mul(getInvariant(), _getTotalTokens()).div(totalSupply());
+    }
+
+    function _fixedPointSub(uint256 a, uint256 b) private pure returns (uint256) {
+        return FixedPoint.sub(a, b, Errors.INSUFFICIENT_BALANCE);
     }
 }

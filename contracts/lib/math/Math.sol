@@ -31,7 +31,14 @@ library Math {
      * @dev Returns the subtraction of two unsigned integers of 256 bits, reverting on overflow.
      */
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        _require(b <= a, Errors.SUB_OVERFLOW);
+        return sub(a, b, Errors.SUB_OVERFLOW);
+    }
+
+    /**
+     * @dev Returns the subtraction of two unsigned integers of 256 bits, reverting with a custom message on overflow.
+     */
+    function sub(uint256 a, uint256 b, uint256 errorCode) internal pure returns (uint256) {
+        _require(b <= a, errorCode);
         uint256 c = a - b;
         return c;
     }
@@ -40,8 +47,15 @@ library Math {
      * @dev Returns the subtraction of two signed integers, reverting on overflow.
      */
     function sub(int256 a, int256 b) internal pure returns (int256) {
+        return sub(a, b, Errors.SUB_OVERFLOW);
+    }
+
+    /**
+     * @dev Returns the subtraction of two signed integers, reverting with a custom message on overflow.
+     */
+    function sub(int256 a, int256 b, uint256 errorCode) internal pure returns (int256) {
         int256 c = a - b;
-        _require((b >= 0 && c <= a) || (b < 0 && c > a), Errors.SUB_OVERFLOW);
+        _require((b >= 0 && c <= a) || (b < 0 && c > a), errorCode);
         return c;
     }
 

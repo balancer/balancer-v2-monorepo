@@ -151,7 +151,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
         // returns.
         for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
+            balances[i] = balances[i].sub(dueProtocolFeeAmounts[i], Errors.INSUFFICIENT_BALANCE);
         }
 
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, userData);
@@ -254,7 +254,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             // Update the balances by subtracting the protocol fees that will be charged by the Vault once this function
             // returns.
             for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-                balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
+                balances[i] = balances[i].sub(dueProtocolFeeAmounts[i], Errors.INSUFFICIENT_BALANCE);
             }
         } else {
             // To avoid extra calculations, protocol fees are not charged whem the contract is paused.
@@ -411,7 +411,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         returns (uint256)
     {
         for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            balances[i] = balances[i].sub(amountsOut[i]);
+            balances[i] = balances[i].sub(amountsOut[i], Errors.INSUFFICIENT_BALANCE);
         }
 
         return StableMath._calculateInvariant(_amplificationParameter, balances);
