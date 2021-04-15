@@ -33,16 +33,16 @@ describe('Vault - protocol fees', () => {
   });
 
   describe('set fees', () => {
-    const MAX_SWAP_FEE_PERCENTAGE_PERCENTAGE = bn(50e16); // 50%
+    const MAX_SWAP_FEE_PERCENTAGE = bn(50e16); // 50%
     const MAX_FLASH_LOAN_FEE_PERCENTAGE = bn(1e16); // 1%
 
     context('when the sender is allowed', () => {
       context('when the given input is valid', async () => {
         it('sets the swap fee percentage properly', async () => {
-          await vault.setSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE_PERCENTAGE, { from: admin });
+          await vault.setSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE, { from: admin });
 
           const swapFeePercentage = await vault.getSwapFeePercentage();
-          expect(swapFeePercentage).to.equal(MAX_SWAP_FEE_PERCENTAGE_PERCENTAGE);
+          expect(swapFeePercentage).to.equal(MAX_SWAP_FEE_PERCENTAGE);
         });
 
         it('sets the flash loan fee percentage properly', async () => {
@@ -55,7 +55,7 @@ describe('Vault - protocol fees', () => {
 
       context('when the given input is valid', async () => {
         it('reverts if the swap fee is above the maximum', async () => {
-          const badSwapFeePercentage = MAX_SWAP_FEE_PERCENTAGE_PERCENTAGE.add(1);
+          const badSwapFeePercentage = MAX_SWAP_FEE_PERCENTAGE.add(1);
 
           await expect(vault.setSwapFeePercentage(badSwapFeePercentage, { from: admin })).to.be.revertedWith(
             'SWAP_FEE_TOO_HIGH'
@@ -74,12 +74,12 @@ describe('Vault - protocol fees', () => {
 
     context('when the sender is not allowed', () => {
       it('reverts', async () => {
-        await expect(
-          vault.setSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE_PERCENTAGE, { from: other })
-        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        await expect(
-          vault.setFlashLoanFeePercentage(MAX_SWAP_FEE_PERCENTAGE_PERCENTAGE, { from: other })
-        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(vault.setSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE, { from: other })).to.be.revertedWith(
+          'SENDER_NOT_ALLOWED'
+        );
+        await expect(vault.setFlashLoanFeePercentage(MAX_SWAP_FEE_PERCENTAGE, { from: other })).to.be.revertedWith(
+          'SENDER_NOT_ALLOWED'
+        );
       });
     });
   });

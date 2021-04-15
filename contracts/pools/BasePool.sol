@@ -52,8 +52,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _MAX_TOKENS = 8;
 
     // 1e18 corresponds to 1.0, or a 100% fee
-    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE_PERCENTAGE = 1e17; // 10%
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10%
 
     uint256 private constant _MINIMUM_BPT = 10**6;
 
@@ -117,8 +117,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // order of token-specific parameters (such as token weights) will not change.
         InputHelpers.ensureArrayIsSorted(tokens);
 
-        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         bytes32 poolId = vault.registerPool(specialization);
 
@@ -173,8 +173,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     // Caller must be approved by the Vault's Authorizer
     function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate {
-        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         _swapFeePercentage = swapFeePercentage;
         emit SwapFeeChanged(swapFeePercentage);
