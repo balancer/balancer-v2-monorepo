@@ -28,7 +28,7 @@ import "../lib/openzeppelin/SafeERC20.sol";
 import "./Fees.sol";
 import "./interfaces/IFlashLoanReceiver.sol";
 
-abstract contract FlashLoanProvider is Fees, ReentrancyGuard, EmergencyPeriod {
+abstract contract FlashLoanProvider is Fees, ReentrancyGuard, TemporarilyPausable {
     using SafeERC20 for IERC20;
 
     function flashLoan(
@@ -36,7 +36,7 @@ abstract contract FlashLoanProvider is Fees, ReentrancyGuard, EmergencyPeriod {
         IERC20[] memory tokens,
         uint256[] memory amounts,
         bytes memory receiverData
-    ) external override nonReentrant noEmergencyPeriod {
+    ) external override nonReentrant whenNotPaused {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         uint256[] memory feeAmounts = new uint256[](tokens.length);

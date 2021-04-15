@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import * as expectEvent from '../helpers/expectEvent';
 import { deploy } from '../../lib/helpers/deploy';
-import { ZERO_BYTES32 } from '../../lib/helpers/constants';
+import { MAX_GAS_LIMIT, ZERO_BYTES32 } from '../../lib/helpers/constants';
 import { BigNumberish } from '../../lib/helpers/numbers';
 import { currentTimestamp } from '../../lib/helpers/time';
 import { encodeCalldataAuthorization, signAuthorization } from '../helpers/signatures';
@@ -31,7 +31,7 @@ describe('SignaturesValidator', () => {
 
     context('when there is no signature encoded', () => {
       it('decodes empty data', async () => {
-        const tx = await user.sendTransaction({ to: validator.address, data: calldata });
+        const tx = await user.sendTransaction({ to: validator.address, data: calldata, gasLimit: MAX_GAS_LIMIT });
 
         expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'CalldataDecoded', {
           data: calldata,
@@ -50,7 +50,11 @@ describe('SignaturesValidator', () => {
         const signature = await user.signMessage('message');
         const calldataWithSignature = await encodeCalldataAuthorization(calldata, deadline, signature);
 
-        const tx = await user.sendTransaction({ to: validator.address, data: calldataWithSignature });
+        const tx = await user.sendTransaction({
+          to: validator.address,
+          data: calldataWithSignature,
+          gasLimit: MAX_GAS_LIMIT,
+        });
 
         const { v, r, s } = ethers.utils.splitSignature(signature);
         expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'CalldataDecoded', {
@@ -71,7 +75,9 @@ describe('SignaturesValidator', () => {
     const itReverts = () => {
       it('reverts', async () => {
         const data = await buildCalldata();
-        await expect(sender.sendTransaction({ to: validator.address, data })).to.be.revertedWith('INVALID_SIGNATURE');
+        await expect(
+          sender.sendTransaction({ to: validator.address, data, gasLimit: MAX_GAS_LIMIT })
+        ).to.be.revertedWith('INVALID_SIGNATURE');
       });
     };
 
@@ -153,7 +159,7 @@ describe('SignaturesValidator', () => {
 
                 it('allows the sender', async () => {
                   const data = await buildCalldata();
-                  const tx = await sender.sendTransaction({ to: validator.address, data });
+                  const tx = await sender.sendTransaction({ to: validator.address, data, gasLimit: MAX_GAS_LIMIT });
 
                   expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'Authenticated', {
                     user: user.address,
@@ -164,7 +170,11 @@ describe('SignaturesValidator', () => {
                 it('increases the nonce of the user', async () => {
                   const previousNonce = await validator.getNextNonce(user.address);
 
-                  await sender.sendTransaction({ to: validator.address, data: await buildCalldata() });
+                  await sender.sendTransaction({
+                    to: validator.address,
+                    data: await buildCalldata(),
+                    gasLimit: MAX_GAS_LIMIT,
+                  });
 
                   const nextNonce = await validator.getNextNonce(user.address);
                   expect(nextNonce).to.be.equal(previousNonce.add(1));
@@ -172,11 +182,11 @@ describe('SignaturesValidator', () => {
 
                 it('does not allow using the same signature twice', async () => {
                   const data = await buildCalldata();
-                  await sender.sendTransaction({ to: validator.address, data });
+                  await sender.sendTransaction({ to: validator.address, data, gasLimit: MAX_GAS_LIMIT });
 
-                  await expect(sender.sendTransaction({ to: validator.address, data })).to.be.revertedWith(
-                    'INVALID_SIGNATURE'
-                  );
+                  await expect(
+                    sender.sendTransaction({ to: validator.address, data, gasLimit: MAX_GAS_LIMIT })
+                  ).to.be.revertedWith('INVALID_SIGNATURE');
                 });
               });
             });

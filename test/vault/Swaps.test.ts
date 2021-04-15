@@ -13,7 +13,14 @@ import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish, bn, fp } from '../../lib/helpers/numbers';
 import { FundManagement, Swap, SWAP_KIND } from '../../lib/helpers/trading';
-import { MAX_INT256, MAX_UINT112, MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/constants';
+import {
+  MAX_GAS_LIMIT,
+  MAX_INT256,
+  MAX_UINT112,
+  MAX_UINT256,
+  ZERO_ADDRESS,
+  ZERO_BYTES32,
+} from '../../lib/helpers/constants';
 import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
 import { encodeCalldataAuthorization, signBatchSwapAuthorization, signSwapAuthorization } from '../helpers/signatures';
 
@@ -224,16 +231,16 @@ describe('Vault - swaps', () => {
             poolId: mainPoolId,
             tokenIn: tokens.WETH.address,
             tokenOut: tokens.DAI.address,
-            tokensIn: bn(1e18),
-            tokensOut: bn(2e18),
+            amountIn: bn(1e18),
+            amountOut: bn(2e18),
           });
 
           expectEvent.inReceipt(receipt, 'Swap', {
             poolId: mainPoolId,
             tokenIn: tokens.DAI.address,
             tokenOut: tokens.WETH.address,
-            tokensIn: bn(1e18),
-            tokensOut: bn(2e18),
+            amountIn: bn(1e18),
+            amountOut: bn(2e18),
           });
         });
 
@@ -285,7 +292,7 @@ describe('Vault - swaps', () => {
 
       context('when the sender is an approved relayer', () => {
         sharedBeforeEach(async () => {
-          const role = roleId(vault, 'batchSwap');
+          const role = await roleId(vault, 'batchSwap');
           await authorizer.connect(admin).grantRole(role, other.address);
 
           await vault.connect(trader).changeRelayerAllowance(trader.address, other.address, true);
@@ -423,7 +430,12 @@ describe('Vault - swaps', () => {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const assertSwap = async (data: string, sender: SignerWithAddress, expectedChanges: any[]): Promise<void> => {
-          await expectBalanceChange(() => sender.sendTransaction({ to: vault.address, data }), tokens, expectedChanges);
+          // Hardcoding a gas limit prevents (slow) gas estimation
+          await expectBalanceChange(
+            () => sender.sendTransaction({ to: vault.address, data, gasLimit: MAX_GAS_LIMIT }),
+            tokens,
+            expectedChanges
+          );
 
           if (expectedInternalBalance) {
             for (const symbol in expectedInternalBalance) {
@@ -525,8 +537,8 @@ describe('Vault - swaps', () => {
 
                           context('when the relayer is whitelisted by the authorizer', () => {
                             sharedBeforeEach('grant role to relayer', async () => {
-                              const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwap');
+                              const single = await roleId(vault, 'swap');
+                              const batch = await roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).grantRoles([single, batch], other.address);
                             });
 
@@ -564,8 +576,8 @@ describe('Vault - swaps', () => {
 
                           context('when the relayer is not whitelisted by the authorizer', () => {
                             sharedBeforeEach('revoke role from relayer', async () => {
-                              const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwap');
+                              const single = await roleId(vault, 'swap');
+                              const batch = await roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).revokeRoles([single, batch], other.address);
                             });
 
@@ -1024,8 +1036,8 @@ describe('Vault - swaps', () => {
 
                           context('when the relayer is whitelisted by the authorizer', () => {
                             sharedBeforeEach('grant role to relayer', async () => {
-                              const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwap');
+                              const single = await roleId(vault, 'swap');
+                              const batch = await roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).grantRoles([single, batch], other.address);
                             });
 
@@ -1050,8 +1062,8 @@ describe('Vault - swaps', () => {
 
                           context('when the relayer is not whitelisted by the authorizer', () => {
                             sharedBeforeEach('revoke role from relayer', async () => {
-                              const single = roleId(vault, 'swap');
-                              const batch = roleId(vault, 'batchSwap');
+                              const single = await roleId(vault, 'swap');
+                              const batch = await roleId(vault, 'batchSwap');
                               await authorizer.connect(admin).revokeRoles([single, batch], other.address);
                             });
 

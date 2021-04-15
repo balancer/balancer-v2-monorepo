@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/InputHelpers.sol";
-import "../lib/helpers/EmergencyPeriod.sol";
+import "../lib/helpers/TemporarilyPausable.sol";
 import "../lib/openzeppelin/ERC20.sol";
 
 import "./BalancerPoolToken.sol";
@@ -33,11 +33,11 @@ import "../vault/interfaces/IBasePool.sol";
 
 /**
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with an immutable set
- * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency stop mechanisms.
+ * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency pause mechanism.
  *
- * Note that neither swap fees nor the emergency stop mechanism are used by this contract. They are passed through so
- * that derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the
- * `noEmergencyPeriod` modifier.
+ * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
+ * derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the `whenNotPaused`
+ * modifier.
  *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.
  *
@@ -45,7 +45,7 @@ import "../vault/interfaces/IBasePool.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, EmergencyPeriod {
+abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
@@ -94,9 +94,19 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory symbol,
         IERC20[] memory tokens,
         uint256 swapFee,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
-    ) BalancerPoolToken(name, symbol) EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension) {
+        uint256 responseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    )
+        // Base Pools are expected to be deployed using factories. By using the factory address as the role
+        // disambiguator, we make all Pools deployed by the same factory share role identifiers. This allows for simpler
+        // management of permissions (such as being able to grant the 'set fee' role in any Pool created by the same
+        // factory), while making roles unique among different factories, preventing accidental errors.
+        Authentication(bytes32(uint256(msg.sender)))
+        BalancerPoolToken(name, symbol)
+        BasePoolAuthorization(owner)
+        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
+    {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
@@ -171,8 +181,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     // Caller must be approved by the Vault's Authorizer
-    function setEmergencyPeriod(bool active) external authenticate {
-        _setEmergencyPeriod(active);
+    function setPaused(bool paused) external authenticate {
+        _setPaused(paused);
     }
 
     // Join / Exit Hooks
@@ -555,10 +565,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         }
     }
 
-    /**
-     * @dev This contract relies on the roles defined by the Vault's own Authorizer.
-     */
     function _getAuthorizer() internal view override returns (IAuthorizer) {
+        // If the Pool has no owner, we rely on the Vault's Authorizer instead. This lets Balancer Governance manage
+        // which accounts can call permissioned functions, used to e.g. set swap fees.
         return getVault().getAuthorizer();
     }
 

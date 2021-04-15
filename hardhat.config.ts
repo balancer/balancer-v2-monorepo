@@ -123,6 +123,15 @@ export default {
           },
         },
       },
+      'contracts/pools/weighted/WeightedPoolFactory.sol': {
+        version: '0.7.1',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1950,
+          },
+        },
+      },
     },
   },
   abiExporter: {

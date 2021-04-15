@@ -109,6 +109,7 @@ library Errors {
     uint256 internal constant UNINITIALIZED = 206;
     uint256 internal constant BPT_IN_MAX_AMOUNT = 207;
     uint256 internal constant BPT_OUT_MIN_AMOUNT = 208;
+    uint256 internal constant EXPIRED_PERMIT = 209;
 
     // Pools
     uint256 internal constant MIN_AMP = 300;
@@ -127,10 +128,10 @@ library Errors {
     // Lib
     uint256 internal constant REENTRANCY = 400;
     uint256 internal constant SENDER_NOT_ALLOWED = 401;
-    uint256 internal constant EMERGENCY_PERIOD_ON = 402;
-    uint256 internal constant EMERGENCY_PERIOD_FINISHED = 403;
-    uint256 internal constant MAX_EMERGENCY_PERIOD = 404;
-    uint256 internal constant MAX_EMERGENCY_PERIOD_CHECK_EXT = 405;
+    uint256 internal constant PAUSED = 402;
+    uint256 internal constant RESPONSE_WINDOW_EXPIRED = 403;
+    uint256 internal constant MAX_RESPONSE_WINDOW_DURATION = 404;
+    uint256 internal constant MAX_BUFFER_PERIOD_DURATION = 405;
     uint256 internal constant INSUFFICIENT_BALANCE = 406;
     uint256 internal constant INSUFFICIENT_ALLOWANCE = 407;
     uint256 internal constant ERC20_TRANSFER_FROM_ZERO_ADDRESS = 408;
@@ -150,6 +151,7 @@ library Errors {
     uint256 internal constant GRANT_SENDER_NOT_ADMIN = 422;
     uint256 internal constant REVOKE_SENDER_NOT_ADMIN = 423;
     uint256 internal constant RENOUNCE_SENDER_NOT_ALLOWED = 424;
+    uint256 internal constant BUFFER_PERIOD_EXPIRED = 425;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
@@ -179,6 +181,7 @@ library Errors {
     uint256 internal constant TOKENS_LENGTH_MUST_BE_2 = 524;
     uint256 internal constant NONZERO_TOKEN_BALANCE = 525;
     uint256 internal constant BALANCE_TOTAL_OVERFLOW = 526;
+    uint256 internal constant POOL_NO_TOKENS = 527;
 
     // Fees
     uint256 internal constant SWAP_FEE_TOO_HIGH = 600;

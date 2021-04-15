@@ -125,9 +125,9 @@ async function deployStrategyPool(
 
   const name = tokens.length + ' token pool';
   const sym = 'TESTPOOL';
-  const emergencyPeriod = WEEK;
-  const emergencyPeriodCheckExtension = WEEK;
-  const parameters = [name, sym, tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension];
+  const responseWindowDuration = WEEK;
+  const bufferPeriodDuration = WEEK;
+  const parameters = [name, sym, tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration];
 
   const tx = await wpFactoryContract.connect(controller).create(...parameters);
   const receipt = await tx.wait();

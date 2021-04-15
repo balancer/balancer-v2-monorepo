@@ -330,8 +330,8 @@ export default class StablePool {
     });
 
     const receipt = await (await tx).wait();
-    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsIn: amounts, dueProtocolFeeAmounts };
+    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees };
   }
 
   async queryExit(params: JoinExitStablePool): Promise<ExitQueryResult> {
@@ -356,8 +356,8 @@ export default class StablePool {
     });
 
     const receipt = await (await tx).wait();
-    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsOut: amounts, dueProtocolFeeAmounts };
+    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees };
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
@@ -464,9 +464,9 @@ export default class StablePool {
     };
   }
 
-  async activateEmergencyPeriod(): Promise<void> {
-    const role = roleId(this.instance, 'setEmergencyPeriod');
+  async pause(): Promise<void> {
+    const role = await roleId(this.instance, 'setPaused');
     await this.vault.grantRole(role);
-    await this.instance.setEmergencyPeriod(true);
+    await this.instance.setPaused(true);
   }
 }

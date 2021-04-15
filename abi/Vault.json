@@ -13,12 +13,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "emergencyPeriod",
+        "name": "responseWindowDuration",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "emergencyPeriodCheckExtension",
+        "name": "bufferPeriodDuration",
         "type": "uint256"
       }
     ],
@@ -42,19 +42,6 @@
       }
     ],
     "name": "AuthorizerChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "active",
-        "type": "bool"
-      }
-    ],
-    "name": "EmergencyPeriodChanged",
     "type": "event"
   },
   {
@@ -117,6 +104,19 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "paused",
+        "type": "bool"
+      }
+    ],
+    "name": "PausedStateChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": true,
         "internalType": "bytes32",
         "name": "poolId",
@@ -137,7 +137,7 @@
       {
         "indexed": false,
         "internalType": "int256[]",
-        "name": "amounts",
+        "name": "deltas",
         "type": "int256[]"
       },
       {
@@ -174,7 +174,13 @@
       {
         "indexed": false,
         "internalType": "int256",
-        "name": "amount",
+        "name": "cashDelta",
+        "type": "int256"
+      },
+      {
+        "indexed": false,
+        "internalType": "int256",
+        "name": "managedDelta",
         "type": "int256"
       }
     ],
@@ -243,13 +249,13 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "tokensIn",
+        "name": "amountIn",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "tokensOut",
+        "name": "amountOut",
         "type": "uint256"
       }
     ],
@@ -565,29 +571,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getEmergencyPeriod",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "active",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "endDate",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "checkEndDate",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -624,6 +607,29 @@
       {
         "internalType": "uint256",
         "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPausedState",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "paused",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "responseWindowEndTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "bufferPeriodEndTime",
         "type": "uint256"
       }
     ],
@@ -738,6 +744,25 @@
   {
     "inputs": [
       {
+        "internalType": "bytes4",
+        "name": "selector",
+        "type": "bytes4"
+      }
+    ],
+    "name": "getRole",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "user",
         "type": "address"
@@ -812,17 +837,17 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "poolId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "enum IVault.AssetManagerOpKind",
-        "name": "kind",
-        "type": "uint8"
-      },
-      {
         "components": [
+          {
+            "internalType": "enum IVault.PoolBalanceOpKind",
+            "name": "kind",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "poolId",
+            "type": "bytes32"
+          },
           {
             "internalType": "contract IERC20",
             "name": "token",
@@ -834,8 +859,8 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct IVault.AssetManagerTransfer[]",
-        "name": "transfers",
+        "internalType": "struct IVault.PoolBalanceOp[]",
+        "name": "ops",
         "type": "tuple[]"
       }
     ],
@@ -1013,11 +1038,11 @@
     "inputs": [
       {
         "internalType": "bool",
-        "name": "active",
+        "name": "paused",
         "type": "bool"
       }
     ],
-    "name": "setEmergencyPeriod",
+    "name": "setPaused",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1058,7 +1083,7 @@
           }
         ],
         "internalType": "struct IVault.SingleSwap",
-        "name": "request",
+        "name": "singleSwap",
         "type": "tuple"
       },
       {

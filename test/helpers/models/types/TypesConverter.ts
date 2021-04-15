@@ -18,46 +18,49 @@ import {
   TokenDeployment,
   RawTokenDeployment,
 } from '../tokens/types';
+import { ZERO_ADDRESS } from '../../../../lib/helpers/constants';
 
 export default {
   toVaultDeployment(params: RawVaultDeployment): VaultDeployment {
-    let { mocked, admin, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    let { mocked, admin, responseWindowDuration, bufferPeriodDuration } = params;
     if (!mocked) mocked = false;
     if (!admin) admin = params.from;
-    if (!emergencyPeriod) emergencyPeriod = 0;
-    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = 0;
-    return { mocked, admin, emergencyPeriod, emergencyPeriodCheckExtension };
+    if (!responseWindowDuration) responseWindowDuration = 0;
+    if (!bufferPeriodDuration) bufferPeriodDuration = 0;
+    return { mocked, admin, responseWindowDuration, bufferPeriodDuration };
   },
 
   toRawVaultDeployment(params: RawWeightedPoolDeployment): RawVaultDeployment {
-    let { admin, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    let { admin, responseWindowDuration, bufferPeriodDuration } = params;
     if (!admin) admin = params.from;
-    if (!emergencyPeriod) emergencyPeriod = 0;
-    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = 0;
+    if (!responseWindowDuration) responseWindowDuration = 0;
+    if (!bufferPeriodDuration) bufferPeriodDuration = 0;
 
     const mocked = params.fromFactory !== undefined ? !params.fromFactory : true;
-    return { mocked, admin, emergencyPeriod, emergencyPeriodCheckExtension };
+    return { mocked, admin, responseWindowDuration, bufferPeriodDuration };
   },
 
   toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
-    let { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    let { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
     if (!swapFee) swapFee = bn(0);
-    if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
-    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
-    return { tokens, weights, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
+    if (!responseWindowDuration) responseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!owner) owner = ZERO_ADDRESS;
+    return { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner };
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    let { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!tokens) tokens = new TokenList();
     if (!amplificationParameter) amplificationParameter = bn(200 * 1e18);
     if (!swapFee) swapFee = bn(0);
-    if (!emergencyPeriod) emergencyPeriod = 3 * MONTH;
-    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = MONTH;
-    return { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension };
+    if (!responseWindowDuration) responseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!owner) owner = ZERO_ADDRESS;
+    return { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration, owner };
   },
 
   /***

@@ -14,10 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-interface IAuthorizer {
-    function hasRoleIn(
-        bytes32 role,
-        address account,
-        address where
-    ) external view returns (bool);
+interface IAuthentication {
+    /**
+     * @dev Returns the role required to call the function described by `selector`.
+     */
+    function getRole(bytes4 selector) external view returns (bytes32);
 }
