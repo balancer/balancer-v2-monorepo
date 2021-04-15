@@ -89,7 +89,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         if (amount >= currentAllowance) {
             _setAllowance(msg.sender, spender, 0);
         } else {
-            _setAllowance(msg.sender, spender, currentAllowance.sub(amount));
+            _setAllowance(msg.sender, spender, currentAllowance.sub(amount, Errors.INSUFFICIENT_ALLOWANCE));
         }
 
         return true;
@@ -184,7 +184,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
         _require(currentBalance >= amount, Errors.INSUFFICIENT_BALANCE);
 
         _balance[sender] = currentBalance - amount;
-        _totalSupply = _totalSupply.sub(amount);
+        _totalSupply = _totalSupply.sub(amount, Errors.INSUFFICIENT_SUPPLY);
         emit Transfer(sender, address(0), amount);
     }
 

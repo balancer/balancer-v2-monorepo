@@ -166,7 +166,7 @@ library BalanceAllocation {
      * Updates the last total balance change block number, even if `amount` is zero.
      */
     function decreaseCash(bytes32 balance, uint256 amount) internal view returns (bytes32) {
-        uint256 newCash = cash(balance).sub(amount);
+        uint256 newCash = cash(balance).sub(amount, Errors.BALANCE_INSUFFICIENT_CASH);
         uint256 currentManaged = managed(balance);
         uint256 newBlockNumber = block.number;
 
@@ -178,7 +178,7 @@ library BalanceAllocation {
      * from the Vault.
      */
     function cashToManaged(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
-        uint256 newCash = cash(balance).sub(amount);
+        uint256 newCash = cash(balance).sub(amount, Errors.BALANCE_INSUFFICIENT_CASH);
         uint256 newManaged = managed(balance).add(amount);
         uint256 currentBlockNumber = blockNumber(balance);
 
@@ -191,7 +191,7 @@ library BalanceAllocation {
      */
     function managedToCash(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
         uint256 newCash = cash(balance).add(amount);
-        uint256 newManaged = managed(balance).sub(amount);
+        uint256 newManaged = managed(balance).sub(amount, Errors.BALANCE_INSUFFICIENT_MANAGED);
         uint256 currentBlockNumber = blockNumber(balance);
 
         return toBalance(newCash, newManaged, currentBlockNumber);

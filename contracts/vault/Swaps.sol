@@ -241,7 +241,8 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             // Accumulate Vault deltas across swaps
             assetDeltas[batchSwapStep.assetInIndex] = assetDeltas[batchSwapStep.assetInIndex].add(amountIn.toInt256());
             assetDeltas[batchSwapStep.assetOutIndex] = assetDeltas[batchSwapStep.assetOutIndex].sub(
-                amountOut.toInt256()
+                amountOut.toInt256(),
+                Errors.SWAP_INSUFFICIENT_ASSET_OUT
             );
         }
     }

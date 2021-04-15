@@ -152,6 +152,7 @@ library Errors {
     uint256 internal constant REVOKE_SENDER_NOT_ADMIN = 423;
     uint256 internal constant RENOUNCE_SENDER_NOT_ALLOWED = 424;
     uint256 internal constant BUFFER_PERIOD_EXPIRED = 425;
+    uint256 internal constant ERC20_INSUFFICIENT_SUPPLY = 426;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
@@ -181,6 +182,9 @@ library Errors {
     uint256 internal constant TOKENS_LENGTH_MUST_BE_2 = 524;
     uint256 internal constant NONZERO_TOKEN_BALANCE = 525;
     uint256 internal constant BALANCE_TOTAL_OVERFLOW = 526;
+    uint256 internal constant BALANCE_INSUFFICIENT_CASH = 527;
+    uint256 internal constant BALANCE_INSUFFICIENT_MANAGED = 528;
+    uint256 internal constant SWAP_INSUFFICIENT_ASSET_OUT = 529;
 
     // Fees
     uint256 internal constant SWAP_FEE_TOO_HIGH = 600;
