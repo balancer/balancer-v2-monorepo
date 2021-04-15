@@ -181,6 +181,7 @@ library Errors {
     uint256 internal constant TOKENS_LENGTH_MUST_BE_2 = 524;
     uint256 internal constant NONZERO_TOKEN_BALANCE = 525;
     uint256 internal constant BALANCE_TOTAL_OVERFLOW = 526;
+    uint256 internal constant POOL_NO_TOKENS = 527;
 
     // Fees
     uint256 internal constant SWAP_FEE_TOO_HIGH = 600;
