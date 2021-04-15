@@ -275,12 +275,12 @@ describe('Vault - asset manager', function () {
                 });
 
                 it('does not update the block number', async () => {
-                  const previousBlockNumber = (await vault.getPoolTokens(poolId)).maxBlockNumber;
+                  const previousBlockNumber = (await vault.getPoolTokens(poolId)).lastChangeBlock;
 
                   const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
                   await vault.connect(sender).managePoolBalance(ops);
 
-                  expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(previousBlockNumber);
+                  expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(previousBlockNumber);
                 });
 
                 it('moves the balance from cash to managed', async () => {
@@ -400,12 +400,12 @@ describe('Vault - asset manager', function () {
                   });
 
                   it('does not update the block number', async () => {
-                    const previousBlockNumber = (await vault.getPoolTokens(poolId)).maxBlockNumber;
+                    const previousBlockNumber = (await vault.getPoolTokens(poolId)).lastChangeBlock;
 
                     const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
                     await vault.connect(sender).managePoolBalance(ops);
 
-                    expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(previousBlockNumber);
+                    expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(previousBlockNumber);
                   });
 
                   it('moves the balance from managed to cash', async () => {
@@ -525,7 +525,7 @@ describe('Vault - asset manager', function () {
 
                       const blockNumber = await lastBlockNumber();
 
-                      expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(blockNumber);
+                      expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(blockNumber);
                       expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).blockNumber).to.equal(
                         blockNumber
                       );
@@ -540,7 +540,7 @@ describe('Vault - asset manager', function () {
 
                       const blockNumber = await lastBlockNumber();
 
-                      expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(blockNumber);
+                      expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(blockNumber);
                       expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).blockNumber).to.equal(
                         blockNumber
                       );
@@ -555,7 +555,7 @@ describe('Vault - asset manager', function () {
 
                       const blockNumber = await lastBlockNumber();
 
-                      expect((await vault.getPoolTokens(poolId)).maxBlockNumber).to.equal(blockNumber);
+                      expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(blockNumber);
                       expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).blockNumber).to.equal(
                         blockNumber
                       );

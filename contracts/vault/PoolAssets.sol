@@ -55,12 +55,12 @@ abstract contract PoolAssets is
         returns (
             IERC20[] memory tokens,
             uint256[] memory balances,
-            uint256 maxBlockNumber
+            uint256 lastChangeBlock
         )
     {
         bytes32[] memory rawBalances;
         (tokens, rawBalances) = _getPoolTokens(poolId);
-        (balances, maxBlockNumber) = rawBalances.totalsAndMaxBlockNumber();
+        (balances, lastChangeBlock) = rawBalances.totalsAndLastChangeBlock();
     }
 
     function getPoolTokenInfo(bytes32 poolId, IERC20 token)
@@ -260,7 +260,7 @@ abstract contract PoolAssets is
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
+        (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndLastChangeBlock();
 
         IBasePool pool = IBasePool(_getPoolAddress(poolId));
         (amounts, dueProtocolFeeAmounts) = kind == PoolBalanceChangeKind.JOIN

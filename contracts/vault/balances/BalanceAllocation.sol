@@ -95,18 +95,18 @@ library BalanceAllocation {
      * @dev Returns the total balance for each entry in `balances`, as well as the latest block number when the total
      * balance of any of them last changed.
      */
-    function totalsAndMaxBlockNumber(bytes32[] memory balances)
+    function totalsAndLastChangeBlock(bytes32[] memory balances)
         internal
         pure
-        returns (uint256[] memory results, uint256 maxBlockNumber)
+        returns (uint256[] memory results, uint256 lastChangeBlock)
     {
-        maxBlockNumber = 0;
+        lastChangeBlock = 0;
         results = new uint256[](balances.length);
 
         for (uint256 i = 0; i < results.length; i++) {
             bytes32 balance = balances[i];
             results[i] = total(balance);
-            maxBlockNumber = Math.max(maxBlockNumber, blockNumber(balance));
+            lastChangeBlock = Math.max(lastChangeBlock, blockNumber(balance));
         }
     }
 

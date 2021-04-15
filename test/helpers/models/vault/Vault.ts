@@ -39,7 +39,9 @@ export default class Vault {
     return { address, specialization };
   }
 
-  async getPoolTokens(poolId: string): Promise<{ tokens: string[]; balances: BigNumber[]; maxBlockNumber: BigNumber }> {
+  async getPoolTokens(
+    poolId: string
+  ): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
     return this.instance.getPoolTokens(poolId);
   }
 

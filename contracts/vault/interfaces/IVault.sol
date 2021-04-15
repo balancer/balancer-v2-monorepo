@@ -275,7 +275,8 @@ interface IVault is ISignaturesValidator {
     event TokensDeregistered(bytes32 poolId, IERC20[] tokens);
 
     /**
-     * @dev Returns a Pool's registered tokens, and the total balance for each.
+     * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when any of the
+     * balances changed.
      *
      * The order of the `tokens` array is the same order that will be used in `joinPool`, `exitPool`, as well as in all
      * Pool hooks (where applicable). Calls to `registerTokens` and `deregisterTokens` may change this order.
@@ -293,7 +294,7 @@ interface IVault is ISignaturesValidator {
         returns (
             IERC20[] memory tokens,
             uint256[] memory balances,
-            uint256 maxBlockNumber
+            uint256 lastChangeBlock
         );
 
     /**
