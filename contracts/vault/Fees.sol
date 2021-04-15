@@ -44,7 +44,7 @@ abstract contract Fees is IVault {
     /**
      * @dev Returns the protocol swap fee percentage.
      */
-    function _getProtocolSwapFeePercentage() internal view returns (uint256) {
+    function _getprotocolSwapFeePercentage() internal view returns (uint256) {
         return getProtocolFeesCollector().getSwapFeePercentage();
     }
 

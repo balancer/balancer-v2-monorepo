@@ -270,7 +270,7 @@ abstract contract PoolAssets is
                 recipient,
                 totalBalances,
                 latestBlockNumberUsed,
-                _getProtocolSwapFeePercentage(),
+                _getprotocolSwapFeePercentage(),
                 change.userData
             )
             : pool.onExitPool(
@@ -279,7 +279,7 @@ abstract contract PoolAssets is
                 recipient,
                 totalBalances,
                 latestBlockNumberUsed,
-                _getProtocolSwapFeePercentage(),
+                _getprotocolSwapFeePercentage(),
                 change.userData
             );
 
@@ -303,6 +303,7 @@ abstract contract PoolAssets is
     {
         (IERC20[] memory actualTokens, bytes32[] memory balances) = _getPoolTokens(poolId);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
+        _require(actualTokens.length > 0, Errors.POOL_NO_TOKENS);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             _require(actualTokens[i] == expectedTokens[i], Errors.TOKENS_MISMATCH);
@@ -514,13 +515,13 @@ abstract contract PoolAssets is
             IAsset asset = change.assets[i];
             _sendAsset(asset, amountOut, recipient, change.useInternalBalance);
 
-            uint256 protocolSwapFeeAmount = dueProtocolFeeAmounts[i];
+            uint256 protocolSwapFeePercentageAmount = dueProtocolFeeAmounts[i];
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
-            uint256 delta = amountOut.add(protocolSwapFeeAmount);
+            uint256 delta = amountOut.add(protocolSwapFeePercentageAmount);
             finalBalances[i] = balances[i].decreaseCash(delta);
 
-            _payFee(_translateToIERC20(asset), protocolSwapFeeAmount);
+            _payFee(_translateToIERC20(asset), protocolSwapFeePercentageAmount);
         }
     }
 

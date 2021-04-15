@@ -415,7 +415,7 @@ contract StableMath {
     }
 
     // The amplification parameter equals: A n^(n-1)
-    function _calcDueTokenProtocolSwapFeeAmount(
+    function _calcDueTokenprotocolSwapFeePercentageAmount(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 lastInvariant,
