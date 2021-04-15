@@ -40,11 +40,22 @@ contract StablePool is BaseGeneralPool, StableMath {
         string memory symbol,
         IERC20[] memory tokens,
         uint256 amplificationParameter,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 responseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
-    ) BaseGeneralPool(vault, name, symbol, tokens, swapFee, responseWindowDuration, bufferPeriodDuration, owner) {
+    )
+        BaseGeneralPool(
+            vault,
+            name,
+            symbol,
+            tokens,
+            swapFeePercentage,
+            responseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
+    {
         _require(amplificationParameter >= _MIN_AMP, Errors.MIN_AMP);
         _require(amplificationParameter <= _MAX_AMP, Errors.MAX_AMP);
 
@@ -386,7 +397,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         }
 
         // Set the fee amount to pay in the selected token
-        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFee(
+        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFeeAmount(
             _amplificationParameter,
             balances,
             previousInvariant,

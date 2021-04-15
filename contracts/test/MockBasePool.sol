@@ -24,7 +24,7 @@ contract MockBasePool is BasePool {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 responseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -35,7 +35,7 @@ contract MockBasePool is BasePool {
             name,
             symbol,
             tokens,
-            swapFee,
+            swapFeePercentage,
             responseWindowDuration,
             bufferPeriodDuration,
             owner

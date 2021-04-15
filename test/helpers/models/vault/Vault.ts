@@ -90,7 +90,7 @@ export default class Vault {
         });
   }
 
-  async getCollectedFees(tokens: TokenList | string[]): Promise<BigNumber[]> {
+  async getCollectedFeeAmounts(tokens: TokenList | string[]): Promise<BigNumber[]> {
     const feesCollector = await this.getFeesCollector();
     return feesCollector.getCollectedFeeAmounts(Array.isArray(tokens) ? tokens : tokens.addresses);
   }
@@ -108,15 +108,18 @@ export default class Vault {
     return feesCollector.withdrawCollectedFees(tokens, amounts, TypesConverter.toAddress(recipient));
   }
 
-  async getProtocolFees(): Promise<{ swapFee: BigNumber; flashLoanFee: BigNumber }> {
-    return { swapFee: await this.getSwapFee(), flashLoanFee: await this.getFlashLoanFee() };
+  async getProtocolFeePercentages(): Promise<{ swapFeePercentage: BigNumber; flashLoanFeePercentage: BigNumber }> {
+    return {
+      swapFeePercentage: await this.getSwapFeePercentage(),
+      flashLoanFeePercentage: await this.getFlashLoanFeePercentage(),
+    };
   }
 
-  async getSwapFee(): Promise<BigNumber> {
+  async getSwapFeePercentage(): Promise<BigNumber> {
     return (await this.getFeesCollector()).getSwapFeePercentage();
   }
 
-  async getFlashLoanFee(): Promise<BigNumber> {
+  async getFlashLoanFeePercentage(): Promise<BigNumber> {
     return (await this.getFeesCollector()).getFlashLoanFeePercentage();
   }
 
@@ -128,7 +131,7 @@ export default class Vault {
     return this.feesCollector;
   }
 
-  async setSwapFee(fee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
+  async setSwapFeePercentage(swapFeePercentage: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
@@ -137,10 +140,13 @@ export default class Vault {
 
     const sender = from || this.admin;
     const instance = sender ? feesCollector.connect(sender) : feesCollector;
-    return instance.setSwapFeePercentage(fee);
+    return instance.setSwapFeePercentage(swapFeePercentage);
   }
 
-  async setFlashLoanFee(fee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
+  async setFlashLoanFeePercentage(
+    flashLoanFeePercentage: BigNumber,
+    { from }: TxParams = {}
+  ): Promise<ContractTransaction> {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
@@ -149,7 +155,7 @@ export default class Vault {
 
     const sender = from || this.admin;
     const instance = sender ? feesCollector.connect(sender) : feesCollector;
-    return instance.setFlashLoanFeePercentage(fee);
+    return instance.setFlashLoanFeePercentage(flashLoanFeePercentage);
   }
 
   async grantRole(roleId: string, to?: Account): Promise<ContractTransaction> {

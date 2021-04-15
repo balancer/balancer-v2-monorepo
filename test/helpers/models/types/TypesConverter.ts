@@ -41,26 +41,33 @@ export default {
   },
 
   toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
-    let { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
+    let { tokens, weights, swapFeePercentage, responseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
-    if (!swapFee) swapFee = bn(0);
+    if (!swapFeePercentage) swapFeePercentage = bn(0);
     if (!responseWindowDuration) responseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!owner) owner = ZERO_ADDRESS;
-    return { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner };
+    return { tokens, weights, swapFeePercentage, responseWindowDuration, bufferPeriodDuration, owner };
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration, owner } = params;
+    let {
+      tokens,
+      amplificationParameter,
+      swapFeePercentage,
+      responseWindowDuration,
+      bufferPeriodDuration,
+      owner,
+    } = params;
     if (!tokens) tokens = new TokenList();
     if (!amplificationParameter) amplificationParameter = bn(200 * 1e18);
-    if (!swapFee) swapFee = bn(0);
+    if (!swapFeePercentage) swapFeePercentage = bn(0);
     if (!responseWindowDuration) responseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!owner) owner = ZERO_ADDRESS;
-    return { tokens, amplificationParameter, swapFee, responseWindowDuration, bufferPeriodDuration, owner };
+    return { tokens, amplificationParameter, swapFeePercentage, responseWindowDuration, bufferPeriodDuration, owner };
   },
 
   /***

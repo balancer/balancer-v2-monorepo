@@ -401,7 +401,7 @@ describe('Vault - join pool', () => {
           {}
         );
 
-        // Tokens are sent to the Protocol Fees, so the expected change is positive
+        // Tokens are sent to the Fee Collector, so the expected change is positive
         const protocolFeesChanges = tokens.reduce(
           (changes, token, i) => ({ ...changes, [token.symbol]: dueProtocolFeeAmounts[i] }),
           {}
@@ -453,7 +453,7 @@ describe('Vault - join pool', () => {
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
           latestBlockNumberUsed: previousBlockNumber,
-          protocolSwapFee: await feesCollector.getSwapFeePercentage(),
+          protocolSwapFeePercentage: await feesCollector.getSwapFeePercentage(),
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
       });

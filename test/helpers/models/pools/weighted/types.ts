@@ -10,7 +10,7 @@ import { Account, NAry } from '../../types/types';
 export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
   weights?: BigNumberish[];
-  swapFee?: BigNumberish;
+  swapFeePercentage?: BigNumberish;
   responseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   owner?: Account;
@@ -22,7 +22,7 @@ export type RawWeightedPoolDeployment = {
 export type WeightedPoolDeployment = {
   tokens: TokenList;
   weights: BigNumberish[];
-  swapFee: BigNumberish;
+  swapFeePercentage: BigNumberish;
   responseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
   owner: Account;

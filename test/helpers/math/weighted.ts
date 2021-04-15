@@ -43,7 +43,7 @@ export function calcBptOutGivenExactTokensIn(
   fpWeights: BigNumberish[],
   fpAmountsIn: BigNumberish[],
   fpBptTotalSupply: BigNumberish,
-  fpSwapFee: BigNumberish
+  fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   const weights = fpWeights.map(fromFp);
   const balances = fpBalances.map(fromFp);
@@ -64,7 +64,7 @@ export function calcBptOutGivenExactTokensIn(
     if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
       const nonTaxableAmount = balances[i].mul(invariantRatioWithFees.sub(1));
       const taxableAmount = amountsIn[i].sub(nonTaxableAmount);
-      amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFee))));
+      amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFeePercentage))));
     } else {
       amountInWithoutFee = amountsIn[i];
     }
@@ -84,20 +84,20 @@ export function calcTokenInGivenExactBptOut(
   fpWeights: BigNumberish[],
   fpBptAmountOut: BigNumberish,
   fpBptTotalSupply: BigNumberish,
-  fpSwapFee: BigNumberish
+  fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   const bptAmountOut = fromFp(fpBptAmountOut);
   const bptTotalSupply = fromFp(fpBptTotalSupply);
   const weight = fromFp(fpWeights[tokenIndex]);
   const balance = fpBalances.map(fromFp)[tokenIndex];
-  const swapFee = fromFp(fpSwapFee);
+  const swapFeePercentage = fromFp(fpSwapFeePercentage);
 
   const invariantRatio = bptTotalSupply.add(bptAmountOut).div(bptTotalSupply);
   const tokenBalanceRatio = invariantRatio.pow(decimal(1).div(weight));
   const tokenBalancePercentageExcess = decimal(1).sub(weight);
   const amountInAfterFee = balance.mul(tokenBalanceRatio.sub(decimal(1)));
 
-  const amountIn = amountInAfterFee.div(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+  const amountIn = amountInAfterFee.div(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFeePercentage)));
   return fp(amountIn);
 }
 
@@ -106,9 +106,9 @@ export function calcBptInGivenExactTokensOut(
   fpWeights: BigNumber[],
   fpAmountsOut: BigNumber[],
   fpBptTotalSupply: BigNumber,
-  fpSwapFee: BigNumber
+  fpSwapFeePercentage: BigNumber
 ): BigNumber {
-  const swapFee = fromFp(fpSwapFee);
+  const swapFeePercentage = fromFp(fpSwapFeePercentage);
   const weights = fpWeights.map(fromFp);
   const balances = fpBalances.map(fromFp);
   const amountsOut = fpAmountsOut.map(fromFp);
@@ -129,7 +129,7 @@ export function calcBptInGivenExactTokensOut(
         ? 0
         : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
 
-    const amountOutBeforeFee = amountsOut[i].div(decimal(1).sub(swapFee.mul(tokenBalancePercentageExcess)));
+    const amountOutBeforeFee = amountsOut[i].div(decimal(1).sub(swapFeePercentage.mul(tokenBalancePercentageExcess)));
     const tokenBalanceRatio = decimal(1).sub(amountOutBeforeFee.div(balances[i]));
     invariantRatio = invariantRatio.mul(tokenBalanceRatio.pow(weights[i]));
   }
@@ -144,11 +144,11 @@ export function calcTokenOutGivenExactBptIn(
   fpWeights: BigNumberish[],
   fpBptAmountIn: BigNumberish,
   fpBptTotalSupply: BigNumberish,
-  fpSwapFee: BigNumberish
+  fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   const bptAmountIn = fromFp(fpBptAmountIn);
   const bptTotalSupply = fromFp(fpBptTotalSupply);
-  const swapFee = fromFp(fpSwapFee);
+  const swapFeePercentage = fromFp(fpSwapFeePercentage);
   const weight = fromFp(fpWeights[tokenIndex]);
   const balance = fpBalances.map(fromFp)[tokenIndex];
 
@@ -157,7 +157,7 @@ export function calcTokenOutGivenExactBptIn(
   const tokenBalancePercentageExcess = decimal(1).sub(weight);
   const amountOutBeforeFee = balance.mul(decimal(1).sub(tokenBalanceRatio));
 
-  const amountOut = amountOutBeforeFee.mul(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFee)));
+  const amountOut = amountOutBeforeFee.mul(decimal(1).sub(tokenBalancePercentageExcess.mul(swapFeePercentage)));
   return fp(amountOut);
 }
 
@@ -172,7 +172,7 @@ export function calcTokensOutGivenExactBptIn(
   return amountsOut.map(fp);
 }
 
-export function calculateOneTokenSwapFee(
+export function calculateOneTokenSwapFeeAmount(
   fpBalances: BigNumberish[],
   fpWeights: BigNumberish[],
   lastInvariant: BigNumberish,
@@ -188,7 +188,7 @@ export function calculateOneTokenSwapFee(
   return toFp(accruedFees);
 }
 
-export function calculateMaxOneTokenSwapFee(
+export function calculateMaxOneTokenSwapFeeAmount(
   fpBalances: BigNumberish[],
   fpWeights: BigNumberish[],
   fpMinInvariantRatio: BigNumberish,

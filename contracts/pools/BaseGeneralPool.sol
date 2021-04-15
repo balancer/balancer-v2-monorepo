@@ -29,7 +29,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 responseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -40,7 +40,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
             name,
             symbol,
             tokens,
-            swapFee,
+            swapFeePercentage,
             responseWindowDuration,
             bufferPeriodDuration,
             owner

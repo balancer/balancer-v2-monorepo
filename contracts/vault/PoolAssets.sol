@@ -514,13 +514,13 @@ abstract contract PoolAssets is
             IAsset asset = change.assets[i];
             _sendAsset(asset, amountOut, recipient, change.useInternalBalance);
 
-            uint256 protocolSwapFee = dueProtocolFeeAmounts[i];
+            uint256 protocolSwapFeeAmount = dueProtocolFeeAmounts[i];
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
-            uint256 delta = amountOut.add(protocolSwapFee);
+            uint256 delta = amountOut.add(protocolSwapFeeAmount);
             finalBalances[i] = balances[i].decreaseCash(delta);
 
-            _payFee(_translateToIERC20(asset), protocolSwapFee);
+            _payFee(_translateToIERC20(asset), protocolSwapFeeAmount);
         }
     }
 

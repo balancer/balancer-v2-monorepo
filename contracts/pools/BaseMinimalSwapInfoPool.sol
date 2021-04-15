@@ -29,7 +29,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee,
+        uint256 swapFeePercentage,
         uint256 responseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -40,7 +40,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
             name,
             symbol,
             tokens,
-            swapFee,
+            swapFeePercentage,
             responseWindowDuration,
             bufferPeriodDuration,
             owner

@@ -34,9 +34,9 @@ import {
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
   calcOutGivenIn,
-  calculateOneTokenSwapFee,
+  calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
-  calculateMaxOneTokenSwapFee,
+  calculateMaxOneTokenSwapFeeAmount,
 } from '../../../math/weighted';
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
@@ -50,7 +50,7 @@ export default class WeightedPool {
   poolId: string;
   tokens: TokenList;
   weights: BigNumberish[];
-  swapFee: BigNumberish;
+  swapFeePercentage: BigNumberish;
   vault: Vault;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
@@ -63,14 +63,14 @@ export default class WeightedPool {
     vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
-    swapFee: BigNumberish
+    swapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
     this.tokens = tokens;
     this.weights = weights;
-    this.swapFee = swapFee;
+    this.swapFeePercentage = swapFeePercentage;
   }
 
   get address(): string {
@@ -141,7 +141,7 @@ export default class WeightedPool {
     return currentBalances[tokenIndex].mul(MAX_OUT_RATIO).div(fp(1));
   }
 
-  async getSwapFee(): Promise<BigNumber> {
+  async getSwapFeePercentage(): Promise<BigNumber> {
     return this.instance.getSwapFeePercentage();
   }
 
@@ -169,7 +169,7 @@ export default class WeightedPool {
     return calculateInvariant(currentBalances, this.weights);
   }
 
-  async estimateSwapFee(
+  async estimateSwapFeeAmount(
     paidToken: number | Token,
     protocolFeePercentage: BigNumberish,
     currentBalances?: BigNumberish[]
@@ -177,18 +177,23 @@ export default class WeightedPool {
     if (!currentBalances) currentBalances = await this.getBalances();
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const feeAmount = calculateOneTokenSwapFee(currentBalances, this.weights, lastInvariant, paidTokenIndex);
+    const feeAmount = calculateOneTokenSwapFeeAmount(currentBalances, this.weights, lastInvariant, paidTokenIndex);
     return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
   }
 
-  async estimateMaxSwapFee(
+  async estimateMaxSwapFeeAmount(
     paidToken: number | Token,
     protocolFeePercentage: BigNumberish,
     currentBalances?: BigNumberish[]
   ): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const feeAmount = calculateMaxOneTokenSwapFee(currentBalances, this.weights, MIN_INVARIANT_RATIO, paidTokenIndex);
+    const feeAmount = calculateMaxOneTokenSwapFeeAmount(
+      currentBalances,
+      this.weights,
+      MIN_INVARIANT_RATIO,
+      paidTokenIndex
+    );
     return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
   }
 
@@ -229,7 +234,7 @@ export default class WeightedPool {
   ): Promise<BigNumberish> {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
-    return calcBptOutGivenExactTokensIn(currentBalances, this.weights, amountsIn, supply, this.swapFee);
+    return calcBptOutGivenExactTokensIn(currentBalances, this.weights, amountsIn, supply, this.swapFeePercentage);
   }
 
   async estimateTokenIn(
@@ -241,7 +246,14 @@ export default class WeightedPool {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
     const tokenIndex = this.tokens.indexOf(token);
-    return calcTokenInGivenExactBptOut(tokenIndex, currentBalances, this.weights, bptOut, supply, this.swapFee);
+    return calcTokenInGivenExactBptOut(
+      tokenIndex,
+      currentBalances,
+      this.weights,
+      bptOut,
+      supply,
+      this.swapFeePercentage
+    );
   }
 
   async estimateTokenOut(
@@ -253,7 +265,14 @@ export default class WeightedPool {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
     const tokenIndex = this.tokens.indexOf(token);
-    return calcTokenOutGivenExactBptIn(tokenIndex, currentBalances, this.weights, bptIn, supply, this.swapFee);
+    return calcTokenOutGivenExactBptIn(
+      tokenIndex,
+      currentBalances,
+      this.weights,
+      bptIn,
+      supply,
+      this.swapFeePercentage
+    );
   }
 
   async swapGivenIn(params: SwapWeightedPool): Promise<BigNumber> {

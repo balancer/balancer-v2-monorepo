@@ -102,8 +102,8 @@ library Errors {
     // Shared pools
     uint256 internal constant MIN_TOKENS = 200;
     uint256 internal constant MAX_TOKENS = 201;
-    uint256 internal constant MAX_SWAP_FEE = 202;
-    uint256 internal constant MIN_SWAP_FEE = 203;
+    uint256 internal constant MAX_SWAP_FEE_PERCENTAGE = 202;
+    uint256 internal constant MIN_SWAP_FEE_PERCENTAGE = 203;
     uint256 internal constant MINIMUM_BPT = 204;
     uint256 internal constant CALLER_NOT_VAULT = 205;
     uint256 internal constant UNINITIALIZED = 206;

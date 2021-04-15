@@ -25,7 +25,7 @@ describe('Vault - exit pool', () => {
   let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let allTokens: TokenList;
 
-  const SWAP_FEE = fp(0.1);
+  const SWAP_FEE_PERCENTAGE = fp(0.1);
 
   before(async () => {
     [, admin, creator, lp, recipient, relayer] = await ethers.getSigners();
@@ -41,7 +41,7 @@ describe('Vault - exit pool', () => {
 
     const role = roleId(feesCollector, 'setSwapFeePercentage');
     await authorizer.connect(admin).grantRole(role, admin.address);
-    await feesCollector.connect(admin).setSwapFeePercentage(SWAP_FEE);
+    await feesCollector.connect(admin).setSwapFeePercentage(SWAP_FEE_PERCENTAGE);
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [creator, recipient], amount: bn(100e18) });
@@ -404,7 +404,7 @@ describe('Vault - exit pool', () => {
             {}
           );
 
-          // Tokens are sent to the Protocol Fees, so the expected change is positive
+          // Tokens are sent to the Fee Collector, so the expected change is positive
           const protocolFeesChanges = tokens.reduce(
             (changes, token, i) => ({ ...changes, [token.symbol]: dueProtocolFeeAmounts[i] }),
             {}
@@ -457,7 +457,7 @@ describe('Vault - exit pool', () => {
             sender: lp.address,
             recipient: recipient.address,
             currentBalances: previousPoolBalances,
-            protocolSwapFee: await feesCollector.getSwapFeePercentage(),
+            protocolSwapFeePercentage: await feesCollector.getSwapFeePercentage(),
             latestBlockNumberUsed: previousBlockNumber,
             userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
           });

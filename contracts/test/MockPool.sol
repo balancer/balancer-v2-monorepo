@@ -55,7 +55,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address recipient,
         uint256[] currentBalances,
         uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes userData
     );
 
@@ -65,7 +65,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address recipient,
         uint256[] currentBalances,
         uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes userData
     );
 
@@ -75,7 +75,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address recipient,
         uint256[] memory currentBalances,
         uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
         emit OnJoinPoolCalled(
@@ -84,7 +84,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             recipient,
             currentBalances,
             latestBlockNumberUsed,
-            protocolSwapFee,
+            protocolSwapFeePercentage,
             userData
         );
 
@@ -97,7 +97,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address recipient,
         uint256[] memory currentBalances,
         uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
         emit OnExitPoolCalled(
@@ -106,7 +106,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             recipient,
             currentBalances,
             latestBlockNumberUsed,
-            protocolSwapFee,
+            protocolSwapFeePercentage,
             userData
         );
 
