@@ -233,7 +233,7 @@ abstract contract PoolAssets is
         PoolBalanceChange memory change
     ) private nonReentrant withRegisteredPool(poolId) authenticateFor(sender) {
         // This function uses a large number of stack variables (poolId, sender and recipient, balances, amounts, fees,
-        // etc.), which leads to 'stack too deep' issues. It relies on private functions with seeminly arbitrary
+        // etc.), which leads to 'stack too deep' issues. It relies on private functions with seemingly arbitrary
         // interfaces to work around this limitation.
 
         InputHelpers.ensureInputLengthMatch(change.assets.length, change.limits.length);
@@ -244,7 +244,7 @@ abstract contract PoolAssets is
         bytes32[] memory balances = _validateTokensAndGetBalances(poolId, tokens);
 
         // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed,
-        // assets are transferred and fees are paid.
+        // assets are transferred, and fees are paid.
         (
             bytes32[] memory finalBalances,
             uint256[] memory amountsInOut,
@@ -274,7 +274,7 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Calls the correspondig Pool hook to get the amounts in/out plus and protocol fee amounts and performs the
+     * @dev Calls the corresponding Pool hook to get the amounts in/out plus protocol fee amounts, and performs the
      * associated token transfers and fee payments, returning the Pool's final balances.
      */
     function _callPoolBalanceChange(
@@ -497,10 +497,10 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Transfers `amountsIn` from `sender`, checking that they are within their accepted limits, and pays Pool
-     * protocol fees.
+     * @dev Transfers `amountsIn` from `sender`, checking that they are within their accepted limits, and pays accumulated 
+     * protocol swap fees.
      *
-     * Returns the Pool's final balances, which are the current balances plus amounts in minus paid fees.
+     * Returns the Pool's final balances, which are the current balances plus `amountsIn` minus accumulated protocol swap fees.
      */
     function _processJoinPoolTransfers(
         address sender,
@@ -528,7 +528,7 @@ abstract contract PoolAssets is
             uint256 feeToPay = dueProtocolFeeAmounts[i];
             _payFee(_translateToIERC20(asset), feeToPay);
 
-            // Compute the new Pool balances. Note that the fee to pay fees might be larger than the amount in,
+            // Compute the new Pool balances. Note that the fee amount might be larger than `amountIn`,
             // resulting in an overall decrease of the Pool's balance for a token.
             finalBalances[i] = (amountIn >= feeToPay) // This lets us skip checked arithmetic
                 ? balances[i].increaseCash(amountIn - feeToPay)
@@ -585,8 +585,8 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Casts an array of uint256 to int256, making them negative if `positive` is false ,without checking if the
-     * values fit in the signed 256 bit range.
+     * @dev Casts an array of uint256 to int256, setting the sign of the result according to the `positive` flag,
+     * without checking whether the values fit in the signed 256 bit range.
      */
     function _unsafeCastToInt256(uint256[] memory values, bool positive) private pure returns (int256[] memory casted) {
         casted = new int256[](values.length);
