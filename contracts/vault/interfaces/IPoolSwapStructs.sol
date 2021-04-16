@@ -23,8 +23,8 @@ interface IPoolSwapStructs {
     // This is not really an interface - it just defines common structs used by other interfaces: IGeneralPool and
     // IMinimalSwapInfoPool.
     //
-    // This data structure represents a request for a token swap, where `kind` indicates the swap type (given in or
-    // given out) which indicates whether or not the amount sent by the pool is known.
+    // This data structure represents a request for a token swap, where `kind` indicates the swap type ('given in' or
+    // 'given out') which indicates whether or not the amount sent by the pool is known.
     //
     // The pool receives `tokenIn` and sends `tokenOut`. `amount` is the number of `tokenIn` tokens the pool will take
     // in, or the number of `tokenOut` tokens the Pool will send out, depending on the given swap `kind`.

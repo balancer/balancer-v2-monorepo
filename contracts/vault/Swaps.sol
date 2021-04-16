@@ -135,7 +135,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         _handleRemainingEth(wrappedEth);
     }
 
-    // For `_swapWithPools` to handle both given in and given out swaps, it internally tracks the 'given' amount
+    // For `_swapWithPools` to handle both 'given in' and 'given out' swaps, it internally tracks the 'given' amount
     // (supplied by the caller), and the 'calculated' one (returned by the Pool in response to the swap request).
 
     /**

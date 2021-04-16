@@ -32,11 +32,11 @@ interface IBasePool is IPoolSwapStructs {
      *
      * Protocol fees are reported and charged on join events so that the Pool is free of debt whenever new users join.
      *
-     * `sender` is the account performing the join (from whom tokens will be withdrawn), and `recipient` is the account
+     * `sender` is the account performing the join (from which tokens will be withdrawn), and `recipient` is the account
      * designated to receive any benefits (typically pool shares). `currentBalances` contains the total balances
      * for each token the Pool registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
-     * `lastChangeBlock` is the last block in which *any* of the Pool's registered tokens last changed thier total
+     * `lastChangeBlock` is the last block in which *any* of the Pool's registered tokens last changed its total
      * balance.
      *
      * `userData` contains any pool-specific instructions needed to perform the calculations, such as the type of
@@ -62,8 +62,7 @@ interface IBasePool is IPoolSwapStructs {
      * as well as collect the reported amount in protocol fees, which the Pool should calculate based on
      * `protocolSwapFeePercentage`.
      *
-     * Protocol fees are reported and charged on exit events to guarantee that users exiting the Pool have paid
-     * their share.
+     * Protocol fees are charged on exit events to guarantee that users exiting the Pool have paid their share.
      *
      * `sender` is the account performing the exit (typically the pool shareholder), and `recipient` is the account
      * to which the Vault will send the proceeds. `currentBalances` contains the total token balances for each token
@@ -89,9 +88,8 @@ interface IBasePool is IPoolSwapStructs {
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
 
     /**
-     * @dev This function returns the appreciation of one BPT relative to the
-     * underlying tokens. This starts at 1 when the pool is created and grows over time
-     * It's equivalent to Curve's get_virtual_price() function
+     * @dev This function returns the appreciation of one BPT relative to the underlying tokens. This starts at
+     * 1 when the pool is created and grows over time. It's equivalent to Curve's get_virtual_price() function.
      */
     function getRate() external view returns (uint256);
 }

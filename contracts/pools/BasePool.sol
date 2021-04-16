@@ -412,7 +412,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      *
      * BPT will be burnt from `sender`.
      *
-     * The Pool will grant tokens to `recipient`. These amounts are considered upscaled and will  be downscaled
+     * The Pool will grant tokens to `recipient`. These amounts are considered upscaled and will be downscaled
      * (rounding down) before being returned to the Vault.
      *
      * Due protocol swap fees will be taken from the Pool's balance in the Vault (see `IBasePool.onExitPool`). These
