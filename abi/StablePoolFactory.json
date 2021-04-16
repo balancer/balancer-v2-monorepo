@@ -47,7 +47,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "swapFee",
+        "name": "swapFeePercentage",
         "type": "uint256"
       },
       {

@@ -28,7 +28,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "swapFee",
+        "name": "swapFeePercentage",
         "type": "uint256"
       },
       {
@@ -94,7 +94,7 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "swapFee",
+        "name": "swapFeePercentage",
         "type": "uint256"
       }
     ],
@@ -378,7 +378,7 @@
   },
   {
     "inputs": [],
-    "name": "getSwapFee",
+    "name": "getSwapFeePercentage",
     "outputs": [
       {
         "internalType": "uint256",
@@ -482,7 +482,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "latestBlockNumberUsed",
+        "name": "lastChangeBlock",
         "type": "uint256"
       },
       {
@@ -536,7 +536,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "latestBlockNumberUsed",
+        "name": "lastChangeBlock",
         "type": "uint256"
       },
       {
@@ -597,7 +597,7 @@
           },
           {
             "internalType": "uint256",
-            "name": "latestBlockNumberUsed",
+            "name": "lastChangeBlock",
             "type": "uint256"
           },
           {
@@ -709,7 +709,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "latestBlockNumberUsed",
+        "name": "lastChangeBlock",
         "type": "uint256"
       },
       {
@@ -763,7 +763,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "latestBlockNumberUsed",
+        "name": "lastChangeBlock",
         "type": "uint256"
       },
       {
@@ -810,11 +810,11 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "swapFee",
+        "name": "swapFeePercentage",
         "type": "uint256"
       }
     ],
-    "name": "setSwapFee",
+    "name": "setSwapFeePercentage",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
