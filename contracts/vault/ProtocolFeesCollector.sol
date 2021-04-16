@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../lib/openzeppelin/IERC20.sol";
-
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/Authentication.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
