@@ -413,8 +413,6 @@ abstract contract PoolAssets is
             _twoTokenPoolCashToManaged(poolId, token, amount);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
         } else {
             // PoolSpecialization.GENERAL
             _generalPoolCashToManaged(poolId, token, amount);
@@ -441,8 +439,6 @@ abstract contract PoolAssets is
     ) private returns (int256 cashDelta, int256 managedDelta) {
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolManagedToCash(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else {

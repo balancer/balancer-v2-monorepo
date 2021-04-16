@@ -183,7 +183,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     }
 
     /**
-     * @dev Set's `account`'s Internal Balance for `token` to `newBalance`.
+     * @dev Sets `account`'s Internal Balance for `token` to `newBalance`.
      *
      * Emits an `InternalBalanceChanged` event. This event includes `delta`, which is by how much the balance increased
      * (if positive) or decreased (if negative). To avoid reading the current balance in order to compute the delta,
