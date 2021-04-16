@@ -22,8 +22,6 @@ import "../factories/FactoryWidePauseWindow.sol";
 
 import "./WeightedPool.sol";
 
-import "hardhat/console.sol";
-
 contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     constructor(IVault vault) BasePoolFactory(vault) {
         // solhint-disable-previous-line no-empty-blocks
