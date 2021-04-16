@@ -85,6 +85,16 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
         return poolId;
     }
 
+    function getPool(bytes32 poolId)
+        external
+        view
+        override
+        withRegisteredPool(poolId)
+        returns (address, PoolSpecialization)
+    {
+        return (_getPoolAddress(poolId), _getPoolSpecialization(poolId));
+    }
+
     /**
      * @dev Creates a Pool ID.
      *
