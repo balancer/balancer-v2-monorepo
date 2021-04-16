@@ -298,7 +298,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes memory userData
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
-        // A return statement is called directly inside `_queryAction`
+        // The `return` opcode is executed directly inside `_queryAction`, so we don't return nothing here
         _queryAction(
             poolId,
             sender,
