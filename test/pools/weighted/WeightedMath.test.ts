@@ -7,7 +7,7 @@ import {
   calculateInvariant,
   calcInGivenOut,
   calcOutGivenIn,
-  calculateOneTokenSwapFee,
+  calculateOneTokenSwapFeeAmount,
 } from '../../helpers/math/weighted';
 import { expect } from 'chai';
 
@@ -216,18 +216,23 @@ describe('WeightedMath', function () {
         const tokenIndex = 1;
 
         const currentInvariant = calculateInvariant(balances, normalizedWeights);
-        const protocolSwapFee = fp(0.1);
+        const protocolSwapFeePercentage = fp(0.1);
 
-        const result = await mock.calculateDueTokenProtocolSwapFee(
+        const result = await mock.calculateDueTokenprotocolSwapFeePercentageAmount(
           balances[tokenIndex],
           normalizedWeights[tokenIndex],
           lastInvariant,
           currentInvariant,
-          protocolSwapFee
+          protocolSwapFeePercentage
         );
 
-        const expectedFeeAmount = calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
-        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
+        const expectedFeeAmount = calculateOneTokenSwapFeeAmount(
+          balances,
+          normalizedWeights,
+          lastInvariant,
+          tokenIndex
+        );
+        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFeePercentage).div(1e18));
 
         expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });
@@ -239,28 +244,28 @@ describe('WeightedMath', function () {
           const tokenIndex = 1;
 
           const currentInvariant = calculateInvariant(balances, normalizedWeights);
-          const protocolSwapFee = fp(0.1);
+          const protocolSwapFeePercentage = fp(0.1);
 
           // The last to current ratio is 1:2, which is larger than the math libraries can handle. This will be capped
           // to 0.7:1.
           const lastInvariant = currentInvariant.div(2);
           const cappedLastInvariant = currentInvariant.mul(fp(0.7)).div(fp(1));
 
-          const result = await mock.calculateDueTokenProtocolSwapFee(
+          const result = await mock.calculateDueTokenprotocolSwapFeePercentageAmount(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             lastInvariant,
             currentInvariant,
-            protocolSwapFee
+            protocolSwapFeePercentage
           );
 
-          const expectedFeeAmount = calculateOneTokenSwapFee(
+          const expectedFeeAmount = calculateOneTokenSwapFeeAmount(
             balances,
             normalizedWeights,
             cappedLastInvariant,
             tokenIndex
           );
-          const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
+          const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFeePercentage).div(1e18));
 
           expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
         });
@@ -275,18 +280,23 @@ describe('WeightedMath', function () {
         const tokenIndex = 2;
 
         const currentInvariant = calculateInvariant(balances, normalizedWeights);
-        const protocolSwapFee = fp(0.1);
+        const protocolSwapFeePercentage = fp(0.1);
 
-        const result = await mock.calculateDueTokenProtocolSwapFee(
+        const result = await mock.calculateDueTokenprotocolSwapFeePercentageAmount(
           balances[tokenIndex],
           normalizedWeights[tokenIndex],
           lastInvariant,
           currentInvariant,
-          protocolSwapFee
+          protocolSwapFeePercentage
         );
 
-        const expectedFeeAmount = calculateOneTokenSwapFee(balances, normalizedWeights, lastInvariant, tokenIndex);
-        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFee).div(1e18));
+        const expectedFeeAmount = calculateOneTokenSwapFeeAmount(
+          balances,
+          normalizedWeights,
+          lastInvariant,
+          tokenIndex
+        );
+        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFeePercentage).div(1e18));
 
         expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });

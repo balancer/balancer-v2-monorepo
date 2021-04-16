@@ -68,7 +68,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         poolRequest.userData = singleSwap.userData;
         poolRequest.from = funds.sender;
         poolRequest.to = funds.recipient;
-        // The latestBlockNumber field is left uninitialized
+        // The lastChangeBlock field is left uninitialized
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapWithPool(poolRequest);
         _require(singleSwap.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
@@ -229,7 +229,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             poolRequest.userData = batchSwapStep.userData;
             poolRequest.from = funds.sender;
             poolRequest.to = funds.recipient;
-            // The latestBlockNumber field is left uninitialized
+            // The lastChangeBlock field is left uninitialized
 
             uint256 amountIn;
             uint256 amountOut;
@@ -354,7 +354,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     {
         uint256 tokenInTotal = tokenInBalance.total();
         uint256 tokenOutTotal = tokenOutBalance.total();
-        request.latestBlockNumberUsed = Math.max(tokenInBalance.blockNumber(), tokenOutBalance.blockNumber());
+        request.lastChangeBlock = Math.max(tokenInBalance.lastChangeBlock(), tokenOutBalance.lastChangeBlock());
 
         // Perform the swap request callback and compute the new balances for token in and token out after the swap
         amountCalculated = pool.onSwap(request, tokenInTotal, tokenOutTotal);
@@ -390,14 +390,14 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         uint256 tokenAmount = poolBalances.length();
         uint256[] memory currentBalances = new uint256[](tokenAmount);
 
-        request.latestBlockNumberUsed = 0;
+        request.lastChangeBlock = 0;
         for (uint256 i = 0; i < tokenAmount; i++) {
             // Because the iteration is bounded by `tokenAmount` and no tokens are registered or deregistered here, we
             // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
-            request.latestBlockNumberUsed = Math.max(request.latestBlockNumberUsed, balance.blockNumber());
+            request.lastChangeBlock = Math.max(request.lastChangeBlock, balance.lastChangeBlock());
 
             if (i == indexIn) {
                 tokenInBalance = balance;

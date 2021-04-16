@@ -117,10 +117,6 @@ library FixedPoint {
         }
     }
 
-    function pow(uint256 x, uint256 y) internal pure returns (uint256) {
-        return LogExpMath.pow(x, y);
-    }
-
     /**
      * @dev Returns x^y, assuming both are fixed point numbers, rounding down. The result is guaranteed to not be above
      * the true value (that is, the error function expected - actual is always positive).

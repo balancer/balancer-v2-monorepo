@@ -47,12 +47,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "swapFee",
+        "name": "swapFeePercentage",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowDuration",
+        "name": "pauseWindowDuration",
         "type": "uint256"
       },
       {

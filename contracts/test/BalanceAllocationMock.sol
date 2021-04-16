@@ -24,7 +24,7 @@ contract BalanceAllocationMock {
     }
 
     function totals(bytes32[] memory balances) public pure returns (uint256[] memory result) {
-        (result, ) = BalanceAllocation.totalsAndMaxBlockNumber(balances);
+        (result, ) = BalanceAllocation.totalsAndLastChangeBlock(balances);
     }
 
     function cash(bytes32 balance) public pure returns (uint256) {
@@ -35,8 +35,8 @@ contract BalanceAllocationMock {
         return balance.managed();
     }
 
-    function blockNumber(bytes32 balance) public pure returns (uint256) {
-        return balance.blockNumber();
+    function lastChangeBlock(bytes32 balance) public pure returns (uint256) {
+        return balance.lastChangeBlock();
     }
 
     function isNotZero(bytes32 balance) public pure returns (bool) {
@@ -47,8 +47,12 @@ contract BalanceAllocationMock {
         return balance.isZero();
     }
 
-    function toBalance(uint256 _cash, uint256 _managed, uint256 _blockNumber) public pure returns (bytes32) {
-        return BalanceAllocation.toBalance(_cash, _managed, _blockNumber);
+    function toBalance(
+        uint256 _cash,
+        uint256 _managed,
+        uint256 _lastChangeBlock
+    ) public pure returns (bytes32) {
+        return BalanceAllocation.toBalance(_cash, _managed, _lastChangeBlock);
     }
 
     function increaseCash(bytes32 balance, uint256 amount) public view returns (bytes32) {

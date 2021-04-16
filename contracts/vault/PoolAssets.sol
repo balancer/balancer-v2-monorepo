@@ -46,22 +46,6 @@ abstract contract PoolAssets is
     // Stores the Asset Manager for each token of each Pool.
     mapping(bytes32 => mapping(IERC20 => address)) private _poolAssetManagers;
 
-    function getPoolTokens(bytes32 poolId)
-        external
-        view
-        override
-        withRegisteredPool(poolId)
-        returns (
-            IERC20[] memory tokens,
-            uint256[] memory balances,
-            uint256 maxBlockNumber
-        )
-    {
-        bytes32[] memory rawBalances;
-        (tokens, rawBalances) = _getPoolTokens(poolId);
-        (balances, maxBlockNumber) = rawBalances.totalsAndMaxBlockNumber();
-    }
-
     function getPoolTokenInfo(bytes32 poolId, IERC20 token)
         external
         view
@@ -70,7 +54,7 @@ abstract contract PoolAssets is
         returns (
             uint256 cash,
             uint256 managed,
-            uint256 blockNumber,
+            uint256 lastChangeBlock,
             address assetManager
         )
     {
@@ -88,8 +72,24 @@ abstract contract PoolAssets is
 
         cash = balance.cash();
         managed = balance.managed();
-        blockNumber = balance.blockNumber();
+        lastChangeBlock = balance.lastChangeBlock();
         assetManager = _poolAssetManagers[poolId][token];
+    }
+
+    function getPoolTokens(bytes32 poolId)
+        external
+        view
+        override
+        withRegisteredPool(poolId)
+        returns (
+            IERC20[] memory tokens,
+            uint256[] memory balances,
+            uint256 lastChangeBlock
+        )
+    {
+        bytes32[] memory rawBalances;
+        (tokens, rawBalances) = _getPoolTokens(poolId);
+        (balances, lastChangeBlock) = rawBalances.totalsAndLastChangeBlock();
     }
 
     function getPool(bytes32 poolId)
@@ -158,15 +158,34 @@ abstract contract PoolAssets is
         emit TokensDeregistered(poolId, tokens);
     }
 
+    // Join and Exit Pool
+
     function joinPool(
         bytes32 poolId,
         address sender,
         address recipient,
         JoinPoolRequest memory request
     ) external payable override whenNotPaused {
-        _joinOrExit(PoolBalanceChangeKind.JOIN, poolId, sender, recipient, _toPoolBalanceChange(request));
+        // This function doesn't have the nonReentrant modifier: it is applied to `_joinOrExit` instead.
+
+        // Note that `recipient` is not actually payable in the context of a join - we cast it because we handle both
+        // joins and exits at once.
+        _joinOrExit(PoolBalanceChangeKind.JOIN, poolId, sender, payable(recipient), _toPoolBalanceChange(request));
     }
 
+    function exitPool(
+        bytes32 poolId,
+        address sender,
+        address payable recipient,
+        ExitPoolRequest memory request
+    ) external override {
+        // This function doesn't have the nonReentrant modifier: it is applied to `_joinOrExit` instead.
+        _joinOrExit(PoolBalanceChangeKind.EXIT, poolId, sender, recipient, _toPoolBalanceChange(request));
+    }
+
+    // This has the exact same layout as JoinPoolRequest and ExitPoolRequest, except the `maxAmountsIn` and
+    // `minAmountsOut` are called `limits`. Internally we use this struct for both since these two functions are quite
+    // similar, but expose the others to callers for clarity.
     struct PoolBalanceChange {
         IAsset[] assets;
         uint256[] limits;
@@ -188,15 +207,6 @@ abstract contract PoolAssets is
         }
     }
 
-    function exitPool(
-        bytes32 poolId,
-        address sender,
-        address payable recipient,
-        ExitPoolRequest memory request
-    ) external override {
-        _joinOrExit(PoolBalanceChangeKind.EXIT, poolId, sender, recipient, _toPoolBalanceChange(request));
-    }
-
     /**
      * @dev Converts an ExitPoolRequest into a PoolBalanceChange, with no runtime cost.
      */
@@ -211,24 +221,36 @@ abstract contract PoolAssets is
         }
     }
 
+    /**
+     * @dev Implements both `joinPool` and `exitPool`, based on `kind`.
+     */
     function _joinOrExit(
         PoolBalanceChangeKind kind,
         bytes32 poolId,
         address sender,
-        address recipient,
+        address payable recipient,
         PoolBalanceChange memory change
-    ) internal nonReentrant withRegisteredPool(poolId) authenticateFor(sender) {
+    ) private nonReentrant withRegisteredPool(poolId) authenticateFor(sender) {
+        // This function uses a large number of stack variables (poolId, sender and recipient, balances, amounts, fees,
+        // etc.), which leads to 'stack too deep' issues. It relies on private functions with seemingly arbitrary
+        // interfaces to work around this limitation.
+
         InputHelpers.ensureInputLengthMatch(change.assets.length, change.limits.length);
 
+        // We first check that the caller passed the Pool's registered tokens in the correct order, and retrieve the
+        // current balance for each.
         IERC20[] memory tokens = _translateToIERC20(change.assets);
         bytes32[] memory balances = _validateTokensAndGetBalances(poolId, tokens);
+
+        // The bulk of the work is done here: the corresponding Pool hook is called, its final balances are computed,
+        // assets are transferred, and fees are paid.
         (
             bytes32[] memory finalBalances,
-            uint256[] memory amounts,
-            uint256[] memory dueProtocolFeeAmounts
+            uint256[] memory amountsInOrOut,
+            uint256[] memory paidProtocolSwapFeeAmounts
         ) = _callPoolBalanceChange(kind, poolId, sender, recipient, change, balances);
 
-        // Update the Pool's balance - how this is done depends on the Pool specialization setting.
+        // All that remains is storing the new Pool balances.
         PoolSpecialization specialization = _getPoolSpecialization(poolId);
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _setTwoTokenPoolCashBalances(poolId, tokens[0], finalBalances[0], tokens[1], finalBalances[1]);
@@ -239,37 +261,47 @@ abstract contract PoolAssets is
             _setGeneralPoolBalances(poolId, finalBalances);
         }
 
-        // We can unsafely cast to int256 because balances are actually stored as uint112
-        bool positive = kind == PoolBalanceChangeKind.JOIN;
-        emit PoolBalanceChanged(poolId, sender, tokens, _unsafeCastToInt256(amounts, positive), dueProtocolFeeAmounts);
+        bool positive = kind == PoolBalanceChangeKind.JOIN; // Amounts in are positive, out are negative
+        emit PoolBalanceChanged(
+            poolId,
+            sender,
+            tokens,
+            // We can unsafely cast to int256 because balances are actually stored as uint112
+            _unsafeCastToInt256(amountsInOrOut, positive),
+            paidProtocolSwapFeeAmounts
+        );
     }
 
+    /**
+     * @dev Calls the corresponding Pool hook to get the amounts in/out plus protocol fee amounts, and performs the
+     * associated token transfers and fee payments, returning the Pool's final balances.
+     */
     function _callPoolBalanceChange(
         PoolBalanceChangeKind kind,
         bytes32 poolId,
         address sender,
-        address recipient,
+        address payable recipient,
         PoolBalanceChange memory change,
         bytes32[] memory balances
     )
-        internal
+        private
         returns (
             bytes32[] memory finalBalances,
-            uint256[] memory amounts,
+            uint256[] memory amountsInOrOut,
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
+        (uint256[] memory totalBalances, uint256 lastChangeBlock) = balances.totalsAndLastChangeBlock();
 
         IBasePool pool = IBasePool(_getPoolAddress(poolId));
-        (amounts, dueProtocolFeeAmounts) = kind == PoolBalanceChangeKind.JOIN
+        (amountsInOrOut, dueProtocolFeeAmounts) = kind == PoolBalanceChangeKind.JOIN
             ? pool.onJoinPool(
                 poolId,
                 sender,
                 recipient,
                 totalBalances,
-                latestBlockNumberUsed,
-                _getProtocolSwapFee(),
+                lastChangeBlock,
+                _getprotocolSwapFeePercentage(),
                 change.userData
             )
             : pool.onExitPool(
@@ -277,16 +309,18 @@ abstract contract PoolAssets is
                 sender,
                 recipient,
                 totalBalances,
-                latestBlockNumberUsed,
-                _getProtocolSwapFee(),
+                lastChangeBlock,
+                _getprotocolSwapFeePercentage(),
                 change.userData
             );
 
-        InputHelpers.ensureInputLengthMatch(balances.length, amounts.length, dueProtocolFeeAmounts.length);
+        InputHelpers.ensureInputLengthMatch(balances.length, amountsInOrOut.length, dueProtocolFeeAmounts.length);
 
+        // The Vault ignores the `recipient` in joins and the `sender` in exits: it is up to the Pool to keep track of
+        // their participation.
         finalBalances = kind == PoolBalanceChangeKind.JOIN
-            ? _receiveAssets(sender, change, balances, amounts, dueProtocolFeeAmounts)
-            : _sendAssets(payable(recipient), change, balances, amounts, dueProtocolFeeAmounts);
+            ? _processJoinPoolTransfers(sender, change, balances, amountsInOrOut, dueProtocolFeeAmounts)
+            : _processExitPoolTransfers(recipient, change, balances, amountsInOrOut, dueProtocolFeeAmounts);
     }
 
     /**
@@ -378,8 +412,6 @@ abstract contract PoolAssets is
             _twoTokenPoolCashToManaged(poolId, token, amount);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolCashToManaged(poolId, token, amount);
         } else {
             // PoolSpecialization.GENERAL
             _generalPoolCashToManaged(poolId, token, amount);
@@ -406,8 +438,6 @@ abstract contract PoolAssets is
     ) private returns (int256 cashDelta, int256 managedDelta) {
         if (specialization == PoolSpecialization.TWO_TOKEN) {
             _twoTokenPoolManagedToCash(poolId, token, amount);
-        } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
-            _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else if (specialization == PoolSpecialization.MINIMAL_SWAP_INFO) {
             _minimalSwapInfoPoolManagedToCash(poolId, token, amount);
         } else {
@@ -461,13 +491,21 @@ abstract contract PoolAssets is
         }
     }
 
-    function _receiveAssets(
+    /**
+     * @dev Transfers `amountsIn` from `sender`, checking that they are within their accepted limits, and pays
+     * accumulated protocol swap fees.
+     *
+     * Returns the Pool's final balances, which are the current balances plus `amountsIn` minus accumulated protocol
+     * swap fees.
+     */
+    function _processJoinPoolTransfers(
         address sender,
         PoolBalanceChange memory change,
         bytes32[] memory balances,
         uint256[] memory amountsIn,
         uint256[] memory dueProtocolFeeAmounts
     ) private returns (bytes32[] memory finalBalances) {
+        // We need to track how much of the received ETH was used and wrapped into WETH to return any excess.
         uint256 wrappedEth = 0;
 
         finalBalances = new bytes32[](balances.length);
@@ -475,7 +513,7 @@ abstract contract PoolAssets is
             uint256 amountIn = amountsIn[i];
             _require(amountIn <= change.limits[i], Errors.JOIN_ABOVE_MAX);
 
-            // Receive assets from the caller - possibly from Internal Balance
+            // Receive assets from the sender - possibly from Internal Balance.
             IAsset asset = change.assets[i];
             _receiveAsset(asset, amountIn, sender, change.useInternalBalance);
 
@@ -483,22 +521,27 @@ abstract contract PoolAssets is
                 wrappedEth = wrappedEth.add(amountIn);
             }
 
-            uint256 feeToPay = dueProtocolFeeAmounts[i];
+            uint256 feeAmount = dueProtocolFeeAmounts[i];
+            _payFee(_translateToIERC20(asset), feeAmount);
 
-            // Compute the new Pool balances. Note that due protocol fees might be larger than amounts in,
+            // Compute the new Pool balances. Note that the fee amount might be larger than `amountIn`,
             // resulting in an overall decrease of the Pool's balance for a token.
-            finalBalances[i] = (amountIn >= feeToPay)
-                ? balances[i].increaseCash(amountIn - feeToPay) // Don't need checked arithmetic
-                : balances[i].decreaseCash(feeToPay - amountIn); // Same as -(int256(amountIn) - int256(feeToPay))
-
-            _payFee(_translateToIERC20(asset), feeToPay);
+            finalBalances[i] = (amountIn >= feeAmount) // This lets us skip checked arithmetic
+                ? balances[i].increaseCash(amountIn - feeAmount)
+                : balances[i].decreaseCash(feeAmount - amountIn);
         }
 
         // Handle any used and remaining ETH.
         _handleRemainingEth(wrappedEth);
     }
 
-    function _sendAssets(
+    /**
+     * @dev Transfers `amountsOut` to `recipient`, checking that they are within their accepted limits, and pays Pool
+     * protocol fees.
+     *
+     * Returns the Pool's final balances, which are the current balances minus amounts out and paid fees.
+     */
+    function _processExitPoolTransfers(
         address payable recipient,
         PoolBalanceChange memory change,
         bytes32[] memory balances,
@@ -514,13 +557,11 @@ abstract contract PoolAssets is
             IAsset asset = change.assets[i];
             _sendAsset(asset, amountOut, recipient, change.useInternalBalance);
 
-            uint256 protocolSwapFee = dueProtocolFeeAmounts[i];
+            uint256 feeAmount = dueProtocolFeeAmounts[i];
+            _payFee(_translateToIERC20(asset), feeAmount);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
-            uint256 delta = amountOut.add(protocolSwapFee);
-            finalBalances[i] = balances[i].decreaseCash(delta);
-
-            _payFee(_translateToIERC20(asset), protocolSwapFee);
+            finalBalances[i] = balances[i].decreaseCash(amountOut.add(feeAmount));
         }
     }
 
@@ -540,12 +581,17 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Casts an array of uint256 to int256 without checking overflows
+     * @dev Casts an array of uint256 to int256, setting the sign of the result according to the `positive` flag,
+     * without checking whether the values fit in the signed 256 bit range.
      */
-    function _unsafeCastToInt256(uint256[] memory values, bool positive) private pure returns (int256[] memory casts) {
-        casts = new int256[](values.length);
+    function _unsafeCastToInt256(uint256[] memory values, bool positive)
+        private
+        pure
+        returns (int256[] memory signedValues)
+    {
+        signedValues = new int256[](values.length);
         for (uint256 i = 0; i < values.length; i++) {
-            casts[i] = positive ? int256(values[i]) : -int256(values[i]);
+            signedValues[i] = positive ? int256(values[i]) : -int256(values[i]);
         }
     }
 }
