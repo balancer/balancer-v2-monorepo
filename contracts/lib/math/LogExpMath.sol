@@ -29,10 +29,10 @@ import "../helpers/BalancerErrors.sol";
 library LogExpMath {
     int256 constant DECIMALS = 1e18;
     int256 constant DOUBLE_DECIMALS = DECIMALS * DECIMALS;
-    int256 constant PRECISION = 10**20;
+    int256 constant PRECISION = 1e20;
     int256 constant DOUBLE_PRECISION = PRECISION * PRECISION;
-    int256 constant PRECISION_LOG_UNDER_BOUND = DECIMALS - 10**17;
-    int256 constant PRECISION_LOG_UPPER_BOUND = DECIMALS + 10**17;
+    int256 constant PRECISION_LOG_UNDER_BOUND = DECIMALS - 1e17;
+    int256 constant PRECISION_LOG_UPPER_BOUND = DECIMALS + 1e17;
     int256 constant EXPONENT_LB = -41446531673892822312;
     int256 constant EXPONENT_UB = 130700829182905140221;
     uint256 constant MILD_EXPONENT_BOUND = 2**254 / uint256(PRECISION);

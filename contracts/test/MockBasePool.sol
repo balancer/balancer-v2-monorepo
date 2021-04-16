@@ -85,5 +85,5 @@ contract MockBasePool is BasePool {
         )
     {}
 
-    function getRate() external pure override returns (uint256) {}
+    function getRate() external pure returns (uint256) {}
 }

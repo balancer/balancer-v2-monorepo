@@ -145,7 +145,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
                 : swapRequest.amount.div(_multiplier);
     }
 
-    function getRate() external pure override returns (uint256) {
+    function getRate() external pure returns (uint256) {
         return FixedPoint.ONE;
     }
 }

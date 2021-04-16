@@ -302,7 +302,7 @@ abstract contract PoolAssets is
                 recipient,
                 totalBalances,
                 lastChangeBlock,
-                _getprotocolSwapFeePercentage(),
+                _getProtocolSwapFeePercentage(),
                 change.userData
             )
             : pool.onExitPool(
@@ -311,7 +311,7 @@ abstract contract PoolAssets is
                 recipient,
                 totalBalances,
                 lastChangeBlock,
-                _getprotocolSwapFeePercentage(),
+                _getProtocolSwapFeePercentage(),
                 change.userData
             );
 
@@ -418,7 +418,9 @@ abstract contract PoolAssets is
             _generalPoolCashToManaged(poolId, token, amount);
         }
 
-        token.safeTransfer(msg.sender, amount);
+        if (amount > 0) {
+            token.safeTransfer(msg.sender, amount);
+        }
 
         // Since 'cash' and 'managed' are stored as uint112, `amount` is guaranteed to also fit in 112 bits. It will
         // therefore always fit in a 256 bit integer.
@@ -446,7 +448,9 @@ abstract contract PoolAssets is
             _generalPoolManagedToCash(poolId, token, amount);
         }
 
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        if (amount > 0) {
+            token.safeTransferFrom(msg.sender, address(this), amount);
+        }
 
         // Since 'cash' and 'managed' are stored as uint112, `amount` is guaranteed to also fit in 112 bits. It will
         // therefore always fit in a 256 bit integer.
