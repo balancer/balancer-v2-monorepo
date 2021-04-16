@@ -20,7 +20,6 @@ import "../lib/helpers/BalancerErrors.sol";
 import "../lib/openzeppelin/IERC20.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
-import "../lib/openzeppelin/ReentrancyGuard.sol";
 
 import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";
