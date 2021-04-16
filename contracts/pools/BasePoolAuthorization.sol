@@ -17,6 +17,8 @@ pragma solidity ^0.7.0;
 import "../lib/helpers/Authentication.sol";
 import "../vault/interfaces/IAuthorizer.sol";
 
+import "./BasePool.sol";
+
 /**
  * @dev Base authorization layer implementation for Pools.
  *
@@ -43,13 +45,18 @@ abstract contract BasePoolAuthorization is Authentication {
     }
 
     function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
-        if (getOwner() != address(0)) {
-            // A non-zero owner overrides the Authorizer flow - the owner is instead authorized for all actions.
+        if ((getOwner() != address(0)) && _isOwnerOverrideableRole(roleId)) {
+            // A non-zero owner overrides the Authorizer flow for roles that can be overridden
             return msg.sender == getOwner();
         } else {
-            // Alternatively, we query the Authorizer for permission.
+            // Non-overrideable roles are always processed via the Authorizer, as are the overrideable ones if no owner
+            // is set.
             return _getAuthorizer().hasRoleIn(roleId, account, address(this));
         }
+    }
+
+    function _isOwnerOverrideableRole(bytes32 roleId) private view returns (bool) {
+        return roleId == getRole(BasePool.setSwapFeePercentage.selector);
     }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);

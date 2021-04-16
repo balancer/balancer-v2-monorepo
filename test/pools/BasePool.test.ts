@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import * as expectEvent from '../helpers/expectEvent';
 import TokenList from '../helpers/models/tokens/TokenList';
-import { MONTH } from '../../lib/helpers/time';
+import { advanceTime, DAY, MONTH } from '../../lib/helpers/time';
 import { roleId } from '../../lib/helpers/roles';
 import { deploy } from '../../lib/helpers/deploy';
 import { GeneralPool } from '../../lib/helpers/pools';
@@ -18,8 +18,6 @@ describe('BasePool', function () {
   let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
-
-  const WHERE = ZERO_ADDRESS;
 
   const MIN_SWAP_FEE_PERCENTAGE = fp(0.000001);
   const MAX_SWAP_FEE_PERCENTAGE = fp(0.1);
@@ -192,11 +190,14 @@ describe('BasePool', function () {
           pool = await deployBasePool({ swapFeePercentage: fp(0.01), owner });
         });
 
-        context('when the sender has a set fee role in the authorizer', () => {
+        beforeEach('set sender', () => {
+          sender = other;
+        });
+
+        context('when the sender has the set fee role in the authorizer', () => {
           sharedBeforeEach('grant permission', async () => {
             const role = await roleId(pool, 'setSwapFeePercentage');
-            await authorizer.connect(admin).grantRole(role, admin.address);
-            sender = admin;
+            await authorizer.connect(admin).grantRole(role, sender.address);
           });
 
           itSetsSwapFeePercentage();
@@ -245,52 +246,108 @@ describe('BasePool', function () {
     });
   });
 
-  describe('temporarily pausable', () => {
+  describe('set paused', () => {
     let pool: Contract;
     const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
 
-    sharedBeforeEach('deploy pool', async () => {
-      pool = await deployBasePool({
-        pauseWindowDuration: PAUSE_WINDOW_DURATION,
-        bufferPeriodDuration: BUFFER_PERIOD_DURATION,
-      });
-    });
+    let sender: SignerWithAddress;
 
-    context('when the sender is has the role to pause and unpause in the authorizer', () => {
-      let role: string;
-
-      sharedBeforeEach('grant permission', async () => {
-        role = await roleId(pool, 'setPaused');
-        await authorizer.connect(admin).grantRole(role, admin.address);
-      });
-
+    function itPausesAndUnpauses() {
       it('can pause', async () => {
-        await pool.connect(admin).setPaused(true);
+        await pool.connect(sender).setPaused(true);
 
         const { paused } = await pool.getPausedState();
         expect(paused).to.be.true;
       });
 
       it('can unpause', async () => {
-        await pool.connect(admin).setPaused(true);
-        await pool.connect(admin).setPaused(false);
+        await pool.connect(sender).setPaused(true);
+        await pool.connect(sender).setPaused(false);
 
         const { paused } = await pool.getPausedState();
         expect(paused).to.be.false;
       });
 
-      it('cannot pause if the role is revoked in the authorizer', async () => {
-        await authorizer.connect(admin).revokeRole(role, admin.address);
-        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
+      it('cannot unpause after the pause window', async () => {
+        await advanceTime(PAUSE_WINDOW_DURATION + DAY);
+        await expect(pool.connect(sender).setPaused(true)).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
+      });
+    }
 
-        await expect(pool.connect(admin).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    function itRevertsWithUnallowedSender() {
+      it('reverts', async () => {
+        await expect(pool.connect(sender).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.connect(sender).setPaused(false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    }
+
+    context('with no owner', () => {
+      const owner = ZERO_ADDRESS;
+
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
+        });
+      });
+
+      beforeEach('set sender', () => {
+        sender = other;
+      });
+
+      context('when the sender does not have the pause role in the authorizer', () => {
+        itRevertsWithUnallowedSender();
+      });
+
+      context('when the sender has the pause role in the authorizer', () => {
+        sharedBeforeEach('grant permission', async () => {
+          const role = await roleId(pool, 'setPaused');
+          await authorizer.connect(admin).grantRole(role, sender.address);
+        });
+
+        itPausesAndUnpauses();
       });
     });
 
-    context('when the sender does not have the role to pause in the authorizer', () => {
-      it('reverts', async () => {
-        await expect(pool.connect(other).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    context('with an owner', () => {
+      let owner: SignerWithAddress;
+
+      sharedBeforeEach('deploy pool', async () => {
+        owner = poolOwner;
+        pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        beforeEach('set sender', () => {
+          sender = owner;
+        });
+
+        itRevertsWithUnallowedSender();
+      });
+
+      context('when the sender is not the owner', () => {
+        beforeEach('set sender', () => {
+          sender = other;
+        });
+
+        context('when the sender does not have the pause role in the authorizer', () => {
+          itRevertsWithUnallowedSender();
+        });
+
+        context('when the sender has the pause role in the authorizer', () => {
+          sharedBeforeEach(async () => {
+            const role = await roleId(pool, 'setPaused');
+            await authorizer.connect(admin).grantRole(role, sender.address);
+          });
+
+          itPausesAndUnpauses();
+        });
       });
     });
   });
