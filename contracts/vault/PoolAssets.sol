@@ -31,6 +31,13 @@ import "./balances/MinimalSwapInfoPoolsBalance.sol";
 import "./balances/TwoTokenPoolsBalance.sol";
 import "./interfaces/IBasePool.sol";
 
+/**
+ * @dev Stores the Asset Managers (by Pool and token), and implements the top level Asset Manager and Pool interfaces,
+ * such as registering and deregistering tokens, joining and exiting Pools, and informational functions like `getPool`
+ * and `getPoolTokens`, delegating to specialization-specific functions as needed.
+ *
+ * `managePoolBalance` handles all Asset Manager interactions.
+ */
 abstract contract PoolAssets is
     Fees,
     ReentrancyGuard,
@@ -110,7 +117,7 @@ abstract contract PoolAssets is
     ) external override nonReentrant whenNotPaused onlyPool(poolId) {
         InputHelpers.ensureInputLengthMatch(tokens.length, assetManagers.length);
 
-        // Validates token addresses and assigns asset managers
+        // Validates token addresses and assigns Asset Managers
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             _require(token != IERC20(0), Errors.INVALID_TOKEN);
@@ -537,10 +544,11 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Transfers `amountsOut` to `recipient`, checking that they are within their accepted limits, and pays Pool
-     * protocol fees.
+     * @dev Transfers `amountsOut` to `recipient`, checking that they are within their accepted limits, and pays
+     * accumulated protocol swap fees from the Pool.
      *
-     * Returns the Pool's final balances, which are the current balances minus amounts out and paid fees.
+     * Returns the Pool's final balances, which are the current `balances` minus `amountsOut` and fees paid
+     * (`dueProtocolFeeAmounts`).
      */
     function _processExitPoolTransfers(
         address payable recipient,
