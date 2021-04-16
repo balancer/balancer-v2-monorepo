@@ -26,14 +26,16 @@ import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";
 import "./interfaces/IVault.sol";
 
+/**
+ * @dev To reduce the bytecode size of the Vault, most of the protocol fee logic is not here, but in the
+ * ProtocolFeesCollector contract.
+ */
 abstract contract Fees is IVault {
     using SafeERC20 for IERC20;
 
     ProtocolFeesCollector private immutable _protocolFeesCollector;
 
     constructor() {
-        // Most of the protocol fee logic is not here but in the ProtocolFeesCollector contract. The reason for this is
-        // to reduce the bytecode size of the Vault.
         _protocolFeesCollector = new ProtocolFeesCollector(IVault(this));
     }
 

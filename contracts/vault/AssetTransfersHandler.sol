@@ -140,8 +140,8 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * caller.
      *
      * Any ETH sent to the Vault outside of the WETH unwrapping mechanism would be forever locked inside the Vault, so
-     * we prevent that from happening. Other mechanisms used to send ETH to the Vault (such as selfdestruct, or have it
-     * be the recipient of the block mining reward) will result in locked funds, but are not otherwise a security or
+     * we prevent that from happening. Other mechanisms used to send ETH to the Vault (such as selfdestruct, or being
+     * the recipient of a block mining reward) will result in locked funds, but are not otherwise a security or
      * soundness issue. This check only exists as an attempt to prevent user error.
      */
     receive() external payable {
@@ -149,8 +149,8 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     }
 
     // This contract uses virtual internal functions instead of inheriting from the modules that implement them (in
-    // this case UserBalance) in order to decouple it from the rest of the system and enable standalone
-    // testing by implementing these with mocks.
+    // this case UserBalance) in order to decouple it from the rest of the system and enable standalone testing by
+    // implementing these with mocks.
 
     function _increaseInternalBalance(
         address account,

@@ -32,7 +32,7 @@ abstract contract GeneralPoolsBalance {
     // intensive to read all token addresses just to then do a lookup on the balance mapping.
     //
     // Instead, we use our customized EnumerableMap, which lets us read the N balances in N+1 storage accesses (one for
-    // each token in the Pool), access the index of any token in a single read (required for the IGeneralPool call),
+    // each token in the Pool), access the index of any 'token in' a single read (required for the IGeneralPool call),
     // and update an entry's value given its index.
 
     // Map of token -> balance pairs for each Pool with this specialization. Many functions rely on storage pointers to

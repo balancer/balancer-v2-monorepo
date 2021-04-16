@@ -214,8 +214,8 @@ library BalanceAllocation {
 
     // Alternative mode for Pools with the Two Token specialization setting
 
-    // Instead of storing cash and external for each token in a single storage slot, Two Token Pools store the cash for
-    // both tokens in the same slot, and the managed for both in another one. This reduces the gas cost for swaps,
+    // Instead of storing cash and external for each 'token in' a single storage slot, Two Token Pools store the cash
+    // for both tokens in the same slot, and the managed for both in another one. This reduces the gas cost for swaps,
     // because the only slot that needs to be updated is the one with the cash. However, it also means that managing
     // balances is more cumbersome, as both tokens need to be read/written at the same time.
     //
