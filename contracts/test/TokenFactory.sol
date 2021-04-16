@@ -15,9 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/utils/Create2.sol";
-
 import "../lib/openzeppelin/Address.sol";
+import "../lib/openzeppelin/Create2.sol";
 
 import "./TestToken.sol";
 

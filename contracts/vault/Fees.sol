@@ -15,10 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/BalancerErrors.sol";
+import "../lib/openzeppelin/IERC20.sol";
+import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
 
@@ -26,14 +26,16 @@ import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";
 import "./interfaces/IVault.sol";
 
+/**
+ * @dev To reduce the bytecode size of the Vault, most of the protocol fee logic is not here, but in the
+ * ProtocolFeesCollector contract.
+ */
 abstract contract Fees is IVault {
     using SafeERC20 for IERC20;
 
     ProtocolFeesCollector private immutable _protocolFeesCollector;
 
     constructor() {
-        // Most of the protocol fee logic is not here but in the ProtocolFeesCollector contract. The reason for this is
-        // to reduce the bytecode size of the Vault.
         _protocolFeesCollector = new ProtocolFeesCollector(IVault(this));
     }
 

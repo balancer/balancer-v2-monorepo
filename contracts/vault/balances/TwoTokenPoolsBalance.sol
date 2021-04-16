@@ -15,9 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../../lib/helpers/BalancerErrors.sol";
+import "../../lib/openzeppelin/IERC20.sol";
 
 import "./BalanceAllocation.sol";
 import "../PoolRegistry.sol";
@@ -25,7 +24,7 @@ import "../PoolRegistry.sol";
 abstract contract TwoTokenPoolsBalance is PoolRegistry {
     using BalanceAllocation for bytes32;
 
-    // Data for Pools with the Two Tokens specialization setting
+    // Data for Pools with the Two Token specialization setting
     //
     // These are similar to the Minimal Swap Info Pool case (because the Pool only has two tokens, and therefore there
     // are only two balances to read), but there's a key difference in how data is stored. Keeping a set makes little
@@ -44,7 +43,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
     // We could just keep a mapping from Pool ID to TwoTokenSharedBalances, but there's an issue: we wouldn't know to
     // which tokens those balances correspond. This would mean having to also check which are registered with the Pool.
     //
-    // What we do instead to save those storage reads is keep a nested mapping from token pair hash to the balances
+    // What we do instead to save those storage reads is keep a nested mapping from the token pair hash to the balances
     // struct. The Pool only has two tokens, so only a single entry of this mapping is set (the one that corresponds to
     // that pair's hash).
     //

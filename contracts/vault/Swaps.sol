@@ -15,11 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
+import "../lib/openzeppelin/IERC20.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeCast.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
@@ -32,6 +31,18 @@ import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
 import "./balances/BalanceAllocation.sol";
 
+/**
+ * Implements the Vault's high-level swap functionality.
+ *
+ * Users can swap tokens with Pools by calling the `swap` and `batchSwap` functions. They need not trust the Pool
+ * contracts to do this: all security checks are made by the Vault.
+ *
+ * The `swap` function executes a single swap, while `batchSwap` can perform multiple swaps in sequence.
+ * In each individual swap, tokens of one kind are sent from the sender to the Pool (this is the 'token in'),
+ * and tokens of another kind are sent from the Pool to the recipient in exchange (this is the 'token out').
+ * More complex swaps, such as one 'token in' to multiple tokens out can be achieved by batching together
+ * individual swaps.
+ */
 abstract contract Swaps is ReentrancyGuard, PoolAssets {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -135,7 +146,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         _handleRemainingEth(wrappedEth);
     }
 
-    // For `_swapWithPools` to handle both given in and given out swaps, it internally tracks the 'given' amount
+    // For `_swapWithPools` to handle both 'given in' and 'given out' swaps, it internally tracks the 'given' amount
     // (supplied by the caller), and the 'calculated' one (returned by the Pool in response to the swap request).
 
     /**
@@ -163,7 +174,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     }
 
     /**
-     * @dev Returns an ordered pair (amountIn, amountOut) given the amounts given and calculated and the swap kind.
+     * @dev Returns an ordered pair (amountIn, amountOut) given the 'given' and 'calculated' amounts, and the swap kind.
      */
     function _getAmounts(
         SwapKind kind,
@@ -248,7 +259,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
 
     /**
      * @dev Performs `swap`, calling the Pool's contract hook and updating the Pool balance.
-     * Returns the amount of tokens going into/out of the Vault as a result of this swap, depending on the swap kind.
+     * Returns the amount of tokens going into or out of the Vault as a result of this swap, depending on the swap kind.
      */
     function _swapWithPool(IPoolSwapStructs.SwapRequest memory request)
         private
@@ -288,7 +299,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             TwoTokenPoolBalances storage poolBalances
         ) = _getTwoTokenPoolSharedBalances(request.poolId, request.tokenIn, request.tokenOut);
 
-        // We have the two Pool balances, but we don't know which one is the token in and which one is the token out.
+        // We have the two Pool balances, but we don't know which one is 'token in' or 'token out'.
         bytes32 tokenInBalance;
         bytes32 tokenOutBalance;
 
@@ -303,7 +314,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             tokenInBalance = tokenBBalance;
         }
 
-        // Perform the swap request and compute the new balances for token in and token out after the swap
+        // Perform the swap request and compute the new balances for 'token in' and 'token out' after the swap
         (tokenInBalance, tokenOutBalance, amountCalculated) = _callMinimalSwapInfoPoolOnSwapHook(
             request,
             pool,
@@ -324,7 +335,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         bytes32 tokenInBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenIn);
         bytes32 tokenOutBalance = _getMinimalSwapInfoPoolBalance(request.poolId, request.tokenOut);
 
-        // Perform the swap request and compute the new balances for token in and token out after the swap
+        // Perform the swap request and compute the new balances for 'token in' and 'token out' after the swap
         (tokenInBalance, tokenOutBalance, amountCalculated) = _callMinimalSwapInfoPoolOnSwapHook(
             request,
             pool,
@@ -337,8 +348,8 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
     }
 
     /**
-     * @dev Calls the onSwap hook for a Pool that implements IMinimalSwapInfoPool, which are both minimal swap info
-     * pools and two token pools.
+     * @dev Calls the onSwap hook for a Pool that implements IMinimalSwapInfoPool: both Minimal Swap Info and Two Token
+     * Pools do this.
      */
     function _callMinimalSwapInfoPoolOnSwapHook(
         IPoolSwapStructs.SwapRequest memory request,
@@ -357,7 +368,7 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
         uint256 tokenOutTotal = tokenOutBalance.total();
         request.lastChangeBlock = Math.max(tokenInBalance.lastChangeBlock(), tokenOutBalance.lastChangeBlock());
 
-        // Perform the swap request callback and compute the new balances for token in and token out after the swap
+        // Perform the swap request callback, and compute the new balances for 'token in' and 'token out' after the swap
         amountCalculated = pool.onSwap(request, tokenInTotal, tokenOutTotal);
         (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
         newTokenInBalance = tokenInBalance.increaseCash(amountIn);
@@ -407,14 +418,14 @@ abstract contract Swaps is ReentrancyGuard, PoolAssets {
             }
         }
 
-        // Perform the swap request callback and compute the new balances for token in and token out after the swap
+        // Perform the swap request callback and compute the new balances for 'token in' and 'token out' after the swap
         amountCalculated = pool.onSwap(request, currentBalances, indexIn, indexOut);
         (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
         tokenInBalance = tokenInBalance.increaseCash(amountIn);
         tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
 
         // Because no tokens were registered or deregistered between now and when we retrieved the indexes for
-        // token in and token out, we can use `unchecked_setAt`, saving storage reads.
+        // 'token in' and 'token out', we can use `unchecked_setAt`, saving storage reads.
         poolBalances.unchecked_setAt(indexIn, tokenInBalance);
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
     }

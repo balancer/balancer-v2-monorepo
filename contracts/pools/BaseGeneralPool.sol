@@ -66,6 +66,20 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
                 : _swapGivenOut(swapRequest, balances, indexIn, indexOut, scalingFactors);
     }
 
+    /*
+     * @dev Called when a swap with the Pool occurs, where the amount of tokens entering the Pool is known.
+     *
+     * Returns the amount of tokens that will be taken from the Pool in return.
+     *
+     * All amounts inside `swapRequest`, `balanceTokenIn` and `balanceTokenOut` are upscaled. The swap fee has already
+     * been deducted from `swapRequest.amount`.
+     *
+     * Delegate processing to _onSwapGivenIn, using `indexIn` and `indexOut` to indicate which tokens are involved
+     * in the swap.
+     *
+     * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
+     * Vault.
+     */
     function _swapGivenIn(
         SwapRequest memory swapRequest,
         uint256[] memory balances,
@@ -85,6 +99,19 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         return _downscaleDown(amountOut, scalingFactors[indexOut]);
     }
 
+    /*
+     * @dev Called when a swap with the Pool occurs, where the amount of tokens exiting the Pool is known.
+     *
+     * Returns the amount of tokens that will be granted to the Pool in return.
+     *
+     * All amounts inside `swapRequest`, `balanceTokenIn` and `balanceTokenOut` are upscaled.
+     *
+     * Delegate processing to _onSwapGivenOut, using `indexIn` and `indexOut` to indicate which tokens are involved
+     * in the swap.
+     *
+     * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
+     * and returning it to the Vault.
+     */
     function _swapGivenOut(
         SwapRequest memory swapRequest,
         uint256[] memory balances,

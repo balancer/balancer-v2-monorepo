@@ -15,10 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/math/Math.sol";
+import "../lib/openzeppelin/IERC20.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeCast.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
@@ -26,6 +25,17 @@ import "../lib/openzeppelin/SafeERC20.sol";
 import "./AssetTransfersHandler.sol";
 import "./VaultAuthorization.sol";
 
+/**
+ * Implement User Balance interactions, which combine Internal Balance and using the Vault's ERC20 allowance.
+ *
+ * Users can deposit tokens into the Vault, where they are allocated to their Internal Balance, and later
+ * transferred or withdrawn. It can also be used as a source of tokens when joining Pools, as a destination
+ * when exiting them, and as either when performing swaps. This usage of Internal Balance results in greatly reduced
+ * gas costs when compared to relying on plain ERC20 transfers, leading to large savings for frequent users.
+ *
+ * Internal Balance management features batching, which means a single contract call can be used to perform multiple
+ * operations of different kinds, with different senders and recipients, at once.
+ */
 abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAuthorization {
     using Math for uint256;
     using SafeCast for uint256;
@@ -73,8 +83,8 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
             } else {
                 // All other operations are blocked if the contract is paused.
 
-                // We cache the result of the pause check and skip it for other operations in this same transaction (if
-                // any).
+                // We cache the result of the pause check and skip it for other operations in this same transaction
+                // (if any).
                 if (!checkedNotPaused) {
                     _ensureNotPaused();
                     checkedNotPaused = true;
@@ -122,7 +132,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
         address payable recipient,
         uint256 amount
     ) private {
-        // A partial decrease of Internal Balance is disallowed: `sender` must have `amount` in full.
+        // A partial decrease of Internal Balance is disallowed: `sender` must have the full `amount`.
         _decreaseInternalBalance(sender, _translateToIERC20(asset), amount, false);
         _sendAsset(asset, amount, recipient, false);
     }
@@ -133,7 +143,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
         address recipient,
         uint256 amount
     ) private {
-        // A partial decrease of Internal Balance is disallowed: `sender` must have `amount` in full.
+        // A partial decrease of Internal Balance is disallowed: `sender` must have the full `amount`.
         _decreaseInternalBalance(sender, token, amount, false);
         _increaseInternalBalance(recipient, token, amount);
     }
@@ -187,7 +197,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     /**
      * @dev Sets `account`'s Internal Balance for `token` to `newBalance`.
      *
-     * Emits an `InternalBalanceChanged` event. This event includes `delta`, which is by how much the balance increased
+     * Emits an `InternalBalanceChanged` event. This event includes `delta`, which is the amount the balance increased
      * (if positive) or decreased (if negative). To avoid reading the current balance in order to compute the delta,
      * this function relies on the caller providing it directly.
      */
@@ -209,7 +219,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
     }
 
     /**
-     * @dev Destructures a user balance operation, validating that the contract caller is allowed to perform it.
+     * @dev Destructures a User Balance operation, validating that the contract caller is allowed to perform it.
      */
     function _validateUserBalanceOp(UserBalanceOp memory op, bool checkedCallerIsRelayer)
         private
