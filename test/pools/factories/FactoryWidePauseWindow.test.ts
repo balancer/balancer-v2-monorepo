@@ -12,16 +12,18 @@ describe('FactoryWidePauseWindow', function () {
   const BUFFER_PERIOD_DURATION = DAY * 30;
 
   sharedBeforeEach(async () => {
-    factory = await deploy('MockFactoryWidePauseWindow', { args: [] });
+    factory = await deploy('MockFactoryWidePauseWindow');
     factoryDeployTime = await currentTimestamp();
   });
 
   context('before the pause window end time', () => {
-    itReturnsANonZeroWindow();
+    context('at the beginning of the pause window', () => {
+      itReturnsANonZeroWindow();
+    });
 
     context('after some time has passed', () => {
-      sharedBeforeEach(async () => {
-        await advanceTime(DAY * 50);
+      sharedBeforeEach('advance some time', async () => {
+        await advanceTime(PAUSE_WINDOW_DURATION / 3);
       });
 
       itReturnsANonZeroWindow();
@@ -29,7 +31,7 @@ describe('FactoryWidePauseWindow', function () {
   });
 
   context('at the pause window end time', () => {
-    sharedBeforeEach(async () => {
+    sharedBeforeEach('move to pause window end time', async () => {
       await advanceTime(PAUSE_WINDOW_DURATION);
     });
 
@@ -37,7 +39,7 @@ describe('FactoryWidePauseWindow', function () {
   });
 
   context('after the pause window end time', () => {
-    sharedBeforeEach(async () => {
+    sharedBeforeEach('advance time', async () => {
       await advanceTime(PAUSE_WINDOW_DURATION * 2);
     });
 
@@ -62,12 +64,12 @@ describe('FactoryWidePauseWindow', function () {
   function itReturnsAZeroWindow() {
     it('returns a zero pause window duration', async () => {
       const { pauseWindowDuration } = await factory.getCurrentPauseConfiguration();
-      expect(pauseWindowDuration).to.equal(0);
+      expect(pauseWindowDuration).to.be.zero;
     });
 
     it('returns a zero buffer period duration', async () => {
       const { bufferPeriodDuration } = await factory.getCurrentPauseConfiguration();
-      expect(bufferPeriodDuration).to.equal(0);
+      expect(bufferPeriodDuration).to.be.zero;
     });
   }
 });
