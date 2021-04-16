@@ -435,6 +435,6 @@ contract StablePool is BaseGeneralPool, StableMath {
      */
     function getRate() public view override returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        return StableMath._calculateInvariant(_amplificationParameter, balances).div(totalSupply());
+        return StableMath._calculateInvariant(_amplificationParameter, balances).divDown(totalSupply());
     }
 }
