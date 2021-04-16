@@ -27,7 +27,7 @@ import "./AssetTransfersHandler.sol";
 import "./VaultAuthorization.sol";
 
 /**
- * Implement User Balance interactions (also called Internal Balance)
+ * Implement User Balance interactions, which combine Internal Balance and using the Vault's ERC20 allowance.
  *
  * Users can deposit tokens into the Vault, where they are allocated to their Internal Balance, and later
  * transferred or withdrawn. It can also be used as a source of tokens when joining Pools, as a destination
