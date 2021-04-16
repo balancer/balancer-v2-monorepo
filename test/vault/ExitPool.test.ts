@@ -467,7 +467,7 @@ describe('Vault - exit pool', () => {
 
           it('calls the pool with the exit data', async () => {
             const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
-            const { blockNumber: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
+            const { lastChangeBlock: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
 
             const receipt = await (
               await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature })
@@ -479,18 +479,18 @@ describe('Vault - exit pool', () => {
               recipient: recipient.address,
               currentBalances: previousPoolBalances,
               protocolSwapFeePercentage: await feesCollector.getSwapFeePercentage(),
-              latestBlockNumberUsed: previousBlockNumber,
+              lastChangeBlock: previousBlockNumber,
               userData: encodeExit(exitAmounts, dueProtocolFeeAmounts),
             });
           });
 
-          it('updates the latest block number used for all tokens', async () => {
+          it('updates the last change block used for all tokens', async () => {
             const currentBlockNumber = await lastBlockNumber();
 
             await exitPool({ dueProtocolFeeAmounts, fromRelayer, toInternalBalance, signature });
 
             await tokens.asyncEach(async (token: Token) => {
-              const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
+              const { lastChangeBlock: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
               expect(newBlockNumber).to.equal(currentBlockNumber + 1);
             });
           });

@@ -482,7 +482,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "latestBlockNumberUsed",
+        "name": "lastChangeBlock",
         "type": "uint256"
       },
       {
@@ -536,7 +536,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "latestBlockNumberUsed",
+        "name": "lastChangeBlock",
         "type": "uint256"
       },
       {
@@ -597,7 +597,7 @@
           },
           {
             "internalType": "uint256",
-            "name": "latestBlockNumberUsed",
+            "name": "lastChangeBlock",
             "type": "uint256"
           },
           {
@@ -709,7 +709,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "latestBlockNumberUsed",
+        "name": "lastChangeBlock",
         "type": "uint256"
       },
       {
@@ -763,7 +763,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "latestBlockNumberUsed",
+        "name": "lastChangeBlock",
         "type": "uint256"
       },
       {

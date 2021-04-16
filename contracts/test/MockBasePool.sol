@@ -54,7 +54,7 @@ contract MockBasePool is BasePool {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     )
@@ -72,7 +72,7 @@ contract MockBasePool is BasePool {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     )

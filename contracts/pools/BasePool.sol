@@ -198,7 +198,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
@@ -225,7 +225,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 sender,
                 recipient,
                 currentBalances,
-                latestBlockNumberUsed,
+                lastChangeBlock,
                 protocolSwapFeePercentage,
                 userData
             );
@@ -248,7 +248,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
@@ -260,7 +260,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             sender,
             recipient,
             currentBalances,
-            latestBlockNumberUsed,
+            lastChangeBlock,
             protocolSwapFeePercentage,
             userData
         );
@@ -293,7 +293,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
@@ -303,7 +303,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 sender,
                 recipient,
                 currentBalances,
-                latestBlockNumberUsed,
+                lastChangeBlock,
                 protocolSwapFeePercentage,
                 userData,
                 _onJoinPool,
@@ -326,7 +326,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
@@ -336,7 +336,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 sender,
                 recipient,
                 currentBalances,
-                latestBlockNumberUsed,
+                lastChangeBlock,
                 protocolSwapFeePercentage,
                 userData,
                 _onExitPool,
@@ -389,7 +389,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     )
@@ -423,7 +423,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     )
@@ -576,7 +576,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData,
         function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
@@ -660,7 +660,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 sender,
                 recipient,
                 currentBalances,
-                latestBlockNumberUsed,
+                lastChangeBlock,
                 protocolSwapFeePercentage,
                 userData
             );

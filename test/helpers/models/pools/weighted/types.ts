@@ -36,14 +36,14 @@ export type SwapWeightedPool = {
   amount: BigNumberish;
   recipient?: Account;
   from?: SignerWithAddress;
-  latestBlockNumberUsed?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
   data?: string;
 };
 
 export type JoinExitWeightedPool = {
   recipient?: Account;
   currentBalances?: BigNumberish[];
-  latestBlockNumberUsed?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
   protocolFeePercentage?: BigNumberish;
   data?: string;
   from?: SignerWithAddress;

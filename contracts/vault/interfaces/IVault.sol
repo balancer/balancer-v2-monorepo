@@ -275,7 +275,35 @@ interface IVault is ISignaturesValidator {
     event TokensDeregistered(bytes32 poolId, IERC20[] tokens);
 
     /**
-     * @dev Returns a Pool's registered tokens, and the total balance for each.
+     * @dev Returns detailed information for a Pool's registered token.
+     *
+     * `cash` is the number of tokens the Vault currently holds for the Pool. `managed` is the number of tokens
+     * withdrawn and held outside the Vault by the Pool's token Asset Manager. The Pool's total balance for `token`
+     * equals the sum of `cash` and `managed`.
+     *
+     * Internally, `cash` and `managed` are stored using 112 bits. No action can ever cause a Pool's token `cash`,
+     * `managed` or `total` balance to be larger than 2^112 - 1.
+     *
+     * `lastChangeBlock` is the number of the block in which `token`'s total balance was last modified (via either a
+     * join, exit, swap, or Asset Manager update). This value is useful to avoid so-called 'sandwich attacks', for
+     * example when developing price oracles. A change of zero (e.g. caused by a swap with amount zero) is considered a
+     * change for this purpose, and will update `lastChangeBlock`.
+     *
+     * `assetManager` is the Pool's token Asset Manager.
+     */
+    function getPoolTokenInfo(bytes32 poolId, IERC20 token)
+        external
+        view
+        returns (
+            uint256 cash,
+            uint256 managed,
+            uint256 lastChangeBlock,
+            address assetManager
+        );
+
+    /**
+     * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when *any* of
+     * `balances` changed.
      *
      * The order of the `tokens` array is the same order that will be used in `joinPool`, `exitPool`, as well as in all
      * Pool hooks (where applicable). Calls to `registerTokens` and `deregisterTokens` may change this order.
@@ -293,33 +321,7 @@ interface IVault is ISignaturesValidator {
         returns (
             IERC20[] memory tokens,
             uint256[] memory balances,
-            uint256 maxBlockNumber
-        );
-
-    /**
-     * @dev Returns detailed information for a Pool's registered token.
-     *
-     * `cash` is the number of tokens the Vault currently holds for the Pool. `managed` is the number of tokens
-     * withdrawn and held outside the Vault by the Pool's token Asset Manager. The Pool's total balance for `token`
-     * equals the sum of `cash` and `managed`.
-     *
-     * Internally, `cash` and `managed` are stored using 112 bits. No action can ever cause a Pool's token `cash`,
-     * `managed` or `total` balance to be larger than 2^112 - 1.
-     *
-     * `blockNumber` is the number of the block in which `token`'s balance was last modified (via either a join, exit,
-     * swap, or Asset Manager interaction). This value is useful to avoid so-called 'sandwich attacks', for example
-     * when developing price oracles.
-     *
-     * `assetManager` is the Pool's token Asset Manager.
-     */
-    function getPoolTokenInfo(bytes32 poolId, IERC20 token)
-        external
-        view
-        returns (
-            uint256 cash,
-            uint256 managed,
-            uint256 blockNumber,
-            address assetManager
+            uint256 lastChangeBlock
         );
 
     /**

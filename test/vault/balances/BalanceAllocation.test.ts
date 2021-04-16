@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 
 import { deploy } from '../../../lib/helpers/deploy';
 import { BigNumberish, bn } from '../../../lib/helpers/numbers';
 import { MAX_UINT112, MAX_UINT32 } from '../../../lib/helpers/constants';
+import { lastBlockNumber } from '../../../lib/helpers/time';
 
 describe('Vault - balance allocation', () => {
   let library: Contract;
@@ -14,17 +14,17 @@ describe('Vault - balance allocation', () => {
     library = await deploy('BalanceAllocationMock');
   });
 
-  describe('cash, managed & block number', () => {
-    async function testBalanceAllocation(cash: BigNumberish, managed: BigNumberish, blockNumber: BigNumberish) {
+  describe('cash, managed & last change block', () => {
+    async function testBalanceAllocation(cash: BigNumberish, managed: BigNumberish, lastChangeBlock: BigNumberish) {
       cash = bn(cash);
       managed = bn(managed);
-      blockNumber = bn(blockNumber);
+      lastChangeBlock = bn(lastChangeBlock);
 
-      const balance = await library.toBalance(cash, managed, blockNumber);
+      const balance = await library.toBalance(cash, managed, lastChangeBlock);
 
       expect(await library.cash(balance)).to.equal(cash);
       expect(await library.managed(balance)).to.equal(managed);
-      expect(await library.blockNumber(balance)).to.equal(blockNumber);
+      expect(await library.lastChangeBlock(balance)).to.equal(lastChangeBlock);
       expect(await library.total(balance)).to.equal(cash.add(managed));
     }
 
@@ -86,10 +86,10 @@ describe('Vault - balance allocation', () => {
         expect(await library.managed(newBalance)).to.equal(managed); // managed remains
         expect(await library.total(newBalance)).to.equal(cash.add(amount).add(managed)); // total increases
 
-        // Updates the block number
-        const currentBlockNumber = await ethers.provider.getBlockNumber();
-        expect(await library.blockNumber(newBalance)).to.equal(currentBlockNumber);
-        expect(await library.blockNumber(balance)).to.equal(BLOCK_NUMBER);
+        // Updates the last change block
+        const currentLastChangeBlock = await lastBlockNumber();
+        expect(await library.lastChangeBlock(newBalance)).to.equal(currentLastChangeBlock);
+        expect(await library.lastChangeBlock(balance)).to.equal(BLOCK_NUMBER);
       }
 
       it('increases cash by zero', async () => {
@@ -159,10 +159,10 @@ describe('Vault - balance allocation', () => {
         expect(await library.managed(newBalance)).to.equal(managed); // external remains
         expect(await library.total(newBalance)).to.equal(cash.sub(amount).add(managed)); // total decreases
 
-        // Updates the block number
-        const currentBlockNumber = await ethers.provider.getBlockNumber();
-        expect(await library.blockNumber(newBalance)).to.equal(currentBlockNumber);
-        expect(await library.blockNumber(balance)).to.equal(BLOCK_NUMBER);
+        // Updates the last change block
+        const currentLastChangeBlock = await lastBlockNumber();
+        expect(await library.lastChangeBlock(newBalance)).to.equal(currentLastChangeBlock);
+        expect(await library.lastChangeBlock(balance)).to.equal(BLOCK_NUMBER);
       }
 
       it('decreases cash by zero', async () => {
@@ -227,9 +227,9 @@ describe('Vault - balance allocation', () => {
         expect(await library.managed(newBalance)).to.equal(managed.add(newManaged)); // managed increases
         expect(await library.total(newBalance)).to.equal(cash.add(managed)); // total remains
 
-        // Does not update the block number
-        expect(await library.blockNumber(balance)).to.equal(BLOCK_NUMBER);
-        expect(await library.blockNumber(newBalance)).to.equal(BLOCK_NUMBER);
+        // Does not update the last change block
+        expect(await library.lastChangeBlock(balance)).to.equal(BLOCK_NUMBER);
+        expect(await library.lastChangeBlock(newBalance)).to.equal(BLOCK_NUMBER);
       }
 
       it('manages zero', async () => {
@@ -277,9 +277,9 @@ describe('Vault - balance allocation', () => {
         expect(await library.managed(newBalance)).to.equal(managed.sub(newCash)); // external decreases
         expect(await library.total(newBalance)).to.equal(cash.add(managed)); // total remains
 
-        // Does not update the block number
-        expect(await library.blockNumber(balance)).to.equal(BLOCK_NUMBER);
-        expect(await library.blockNumber(newBalance)).to.equal(BLOCK_NUMBER);
+        // Does not update the last change block
+        expect(await library.lastChangeBlock(balance)).to.equal(BLOCK_NUMBER);
+        expect(await library.lastChangeBlock(newBalance)).to.equal(BLOCK_NUMBER);
       }
 
       it('cashes out zero', async () => {
@@ -326,10 +326,10 @@ describe('Vault - balance allocation', () => {
         expect(await library.managed(newBalance)).to.equal(newManaged);
         expect(await library.total(newBalance)).to.equal(cash.add(newManaged));
 
-        // Updates the block number
-        const currentBlockNumber = await ethers.provider.getBlockNumber();
-        expect(await library.blockNumber(balance)).to.equal(BLOCK_NUMBER);
-        expect(await library.blockNumber(newBalance)).to.equal(currentBlockNumber);
+        // Updates the last change block
+        const currentLastChangeBlock = await lastBlockNumber();
+        expect(await library.lastChangeBlock(balance)).to.equal(BLOCK_NUMBER);
+        expect(await library.lastChangeBlock(newBalance)).to.equal(currentLastChangeBlock);
       }
 
       it('sets managed to zero', async () => {
@@ -377,10 +377,11 @@ describe('Vault - balance allocation', () => {
       cashA: BigNumberish,
       managedA: BigNumberish,
       cashB: BigNumberish,
-      managedB: BigNumberish
+      managedB: BigNumberish,
+      lastChangeBlock?: BigNumberish
     ) {
-      const balanceA = await library.toBalance(bn(cashA), bn(managedA), BLOCK_NUMBER);
-      const balanceB = await library.toBalance(bn(cashB), bn(managedB), BLOCK_NUMBER);
+      const balanceA = await library.toBalance(bn(cashA), bn(managedA), lastChangeBlock ?? BLOCK_NUMBER);
+      const balanceB = await library.toBalance(bn(cashB), bn(managedB), lastChangeBlock ?? BLOCK_NUMBER);
 
       const sharedCash = await library.toSharedCash(balanceA, balanceB);
       const sharedManaged = await library.toSharedManaged(balanceA, balanceB);
@@ -391,9 +392,9 @@ describe('Vault - balance allocation', () => {
       expect(unpackedBalanceA).to.equal(balanceA);
       expect(unpackedBalanceB).to.equal(balanceB);
 
-      // Only shared cash holds the block number
-      expect(await library.blockNumber(sharedCash)).to.equal(BLOCK_NUMBER);
-      expect(await library.blockNumber(sharedManaged)).to.equal(0);
+      // Only shared cash holds the last change block
+      expect(await library.lastChangeBlock(sharedCash)).to.equal(lastChangeBlock ?? BLOCK_NUMBER);
+      expect(await library.lastChangeBlock(sharedManaged)).to.equal(0);
     }
 
     it('packs and unpacks zero balances', async () => {
@@ -436,6 +437,34 @@ describe('Vault - balance allocation', () => {
       await testPackUnpack(amount, amount, 0, 0);
       await testPackUnpack(amount, amount, 0, amount);
       await testPackUnpack(amount, amount, amount, 0);
+    });
+
+    context('if A has a more recent last change block', () => {
+      it('stores the most recent last change block', async () => {
+        const balanceA = await library.toBalance(0, 0, 5);
+        const balanceB = await library.toBalance(0, 0, 3);
+
+        const sharedCash = await library.toSharedCash(balanceA, balanceB);
+        const sharedManaged = await library.toSharedManaged(balanceA, balanceB);
+
+        const unpackedBalanceA = await library.fromSharedToBalanceA(sharedCash, sharedManaged);
+
+        expect(await library.lastChangeBlock(unpackedBalanceA)).to.equal(5);
+      });
+    });
+
+    context('if B has a more recent last change block', () => {
+      it('stores the most recent last change block', async () => {
+        const balanceA = await library.toBalance(0, 0, 5);
+        const balanceB = await library.toBalance(0, 0, 7);
+
+        const sharedCash = await library.toSharedCash(balanceA, balanceB);
+        const sharedManaged = await library.toSharedManaged(balanceA, balanceB);
+
+        const unpackedBalanceA = await library.fromSharedToBalanceA(sharedCash, sharedManaged);
+
+        expect(await library.lastChangeBlock(unpackedBalanceA)).to.equal(7);
+      });
     });
   });
 

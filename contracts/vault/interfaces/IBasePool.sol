@@ -36,8 +36,8 @@ interface IBasePool is IPoolSwapStructs {
      * designated to receive any benefits (typically pool shares). `currentBalances` contains the total balances
      * for each token the Pool registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
-     * `latestBlockNumberUsed` is the last block number in which any of the Pool's registered tokens last changed its
-     * balance. This can be used to implement price oracles that are resilient to 'sandwich' attacks.
+     * `lastChangeBlock` is the last block in which *any* of the Pool's registered tokens last changed thier total
+     * balance.
      *
      * `userData` contains any pool-specific instructions needed to perform the calculations, such as the type of
      * join (e.g., proportional given an amount of pool shares, single-asset, multi-asset, etc.)
@@ -50,7 +50,7 @@ interface IBasePool is IPoolSwapStructs {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts);
@@ -69,8 +69,8 @@ interface IBasePool is IPoolSwapStructs {
      * to which the Vault will send the proceeds. `currentBalances` contains the total token balances for each token
      * the Pool registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
-     * `latestBlockNumberUsed` is the last block number in which any of the Pool's registered tokens last changed its
-     * balance. This can be used to implement price oracles that are resilient to 'sandwich' attacks.
+     * `lastChangeBlock` is the last block in which *any* of the Pool's registered tokens last changed their total
+     * balance.
      *
      * `userData` contains any pool-specific instructions needed to perform the calculations, such as the type of
      * exit (e.g., proportional given an amount of pool shares, single-asset, multi-asset, etc.)
@@ -83,7 +83,7 @@ interface IBasePool is IPoolSwapStructs {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);

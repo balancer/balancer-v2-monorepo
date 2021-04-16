@@ -125,7 +125,7 @@ abstract contract TwoTokenPoolsBalance is PoolRegistry {
         delete _twoTokenPoolTokens[poolId];
 
         // For consistency with other Pool specialization settings, we explicitly reset the packed cash field (which may
-        // have a non-zero last change block number).
+        // have a non-zero last change block).
         delete poolBalances.sharedCash;
     }
 

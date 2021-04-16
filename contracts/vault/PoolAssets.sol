@@ -47,22 +47,6 @@ abstract contract PoolAssets is
     // Stores the Asset Manager for each token of each Pool.
     mapping(bytes32 => mapping(IERC20 => address)) private _poolAssetManagers;
 
-    function getPoolTokens(bytes32 poolId)
-        external
-        view
-        override
-        withRegisteredPool(poolId)
-        returns (
-            IERC20[] memory tokens,
-            uint256[] memory balances,
-            uint256 maxBlockNumber
-        )
-    {
-        bytes32[] memory rawBalances;
-        (tokens, rawBalances) = _getPoolTokens(poolId);
-        (balances, maxBlockNumber) = rawBalances.totalsAndMaxBlockNumber();
-    }
-
     function getPoolTokenInfo(bytes32 poolId, IERC20 token)
         external
         view
@@ -71,7 +55,7 @@ abstract contract PoolAssets is
         returns (
             uint256 cash,
             uint256 managed,
-            uint256 blockNumber,
+            uint256 lastChangeBlock,
             address assetManager
         )
     {
@@ -89,8 +73,24 @@ abstract contract PoolAssets is
 
         cash = balance.cash();
         managed = balance.managed();
-        blockNumber = balance.blockNumber();
+        lastChangeBlock = balance.lastChangeBlock();
         assetManager = _poolAssetManagers[poolId][token];
+    }
+
+    function getPoolTokens(bytes32 poolId)
+        external
+        view
+        override
+        withRegisteredPool(poolId)
+        returns (
+            IERC20[] memory tokens,
+            uint256[] memory balances,
+            uint256 lastChangeBlock
+        )
+    {
+        bytes32[] memory rawBalances;
+        (tokens, rawBalances) = _getPoolTokens(poolId);
+        (balances, lastChangeBlock) = rawBalances.totalsAndLastChangeBlock();
     }
 
     function getPool(bytes32 poolId)
@@ -260,7 +260,7 @@ abstract contract PoolAssets is
             uint256[] memory dueProtocolFeeAmounts
         )
     {
-        (uint256[] memory totalBalances, uint256 latestBlockNumberUsed) = balances.totalsAndMaxBlockNumber();
+        (uint256[] memory totalBalances, uint256 lastChangeBlock) = balances.totalsAndLastChangeBlock();
 
         IBasePool pool = IBasePool(_getPoolAddress(poolId));
         (amounts, dueProtocolFeeAmounts) = kind == PoolBalanceChangeKind.JOIN
@@ -269,7 +269,7 @@ abstract contract PoolAssets is
                 sender,
                 recipient,
                 totalBalances,
-                latestBlockNumberUsed,
+                lastChangeBlock,
                 _getprotocolSwapFeePercentage(),
                 change.userData
             )
@@ -278,7 +278,7 @@ abstract contract PoolAssets is
                 sender,
                 recipient,
                 totalBalances,
-                latestBlockNumberUsed,
+                lastChangeBlock,
                 _getprotocolSwapFeePercentage(),
                 change.userData
             );
