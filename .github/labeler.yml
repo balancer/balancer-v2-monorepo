@@ -1,2 +1,2 @@
-abi-changes:
-  - artifacts/contracts/**/*
+deployed-contract-changes:
+  - deployments/artifacts/**/*
