@@ -26,8 +26,8 @@ import "../../lib/math/Math.sol";
 // and 'decreaseCash' for swaps and add/remove liquidity events, and 'cashToManaged' and 'managedToCash' for events
 // transferring funds to and from the Asset Manager.
 //
-// The Vault disallows the Pool's 'cash' from becoming negative, in other words, it can never use any tokens that are
-// not inside of the Vault.
+// The Vault disallows the Pool's 'cash' from becoming negative. In other words, it can never use any tokens that are
+// not inside the Vault.
 //
 // One of the goals of this library is to store the entire token balance in a single storage slot, which is why we use
 // 112 bit unsigned integers for 'cash' and 'managed'. For consistency, we also disallow any combination of 'cash' and

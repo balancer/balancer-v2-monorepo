@@ -69,7 +69,7 @@ interface IBasePool is IPoolSwapStructs {
      * to which the Vault will send the proceeds. `currentBalances` contains the total token balances for each token
      * the Pool registered in the Vault, in the same order that `IVault.getPoolTokens` would return.
      *
-     * `lastChangeBlock` is the last block in which *any* of the Pool's registered tokens last changed their total
+     * `lastChangeBlock` is the last block in which *any* of the Pool's registered tokens last changed its total
      * balance.
      *
      * `userData` contains any pool-specific instructions needed to perform the calculations, such as the type of

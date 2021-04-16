@@ -36,9 +36,9 @@ interface IPoolSwapStructs {
     // one Pool.
     //
     // The meaning of `lastChangeBlock` depends on the Pool specialization:
-    //  - Two Token or Minimal Swap Info: the last block in which either `tokenIn` or `tokenOut` changed their total
+    //  - Two Token or Minimal Swap Info: the last block in which either `tokenIn` or `tokenOut` changed its total
     //    balance.
-    //  - General: the last block in which *any* of the Pool's registered tokens changed their total balance.
+    //  - General: the last block in which *any* of the Pool's registered tokens changed its total balance.
     //
     // `from` is the origin address for the funds the Pool receives, and `to` is the destination address
     // where the Pool sends the outgoing tokens.
