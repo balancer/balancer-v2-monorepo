@@ -21,7 +21,7 @@ pragma experimental ABIEncoderV2;
  * By calling `TemporarilyPausable`'s constructor with the result of `getPauseConfiguration`, all Pools created by this
  * factory will share the same Pause Window end time, after which both old and new Pools will not be pausable.
  */
-abstract contract FactoryWidePauseWindow {
+contract FactoryWidePauseWindow {
     // This contract relies on timestamps in a similar way as `TemporarilyPausable` does - the same caveats apply.
     // solhint-disable not-rely-on-time
 
@@ -30,10 +30,10 @@ abstract contract FactoryWidePauseWindow {
 
     // Time when the pause window for all created Pools expires, and the pause window duration of new Pools becomes
     // zero.
-    uint256 private immutable _createdPoolsPauseWindowEndTime;
+    uint256 private immutable _poolsPauseWindowEndTime;
 
     constructor() {
-        _createdPoolsPauseWindowEndTime = block.timestamp + _INITIAL_PAUSE_WINDOW_DURATION;
+        _poolsPauseWindowEndTime = block.timestamp + _INITIAL_PAUSE_WINDOW_DURATION;
     }
 
     /**
@@ -45,11 +45,11 @@ abstract contract FactoryWidePauseWindow {
      */
     function getPauseConfiguration() public view returns (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) {
         uint256 currentTime = block.timestamp;
-        if (currentTime < _createdPoolsPauseWindowEndTime) {
+        if (currentTime < _poolsPauseWindowEndTime) {
             // The buffer period is always the same since its duration is related to how much time is needed to respond
             // to a potential emergency. The Pause Window duration however decreases as the end time approaches.
 
-            pauseWindowDuration = _createdPoolsPauseWindowEndTime - currentTime; // No need for checked arithmetic.
+            pauseWindowDuration = _poolsPauseWindowEndTime - currentTime; // No need for checked arithmetic.
             bufferPeriodDuration = _BUFFER_PERIOD_DURATION;
         } else {
             // After the end time, newly created Pools have no Pause Window, nor Buffer Period (since they are not
