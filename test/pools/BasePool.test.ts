@@ -190,7 +190,7 @@ describe('BasePool', function () {
           pool = await deployBasePool({ swapFeePercentage: fp(0.01), owner });
         });
 
-        beforeEach(() => {
+        beforeEach('set sender', () => {
           sender = other;
         });
 
@@ -293,7 +293,7 @@ describe('BasePool', function () {
         });
       });
 
-      beforeEach(() => {
+      beforeEach('set sender', () => {
         sender = other;
       });
 
@@ -324,7 +324,7 @@ describe('BasePool', function () {
       });
 
       context('when the sender is the owner', () => {
-        beforeEach(() => {
+        beforeEach('set sender', () => {
           sender = owner;
         });
 
@@ -332,7 +332,7 @@ describe('BasePool', function () {
       });
 
       context('when the sender is not the owner', () => {
-        beforeEach(() => {
+        beforeEach('set sender', () => {
           sender = other;
         });
 
