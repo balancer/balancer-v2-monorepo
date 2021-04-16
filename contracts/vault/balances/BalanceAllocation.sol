@@ -33,14 +33,14 @@ import "../../lib/math/Math.sol";
 // 112 bit unsigned integers for 'cash' and 'managed'. For consistency, we also disallow any combination of 'cash' and
 // 'managed' that yields a 'total' that doesn't fit in 112 bits.
 //
-// The remaining 32 bits of the slot are used to store the most recent block number when the total balance changed. This
+// The remaining 32 bits of the slot are used to store the most recent block when the total balance changed. This
 // can be used to implement price oracles that are resilient to 'sandwich' attacks.
 //
 // We could use a Solidity struct to pack these three values together in a single storage slot, but unfortunately
 // Solidity only allows for structs to live in either storage, calldata or memory. Because a memory struct still takes
 // up a slot in the stack (to store its memory location), and because the entire balance fits in a single stack slot
-// (two 112 bit values plus the 32 bit block number), using memory is strictly less gas performant. Therefore, we do
-// manual packing and unpacking.
+// (two 112 bit values plus the 32 bit block, using memory is strictly less gas performant. Therefore, we do manual
+// packing and unpacking.
 //
 // Since we cannot define new types, we rely on bytes32 to represent these values instead, as it doesn't have any
 // associated arithmetic operations and therefore reduces the chance of misuse.
@@ -48,7 +48,7 @@ library BalanceAllocation {
     using Math for uint256;
 
     // The 'cash' portion of the balance is stored in the least significant 112 bits of a 256 bit word, while the
-    // 'managed' part uses the following 112 bits. The most significant 32 bits are used to store the block number.
+    // 'managed' part uses the following 112 bits. The most significant 32 bits are used to store the block
 
     /**
      * @dev Returns the total amount of Pool tokens, including those that are not currently in the Vault ('managed').
@@ -76,9 +76,9 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev Returns the last block number when the total balance changed.
+     * @dev Returns the last block when the total balance changed.
      */
-    function blockNumber(bytes32 balance) internal pure returns (uint256) {
+    function lastChangeBlock(bytes32 balance) internal pure returns (uint256) {
         uint256 mask = 2**(32) - 1;
         return uint256(balance >> 224) & mask;
     }
@@ -92,21 +92,24 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev Returns the total balance for each entry in `balances`, as well as the latest block number when the total
+     * @dev Returns the total balance for each entry in `balances`, as well as the latest block when the total
      * balance of any of them last changed.
      */
     function totalsAndLastChangeBlock(bytes32[] memory balances)
         internal
         pure
-        returns (uint256[] memory results, uint256 lastChangeBlock)
+        returns (
+            uint256[] memory results,
+            uint256 lastChangeBlock_ // Avoid shadowing
+        )
     {
-        lastChangeBlock = 0;
         results = new uint256[](balances.length);
+        lastChangeBlock_ = 0;
 
         for (uint256 i = 0; i < results.length; i++) {
             bytes32 balance = balances[i];
             results[i] = total(balance);
-            lastChangeBlock = Math.max(lastChangeBlock, blockNumber(balance));
+            lastChangeBlock_ = Math.max(lastChangeBlock_, lastChangeBlock(balance));
         }
     }
 
@@ -115,7 +118,7 @@ library BalanceAllocation {
      * with zero.
      */
     function isZero(bytes32 balance) internal pure returns (bool) {
-        // We simply need to check the least significant 224 bytes of the word: the block number does not affect this.
+        // We simply need to check the least significant 224 bytes of the word: the block does not affect this.
         uint256 mask = 2**(224) - 1;
         return (uint256(balance) & mask) == 0;
     }
@@ -129,7 +132,7 @@ library BalanceAllocation {
     }
 
     /**
-     * @dev Packs together `cash` and `managed` amounts with a block number to create a balance value.
+     * @dev Packs together `cash` and `managed` amounts with a block to create a balance value.
      *
      * For consistency, this also checks that the sum of `cash` and `managed` (`total`) fits in 112 bits.
      */
@@ -141,7 +144,7 @@ library BalanceAllocation {
         uint256 balance = _cash + _managed;
         _require(balance >= _cash && balance < 2**112, Errors.BALANCE_TOTAL_OVERFLOW);
 
-        // We assume the block number fits in 32 bits - this is expected to hold for at least a few decades.
+        // We assume the block fits in 32 bits - this is expected to hold for at least a few decades.
         return _pack(_cash, _managed, _blockNumber);
     }
 
@@ -149,28 +152,28 @@ library BalanceAllocation {
      * @dev Increases a Pool's 'cash' (and therefore its 'total'). Called when Pool tokens are sent to the Vault (except
      * for Asset Manager deposits).
      *
-     * Updates the last total balance change block number, even if `amount` is zero.
+     * Updates the last total balance change block  even if `amount` is zero.
      */
     function increaseCash(bytes32 balance, uint256 amount) internal view returns (bytes32) {
         uint256 newCash = cash(balance).add(amount);
         uint256 currentManaged = managed(balance);
-        uint256 newBlockNumber = block.number;
+        uint256 newLastChangeBlock = block.number;
 
-        return toBalance(newCash, currentManaged, newBlockNumber);
+        return toBalance(newCash, currentManaged, newLastChangeBlock);
     }
 
     /**
      * @dev Decreases a Pool's 'cash' (and therefore its 'total'). Called when Pool tokens are sent from the Vault
      * (except for Asset Manager withdrawals).
      *
-     * Updates the last total balance change block number, even if `amount` is zero.
+     * Updates the last total balance change block  even if `amount` is zero.
      */
     function decreaseCash(bytes32 balance, uint256 amount) internal view returns (bytes32) {
         uint256 newCash = cash(balance).sub(amount);
         uint256 currentManaged = managed(balance);
-        uint256 newBlockNumber = block.number;
+        uint256 newLastChangeBlock = block.number;
 
-        return toBalance(newCash, currentManaged, newBlockNumber);
+        return toBalance(newCash, currentManaged, newLastChangeBlock);
     }
 
     /**
@@ -180,9 +183,9 @@ library BalanceAllocation {
     function cashToManaged(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
         uint256 newCash = cash(balance).sub(amount);
         uint256 newManaged = managed(balance).add(amount);
-        uint256 currentBlockNumber = blockNumber(balance);
+        uint256 currentLastChangeBlock = lastChangeBlock(balance);
 
-        return toBalance(newCash, newManaged, currentBlockNumber);
+        return toBalance(newCash, newManaged, currentLastChangeBlock);
     }
 
     /**
@@ -192,21 +195,21 @@ library BalanceAllocation {
     function managedToCash(bytes32 balance, uint256 amount) internal pure returns (bytes32) {
         uint256 newCash = cash(balance).add(amount);
         uint256 newManaged = managed(balance).sub(amount);
-        uint256 currentBlockNumber = blockNumber(balance);
+        uint256 currentLastChangeBlock = lastChangeBlock(balance);
 
-        return toBalance(newCash, newManaged, currentBlockNumber);
+        return toBalance(newCash, newManaged, currentLastChangeBlock);
     }
 
     /**
      * @dev Sets 'managed' balance to an arbitrary value, changing 'total'. Called when the Asset Manager reports
      * profits or losses. It's the Manager's responsibility to provide a meaningful value.
      *
-     * Updates the last total balance change block number, even if `newManaged` is equal to the current 'managed' value.
+     * Updates the last total balance change block  even if `newManaged` is equal to the current 'managed' value.
      */
     function setManaged(bytes32 balance, uint256 newManaged) internal view returns (bytes32) {
         uint256 currentCash = cash(balance);
-        uint256 newBlockNumber = block.number;
-        return toBalance(currentCash, newManaged, newBlockNumber);
+        uint256 newLastChangeBlock = block.number;
+        return toBalance(currentCash, newManaged, newLastChangeBlock);
     }
 
     // Alternative mode for Pools with the Two Token specialization setting
@@ -221,8 +224,8 @@ library BalanceAllocation {
     // that corresponds to token A is stored in the least significant 112 bits of a 256 bit word, while token B's part
     // uses the next least significant 112 bits.
     //
-    // Because only cash is written to during a swap, we store the last total balance change block number with the
-    // packed cash fields. Typically Pools have a distinct block number per token: in the case of Two Token Pools they
+    // Because only cash is written to during a swap, we store the last total balance change block with the
+    // packed cash fields. Typically Pools have a distinct block per token: in the case of Two Token Pools they
     // are the same.
 
     /**
@@ -243,42 +246,42 @@ library BalanceAllocation {
         return uint256(sharedBalance >> 112) & mask;
     }
 
-    // To decode the last balance change block number, we can simply use the `blockNumber` function.
+    // To decode the last balance change block  we can simply use the `blockNumber` function.
 
     /**
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token A.
      */
     function fromSharedToBalanceA(bytes32 sharedCash, bytes32 sharedManaged) internal pure returns (bytes32) {
-        // Note that we extract the block number from the sharedCash field, which is the one that is updated by swaps.
-        // Both token A and token B use the same block number.
-        return toBalance(_decodeBalanceA(sharedCash), _decodeBalanceA(sharedManaged), blockNumber(sharedCash));
+        // Note that we extract the block from the sharedCash field, which is the one that is updated by swaps.
+        // Both token A and token B use the same block
+        return toBalance(_decodeBalanceA(sharedCash), _decodeBalanceA(sharedManaged), lastChangeBlock(sharedCash));
     }
 
     /**
      * @dev Unpacks the shared token A and token B cash and managed balances into the balance for token B.
      */
     function fromSharedToBalanceB(bytes32 sharedCash, bytes32 sharedManaged) internal pure returns (bytes32) {
-        // Note that we extract the block number from the sharedCash field, which is the one that is updated by swaps.
-        // Both token A and token B use the same block number.
-        return toBalance(_decodeBalanceB(sharedCash), _decodeBalanceB(sharedManaged), blockNumber(sharedCash));
+        // Note that we extract the block from the sharedCash field, which is the one that is updated by swaps.
+        // Both token A and token B use the same block
+        return toBalance(_decodeBalanceB(sharedCash), _decodeBalanceB(sharedManaged), lastChangeBlock(sharedCash));
     }
 
     /**
      * @dev Returns the sharedCash shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedCash(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
-        // Both balances are assigned the same block number. Since it is possible a single one of them has changed (for
+        // Both balances are assigned the same block  Since it is possible a single one of them has changed (for
         // example, in an Asset Manager update), we keep the latest (largest) one.
+        uint32 newLastChangeBlock = uint32(Math.max(lastChangeBlock(tokenABalance), lastChangeBlock(tokenBBalance)));
 
-        uint32 newBlockNumber = uint32(Math.max(blockNumber(tokenABalance), blockNumber(tokenBBalance)));
-        return _pack(cash(tokenABalance), cash(tokenBBalance), newBlockNumber);
+        return _pack(cash(tokenABalance), cash(tokenBBalance), newLastChangeBlock);
     }
 
     /**
      * @dev Returns the sharedManaged shared field, given the current balances for tokenA and tokenB.
      */
     function toSharedManaged(bytes32 tokenABalance, bytes32 tokenBBalance) internal pure returns (bytes32) {
-        // We don't bother storing a last change block number, as it is read from the shared cash field.
+        // We don't bother storing a last change block  as it is read from the shared cash field.
         return _pack(managed(tokenABalance), managed(tokenBBalance), 0);
     }
 

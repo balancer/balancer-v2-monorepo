@@ -24,7 +24,7 @@ export type JoinPool = {
   recipient: string;
   currentBalances: BigNumberish[];
   tokens: string[];
-  latestBlockNumberUsed: BigNumberish;
+  lastChangeBlock: BigNumberish;
   protocolFeePercentage: BigNumberish;
   data: string;
   maxAmountsIn?: BigNumberish[];
@@ -38,7 +38,7 @@ export type ExitPool = {
   recipient: string;
   currentBalances: BigNumberish[];
   tokens: string[];
-  latestBlockNumberUsed: BigNumberish;
+  lastChangeBlock: BigNumberish;
   protocolFeePercentage: BigNumberish;
   data: string;
   minAmountsOut?: BigNumberish[];

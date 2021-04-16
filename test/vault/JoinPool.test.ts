@@ -441,7 +441,7 @@ describe('Vault - join pool', () => {
 
       it('calls the pool with the join data', async () => {
         const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
-        const { blockNumber: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
+        const { lastChangeBlock: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
 
         const receipt = await (
           await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance, signature })
@@ -452,19 +452,19 @@ describe('Vault - join pool', () => {
           sender: lp.address,
           recipient: ZERO_ADDRESS,
           currentBalances: previousPoolBalances,
-          latestBlockNumberUsed: previousBlockNumber,
+          lastChangeBlock: previousBlockNumber,
           protocolSwapFee: await feesCollector.getSwapFee(),
           userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
         });
       });
 
-      it('updates the latest block number used for all tokens', async () => {
+      it('updates the last change block for all tokens', async () => {
         const currentBlockNumber = await lastBlockNumber();
 
         await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance, signature });
 
         await tokens.asyncEach(async (token: Token) => {
-          const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
+          const { lastChangeBlock: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
           expect(newBlockNumber).to.equal(currentBlockNumber + 1);
         });
       });

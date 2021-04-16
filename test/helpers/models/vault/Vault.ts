@@ -48,7 +48,7 @@ export default class Vault {
   async getPoolTokenInfo(
     poolId: string,
     token: Token
-  ): Promise<{ cash: BigNumber; managed: BigNumber; blockNumber: BigNumber; assetManager: string }> {
+  ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.instance.getPoolTokenInfo(poolId, token.address);
   }
 
@@ -60,7 +60,7 @@ export default class Vault {
           params.poolId,
           params.recipient,
           params.currentBalances,
-          params.latestBlockNumberUsed,
+          params.lastChangeBlock,
           params.protocolFeePercentage,
           params.data
         )
@@ -80,7 +80,7 @@ export default class Vault {
           params.poolId,
           params.recipient,
           params.currentBalances,
-          params.latestBlockNumberUsed,
+          params.lastChangeBlock,
           params.protocolFeePercentage,
           params.data
         )

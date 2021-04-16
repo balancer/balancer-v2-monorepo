@@ -274,13 +274,13 @@ describe('Vault - asset manager', function () {
                   expect(currentBalanceMKR).to.equal(previousBalanceMKR);
                 });
 
-                it('does not update the block number', async () => {
-                  const previousBlockNumber = (await vault.getPoolTokens(poolId)).lastChangeBlock;
+                it('does not update the last change block', async () => {
+                  const previousLastChangeBlock = (await vault.getPoolTokens(poolId)).lastChangeBlock;
 
                   const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
                   await vault.connect(sender).managePoolBalance(ops);
 
-                  expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(previousBlockNumber);
+                  expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(previousLastChangeBlock);
                 });
 
                 it('moves the balance from cash to managed', async () => {
@@ -292,7 +292,7 @@ describe('Vault - asset manager', function () {
                   const currentBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
                   expect(currentBalance.cash).to.equal(previousBalance.cash.sub(amount));
                   expect(currentBalance.managed).to.equal(previousBalance.managed.add(amount));
-                  expect(currentBalance.blockNumber).to.equal(previousBalance.blockNumber);
+                  expect(currentBalance.lastChangeBlock).to.equal(previousBalance.lastChangeBlock);
                 });
 
                 it('emits an event', async () => {
@@ -399,13 +399,13 @@ describe('Vault - asset manager', function () {
                     expect(currentBalanceMKR).to.equal(previousBalanceMKR);
                   });
 
-                  it('does not update the block number', async () => {
-                    const previousBlockNumber = (await vault.getPoolTokens(poolId)).lastChangeBlock;
+                  it('does not update the last change block', async () => {
+                    const previousLastChangeBlock = (await vault.getPoolTokens(poolId)).lastChangeBlock;
 
                     const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
                     await vault.connect(sender).managePoolBalance(ops);
 
-                    expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(previousBlockNumber);
+                    expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(previousLastChangeBlock);
                   });
 
                   it('moves the balance from managed to cash', async () => {
@@ -417,7 +417,7 @@ describe('Vault - asset manager', function () {
                     const currentBalance = await vault.getPoolTokenInfo(poolId, tokens.DAI.address);
                     expect(currentBalance.cash).to.equal(previousBalance.cash.add(amount));
                     expect(currentBalance.managed).to.equal(previousBalance.managed.sub(amount));
-                    expect(currentBalance.blockNumber).to.equal(previousBalance.blockNumber);
+                    expect(currentBalance.lastChangeBlock).to.equal(previousBalance.lastChangeBlock);
                   });
 
                   it('emits an event', async () => {
@@ -519,47 +519,47 @@ describe('Vault - asset manager', function () {
                   });
 
                   if (specialization == TwoTokenPool) {
-                    it('updates both block numbers when updating token A', async () => {
+                    it('updates both last change blocks when updating token A', async () => {
                       const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
                       await vault.connect(sender).managePoolBalance(ops);
 
                       const blockNumber = await lastBlockNumber();
 
                       expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(blockNumber);
-                      expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).blockNumber).to.equal(
+                      expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).lastChangeBlock).to.equal(
                         blockNumber
                       );
-                      expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).blockNumber).to.equal(
+                      expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).lastChangeBlock).to.equal(
                         blockNumber
                       );
                     });
 
-                    it('updates both block numbers when updating token B', async () => {
+                    it('updates both last change blocks when updating token B', async () => {
                       const ops = [{ kind, poolId, token: tokens.MKR.address, amount }];
                       await vault.connect(otherAssetManager).managePoolBalance(ops);
 
                       const blockNumber = await lastBlockNumber();
 
                       expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(blockNumber);
-                      expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).blockNumber).to.equal(
+                      expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).lastChangeBlock).to.equal(
                         blockNumber
                       );
-                      expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).blockNumber).to.equal(
+                      expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).lastChangeBlock).to.equal(
                         blockNumber
                       );
                     });
                   } else {
-                    it('updates the block number of the updated token only', async () => {
+                    it('updates the last change block of the updated token only', async () => {
                       const ops = [{ kind, poolId, token: tokens.DAI.address, amount }];
                       await vault.connect(sender).managePoolBalance(ops);
 
                       const blockNumber = await lastBlockNumber();
 
                       expect((await vault.getPoolTokens(poolId)).lastChangeBlock).to.equal(blockNumber);
-                      expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).blockNumber).to.equal(
+                      expect((await vault.getPoolTokenInfo(poolId, tokens.DAI.address)).lastChangeBlock).to.equal(
                         blockNumber
                       );
-                      expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).blockNumber).to.be.lt(
+                      expect((await vault.getPoolTokenInfo(poolId, tokens.MKR.address)).lastChangeBlock).to.be.lt(
                         blockNumber
                       );
                     });
@@ -575,7 +575,7 @@ describe('Vault - asset manager', function () {
                     expect(currentBalance.cash).to.equal(previousBalance.cash);
                     expect(currentBalance.managed).to.equal(amount);
 
-                    expect(currentBalance.blockNumber).to.equal(await lastBlockNumber());
+                    expect(currentBalance.lastChangeBlock).to.equal(await lastBlockNumber());
                   });
 
                   it('emits an event', async () => {

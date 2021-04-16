@@ -326,7 +326,7 @@ describe('Vault - pool registry', () => {
                         const { tokens: poolTokens, lastChangeBlock } = await vault.getPoolTokens(poolId);
                         expect(poolTokens).not.to.have.members([tokens.first.address]);
 
-                        // If all tokens are deregisted, the last block number goes back to the initial value.
+                        // If all tokens are deregisted, the last change block goes back to the initial value.
                         const expectedBlock = poolTokens.length > 0 ? exitBlock : 0;
                         expect(lastChangeBlock).to.equal(expectedBlock);
                       });

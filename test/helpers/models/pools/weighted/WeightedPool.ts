@@ -160,7 +160,7 @@ export default class WeightedPool {
 
   async getTokenInfo(
     token: Token
-  ): Promise<{ cash: BigNumber; managed: BigNumber; blockNumber: BigNumber; assetManager: string }> {
+  ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.vault.getPoolTokenInfo(this.poolId, token);
   }
 
@@ -268,7 +268,7 @@ export default class WeightedPool {
         to: params.recipient ?? ZERO_ADDRESS,
         tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
         tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
-        latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+        lastChangeBlock: params.lastChangeBlock ?? 0,
         userData: params.data ?? '0x',
         amount: params.amount,
       },
@@ -289,7 +289,7 @@ export default class WeightedPool {
         to: params.recipient ?? ZERO_ADDRESS,
         tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
         tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
-        latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+        lastChangeBlock: params.lastChangeBlock ?? 0,
         userData: params.data ?? '0x',
         amount: params.amount,
       },
@@ -357,7 +357,7 @@ export default class WeightedPool {
       recipient: to,
       currentBalances,
       tokens: this.tokens.addresses,
-      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
@@ -383,7 +383,7 @@ export default class WeightedPool {
       recipient: to,
       currentBalances,
       tokens: this.tokens.addresses,
-      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
@@ -403,7 +403,7 @@ export default class WeightedPool {
       params.from?.address || ZERO_ADDRESS,
       to,
       currentBalances,
-      params.latestBlockNumberUsed ?? 0,
+      params.lastChangeBlock ?? 0,
       params.protocolFeePercentage ?? 0,
       params.data ?? '0x'
     );
