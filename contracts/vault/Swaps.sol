@@ -18,13 +18,12 @@ pragma experimental ABIEncoderV2;
 import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
-import "../lib/openzeppelin/IERC20.sol";
-import "../lib/openzeppelin/ReentrancyGuard.sol";
-import "../lib/openzeppelin/IERC20.sol";
-import "../lib/openzeppelin/SafeCast.sol";
-import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/EnumerableMap.sol";
 import "../lib/openzeppelin/EnumerableSet.sol";
+import "../lib/openzeppelin/IERC20.sol";
+import "../lib/openzeppelin/ReentrancyGuard.sol";
+import "../lib/openzeppelin/SafeCast.sol";
+import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./PoolBalances.sol";
 import "./interfaces/IPoolSwapStructs.sol";
