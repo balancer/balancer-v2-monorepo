@@ -20,12 +20,13 @@ import "../lib/helpers/BalancerErrors.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/openzeppelin/IERC20.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
+import "../lib/openzeppelin/IERC20.sol";
 import "../lib/openzeppelin/SafeCast.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/EnumerableMap.sol";
 import "../lib/openzeppelin/EnumerableSet.sol";
 
-import "./PoolAssets.sol";
+import "./PoolBalances.sol";
 import "./interfaces/IPoolSwapStructs.sol";
 import "./interfaces/IGeneralPool.sol";
 import "./interfaces/IMinimalSwapInfoPool.sol";
@@ -43,7 +44,7 @@ import "./balances/BalanceAllocation.sol";
  * More complex swaps, such as one 'token in' to multiple tokens out can be achieved by batching together
  * individual swaps.
  */
-abstract contract Swaps is ReentrancyGuard, PoolAssets {
+abstract contract Swaps is ReentrancyGuard, PoolBalances {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
