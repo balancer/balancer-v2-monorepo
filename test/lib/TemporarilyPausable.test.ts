@@ -8,74 +8,72 @@ import { advanceTime, currentTimestamp, fromNow, DAY, MONTH } from '../../lib/he
 describe('TemporarilyPausable', function () {
   let instance: Contract;
 
-  const deployTemporarilyPausable = async ({ responseWindowDuration = 0, bufferPeriodDuration = 0 }) => {
-    instance = await deploy('TemporarilyPausableMock', { args: [responseWindowDuration, bufferPeriodDuration] });
+  const deployTemporarilyPausable = async ({ pauseWindowDuration = 0, bufferPeriodDuration = 0 }) => {
+    instance = await deploy('TemporarilyPausableMock', { args: [pauseWindowDuration, bufferPeriodDuration] });
   };
 
   const assertPauseState = async (
     expectedStatus: boolean,
-    expectedResponseWindowEndTime?: BigNumberish,
+    expectedPauseWindowEndTime?: BigNumberish,
     expectedBufferPeriodDuration?: BigNumberish
   ): Promise<void> => {
-    const { paused, responseWindowEndTime, bufferPeriodEndTime } = await instance.getPausedState();
+    const { paused, pauseWindowEndTime, bufferPeriodEndTime } = await instance.getPausedState();
 
     expect(paused).to.equal(expectedStatus);
-    if (expectedResponseWindowEndTime) expect(responseWindowEndTime).to.equal(expectedResponseWindowEndTime);
+    if (expectedPauseWindowEndTime) expect(pauseWindowEndTime).to.equal(expectedPauseWindowEndTime);
     if (expectedBufferPeriodDuration)
-      expect(bufferPeriodEndTime).to.equal(responseWindowEndTime.add(expectedBufferPeriodDuration));
+      expect(bufferPeriodEndTime).to.equal(pauseWindowEndTime.add(expectedBufferPeriodDuration));
   };
 
   describe('initialization', () => {
-    it('can be initialized with response window and buffer period duration', async () => {
-      const responseWindowDuration = MONTH;
+    it('can be initialized with pause window and buffer period duration', async () => {
+      const pauseWindowDuration = MONTH;
       const bufferPeriodDuration = MONTH;
 
-      await deployTemporarilyPausable({ responseWindowDuration, bufferPeriodDuration });
+      await deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration });
 
-      await assertPauseState(false, await fromNow(responseWindowDuration), bufferPeriodDuration);
+      await assertPauseState(false, await fromNow(pauseWindowDuration), bufferPeriodDuration);
     });
 
-    it('can be initialized with no response window or buffer period duration', async () => {
-      const responseWindowDuration = 0;
+    it('can be initialized with no pause window or buffer period duration', async () => {
+      const pauseWindowDuration = 0;
       const bufferPeriodDuration = 0;
 
-      await deployTemporarilyPausable({ responseWindowDuration, bufferPeriodDuration });
+      await deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration });
 
       await assertPauseState(false, await currentTimestamp(), bufferPeriodDuration);
     });
 
-    it('cannot be initialized with a response window greater than 90 days', async () => {
-      const responseWindowDuration = DAY * 91;
+    it('cannot be initialized with a pause window greater than 90 days', async () => {
+      const pauseWindowDuration = DAY * 91;
 
-      await expect(deployTemporarilyPausable({ responseWindowDuration })).to.be.revertedWith(
-        'MAX_RESPONSE_WINDOW_DURATION'
-      );
+      await expect(deployTemporarilyPausable({ pauseWindowDuration })).to.be.revertedWith('MAX_PAUSE_WINDOW_DURATION');
     });
 
     it('cannot be initialized with a buffer period greater than 30 days', async () => {
-      const responseWindowDuration = MONTH;
+      const pauseWindowDuration = MONTH;
       const bufferPeriodDuration = DAY * 31;
 
-      await expect(deployTemporarilyPausable({ responseWindowDuration, bufferPeriodDuration })).to.be.revertedWith(
+      await expect(deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration })).to.be.revertedWith(
         'MAX_BUFFER_PERIOD_DURATION'
       );
     });
   });
 
   describe('pause/unpause', () => {
-    const RESPONSE_WINDOW_DURATION = MONTH * 3;
+    const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
 
     sharedBeforeEach('deploy', async () => {
       await deployTemporarilyPausable({
-        responseWindowDuration: RESPONSE_WINDOW_DURATION,
+        pauseWindowDuration: PAUSE_WINDOW_DURATION,
         bufferPeriodDuration: BUFFER_PERIOD_DURATION,
       });
     });
 
-    context('before the response window end date', () => {
+    context('before the pause window end date', () => {
       sharedBeforeEach('advance some time', async () => {
-        await advanceTime(RESPONSE_WINDOW_DURATION / 2);
+        await advanceTime(PAUSE_WINDOW_DURATION / 2);
       });
 
       it('can be paused', async () => {
@@ -92,17 +90,17 @@ describe('TemporarilyPausable', function () {
         await instance.setPaused(true);
         await assertPauseState(true, previousEndDate, BUFFER_PERIOD_DURATION);
 
-        await advanceTime(RESPONSE_WINDOW_DURATION / 4);
+        await advanceTime(PAUSE_WINDOW_DURATION / 4);
 
         await instance.setPaused(false);
         await assertPauseState(false, previousEndDate, BUFFER_PERIOD_DURATION);
       });
     });
 
-    context('when the response window end date has been reached', () => {
+    context('when the pause window end date has been reached', () => {
       context('when unpaused', () => {
         sharedBeforeEach('advance time', async () => {
-          await advanceTime(RESPONSE_WINDOW_DURATION);
+          await advanceTime(PAUSE_WINDOW_DURATION);
         });
 
         function itIsForeverUnpaused() {
@@ -111,7 +109,7 @@ describe('TemporarilyPausable', function () {
           });
 
           it('cannot be paused', async () => {
-            await expect(instance.setPaused(true)).to.be.revertedWith('RESPONSE_WINDOW_EXPIRED');
+            await expect(instance.setPaused(true)).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
           });
         }
 
@@ -135,7 +133,7 @@ describe('TemporarilyPausable', function () {
       context('when paused', () => {
         sharedBeforeEach('pause and advance time', async () => {
           await instance.setPaused(true);
-          await advanceTime(RESPONSE_WINDOW_DURATION);
+          await advanceTime(PAUSE_WINDOW_DURATION);
         });
 
         context('before the buffer period end date', () => {
@@ -156,7 +154,7 @@ describe('TemporarilyPausable', function () {
             await instance.setPaused(false);
             await assertPauseState(false);
 
-            await expect(instance.setPaused(true)).to.be.revertedWith('RESPONSE_WINDOW_EXPIRED');
+            await expect(instance.setPaused(true)).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
           });
         });
 
@@ -170,7 +168,7 @@ describe('TemporarilyPausable', function () {
           });
 
           it('cannot be paused', async () => {
-            await expect(instance.setPaused(true)).to.be.revertedWith('RESPONSE_WINDOW_EXPIRED');
+            await expect(instance.setPaused(true)).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
           });
 
           it('cannot be unpaused', async () => {

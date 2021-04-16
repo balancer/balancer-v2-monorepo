@@ -34,7 +34,7 @@ import {
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
   calcOutGivenIn,
-  calculateOneTokenSwapFee,
+  calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
 } from '../../../math/stable';
 
@@ -44,7 +44,7 @@ export default class StablePool {
   instance: Contract;
   poolId: string;
   tokens: TokenList;
-  swapFee: BigNumberish;
+  swapFeePercentage: BigNumberish;
   amplificationParameter: BigNumberish;
   vault: Vault;
 
@@ -58,14 +58,14 @@ export default class StablePool {
     vault: Vault,
     tokens: TokenList,
     amplificationParameter: BigNumberish,
-    swapFee: BigNumberish
+    swapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
     this.tokens = tokens;
     this.amplificationParameter = amplificationParameter;
-    this.swapFee = swapFee;
+    this.swapFeePercentage = swapFeePercentage;
   }
 
   get address(): string {
@@ -108,15 +108,15 @@ export default class StablePool {
     return this.instance.getLastInvariant();
   }
 
-  async getSwapFee(): Promise<BigNumber> {
-    return this.instance.getSwapFee();
+  async getSwapFeePercentage(): Promise<BigNumber> {
+    return this.instance.getSwapFeePercentage();
   }
 
   async getAmplificationParameter(): Promise<BigNumber> {
     return this.instance.getAmplificationParameter();
   }
 
-  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; maxBlockNumber: BigNumber }> {
+  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
     return this.vault.getPoolTokens(this.poolId);
   }
 
@@ -127,7 +127,7 @@ export default class StablePool {
 
   async getTokenInfo(
     token: Token
-  ): Promise<{ cash: BigNumber; managed: BigNumber; blockNumber: BigNumber; assetManager: string }> {
+  ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.vault.getPoolTokenInfo(this.poolId, token);
   }
 
@@ -137,7 +137,7 @@ export default class StablePool {
     return calculateInvariant(currentBalances, this.amplificationParameter);
   }
 
-  async estimateSwapFee(
+  async estimateSwapFeeAmount(
     paidToken: number | Token,
     protocolFeePercentage: BigNumberish,
     currentBalances?: BigNumberish[]
@@ -145,7 +145,7 @@ export default class StablePool {
     if (!currentBalances) currentBalances = await this.getBalances();
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const feeAmount = calculateOneTokenSwapFee(
+    const feeAmount = calculateOneTokenSwapFeeAmount(
       currentBalances,
       this.amplificationParameter,
       lastInvariant,
@@ -177,7 +177,13 @@ export default class StablePool {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
 
-    return calcBptOutGivenExactTokensIn(currentBalances, this.amplificationParameter, amountsIn, supply, this.swapFee);
+    return calcBptOutGivenExactTokensIn(
+      currentBalances,
+      this.amplificationParameter,
+      amountsIn,
+      supply,
+      this.swapFeePercentage
+    );
   }
 
   async estimateTokenIn(
@@ -196,7 +202,7 @@ export default class StablePool {
       this.amplificationParameter,
       bptOut,
       supply,
-      this.swapFee
+      this.swapFeePercentage
     );
   }
 
@@ -216,7 +222,7 @@ export default class StablePool {
       this.amplificationParameter,
       bptIn,
       supply,
-      this.swapFee
+      this.swapFeePercentage
     );
   }
 
@@ -232,7 +238,7 @@ export default class StablePool {
         to: params.recipient ?? ZERO_ADDRESS,
         tokenIn: params.in < this.tokens.length ? this.tokens.get(params.in)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
         tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
-        latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+        lastChangeBlock: params.lastChangeBlock ?? 0,
         userData: params.data ?? '0x',
         amount: params.amount,
       },
@@ -254,7 +260,7 @@ export default class StablePool {
         to: params.recipient ?? ZERO_ADDRESS,
         tokenIn: params.in < this.tokens.length ? this.tokens.get(params.in)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
         tokenOut: params.out < this.tokens.length ? this.tokens.get(params.out)?.address ?? ZERO_ADDRESS : ZERO_ADDRESS,
-        latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+        lastChangeBlock: params.lastChangeBlock ?? 0,
         userData: params.data ?? '0x',
         amount: params.amount,
       },
@@ -323,7 +329,7 @@ export default class StablePool {
       recipient: to,
       currentBalances,
       tokens: this.tokens.addresses,
-      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
@@ -349,7 +355,7 @@ export default class StablePool {
       recipient: to,
       currentBalances,
       tokens: this.tokens.addresses,
-      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
@@ -369,7 +375,7 @@ export default class StablePool {
       params.from?.address || ZERO_ADDRESS,
       to,
       currentBalances,
-      params.latestBlockNumberUsed ?? 0,
+      params.lastChangeBlock ?? 0,
       params.protocolFeePercentage ?? 0,
       params.data ?? '0x'
     );

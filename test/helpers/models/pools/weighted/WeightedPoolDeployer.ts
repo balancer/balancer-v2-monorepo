@@ -19,13 +19,13 @@ export default {
     const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { tokens, weights, swapFee } = deployment;
+    const { tokens, weights, swapFeePercentage } = deployment;
     const poolId = await pool.getPoolId();
-    return new WeightedPool(pool, poolId, vault, tokens, weights, swapFee);
+    return new WeightedPool(pool, poolId, vault, tokens, weights, swapFeePercentage);
   },
 
   async _deployStandalone(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner, from } = params;
+    const { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
     return deploy('WeightedPool', {
       args: [
         vault.address,
@@ -33,8 +33,8 @@ export default {
         SYMBOL,
         tokens.addresses,
         weights,
-        swapFee,
-        responseWindowDuration,
+        swapFeePercentage,
+        pauseWindowDuration,
         bufferPeriodDuration,
         TypesConverter.toAddress(owner),
       ],
@@ -43,15 +43,15 @@ export default {
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration, owner, from } = params;
+    const { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
     const factory = await deploy('WeightedPoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
       SYMBOL,
       tokens.addresses,
       weights,
-      swapFee,
-      responseWindowDuration,
+      swapFeePercentage,
+      pauseWindowDuration,
       bufferPeriodDuration,
       TypesConverter.toAddress(owner)
     );

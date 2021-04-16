@@ -1,50 +1,5 @@
 [
   {
-    "inputs": [
-      {
-        "internalType": "contract IAuthorizer",
-        "name": "authorizer",
-        "type": "address"
-      },
-      {
-        "internalType": "contract IWETH",
-        "name": "weth",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "pauseWindowDuration",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "bufferPeriodDuration",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "contract IAuthorizer",
-        "name": "oldAuthorizer",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "contract IAuthorizer",
-        "name": "newAuthorizer",
-        "type": "address"
-      }
-    ],
-    "name": "AuthorizerChanged",
-    "type": "event"
-  },
-  {
     "anonymous": false,
     "inputs": [
       {
@@ -98,19 +53,6 @@
       }
     ],
     "name": "InternalBalanceChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "paused",
-        "type": "bool"
-      }
-    ],
-    "name": "PausedStateChanged",
     "type": "event"
   },
   {
@@ -198,31 +140,6 @@
       }
     ],
     "name": "PoolRegistered",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "relayer",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "sender",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "approved",
-        "type": "bool"
-      }
-    ],
-    "name": "RelayerApprovalChanged",
     "type": "event"
   },
   {
@@ -405,7 +322,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "assetDeltas",
+        "name": "",
         "type": "int256[]"
       }
     ],
@@ -564,7 +481,7 @@
     "outputs": [
       {
         "internalType": "uint256[]",
-        "name": "balances",
+        "name": "",
         "type": "uint256[]"
       }
     ],
@@ -584,29 +501,6 @@
       {
         "internalType": "uint256",
         "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getPausedState",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "paused",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "pauseWindowEndTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "bufferPeriodEndTime",
         "type": "uint256"
       }
     ],
@@ -713,25 +607,6 @@
         "internalType": "contract ProtocolFeesCollector",
         "name": "",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes4",
-        "name": "selector",
-        "type": "bytes4"
-      }
-    ],
-    "name": "getRole",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -962,7 +837,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "",
+        "name": "assetDeltas",
         "type": "int256[]"
       }
     ],
@@ -1134,9 +1009,5 @@
     ],
     "stateMutability": "payable",
     "type": "function"
-  },
-  {
-    "stateMutability": "payable",
-    "type": "receive"
   }
 ]

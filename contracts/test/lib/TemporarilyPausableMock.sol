@@ -17,8 +17,8 @@ pragma solidity ^0.7.0;
 import "../../lib/helpers/TemporarilyPausable.sol";
 
 contract TemporarilyPausableMock is TemporarilyPausable {
-    constructor(uint256 responseWindowDuration, uint256 bufferPeriodDuration)
-        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
+    constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
+        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {}
 
     function setPaused(bool paused) external {

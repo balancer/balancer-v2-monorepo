@@ -23,7 +23,7 @@ describe('BalancerHelpers', function () {
 
   sharedBeforeEach('deploy and initialize pool', async () => {
     tokens = await TokenList.create(2, { sorted: true });
-    pool = await WeightedPool.create({ tokens, swapFee: fp(0.000001), fromFactory: true });
+    pool = await WeightedPool.create({ tokens, swapFeePercentage: fp(0.000001), fromFactory: true });
     vault = pool.vault;
 
     await tokens.mint({ to: lp, amount: fp(100) });

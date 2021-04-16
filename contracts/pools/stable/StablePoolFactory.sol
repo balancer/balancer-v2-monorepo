@@ -34,8 +34,8 @@ contract StablePoolFactory is BasePoolFactory {
         string memory symbol,
         IERC20[] memory tokens,
         uint256 amplificationParameter,
-        uint256 swapFee,
-        uint256 responseWindowDuration,
+        uint256 swapFeePercentage,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
     ) external returns (address) {
@@ -46,8 +46,8 @@ contract StablePoolFactory is BasePoolFactory {
                 symbol,
                 tokens,
                 amplificationParameter,
-                swapFee,
-                responseWindowDuration,
+                swapFeePercentage,
+                pauseWindowDuration,
                 bufferPeriodDuration,
                 owner
             )

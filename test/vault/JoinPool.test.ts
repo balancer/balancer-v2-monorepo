@@ -35,9 +35,9 @@ describe('Vault - join pool', () => {
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
     feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const role = await roleId(feesCollector, 'setSwapFee');
+    const role = await roleId(feesCollector, 'setSwapFeePercentage');
     await authorizer.connect(admin).grantRole(role, admin.address);
-    await feesCollector.connect(admin).setSwapFee(fp(0.1));
+    await feesCollector.connect(admin).setSwapFeePercentage(fp(0.1));
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     await allTokens.mint({ to: [creator, lp], amount: bn(100e18) });
@@ -231,7 +231,7 @@ describe('Vault - join pool', () => {
 
                   context('when the relayer is allowed by the user', () => {
                     sharedBeforeEach('allow relayer', async () => {
-                      await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, true);
+                      await vault.connect(lp).setRelayerApproval(lp.address, relayer.address, true);
                     });
 
                     itJoinsCorrectlyWithAndWithoutInternalBalance(dueProtocolFeeAmounts, fromRelayer);
@@ -239,7 +239,7 @@ describe('Vault - join pool', () => {
 
                   context('when the relayer is not allowed by the user', () => {
                     sharedBeforeEach('disallow relayer', async () => {
-                      await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, false);
+                      await vault.connect(lp).setRelayerApproval(lp.address, relayer.address, false);
                     });
 
                     context('when the relayer is not eternally-allowed by the user', () => {
@@ -268,7 +268,7 @@ describe('Vault - join pool', () => {
 
                   context('when the relayer is allowed by the user', () => {
                     sharedBeforeEach('allow relayer', async () => {
-                      await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, true);
+                      await vault.connect(lp).setRelayerApproval(lp.address, relayer.address, true);
                     });
 
                     it('reverts', async () => {
@@ -280,7 +280,7 @@ describe('Vault - join pool', () => {
 
                   context('when the relayer is not allowed by the user', () => {
                     sharedBeforeEach('disallow relayer', async () => {
-                      await vault.connect(lp).changeRelayerAllowance(lp.address, relayer.address, false);
+                      await vault.connect(lp).setRelayerApproval(lp.address, relayer.address, false);
                     });
 
                     it('reverts', async () => {
@@ -460,7 +460,7 @@ describe('Vault - join pool', () => {
 
         it('calls the pool with the join data', async () => {
           const { balances: previousPoolBalances } = await vault.getPoolTokens(poolId);
-          const { blockNumber: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
+          const { lastChangeBlock: previousBlockNumber } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
 
           const receipt = await (
             await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance, signature })
@@ -471,19 +471,19 @@ describe('Vault - join pool', () => {
             sender: lp.address,
             recipient: ZERO_ADDRESS,
             currentBalances: previousPoolBalances,
-            latestBlockNumberUsed: previousBlockNumber,
-            protocolSwapFee: await feesCollector.getSwapFee(),
+            lastChangeBlock: previousBlockNumber,
+            protocolSwapFeePercentage: await feesCollector.getSwapFeePercentage(),
             userData: encodeJoin(joinAmounts, dueProtocolFeeAmounts),
           });
         });
 
-        it('updates the latest block number used for all tokens', async () => {
+        it('updates the last change block used for all tokens', async () => {
           const currentBlockNumber = await lastBlockNumber();
 
           await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance, signature });
 
           await tokens.asyncEach(async (token: Token) => {
-            const { blockNumber: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
+            const { lastChangeBlock: newBlockNumber } = await vault.getPoolTokenInfo(poolId, token.address);
             expect(newBlockNumber).to.equal(currentBlockNumber + 1);
           });
         });
@@ -502,9 +502,9 @@ describe('Vault - join pool', () => {
         });
 
         it('collects protocol fees', async () => {
-          const previousCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
+          const previousCollectedFees: BigNumber[] = await feesCollector.getCollectedFeeAmounts(tokens.addresses);
           await joinPool({ dueProtocolFeeAmounts, fromRelayer, fromInternalBalance, signature });
-          const currentCollectedFees: BigNumber[] = await feesCollector.getCollectedFees(tokens.addresses);
+          const currentCollectedFees: BigNumber[] = await feesCollector.getCollectedFeeAmounts(tokens.addresses);
 
           expect(arraySub(currentCollectedFees, previousCollectedFees)).to.deep.equal(dueProtocolFeeAmounts);
         });
