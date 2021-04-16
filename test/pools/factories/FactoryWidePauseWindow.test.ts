@@ -1,51 +1,73 @@
-import { Contract } from 'ethers';
-
-import * as expectEvent from '../../helpers/expectEvent';
-import { deploy } from '../../../../lib/helpers/deploy';
-import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
+import { BigNumber, Contract } from 'ethers';
+import { deploy } from '../../../lib/helpers/deploy';
 import { expect } from 'chai';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { ethers } from 'hardhat';
+import { advanceTime, currentTimestamp, DAY } from '../../../lib/helpers/time';
+import { bn } from '../../../lib/helpers/numbers';
 
-describe('BasePoolFactory', function () {
-  let vault: Contract;
+describe('FactoryWidePauseWindow', function () {
   let factory: Contract;
-  let other: SignerWithAddress;
+  let factoryDeployTime: BigNumber;
 
-  before('setup signers', async () => {
-    [, other] = await ethers.getSigners();
-  });
+  const PAUSE_WINDOW_DURATION = DAY * 90;
+  const BUFFER_PERIOD_DURATION = DAY * 30;
 
   sharedBeforeEach(async () => {
-    vault = await deploy('Vault', { args: [ZERO_ADDRESS, ZERO_ADDRESS, 0, 0] });
-    factory = await deploy('MockPoolFactory', { args: [vault.address] });
+    factory = await deploy('MockFactoryWidePauseWindow', { args: [] });
+    factoryDeployTime = await currentTimestamp();
   });
 
-  it('stores the vault address', async () => {
-    expect(await factory.getVault()).to.equal(vault.address);
-  });
+  context('before the pause window end time', () => {
+    itReturnsANonZeroWindow();
 
-  it('creates a pool', async () => {
-    const receipt = await (await factory.create()).wait();
-    expectEvent.inReceipt(receipt, 'PoolRegistered');
-  });
+    context('after some time has passed', () => {
+      sharedBeforeEach(async () => {
+        await advanceTime(DAY * 50);
+      });
 
-  context('with a created pool', () => {
-    let pool: string;
-
-    sharedBeforeEach('deploy pool', async () => {
-      const receipt = await (await factory.create()).wait();
-      const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
-
-      pool = event.args.pool;
-    });
-
-    it('tracks pools created by the factory', async () => {
-      expect(await factory.isPoolFromFactory(pool)).to.be.true;
-    });
-
-    it('does not track pools that were not created by the factory', async () => {
-      expect(await factory.isPoolFromFactory(other.address)).to.be.false;
+      itReturnsANonZeroWindow();
     });
   });
+
+  context('at the pause window end time', () => {
+    sharedBeforeEach(async () => {
+      await advanceTime(PAUSE_WINDOW_DURATION);
+    });
+
+    itReturnsAZeroWindow();
+  });
+
+  context('after the pause window end time', () => {
+    sharedBeforeEach(async () => {
+      await advanceTime(PAUSE_WINDOW_DURATION * 2);
+    });
+
+    itReturnsAZeroWindow();
+  });
+
+  function itReturnsANonZeroWindow() {
+    it('returns the current pause window duration', async () => {
+      const now = await currentTimestamp();
+      const expectedDuration = bn(PAUSE_WINDOW_DURATION).sub(now.sub(factoryDeployTime));
+
+      const { pauseWindowDuration } = await factory.getCurrentPauseConfiguration();
+      expect(pauseWindowDuration).to.equal(expectedDuration);
+    });
+
+    it('returns the full buffer period duration', async () => {
+      const { bufferPeriodDuration } = await factory.getCurrentPauseConfiguration();
+      expect(bufferPeriodDuration).to.equal(BUFFER_PERIOD_DURATION);
+    });
+  }
+
+  function itReturnsAZeroWindow() {
+    it('returns a zero pause window duration', async () => {
+      const { pauseWindowDuration } = await factory.getCurrentPauseConfiguration();
+      expect(pauseWindowDuration).to.equal(0);
+    });
+
+    it('returns a zero buffer period duration', async () => {
+      const { bufferPeriodDuration } = await factory.getCurrentPauseConfiguration();
+      expect(bufferPeriodDuration).to.equal(0);
+    });
+  }
 });
