@@ -38,7 +38,7 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         uint256 swapFeePercentage,
         address owner
     ) external returns (address) {
-        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getCurrentPauseConfiguration();
+        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         address pool = address(
             new WeightedPool(

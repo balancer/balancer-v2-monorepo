@@ -51,24 +51,24 @@ describe('FactoryWidePauseWindow', function () {
       const now = await currentTimestamp();
       const expectedDuration = bn(PAUSE_WINDOW_DURATION).sub(now.sub(factoryDeployTime));
 
-      const { pauseWindowDuration } = await factory.getCurrentPauseConfiguration();
+      const { pauseWindowDuration } = await factory.getPauseConfiguration();
       expect(pauseWindowDuration).to.equal(expectedDuration);
     });
 
     it('returns the full buffer period duration', async () => {
-      const { bufferPeriodDuration } = await factory.getCurrentPauseConfiguration();
+      const { bufferPeriodDuration } = await factory.getPauseConfiguration();
       expect(bufferPeriodDuration).to.equal(BUFFER_PERIOD_DURATION);
     });
   }
 
   function itReturnsAZeroWindow() {
     it('returns a zero pause window duration', async () => {
-      const { pauseWindowDuration } = await factory.getCurrentPauseConfiguration();
+      const { pauseWindowDuration } = await factory.getPauseConfiguration();
       expect(pauseWindowDuration).to.be.zero;
     });
 
     it('returns a zero buffer period duration', async () => {
-      const { bufferPeriodDuration } = await factory.getCurrentPauseConfiguration();
+      const { bufferPeriodDuration } = await factory.getPauseConfiguration();
       expect(bufferPeriodDuration).to.be.zero;
     });
   }

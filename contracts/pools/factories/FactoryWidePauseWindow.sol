@@ -18,8 +18,8 @@ pragma experimental ABIEncoderV2;
 /**
  * @dev Utility to create Pool factories for Pools that use the `TemporarilyPausable` contract.
  *
- * By calling `TemporarilyPausable`'s constructor with the result of `getCurrentPauseConfiguration`, all Pools created
- * by this factory will share the same Pause Window end time, after which both old and new Pools will not be pausable.
+ * By calling `TemporarilyPausable`'s constructor with the result of `getPauseConfiguration`, all Pools created by this
+ * factory will share the same Pause Window end time, after which both old and new Pools will not be pausable.
  */
 abstract contract FactoryWidePauseWindow {
     // This contract relies on timestamps in a similar way as `TemporarilyPausable` does - the same caveats apply.
@@ -43,11 +43,7 @@ abstract contract FactoryWidePauseWindow {
      * `pauseWindowDuration` will decrease over time until it reaches zero, at which point both it and
      * `bufferPeriodDuration` will be zero forever, meaning deployed Pools will not be pausable.
      */
-    function getCurrentPauseConfiguration()
-        public
-        view
-        returns (uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
-    {
+    function getPauseConfiguration() public view returns (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) {
         uint256 currentTime = block.timestamp;
         if (currentTime < _createdPoolsPauseWindowEndTime) {
             // The buffer period is always the same since its duration is related to how much time is needed to respond
