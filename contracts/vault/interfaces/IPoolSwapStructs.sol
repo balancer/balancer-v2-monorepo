@@ -35,8 +35,10 @@ interface IPoolSwapStructs {
     // `poolId` is the ID of the Pool involved in the swap - this is useful for Pool contracts that implement more than
     // one Pool.
     //
-    // `lastChangeBlock` is the last block in which any of the Pool's registered tokens last changed its total balance.
-    // This can be used to implement price oracles that are resilient to 'sandwich' attacks.
+    // The meaning of `lastChangeBlock` depends on the Pool specialization:
+    //  - Two Token or Minimal Swap Info: the last block in which either `tokenIn` or `tokenOut` changed their total
+    //    balance.
+    //  - General: the last block in which *any* of the Pool's registered tokens changed their total balance.
     //
     // `from` is the origin address for the funds the Pool receives, and `to` is the destination address
     // where the Pool sends the outgoing tokens.

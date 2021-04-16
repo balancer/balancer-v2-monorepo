@@ -93,7 +93,7 @@ library BalanceAllocation {
 
     /**
      * @dev Returns the total balance for each entry in `balances`, as well as the latest block when the total
-     * balance of any of them last changed.
+     * balance of *any* of them last changed.
      */
     function totalsAndLastChangeBlock(bytes32[] memory balances)
         internal

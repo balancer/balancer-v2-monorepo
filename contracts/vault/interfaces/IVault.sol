@@ -302,8 +302,8 @@ interface IVault is ISignaturesValidator {
         );
 
     /**
-     * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when any of `balances`
-     * changed.
+     * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when *any* of
+     * `balances` changed.
      *
      * The order of the `tokens` array is the same order that will be used in `joinPool`, `exitPool`, as well as in all
      * Pool hooks (where applicable). Calls to `registerTokens` and `deregisterTokens` may change this order.
