@@ -554,6 +554,6 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
      */
     function getRate() public view override returns (uint256) {
         // The initial BPT supply is equal to the invariant times the number of tokens.
-        return Math.mul(getInvariant(), _getTotalTokens()).div(totalSupply());
+        return Math.mul(getInvariant(), _getTotalTokens()).divDown(totalSupply());
     }
 }
