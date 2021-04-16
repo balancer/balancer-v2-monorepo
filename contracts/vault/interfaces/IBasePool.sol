@@ -49,7 +49,7 @@ interface IBasePool is IPoolSwapStructs {
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
@@ -81,15 +81,9 @@ interface IBasePool is IPoolSwapStructs {
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory currentBalances,
+        uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts);
-
-    /**
-     * @dev This function returns the appreciation of one BPT relative to the underlying tokens. This starts at
-     * 1 when the pool is created and grows over time. It's equivalent to Curve's get_virtual_price() function.
-     */
-    function getRate() external view returns (uint256);
 }
