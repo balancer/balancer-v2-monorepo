@@ -61,7 +61,7 @@ export async function setupEnvironment(): Promise<{
 }
 
 export async function deployPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {
-  const { admin, creator } = await getSigners();
+  const { creator } = await getSigners();
 
   const symbols = Object.keys(tokens);
 
@@ -79,7 +79,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   if (poolName == 'WeightedPool') {
     const weights = toNormalizedWeights(symbols.map(() => fp(1))); // Equal weights for all tokens
 
-    pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
+    pool = await deployPoolFromFactory(vault, 'WeightedPool', {
       from: creator,
       parameters: [tokenAddresses, weights, swapFeePercentage],
     });
@@ -88,7 +88,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   } else if (poolName == 'StablePool') {
     const amplificationParameter = bn(50e18);
 
-    pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
+    pool = await deployPoolFromFactory(vault, 'StablePool', {
       from: creator,
       parameters: [tokenAddresses, amplificationParameter, swapFeePercentage],
     });

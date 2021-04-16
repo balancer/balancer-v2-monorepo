@@ -451,7 +451,7 @@
       },
       {
         "internalType": "uint256[]",
-        "name": "currentBalances",
+        "name": "balances",
         "type": "uint256[]"
       },
       {
@@ -505,7 +505,7 @@
       },
       {
         "internalType": "uint256[]",
-        "name": "currentBalances",
+        "name": "balances",
         "type": "uint256[]"
       },
       {
@@ -683,7 +683,7 @@
       },
       {
         "internalType": "uint256[]",
-        "name": "currentBalances",
+        "name": "balances",
         "type": "uint256[]"
       },
       {
@@ -715,7 +715,7 @@
         "type": "uint256[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -737,7 +737,7 @@
       },
       {
         "internalType": "uint256[]",
-        "name": "currentBalances",
+        "name": "balances",
         "type": "uint256[]"
       },
       {
@@ -769,7 +769,7 @@
         "type": "uint256[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {

@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../vault/interfaces/IVault.sol";
 
-import "../pools/BasePoolFactory.sol";
+import "../pools/factories/BasePoolFactory.sol";
 
 contract MockFactoryCreatedPool {
     function getPoolId() external view returns (bytes32) {

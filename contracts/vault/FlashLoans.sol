@@ -19,15 +19,18 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/helpers/BalancerErrors.sol";
+import "../lib/openzeppelin/IERC20.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./Fees.sol";
 import "./interfaces/IFlashLoanRecipient.sol";
 
+/**
+ * @dev Handles Flash Loans through the Vault. Calls the `receiveFlashLoan` hook on the flash loan recipient
+ * contract, which implements the `IFlashLoanRecipient` interface.
+ */
 abstract contract FlashLoans is Fees, ReentrancyGuard, TemporarilyPausable {
     using SafeERC20 for IERC20;
 

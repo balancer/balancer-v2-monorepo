@@ -49,7 +49,6 @@
     "coverage": "hardhat coverage --solcoverjs ./.solcover.ts"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "3.3.0-solc-0.7",
     "decimal.js": "^10.2.1",
     "ethers": "^5.0.18"
   },

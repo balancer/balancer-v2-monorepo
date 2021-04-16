@@ -1069,7 +1069,7 @@ describe('Vault - user balance', () => {
         expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0]);
       });
 
-      it('emits an event', async () => {
+      it(`${amount.gt(0) ? 'emits' : 'does not emit'} an event`, async () => {
         const receipt = await (
           await vault.manageUserBalance([
             { kind, asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
@@ -1078,12 +1078,16 @@ describe('Vault - user balance', () => {
 
         expectEvent.notEmitted(receipt, 'InternalBalanceChanged');
 
-        expectEvent.inReceipt(receipt, 'ExternalBalanceTransfer', {
-          sender: sender.address,
-          recipient: recipient.address,
-          token: tokens.DAI.address,
-          amount,
-        });
+        if (amount.gt(0)) {
+          expectEvent.inReceipt(receipt, 'ExternalBalanceTransfer', {
+            sender: sender.address,
+            recipient: recipient.address,
+            token: tokens.DAI.address,
+            amount,
+          });
+        } else {
+          expectEvent.notEmitted(receipt, 'ExternalBalanceTransfer');
+        }
       });
     };
 

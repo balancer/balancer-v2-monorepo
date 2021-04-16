@@ -15,25 +15,26 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/math/FixedPoint.sol";
-import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/helpers/BalancerErrors.sol";
+import "../lib/openzeppelin/IERC20.sol";
+import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./ProtocolFeesCollector.sol";
 import "./VaultAuthorization.sol";
 import "./interfaces/IVault.sol";
 
+/**
+ * @dev To reduce the bytecode size of the Vault, most of the protocol fee logic is not here, but in the
+ * ProtocolFeesCollector contract.
+ */
 abstract contract Fees is IVault {
     using SafeERC20 for IERC20;
 
     ProtocolFeesCollector private immutable _protocolFeesCollector;
 
     constructor() {
-        // Most of the protocol fee logic is not here but in the ProtocolFeesCollector contract. The reason for this is
-        // to reduce the bytecode size of the Vault.
         _protocolFeesCollector = new ProtocolFeesCollector(IVault(this));
     }
 
@@ -44,7 +45,7 @@ abstract contract Fees is IVault {
     /**
      * @dev Returns the protocol swap fee percentage.
      */
-    function _getprotocolSwapFeePercentage() internal view returns (uint256) {
+    function _getProtocolSwapFeePercentage() internal view returns (uint256) {
         return getProtocolFeesCollector().getSwapFeePercentage();
     }
 
@@ -52,12 +53,9 @@ abstract contract Fees is IVault {
      * @dev Returns the protocol fee amount to charge for a flash loan of `amount`.
      */
     function _calculateFlashLoanFeeAmount(uint256 amount) internal view returns (uint256) {
-        return _calculateFeeAmount(amount, getProtocolFeesCollector().getFlashLoanFeePercentage());
-    }
-
-    function _calculateFeeAmount(uint256 amount, uint256 percentage) internal pure returns (uint256) {
         // Fixed point multiplication introduces error: we round up, which means in certain scenarios the charged
         // percentage can be slightly higher than intended.
+        uint256 percentage = getProtocolFeesCollector().getFlashLoanFeePercentage();
         return FixedPoint.mulUp(amount, percentage);
     }
 

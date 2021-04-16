@@ -14,6 +14,9 @@
 
 pragma solidity ^0.7.0;
 
+/**
+ * @dev Interface for the SignatureValidator helper, used to support meta-transactions.
+ */
 interface ISignaturesValidator {
     /**
      * @dev Get EIP712 domain separator
