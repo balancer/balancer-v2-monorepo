@@ -29,8 +29,8 @@ import "./Fees.sol";
 import "./interfaces/IFlashLoanRecipient.sol";
 
 /**
- * @dev Base class for handling Flash Loans through the Vault. Calls the `receiveFlashLoan` hook on the flash loan
- * recipient contract, which implements the IFlashLoanRecipient interface.
+ * @dev Handles Flash Loans through the Vault. Calls the `receiveFlashLoan` hook on the flash loan recipient
+ * contract, which implements the `IFlashLoanRecipient` interface.
  */
 abstract contract FlashLoans is Fees, ReentrancyGuard, TemporarilyPausable {
     using SafeERC20 for IERC20;
