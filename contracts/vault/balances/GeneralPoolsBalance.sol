@@ -14,10 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../../lib/helpers/BalancerErrors.sol";
 import "../../lib/openzeppelin/EnumerableMap.sol";
+import "../../lib/openzeppelin/IERC20.sol";
 
 import "./BalanceAllocation.sol";
 

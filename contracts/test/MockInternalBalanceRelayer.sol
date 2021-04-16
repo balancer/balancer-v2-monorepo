@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../lib/openzeppelin/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
 import "../lib/helpers/InputHelpers.sol";
@@ -35,10 +35,20 @@ contract MockInternalBalanceRelayer {
     ) public {
         InputHelpers.ensureInputLengthMatch(depositAmounts.length, withdrawAmounts.length);
         for (uint256 i = 0; i < depositAmounts.length; i++) {
-            IVault.UserBalanceOp[] memory deposit = _buildUserBalanceOp(IVault.UserBalanceOpKind.DEPOSIT_INTERNAL, sender, asset, depositAmounts[i]);
+            IVault.UserBalanceOp[] memory deposit = _buildUserBalanceOp(
+                IVault.UserBalanceOpKind.DEPOSIT_INTERNAL,
+                sender,
+                asset,
+                depositAmounts[i]
+            );
             vault.manageUserBalance(deposit);
 
-            IVault.UserBalanceOp[] memory withdraw = _buildUserBalanceOp(IVault.UserBalanceOpKind.WITHDRAW_INTERNAL, sender, asset, withdrawAmounts[i]);
+            IVault.UserBalanceOp[] memory withdraw = _buildUserBalanceOp(
+                IVault.UserBalanceOpKind.WITHDRAW_INTERNAL,
+                sender,
+                asset,
+                withdrawAmounts[i]
+            );
             vault.manageUserBalance(withdraw);
         }
     }

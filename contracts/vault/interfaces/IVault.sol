@@ -14,7 +14,7 @@
 
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../../lib/openzeppelin/IERC20.sol";
 
 import "./IWETH.sol";
 import "./IAsset.sol";
