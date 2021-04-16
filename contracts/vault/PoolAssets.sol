@@ -497,10 +497,11 @@ abstract contract PoolAssets is
     }
 
     /**
-     * @dev Transfers `amountsIn` from `sender`, checking that they are within their accepted limits, and pays accumulated
-     * protocol swap fees.
+     * @dev Transfers `amountsIn` from `sender`, checking that they are within their accepted limits, and pays
+     * accumulated protocol swap fees.
      *
-     * Returns the Pool's final balances, which are the current balances plus `amountsIn` minus accumulated protocol swap fees.
+     * Returns the Pool's final balances, which are the current balances plus `amountsIn` minus accumulated protocol
+     * swap fees.
      */
     function _processJoinPoolTransfers(
         address sender,

@@ -15,24 +15,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../vault/interfaces/IVault.sol";
+import "../pools/factories/FactoryWidePauseWindow.sol";
 
-import "../pools/factories/BasePoolFactory.sol";
-
-contract MockFactoryCreatedPool {
-    function getPoolId() external view returns (bytes32) {
-        return bytes32(uint256(address(this)));
-    }
-}
-
-contract MockPoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function create() external returns (address) {
-        address pool = address(new MockFactoryCreatedPool());
-        _register(pool);
-        return pool;
-    }
-}
+contract MockFactoryWidePauseWindow is FactoryWidePauseWindow {}

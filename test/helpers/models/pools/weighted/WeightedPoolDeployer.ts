@@ -43,7 +43,7 @@ export default {
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
+    const { tokens, weights, swapFeePercentage, owner, from } = params;
     const factory = await deploy('WeightedPoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
@@ -51,8 +51,6 @@ export default {
       tokens.addresses,
       weights,
       swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
       TypesConverter.toAddress(owner)
     );
     const receipt = await tx.wait();

@@ -15,31 +15,37 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IBasePool.sol";
+import "../../vault/interfaces/IVault.sol";
+import "../../vault/interfaces/IBasePool.sol";
 
+/**
+ * @dev Base contract for Pool factories.
+ *
+ * Pools are deployed from factories to allow third parties to reason about them. Unknown Pools may have arbitrary
+ * logic: being able to assert that a Pool's behavior follows certain rules (those imposed by the contracts created by
+ * the factory) is very powerful.
+ */
 abstract contract BasePoolFactory {
     IVault private immutable _vault;
     mapping(address => bool) private _isPoolFromFactory;
-
-    uint256 private constant _PAUSE_WINDOW_DURATION = 90 days;
-    uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
-
-    uint256 private immutable _createdPoolsPauseWindowEndTime;
 
     event PoolRegistered(address indexed pool);
 
     constructor(IVault vault) {
         _vault = vault;
-
-        _createdPoolsPauseWindowEndTime = block.timestamp + _PAUSE_WINDOW_DURATION;
     }
 
+    /**
+     * @dev Returns the Vault's address.
+     */
     function getVault() public view returns (IVault) {
         return _vault;
     }
 
-    function isPoolFromFactory(address pool) public view returns (bool) {
+    /**
+     * @dev Returns true if `pool` was created by this factory.
+     */
+    function isPoolFromFactory(address pool) external view returns (bool) {
         return _isPoolFromFactory[pool];
     }
 

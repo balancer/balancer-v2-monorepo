@@ -51,16 +51,6 @@
         "type": "uint256"
       },
       {
-        "internalType": "uint256",
-        "name": "pauseWindowDuration",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "bufferPeriodDuration",
-        "type": "uint256"
-      },
-      {
         "internalType": "address",
         "name": "owner",
         "type": "address"
@@ -75,6 +65,24 @@
       }
     ],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getCurrentPauseConfiguration",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "pauseWindowDuration",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "bufferPeriodDuration",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

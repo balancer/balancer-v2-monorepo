@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { Contract, ContractReceipt, Signer } from 'ethers';
+import { Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from './deploy';
@@ -12,18 +12,8 @@ export const TwoTokenPool = 2;
 export type PoolSpecializationSetting = typeof MinimalSwapInfoPool | typeof GeneralPool | typeof TwoTokenPool;
 export type PoolName = 'WeightedPool' | 'StablePool';
 
-/**
- * Deploys a Pool via a Factory contract.
- *
- * @param vault The Vault contract.
- * @param admin The account with admin powers over the Vault's Authorizer.
- * @param poolName The name of the Pool contract. The factory must have the same name, with the 'Factory'
- * suffix.
- * @param args An object with the signer that will call the factory and the arguments for the Pool's constructor.
- */
 export async function deployPoolFromFactory(
   vault: Contract,
-  admin: Signer,
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
@@ -32,14 +22,10 @@ export async function deployPoolFromFactory(
 
   const name = 'Balancer Pool Token';
   const symbol = 'BPT';
-  const pauseWindowDuration = 0;
-  const bufferPeriodDuration = 0;
   const owner = ZERO_ADDRESS;
 
   const receipt: ContractReceipt = await (
-    await factory
-      .connect(args.from)
-      .create(name, symbol, ...args.parameters, pauseWindowDuration, bufferPeriodDuration, owner)
+    await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)
   ).wait();
 
   const event = receipt.events?.find((e) => e.event == 'PoolRegistered');

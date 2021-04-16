@@ -1,8 +1,8 @@
 import { Contract } from 'ethers';
 
-import * as expectEvent from '../helpers/expectEvent';
-import { deploy } from '../../lib/helpers/deploy';
-import { ZERO_ADDRESS } from '../../lib/helpers/constants';
+import * as expectEvent from '../../helpers/expectEvent';
+import { deploy } from '../../../../lib/helpers/deploy';
+import { ZERO_ADDRESS } from '../../../lib/helpers/constants';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ethers } from 'hardhat';
