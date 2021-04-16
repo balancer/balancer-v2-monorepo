@@ -253,7 +253,7 @@ describe('BasePool', function () {
 
     let sender: SignerWithAddress;
 
-    function itPausesAndUnpauses() {
+    function itCanPause() {
       it('can pause', async () => {
         await pool.connect(sender).setPaused(true);
 
@@ -307,7 +307,7 @@ describe('BasePool', function () {
           await authorizer.connect(admin).grantRole(role, sender.address);
         });
 
-        itPausesAndUnpauses();
+        itCanPause();
       });
     });
 
@@ -346,7 +346,7 @@ describe('BasePool', function () {
             await authorizer.connect(admin).grantRole(role, sender.address);
           });
 
-          itPausesAndUnpauses();
+          itCanPause();
         });
       });
     });
