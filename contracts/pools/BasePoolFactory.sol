@@ -20,13 +20,19 @@ import "../vault/interfaces/IBasePool.sol";
 
 abstract contract BasePoolFactory {
     IVault private immutable _vault;
-
     mapping(address => bool) private _isPoolFromFactory;
+
+    uint256 private constant _PAUSE_WINDOW_DURATION = 90 days;
+    uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
+
+    uint256 private immutable _createdPoolsPauseWindowEndTime;
 
     event PoolRegistered(address indexed pool);
 
     constructor(IVault vault) {
         _vault = vault;
+
+        _createdPoolsPauseWindowEndTime = block.timestamp + _PAUSE_WINDOW_DURATION;
     }
 
     function getVault() public view returns (IVault) {
