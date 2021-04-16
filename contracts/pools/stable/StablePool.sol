@@ -431,7 +431,6 @@ contract StablePool is BaseGeneralPool, StableMath {
     /**
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
-     * It's equivalent to Curve's get_virtual_price() function
      */
     function getRate() public view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
