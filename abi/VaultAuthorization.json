@@ -1,31 +1,5 @@
 [
   {
-    "inputs": [
-      {
-        "internalType": "contract IAuthorizer",
-        "name": "authorizer",
-        "type": "address"
-      },
-      {
-        "internalType": "contract IWETH",
-        "name": "weth",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "responseWindowDuration",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "bufferPeriodDuration",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
     "anonymous": false,
     "inputs": [
       {
@@ -405,7 +379,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "assetDeltas",
+        "name": "",
         "type": "int256[]"
       }
     ],
@@ -587,7 +561,7 @@
     "outputs": [
       {
         "internalType": "uint256[]",
-        "name": "balances",
+        "name": "",
         "type": "uint256[]"
       }
     ],
@@ -966,7 +940,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "",
+        "name": "assetDeltas",
         "type": "int256[]"
       }
     ],
@@ -1115,9 +1089,5 @@
     ],
     "stateMutability": "payable",
     "type": "function"
-  },
-  {
-    "stateMutability": "payable",
-    "type": "receive"
   }
 ]

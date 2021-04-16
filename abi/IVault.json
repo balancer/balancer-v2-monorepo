@@ -1,50 +1,5 @@
 [
   {
-    "inputs": [
-      {
-        "internalType": "contract IAuthorizer",
-        "name": "authorizer",
-        "type": "address"
-      },
-      {
-        "internalType": "contract IWETH",
-        "name": "weth",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "responseWindowDuration",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "bufferPeriodDuration",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "contract IAuthorizer",
-        "name": "oldAuthorizer",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "contract IAuthorizer",
-        "name": "newAuthorizer",
-        "type": "address"
-      }
-    ],
-    "name": "AuthorizerChanged",
-    "type": "event"
-  },
-  {
     "anonymous": false,
     "inputs": [
       {
@@ -98,19 +53,6 @@
       }
     ],
     "name": "InternalBalanceChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "paused",
-        "type": "bool"
-      }
-    ],
-    "name": "PausedStateChanged",
     "type": "event"
   },
   {
@@ -198,31 +140,6 @@
       }
     ],
     "name": "PoolRegistered",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "relayer",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "sender",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "allowed",
-        "type": "bool"
-      }
-    ],
-    "name": "RelayerAllowanceChanged",
     "type": "event"
   },
   {
@@ -405,7 +322,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "assetDeltas",
+        "name": "",
         "type": "int256[]"
       }
     ],
@@ -587,7 +504,7 @@
     "outputs": [
       {
         "internalType": "uint256[]",
-        "name": "balances",
+        "name": "",
         "type": "uint256[]"
       }
     ],
@@ -607,29 +524,6 @@
       {
         "internalType": "uint256",
         "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getPausedState",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "paused",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "responseWindowEndTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "bufferPeriodEndTime",
         "type": "uint256"
       }
     ],
@@ -966,7 +860,7 @@
     "outputs": [
       {
         "internalType": "int256[]",
-        "name": "",
+        "name": "assetDeltas",
         "type": "int256[]"
       }
     ],
@@ -1115,9 +1009,5 @@
     ],
     "stateMutability": "payable",
     "type": "function"
-  },
-  {
-    "stateMutability": "payable",
-    "type": "receive"
   }
 ]

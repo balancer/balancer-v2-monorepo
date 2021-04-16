@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 
 import { deploy } from '../../../lib/helpers/deploy';
@@ -378,10 +377,11 @@ describe('Vault - balance allocation', () => {
       cashA: BigNumberish,
       managedA: BigNumberish,
       cashB: BigNumberish,
-      managedB: BigNumberish
+      managedB: BigNumberish,
+      lastChangeBlock?: BigNumberish
     ) {
-      const balanceA = await library.toBalance(bn(cashA), bn(managedA), BLOCK_NUMBER);
-      const balanceB = await library.toBalance(bn(cashB), bn(managedB), BLOCK_NUMBER);
+      const balanceA = await library.toBalance(bn(cashA), bn(managedA), lastChangeBlock ?? BLOCK_NUMBER);
+      const balanceB = await library.toBalance(bn(cashB), bn(managedB), lastChangeBlock ?? BLOCK_NUMBER);
 
       const sharedCash = await library.toSharedCash(balanceA, balanceB);
       const sharedManaged = await library.toSharedManaged(balanceA, balanceB);
@@ -393,7 +393,7 @@ describe('Vault - balance allocation', () => {
       expect(unpackedBalanceB).to.equal(balanceB);
 
       // Only shared cash holds the last change block
-      expect(await library.lastChangeBlock(sharedCash)).to.equal(BLOCK_NUMBER);
+      expect(await library.lastChangeBlock(sharedCash)).to.equal(lastChangeBlock ?? BLOCK_NUMBER);
       expect(await library.lastChangeBlock(sharedManaged)).to.equal(0);
     }
 
@@ -437,6 +437,34 @@ describe('Vault - balance allocation', () => {
       await testPackUnpack(amount, amount, 0, 0);
       await testPackUnpack(amount, amount, 0, amount);
       await testPackUnpack(amount, amount, amount, 0);
+    });
+
+    context('if A has a more recent last change block', () => {
+      it('stores the most recent last change block', async () => {
+        const balanceA = await library.toBalance(0, 0, 5);
+        const balanceB = await library.toBalance(0, 0, 3);
+
+        const sharedCash = await library.toSharedCash(balanceA, balanceB);
+        const sharedManaged = await library.toSharedManaged(balanceA, balanceB);
+
+        const unpackedBalanceA = await library.fromSharedToBalanceA(sharedCash, sharedManaged);
+
+        expect(await library.lastChangeBlock(unpackedBalanceA)).to.equal(5);
+      });
+    });
+
+    context('if B has a more recent last change block', () => {
+      it('stores the most recent last change block', async () => {
+        const balanceA = await library.toBalance(0, 0, 5);
+        const balanceB = await library.toBalance(0, 0, 7);
+
+        const sharedCash = await library.toSharedCash(balanceA, balanceB);
+        const sharedManaged = await library.toSharedManaged(balanceA, balanceB);
+
+        const unpackedBalanceA = await library.fromSharedToBalanceA(sharedCash, sharedManaged);
+
+        expect(await library.lastChangeBlock(unpackedBalanceA)).to.equal(7);
+      });
     });
   });
 
