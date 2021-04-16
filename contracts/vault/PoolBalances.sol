@@ -239,8 +239,8 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             // Compute the new Pool balances. Note that the fee amount might be larger than `amountIn`,
             // resulting in an overall decrease of the Pool's balance for a token.
             finalBalances[i] = (amountIn >= feeAmount) // This lets us skip checked arithmetic
-            ? balances[i].increaseCash(amountIn - feeAmount)
-            : balances[i].decreaseCash(feeAmount - amountIn);
+                ? balances[i].increaseCash(amountIn - feeAmount)
+                : balances[i].decreaseCash(feeAmount - amountIn);
         }
 
         // Handle any used and remaining ETH.
