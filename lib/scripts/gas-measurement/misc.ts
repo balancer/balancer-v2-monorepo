@@ -71,7 +71,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   }
 
   const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
-  const swapFee = fp(0.02); // 2%
+  const swapFeePercentage = fp(0.02); // 2%
 
   let pool: Contract;
   let joinUserData: string;
@@ -81,7 +81,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
       from: creator,
-      parameters: [tokenAddresses, weights, swapFee],
+      parameters: [tokenAddresses, weights, swapFeePercentage],
     });
 
     joinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
@@ -90,7 +90,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
       from: creator,
-      parameters: [tokenAddresses, amplificationParameter, swapFee],
+      parameters: [tokenAddresses, amplificationParameter, swapFeePercentage],
     });
 
     joinUserData = encodeJoinStablePool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });

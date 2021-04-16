@@ -84,7 +84,7 @@ async function deployPools(filteredPools: Pool[], tokens: TokenList): Promise<(C
     const tokensList: Array<string> = [];
     const weights: Array<BigNumber> = [];
     const balances: Array<BigNumber> = [];
-    const swapFee: BigNumber = p.swapFee;
+    const swapFeePercentage: BigNumber = p.swapFee;
 
     p.tokens
       .sort((a, b) => compareAddresses(tokens[a.symbol].address, tokens[b.symbol].address))
@@ -96,7 +96,7 @@ async function deployPools(filteredPools: Pool[], tokens: TokenList): Promise<(C
       });
 
     // Deploy pool and provide liquidity
-    return deployStrategyPool(tokensList, weights, balances, swapFee);
+    return deployStrategyPool(tokensList, weights, balances, swapFeePercentage);
   });
   return await Promise.all(promises);
 }
@@ -105,7 +105,7 @@ async function deployStrategyPool(
   tokens: Array<string>,
   weights: Array<BigNumber>,
   initialBalances: Array<BigNumber>,
-  swapFee: BigNumber
+  swapFeePercentage: BigNumber
 ): Promise<Contract | undefined> {
   const vault = await ethers.getContract('Vault');
   const wpFactoryContract = await ethers.getContract('WeightedPoolFactory');
@@ -117,7 +117,7 @@ async function deployStrategyPool(
   }
 
   console.log(`\nNew Pool With ${tokens.length} tokens`);
-  console.log(`SwapFee: ${swapFee.toString()}\nTokens:`);
+  console.log(`SwapFeePercentage: ${swapFeePercentage.toString()}\nTokens:`);
   tokens.forEach((token, i) => {
     const initialBalanceScaled = initialBalances[i].div(bn(10).pow(decimalsByAddress[token]));
     console.log(`${token} - ${initialBalanceScaled.toString()}`);
@@ -125,9 +125,9 @@ async function deployStrategyPool(
 
   const name = tokens.length + ' token pool';
   const sym = 'TESTPOOL';
-  const responseWindowDuration = WEEK;
+  const pauseWindowDuration = WEEK;
   const bufferPeriodDuration = WEEK;
-  const parameters = [name, sym, tokens, weights, swapFee, responseWindowDuration, bufferPeriodDuration];
+  const parameters = [name, sym, tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration];
 
   const tx = await wpFactoryContract.connect(controller).create(...parameters);
   const receipt = await tx.wait();
@@ -147,7 +147,7 @@ async function initializeStrategyPool(
   pool: Contract,
   tokens: Array<string>,
   initialBalances: Array<BigNumber>
-  //swapFee: BigNumber
+  //swapFeePercentage: BigNumber
 ): Promise<any> {
   const vault = await ethers.getContract('Vault');
 

@@ -270,7 +270,7 @@ abstract contract PoolAssets is
                 recipient,
                 totalBalances,
                 lastChangeBlock,
-                _getProtocolSwapFee(),
+                _getprotocolSwapFeePercentage(),
                 change.userData
             )
             : pool.onExitPool(
@@ -279,7 +279,7 @@ abstract contract PoolAssets is
                 recipient,
                 totalBalances,
                 lastChangeBlock,
-                _getProtocolSwapFee(),
+                _getprotocolSwapFeePercentage(),
                 change.userData
             );
 
@@ -303,6 +303,7 @@ abstract contract PoolAssets is
     {
         (IERC20[] memory actualTokens, bytes32[] memory balances) = _getPoolTokens(poolId);
         InputHelpers.ensureInputLengthMatch(actualTokens.length, expectedTokens.length);
+        _require(actualTokens.length > 0, Errors.POOL_NO_TOKENS);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
             _require(actualTokens[i] == expectedTokens[i], Errors.TOKENS_MISMATCH);
@@ -483,15 +484,15 @@ abstract contract PoolAssets is
                 wrappedEth = wrappedEth.add(amountIn);
             }
 
-            uint256 feeToPay = dueProtocolFeeAmounts[i];
+            uint256 feeAmountToPay = dueProtocolFeeAmounts[i];
 
             // Compute the new Pool balances. Note that due protocol fees might be larger than amounts in,
             // resulting in an overall decrease of the Pool's balance for a token.
-            finalBalances[i] = (amountIn >= feeToPay)
-                ? balances[i].increaseCash(amountIn - feeToPay) // Don't need checked arithmetic
-                : balances[i].decreaseCash(feeToPay - amountIn); // Same as -(int256(amountIn) - int256(feeToPay))
+            finalBalances[i] = (amountIn >= feeAmountToPay)
+                ? balances[i].increaseCash(amountIn - feeAmountToPay) // Don't need checked arithmetic
+                : balances[i].decreaseCash(feeAmountToPay - amountIn); // -(int256(amountIn) - int256(feeAmountToPay))
 
-            _payFee(_translateToIERC20(asset), feeToPay);
+            _payFee(_translateToIERC20(asset), feeAmountToPay);
         }
 
         // Handle any used and remaining ETH.
@@ -514,13 +515,13 @@ abstract contract PoolAssets is
             IAsset asset = change.assets[i];
             _sendAsset(asset, amountOut, recipient, change.useInternalBalance);
 
-            uint256 protocolSwapFee = dueProtocolFeeAmounts[i];
+            uint256 protocolSwapFeePercentageAmount = dueProtocolFeeAmounts[i];
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
-            uint256 delta = amountOut.add(protocolSwapFee);
+            uint256 delta = amountOut.add(protocolSwapFeePercentageAmount);
             finalBalances[i] = balances[i].decreaseCash(delta);
 
-            _payFee(_translateToIERC20(asset), protocolSwapFee);
+            _payFee(_translateToIERC20(asset), protocolSwapFeePercentageAmount);
         }
     }
 

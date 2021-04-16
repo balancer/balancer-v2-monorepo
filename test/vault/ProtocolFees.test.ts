@@ -33,37 +33,39 @@ describe('Vault - protocol fees', () => {
   });
 
   describe('set fees', () => {
-    const MAX_SWAP_FEE = bn(50e16); // 50%
-    const MAX_FLASH_LOAN_FEE = bn(1e16); // 1%
+    const MAX_SWAP_FEE_PERCENTAGE = bn(50e16); // 50%
+    const MAX_FLASH_LOAN_FEE_PERCENTAGE = bn(1e16); // 1%
 
     context('when the sender is allowed', () => {
       context('when the given input is valid', async () => {
-        it('sets the swap fee properly', async () => {
-          await vault.setSwapFee(MAX_SWAP_FEE, { from: admin });
+        it('sets the swap fee percentage properly', async () => {
+          await vault.setSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE, { from: admin });
 
-          const swapFee = await vault.getSwapFee();
-          expect(swapFee).to.equal(MAX_SWAP_FEE);
+          const swapFeePercentage = await vault.getSwapFeePercentage();
+          expect(swapFeePercentage).to.equal(MAX_SWAP_FEE_PERCENTAGE);
         });
 
-        it('sets the flash loan fee properly', async () => {
-          await vault.setFlashLoanFee(MAX_FLASH_LOAN_FEE, { from: admin });
+        it('sets the flash loan fee percentage properly', async () => {
+          await vault.setFlashLoanFeePercentage(MAX_FLASH_LOAN_FEE_PERCENTAGE, { from: admin });
 
-          const flashLoanFee = await vault.getFlashLoanFee();
-          expect(flashLoanFee).to.equal(MAX_FLASH_LOAN_FEE);
+          const flashLoanFeePercentage = await vault.getFlashLoanFeePercentage();
+          expect(flashLoanFeePercentage).to.equal(MAX_FLASH_LOAN_FEE_PERCENTAGE);
         });
       });
 
       context('when the given input is valid', async () => {
         it('reverts if the swap fee is above the maximum', async () => {
-          const badSwapFee = MAX_SWAP_FEE.add(1);
+          const badSwapFeePercentage = MAX_SWAP_FEE_PERCENTAGE.add(1);
 
-          await expect(vault.setSwapFee(badSwapFee, { from: admin })).to.be.revertedWith('SWAP_FEE_TOO_HIGH');
+          await expect(vault.setSwapFeePercentage(badSwapFeePercentage, { from: admin })).to.be.revertedWith(
+            'SWAP_FEE_TOO_HIGH'
+          );
         });
 
         it('reverts if the flash loan fee is above the maximum', async () => {
-          const badFlashLoanFee = MAX_FLASH_LOAN_FEE.add(1);
+          const badFlashLoanFeePercentage = MAX_FLASH_LOAN_FEE_PERCENTAGE.add(1);
 
-          await expect(vault.setFlashLoanFee(badFlashLoanFee, { from: admin })).to.be.revertedWith(
+          await expect(vault.setFlashLoanFeePercentage(badFlashLoanFeePercentage, { from: admin })).to.be.revertedWith(
             'FLASH_LOAN_FEE_TOO_HIGH'
           );
         });
@@ -72,15 +74,19 @@ describe('Vault - protocol fees', () => {
 
     context('when the sender is not allowed', () => {
       it('reverts', async () => {
-        await expect(vault.setSwapFee(MAX_SWAP_FEE, { from: other })).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        await expect(vault.setFlashLoanFee(MAX_SWAP_FEE, { from: other })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(vault.setSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE, { from: other })).to.be.revertedWith(
+          'SENDER_NOT_ALLOWED'
+        );
+        await expect(vault.setFlashLoanFeePercentage(MAX_SWAP_FEE_PERCENTAGE, { from: other })).to.be.revertedWith(
+          'SENDER_NOT_ALLOWED'
+        );
       });
     });
   });
 
   describe('collected fees', () => {
     it('fees are initially zero', async () => {
-      expect(await vault.getCollectedFees([tokens.DAI.address])).to.be.zeros;
+      expect(await vault.getCollectedFeeAmounts([tokens.DAI.address])).to.be.zeros;
     });
 
     context('with collected protocol fees', () => {
@@ -90,12 +96,12 @@ describe('Vault - protocol fees', () => {
       });
 
       it('reports collected fee', async () => {
-        const collectedFees = await vault.getCollectedFees(tokens);
+        const collectedFees = await vault.getCollectedFeeAmounts(tokens);
         expect(collectedFees).to.deep.equal([bn(0.025e18), bn(0.05e18)]);
       });
 
       it('authorized accounts can withdraw protocol fees to any recipient', async () => {
-        const role = roleId(feesCollector, 'withdrawCollectedFees');
+        const role = await roleId(feesCollector, 'withdrawCollectedFees');
         await vault.grantRole(role, feeCollector);
 
         await expectBalanceChange(
@@ -107,12 +113,12 @@ describe('Vault - protocol fees', () => {
           { account: other, changes: { DAI: bn(0.02e18), MKR: bn(0.04e18) } }
         );
 
-        const collectedFees = await vault.getCollectedFees(tokens);
+        const collectedFees = await vault.getCollectedFeeAmounts(tokens);
         expect(collectedFees).to.deep.equal([bn(0.005e18), bn(0.01e18)]);
       });
 
       it('protocol fees cannot be over-withdrawn', async () => {
-        const role = roleId(feesCollector, 'withdrawCollectedFees');
+        const role = await roleId(feesCollector, 'withdrawCollectedFees');
         await vault.grantRole(role, feeCollector);
 
         await expect(

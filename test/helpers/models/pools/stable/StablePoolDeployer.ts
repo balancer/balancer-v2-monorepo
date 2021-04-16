@@ -19,17 +19,17 @@ export default {
     const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { tokens, amplificationParameter, swapFee } = deployment;
+    const { tokens, amplificationParameter, swapFeePercentage } = deployment;
     const poolId = await pool.getPoolId();
-    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFee);
+    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage);
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
     const {
       tokens,
       amplificationParameter,
-      swapFee,
-      responseWindowDuration,
+      swapFeePercentage,
+      pauseWindowDuration,
       bufferPeriodDuration,
       owner,
       from,
@@ -42,8 +42,8 @@ export default {
         SYMBOL,
         tokens.addresses,
         amplificationParameter,
-        swapFee,
-        responseWindowDuration,
+        swapFeePercentage,
+        pauseWindowDuration,
         bufferPeriodDuration,
         TypesConverter.toAddress(owner),
       ],
@@ -55,8 +55,8 @@ export default {
     const {
       tokens,
       amplificationParameter,
-      swapFee,
-      responseWindowDuration,
+      swapFeePercentage,
+      pauseWindowDuration,
       bufferPeriodDuration,
       owner,
       from,
@@ -68,9 +68,9 @@ export default {
       SYMBOL,
       tokens.addresses,
       amplificationParameter,
-      swapFee,
+      swapFeePercentage,
 
-      responseWindowDuration,
+      pauseWindowDuration,
       bufferPeriodDuration,
       TypesConverter.toAddress(owner)
     );

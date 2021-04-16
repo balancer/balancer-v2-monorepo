@@ -55,7 +55,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address recipient,
         uint256[] currentBalances,
         uint256 lastChangeBlock,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes userData
     );
 
@@ -65,7 +65,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address recipient,
         uint256[] currentBalances,
         uint256 lastChangeBlock,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes userData
     );
 
@@ -75,10 +75,18 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address recipient,
         uint256[] memory currentBalances,
         uint256 lastChangeBlock,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
-        emit OnJoinPoolCalled(poolId, sender, recipient, currentBalances, lastChangeBlock, protocolSwapFee, userData);
+        emit OnJoinPoolCalled(
+            poolId,
+            sender,
+            recipient,
+            currentBalances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData
+        );
 
         (amountsIn, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }
@@ -89,10 +97,18 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address recipient,
         uint256[] memory currentBalances,
         uint256 lastChangeBlock,
-        uint256 protocolSwapFee,
+        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
-        emit OnExitPoolCalled(poolId, sender, recipient, currentBalances, lastChangeBlock, protocolSwapFee, userData);
+        emit OnExitPoolCalled(
+            poolId,
+            sender,
+            recipient,
+            currentBalances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData
+        );
 
         (amountsOut, dueProtocolFeeAmounts) = abi.decode(userData, (uint256[], uint256[]));
     }

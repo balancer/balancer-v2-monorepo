@@ -14,14 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../../lib/helpers/TemporarilyPausable.sol";
-
-contract TemporarilyPausableMock is TemporarilyPausable {
-    constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
-        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
-    {}
-
-    function setPaused(bool paused) external {
-        _setPaused(paused);
-    }
+interface IAuthentication {
+    /**
+     * @dev Returns the role required to call the function described by `selector`.
+     */
+    function getRole(bytes4 selector) external view returns (bytes32);
 }

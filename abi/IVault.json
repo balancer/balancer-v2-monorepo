@@ -345,29 +345,6 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "sender",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "relayer",
-        "type": "address"
-      },
-      {
-        "internalType": "bool",
-        "name": "allowed",
-        "type": "bool"
-      }
-    ],
-    "name": "changeRelayerAllowance",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "bytes32",
         "name": "poolId",
         "type": "bytes32"
@@ -436,8 +413,8 @@
   {
     "inputs": [
       {
-        "internalType": "contract IFlashLoanReceiver",
-        "name": "receiver",
+        "internalType": "contract IFlashLoanRecipient",
+        "name": "recipient",
         "type": "address"
       },
       {
@@ -452,7 +429,7 @@
       },
       {
         "internalType": "bytes",
-        "name": "receiverData",
+        "name": "userData",
         "type": "bytes"
       }
     ],
@@ -648,7 +625,7 @@
         "type": "address"
       }
     ],
-    "name": "hasAllowedRelayer",
+    "name": "hasApprovedRelayer",
     "outputs": [
       {
         "internalType": "bool",
@@ -918,6 +895,29 @@
       }
     ],
     "name": "setPaused",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "relayer",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "setRelayerApproval",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

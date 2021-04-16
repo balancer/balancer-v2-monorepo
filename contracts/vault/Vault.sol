@@ -19,7 +19,7 @@ import "./interfaces/IAuthorizer.sol";
 import "./interfaces/IWETH.sol";
 
 import "./VaultAuthorization.sol";
-import "./FlashLoanProvider.sol";
+import "./FlashLoans.sol";
 import "./Swaps.sol";
 
 /**
@@ -34,7 +34,7 @@ import "./Swaps.sol";
  *
  *  - `UserBalance`: manage user balances (Internal Balance operations and external balance transfers)
  *  - `Fees`: set and compute protocol fees.
- *  - `FlashLoanProvider`: flash loans.
+ *  - `FlashLoans`: flash loan transfers and fees.
  *  - `PoolRegistry`: Pool registration, joining, exiting, and Asset Manager interactions.
  *  - `Swaps`: Pool swaps.
  *
@@ -52,17 +52,13 @@ import "./Swaps.sol";
  * utilization of `internal` functions (particularly inside modifiers), usage of named return arguments, and dedicated
  * storage access methods, to name a few.
  */
-contract Vault is VaultAuthorization, FlashLoanProvider, Swaps {
+contract Vault is VaultAuthorization, FlashLoans, Swaps {
     constructor(
         IAuthorizer authorizer,
         IWETH weth,
-        uint256 responseWindowDuration,
+        uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    )
-        VaultAuthorization(authorizer)
-        AssetHelpers(weth)
-        TemporarilyPausable(responseWindowDuration, bufferPeriodDuration)
-    {
+    ) VaultAuthorization(authorizer) AssetHelpers(weth) TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

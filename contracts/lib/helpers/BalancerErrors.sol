@@ -102,8 +102,8 @@ library Errors {
     // Shared pools
     uint256 internal constant MIN_TOKENS = 200;
     uint256 internal constant MAX_TOKENS = 201;
-    uint256 internal constant MAX_SWAP_FEE = 202;
-    uint256 internal constant MIN_SWAP_FEE = 203;
+    uint256 internal constant MAX_SWAP_FEE_PERCENTAGE = 202;
+    uint256 internal constant MIN_SWAP_FEE_PERCENTAGE = 203;
     uint256 internal constant MINIMUM_BPT = 204;
     uint256 internal constant CALLER_NOT_VAULT = 205;
     uint256 internal constant UNINITIALIZED = 206;
@@ -129,8 +129,8 @@ library Errors {
     uint256 internal constant REENTRANCY = 400;
     uint256 internal constant SENDER_NOT_ALLOWED = 401;
     uint256 internal constant PAUSED = 402;
-    uint256 internal constant RESPONSE_WINDOW_EXPIRED = 403;
-    uint256 internal constant MAX_RESPONSE_WINDOW_DURATION = 404;
+    uint256 internal constant PAUSE_WINDOW_EXPIRED = 403;
+    uint256 internal constant MAX_PAUSE_WINDOW_DURATION = 404;
     uint256 internal constant MAX_BUFFER_PERIOD_DURATION = 405;
     uint256 internal constant INSUFFICIENT_BALANCE = 406;
     uint256 internal constant INSUFFICIENT_ALLOWANCE = 407;
@@ -181,6 +181,8 @@ library Errors {
     uint256 internal constant TOKENS_LENGTH_MUST_BE_2 = 524;
     uint256 internal constant NONZERO_TOKEN_BALANCE = 525;
     uint256 internal constant BALANCE_TOTAL_OVERFLOW = 526;
+    uint256 internal constant POOL_NO_TOKENS = 527;
+    uint256 internal constant INSUFFICIENT_FLASH_LOAN_BALANCE = 528;
 
     // Fees
     uint256 internal constant SWAP_FEE_TOO_HIGH = 600;

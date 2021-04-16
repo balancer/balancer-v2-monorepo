@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IWETH.sol";
 import "./IAsset.sol";
 import "./IAuthorizer.sol";
-import "./IFlashLoanReceiver.sol";
+import "./IFlashLoanRecipient.sol";
 import "./ISignaturesValidator.sol";
 import "../ProtocolFeesCollector.sol";
 
@@ -76,17 +76,17 @@ interface IVault is ISignaturesValidator {
     // Authorizer or governance drain user funds, since they would also need to be approved by each individual user.
 
     /**
-     * @dev Returns true if `user` has allowed `relayer` to act as a relayer for them.
+     * @dev Returns true if `user` has approved `relayer` to act as a relayer for them.
      */
-    function hasAllowedRelayer(address user, address relayer) external view returns (bool);
+    function hasApprovedRelayer(address user, address relayer) external view returns (bool);
 
     /**
-     * @dev Allows `relayer` to act as a relayer for `sender` if `allowed` is true, and disallows it otherwise.
+     * @dev Allows `relayer` to act as a relayer for `sender` if `approved` is true, and disallows it otherwise.
      */
-    function changeRelayerAllowance(
+    function setRelayerApproval(
         address sender,
         address relayer,
-        bool allowed
+        bool approved
     ) external;
 
     // Internal Balance
@@ -640,20 +640,20 @@ interface IVault is ISignaturesValidator {
     // Flash Loans
 
     /**
-     * @dev Performs a 'flash loan', sending tokens to `receiver` and executing the `receiveFlashLoan` hook on it,
-     * and then reverting unless the tokens plus a protocol fee have been returned.
+     * @dev Performs a 'flash loan', sending tokens to `recipient` and executing the `receiveFlashLoan` hook on it,
+     * and then reverting unless the tokens plus a proportional protocol fee have been returned.
      *
      * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
      * loan for each token contract. `tokens` must be sorted in ascending order.
      *
-     * The 'receiverData' field is ignored by the Vault, and forwarded as-is to `receiver` as part of the
+     * The 'userData' field is ignored by the Vault, and forwarded as-is to `recipient` as part of the
      * `receiveFlashLoan` call.
      */
     function flashLoan(
-        IFlashLoanReceiver receiver,
+        IFlashLoanRecipient recipient,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        bytes memory receiverData
+        bytes memory userData
     ) external;
 
     // Asset Management
@@ -719,7 +719,7 @@ interface IVault is ISignaturesValidator {
     //
     //  - swap fees: a percentage of the fees charged by Pools when performing swaps. For a number of reasons, including
     // swap gas costs and interface simplicity, protocol swap fees are not charged on each individual swap. Rather,
-    // Pools are expected to keep track of how many swap fees they have charged, and pay any outstanding debts to the
+    // Pools are expected to keep track of how much they have charged in swap fees, and pay any outstanding debts to the
     // Vault when they are joined or exited. This prevents users from joining a Pool with unpaid debt, as well as
     // exiting a Pool in debt without first paying their share.
 

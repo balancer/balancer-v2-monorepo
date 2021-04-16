@@ -10,8 +10,8 @@ import { Account, NAry } from '../../types/types';
 export type RawStablePoolDeployment = {
   tokens?: TokenList;
   amplificationParameter?: BigNumberish;
-  swapFee?: BigNumberish;
-  responseWindowDuration?: BigNumberish;
+  swapFeePercentage?: BigNumberish;
+  pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   owner?: Account;
   admin?: SignerWithAddress;
@@ -22,8 +22,8 @@ export type RawStablePoolDeployment = {
 export type StablePoolDeployment = {
   tokens: TokenList;
   amplificationParameter: BigNumberish;
-  swapFee: BigNumberish;
-  responseWindowDuration: BigNumberish;
+  swapFeePercentage: BigNumberish;
+  pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
   owner: Account;
   admin?: SignerWithAddress;

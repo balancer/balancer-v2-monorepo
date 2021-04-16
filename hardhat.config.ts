@@ -38,7 +38,6 @@ export default {
     hardhat: {
       chainId: CHAIN_IDS.hardhat,
       saveDeployments: true,
-      allowUnlimitedContractSize: true,
     },
     dockerParity: {
       gas: 10000000,
@@ -121,6 +120,15 @@ export default {
           optimizer: {
             enabled: true,
             runs: 400,
+          },
+        },
+      },
+      'contracts/pools/weighted/WeightedPoolFactory.sol': {
+        version: '0.7.1',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1950,
           },
         },
       },

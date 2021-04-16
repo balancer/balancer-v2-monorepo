@@ -15,8 +15,24 @@
 pragma solidity ^0.7.0;
 
 import "./BalancerErrors.sol";
+import "./IAuthentication.sol";
 
-abstract contract Authentication {
+abstract contract Authentication is IAuthentication {
+    bytes32 private immutable _roleDisambiguator;
+
+    /**
+     * @dev The main purpose of the `roleDisambiguator` is to prevent accidental function selector collisions.
+     *
+     * There are two main uses for it:
+     *  - if the contract is a singleton, any unique identifier can be used to make the associated roles unique. The
+     * contract's own address is a good option.
+     *  - if the contract belongs to a family that share roles for the same functions, an identifier shared by the
+     * entire family (and no other contract) should be used instead.
+     */
+    constructor(bytes32 roleDisambiguator) {
+        _roleDisambiguator = roleDisambiguator;
+    }
+
     /**
      * @dev Reverts unless the caller is allowed to call this function. Should only be applied to external functions.
      */
@@ -29,10 +45,14 @@ abstract contract Authentication {
      * @dev Reverts unless the caller is allowed to call the entry point function.
      */
     function _authenticateCaller() internal view {
-        // Each external function is dynamically assigned a role ID as the hash of the contract address
-        // and the function selector.
-        bytes32 roleId = keccak256(abi.encodePacked(address(this), msg.sig));
+        bytes32 roleId = getRole(msg.sig);
         _require(_canPerform(roleId, msg.sender), Errors.SENDER_NOT_ALLOWED);
+    }
+
+    function getRole(bytes4 selector) public view override returns (bytes32) {
+        // Each external is dynamically assigned a role ID as the hash of the disambiguator and the function selector.
+        // Disambiguation is necessary to avoid potential collisions in the function selectors of multiple contracts.
+        return keccak256(abi.encodePacked(_roleDisambiguator, selector));
     }
 
     function _canPerform(bytes32 roleId, address user) internal view virtual returns (bool);

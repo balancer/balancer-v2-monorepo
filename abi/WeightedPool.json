@@ -28,12 +28,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "swapFee",
+        "name": "swapFeePercentage",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowDuration",
+        "name": "pauseWindowDuration",
         "type": "uint256"
       },
       {
@@ -94,7 +94,7 @@
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "swapFee",
+        "name": "swapFeePercentage",
         "type": "uint256"
       }
     ],
@@ -319,7 +319,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "responseWindowEndTime",
+        "name": "pauseWindowEndTime",
         "type": "uint256"
       },
       {
@@ -358,8 +358,27 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "bytes4",
+        "name": "selector",
+        "type": "bytes4"
+      }
+    ],
+    "name": "getRole",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
-    "name": "getSwapFee",
+    "name": "getSwapFeePercentage",
     "outputs": [
       {
         "internalType": "uint256",
@@ -791,11 +810,11 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "swapFee",
+        "name": "swapFeePercentage",
         "type": "uint256"
       }
     ],
-    "name": "setSwapFee",
+    "name": "setSwapFeePercentage",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
