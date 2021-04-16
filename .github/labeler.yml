@@ -1,2 +1,2 @@
 abi-changes:
-  - abi/**/*
+  - artifacts/contracts/**/*
