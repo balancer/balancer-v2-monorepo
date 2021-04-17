@@ -35,8 +35,8 @@ abstract contract Authentication is IAuthentication {
      * There are two main uses for it:
      *  - if the contract is a singleton, any unique identifier can be used to make the associated action identifiers
      * unique. The contract's own address is a good option.
-     *  - if the contract belongs to a family that shares action identifiers for the same functions, an identifier shared
-     * by the entire family (and no other contract) should be used instead.
+     *  - if the contract belongs to a family that shares action identifiers for the same functions, an identifier
+     * shared by the entire family (and no other contract) should be used instead.
      */
     constructor(bytes32 actionDisambiguator) {
         _actionDisambiguator = actionDisambiguator;
