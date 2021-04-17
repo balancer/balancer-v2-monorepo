@@ -1,6 +1,6 @@
 import { BigNumber, Contract, ContractFunction } from 'ethers';
 
-import { roleId } from '../../../../../lib/helpers/roles';
+import { actionId } from '../../../../../lib/helpers/actions';
 import { BigNumberish, bn, fp } from '../../../../../lib/helpers/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../../lib/helpers/constants';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../../../lib/helpers/weightedPoolEncoding';
@@ -518,8 +518,8 @@ export default class WeightedPool {
   }
 
   async pause(): Promise<void> {
-    const role = await roleId(this.instance, 'setPaused');
-    await this.vault.grantRole(role);
+    const action = await actionId(this.instance, 'setPaused');
+    await this.vault.grantRole(action);
     await this.instance.setPaused(true);
   }
 }

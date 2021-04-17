@@ -58,8 +58,12 @@ interface IVault is ISignaturesValidator {
 
     /**
      * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
+     *
+     * Emits an `AuthorizerChanged` event.
      */
     function changeAuthorizer(IAuthorizer newAuthorizer) external;
+
+    event AuthorizerChanged(IAuthorizer indexed oldAuthorizer, IAuthorizer indexed newAuthorizer);
 
     // Relayers
     //
@@ -82,12 +86,16 @@ interface IVault is ISignaturesValidator {
 
     /**
      * @dev Allows `relayer` to act as a relayer for `sender` if `approved` is true, and disallows it otherwise.
+     *
+     * Emits a `RelayerApprovalChanged` event.
      */
     function setRelayerApproval(
         address sender,
         address relayer,
         bool approved
     ) external;
+
+    event RelayerApprovalChanged(address indexed relayer, address indexed sender, bool approved);
 
     // Internal Balance
     //
@@ -282,7 +290,7 @@ interface IVault is ISignaturesValidator {
      * equals the sum of `cash` and `managed`.
      *
      * Internally, `cash` and `managed` are stored using 112 bits. No action can ever cause a Pool's token `cash`,
-     * `managed` or `total` balance to be larger than 2^112 - 1.
+     * `managed` or `total` balance to be greater than 2^112 - 1.
      *
      * `lastChangeBlock` is the number of the block in which `token`'s total balance was last modified (via either a
      * join, exit, swap, or Asset Manager update). This value is useful to avoid so-called 'sandwich attacks', for

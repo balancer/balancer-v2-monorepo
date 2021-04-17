@@ -59,6 +59,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         uint256 limit,
         uint256 deadline
     ) external payable override nonReentrant whenNotPaused authenticateFor(funds.sender) returns (uint256) {
+        // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
 
@@ -70,7 +71,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         IERC20 tokenOut = _translateToIERC20(singleSwap.assetOut);
         _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
 
-        // Initializing each struct field one-by-one uses less gas than setting all at once
+        // Initializing each struct field one-by-one uses less gas than setting all at once.
         IPoolSwapStructs.SwapRequest memory poolRequest;
         poolRequest.poolId = singleSwap.poolId;
         poolRequest.kind = singleSwap.kind;
@@ -80,18 +81,15 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         poolRequest.userData = singleSwap.userData;
         poolRequest.from = funds.sender;
         poolRequest.to = funds.recipient;
-        // The lastChangeBlock field is left uninitialized
+        // The lastChangeBlock field is left uninitialized.
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapWithPool(poolRequest);
         _require(singleSwap.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
 
-        // Receive token in
         _receiveAsset(singleSwap.assetIn, amountIn, funds.sender, funds.fromInternalBalance);
-
-        // Send token out
         _sendAsset(singleSwap.assetOut, amountOut, funds.recipient, funds.toInternalBalance);
 
-        // Handle any used and remaining ETH.
+        // If the asset in is ETH, then `amountIn` ETH was wrapped into WETH.
         _handleRemainingEth(_isETH(singleSwap.assetIn) ? amountIn : 0);
 
         return amountCalculated;
@@ -116,12 +114,13 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
+
         InputHelpers.ensureInputLengthMatch(assets.length, limits.length);
 
         // Perform the swaps, updating the Pool token balances and computing the net Vault asset deltas.
         assetDeltas = _swapWithPools(swaps, assets, funds, kind);
 
-        // Process asset deltas, by either transferring tokens from the sender (for positive deltas) or to the recipient
+        // Process asset deltas, by either transferring assets from the sender (for positive deltas) or to the recipient
         // (for negative deltas).
         uint256 wrappedEth = 0;
         for (uint256 i = 0; i < assets.length; ++i) {
@@ -213,6 +212,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
 
         for (uint256 i = 0; i < swaps.length; ++i) {
             batchSwapStep = swaps[i];
+
             bool withinBounds = batchSwapStep.assetInIndex < assets.length &&
                 batchSwapStep.assetOutIndex < assets.length;
             _require(withinBounds, Errors.OUT_OF_BOUNDS);
@@ -371,6 +371,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         // Perform the swap request callback, and compute the new balances for 'token in' and 'token out' after the swap
         amountCalculated = pool.onSwap(request, tokenInTotal, tokenOutTotal);
         (uint256 amountIn, uint256 amountOut) = _getAmounts(request.kind, request.amount, amountCalculated);
+
         newTokenInBalance = tokenInBalance.increaseCash(amountIn);
         newTokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
     }
@@ -461,7 +462,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
 
             // solhint-disable-next-line no-inline-assembly
             assembly {
-                // This call should always revert to decode the actual token deltas from the revert reason
+                // This call should always revert to decode the actual asset deltas from the revert reason
                 switch success
                     case 0 {
                         // Note we are manually writing the memory slot 0. We can safely overwrite whatever is

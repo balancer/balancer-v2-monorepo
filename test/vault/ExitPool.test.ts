@@ -11,7 +11,7 @@ import * as expectEvent from '../helpers/expectEvent';
 import { encodeExit } from '../helpers/mockPool';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 import { deploy } from '../../lib/helpers/deploy';
 import { lastBlockNumber, MONTH } from '../../lib/helpers/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
@@ -39,8 +39,8 @@ describe('Vault - exit pool', () => {
     vault = vault.connect(lp);
     feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const role = await roleId(feesCollector, 'setSwapFeePercentage');
-    await authorizer.connect(admin).grantRole(role, admin.address);
+    const action = await actionId(feesCollector, 'setSwapFeePercentage');
+    await authorizer.connect(admin).grantRole(action, admin.address);
     await feesCollector.connect(admin).setSwapFeePercentage(SWAP_FEE_PERCENTAGE);
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
@@ -250,9 +250,9 @@ describe('Vault - exit pool', () => {
             const fromRelayer = true;
 
             context('when the relayer is whitelisted by the authorizer', () => {
-              sharedBeforeEach('grant role to relayer', async () => {
-                const role = await roleId(vault, 'exitPool');
-                await authorizer.connect(admin).grantRole(role, relayer.address);
+              sharedBeforeEach('grant permission to relayer', async () => {
+                const action = await actionId(vault, 'exitPool');
+                await authorizer.connect(admin).grantRole(action, relayer.address);
               });
 
               context('when the relayer is allowed by the user', () => {
@@ -287,9 +287,9 @@ describe('Vault - exit pool', () => {
             });
 
             context('when the relayer is not whitelisted by the authorizer', () => {
-              sharedBeforeEach('revoke role from relayer', async () => {
-                const role = await roleId(vault, 'exitPool');
-                await authorizer.connect(admin).revokeRole(role, relayer.address);
+              sharedBeforeEach('revoke permission from relayer', async () => {
+                const action = await actionId(vault, 'exitPool');
+                await authorizer.connect(admin).revokeRole(action, relayer.address);
               });
 
               context('when the relayer is allowed by the user', () => {
@@ -393,8 +393,8 @@ describe('Vault - exit pool', () => {
 
         context('when paused', () => {
           sharedBeforeEach('pause', async () => {
-            const role = await roleId(vault, 'setPaused');
-            await authorizer.connect(admin).grantRole(role, admin.address);
+            const action = await actionId(vault, 'setPaused');
+            await authorizer.connect(admin).grantRole(action, admin.address);
             await vault.connect(admin).setPaused(true);
           });
 
