@@ -324,7 +324,7 @@ contract WeightedMath {
         return amountsOut;
     }
 
-    function _calcDueTokenprotocolSwapFeePercentageAmount(
+    function _calcDueTokenProtocolSwapFeePercentageAmount(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 previousInvariant,

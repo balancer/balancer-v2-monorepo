@@ -57,7 +57,7 @@ abstract contract BasePoolAuthorization is Authentication {
     }
 
     function _isOwnerOnlyAction(bytes32 action) private view returns (bool) {
-        // This implementation hardcodes the setSwapFeePercentrage action.
+        // This implementation hardcodes the setSwapFeePercentage action.
         return action == getAction(BasePool.setSwapFeePercentage.selector);
     }
 
