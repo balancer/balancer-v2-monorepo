@@ -338,7 +338,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
 
-        // The `return` opcode is executed directly inside `_queryAction`, so we don't return nothing here.
         _queryAction(
             poolId,
             sender,
@@ -597,7 +596,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             internal
             returns (uint256, uint256[] memory, uint256[] memory) _action,
         function(uint256[] memory, uint256[] memory) internal view _downscaleArray
-    ) private returns (uint256, uint256[] memory) {
+    ) private {
         // This uses the same technique used by the Vault in queryBatchSwap. Refer to that function for a detailed
         // explanation.
 
