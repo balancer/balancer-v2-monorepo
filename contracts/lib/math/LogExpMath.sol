@@ -100,8 +100,9 @@ library LogExpMath {
             return 0;
         }
 
-        // Instead of computing x^y directly, we instead rely on the properties of logarithms and exponentiation to arrive at
-        // that result. In particular, exp(ln(x)) = x, and ln(x^y) = y * ln(x). This means x^y = exp(y * ln(x)).
+        // Instead of computing x^y directly, we instead rely on the properties of logarithms and exponentiation to
+        // arrive at that result. In particular, exp(ln(x)) = x, and ln(x^y) = y * ln(x). This means
+        // x^y = exp(y * ln(x)).
 
         // The ln function takes a signed value, so we need to make sure x fits in the signed 256 bit range.
         _require(x < 2**255, Errors.X_OUT_OF_BOUNDS);
@@ -110,20 +111,29 @@ library LogExpMath {
         _require(y < MILD_EXPONENT_BOUND, Errors.Y_OUT_OF_BOUNDS);
         int256 y_int256 = int256(y);
 
+        // We will compute y * ln(x) in a single step. Depending on the value of x, we can either use ln or ln_36. In
+        // both cases, we leave the division by ONE_18 (due to fixed point multiplication) to the end.
+
         int256 logx_times_y;
         if (LN_36_LOWER_BOUND < x_int256 && x_int256 < LN_36_UPPER_BOUND) {
-            int256 logbase = ln_36(x_int256);
-            logx_times_y = ((logbase / ONE_18) * y_int256 + ((logbase % ONE_18) * y_int256) / ONE_18);
+            int256 ln_36_x = ln_36(x_int256);
+
+            // ln_36_x has 36 decimal places, so multiplying by y_int256 isn't as straightforward, since we can't just
+            // bring y_int256 to 36 decimal places, as it might overflow. Instead, we perform two 18 decimal
+            // multiplications and add the results: one with the first 18 decimals of ln_36_x, and one with the
+            // (downscaled) last 18 decimals.
+            logx_times_y = ((ln_36_x / ONE_18) * y_int256 + ((ln_36_x % ONE_18) * y_int256) / ONE_18);
         } else {
             logx_times_y = ln(x_int256) * y_int256;
         }
+        logx_times_y /= ONE_18;
 
+        // Finally, we compute exp(y * ln(x)) to arrive at x^y
         _require(
-            MIN_NATURAL_EXPONENT * ONE_18 <= logx_times_y && logx_times_y <= MAX_NATURAL_EXPONENT * ONE_18,
+            MIN_NATURAL_EXPONENT <= logx_times_y && logx_times_y <= MAX_NATURAL_EXPONENT,
             Errors.PRODUCT_OUT_OF_BOUNDS
         );
 
-        logx_times_y /= ONE_18;
         return uint256(exp(logx_times_y));
     }
 
@@ -481,7 +491,7 @@ library LogExpMath {
         num = (num * z_squared) / ONE_36;
         seriesSum += num / 15;
 
-        // 15 Taylor terms are sufficient for 36 decimal precision.
+        // 8 Taylor terms are sufficient for 36 decimal precision.
 
         // All that remains is multiplying by 2 (non fixed point).
         return seriesSum * 2;
