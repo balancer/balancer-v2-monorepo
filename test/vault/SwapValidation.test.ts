@@ -14,7 +14,7 @@ import { fromNow, MONTH } from '../../lib/helpers/time';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { FundManagement, Swap, SWAP_KIND } from '../../lib/helpers/trading';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 
 describe('Vault - swap validation', () => {
   let authorizer: Contract, vault: Contract;
@@ -139,8 +139,8 @@ describe('Vault - swap validation', () => {
 
       context('when paused', () => {
         sharedBeforeEach('pause', async () => {
-          const role = await roleId(vault, 'setPaused');
-          await authorizer.connect(admin).grantRole(role, admin.address);
+          const action = await actionId(vault, 'setPaused');
+          await authorizer.connect(admin).grantRole(action, admin.address);
           await vault.connect(admin).setPaused(true);
         });
 
