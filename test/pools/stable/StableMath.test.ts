@@ -128,7 +128,7 @@ describe('StableMath', function () {
 
         const protocolSwapFeePercentage = fp(0.1);
 
-        const result = await mock.calculateDueTokenprotocolSwapFeePercentageAmount(
+        const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
           amp,
           balances,
           lastInvariant,
@@ -151,7 +151,7 @@ describe('StableMath', function () {
 
         const protocolSwapFeePercentage = fp(0.1);
 
-        const result = await mock.calculateDueTokenprotocolSwapFeePercentageAmount(
+        const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
           amp,
           balances,
           lastInvariant,

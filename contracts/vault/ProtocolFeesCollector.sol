@@ -107,8 +107,8 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
         return _getAuthorizer();
     }
 
-    function _canPerform(bytes32 action, address account) internal view override returns (bool) {
-        return _getAuthorizer().canPerform(action, account, address(this));
+    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
+        return _getAuthorizer().canPerform(actionId, account, address(this));
     }
 
     function _getAuthorizer() internal view returns (IAuthorizer) {

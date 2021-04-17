@@ -54,7 +54,7 @@ library BalanceAllocation {
      * @dev Returns the total amount of Pool tokens, including those that are not currently in the Vault ('managed').
      */
     function total(bytes32 balance) internal pure returns (uint256) {
-        // Since 'cash' and 'managed' are 112 bit values, we don't need checked arithmetic. Aditionally, `toBalance`
+        // Since 'cash' and 'managed' are 112 bit values, we don't need checked arithmetic. Additionally, `toBalance`
         // ensures that 'total' always fits in 112 bits.
         return cash(balance) + managed(balance);
     }
@@ -144,7 +144,7 @@ library BalanceAllocation {
         uint256 _total = _cash + _managed;
 
         // Since both 'cash' and 'managed' are positive integers, by checking that their sum ('total') fits in 112 bits
-        // we are also indirectly checking thay both 'cash' and 'managed' themselves fit in 112 bits.
+        // we are also indirectly checking that both 'cash' and 'managed' themselves fit in 112 bits.
         _require(_total >= _cash && _total < 2**112, Errors.BALANCE_TOTAL_OVERFLOW);
 
         // We assume the block fits in 32 bits - this is expected to hold for at least a few decades.
