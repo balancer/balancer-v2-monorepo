@@ -966,7 +966,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -1128,7 +1128,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "amountCalculated",
         "type": "uint256"
       }
     ],

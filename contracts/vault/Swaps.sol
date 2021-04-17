@@ -58,7 +58,15 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         FundManagement memory funds,
         uint256 limit,
         uint256 deadline
-    ) external payable override nonReentrant whenNotPaused authenticateFor(funds.sender) returns (uint256) {
+    )
+        external
+        payable
+        override
+        nonReentrant
+        whenNotPaused
+        authenticateFor(funds.sender)
+        returns (uint256 amountCalculated)
+    {
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
@@ -83,7 +91,10 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         poolRequest.to = funds.recipient;
         // The lastChangeBlock field is left uninitialized.
 
-        (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapWithPool(poolRequest);
+        uint256 amountIn;
+        uint256 amountOut;
+
+        (amountCalculated, amountIn, amountOut) = _swapWithPool(poolRequest);
         _require(singleSwap.kind == SwapKind.GIVEN_IN ? amountOut >= limit : amountIn <= limit, Errors.SWAP_LIMIT);
 
         _receiveAsset(singleSwap.assetIn, amountIn, funds.sender, funds.fromInternalBalance);
@@ -91,8 +102,6 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
 
         // If the asset in is ETH, then `amountIn` ETH was wrapped into WETH.
         _handleRemainingEth(_isETH(singleSwap.assetIn) ? amountIn : 0);
-
-        return amountCalculated;
     }
 
     function batchSwap(
@@ -146,10 +155,10 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
     }
 
     // For `_swapWithPools` to handle both 'given in' and 'given out' swaps, it internally tracks the 'given' amount
-    // (supplied by the caller), and the 'calculated' one (returned by the Pool in response to the swap request).
+    // (supplied by the caller), and the 'calculated' amount (returned by the Pool in response to the swap request).
 
     /**
-     * @dev Given the two swap tokens and the swap kind, returns which one is the 'given' token (the one for which the
+     * @dev Given the two swap tokens and the swap kind, returns which one is the 'given' token (the token whose
      * amount is supplied by the caller).
      */
     function _tokenGiven(
@@ -161,8 +170,8 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
     }
 
     /**
-     * @dev Given the two swap tokens and the swap kind, returns which one is the 'calculated' token (the one for
-     * which the amount is calculated by the Pool).
+     * @dev Given the two swap tokens and the swap kind, returns which one is the 'calculated' token (the token whose
+     * amount is calculated by the Pool).
      */
     function _tokenCalculated(
         SwapKind kind,
@@ -224,7 +233,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
             // Sentinel value for multihop logic
             if (batchSwapStep.amount == 0) {
                 // When the amount given is zero, we use the calculated amount for the previous swap, as long as the
-                // current swap's given token is the previous calculated token. This makes it possible to e.g. swap a
+                // current swap's given token is the previous calculated token. This makes it possible to swap a
                 // given amount of token A for token B, and then use the resulting token B amount to swap for token C.
                 _require(i > 0, Errors.UNKNOWN_AMOUNT_IN_FIRST_SWAP);
                 bool usingPreviousToken = previousTokenCalculated == _tokenGiven(kind, tokenIn, tokenOut);
@@ -258,7 +267,9 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
     }
 
     /**
-     * @dev Performs `swap`, calling the Pool's contract hook and updating the Pool balance.
+     * @dev Performs a swap according to the parameters specified in `request`, calling the Pool's contract hook and
+     * updating the Pool balance.
+     *
      * Returns the amount of tokens going into or out of the Vault as a result of this swap, depending on the swap kind.
      */
     function _swapWithPool(IPoolSwapStructs.SwapRequest memory request)
@@ -395,7 +406,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
-        // EnumerableMap stores indices plus one to use the zero index as a sentinel value - because these are valid,
+        // EnumerableMap stores the indices, plus a zero index sentinel value - because these are valid,
         // we can undo this.
         indexIn -= 1;
         indexOut -= 1;
@@ -405,8 +416,8 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
 
         request.lastChangeBlock = 0;
         for (uint256 i = 0; i < tokenAmount; i++) {
-            // Because the iteration is bounded by `tokenAmount` and no tokens are registered or deregistered here, we
-            // can use `unchecked_valueAt` as we know `i` is a valid token index, saving storage reads.
+            // Because the iteration is bounded by `tokenAmount`, and no tokens are registered or deregistered here, we
+            // know `i` is a valid token index: so we can use `unchecked_valueAt` to save storage reads.
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
@@ -425,8 +436,8 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         tokenInBalance = tokenInBalance.increaseCash(amountIn);
         tokenOutBalance = tokenOutBalance.decreaseCash(amountOut);
 
-        // Because no tokens were registered or deregistered between now and when we retrieved the indexes for
-        // 'token in' and 'token out', we can use `unchecked_setAt`, saving storage reads.
+        // Because no tokens were registered or deregistered between now or when we retrieved the indexes for
+        // 'token in' and 'token out', we can use `unchecked_setAt` to save storage reads.
         poolBalances.unchecked_setAt(indexIn, tokenInBalance);
         poolBalances.unchecked_setAt(indexOut, tokenOutBalance);
     }
