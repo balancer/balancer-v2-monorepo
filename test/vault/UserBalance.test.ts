@@ -11,7 +11,7 @@ import * as expectEvent from '../helpers/expectEvent';
 
 import { bn } from '../../lib/helpers/numbers';
 import { MONTH } from '../../lib/helpers/time';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 import { deploy } from '../../lib/helpers/deploy';
 import { forceSendEth } from '../helpers/eth';
 import { expectBalanceChange } from '../helpers/tokenBalance';
@@ -306,9 +306,9 @@ describe('Vault - user balance', () => {
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        sharedBeforeEach('grant role to relayer', async () => {
-          const role = await roleId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRole(role, relayer.address);
+        sharedBeforeEach('grant permission to relayer', async () => {
+          const action = await actionId(vault, 'manageUserBalance');
+          await authorizer.connect(admin).grantRole(action, relayer.address);
         });
 
         context('when the relayer is allowed to deposit by the user', () => {
@@ -647,9 +647,9 @@ describe('Vault - user balance', () => {
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        sharedBeforeEach('grant role to relayer', async () => {
-          const role = await roleId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRole(role, relayer.address);
+        sharedBeforeEach('grant permission to relayer', async () => {
+          const action = await actionId(vault, 'manageUserBalance');
+          await authorizer.connect(admin).grantRole(action, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
@@ -960,9 +960,9 @@ describe('Vault - user balance', () => {
       depositInitialBalances(transferredAmounts);
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        sharedBeforeEach('grant role to relayer', async () => {
-          const role = await roleId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRole(role, relayer.address);
+        sharedBeforeEach('grant permission to relayer', async () => {
+          const action = await actionId(vault, 'manageUserBalance');
+          await authorizer.connect(admin).grantRole(action, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
@@ -1168,9 +1168,9 @@ describe('Vault - user balance', () => {
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        sharedBeforeEach('grant role to relayer', async () => {
-          const role = await roleId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRole(role, relayer.address);
+        sharedBeforeEach('grant permission to relayer', async () => {
+          const action = await actionId(vault, 'manageUserBalance');
+          await authorizer.connect(admin).grantRole(action, relayer.address);
         });
 
         context('when the relayer is allowed to transfer by the user', () => {
@@ -1267,8 +1267,8 @@ describe('Vault - user balance', () => {
     });
 
     sharedBeforeEach('allow relayer', async () => {
-      const role = await roleId(vault, 'manageUserBalance');
-      await authorizer.connect(admin).grantRole(role, relayer.address);
+      const action = await actionId(vault, 'manageUserBalance');
+      await authorizer.connect(admin).grantRole(action, relayer.address);
       await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
       await vault.connect(recipient).setRelayerApproval(recipient.address, relayer.address, true);
     });
@@ -1355,8 +1355,8 @@ describe('Vault - user balance', () => {
       });
 
       sharedBeforeEach('pause', async () => {
-        const role = await roleId(vault, 'setPaused');
-        await authorizer.connect(admin).grantRole(role, admin.address);
+        const action = await actionId(vault, 'setPaused');
+        await authorizer.connect(admin).grantRole(action, admin.address);
         await vault.connect(admin).setPaused(true);
       });
 

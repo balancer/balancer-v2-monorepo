@@ -247,7 +247,7 @@ abstract contract UserBalance is ReentrancyGuard, AssetTransfersHandler, VaultAu
                 checkedCallerIsRelayer = true;
             }
 
-            _authenticateCallerFor(sender);
+            _require(_hasApprovedRelayer(sender, msg.sender), Errors.USER_DOESNT_ALLOW_RELAYER);
         }
 
         return (op.kind, op.asset, op.amount, sender, op.recipient, checkedCallerIsRelayer);

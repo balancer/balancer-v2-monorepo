@@ -58,8 +58,12 @@ interface IVault is ISignaturesValidator {
 
     /**
      * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
+     *
+     * Emits an `AuthorizerChanged` event.
      */
     function changeAuthorizer(IAuthorizer newAuthorizer) external;
+
+    event AuthorizerChanged(IAuthorizer indexed oldAuthorizer, IAuthorizer indexed newAuthorizer);
 
     // Relayers
     //
@@ -82,12 +86,16 @@ interface IVault is ISignaturesValidator {
 
     /**
      * @dev Allows `relayer` to act as a relayer for `sender` if `approved` is true, and disallows it otherwise.
+     *
+     * Emits a `RelayerApprovalChanged` event.
      */
     function setRelayerApproval(
         address sender,
         address relayer,
         bool approved
     ) external;
+
+    event RelayerApprovalChanged(address indexed relayer, address indexed sender, bool approved);
 
     // Internal Balance
     //

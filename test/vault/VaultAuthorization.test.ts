@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../lib/helpers/deploy';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 import { MONTH } from '../../lib/helpers/time';
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 import * as expectEvent from '../helpers/expectEvent';
@@ -47,12 +47,12 @@ describe('VaultAuthorization', function () {
       vault = await deployVault(authorizer.address);
     });
 
-    context('when the sender is has the role to do it', () => {
-      let role: string;
+    context('when the sender is has the permission to do it', () => {
+      let action: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = await roleId(vault, 'changeAuthorizer');
-        await authorizer.connect(admin).grantRole(role, admin.address);
+        action = await actionId(vault, 'changeAuthorizer');
+        await authorizer.connect(admin).grantRole(action, admin.address);
       });
 
       it('can change the authorizer to another address', async () => {
@@ -75,16 +75,16 @@ describe('VaultAuthorization', function () {
         expect(await vault.getAuthorizer()).to.equal(ZERO_ADDRESS);
       });
 
-      it('can not change the authorizer if the role was revoked', async () => {
-        await authorizer.connect(admin).revokeRole(role, admin.address);
+      it('can not change the authorizer if the permission was revoked', async () => {
+        await authorizer.connect(admin).revokeRole(action, admin.address);
 
-        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
+        expect(await authorizer.canPerform(action, admin.address, WHERE)).to.be.false;
 
         await expect(vault.connect(admin).changeAuthorizer(other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
-    context('when the sender does not have the role to do it', () => {
+    context('when the sender does not have the permission to do it', () => {
       it('reverts', async () => {
         await expect(vault.connect(other).changeAuthorizer(other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
@@ -154,12 +154,12 @@ describe('VaultAuthorization', function () {
       });
     });
 
-    context('when the sender has the role to pause and unpause', () => {
-      let role: string;
+    context('when the sender has the permission to pause and unpause', () => {
+      let action: string;
 
       sharedBeforeEach('grant permission', async () => {
-        role = await roleId(vault, 'setPaused');
-        await authorizer.connect(admin).grantRole(role, admin.address);
+        action = await actionId(vault, 'setPaused');
+        await authorizer.connect(admin).grantRole(action, admin.address);
       });
 
       it('can pause', async () => {
@@ -177,15 +177,15 @@ describe('VaultAuthorization', function () {
         expect(paused).to.be.false;
       });
 
-      it('cannot pause if the role is revoked', async () => {
-        await authorizer.connect(admin).revokeRole(role, admin.address);
-        expect(await authorizer.hasRoleIn(role, admin.address, WHERE)).to.be.false;
+      it('cannot pause if the permission is revoked', async () => {
+        await authorizer.connect(admin).revokeRole(action, admin.address);
+        expect(await authorizer.canPerform(action, admin.address, WHERE)).to.be.false;
 
         await expect(vault.connect(admin).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
-    context('when the sender does not have the role to unpause', () => {
+    context('when the sender does not have the permission to unpause', () => {
       it('reverts', async () => {
         await expect(vault.connect(other).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
