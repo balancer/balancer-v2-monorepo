@@ -310,13 +310,13 @@ library LogExpMath {
 
         int256 sum = 0;
         if (a >= a0 * ONE_18) {
-            sum += x0;
             a /= a0; // Integer, not fixed point division
+            sum += x0;
         }
 
         if (a >= a1 * ONE_18) {
-            sum += x1;
             a /= a1; // Integer, not fixed point division
+            sum += x1;
         }
 
         // All other a_n and x_n are stored as 20 digit fixed point numbers, so we convert the sum and a to this format.
@@ -326,53 +326,53 @@ library LogExpMath {
         // Because further a_n are  20 digit fixed point numbers, we multiply by ONE_20 when dividing by them.
 
         if (a >= a2) {
-            sum += x2;
             a = (a * ONE_20) / a2;
+            sum += x2;
         }
 
         if (a >= a3) {
-            sum += x3;
             a = (a * ONE_20) / a3;
+            sum += x3;
         }
 
         if (a >= a4) {
-            sum += x4;
             a = (a * ONE_20) / a4;
+            sum += x4;
         }
 
         if (a >= a5) {
-            sum += x5;
             a = (a * ONE_20) / a5;
+            sum += x5;
         }
 
         if (a >= a6) {
-            sum += x6;
             a = (a * ONE_20) / a6;
+            sum += x6;
         }
 
         if (a >= a7) {
-            sum += x7;
             a = (a * ONE_20) / a7;
+            sum += x7;
         }
 
         if (a >= a8) {
-            sum += x8;
             a = (a * ONE_20) / a8;
+            sum += x8;
         }
 
         if (a >= a9) {
-            sum += x9;
             a = (a * ONE_20) / a9;
+            sum += x9;
         }
 
         if (a >= a10) {
-            sum += x10;
             a = (a * ONE_20) / a10;
+            sum += x10;
         }
 
         if (a >= a11) {
-            sum += x11;
             a = (a * ONE_20) / a11;
+            sum += x11;
         }
 
         // a is now a small number (smaller than a_11, which roughly equals 1.06). This means we can use a Taylor series
@@ -420,26 +420,30 @@ library LogExpMath {
     }
 
     /**
-     * Computes log of a number in base of another number, both numbers with 18 decimals precision.
-     * @param arg Argument with 18 decimal places.
-     * @param base Base with 18 decimal places.
-     * @notice Must fulfil: -41.446531673892822312  < (log(x) * y) <  130.700829182905140221
-     * @return log[base](arg)
+     * @dev Logarithm (log(arg, base), with signed 18 decimal fixed point base and argument argument.
      */
     function log(int256 arg, int256 base) internal pure returns (int256) {
-        int256 logbase;
+        // This performs a simple base change: log(arg, base) = ln(arg) / ln(base).
+
+        // Both logBase and logArg are computed as 36 decimal fixed point numbers, either by using ln_36, or by
+        // upscaling.
+
+        int256 logBase;
         if (LN_36_LOWER_BOUND < base && base < LN_36_UPPER_BOUND) {
-            logbase = ln_36(base);
+            logBase = ln_36(base);
         } else {
-            logbase = ln(base) * ONE_18;
+            logBase = ln(base) * ONE_18;
         }
-        int256 logarg;
+
+        int256 logArg;
         if (LN_36_LOWER_BOUND < arg && arg < LN_36_UPPER_BOUND) {
-            logarg = ln_36(arg);
+            logArg = ln_36(arg);
         } else {
-            logarg = ln(arg) * ONE_18;
+            logArg = ln(arg) * ONE_18;
         }
-        return (logarg * ONE_18) / logbase;
+
+        // When dividing, we multiply by ONE_18 to arrive at a result with 18 decimal places
+        return (logArg * ONE_18) / logBase;
     }
 
     /**
