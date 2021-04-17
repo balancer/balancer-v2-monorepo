@@ -108,11 +108,12 @@ library LogExpMath {
         _require(x < 2**255, Errors.X_OUT_OF_BOUNDS);
         int256 x_int256 = int256(x);
 
-        _require(y < MILD_EXPONENT_BOUND, Errors.Y_OUT_OF_BOUNDS);
-        int256 y_int256 = int256(y);
-
         // We will compute y * ln(x) in a single step. Depending on the value of x, we can either use ln or ln_36. In
         // both cases, we leave the division by ONE_18 (due to fixed point multiplication) to the end.
+
+        // This prevents y * ln(x) from overflowing, and at the same time guarantees y fits in the signed 256 bit range.
+        _require(y < MILD_EXPONENT_BOUND, Errors.Y_OUT_OF_BOUNDS);
+        int256 y_int256 = int256(y);
 
         int256 logx_times_y;
         if (LN_36_LOWER_BOUND < x_int256 && x_int256 < LN_36_UPPER_BOUND) {
