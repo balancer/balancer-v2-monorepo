@@ -113,7 +113,7 @@ abstract contract TemporarilyPausable {
      * longer accessed.
      */
     function _isNotPaused() internal view returns (bool) {
-        // After the Buffer Period, the (inexpensive) timestamp check shortcircuits the storage access.
+        // After the Buffer Period, the (inexpensive) timestamp check short-circuits the storage access.
         return block.timestamp > _getBufferPeriodEndTime() || !_paused;
     }
 

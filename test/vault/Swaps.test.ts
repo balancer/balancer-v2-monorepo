@@ -5,7 +5,7 @@ import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList, { ETH_TOKEN_ADDRESS } from '../helpers/models/tokens/TokenList';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 import { encodeJoin } from '../helpers/mockPool';
 import * as expectEvent from '../helpers/expectEvent';
 import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
@@ -292,8 +292,8 @@ describe('Vault - swaps', () => {
 
       context('when the sender is an approved relayer', () => {
         sharedBeforeEach(async () => {
-          const role = await roleId(vault, 'batchSwap');
-          await authorizer.connect(admin).grantRole(role, other.address);
+          const action = await actionId(vault, 'batchSwap');
+          await authorizer.connect(admin).grantRole(action, other.address);
 
           await vault.connect(trader).setRelayerApproval(trader.address, other.address, true);
         });
@@ -536,9 +536,9 @@ describe('Vault - swaps', () => {
                           const fromOther = true;
 
                           context('when the relayer is whitelisted by the authorizer', () => {
-                            sharedBeforeEach('grant role to relayer', async () => {
-                              const single = await roleId(vault, 'swap');
-                              const batch = await roleId(vault, 'batchSwap');
+                            sharedBeforeEach('grant permission to relayer', async () => {
+                              const single = await actionId(vault, 'swap');
+                              const batch = await actionId(vault, 'batchSwap');
                               await authorizer.connect(admin).grantRoles([single, batch], other.address);
                             });
 
@@ -573,9 +573,9 @@ describe('Vault - swaps', () => {
                           });
 
                           context('when the relayer is not whitelisted by the authorizer', () => {
-                            sharedBeforeEach('revoke role from relayer', async () => {
-                              const single = await roleId(vault, 'swap');
-                              const batch = await roleId(vault, 'batchSwap');
+                            sharedBeforeEach('revoke permission from relayer', async () => {
+                              const single = await actionId(vault, 'swap');
+                              const batch = await actionId(vault, 'batchSwap');
                               await authorizer.connect(admin).revokeRoles([single, batch], other.address);
                             });
 
@@ -1031,9 +1031,9 @@ describe('Vault - swaps', () => {
                           const fromOther = true;
 
                           context('when the relayer is whitelisted by the authorizer', () => {
-                            sharedBeforeEach('grant role to relayer', async () => {
-                              const single = await roleId(vault, 'swap');
-                              const batch = await roleId(vault, 'batchSwap');
+                            sharedBeforeEach('grant permission to relayer', async () => {
+                              const single = await actionId(vault, 'swap');
+                              const batch = await actionId(vault, 'batchSwap');
                               await authorizer.connect(admin).grantRoles([single, batch], other.address);
                             });
 
@@ -1055,9 +1055,9 @@ describe('Vault - swaps', () => {
                           });
 
                           context('when the relayer is not whitelisted by the authorizer', () => {
-                            sharedBeforeEach('revoke role from relayer', async () => {
-                              const single = await roleId(vault, 'swap');
-                              const batch = await roleId(vault, 'batchSwap');
+                            sharedBeforeEach('revoke permission from relayer', async () => {
+                              const single = await actionId(vault, 'swap');
+                              const batch = await actionId(vault, 'batchSwap');
                               await authorizer.connect(admin).revokeRoles([single, batch], other.address);
                             });
 

@@ -268,7 +268,7 @@ contract StablePool is BaseGeneralPool, StableMath {
                 balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
             }
         } else {
-            // To avoid extra calculations, protocol fees are not charged whem the contract is paused.
+            // To avoid extra calculations, protocol fees are not charged when the contract is paused.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 
@@ -397,7 +397,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         }
 
         // Set the fee amount to pay in the selected token
-        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenprotocolSwapFeePercentageAmount(
+        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFeePercentageAmount(
             _amplificationParameter,
             balances,
             previousInvariant,
@@ -431,10 +431,9 @@ contract StablePool is BaseGeneralPool, StableMath {
     /**
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
-     * It's equivalent to Curve's get_virtual_price() function
      */
-    function getRate() public view override returns (uint256) {
+    function getRate() public view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        return StableMath._calculateInvariant(_amplificationParameter, balances).div(totalSupply());
+        return StableMath._calculateInvariant(_amplificationParameter, balances).divDown(totalSupply());
     }
 }

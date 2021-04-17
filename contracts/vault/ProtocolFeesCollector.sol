@@ -15,8 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import "../lib/openzeppelin/IERC20.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/Authentication.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
@@ -29,9 +28,9 @@ import "./interfaces/IAuthorizer.sol";
  * @dev This an auxiliary contract to the Vault, deployed by it during construction. It offloads some of the tasks the
  * Vault performs to reduce its overall bytecode size.
  *
- * The current values for all protocol fee percentages are stored here, and any protocol fees charged in the form of
- * tokens are sent to this contract, where they may be withdrawn by authorized entities. All authorization tasks are
- * delegated to the Vault's own authorizer.
+ * The current values for all protocol fee percentages are stored here, and any tokens charged as protocol fees are
+ * sent to this contract, where they may be withdrawn by authorized entities. All authorization tasks are delegated
+ * to the Vault's own authorizer.
  */
 contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -55,7 +54,11 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     event SwapFeeChanged(uint256 newSwapFeePercentage);
     event FlashLoanFeeChanged(uint256 newFlashLoanFeePercentage);
 
-    constructor(IVault _vault) Authentication(bytes32(uint256(address(this)))) {
+    constructor(IVault _vault)
+        // The ProtocolFeesCollector is a singleton, so it simply uses its own address to disambiguate action
+        // identifiers.
+        Authentication(bytes32(uint256(address(this))))
+    {
         vault = _vault;
     }
 
@@ -104,8 +107,8 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
         return _getAuthorizer();
     }
 
-    function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
-        return _getAuthorizer().hasRoleIn(roleId, account, address(this));
+    function _canPerform(bytes32 action, address account) internal view override returns (bool) {
+        return _getAuthorizer().canPerform(action, account, address(this));
     }
 
     function _getAuthorizer() internal view returns (IAuthorizer) {

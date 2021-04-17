@@ -118,7 +118,7 @@ export default {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 400,
+            runs: 1800,
           },
         },
       },
@@ -127,7 +127,7 @@ export default {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 1950,
+            runs: 1400,
           },
         },
       },

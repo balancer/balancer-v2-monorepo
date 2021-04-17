@@ -17,18 +17,22 @@ pragma solidity ^0.7.0;
 import "../lib/helpers/Authentication.sol";
 import "../vault/interfaces/IAuthorizer.sol";
 
+import "./BasePool.sol";
+
 /**
  * @dev Base authorization layer implementation for Pools.
  *
- * Pools can be assigned an owner account, which is the only one that can call the permissioned functions. Note that
- * this owner is immutable: more sophisticated permission schemes such as multiple ownership, granular roles, etc.,
- * should be built on top of this by making the owner a smart contract.
+ * The owner account can call some of the permissioned functions - access control of the rest is delegated to the
+ * Authorizer. Note that this owner is immutable: more sophisticated permission schemes, such as multiple ownership,
+ * granular roles, etc., could be built on top of this by making the owner a smart contract.
  *
- * Alternatively, if the owner is set to the zero address, the Pool switches to role-based access control using an
- * Authorizer.
+ * Access control of all other permissioned functions is delegated to an Authorizer. It is also possible to delegate
+ * control of *all* permissioned functions to the Authorizer by setting the owner address to `_DELEGATE_OWNER`.
  */
 abstract contract BasePoolAuthorization is Authentication {
     address private immutable _owner;
+
+    address private constant _DELEGATE_OWNER = 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B;
 
     constructor(address owner) {
         _owner = owner;
@@ -42,14 +46,19 @@ abstract contract BasePoolAuthorization is Authentication {
         return _getAuthorizer();
     }
 
-    function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
-        if (getOwner() != address(0)) {
-            // A non-zero owner overrides the Authorizer flow - the owner is instead authorized for all actions.
+    function _canPerform(bytes32 action, address account) internal view override returns (bool) {
+        if ((getOwner() != _DELEGATE_OWNER) && _isOwnerOnlyAction(action)) {
+            // Only the owner can perform "owner only" actions, unless the owner is delegated.
             return msg.sender == getOwner();
         } else {
-            // Alternatively, we query the Authorizer for permission.
-            return _getAuthorizer().hasRoleIn(roleId, account, address(this));
+            // Non-owner actions are always processed via the Authorizer, as "owner only" ones are when delegated.
+            return _getAuthorizer().canPerform(action, account, address(this));
         }
+    }
+
+    function _isOwnerOnlyAction(bytes32 action) private view returns (bool) {
+        // This implementation hardcodes the setSwapFeePercentage action.
+        return action == getAction(BasePool.setSwapFeePercentage.selector);
     }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);

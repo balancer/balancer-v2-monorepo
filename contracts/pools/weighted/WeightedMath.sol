@@ -234,7 +234,8 @@ contract WeightedMath {
 
         uint256 invariantRatio = FixedPoint.ONE;
         for (uint256 i = 0; i < balances.length; i++) {
-            // Swap fees are typically charged on token in, but there is no token in here, so we apply it to token out.
+            // Swap fees are typically charged on 'token in', but there is no 'token in' here,
+            // o we apply it to 'token out'.
             // This results in slightly larger price impact.
 
             uint256 amountOutWithFee;
@@ -288,8 +289,8 @@ contract WeightedMath {
         // in swap fees.
         uint256 taxablePercentage = normalizedWeight.complement();
 
-        // Swap fees are typically charged on token in, but there is no token in here, so we apply it to token out. This
-        // results in slightly larger price impact. Fees are rounded up.
+        // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it
+        // to 'token out'. This results in slightly larger price impact. Fees are rounded up.
         uint256 taxableAmount = amountOutWithoutFee.mulUp(taxablePercentage);
         uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
 
@@ -323,7 +324,7 @@ contract WeightedMath {
         return amountsOut;
     }
 
-    function _calcDueTokenprotocolSwapFeePercentageAmount(
+    function _calcDueTokenProtocolSwapFeePercentageAmount(
         uint256 balance,
         uint256 normalizedWeight,
         uint256 previousInvariant,

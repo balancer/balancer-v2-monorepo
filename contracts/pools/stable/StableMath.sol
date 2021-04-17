@@ -415,7 +415,7 @@ contract StableMath {
     }
 
     // The amplification parameter equals: A n^(n-1)
-    function _calcDueTokenprotocolSwapFeePercentageAmount(
+    function _calcDueTokenProtocolSwapFeePercentageAmount(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 lastInvariant,
@@ -447,7 +447,7 @@ contract StableMath {
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] > finalBalanceFeeToken
             ? balances[tokenIndex].sub(finalBalanceFeeToken)
             : 0;
-        return accumulatedTokenSwapFees.mul(protocolSwapFeePercentage).divDown(FixedPoint.ONE);
+        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage).divDown(FixedPoint.ONE);
     }
 
     // Private functions
@@ -473,20 +473,22 @@ contract StableMath {
 
         uint256 c = Math.divUp(Math.mul(invariant, invariant), ampTimesTotal);
         // We remove the balance fromm c by multiplying it
-        c = c.mul(balances[tokenIndex]).div(P_D);
+        c = c.mulUp(balances[tokenIndex]).divUp(P_D);
 
-        uint256 b = sum.add(invariant.div(ampTimesTotal));
+        uint256 b = sum.add(invariant.divDown(ampTimesTotal));
 
         // We iterate to find the balance
         uint256 prevTokenBalance = 0;
         // We multiply the first iteration outside the loop with the invariant to set the value of the
         // initial approximation.
-        uint256 tokenBalance = invariant.mul(invariant).add(c).divUp(invariant.add(b));
+        uint256 tokenBalance = invariant.mulUp(invariant).add(c).divUp(invariant.add(b));
 
         for (uint256 i = 0; i < 255; i++) {
             prevTokenBalance = tokenBalance;
 
-            tokenBalance = tokenBalance.mul(tokenBalance).add(c).divUp(Math.mul(tokenBalance, 2).add(b).sub(invariant));
+            tokenBalance = tokenBalance.mulUp(tokenBalance).add(c).divUp(
+                Math.mul(tokenBalance, 2).add(b).sub(invariant)
+            );
 
             if (tokenBalance > prevTokenBalance) {
                 if (tokenBalance.sub(prevTokenBalance) <= 1) {
