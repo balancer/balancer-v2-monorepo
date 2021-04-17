@@ -26,20 +26,20 @@ import "./IAuthentication.sol";
  * Derived contracts must implement the `_canPerform` function, which holds the actual access control logic.
  */
 abstract contract Authentication is IAuthentication {
-    bytes32 private immutable _actionDisambiguator;
+    bytes32 private immutable _actionIdDisambiguator;
 
     /**
-     * @dev The main purpose of the `actionDisambiguator` is to prevent accidental function selector collisions in multi
-     * contract systems.
+     * @dev The main purpose of the `actionIdDisambiguator` is to prevent accidental function selector collisions in
+     * multi contract systems.
      *
      * There are two main uses for it:
      *  - if the contract is a singleton, any unique identifier can be used to make the associated action identifiers
-     * unique. The contract's own address is a good option.
+     *    unique. The contract's own address is a good option.
      *  - if the contract belongs to a family that shares action identifiers for the same functions, an identifier
-     * shared by the entire family (and no other contract) should be used instead.
+     *    shared by the entire family (and no other contract) should be used instead.
      */
-    constructor(bytes32 actionDisambiguator) {
-        _actionDisambiguator = actionDisambiguator;
+    constructor(bytes32 actionIdDisambiguator) {
+        _actionIdDisambiguator = actionIdDisambiguator;
     }
 
     /**
@@ -54,16 +54,16 @@ abstract contract Authentication is IAuthentication {
      * @dev Reverts unless the caller is allowed to call the entry point function.
      */
     function _authenticateCaller() internal view {
-        bytes32 action = getAction(msg.sig);
-        _require(_canPerform(action, msg.sender), Errors.SENDER_NOT_ALLOWED);
+        bytes32 actionId = getActionId(msg.sig);
+        _require(_canPerform(actionId, msg.sender), Errors.SENDER_NOT_ALLOWED);
     }
 
-    function getAction(bytes4 selector) public view override returns (bytes32) {
+    function getActionId(bytes4 selector) public view override returns (bytes32) {
         // Each external function is dynamically assigned an action identifier as the hash of the disambiguator and the
         // function selector. Disambiguation is necessary to avoid potential collisions in the function selectors of
         // multiple contracts.
-        return keccak256(abi.encodePacked(_actionDisambiguator, selector));
+        return keccak256(abi.encodePacked(_actionIdDisambiguator, selector));
     }
 
-    function _canPerform(bytes32 action, address user) internal view virtual returns (bool);
+    function _canPerform(bytes32 actionId, address user) internal view virtual returns (bool);
 }

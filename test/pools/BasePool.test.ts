@@ -109,7 +109,7 @@ describe('BasePool', function () {
           const pool = await deployBasePool({ tokens, from: deployer });
           const otherPool = await deployBasePool({ tokens, from: deployer });
 
-          expect(await pool.getAction(selector)).to.equal(await otherPool.getAction(selector));
+          expect(await pool.getActionId(selector)).to.equal(await otherPool.getActionId(selector));
         });
       });
 
@@ -118,7 +118,7 @@ describe('BasePool', function () {
           const pool = await deployBasePool({ tokens, from: deployer });
           const otherPool = await deployBasePool({ tokens, from: other });
 
-          expect(await pool.getAction(selector)).to.not.equal(await otherPool.getAction(selector));
+          expect(await pool.getActionId(selector)).to.not.equal(await otherPool.getActionId(selector));
         });
       });
     });

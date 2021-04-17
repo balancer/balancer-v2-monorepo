@@ -268,7 +268,7 @@ contract StablePool is BaseGeneralPool, StableMath {
                 balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
             }
         } else {
-            // To avoid extra calculations, protocol fees are not charged whem the contract is paused.
+            // To avoid extra calculations, protocol fees are not charged when the contract is paused.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 
@@ -397,7 +397,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         }
 
         // Set the fee amount to pay in the selected token
-        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenprotocolSwapFeePercentageAmount(
+        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFeeAmount(
             _amplificationParameter,
             balances,
             previousInvariant,
