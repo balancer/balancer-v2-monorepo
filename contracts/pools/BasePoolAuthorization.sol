@@ -27,8 +27,7 @@ import "./BasePool.sol";
  * granular roles, etc., could be built on top of this by making the owner a smart contract.
  *
  * Access control of all other permissioned functions is delegated to an Authorizer. It is also possible to delegate
- * access control of *all* permissioned functions to the Authorizer by setting the owner the
- * `getDelegateOwnerSentinelValue()` address.
+ * control of *all* permissioned functions to the Authorizer by setting the owner address to `_DELEGATE_OWNER`.
  */
 abstract contract BasePoolAuthorization is Authentication {
     address private immutable _owner;
