@@ -579,8 +579,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     function _getAuthorizer() internal view override returns (IAuthorizer) {
         // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
         // accounts can call permissioned functions: for example, to perform emergency pauses.
-        // If the owner is delegated, then *all* permissioned functions, including `setSwapFeePercentage`, will be
-        // under Governance control.
+        // If the owner is delegated, then *all* permissioned functions, including `setSwapFeePercentage`, will be under
+        // Governance control.
         return getVault().getAuthorizer();
     }
 
