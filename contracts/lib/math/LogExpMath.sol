@@ -370,7 +370,7 @@ library LogExpMath {
         // Let z = (a - 1) / (a + 1).
         // ln(a) = 2 * (z + z^3 / 3 + z^5 / 5 + z^7 / 7 + ... + z^(2 * n + 1) / (2 * n + 1))
 
-        // Recall that 36 digit fixed point division requires multiplying by ONE_20, and multiplication requires
+        // Recall that 20 digit fixed point division requires multiplying by ONE_20, and multiplication requires
         // division by ONE_20.
         int256 z = ((a - ONE_20) * ONE_20) / (a + ONE_20);
         int256 z_squared = (z * z) / ONE_20;
@@ -382,19 +382,19 @@ library LogExpMath {
         int256 seriesSum = num;
 
         // In each step, the numerator is multiplied by z^2
-        num = (num * z_squared) / ONE_36;
+        num = (num * z_squared) / ONE_20;
         seriesSum += num / 3;
 
-        num = (num * z_squared) / ONE_36;
+        num = (num * z_squared) / ONE_20;
         seriesSum += num / 5;
 
-        num = (num * z_squared) / ONE_36;
+        num = (num * z_squared) / ONE_20;
         seriesSum += num / 7;
 
-        num = (num * z_squared) / ONE_36;
+        num = (num * z_squared) / ONE_20;
         seriesSum += num / 9;
 
-        num = (num * z_squared) / ONE_36;
+        num = (num * z_squared) / ONE_20;
         seriesSum += num / 11;
 
         // 6 Taylor terms are sufficient for 36 decimal precision.
