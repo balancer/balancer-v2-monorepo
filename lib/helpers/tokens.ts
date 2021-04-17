@@ -2,9 +2,8 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { Dictionary, fromPairs } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-
-import { deploy } from './deploy';
 import { ZERO_ADDRESS } from './constants';
+import { deploy } from './deploy';
 
 export type TokenList = Dictionary<Contract>;
 
