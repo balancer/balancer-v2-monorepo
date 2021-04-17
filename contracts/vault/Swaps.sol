@@ -406,7 +406,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
             _revert(Errors.TOKEN_NOT_REGISTERED);
         }
 
-        // EnumerableMap stores the indices, plus a zero index sentinel value - because these are valid,
+        // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value - because these are valid,
         // we can undo this.
         indexIn -= 1;
         indexOut -= 1;
@@ -417,7 +417,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         request.lastChangeBlock = 0;
         for (uint256 i = 0; i < tokenAmount; i++) {
             // Because the iteration is bounded by `tokenAmount`, and no tokens are registered or deregistered here, we
-            // know `i` is a valid token index: so we can use `unchecked_valueAt` to save storage reads.
+            // know `i` is a valid token index and can use `unchecked_valueAt` to save storage reads.
             bytes32 balance = poolBalances.unchecked_valueAt(i);
 
             currentBalances[i] = balance.total();
