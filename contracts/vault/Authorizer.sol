@@ -25,7 +25,7 @@ import "../lib/helpers/InputHelpers.sol";
  * being truly used as such, since they each map to a single action.
  *
  * This temporary implementation is expected to be replaced soon after launch by a more sophisticated one, able to
- * manage permissions accross multiple contracts and to natively handle timelocks.
+ * manage permissions across multiple contracts and to natively handle timelocks.
  */
 contract Authorizer is AccessControl, IAuthorizer {
     constructor(address admin) {

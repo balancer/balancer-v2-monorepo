@@ -25,7 +25,7 @@ import "../../vault/interfaces/ISignaturesValidator.sol";
  * This contract relies on the fact that Solidity contracts can be called with extra calldata, and enables
  * metatransaction schemes by appending an EIP712 signature of the original calldata at the end.
  *
- * Derived contracts must implement the `_typehash` function to map function selectors to EIP712 structs.
+ * Derived contracts must implement the `_typeHash` function to map function selectors to EIP712 structs.
  */
 abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
     // The appended data consists of a deadline, plus the [v,r,s] signature. For simplicity, we use a full 256 bit slot
@@ -66,7 +66,7 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
 
         bytes32 typeHash = _typeHash();
         if (typeHash == bytes32(0)) {
-            // Prevent accidental signature validation for functions that don't have an associated typehash.
+            // Prevent accidental signature validation for functions that don't have an associated type hash.
             return false;
         }
 
@@ -82,7 +82,7 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
     }
 
     /**
-     * @dev Returns the EIP712 typehash for the current entry point function, which can be identified by its function
+     * @dev Returns the EIP712 type hash for the current entry point function, which can be identified by its function
      * selector (available as `msg.sig`).
      *
      * If 0x00, all signatures will be considered invalid.

@@ -37,7 +37,7 @@ abstract contract VaultAuthorization is
     SignaturesValidator,
     TemporarilyPausable
 {
-    // Ideally, we'd store the typehashes as immutable state variables to avoid computing the hash at runtime, but
+    // Ideally, we'd store the type hashes as immutable state variables to avoid computing the hash at runtime, but
     // unfortunately immutable variables cannot be used in assembly, so we just keep the precomputed hashes instead.
 
     // _JOIN_TYPE_HASH = keccak256("JoinAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");

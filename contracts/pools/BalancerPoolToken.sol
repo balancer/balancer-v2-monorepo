@@ -49,7 +49,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
     mapping(address => uint256) private _nonces;
 
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _PERMIT_TYPEHASH = keccak256(
+    bytes32 private immutable _PERMIT_TYPE_HASH = keccak256(
         "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
     );
 
@@ -132,7 +132,7 @@ contract BalancerPoolToken is IERC20, IERC20Permit, EIP712 {
 
         uint256 nonce = _nonces[owner];
 
-        bytes32 structHash = keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, nonce, deadline));
+        bytes32 structHash = keccak256(abi.encode(_PERMIT_TYPE_HASH, owner, spender, value, nonce, deadline));
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
