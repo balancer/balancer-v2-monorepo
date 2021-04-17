@@ -6,7 +6,7 @@ import Token from '../tokens/Token';
 import TokenList from '../tokens/TokenList';
 import VaultDeployer from './VaultDeployer';
 import TypesConverter from '../types/TypesConverter';
-import { roleId } from '../../../../lib/helpers/roles';
+import { actionId } from '../../../../lib/helpers/actions';
 import { MAX_UINT256 } from '../../../../lib/helpers/constants';
 import { BigNumberish } from '../../../../lib/helpers/numbers';
 import { Account, NAry, TxParams } from '../types/types';
@@ -137,7 +137,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(await roleId(feesCollector, 'setSwapFeePercentage'), this.admin);
+      await this.grantRole(await actionId(feesCollector, 'setSwapFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
@@ -152,7 +152,7 @@ export default class Vault {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(await roleId(feesCollector, 'setFlashLoanFeePercentage'), this.admin);
+      await this.grantRole(await actionId(feesCollector, 'setFlashLoanFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
@@ -160,10 +160,10 @@ export default class Vault {
     return instance.setFlashLoanFeePercentage(flashLoanFeePercentage);
   }
 
-  async grantRole(roleId: string, to?: Account): Promise<ContractTransaction> {
+  async grantRole(actionId: string, to?: Account): Promise<ContractTransaction> {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (!to) to = await this._defaultSender();
-    return this.authorizer.connect(this.admin).grantRole(roleId, TypesConverter.toAddress(to));
+    return this.authorizer.connect(this.admin).grantRole(actionId, TypesConverter.toAddress(to));
   }
 
   async _defaultSender(): Promise<SignerWithAddress> {

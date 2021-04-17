@@ -54,7 +54,11 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     event SwapFeeChanged(uint256 newSwapFeePercentage);
     event FlashLoanFeeChanged(uint256 newFlashLoanFeePercentage);
 
-    constructor(IVault _vault) Authentication(bytes32(uint256(address(this)))) {
+    constructor(IVault _vault)
+        // The ProtocolFeesCollector is a singleton, so it simply uses its own address to disambiguate action
+        // identifiers.
+        Authentication(bytes32(uint256(address(this))))
+    {
         vault = _vault;
     }
 
@@ -103,8 +107,8 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
         return _getAuthorizer();
     }
 
-    function _canPerform(bytes32 roleId, address account) internal view override returns (bool) {
-        return _getAuthorizer().hasRoleIn(roleId, account, address(this));
+    function _canPerform(bytes32 action, address account) internal view override returns (bool) {
+        return _getAuthorizer().canPerform(action, account, address(this));
     }
 
     function _getAuthorizer() internal view returns (IAuthorizer) {

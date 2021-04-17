@@ -7,7 +7,7 @@ import TokenList from '../helpers/models/tokens/TokenList';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 
 import { bn, fp } from '../../lib/helpers/numbers';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 import Vault from '../helpers/models/vault/Vault';
 
 describe('Vault - protocol fees', () => {
@@ -101,8 +101,8 @@ describe('Vault - protocol fees', () => {
       });
 
       it('authorized accounts can withdraw protocol fees to any recipient', async () => {
-        const role = await roleId(feesCollector, 'withdrawCollectedFees');
-        await vault.grantRole(role, feeCollector);
+        const action = await actionId(feesCollector, 'withdrawCollectedFees');
+        await vault.grantRole(action, feeCollector);
 
         await expectBalanceChange(
           () =>
@@ -118,8 +118,8 @@ describe('Vault - protocol fees', () => {
       });
 
       it('protocol fees cannot be over-withdrawn', async () => {
-        const role = await roleId(feesCollector, 'withdrawCollectedFees');
-        await vault.grantRole(role, feeCollector);
+        const action = await actionId(feesCollector, 'withdrawCollectedFees');
+        await vault.grantRole(action, feeCollector);
 
         await expect(
           vault.withdrawCollectedFees(tokens.DAI.address, bn(0.05e18).add(1), other, { from: feeCollector })

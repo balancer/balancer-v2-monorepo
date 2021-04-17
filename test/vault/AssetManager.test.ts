@@ -14,7 +14,7 @@ import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '../../lib/helpers/const
 import { GeneralPool, MinimalSwapInfoPool, PoolSpecializationSetting, TwoTokenPool } from '../../lib/helpers/pools';
 import * as expectEvent from '../helpers/expectEvent';
 import { lastBlockNumber, MONTH } from '../../lib/helpers/time';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 
 const OP_KIND = { WITHDRAW: 0, DEPOSIT: 1, UPDATE: 2 };
 
@@ -312,8 +312,8 @@ describe('Vault - asset manager', function () {
 
             context('when paused', () => {
               sharedBeforeEach('pause', async () => {
-                const role = roleId(vault, 'setPaused');
-                await authorizer.connect(admin).grantRole(role, admin.address);
+                const action = actionId(vault, 'setPaused');
+                await authorizer.connect(admin).grantRole(action, admin.address);
                 await vault.connect(admin).setPaused(true);
               });
 
@@ -437,8 +437,8 @@ describe('Vault - asset manager', function () {
 
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
-                  const role = roleId(vault, 'setPaused');
-                  await authorizer.connect(admin).grantRole(role, admin.address);
+                  const action = actionId(vault, 'setPaused');
+                  await authorizer.connect(admin).grantRole(action, admin.address);
                   await vault.connect(admin).setPaused(true);
                 });
 
@@ -597,8 +597,8 @@ describe('Vault - asset manager', function () {
 
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
-                  const role = roleId(vault, 'setPaused');
-                  await authorizer.connect(admin).grantRole(role, admin.address);
+                  const action = actionId(vault, 'setPaused');
+                  await authorizer.connect(admin).grantRole(action, admin.address);
                   await vault.connect(admin).setPaused(true);
                 });
 
