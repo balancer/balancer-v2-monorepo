@@ -42,15 +42,6 @@ library FixedPoint {
         return c;
     }
 
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c0 = a * b;
-        _require(a == 0 || c0 / a == b, Errors.MUL_OVERFLOW);
-        uint256 c1 = c0 + (ONE / 2);
-        _require(c1 >= c0, Errors.MUL_OVERFLOW);
-        uint256 c2 = c1 / ONE;
-        return c2;
-    }
-
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 product = a * b;
         _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
@@ -73,16 +64,6 @@ library FixedPoint {
 
             return ((product - 1) / ONE) + 1;
         }
-    }
-
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        _require(b != 0, Errors.ZERO_DIVISION);
-        uint256 c0 = a * ONE;
-        _require(a == 0 || c0 / a == ONE, Errors.DIV_INTERNAL); // mul overflow
-        uint256 c1 = c0 + (b / 2);
-        _require(c1 >= c0, Errors.DIV_INTERNAL); // add require
-        uint256 c2 = c1 / b;
-        return c2;
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -115,10 +96,6 @@ library FixedPoint {
 
             return ((aInflated - 1) / b) + 1;
         }
-    }
-
-    function pow(uint256 x, uint256 y) internal pure returns (uint256) {
-        return LogExpMath.pow(x, y);
     }
 
     /**

@@ -24,10 +24,23 @@ contract MockBasePool is BasePool {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
-    ) BasePool(vault, specialization, name, symbol, tokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension) {}
+        uint256 swapFeePercentage,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    )
+        BasePool(
+            vault,
+            specialization,
+            name,
+            symbol,
+            tokens,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
+    {}
 
     function _onInitializePool(
         bytes32 poolId,
@@ -41,7 +54,7 @@ contract MockBasePool is BasePool {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     )
@@ -59,7 +72,7 @@ contract MockBasePool is BasePool {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     )
@@ -72,5 +85,4 @@ contract MockBasePool is BasePool {
         )
     {}
 
-    function getRate() external pure override returns (uint256) {}
 }

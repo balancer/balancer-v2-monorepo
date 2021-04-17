@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../lib/math/FixedPoint.sol";
 import "../lib/helpers/InputHelpers.sol";
-import "../lib/helpers/EmergencyPeriod.sol";
+import "../lib/helpers/TemporarilyPausable.sol";
 import "../lib/openzeppelin/ERC20.sol";
 
 import "./BalancerPoolToken.sol";
@@ -33,11 +33,11 @@ import "../vault/interfaces/IBasePool.sol";
 
 /**
  * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with an immutable set
- * of registered tokens, no Asset Managers, an admin-controlled swap fee, and an emergency stop mechanisms.
+ * of registered tokens, no Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
  *
- * Note that neither swap fees nor the emergency stop mechanism are used by this contract. They are passed through so
- * that derived contracts can use them via the `_addSwapFee` and `_subtractSwapFee` functions, and the
- * `noEmergencyPeriod` modifier.
+ * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
+ * derived contracts can use them via the `_addSwapFeeAmount` and `_subtractSwapFeeAmount` functions, and the
+ * `whenNotPaused` modifier.
  *
  * No admin permissions are checked here: instead, this contract delegates that to the Vault's own Authorizer.
  *
@@ -45,19 +45,19 @@ import "../vault/interfaces/IBasePool.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, EmergencyPeriod {
+abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
     using FixedPoint for uint256;
 
     uint256 private constant _MIN_TOKENS = 2;
     uint256 private constant _MAX_TOKENS = 8;
 
     // 1e18 corresponds to 1.0, or a 100% fee
-    uint256 private constant _MIN_SWAP_FEE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE = 1e17; // 10%
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10%
 
-    uint256 private constant _MINIMUM_BPT = 10**6;
+    uint256 private constant _MINIMUM_BPT = 1e6;
 
-    uint256 internal _swapFee;
+    uint256 internal _swapFeePercentage;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -85,7 +85,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor6;
     uint256 internal immutable _scalingFactor7;
 
-    event SwapFeeChanged(uint256 swapFee);
+    event SwapFeeChanged(uint256 swapFeePercentage);
 
     constructor(
         IVault vault,
@@ -93,10 +93,21 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256 swapFee,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
-    ) BalancerPoolToken(name, symbol) EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension) {
+        uint256 swapFeePercentage,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    )
+        // Base Pools are expected to be deployed using factories. By using the factory address as the action
+        // disambiguator, we make all Pools deployed by the same factory share action identifiers. This allows for
+        // simpler management of permissions (such as being able to manage granting the 'set fee' action in any Pool
+        // created by the same factory), while still making actions unique among different factories if the selectors
+        // match, preventing accidental errors.
+        Authentication(bytes32(uint256(msg.sender)))
+        BalancerPoolToken(name, symbol)
+        BasePoolAuthorization(owner)
+        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
+    {
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
@@ -107,8 +118,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // order of token-specific parameters (such as token weights) will not change.
         InputHelpers.ensureArrayIsSorted(tokens);
 
-        _require(swapFee >= _MIN_SWAP_FEE, Errors.MIN_SWAP_FEE);
-        _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         bytes32 poolId = vault.registerPool(specialization);
 
@@ -119,7 +130,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         _vault = vault;
         _poolId = poolId;
-        _swapFee = swapFee;
+        _swapFeePercentage = swapFeePercentage;
         _totalTokens = tokens.length;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
@@ -145,19 +156,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     // Getters / Setters
 
-    function getVault() external view returns (IVault) {
-        return _getVault();
-    }
-
-    function _getVault() internal view returns (IVault) {
+    function getVault() public view returns (IVault) {
         return _vault;
     }
 
-    function getPoolId() external view returns (bytes32) {
-        return _getPoolId();
-    }
-
-    function _getPoolId() internal view returns (bytes32) {
+    function getPoolId() public view returns (bytes32) {
         return _poolId;
     }
 
@@ -165,29 +168,29 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _totalTokens;
     }
 
-    function getSwapFee() external view returns (uint256) {
-        return _swapFee;
+    function getSwapFeePercentage() external view returns (uint256) {
+        return _swapFeePercentage;
     }
 
     // Caller must be approved by the Vault's Authorizer
-    function setSwapFee(uint256 swapFee) external virtual authenticate {
-        _require(swapFee >= _MIN_SWAP_FEE, Errors.MIN_SWAP_FEE);
-        _require(swapFee <= _MAX_SWAP_FEE, Errors.MAX_SWAP_FEE);
+    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _swapFee = swapFee;
-        emit SwapFeeChanged(swapFee);
+        _swapFeePercentage = swapFeePercentage;
+        emit SwapFeeChanged(swapFeePercentage);
     }
 
     // Caller must be approved by the Vault's Authorizer
-    function setEmergencyPeriod(bool active) external authenticate {
-        _setEmergencyPeriod(active);
+    function setPaused(bool paused) external authenticate {
+        _setPaused(paused);
     }
 
     // Join / Exit Hooks
 
     modifier onlyVault(bytes32 poolId) {
-        _require(msg.sender == address(_getVault()), Errors.CALLER_NOT_VAULT);
-        _require(poolId == _getPoolId(), Errors.INVALID_POOL_ID);
+        _require(msg.sender == address(getVault()), Errors.CALLER_NOT_VAULT);
+        _require(poolId == getPoolId(), Errors.INVALID_POOL_ID);
         _;
     }
 
@@ -195,8 +198,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
@@ -217,18 +220,18 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
             return (amountsIn, new uint256[](_getTotalTokens()));
         } else {
-            _upscaleArray(currentBalances, scalingFactors);
+            _upscaleArray(balances, scalingFactors);
             (uint256 bptAmountOut, uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) = _onJoinPool(
                 poolId,
                 sender,
                 recipient,
-                currentBalances,
-                latestBlockNumberUsed,
+                balances,
+                lastChangeBlock,
                 protocolSwapFeePercentage,
                 userData
             );
 
-            // Note we no longer use `currentBalances` after calling `_onJoinPool`, which may mutate it.
+            // Note we no longer use `balances` after calling `_onJoinPool`, which may mutate it.
 
             _mintPoolTokens(recipient, bptAmountOut);
 
@@ -245,25 +248,25 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory scalingFactors = _scalingFactors();
-        _upscaleArray(currentBalances, scalingFactors);
+        _upscaleArray(balances, scalingFactors);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(
             poolId,
             sender,
             recipient,
-            currentBalances,
-            latestBlockNumberUsed,
+            balances,
+            lastChangeBlock,
             protocolSwapFeePercentage,
             userData
         );
 
-        // Note we no longer use `currentBalances` after calling `_onExitPool`, which may mutate it.
+        // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
 
         _burnPoolTokens(sender, bptAmountIn);
 
@@ -278,10 +281,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     /**
      * @dev Returns the amount of BPT that would be granted to `recipient` if the `onJoinPool` hook were called by the
-     * Vault with the the same arguments, along with the number of tokens `sender` would have to supply.
+     * Vault with the same arguments, along with the number of tokens `sender` would have to supply.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
-     * data, such as the protocol swap fee and Pool balances.
+     * data, such as the protocol swap fee percentage and Pool balances.
      *
      * Like `IVault.queryBatchSwap`, this function is not view due to internal implementation details: the caller must
      * explicitly use eth_call instead of eth_sendTransaction.
@@ -290,31 +293,36 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
-        return
-            _queryAction(
-                poolId,
-                sender,
-                recipient,
-                currentBalances,
-                latestBlockNumberUsed,
-                protocolSwapFeePercentage,
-                userData,
-                _onJoinPool,
-                _downscaleUpArray
-            );
+        InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
+
+        _queryAction(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData,
+            _onJoinPool,
+            _downscaleUpArray
+        );
+
+        // The `return` opcode is executed directly inside `_queryAction`, so execution never reaches this statement,
+        // and we don't need to return anything here - it just silences compiler warnings.
+        return (bptOut, amountsIn);
     }
 
     /**
      * @dev Returns the amount of BPT that would be burned from `sender` if the `onExitPool` hook were called by the
-     * Vault with the the same arguments, along with the number of tokens `recipient` would receive.
+     * Vault with the same arguments, along with the number of tokens `recipient` would receive.
      *
      * This function is not meant to be called directly, but rather from a helper contract that fetches current Vault
-     * data, such as the protocol swap fee and Pool balances.
+     * data, such as the protocol swap fee percentage and Pool balances.
      *
      * Like `IVault.queryBatchSwap`, this function is not view due to internal implementation details: the caller must
      * explicitly use eth_call instead of eth_sendTransaction.
@@ -323,23 +331,28 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
-        return
-            _queryAction(
-                poolId,
-                sender,
-                recipient,
-                currentBalances,
-                latestBlockNumberUsed,
-                protocolSwapFeePercentage,
-                userData,
-                _onExitPool,
-                _downscaleDownArray
-            );
+        InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
+
+        _queryAction(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData,
+            _onExitPool,
+            _downscaleDownArray
+        );
+
+        // The `return` opcode is executed directly inside `_queryAction`, so execution never reaches this statement,
+        // and we don't need to return anything here - it just silences compiler warnings.
+        return (bptIn, amountsOut);
     }
 
     // Internal hooks to be overridden by derived contracts - all token amounts (except BPT) in these interfaces are
@@ -371,7 +384,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * Returns the amount of BPT to mint, the token amounts that the Pool will receive in return, and the number of
      * tokens to pay in protocol swap fees.
      *
-     * Implementations of this function might choose to mutate the `currentBalances` array to save gas (e.g. when
+     * Implementations of this function might choose to mutate the `balances` array to save gas (e.g. when
      * performing intermediate calculations, such as subtraction of due protocol fees). This can be done safely.
      *
      * Minted BPT will be sent to `recipient`.
@@ -386,8 +399,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     )
@@ -405,12 +418,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * Returns the amount of BPT to burn, the token amounts for each Pool token that the Pool will grant in return, and
      * the number of tokens to pay in protocol swap fees.
      *
-     * Implementations of this function might choose to mutate the `currentBalances` array to save gas (e.g. when
+     * Implementations of this function might choose to mutate the `balances` array to save gas (e.g. when
      * performing intermediate calculations, such as subtraction of due protocol fees). This can be done safely.
      *
      * BPT will be burnt from `sender`.
      *
-     * The Pool will grant tokens to `recipient`. These amounts are considered upscaled and will  be downscaled
+     * The Pool will grant tokens to `recipient`. These amounts are considered upscaled and will be downscaled
      * (rounding down) before being returned to the Vault.
      *
      * Due protocol swap fees will be taken from the Pool's balance in the Vault (see `IBasePool.onExitPool`). These
@@ -420,8 +433,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     )
@@ -436,20 +449,20 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // Internal functions
 
     /**
-     * @dev Adds swap fees to `amount`, returning a larger value.
+     * @dev Adds swap fee amount to `amount`, returning a higher value.
      */
-    function _addSwapFee(uint256 amount) internal view returns (uint256) {
-        // This returns amount + fees, so we round up (favoring fees).
-        return amount.divUp(_swapFee.complement());
+    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+        return amount.divUp(_swapFeePercentage.complement());
     }
 
     /**
-     * @dev Subtracts swap fees from `amount`, returning a lower value.
+     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
      */
-    function _subtractSwapFee(uint256 amount) internal view returns (uint256) {
-        // Round up, favoring fees.
-        uint256 fees = amount.mulUp(_swapFee);
-        return amount.sub(fees);
+    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
+        uint256 feeAmount = amount.mulUp(_swapFeePercentage);
+        return amount.sub(feeAmount);
     }
 
     // Scaling
@@ -563,26 +576,27 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         }
     }
 
-    /**
-     * @dev This contract relies on the roles defined by the Vault's own Authorizer.
-     */
     function _getAuthorizer() internal view override returns (IAuthorizer) {
-        return _getVault().getAuthorizer();
+        // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
+        // accounts can call permissioned functions: for example, to perform emergency pauses.
+        // If the owner is delegated, then *all* permissioned functions, including `setSwapFeePercentage`, will be under
+        // Governance control.
+        return getVault().getAuthorizer();
     }
 
     function _queryAction(
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData,
         function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
             internal
             returns (uint256, uint256[] memory, uint256[] memory) _action,
         function(uint256[] memory, uint256[] memory) internal view _downscaleArray
-    ) private returns (uint256, uint256[] memory) {
+    ) private {
         // This uses the same technique used by the Vault in queryBatchSwap. Refer to that function for a detailed
         // explanation.
 
@@ -652,14 +666,14 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             }
         } else {
             uint256[] memory scalingFactors = _scalingFactors();
-            _upscaleArray(currentBalances, scalingFactors);
+            _upscaleArray(balances, scalingFactors);
 
             (uint256 bptAmount, uint256[] memory tokenAmounts, ) = _action(
                 poolId,
                 sender,
                 recipient,
-                currentBalances,
-                latestBlockNumberUsed,
+                balances,
+                lastChangeBlock,
                 protocolSwapFeePercentage,
                 userData
             );

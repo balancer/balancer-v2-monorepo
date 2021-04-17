@@ -18,17 +18,31 @@ import "./interfaces/IAuthorizer.sol";
 import "../lib/openzeppelin/AccessControl.sol";
 import "../lib/helpers/InputHelpers.sol";
 
+/**
+ * @dev Basic Authorizer implementation, based on OpenZeppelin's Access Control.
+ *
+ * Users are allowed to perform actions if they have the role with the same identifier. In this sense, roles are not
+ * being truly used as such, since they each map to a single action.
+ *
+ * This temporary implementation is expected to be replaced soon after launch by a more sophisticated one, able to
+ * manage permissions across multiple contracts and to natively handle timelocks.
+ */
 contract Authorizer is AccessControl, IAuthorizer {
     constructor(address admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    function hasRole(bytes32 role, address account) public view override(IAuthorizer, AccessControl) returns (bool) {
-        return AccessControl.hasRole(role, account);
+    function canPerform(
+        bytes32 actionId,
+        address account,
+        address
+    ) public view override returns (bool) {
+        // This Authorizer ignores the 'where' field completely.
+        return AccessControl.hasRole(actionId, account);
     }
 
     /**
-     * @dev Grants multiple roles to a single account
+     * @dev Grants multiple roles to a single account.
      */
     function grantRoles(bytes32[] memory roles, address account) external {
         for (uint256 i = 0; i < roles.length; i++) {
@@ -37,7 +51,7 @@ contract Authorizer is AccessControl, IAuthorizer {
     }
 
     /**
-     * @dev Grants roles to a list of accounts
+     * @dev Grants roles to a list of accounts.
      */
     function grantRolesToMany(bytes32[] memory roles, address[] memory accounts) external {
         InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);
@@ -47,7 +61,7 @@ contract Authorizer is AccessControl, IAuthorizer {
     }
 
     /**
-     * @dev Revokes multiple roles from a single account
+     * @dev Revokes multiple roles from a single account.
      */
     function revokeRoles(bytes32[] memory roles, address account) external {
         for (uint256 i = 0; i < roles.length; i++) {
@@ -56,7 +70,7 @@ contract Authorizer is AccessControl, IAuthorizer {
     }
 
     /**
-     * @dev Revokes roles from a list of accounts
+     * @dev Revokes roles from a list of accounts.
      */
     function revokeRolesFromMany(bytes32[] memory roles, address[] memory accounts) external {
         InputHelpers.ensureInputLengthMatch(roles.length, accounts.length);

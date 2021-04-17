@@ -14,12 +14,12 @@
 
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../../lib/openzeppelin/IERC20.sol";
 
 import "./IWETH.sol";
 import "./IAsset.sol";
 import "./IAuthorizer.sol";
-import "./IFlashLoanReceiver.sol";
+import "./IFlashLoanRecipient.sol";
 import "./ISignaturesValidator.sol";
 import "../ProtocolFeesCollector.sol";
 
@@ -50,21 +50,6 @@ interface IVault is ISignaturesValidator {
     // Some system actions are permissioned, like setting and collecting protocol fees. This permissioning system exists
     // outside of the Vault in the Authorizer contract: the Vault simply calls the Authorizer to check if the caller
     // can perform a given action.
-    // The only exceptions to this involve relayers. A relayer is an account (typically a contract) that can use the
-    // Internal Balance and Vault allowance of other accounts. For an account to be able to wield this power,
-    // two things must occur:
-    //  - The Authorizer must allow the the relayer to call the functions associated with this permission.
-    //    In other words, Balancer governance must specifically approve the functions each relayer can call
-    //  - Each user must approve the relayer to act on their behalf
-    // This double protection means users cannot be tricked into allowing malicious relayers (because they will not
-    // have been allowed by the Authorizer), nor can malicious relayers approved by a compromised Authorizer drain
-    // user funds, since they would also need to be approved by each individual user.
-
-    /**
-     * @dev Returns the Vault's WETH instance.
-     */
-    // solhint-disable-next-line func-name-mixedcase
-    function WETH() external view returns (IWETH);
 
     /**
      * @dev Returns the Vault's Authorizer.
@@ -73,36 +58,72 @@ interface IVault is ISignaturesValidator {
 
     /**
      * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
+     *
+     * Emits an `AuthorizerChanged` event.
      */
     function changeAuthorizer(IAuthorizer newAuthorizer) external;
 
-    /**
-     * @dev Returns true if `user` has allowed `relayer` to act as a relayer for them.
-     */
-    function hasAllowedRelayer(address user, address relayer) external view returns (bool);
+    event AuthorizerChanged(IAuthorizer indexed oldAuthorizer, IAuthorizer indexed newAuthorizer);
+
+    // Relayers
+    //
+    // Additionally, it is possible for an account to perform certain actions on behalf of another one, using their
+    // Vault ERC20 allowance and Internal Balance. These accounts are said to be 'relayers' for these Vault functions,
+    // and are expected to be smart contracts with sound authentication mechanisms. For an account to be able to wield
+    // this power, two things must occur:
+    //  - The Authorizer must grant the account the permission to be a relayer for the relevant Vault function. This
+    //    means that Balancer governance must approve each individual contract to act as a relayer for the intended
+    //    functions.
+    //  - Each user must approve the relayer to act on their behalf.
+    // This double protection means users cannot be tricked into approving malicious relayers (because they will not
+    // have been allowed by the Authorizer via governance), nor can malicious relayers approved by a compromised
+    // Authorizer or governance drain user funds, since they would also need to be approved by each individual user.
 
     /**
-     * @dev Allows `relayer` to act as a relayer for `sender` if `allowed` is true, and disallows it otherwise.
+     * @dev Returns true if `user` has approved `relayer` to act as a relayer for them.
      */
-    function changeRelayerAllowance(
+    function hasApprovedRelayer(address user, address relayer) external view returns (bool);
+
+    /**
+     * @dev Allows `relayer` to act as a relayer for `sender` if `approved` is true, and disallows it otherwise.
+     *
+     * Emits a `RelayerApprovalChanged` event.
+     */
+    function setRelayerApproval(
         address sender,
         address relayer,
-        bool allowed
+        bool approved
     ) external;
+
+    event RelayerApprovalChanged(address indexed relayer, address indexed sender, bool approved);
 
     // Internal Balance
     //
-    // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance.
-    // This Internal Balance can be withdrawn or transferred, and it can also be used when joining Pools or
-    // performing swaps, with greatly reduced gas costs. Swaps and Pool exits can also deposit to
-    // Internal Balance.
+    // Users can deposit tokens into the Vault, where they are allocated to their Internal Balance, and later
+    // transferred or withdrawn. It can also be used as a source of tokens when joining Pools, as a destination
+    // when exiting them, and as either when performing swaps. This usage of Internal Balance results in greatly reduced
+    // gas costs when compared to relying on plain ERC20 transfers, leading to large savings for frequent users.
     //
-    // Internal Balance functions feature batching, which means each call can be used to perform multiple operations of
-    // the same kind (deposit, withdraw or transfer) at once.
+    // Internal Balance management features batching, which means a single contract call can be used to perform multiple
+    // operations of different kinds, with different senders and recipients, at once.
 
     /**
-     * @dev Data for Internal Balance operations which include the possibility for ETH to be sent and
-     * received without manual WETH wrapping or unwrapping.
+     * @dev Returns `user`'s Internal Balance for a set of tokens.
+     */
+    function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
+
+    /**
+     * @dev Performs a set of user balance operations, which involve Internal Balance (deposit, withdraw or transfer)
+     * and plain ERC20 transfers using the Vault's allowance. This last feature is particularly useful for relayers, as
+     * it lets integrators reuse a user's Vault allowance.
+     *
+     * For each operation, if the caller is not `sender`, it must be an authorized relayer for them.
+     */
+    function manageUserBalance(UserBalanceOp[] memory ops) external payable;
+
+    /**
+     * @dev Data for `manageUserBalance` operations, which include the possibility for ETH to be sent and received
+     without manual WETH wrapping or unwrapping.
      */
     struct UserBalanceOp {
         UserBalanceOpKind kind;
@@ -112,87 +133,89 @@ interface IVault is ISignaturesValidator {
         address payable recipient;
     }
 
-    /**
-     * @dev Returns `user`'s Internal Balance for a set of tokens.
-     */
-    function getInternalBalance(address user, IERC20[] memory tokens) external view returns (uint256[] memory);
+    // There are four possible operations in `manageUserBalance`:
+    //
+    // - DEPOSIT_INTERNAL
+    // Increases the Internal Balance of the `recipient` account by transferring tokens from the corresponding
+    // `sender`. The sender must have allowed the Vault to use their tokens via `IERC20.approve()`.
+    //
+    // ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call: it will be wrapped
+    // and deposited as WETH. Any ETH amount remaining will be sent back to the caller (not the sender, which is
+    // relevant for relayers).
+    //
+    // Emits an `InternalBalanceChanged` event.
+    //
+    //
+    // - WITHDRAW_INTERNAL
+    // Decreases the Internal Balance of the `sender` account by transferring tokens to the `recipient`.
+    //
+    // ETH can be used by passing the ETH sentinel value as the asset. This will deduct WETH instead, unwrap it and send
+    // it to the recipient as ETH.
+    //
+    // Emits an `InternalBalanceChanged` event.
+    //
+    //
+    // - TRANSFER_INTERNAL
+    // Transfers tokens from the Internal Balance of the `sender` account to the Internal Balance of `recipient`.
+    //
+    // Reverts if the ETH sentinel value is passed.
+    //
+    // Emits an `InternalBalanceChanged` event.
+    //
+    //
+    // - TRANSFER_EXTERNAL
+    // Transfers tokens from `sender` to `recipient`, using the Vault's ERC20 allowance. This is typically used by
+    // relayers, as it lets them reuse a user's Vault allowance.
+    //
+    // Reverts if the ETH sentinel value is passed.
+    //
+    // Emits an `ExternalBalanceTransfer` event.
 
-    /**
-     * @dev Performs a set of user balance operations (deposit internal, withdraw internal, transfer internal, or
-     * transfer external) in the Vault. The array input allows users to make multiple operations in a single
-     * transaction.
-     *
-     * For each operation, if the caller is not `sender`, it must be an authorized relayer for them.
-     */
-    function manageUserBalance(UserBalanceOp[] memory ops) external payable;
-
-    /**
-     * `DEPOSIT_INTERNAL` increases the Internal Balance of the `recipient` account by  transferring tokens from the
-     * corresponding `sender`. The sender must have allowed the Vault to use their tokens via `IERC20.approve()`.
-     * ETH can be used by passing the ETH sentinel value as the asset and forwarding ETH in the call. It will be
-     * wrapped into WETH and deposited as that token. Any ETH amount remaining will be sent back to the caller (not the
-     * sender, which is relevant for relayers).
-     * Emits an `InternalBalanceChanged` event.
-     *
-     * `WITHDRAW_INTERNAL` decreases the Internal Balance of the `sender` by transferring tokens to the
-     * `recipient` account.
-     * ETH can be used by passing the ETH sentinel value as the asset. This will deduct WETH instead, unwrap it and send
-     * it to the recipient.
-     * Emits an `InternalBalanceChanged` event.
-     *
-     * `TRANSFER_INTERNAL` transfers tokens from the Internal Balance the `sender` account to the Internal Balances
-     * of `recipient`.
-     * Reverts if the ETH sentinel value is passed.
-     * Emit an `InternalBalanceChanged` event.
-     *
-     * `TRANSFER_EXTERNAL` transfers tokens from the Internal Balance of the `sender` account to the Internal Balances
-     * of the `recipient`.
-     * Reverts if the ETH sentinel value is passed.
-     * Emit an `ExternalBalanceTransfer` event.
-     */
     enum UserBalanceOpKind { DEPOSIT_INTERNAL, WITHDRAW_INTERNAL, TRANSFER_INTERNAL, TRANSFER_EXTERNAL }
 
     /**
-     * @dev Emitted when a user's Internal Balance changes, due to calls on the Internal Balance functions, or
-     * to interacting with Pools using Internal Balance.
+     * @dev Emitted when a user's Internal Balance changes, either from calls to `manageUserBalance`, or through
+     * interacting with Pools using Internal Balance.
      *
-     * Because Internal Balance works exclusively with ERC20 tokens, ETH deposits and withdrawals will use
-     * the WETH address.
+     * Because Internal Balance works exclusively with ERC20 tokens, ETH deposits and withdrawals will use the WETH
+     * address.
      */
     event InternalBalanceChanged(address indexed user, IERC20 indexed token, int256 delta);
 
     /**
-     * @dev Emitted when a user's allowance is used by the Vault to transfer tokens to an external account.
+     * @dev Emitted when a user's Vault ERC20 allowance is used by the Vault to transfer tokens to an external account.
      */
     event ExternalBalanceTransfer(IERC20 indexed token, address indexed sender, address recipient, uint256 amount);
 
     // Pools
     //
-    // There are three specialization settings for Pools, which allow for lower gas cost swaps, at the cost of reduced
+    // There are three specialization settings for Pools, which allow for cheaper swaps at the cost of reduced
     // functionality:
     //
-    //  - general: no specialization, suited for all Pools. IGeneralPool is used for swap request callbacks, passing the
+    //  - General: no specialization, suited for all Pools. IGeneralPool is used for swap request callbacks, passing the
     // balance of all tokens in the Pool. These Pools have the largest swap costs (because of the extra storage reads),
-    // and these increase with the number of registered tokens.
+    // which increase with the number of registered tokens.
     //
-    //  - minimal swap info: IMinimalSwapInfoPool is used instead of IGeneralPool, which saves gas by only passing the
+    //  - Minimal Swap Info: IMinimalSwapInfoPool is used instead of IGeneralPool, which saves gas by only passing the
     // balance of the two tokens involved in the swap. This is suitable for some pricing algorithms, like the weighted
     // constant product one popularized by Balancer V1. Swap costs are smaller compared to general Pools, and are
     // independent of the number of registered tokens.
     //
-    //  - two tokens: only allows two tokens to be registered. This achieves the lowest possible swap gas cost. Like
+    //  - Two Token: only allows two tokens to be registered. This achieves the lowest possible swap gas cost. Like
     // minimal swap info Pools, these are called via IMinimalSwapInfoPool.
 
     enum PoolSpecialization { GENERAL, MINIMAL_SWAP_INFO, TWO_TOKEN }
 
     /**
-     * @dev Registers the caller contract as a Pool with a chosen specialization setting. Returns the Pool's ID,
-     * which is used in all Pool-related functions. Pools cannot be deregistered, nor can the Pool's specialization
-     * be changed.
+     * @dev Registers the caller account as a Pool with a given specialization setting. Returns the Pool's ID, which
+     * is used in all Pool-related functions. Pools cannot be deregistered, nor can the Pool's specialization be
+     * changed.
      *
-     * The caller is expected to be a smart contract that implements one of `IGeneralPool` or `IMinimalSwapInfoPool`.
-     * This contract is known as the Pool's contract. Note that the same caller may register itself as multiple Pools
-     * with unique Pool IDs, or in other words, multiple Pools may have the same contract.
+     * The caller is expected to be a smart contract that implements either `IGeneralPool` or `IMinimalSwapInfoPool`,
+     * depending on the chosen specialization setting. This contract is known as the Pool's contract.
+     *
+     * Note that the same contract may register itself as multiple Pools with unique Pool IDs, or in other words,
+     * multiple Pools may share the same contract.
      *
      * Emits a `PoolRegistered` event.
      */
@@ -215,24 +238,25 @@ interface IVault is ISignaturesValidator {
      * exit by receiving registered tokens, and can only swap registered tokens.
      *
      * Each token can only be registered once. For Pools with the Two Token specialization, `tokens` must have a length
-     * of two, that is, both tokens must be registered in the same `registerTokens` call.
+     * of two, that is, both tokens must be registered in the same `registerTokens` call, and they must be sorted in
+     * ascending order.
      *
      * The `tokens` and `assetManagers` arrays must have the same length, and each entry in these indicates the Asset
-     * Manager for each token. Asset Managers can manage a Pool's tokens by withdrawing and depositing them directly
-     * (via `managePoolBalance` with the appropriate AssetManagerOpKind setting), and even set them to arbitrary amounts
-     * with the UPDATE OpKind. They are therefore expected to be highly secured smart contracts with sound design
-     * principles, and the decision to add an Asset Manager should not be made lightly.
+     * Manager for the corresponding token. Asset Managers can manage a Pool's tokens via `managePoolBalance`,
+     * depositing and withdrawing them directly, and can even set their balance to arbitrary amounts. They are therefore
+     * expected to be highly secured smart contracts with sound design principles, and the decision to register an
+     * Asset Manager should not be made lightly.
      *
-     * Pools can choose not to assign an Asset Manager to a given token by passing in the zero address. However, once an
-     * Asset Manager is set, it cannot be changed except by deregistering the associated token and registering again
-     * with a different Asset Manager.
+     * Pools can choose not to assign an Asset Manager to a given token by passing in the zero address. Once an Asset
+     * Manager is set, it cannot be changed except by deregistering the associated token and registering again with a
+     * different Asset Manager.
      *
-     * Emits `TokensRegistered` events.
+     * Emits a `TokensRegistered` event.
      */
     function registerTokens(
         bytes32 poolId,
-        IERC20[] calldata tokens,
-        address[] calldata assetManagers
+        IERC20[] memory tokens,
+        address[] memory assetManagers
     ) external;
 
     /**
@@ -251,33 +275,12 @@ interface IVault is ISignaturesValidator {
      *
      * Emits a `TokensDeregistered` event.
      */
-    function deregisterTokens(bytes32 poolId, IERC20[] calldata tokens) external;
+    function deregisterTokens(bytes32 poolId, IERC20[] memory tokens) external;
 
     /**
      * @dev Emitted when a Pool deregisters tokens by calling `deregisterTokens`.
      */
     event TokensDeregistered(bytes32 poolId, IERC20[] tokens);
-
-    /**
-     * @dev Returns a Pool's registered tokens, and the total balance for each.
-     *
-     * The order of the `tokens` array is the same order that will be used in `joinPool`, `exitPool`, as well as in all
-     * Pool hooks (where applicable). Calls to `registerTokens` and `deregisterTokens` may change this order.
-     *
-     * If a Pool only registers tokens once, and these are sorted in ascending order, they will be stored in the same
-     * order as passed to `registerTokens`.
-     *
-     * Total balances include both tokens held by the Vault and those withdrawn by the Pool's Asset Managers. These are
-     * the amounts used by joins, exits and swaps.
-     */
-    function getPoolTokens(bytes32 poolId)
-        external
-        view
-        returns (
-            IERC20[] memory tokens,
-            uint256[] memory balances,
-            uint256 maxBlockNumber
-        );
 
     /**
      * @dev Returns detailed information for a Pool's registered token.
@@ -286,9 +289,13 @@ interface IVault is ISignaturesValidator {
      * withdrawn and held outside the Vault by the Pool's token Asset Manager. The Pool's total balance for `token`
      * equals the sum of `cash` and `managed`.
      *
-     * `blockNumber` is the number of the block in which `token`'s balance was last modified (via either a join, exit,
-     * swap, or Asset Management interaction). This value is useful to avoid so-called 'sandwich attacks', for example
-     * when developing price oracles.
+     * Internally, `cash` and `managed` are stored using 112 bits. No action can ever cause a Pool's token `cash`,
+     * `managed` or `total` balance to be greater than 2^112 - 1.
+     *
+     * `lastChangeBlock` is the number of the block in which `token`'s total balance was last modified (via either a
+     * join, exit, swap, or Asset Manager update). This value is useful to avoid so-called 'sandwich attacks', for
+     * example when developing price oracles. A change of zero (e.g. caused by a swap with amount zero) is considered a
+     * change for this purpose, and will update `lastChangeBlock`.
      *
      * `assetManager` is the Pool's token Asset Manager.
      */
@@ -298,16 +305,32 @@ interface IVault is ISignaturesValidator {
         returns (
             uint256 cash,
             uint256 managed,
-            uint256 blockNumber,
+            uint256 lastChangeBlock,
             address assetManager
         );
 
-    struct PoolBalanceChange {
-        IAsset[] assets;
-        uint256[] limits;
-        bytes userData;
-        bool useInternalBalance;
-    }
+    /**
+     * @dev Returns a Pool's registered tokens, the total balance for each, and the latest block when *any* of
+     * the tokens' `balances` changed.
+     *
+     * The order of the `tokens` array is the same order that will be used in `joinPool`, `exitPool`, as well as in all
+     * Pool hooks (where applicable). Calls to `registerTokens` and `deregisterTokens` may change this order.
+     *
+     * If a Pool only registers tokens once, and these are sorted in ascending order, they will be stored in the same
+     * order as passed to `registerTokens`.
+     *
+     * Total balances include both tokens held by the Vault and those withdrawn by the Pool's Asset Managers. These are
+     * the amounts used by joins, exits and swaps. For a detailed breakdown of token balances, use `getPoolTokenInfo`
+     * instead.
+     */
+    function getPoolTokens(bytes32 poolId)
+        external
+        view
+        returns (
+            IERC20[] memory tokens,
+            uint256[] memory balances,
+            uint256 lastChangeBlock
+        );
 
     /**
      * @dev Called by users to join a Pool, which transfers tokens from `sender` into the Pool's balance. This will
@@ -383,10 +406,6 @@ interface IVault is ISignaturesValidator {
      * `minAmountsOut` is the minimum amount of tokens the user expects to get out of the Pool, for each token in the
      * `tokens` array. This array must match the Pool's registered tokens.
      *
-     * Pools are free to implement any arbitrary logic in the `IPool.onExitPool` hook, and may require additional
-     * information (such as the number of Pool shares to provide). This can be encoded in the `userData` argument, which
-     * is ignored by the Vault and passed directly to the Pool.
-     *
      * This causes the Vault to call the `IBasePool.onExitPool` hook on the Pool's contract, where Pools implement
      * their own custom logic. This typically requires additional information from the user (such as the expected number
      * of Pool shares to return). This can be encoded in the `userData` argument, which is ignored by the Vault and
@@ -409,13 +428,13 @@ interface IVault is ISignaturesValidator {
     }
 
     /**
-     * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool` respectively.
+     * @dev Emitted when a user joins or exits a Pool by calling `joinPool` or `exitPool`, respectively.
      */
     event PoolBalanceChanged(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
         IERC20[] tokens,
-        int256[] amounts,
+        int256[] deltas,
         uint256[] protocolFees
     );
 
@@ -439,10 +458,11 @@ interface IVault is ISignaturesValidator {
     //  - 'given out' swaps, where the amount of tokens out (received from the Pool) is known, and the Pool determines
     // (via the `onSwap` hook) the amount of tokens in (to receive from the sender).
     //
-    // Additionally, it is possible to chain swaps by using the output of one as the input to the next (for given in
-    // swaps), as well as using inputs of one as the previous one (for given out swaps). These extended swaps are known
-    // as 'multihop' swaps, since they 'hop' through a number of intermediate tokens before arriving at the final
-    // intended token.
+    // Additionally, it is possible to chain swaps using a placeholder input amount, which the Vault replaces with
+    // the calculated output of the previous swap. If the previous swap was 'given in', this will be the calculated
+    // tokenOut amount. If the previous swap was 'given out', it will use the calculated tokenIn amount. These extended
+    // swaps are known as 'multihop' swaps, since they 'hop' through a number of intermediate tokens before arriving at
+    // the final intended token.
     //
     // In all cases, tokens are only transferred in and out of the Vault (or withdrawn from and deposited into Internal
     // Balance) after all individual swaps have been completed, and the net token balance change computed. This makes
@@ -472,18 +492,18 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Performs a swap with a single Pool.
      *
-     * If the swap is given in (the number of tokens to send to the Pool is known), returns the amount of tokens
-     * taken from the Pool, which must be larger or equal to `limit`.
+     * If the swap is 'given in' (the number of tokens to send to the Pool is known), it returns the amount of tokens
+     * taken from the Pool, which must be greater than or equal to `limit`.
      *
-     * If the swap is given out (the number of tokens to take from the Pool is known), returns the amount of
-     * tokens sent to the Pool, which must be smaller or equal to `limit`.
+     * If the swap is 'given out' (the number of tokens to take from the Pool is known), it returns the amount of tokens
+     * sent to the Pool, which must be less than or equal to `limit`.
      *
      * Internal Balance usage and the recipient are determined by the `funds` struct.
      *
      * Emits a `Swap` event.
      */
     function swap(
-        SingleSwap memory request,
+        SingleSwap memory singleSwap,
         FundManagement memory funds,
         uint256 limit,
         uint256 deadline
@@ -493,8 +513,8 @@ interface IVault is ISignaturesValidator {
      * @dev Data for a single swap executed by `swap`. `amount` is either `amountIn` or `amountOut` depending on
      * the `kind` value.
      *
-     * `assetIn` and `assetOut` are either token addresses, or the IAsset sentinel value (the zero address) for ETH.
-     * Note that Pools never interact with ETH directly: it will be wrapped or unwrapped using WETH by the Vault.
+     * `assetIn` and `assetOut` are either token addresses, or the IAsset sentinel value for ETH (the zero address).
+     * Note that Pools never interact with ETH directly: it will be wrapped to or unwrapped from WETH by the Vault.
      *
      * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwap` hook, and may be
      * used to extend swap behavior.
@@ -510,49 +530,48 @@ interface IVault is ISignaturesValidator {
 
     /**
      * @dev Performs a series of swaps with one or multiple Pools. In each individual swap, the caller determines either
-     * the amount of tokens sent to or received from the Pool depending on the `kind` value.
+     * the amount of tokens sent to or received from the Pool, depending on the `kind` value.
      *
      * Returns an array with the net Vault asset balance deltas. Positive amounts represent tokens (or ETH) sent to the
-     * Vault, and negative amounts tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at the same
-     * index in the `assets` array.
+     * Vault, and negative amounts represent tokens (or ETH) sent by the Vault. Each delta corresponds to the asset at
+     * the same index in the `assets` array.
      *
      * Swaps are executed sequentially, in the order specified by the `swaps` array. Each array element describes a
      * Pool, the token to be sent to this Pool, the token to receive from it, and an amount that is either `amountIn` or
      * `amountOut` depending on the swap kind.
      *
      * Multihop swaps can be executed by passing an `amount` value of zero for a swap. This will cause the amount in/out
-     * of the previous swap to be used as the amount in for the current one. In such a scenario, `tokenIn` must equal
-     * the previous swap's `tokenOut` in case of a swap given in, or `tokenOut` must equal the previous swap's `tokenIn`
-     * in case of a swap given out.
+     * of the previous swap to be used as the amount in for the current one. In a 'given in' swap, 'tokenIn' must equal
+     * the previous swap's `tokenOut`. For a 'given out' swap, `tokenOut` must equal the previous swap's `tokenIn`.
      *
      * The `assets` array contains the addresses of all assets involved in the swaps. These are either token addresses,
-     * or the IAsset sentinel value (the zero address) for ETH. Each entry in the `swaps` array specifies tokens in and
-     * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped or
-     * unwrapped using WETH by the Vault.
+     * or the IAsset sentinel value for ETH (the zero address). Each entry in the `swaps` array specifies tokens in and
+     * out by referencing an index in `assets`. Note that Pools never interact with ETH directly: it will be wrapped to
+     * or unwrapped from WETH by the Vault.
      *
      * Internal Balance usage, sender, and recipient are determined by the `funds` struct. The `limits` array specifies
      * the minimum or maximum amount of each token the vault is allowed to transfer.
      *
      * `batchSwap` can be used to make a single swap, like `swap` does, but doing so requires more gas than the
-     * euivalent `swap` call.
+     * equivalent `swap` call.
      *
      * Emits `Swap` events.
      */
     function batchSwap(
         SwapKind kind,
-        BatchSwapStep[] calldata swaps,
+        BatchSwapStep[] memory swaps,
         IAsset[] memory assets,
-        FundManagement calldata funds,
+        FundManagement memory funds,
         int256[] memory limits,
         uint256 deadline
     ) external payable returns (int256[] memory);
 
     /**
-     * @dev Data for each individual swap executed by `batchSwap`. The asset in and out are indexed in the
-     * `assets` array passed to that function, where an ETH asset is translated into WETH.
+     * @dev Data for each individual swap executed by `batchSwap`. The asset in and out fields are indexes into the
+     * `assets` array passed to that function, and ETH assets are converted to WETH.
      *
      * If `amount` is zero, the multihop mechanism is used to determine the actual amount based on the amount in/out
-     * from the previous swap depending on the swap kind specified.
+     * from the previous swap, depending on the swap kind.
      *
      * The `userData` field is ignored by the Vault, but forwarded to the Pool in the `onSwap` hook, and may be
      * used to extend swap behavior.
@@ -572,8 +591,8 @@ interface IVault is ISignaturesValidator {
         bytes32 indexed poolId,
         IERC20 indexed tokenIn,
         IERC20 indexed tokenOut,
-        uint256 tokensIn,
-        uint256 tokensOut
+        uint256 amountIn,
+        uint256 amountOut
     );
 
     /**
@@ -625,20 +644,20 @@ interface IVault is ISignaturesValidator {
     // Flash Loans
 
     /**
-     * @dev Performs a 'flash loan', sending tokens to `receiver` and executing the `receiveFlashLoan` hook on it,
-     * and then reverting unless the tokens plus a protocol fee have been returned.
+     * @dev Performs a 'flash loan', sending tokens to `recipient`, executing the `receiveFlashLoan` hook on it,
+     * and then reverting unless the tokens plus a proportional protocol fee have been returned.
      *
-     * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the amount to
-     * loan for each token contract. `tokens` must be sorted in ascending order.
+     * The `tokens` and `amounts` arrays must have the same length, and each entry in these indicates the loan amount
+     * for each token contract. `tokens` must be sorted in ascending order.
      *
-     * The 'receiverData' field is ignored by the Vault, and forwarded as-is to `receiver` as part of the
+     * The 'userData' field is ignored by the Vault, and forwarded as-is to `recipient` as part of the
      * `receiveFlashLoan` call.
      */
     function flashLoan(
-        IFlashLoanReceiver receiver,
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        bytes calldata receiverData
+        IFlashLoanRecipient recipient,
+        IERC20[] memory tokens,
+        uint256[] memory amounts,
+        bytes memory userData
     ) external;
 
     // Asset Management
@@ -656,35 +675,42 @@ interface IVault is ISignaturesValidator {
     // This concept is unrelated to the IAsset interface.
 
     /**
-     * @dev Called by a Pool's Asset Manager to perform an operation (withdraw, deposit, or update) in the Vault.
-     * Array input allows asset managers to manage multiple tokens for a pool in a single transaction.
+     * @dev Performs a set of Pool balance operations, which may be either withdrawals, deposits or updates.
+     *
+     * Pool Balance management features batching, which means a single contract call can be used to perform multiple
+     * operations of different kinds, with different Pools and tokens, at once.
+     *
+     * For each operation, the caller must be registered as the Asset Manager for `token` in `poolId`.
      */
-    function managePoolBalance(
-        bytes32 poolId,
-        AssetManagerOpKind kind,
-        AssetManagerTransfer[] memory transfers
-    ) external;
+    function managePoolBalance(PoolBalanceOp[] memory ops) external;
 
-    struct AssetManagerTransfer {
+    struct PoolBalanceOp {
+        PoolBalanceOpKind kind;
+        bytes32 poolId;
         IERC20 token;
         uint256 amount;
     }
 
     /**
-     * @dev Emitted when a Pool's token Asset manager withdraws or deposits token balance via `managePoolBalance`
-     * (using the AssetManagerOpKind to determine the type of update)
-     */
-    event PoolBalanceManaged(bytes32 indexed poolId, address indexed assetManager, IERC20 indexed token, int256 amount);
-
-    /**
-     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
-     *
      * Withdrawals decrease the Pool's cash, but increase its managed balance, leaving the total balance unchanged.
+     *
+     * Deposits increase the Pool's cash, but decrease its managed balance, leaving the total balance unchanged.
      *
      * Updates don't affect the Pool's cash balance, but because the managed balance changes, it does alter the total.
      * The external amount can be either increased or decreased by this call (i.e., reporting a gain or a loss).
      */
-    enum AssetManagerOpKind { DEPOSIT, WITHDRAW, UPDATE }
+    enum PoolBalanceOpKind { WITHDRAW, DEPOSIT, UPDATE }
+
+    /**
+     * @dev Emitted when a Pool's token Asset Manager alters its balance via `managePoolBalance`.
+     */
+    event PoolBalanceManaged(
+        bytes32 indexed poolId,
+        address indexed assetManager,
+        IERC20 indexed token,
+        int256 cashDelta,
+        int256 managedDelta
+    );
 
     // Protocol Fees
     //
@@ -697,7 +723,7 @@ interface IVault is ISignaturesValidator {
     //
     //  - swap fees: a percentage of the fees charged by Pools when performing swaps. For a number of reasons, including
     // swap gas costs and interface simplicity, protocol swap fees are not charged on each individual swap. Rather,
-    // Pools are expected to keep track of how many swap fees they have charged, and pay any outstanding debts to the
+    // Pools are expected to keep track of how much they have charged in swap fees, and pay any outstanding debts to the
     // Vault when they are joined or exited. This prevents users from joining a Pool with unpaid debt, as well as
     // exiting a Pool in debt without first paying their share.
 
@@ -707,18 +733,25 @@ interface IVault is ISignaturesValidator {
     function getProtocolFeesCollector() external view returns (ProtocolFeesCollector);
 
     /**
-     * @dev Safety mechanism to halt most Vault operations in the event of an emergency - typically detection
-     * of an error in some part of the system.
+     * @dev Safety mechanism to pause most Vault operations in the event of an emergency - typically detection of an
+     * error in some part of the system.
      *
-     * The emergency stop can only be activated during an initial time period, after which it is forever disabled.
+     * The Vault can only be paused during an initial time period, after which pausing is forever disabled.
      *
-     * While the emergency stop is active, the following features are disabled:
+     * While the contract is paused, the following features are disabled:
      * - depositing and transferring internal balance
      * - transferring external balance (using the Vault's allowance)
      * - swaps
      * - joining Pools
+     * - Asset Manager interactions
      *
-     * Internal balance can still be withdrawn, and Pools exited.
+     * Internal Balance can still be withdrawn, and Pools exited.
      */
-    function setEmergencyPeriod(bool active) external;
+    function setPaused(bool paused) external;
+
+    /**
+     * @dev Returns the Vault's WETH instance.
+     */
+    function WETH() external view returns (IWETH);
+    // solhint-disable-previous-line func-name-mixedcase
 }

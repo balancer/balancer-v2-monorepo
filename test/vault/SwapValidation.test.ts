@@ -14,7 +14,7 @@ import { fromNow, MONTH } from '../../lib/helpers/time';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { FundManagement, Swap, SWAP_KIND } from '../../lib/helpers/trading';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 
 describe('Vault - swap validation', () => {
   let authorizer: Contract, vault: Contract;
@@ -137,21 +137,21 @@ describe('Vault - swap validation', () => {
         deadline = await fromNow(60);
       });
 
-      context('when there is an emergency', () => {
-        sharedBeforeEach('activate emergency period', async () => {
-          const role = roleId(vault, 'setEmergencyPeriod');
-          await authorizer.connect(admin).grantRole(role, admin.address);
-          await vault.connect(admin).setEmergencyPeriod(true);
+      context('when paused', () => {
+        sharedBeforeEach('pause', async () => {
+          const action = await actionId(vault, 'setPaused');
+          await authorizer.connect(admin).grantRole(action, admin.address);
+          await vault.connect(admin).setPaused(true);
         });
 
         it('reverts', async () => {
           await expect(doSwap(funds, Array(tokens.length).fill(MAX_INT256), await fromNow(60))).to.be.revertedWith(
-            'EMERGENCY_PERIOD_ON'
+            'PAUSED'
           );
         });
       });
 
-      context('with no emergency', () => {
+      context('when unpaused', () => {
         it('reverts if there are less limits than tokens', async () => {
           await expect(doSwap(funds, Array(tokens.length - 1).fill(MAX_INT256), deadline)).to.be.revertedWith(
             'INPUT_LENGTH_MISMATCH'

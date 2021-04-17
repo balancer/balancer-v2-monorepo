@@ -1,6 +1,6 @@
 import { BigNumber, Contract, ContractFunction } from 'ethers';
 
-import { roleId } from '../../../../../lib/helpers/roles';
+import { actionId } from '../../../../../lib/helpers/actions';
 import { BigNumberish, bn, fp } from '../../../../../lib/helpers/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../../../lib/helpers/constants';
 import { encodeExitWeightedPool, encodeJoinWeightedPool } from '../../../../../lib/helpers/weightedPoolEncoding';
@@ -33,11 +33,10 @@ import {
   calcBptOutGivenExactTokensIn,
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
-  toNormalizedWeights,
   calcOutGivenIn,
-  calculateOneTokenSwapFee,
+  calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
-  calculateMaxOneTokenSwapFee,
+  calculateMaxOneTokenSwapFeeAmount,
 } from '../../../math/weighted';
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
@@ -51,7 +50,7 @@ export default class WeightedPool {
   poolId: string;
   tokens: TokenList;
   weights: BigNumberish[];
-  swapFee: BigNumberish;
+  swapFeePercentage: BigNumberish;
   vault: Vault;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
@@ -64,14 +63,14 @@ export default class WeightedPool {
     vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
-    swapFee: BigNumberish
+    swapFeePercentage: BigNumberish
   ) {
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
     this.tokens = tokens;
     this.weights = weights;
-    this.swapFee = swapFee;
+    this.swapFeePercentage = swapFeePercentage;
   }
 
   get address(): string {
@@ -83,7 +82,7 @@ export default class WeightedPool {
   }
 
   get normalizedWeights(): BigNumberish[] {
-    return toNormalizedWeights(this.weights).map((w) => bn(w.mul(1e18)));
+    return this.weights;
   }
 
   async name(): Promise<string> {
@@ -142,15 +141,15 @@ export default class WeightedPool {
     return currentBalances[tokenIndex].mul(MAX_OUT_RATIO).div(fp(1));
   }
 
-  async getSwapFee(): Promise<BigNumber> {
-    return this.instance.getSwapFee();
+  async getSwapFeePercentage(): Promise<BigNumber> {
+    return this.instance.getSwapFeePercentage();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
     return this.instance.getNormalizedWeights();
   }
 
-  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; maxBlockNumber: BigNumber }> {
+  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
     return this.vault.getPoolTokens(this.poolId);
   }
 
@@ -161,7 +160,7 @@ export default class WeightedPool {
 
   async getTokenInfo(
     token: Token
-  ): Promise<{ cash: BigNumber; managed: BigNumber; blockNumber: BigNumber; assetManager: string }> {
+  ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.vault.getPoolTokenInfo(this.poolId, token);
   }
 
@@ -170,7 +169,7 @@ export default class WeightedPool {
     return calculateInvariant(currentBalances, this.weights);
   }
 
-  async estimateSwapFee(
+  async estimateSwapFeeAmount(
     paidToken: number | Token,
     protocolFeePercentage: BigNumberish,
     currentBalances?: BigNumberish[]
@@ -178,18 +177,23 @@ export default class WeightedPool {
     if (!currentBalances) currentBalances = await this.getBalances();
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const feeAmount = calculateOneTokenSwapFee(currentBalances, this.weights, lastInvariant, paidTokenIndex);
+    const feeAmount = calculateOneTokenSwapFeeAmount(currentBalances, this.weights, lastInvariant, paidTokenIndex);
     return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
   }
 
-  async estimateMaxSwapFee(
+  async estimateMaxSwapFeeAmount(
     paidToken: number | Token,
     protocolFeePercentage: BigNumberish,
     currentBalances?: BigNumberish[]
   ): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const feeAmount = calculateMaxOneTokenSwapFee(currentBalances, this.weights, MIN_INVARIANT_RATIO, paidTokenIndex);
+    const feeAmount = calculateMaxOneTokenSwapFeeAmount(
+      currentBalances,
+      this.weights,
+      MIN_INVARIANT_RATIO,
+      paidTokenIndex
+    );
     return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
   }
 
@@ -230,7 +234,7 @@ export default class WeightedPool {
   ): Promise<BigNumberish> {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
-    return calcBptOutGivenExactTokensIn(currentBalances, this.weights, amountsIn, supply, this.swapFee);
+    return calcBptOutGivenExactTokensIn(currentBalances, this.weights, amountsIn, supply, this.swapFeePercentage);
   }
 
   async estimateTokenIn(
@@ -242,7 +246,14 @@ export default class WeightedPool {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
     const tokenIndex = this.tokens.indexOf(token);
-    return calcTokenInGivenExactBptOut(tokenIndex, currentBalances, this.weights, bptOut, supply, this.swapFee);
+    return calcTokenInGivenExactBptOut(
+      tokenIndex,
+      currentBalances,
+      this.weights,
+      bptOut,
+      supply,
+      this.swapFeePercentage
+    );
   }
 
   async estimateTokenOut(
@@ -254,7 +265,14 @@ export default class WeightedPool {
     if (!supply) supply = await this.totalSupply();
     if (!currentBalances) currentBalances = await this.getBalances();
     const tokenIndex = this.tokens.indexOf(token);
-    return calcTokenOutGivenExactBptIn(tokenIndex, currentBalances, this.weights, bptIn, supply, this.swapFee);
+    return calcTokenOutGivenExactBptIn(
+      tokenIndex,
+      currentBalances,
+      this.weights,
+      bptIn,
+      supply,
+      this.swapFeePercentage
+    );
   }
 
   async swapGivenIn(params: SwapWeightedPool): Promise<BigNumber> {
@@ -269,7 +287,7 @@ export default class WeightedPool {
         to: params.recipient ?? ZERO_ADDRESS,
         tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
         tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
-        latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+        lastChangeBlock: params.lastChangeBlock ?? 0,
         userData: params.data ?? '0x',
         amount: params.amount,
       },
@@ -290,7 +308,7 @@ export default class WeightedPool {
         to: params.recipient ?? ZERO_ADDRESS,
         tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
         tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
-        latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+        lastChangeBlock: params.lastChangeBlock ?? 0,
         userData: params.data ?? '0x',
         amount: params.amount,
       },
@@ -358,15 +376,15 @@ export default class WeightedPool {
       recipient: to,
       currentBalances,
       tokens: this.tokens.addresses,
-      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
     });
 
     const receipt = await (await tx).wait();
-    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsIn: amounts, dueProtocolFeeAmounts };
+    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees };
   }
 
   async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
@@ -384,15 +402,15 @@ export default class WeightedPool {
       recipient: to,
       currentBalances,
       tokens: this.tokens.addresses,
-      latestBlockNumberUsed: params.latestBlockNumberUsed ?? 0,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
     });
 
     const receipt = await (await tx).wait();
-    const { amounts, dueProtocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsOut: amounts, dueProtocolFeeAmounts };
+    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees };
   }
 
   private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {
@@ -404,7 +422,7 @@ export default class WeightedPool {
       params.from?.address || ZERO_ADDRESS,
       to,
       currentBalances,
-      params.latestBlockNumberUsed ?? 0,
+      params.lastChangeBlock ?? 0,
       params.protocolFeePercentage ?? 0,
       params.data ?? '0x'
     );
@@ -499,9 +517,9 @@ export default class WeightedPool {
     };
   }
 
-  async activateEmergencyPeriod(): Promise<void> {
-    const role = roleId(this.instance, 'setEmergencyPeriod');
-    await this.vault.grantRole(role);
-    await this.instance.setEmergencyPeriod(true);
+  async pause(): Promise<void> {
+    const action = await actionId(this.instance, 'setPaused');
+    await this.vault.grantRole(action);
+    await this.instance.setPaused(true);
   }
 }

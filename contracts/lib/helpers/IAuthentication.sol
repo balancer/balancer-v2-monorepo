@@ -14,14 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../../lib/helpers/EmergencyPeriod.sol";
-
-contract EmergencyPeriodMock is EmergencyPeriod {
-    constructor (uint256 emergencyPeriod, uint256 emergencyPeriodCheckExtension)
-        EmergencyPeriod(emergencyPeriod, emergencyPeriodCheckExtension)
-    {}
-
-    function setEmergencyPeriod(bool active) external {
-        _setEmergencyPeriod(active);
-    }
+interface IAuthentication {
+    /**
+     * @dev Returns the action identifier associated with the external function described by `selector`.
+     */
+    function getActionId(bytes4 selector) external view returns (bytes32);
 }

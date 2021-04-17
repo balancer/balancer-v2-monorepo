@@ -16,110 +16,94 @@ pragma solidity ^0.7.0;
 
 import "./BalancerErrors.sol";
 
+import "../openzeppelin/EIP712.sol";
 import "../../vault/interfaces/ISignaturesValidator.sol";
 
-/* solhint-disable max-line-length */
-/* solhint-disable prettier/prettier */
-/* solhint-disable var-name-mixedcase */
-/* solhint-disable private-vars-leading-underscore */
+/**
+ * @dev Utility for signing Solidity function calls.
+ *
+ * This contract relies on the fact that Solidity contracts can be called with extra calldata, and enables
+ * metatransaction schemes by appending an EIP712 signature of the original calldata at the end.
+ *
+ * Derived contracts must implement the `_typeHash` function to map function selectors to EIP712 structs.
+ */
+abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
+    // The appended data consists of a deadline, plus the [v,r,s] signature. For simplicity, we use a full 256 bit slot
+    // for each of these values, even if 'v' is typically an 8 bit value.
+    uint256 internal constant _EXTRA_CALLDATA_LENGTH = 4 * 32;
 
-abstract contract SignaturesValidator is ISignaturesValidator {
-    uint256 internal constant EXTRA_CALLDATA_LENGTH = 32 * 4; // deadline + [v,r,s] signature
-    bytes32 internal constant SIGNATURE_S_UPPER_RANGE = bytes32(0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0);
-
-    bytes32 internal immutable NAME_HASH = keccak256("Balancer Protocol");
-    bytes32 internal immutable VERSION_HASH = keccak256("1");
-    bytes32 internal immutable EIP712_DOMAIN_HASH = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-
+    // Replay attack prevention for each user.
     mapping(address => uint256) internal _nextNonce;
 
-    /**
-     * @dev Get next nonce for an address
-     */
+    constructor() EIP712("Balancer Protocol", "1") {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function getDomainSeparator() external view override returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
     function getNextNonce(address user) external view override returns (uint256) {
         return _nextNonce[user];
     }
 
     /**
-     * @dev Get EIP712 domain separator
-     */
-    function getDomainSeparator() external view override returns (bytes32) {
-        return _getDomainSeparator();
-    }
-
-    /**
-     * @dev Validate signature and increment nonce
+     * @dev Reverts with `errorCode` unless a valid signature for `user` was appended to the calldata.
      */
     function _validateSignature(address user, uint256 errorCode) internal {
         uint256 nextNonce = _nextNonce[user]++;
         _require(_isSignatureValid(user, nextNonce), errorCode);
     }
 
-    /**
-     * @dev Tell whether a signature is valid
-     */
-    function _isSignatureValid(address user, uint256 nonce) internal view returns (bool) {
+    function _isSignatureValid(address user, uint256 nonce) private view returns (bool) {
         uint256 deadline = _deadline();
+
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (deadline < block.timestamp) {
             return false;
         }
 
-        // All type hashes correspond to the form (bytes calldata, address sender, uint256 nonce, uint256 deadline)
-        bytes32 encodeData = keccak256(abi.encode(_typeHash(), keccak256(_calldata()), msg.sender, nonce, deadline));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _getDomainSeparator(), encodeData));
-        (uint8 v, bytes32 r, bytes32 s) = _signature();
-
-        // EIP-2 still allows signature malleability for ecrecover(). Remove this possibility and make the signature
-        // unique. Appendix F in the Ethereum Yellow paper (https://ethereum.github.io/yellowpaper/paper.pdf), defines
-        // the valid range for s in (281): 0 < s < secp256k1n ÷ 2 + 1, and for v in (282): v ∈ {27, 28}. Most
-        // signatures from current libraries generate a unique signature with an s-value in the lower half order.
-        //
-        // If your library generates malleable signatures, such as s-values in the upper range, calculate a new s-value
-        // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or
-        // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept
-        // these malleable signatures as well.
-        if ((v != 27 && v != 28) || s > SIGNATURE_S_UPPER_RANGE) {
+        bytes32 typeHash = _typeHash();
+        if (typeHash == bytes32(0)) {
+            // Prevent accidental signature validation for functions that don't have an associated type hash.
             return false;
         }
 
-        // Explicitly disallow authorizations for address(0) as ecrecover returns address(0) on malformed messages
+        // All type hashes have this format: (bytes calldata, address sender, uint256 nonce, uint256 deadline).
+        bytes32 structHash = keccak256(abi.encode(typeHash, keccak256(_calldata()), msg.sender, nonce, deadline));
+        bytes32 digest = _hashTypedDataV4(structHash);
+        (uint8 v, bytes32 r, bytes32 s) = _signature();
+
         address recoveredAddress = ecrecover(digest, v, r, s);
+
+        // ecrecover returns the zero address on recover failure, so we need to handle that explicitly.
         return recoveredAddress != address(0) && recoveredAddress == user;
     }
 
     /**
-     * @dev Get EIP712 domain separator
-     */
-    function _getDomainSeparator() internal view returns (bytes32) {
-        return keccak256(abi.encode(EIP712_DOMAIN_HASH, NAME_HASH, VERSION_HASH, _chainId(), address(this)));
-    }
-
-    /**
-     * @dev Tell which type hash should be used based on the call selector
+     * @dev Returns the EIP712 type hash for the current entry point function, which can be identified by its function
+     * selector (available as `msg.sig`).
+     *
+     * If 0x00, all signatures will be considered invalid.
      */
     function _typeHash() internal view virtual returns (bytes32);
 
     /**
-     * @dev Chain ID
-     */
-    function _chainId() internal pure returns (uint256 chainId) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            chainId := chainid()
-        }
-    }
-
-    /**
-     * @dev Auth deadline encoded in calldata
+     * @dev Extracts the signature deadline from extra calldata.
+     *
+     * This function returns bogus data if no signature is included.
      */
     function _deadline() internal pure returns (uint256) {
+        // The deadline is the first extra argument at the end of the original calldata.
         return uint256(_decodeExtraCalldataWord(0));
     }
 
     /**
-     * @dev Signature encoded in calldata
+     * @dev Extracts the signature parameters from extra calldata.
+     *
+     * This function returns bogus data if no signature is included. This is not a security risk, as that data would not
+     * be considered a valid signature in the first place.
      */
     function _signature()
         internal
@@ -130,39 +114,37 @@ abstract contract SignaturesValidator is ISignaturesValidator {
             bytes32 s
         )
     {
-        // The signature is appended at the end of calldata, after the deadline, in the order v, r, s
+        // v, r and s are appended after the signature deadline, in that order.
         v = uint8(uint256(_decodeExtraCalldataWord(0x20)));
         r = _decodeExtraCalldataWord(0x40);
         s = _decodeExtraCalldataWord(0x60);
     }
 
     /**
-     * @dev Decode original calldata
+     * @dev Returns the original calldata, without the extra bytes containing the signature.
+     *
+     * This function returns bogus data if no signature is included.
      */
     function _calldata() internal pure returns (bytes memory result) {
-        result = msg.data;
-        if (result.length > EXTRA_CALLDATA_LENGTH) {
+        result = msg.data; // A calldata to memory assignment results in memory allocation and copy of contents.
+        if (result.length > _EXTRA_CALLDATA_LENGTH) {
             // solhint-disable-next-line no-inline-assembly
             assembly {
-                // Overwrite the array length with the reduced one
-                mstore(result, sub(calldatasize(), EXTRA_CALLDATA_LENGTH))
+                // We simply overwrite the array length with the reduced one.
+                mstore(result, sub(calldatasize(), _EXTRA_CALLDATA_LENGTH))
             }
         }
     }
 
     /**
-     * @dev Decode word from extra calldata
+     * @dev Returns a 256 bit word from 'extra' calldata, at some offset from the expected end of the original calldata.
+     *
+     * This function returns bogus data if no signature is included.
      */
-    function _decodeExtraCalldataWord(uint256 offset) internal pure returns (bytes32 result) {
+    function _decodeExtraCalldataWord(uint256 offset) private pure returns (bytes32 result) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            // Retrieve the next free memory slot (the free memory pointer)
-            let ptr := mload(0x40)
-            // Advance the free memory pointer by 32 bytes
-            mstore(0x40, add(ptr, 0x20))
-            // Store the calldata word in the allocated space
-            calldatacopy(ptr, add(sub(calldatasize(), EXTRA_CALLDATA_LENGTH), offset), 0x20)
-            result := mload(ptr)
+            result := calldataload(add(sub(calldatasize(), _EXTRA_CALLDATA_LENGTH), offset))
         }
     }
 }

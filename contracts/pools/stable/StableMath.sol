@@ -162,26 +162,26 @@ contract StableMath {
         return finalBalanceIn.sub(balances[tokenIndexIn]).add(1);
     }
 
-    /* 
+    /*
     TODO: document it correctly
     Flow of calculations:
     amountsTokenIn -> amountsInProportional ->
     amountsInPercentageExcess -> amountsInAfterFee -> newInvariant -> amountBPTOut
-    TODO: remove equations below and save them to Notion documentation 
+    TODO: remove equations below and save them to Notion documentation
     amountInPercentageExcess = 1 - amountInProportional/amountIn (if amountIn>amountInProportional)
-    amountInAfterFee = amountIn * (1 - swapFee * amountInPercentageExcess)
-    amountInAfterFee = amountIn - fees 
-    fees = (amountIn - amountInProportional) * swapFee
-    amountInAfterFee = amountIn - (amountIn - amountInProportional) * swapFee
-    amountInAfterFee = amountIn * (1 - (1 - amountInProportional/amountIn) * swapFee)
-    amountInAfterFee = amountIn * (1 - amountInPercentageExcess * swapFee)
+    amountInAfterFee = amountIn * (1 - swapFeePercentage * amountInPercentageExcess)
+    amountInAfterFee = amountIn - fee amount
+    fee amount = (amountIn - amountInProportional) * swapFeePercentage
+    amountInAfterFee = amountIn - (amountIn - amountInProportional) * swapFeePercentage
+    amountInAfterFee = amountIn * (1 - (1 - amountInProportional/amountIn) * swapFeePercentage)
+    amountInAfterFee = amountIn * (1 - amountInPercentageExcess * swapFeePercentage)
     */
     function _calcBptOutGivenExactTokensIn(
         uint256 amp,
         uint256[] memory balances,
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
-        uint256 swapFee
+        uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // BPT out, so we round down overall.
 
@@ -197,7 +197,7 @@ contract StableMath {
 
         // Calculate the weighted balance ratio without considering fees
         uint256[] memory tokenBalanceRatiosWithoutFee = new uint256[](amountsIn.length);
-        // The weighted sum of token balance ratios sans fee
+        // The weighted sum of token balance ratios without fee
         uint256 weightedBalanceRatio = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = balances[i].divDown(sumBalances);
@@ -211,8 +211,8 @@ contract StableMath {
             // Percentage of the amount supplied that will be implicitly swapped for other tokens in the pool
             uint256 tokenBalancePercentageExcess;
             // Some tokens might have amounts supplied in excess of a 'balanced' join: these are identified if
-            // the token's balance ratio sans fee is larger than the weighted balance ratio, and swap fees are charged
-            // on the swap amount
+            // the token's balance ratio without fee is larger than the weighted balance ratio, and swap fees are
+            // charged on the swap amount
             if (weightedBalanceRatio >= tokenBalanceRatiosWithoutFee[i]) {
                 tokenBalancePercentageExcess = 0;
             } else {
@@ -221,7 +221,7 @@ contract StableMath {
                 );
             }
 
-            uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+            uint256 swapFeeExcess = swapFeePercentage.mulUp(tokenBalancePercentageExcess);
 
             uint256 amountInAfterFee = amountsIn[i].mulDown(swapFeeExcess.complement());
 
@@ -235,7 +235,7 @@ contract StableMath {
         return bptTotalSupply.mulDown(newInvariant.divDown(currentInvariant).sub(FixedPoint.ONE));
     }
 
-    /* 
+    /*
     TODO: document it correctly
     Flow of calculations:
     amountBPTOut -> newInvariant -> (amountInProportional, amountInAfterFee) ->
@@ -247,7 +247,7 @@ contract StableMath {
         uint256 tokenIndex,
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
-        uint256 swapFee
+        uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // Token in, so we round up overall.
 
@@ -277,12 +277,12 @@ contract StableMath {
         uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
         uint256 tokenBalancePercentageExcess = currentWeight.complement();
 
-        uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+        uint256 swapFeeExcess = swapFeePercentage.mulUp(tokenBalancePercentageExcess);
 
         return amountInAfterFee.divUp(swapFeeExcess.complement());
     }
 
-    /* 
+    /*
     Flow of calculations:
     amountsTokenOut -> amountsOutProportional ->
     amountOutPercentageExcess -> amountOutBeforeFee -> newInvariant -> amountBPTIn
@@ -343,7 +343,7 @@ contract StableMath {
         return bptTotalSupply.mulUp(newInvariant.divUp(currentInvariant).complement());
     }
 
-    /* 
+    /*
     TODO: document it correctly
     Flow of calculations:
     amountBPTin -> newInvariant -> (amountOutProportional, amountOutBeforeFee) ->
@@ -355,7 +355,7 @@ contract StableMath {
         uint256 tokenIndex,
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
-        uint256 swapFee
+        uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // Get the current invariant
         uint256 currentInvariant = _calculateInvariant(amp, balances);
@@ -382,7 +382,7 @@ contract StableMath {
         uint256 currentWeight = balances[tokenIndex].divDown(sumBalances);
         uint256 tokenBalancePercentageExcess = currentWeight.complement();
 
-        uint256 swapFeeExcess = swapFee.mulUp(tokenBalancePercentageExcess);
+        uint256 swapFeeExcess = swapFeePercentage.mulUp(tokenBalancePercentageExcess);
 
         return amountOutBeforeFee.mulDown(swapFeeExcess.complement());
     }
@@ -415,7 +415,7 @@ contract StableMath {
     }
 
     // The amplification parameter equals: A n^(n-1)
-    function _calcDueTokenProtocolSwapFee(
+    function _calcDueTokenProtocolSwapFeeAmount(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 lastInvariant,
@@ -434,7 +434,7 @@ contract StableMath {
         // P = product of final balances but f                                                                       //
         **************************************************************************************************************/
 
-        // Protocol swap fee, so we round down overall.
+        // Protocol swap fee amount, so we round down overall.
 
         uint256 finalBalanceFeeToken = _getTokenBalanceGivenInvariantAndAllOtherBalances(
             amplificationParameter,
@@ -447,7 +447,7 @@ contract StableMath {
         uint256 accumulatedTokenSwapFees = balances[tokenIndex] > finalBalanceFeeToken
             ? balances[tokenIndex].sub(finalBalanceFeeToken)
             : 0;
-        return accumulatedTokenSwapFees.mul(protocolSwapFeePercentage).divDown(FixedPoint.ONE);
+        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage).divDown(FixedPoint.ONE);
     }
 
     // Private functions
@@ -473,20 +473,22 @@ contract StableMath {
 
         uint256 c = Math.divUp(Math.mul(invariant, invariant), ampTimesTotal);
         // We remove the balance fromm c by multiplying it
-        c = c.mul(balances[tokenIndex]).div(P_D);
+        c = c.mulUp(balances[tokenIndex]).divUp(P_D);
 
-        uint256 b = sum.add(invariant.div(ampTimesTotal));
+        uint256 b = sum.add(invariant.divDown(ampTimesTotal));
 
         // We iterate to find the balance
         uint256 prevTokenBalance = 0;
         // We multiply the first iteration outside the loop with the invariant to set the value of the
         // initial approximation.
-        uint256 tokenBalance = invariant.mul(invariant).add(c).divUp(invariant.add(b));
+        uint256 tokenBalance = invariant.mulUp(invariant).add(c).divUp(invariant.add(b));
 
         for (uint256 i = 0; i < 255; i++) {
             prevTokenBalance = tokenBalance;
 
-            tokenBalance = tokenBalance.mul(tokenBalance).add(c).divUp(Math.mul(tokenBalance, 2).add(b).sub(invariant));
+            tokenBalance = tokenBalance.mulUp(tokenBalance).add(c).divUp(
+                Math.mul(tokenBalance, 2).add(b).sub(invariant)
+            );
 
             if (tokenBalance > prevTokenBalance) {
                 if (tokenBalance.sub(prevTokenBalance) <= 1) {

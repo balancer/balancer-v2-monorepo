@@ -5,23 +5,26 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import * as expectEvent from '../helpers/expectEvent';
 import TokenList from '../helpers/models/tokens/TokenList';
-import { MONTH } from '../../lib/helpers/time';
-import { roleId } from '../../lib/helpers/roles';
+import { advanceTime, DAY, MONTH } from '../../lib/helpers/time';
+import { actionId } from '../../lib/helpers/actions';
 import { deploy } from '../../lib/helpers/deploy';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { BigNumberish, fp } from '../../lib/helpers/numbers';
 import { ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { Account } from '../helpers/models/types/types';
+import TypesConverter from '../helpers/models/types/TypesConverter';
 
 describe('BasePool', function () {
-  let admin: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
-  const MAX_SWAP_FEE = fp(0.15);
-  const MIN_SWAP_FEE = fp(0.000001);
+  const MIN_SWAP_FEE_PERCENTAGE = fp(0.000001);
+  const MAX_SWAP_FEE_PERCENTAGE = fp(0.1);
+  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   before(async () => {
-    [, admin, other] = await ethers.getSigners();
+    [, admin, poolOwner, deployer, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach(async () => {
@@ -33,27 +36,32 @@ describe('BasePool', function () {
   function deployBasePool(
     params: {
       tokens?: TokenList | string[];
-      swapFee?: BigNumberish;
-      emergencyPeriod?: number;
-      emergencyPeriodCheckExtension?: number;
+      swapFeePercentage?: BigNumberish;
+      pauseWindowDuration?: number;
+      bufferPeriodDuration?: number;
+      owner?: Account;
+      from?: SignerWithAddress;
     } = {}
   ): Promise<Contract> {
-    let { tokens: poolTokens, swapFee, emergencyPeriod, emergencyPeriodCheckExtension } = params;
+    let { tokens: poolTokens, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner } = params;
     if (!poolTokens) poolTokens = tokens;
-    if (!swapFee) swapFee = MIN_SWAP_FEE;
-    if (!emergencyPeriod) emergencyPeriod = 0;
-    if (!emergencyPeriodCheckExtension) emergencyPeriodCheckExtension = 0;
+    if (!swapFeePercentage) swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE;
+    if (!pauseWindowDuration) pauseWindowDuration = 0;
+    if (!bufferPeriodDuration) bufferPeriodDuration = 0;
+    if (!owner) owner = ZERO_ADDRESS;
 
     return deploy('MockBasePool', {
+      from: params.from,
       args: [
         vault.address,
         GeneralPool,
         'Balancer Pool Token',
         'BPT',
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
-        swapFee,
-        emergencyPeriod,
-        emergencyPeriodCheckExtension,
+        swapFeePercentage,
+        pauseWindowDuration,
+        bufferPeriodDuration,
+        TypesConverter.toAddress(owner),
       ],
     });
   }
@@ -84,149 +92,263 @@ describe('BasePool', function () {
       expect(await pool.getAuthorizer()).to.equal(authorizer.address);
     });
 
-    it('does not affect if the vault changes the authorizer', async () => {
-      const role = roleId(vault, 'changeAuthorizer');
-      await authorizer.connect(admin).grantRole(role, admin.address);
+    it('tracks authorizer changes in the vault', async () => {
+      const action = await actionId(vault, 'changeAuthorizer');
+      await authorizer.connect(admin).grantRole(action, admin.address);
 
       await vault.connect(admin).changeAuthorizer(other.address);
 
       expect(await pool.getAuthorizer()).to.equal(other.address);
+    });
+
+    describe('action identifiers', () => {
+      const selector = '0x12345678';
+
+      context('with same pool creator', () => {
+        it('pools share action identifiers', async () => {
+          const pool = await deployBasePool({ tokens, from: deployer });
+          const otherPool = await deployBasePool({ tokens, from: deployer });
+
+          expect(await pool.getActionId(selector)).to.equal(await otherPool.getActionId(selector));
+        });
+      });
+
+      context('with different pool creators', () => {
+        it('pools have unique action identifiers', async () => {
+          const pool = await deployBasePool({ tokens, from: deployer });
+          const otherPool = await deployBasePool({ tokens, from: other });
+
+          expect(await pool.getActionId(selector)).to.not.equal(await otherPool.getActionId(selector));
+        });
+      });
     });
   });
 
   describe('swap fee', () => {
     context('initialization', () => {
       it('has an initial swap fee', async () => {
-        const swapFee = fp(0.003);
-        const pool = await deployBasePool({ swapFee });
+        const swapFeePercentage = fp(0.003);
+        const pool = await deployBasePool({ swapFeePercentage });
 
-        expect(await pool.getSwapFee()).to.equal(swapFee);
-      });
-
-      it('can be initialized to the zero address', async () => {
-        const swapFee = MIN_SWAP_FEE;
-        const pool = await deployBasePool({ swapFee });
-
-        expect(await pool.getSwapFee()).to.equal(swapFee);
+        expect(await pool.getSwapFeePercentage()).to.equal(swapFeePercentage);
       });
     });
 
-    context('setting the swap fee', () => {
+    context('set swap fee percentage', () => {
       let pool: Contract;
+      let sender: SignerWithAddress;
 
-      sharedBeforeEach('deploy pool', async () => {
-        pool = await deployBasePool({ swapFee: fp(0.01) });
-      });
+      function itSetsSwapFeePercentage() {
+        context('when the new swap fee percentage is within bounds', () => {
+          const newSwapFeePercentage = MAX_SWAP_FEE_PERCENTAGE.sub(1);
 
-      context('when the sender is has the role to do it', () => {
-        let role: string;
-
-        sharedBeforeEach('grant permission', async () => {
-          role = roleId(pool, 'setSwapFee');
-          await authorizer.connect(admin).grantRole(role, admin.address);
-        });
-
-        context('when the new swap fee is below the maximum', () => {
           it('can change the swap fee', async () => {
-            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+            await pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage);
 
-            const newSwapFee = fp(0.000001);
-            await pool.connect(admin).setSwapFee(newSwapFee);
-
-            expect(await pool.getSwapFee()).to.equal(newSwapFee);
+            expect(await pool.getSwapFeePercentage()).to.equal(newSwapFeePercentage);
           });
 
           it('emits an event', async () => {
-            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+            const receipt = await (await pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage)).wait();
 
-            const newSwapFee = fp(0.000001);
-            const receipt = await (await pool.connect(admin).setSwapFee(newSwapFee)).wait();
-
-            expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFee: newSwapFee });
-
-            expect(await pool.getSwapFee()).to.equal(newSwapFee);
-          });
-
-          it('can change the swap fee to zero', async () => {
-            expect(await authorizer.hasRole(role, admin.address)).to.be.true;
-
-            const newSwapFee = fp(0.000001);
-            await pool.connect(admin).setSwapFee(newSwapFee);
-
-            expect(await pool.getSwapFee()).to.equal(newSwapFee);
-          });
-
-          it('can not change the swap fee if the role was revoked', async () => {
-            await authorizer.connect(admin).revokeRole(role, admin.address);
-
-            expect(await authorizer.hasRole(role, admin.address)).to.be.false;
-
-            await expect(pool.connect(admin).setSwapFee(0)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFeePercentage: newSwapFeePercentage });
           });
         });
 
-        context('when the new swap fee is not below the maximum', () => {
+        context('when the new swap fee percentage is above the maximum', () => {
+          const swapFeePercentage = MAX_SWAP_FEE_PERCENTAGE.add(1);
+
           it('reverts', async () => {
-            await expect(pool.connect(admin).setSwapFee(MAX_SWAP_FEE.add(1))).to.be.revertedWith('MAX_SWAP_FEE');
+            await expect(pool.connect(sender).setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith(
+              'MAX_SWAP_FEE_PERCENTAGE'
+            );
           });
         });
 
-        context('when the new swap fee is not above the minimum', () => {
+        context('when the new swap fee percentage is below the minimum', () => {
+          const swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE.sub(1);
+
           it('reverts', async () => {
-            await expect(pool.connect(admin).setSwapFee(MIN_SWAP_FEE.sub(1))).to.be.revertedWith('MIN_SWAP_FEE');
+            await expect(pool.connect(sender).setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith(
+              'MIN_SWAP_FEE_PERCENTAGE'
+            );
           });
+        });
+      }
+
+      function itRevertsWithUnallowedSender() {
+        it('reverts', async () => {
+          await expect(pool.connect(sender).setSwapFeePercentage(MIN_SWAP_FEE_PERCENTAGE)).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
+        });
+      }
+
+      context('with a delegated owner', () => {
+        const owner = DELEGATE_OWNER;
+
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await deployBasePool({ swapFeePercentage: fp(0.01), owner });
+        });
+
+        beforeEach('set sender', () => {
+          sender = other;
+        });
+
+        context('when the sender has the set fee permission in the authorizer', () => {
+          sharedBeforeEach('grant permission', async () => {
+            const action = await actionId(pool, 'setSwapFeePercentage');
+            await authorizer.connect(admin).grantRole(action, sender.address);
+          });
+
+          itSetsSwapFeePercentage();
+        });
+
+        context('when the sender does not have the set fee permission in the authorizer', () => {
+          itRevertsWithUnallowedSender();
         });
       });
 
-      context('when the sender does not have the role to do it', () => {
-        it('reverts', async () => {
-          await expect(pool.connect(other).setSwapFee(MIN_SWAP_FEE)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      context('with an owner', () => {
+        let owner: SignerWithAddress;
+
+        sharedBeforeEach('deploy pool', async () => {
+          owner = poolOwner;
+          pool = await deployBasePool({ swapFeePercentage: fp(0.01), owner });
+        });
+
+        context('when the sender is the owner', () => {
+          beforeEach(() => {
+            sender = owner;
+          });
+
+          itSetsSwapFeePercentage();
+        });
+
+        context('when the sender is not the owner', () => {
+          beforeEach(() => {
+            sender = other;
+          });
+
+          context('when the sender does not have the set fee permission in the authorizer', () => {
+            itRevertsWithUnallowedSender();
+          });
+
+          context('when the sender has the set fee permission in the authorizer', () => {
+            sharedBeforeEach(async () => {
+              const action = await actionId(pool, 'setSwapFeePercentage');
+              await authorizer.connect(admin).grantRole(action, sender.address);
+            });
+
+            itRevertsWithUnallowedSender();
+          });
         });
       });
     });
   });
 
-  describe('emergency period', () => {
+  describe('set paused', () => {
     let pool: Contract;
-    const EMERGENCY_PERIOD = MONTH * 3;
-    const EMERGENCY_PERIOD_CHECK_EXTENSION = MONTH;
+    const PAUSE_WINDOW_DURATION = MONTH * 3;
+    const BUFFER_PERIOD_DURATION = MONTH;
 
-    sharedBeforeEach('deploy pool', async () => {
-      pool = await deployBasePool({
-        emergencyPeriod: EMERGENCY_PERIOD,
-        emergencyPeriodCheckExtension: EMERGENCY_PERIOD_CHECK_EXTENSION,
-      });
-    });
+    let sender: SignerWithAddress;
 
-    context('when the sender is has the role to do it', () => {
-      let role: string;
+    function itCanPause() {
+      it('can pause', async () => {
+        await pool.connect(sender).setPaused(true);
 
-      sharedBeforeEach('grant permission', async () => {
-        role = roleId(pool, 'setEmergencyPeriod');
-        await authorizer.connect(admin).grantRole(role, admin.address);
+        const { paused } = await pool.getPausedState();
+        expect(paused).to.be.true;
       });
 
-      it('can change the emergency period status', async () => {
-        expect(await authorizer.hasRole(role, admin.address)).to.be.true;
+      it('can unpause', async () => {
+        await pool.connect(sender).setPaused(true);
+        await pool.connect(sender).setPaused(false);
 
-        await pool.connect(admin).setEmergencyPeriod(true);
-
-        const { active } = await pool.getEmergencyPeriod();
-        expect(active).to.be.true;
+        const { paused } = await pool.getPausedState();
+        expect(paused).to.be.false;
       });
 
-      it('can not change the emergency period if the role was revoked', async () => {
-        await authorizer.connect(admin).revokeRole(role, admin.address);
-
-        expect(await authorizer.hasRole(role, admin.address)).to.be.false;
-
-        await expect(pool.connect(admin).setEmergencyPeriod(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      it('cannot unpause after the pause window', async () => {
+        await advanceTime(PAUSE_WINDOW_DURATION + DAY);
+        await expect(pool.connect(sender).setPaused(true)).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
       });
-    });
+    }
 
-    context('when the sender does not have the role to do it', () => {
+    function itRevertsWithUnallowedSender() {
       it('reverts', async () => {
-        await expect(pool.connect(other).setEmergencyPeriod(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.connect(sender).setPaused(true)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(pool.connect(sender).setPaused(false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    }
+
+    context('with a delegated owner', () => {
+      const owner = DELEGATE_OWNER;
+
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
+        });
+      });
+
+      beforeEach('set sender', () => {
+        sender = other;
+      });
+
+      context('when the sender does not have the pause permission in the authorizer', () => {
+        itRevertsWithUnallowedSender();
+      });
+
+      context('when the sender has the pause permission in the authorizer', () => {
+        sharedBeforeEach('grant permission', async () => {
+          const action = await actionId(pool, 'setPaused');
+          await authorizer.connect(admin).grantRole(action, sender.address);
+        });
+
+        itCanPause();
+      });
+    });
+
+    context('with an owner', () => {
+      let owner: SignerWithAddress;
+
+      sharedBeforeEach('deploy pool', async () => {
+        owner = poolOwner;
+        pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        beforeEach('set sender', () => {
+          sender = owner;
+        });
+
+        itRevertsWithUnallowedSender();
+      });
+
+      context('when the sender is not the owner', () => {
+        beforeEach('set sender', () => {
+          sender = other;
+        });
+
+        context('when the sender does not have the pause permission in the authorizer', () => {
+          itRevertsWithUnallowedSender();
+        });
+
+        context('when the sender has the pause permission in the authorizer', () => {
+          sharedBeforeEach(async () => {
+            const action = await actionId(pool, 'setPaused');
+            await authorizer.connect(admin).grantRole(action, sender.address);
+          });
+
+          itCanPause();
+        });
       });
     });
   });

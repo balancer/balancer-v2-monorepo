@@ -2,7 +2,6 @@ import 'dotenv/config';
 import 'solidity-coverage';
 import '@tenderly/hardhat-tenderly';
 import 'hardhat-deploy';
-import 'hardhat-abi-exporter';
 import 'hardhat-local-networks-config-plugin';
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
@@ -39,7 +38,6 @@ const CONTROLLER_PRIVATE_KEY =
 export default {
   networks: {
     hardhat: {
-      allowUnlimitedContractSize: true,
       chainId: CHAIN_IDS.hardhat,
       saveDeployments: true,
     },
@@ -48,11 +46,9 @@ export default {
       live: false,
       chainId: CHAIN_IDS.dockerParity,
       url: 'http://localhost:8545',
-      allowUnlimitedContractSize: true,
       saveDeployments: true,
     },
     localhost: {
-      allowUnlimitedContractSize: true,
       saveDeployments: true,
     },
     mainnet: {
@@ -125,25 +121,20 @@ export default {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 400,
+            runs: 1800,
+          },
+        },
+      },
+      'contracts/pools/weighted/WeightedPoolFactory.sol': {
+        version: '0.7.1',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1000,
           },
         },
       },
     },
-  },
-  abiExporter: {
-    only: [
-      'Vault',
-      'WeightedPool',
-      'StablePool',
-      'WeightedPoolFactory',
-      'StablePoolFactory',
-      'BalancerPoolToken',
-      'BasePoolFactory',
-      'ERC20',
-      'BalancerHelpers',
-    ],
-    flat: true,
   },
   tenderly: {
     username: 'balancer',

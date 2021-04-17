@@ -14,15 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-// Inspired by Aave Protocol's IFlashLoanReceiver
+import "../../lib/helpers/TemporarilyPausable.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+contract TemporarilyPausableMock is TemporarilyPausable {
+    constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration)
+        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
+    {}
 
-interface IFlashLoanReceiver {
-    function receiveFlashLoan(
-        IERC20[] calldata tokens,
-        uint256[] calldata amounts,
-        uint256[] calldata feeAmounts,
-        bytes calldata receiverData
-    ) external;
+    function setPaused(bool paused) external {
+        _setPaused(paused);
+    }
 }

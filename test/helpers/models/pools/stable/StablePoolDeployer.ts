@@ -19,13 +19,22 @@ export default {
     const vault = await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
 
-    const { tokens, amplificationParameter, swapFee } = deployment;
+    const { tokens, amplificationParameter, swapFeePercentage } = deployment;
     const poolId = await pool.getPoolId();
-    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFee);
+    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage);
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
+    const {
+      tokens,
+      amplificationParameter,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner,
+      from,
+    } = params;
+
     return deploy('StablePool', {
       args: [
         vault.address,
@@ -33,25 +42,26 @@ export default {
         SYMBOL,
         tokens.addresses,
         amplificationParameter,
-        swapFee,
-        emergencyPeriod,
-        emergencyPeriodCheckExtension,
+        swapFeePercentage,
+        pauseWindowDuration,
+        bufferPeriodDuration,
+        TypesConverter.toAddress(owner),
       ],
       from,
     });
   },
 
   async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParameter, swapFee, emergencyPeriod, emergencyPeriodCheckExtension, from } = params;
+    const { tokens, amplificationParameter, swapFeePercentage, owner, from } = params;
+
     const factory = await deploy('StablePoolFactory', { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
       SYMBOL,
       tokens.addresses,
       amplificationParameter,
-      swapFee,
-      emergencyPeriod,
-      emergencyPeriodCheckExtension
+      swapFeePercentage,
+      TypesConverter.toAddress(owner)
     );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolRegistered');

@@ -5,6 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { fp } from '../../helpers/numbers';
 import { deploy } from '../../helpers/deploy';
+import { toNormalizedWeights } from '../../helpers/weights';
 import { MAX_UINT256 } from '../../helpers/constants';
 import { encodeJoinStablePool } from '../../helpers/stablePoolEncoding';
 import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
@@ -60,7 +61,7 @@ export async function setupEnvironment(): Promise<{
 }
 
 export async function deployPool(vault: Contract, tokens: TokenList, poolName: PoolName): Promise<string> {
-  const { admin, creator } = await getSigners();
+  const { creator } = await getSigners();
 
   const symbols = Object.keys(tokens);
 
@@ -70,26 +71,26 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   }
 
   const tokenAddresses = symbols.map((symbol) => tokens[symbol].address);
-  const swapFee = fp(0.02); // 2%
+  const swapFeePercentage = fp(0.02); // 2%
 
   let pool: Contract;
   let joinUserData: string;
 
   if (poolName == 'WeightedPool') {
-    const weights = symbols.map(() => fp(1)); // Equal weights for all tokens
+    const weights = toNormalizedWeights(symbols.map(() => fp(1))); // Equal weights for all tokens
 
-    pool = await deployPoolFromFactory(vault, admin, 'WeightedPool', {
+    pool = await deployPoolFromFactory(vault, 'WeightedPool', {
       from: creator,
-      parameters: [tokenAddresses, weights, swapFee],
+      parameters: [tokenAddresses, weights, swapFeePercentage],
     });
 
     joinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
   } else if (poolName == 'StablePool') {
     const amplificationParameter = bn(50e18);
 
-    pool = await deployPoolFromFactory(vault, admin, 'StablePool', {
+    pool = await deployPoolFromFactory(vault, 'StablePool', {
       from: creator,
-      parameters: [tokenAddresses, amplificationParameter, swapFee],
+      parameters: [tokenAddresses, amplificationParameter, swapFeePercentage],
     });
 
     joinUserData = encodeJoinStablePool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });

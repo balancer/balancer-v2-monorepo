@@ -65,10 +65,10 @@ describe('Vault - pool registry', () => {
     });
 
     it('starts with no tokens', async () => {
-      const { tokens, balances, maxBlockNumber } = await vault.getPoolTokens(poolId);
+      const { tokens, balances, lastChangeBlock } = await vault.getPoolTokens(poolId);
       expect(tokens).to.be.empty;
       expect(balances).to.be.empty;
-      expect(maxBlockNumber).to.equal(0);
+      expect(lastChangeBlock).to.equal(0);
     });
 
     it('gets a new id', async () => {
@@ -147,7 +147,7 @@ describe('Vault - pool registry', () => {
                   const addresses = tokens.addresses;
                   addresses[0] = ZERO_ADDRESS;
 
-                  const error = 'TOKEN_NOT_CONTRACT';
+                  const error = 'INVALID_TOKEN';
                   await expect(pool.registerTokens(addresses, assetManagers)).to.be.revertedWith(error);
                   await expect(pool.registerTokens(addresses.reverse(), assetManagers)).to.be.revertedWith(error);
                 });
@@ -172,10 +172,10 @@ describe('Vault - pool registry', () => {
                   it('registers the requested tokens', async () => {
                     await pool.registerTokens(tokens.addresses, assetManagers);
 
-                    const { tokens: poolTokens, balances, maxBlockNumber } = await vault.getPoolTokens(poolId);
+                    const { tokens: poolTokens, balances, lastChangeBlock } = await vault.getPoolTokens(poolId);
                     expect(poolTokens).to.have.members(tokens.addresses);
                     expect(balances).to.deep.equal(Array(tokens.length).fill(bn(0)));
-                    expect(maxBlockNumber).to.equal(0); // The token balance has not changed yet
+                    expect(lastChangeBlock).to.equal(0); // The token balance has not changed yet
                   });
 
                   it('emits an event', async () => {
@@ -199,10 +199,10 @@ describe('Vault - pool registry', () => {
                     it('can be registered individually', async () => {
                       await tokens.asyncEach((token) => pool.registerTokens([token.address], [ZERO_ADDRESS]));
 
-                      const { tokens: poolTokens, balances, maxBlockNumber } = await vault.getPoolTokens(poolId);
+                      const { tokens: poolTokens, balances, lastChangeBlock } = await vault.getPoolTokens(poolId);
                       expect(poolTokens).to.have.members(tokens.addresses);
                       expect(balances).to.deep.equal(Array(tokens.length).fill(bn(0)));
-                      expect(maxBlockNumber).to.equal(0);
+                      expect(lastChangeBlock).to.equal(0);
                     });
                   }
                 };
@@ -323,12 +323,12 @@ describe('Vault - pool registry', () => {
 
                         await pool.deregisterTokens([tokens.first.address]);
 
-                        const { tokens: poolTokens, maxBlockNumber } = await vault.getPoolTokens(poolId);
+                        const { tokens: poolTokens, lastChangeBlock } = await vault.getPoolTokens(poolId);
                         expect(poolTokens).not.to.have.members([tokens.first.address]);
 
-                        // If all tokens are deregisted, the last block number goes back to the initial value.
+                        // If all tokens are deregisted, the last change block goes back to the initial value.
                         const expectedBlock = poolTokens.length > 0 ? exitBlock : 0;
-                        expect(maxBlockNumber).to.equal(expectedBlock);
+                        expect(lastChangeBlock).to.equal(expectedBlock);
                       });
                     }
                   });
@@ -345,19 +345,19 @@ describe('Vault - pool registry', () => {
                   it('deregisters the requested tokens', async () => {
                     await pool.deregisterTokens(tokens.addresses);
 
-                    const { tokens: poolTokens, balances, maxBlockNumber } = await vault.getPoolTokens(poolId);
+                    const { tokens: poolTokens, balances, lastChangeBlock } = await vault.getPoolTokens(poolId);
                     expect(poolTokens).to.be.empty;
                     expect(balances).to.be.empty;
-                    expect(maxBlockNumber).to.equal(0);
+                    expect(lastChangeBlock).to.equal(0);
                   });
 
                   it('cannot query balances any more', async () => {
                     await pool.deregisterTokens(tokens.addresses);
 
-                    const { tokens: poolTokens, balances, maxBlockNumber } = await vault.getPoolTokens(poolId);
+                    const { tokens: poolTokens, balances, lastChangeBlock } = await vault.getPoolTokens(poolId);
                     expect(poolTokens).to.be.empty;
                     expect(balances).to.be.empty;
-                    expect(maxBlockNumber).to.equal(0);
+                    expect(lastChangeBlock).to.equal(0);
                   });
 
                   it('emits an event', async () => {

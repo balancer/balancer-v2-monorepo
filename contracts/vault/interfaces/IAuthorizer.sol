@@ -15,5 +15,12 @@
 pragma solidity ^0.7.0;
 
 interface IAuthorizer {
-    function hasRole(bytes32 role, address account) external view returns (bool);
+    /**
+     * @dev Returns true if `account` can perform the action described by `actionId` in the contract `where`.
+     */
+    function canPerform(
+        bytes32 actionId,
+        address account,
+        address where
+    ) external view returns (bool);
 }

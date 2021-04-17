@@ -10,9 +10,10 @@ import { Account, NAry } from '../../types/types';
 export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
   weights?: BigNumberish[];
-  swapFee?: BigNumberish;
-  emergencyPeriod?: BigNumberish;
-  emergencyPeriodCheckExtension?: BigNumberish;
+  swapFeePercentage?: BigNumberish;
+  pauseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
+  owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
@@ -21,9 +22,10 @@ export type RawWeightedPoolDeployment = {
 export type WeightedPoolDeployment = {
   tokens: TokenList;
   weights: BigNumberish[];
-  swapFee: BigNumberish;
-  emergencyPeriod: BigNumberish;
-  emergencyPeriodCheckExtension: BigNumberish;
+  swapFeePercentage: BigNumberish;
+  pauseWindowDuration: BigNumberish;
+  bufferPeriodDuration: BigNumberish;
+  owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };
@@ -34,14 +36,14 @@ export type SwapWeightedPool = {
   amount: BigNumberish;
   recipient?: Account;
   from?: SignerWithAddress;
-  latestBlockNumberUsed?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
   data?: string;
 };
 
 export type JoinExitWeightedPool = {
   recipient?: Account;
   currentBalances?: BigNumberish[];
-  latestBlockNumberUsed?: BigNumberish;
+  lastChangeBlock?: BigNumberish;
   protocolFeePercentage?: BigNumberish;
   data?: string;
   from?: SignerWithAddress;

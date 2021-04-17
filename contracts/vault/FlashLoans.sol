@@ -19,54 +19,61 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/helpers/BalancerErrors.sol";
+import "../lib/openzeppelin/IERC20.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 
 import "./Fees.sol";
-import "./interfaces/IFlashLoanReceiver.sol";
+import "./interfaces/IFlashLoanRecipient.sol";
 
-abstract contract FlashLoanProvider is Fees, ReentrancyGuard, EmergencyPeriod {
+/**
+ * @dev Handles Flash Loans through the Vault. Calls the `receiveFlashLoan` hook on the flash loan recipient
+ * contract, which implements the `IFlashLoanRecipient` interface.
+ */
+abstract contract FlashLoans is Fees, ReentrancyGuard, TemporarilyPausable {
     using SafeERC20 for IERC20;
 
     function flashLoan(
-        IFlashLoanReceiver receiver,
+        IFlashLoanRecipient recipient,
         IERC20[] memory tokens,
         uint256[] memory amounts,
-        bytes calldata receiverData
-    ) external override nonReentrant noEmergencyPeriod {
+        bytes memory userData
+    ) external override nonReentrant whenNotPaused {
         InputHelpers.ensureInputLengthMatch(tokens.length, amounts.length);
 
         uint256[] memory feeAmounts = new uint256[](tokens.length);
         uint256[] memory preLoanBalances = new uint256[](tokens.length);
 
+        // Used to ensure `tokens` is sorted in ascending order, which ensures token uniqueness.
         IERC20 previousToken = IERC20(0);
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amount = amounts[i];
 
-            // Prevents duplicate tokens
-            _require(token > previousToken, IERC20(0) == token ? Errors.INVALID_TOKEN : Errors.UNSORTED_TOKENS);
+            _require(token > previousToken, token == IERC20(0) ? Errors.ZERO_TOKEN : Errors.UNSORTED_TOKENS);
             previousToken = token;
 
-            // Not checking amount against current balance, transfer will revert if it is exceeded
             preLoanBalances[i] = token.balanceOf(address(this));
-            feeAmounts[i] = _calculateFlashLoanFee(amount);
+            feeAmounts[i] = _calculateFlashLoanFeeAmount(amount);
 
-            token.safeTransfer(address(receiver), amount);
+            _require(preLoanBalances[i] >= amount, Errors.INSUFFICIENT_FLASH_LOAN_BALANCE);
+            token.safeTransfer(address(recipient), amount);
         }
 
-        receiver.receiveFlashLoan(tokens, amounts, feeAmounts, receiverData);
+        recipient.receiveFlashLoan(tokens, amounts, feeAmounts, userData);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 preLoanBalance = preLoanBalances[i];
 
+            // Checking for loan repayment first (without accounting for fees) makes for simpler debugging, and results
+            // in more accurate revert reasons if the flash loan protocol fee percentage is zero.
             uint256 postLoanBalance = token.balanceOf(address(this));
             _require(postLoanBalance >= preLoanBalance, Errors.INVALID_POST_LOAN_BALANCE);
 
+            // No need for checked arithmetic since we know the loan was fully repaid.
             uint256 receivedFees = postLoanBalance - preLoanBalance;
             _require(receivedFees >= feeAmounts[i], Errors.INSUFFICIENT_COLLECTED_FEES);
 

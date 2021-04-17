@@ -6,7 +6,7 @@ import Token from '../tokens/Token';
 import TokenList from '../tokens/TokenList';
 import VaultDeployer from './VaultDeployer';
 import TypesConverter from '../types/TypesConverter';
-import { roleId } from '../../../../lib/helpers/roles';
+import { actionId } from '../../../../lib/helpers/actions';
 import { MAX_UINT256 } from '../../../../lib/helpers/constants';
 import { BigNumberish } from '../../../../lib/helpers/numbers';
 import { Account, NAry, TxParams } from '../types/types';
@@ -39,14 +39,16 @@ export default class Vault {
     return { address, specialization };
   }
 
-  async getPoolTokens(poolId: string): Promise<{ tokens: string[]; balances: BigNumber[]; maxBlockNumber: BigNumber }> {
+  async getPoolTokens(
+    poolId: string
+  ): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
     return this.instance.getPoolTokens(poolId);
   }
 
   async getPoolTokenInfo(
     poolId: string,
     token: Token
-  ): Promise<{ cash: BigNumber; managed: BigNumber; blockNumber: BigNumber; assetManager: string }> {
+  ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.instance.getPoolTokenInfo(poolId, token.address);
   }
 
@@ -58,7 +60,7 @@ export default class Vault {
           params.poolId,
           params.recipient,
           params.currentBalances,
-          params.latestBlockNumberUsed,
+          params.lastChangeBlock,
           params.protocolFeePercentage,
           params.data
         )
@@ -78,7 +80,7 @@ export default class Vault {
           params.poolId,
           params.recipient,
           params.currentBalances,
-          params.latestBlockNumberUsed,
+          params.lastChangeBlock,
           params.protocolFeePercentage,
           params.data
         )
@@ -90,9 +92,9 @@ export default class Vault {
         });
   }
 
-  async getCollectedFees(tokens: TokenList | string[]): Promise<BigNumber[]> {
+  async getCollectedFeeAmounts(tokens: TokenList | string[]): Promise<BigNumber[]> {
     const feesCollector = await this.getFeesCollector();
-    return feesCollector.getCollectedFees(Array.isArray(tokens) ? tokens : tokens.addresses);
+    return feesCollector.getCollectedFeeAmounts(Array.isArray(tokens) ? tokens : tokens.addresses);
   }
 
   async withdrawCollectedFees(
@@ -108,16 +110,19 @@ export default class Vault {
     return feesCollector.withdrawCollectedFees(tokens, amounts, TypesConverter.toAddress(recipient));
   }
 
-  async getProtocolFees(): Promise<{ swapFee: BigNumber; flashLoanFee: BigNumber }> {
-    return { swapFee: await this.getSwapFee(), flashLoanFee: await this.getFlashLoanFee() };
+  async getProtocolFeePercentages(): Promise<{ swapFeePercentage: BigNumber; flashLoanFeePercentage: BigNumber }> {
+    return {
+      swapFeePercentage: await this.getSwapFeePercentage(),
+      flashLoanFeePercentage: await this.getFlashLoanFeePercentage(),
+    };
   }
 
-  async getSwapFee(): Promise<BigNumber> {
-    return (await this.getFeesCollector()).getSwapFee();
+  async getSwapFeePercentage(): Promise<BigNumber> {
+    return (await this.getFeesCollector()).getSwapFeePercentage();
   }
 
-  async getFlashLoanFee(): Promise<BigNumber> {
-    return (await this.getFeesCollector()).getFlashLoanFee();
+  async getFlashLoanFeePercentage(): Promise<BigNumber> {
+    return (await this.getFeesCollector()).getFlashLoanFeePercentage();
   }
 
   async getFeesCollector(): Promise<Contract> {
@@ -128,34 +133,37 @@ export default class Vault {
     return this.feesCollector;
   }
 
-  async setSwapFee(fee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
+  async setSwapFeePercentage(swapFeePercentage: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(roleId(feesCollector, 'setSwapFee'), this.admin);
+      await this.grantRole(await actionId(feesCollector, 'setSwapFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
     const instance = sender ? feesCollector.connect(sender) : feesCollector;
-    return instance.setSwapFee(fee);
+    return instance.setSwapFeePercentage(swapFeePercentage);
   }
 
-  async setFlashLoanFee(fee: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
+  async setFlashLoanFeePercentage(
+    flashLoanFeePercentage: BigNumber,
+    { from }: TxParams = {}
+  ): Promise<ContractTransaction> {
     const feesCollector = await this.getFeesCollector();
 
     if (this.authorizer && this.admin) {
-      await this.grantRole(roleId(feesCollector, 'setFlashLoanFee'), this.admin);
+      await this.grantRole(await actionId(feesCollector, 'setFlashLoanFeePercentage'), this.admin);
     }
 
     const sender = from || this.admin;
     const instance = sender ? feesCollector.connect(sender) : feesCollector;
-    return instance.setFlashLoanFee(fee);
+    return instance.setFlashLoanFeePercentage(flashLoanFeePercentage);
   }
 
-  async grantRole(roleId: string, to?: Account): Promise<ContractTransaction> {
+  async grantRole(actionId: string, to?: Account): Promise<ContractTransaction> {
     if (!this.authorizer || !this.admin) throw Error("Missing Vault's authorizer or admin instance");
     if (!to) to = await this._defaultSender();
-    return this.authorizer.connect(this.admin).grantRole(roleId, TypesConverter.toAddress(to));
+    return this.authorizer.connect(this.admin).grantRole(actionId, TypesConverter.toAddress(to));
   }
 
   async _defaultSender(): Promise<SignerWithAddress> {

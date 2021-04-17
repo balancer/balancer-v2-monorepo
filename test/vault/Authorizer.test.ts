@@ -4,10 +4,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../lib/helpers/deploy';
 import { expect } from 'chai';
+import { ZERO_ADDRESS } from '../../lib/helpers/constants';
 
 describe('Authorizer', () => {
   let authorizer: Contract;
   let admin: SignerWithAddress, grantee: SignerWithAddress, other: SignerWithAddress;
+
+  const WHERE = ZERO_ADDRESS;
 
   before('setup signers', async () => {
     [, admin, grantee, other] = await ethers.getSigners();
@@ -32,7 +35,7 @@ describe('Authorizer', () => {
         await authorizer.grantRoles(ROLES, grantee.address);
 
         for (const role of ROLES) {
-          expect(await authorizer.hasRole(role, grantee.address)).to.be.true;
+          expect(await authorizer.canPerform(role, grantee.address, WHERE)).to.be.true;
         }
       });
     });
@@ -57,11 +60,11 @@ describe('Authorizer', () => {
       it('grants a list of roles', async () => {
         await authorizer.grantRolesToMany(ROLES, [grantee.address, other.address]);
 
-        expect(await authorizer.hasRole(ROLE_1, grantee.address)).to.be.true;
-        expect(await authorizer.hasRole(ROLE_2, other.address)).to.be.true;
+        expect(await authorizer.canPerform(ROLE_1, grantee.address, WHERE)).to.be.true;
+        expect(await authorizer.canPerform(ROLE_2, other.address, WHERE)).to.be.true;
 
-        expect(await authorizer.hasRole(ROLE_2, grantee.address)).to.be.false;
-        expect(await authorizer.hasRole(ROLE_1, other.address)).to.be.false;
+        expect(await authorizer.canPerform(ROLE_2, grantee.address, WHERE)).to.be.false;
+        expect(await authorizer.canPerform(ROLE_1, other.address, WHERE)).to.be.false;
       });
     });
 
@@ -85,7 +88,7 @@ describe('Authorizer', () => {
       });
 
       context('when the roles where granted', () => {
-        sharedBeforeEach('grant roles', async () => {
+        sharedBeforeEach('grant permissions', async () => {
           await authorizer.grantRoles(ROLES, grantee.address);
         });
 
@@ -93,7 +96,7 @@ describe('Authorizer', () => {
           await authorizer.revokeRoles(ROLES, grantee.address);
 
           for (const role of ROLES) {
-            expect(await authorizer.hasRole(role, grantee.address)).to.be.false;
+            expect(await authorizer.canPerform(role, grantee.address, WHERE)).to.be.false;
           }
         });
       });
@@ -107,7 +110,7 @@ describe('Authorizer', () => {
           await authorizer.revokeRoles(ROLES, grantee.address);
 
           for (const role of ROLES) {
-            expect(await authorizer.hasRole(role, grantee.address)).to.be.false;
+            expect(await authorizer.canPerform(role, grantee.address, WHERE)).to.be.false;
           }
         });
       });
@@ -131,7 +134,7 @@ describe('Authorizer', () => {
       });
 
       context('when the roles where granted', () => {
-        sharedBeforeEach('grant roles', async () => {
+        sharedBeforeEach('grant permissions', async () => {
           await authorizer.grantRolesToMany(ROLES, [grantee.address, other.address]);
         });
 
@@ -139,8 +142,8 @@ describe('Authorizer', () => {
           await authorizer.revokeRolesFromMany(ROLES, [grantee.address, other.address]);
 
           for (const role of ROLES) {
-            expect(await authorizer.hasRole(role, grantee.address)).to.be.false;
-            expect(await authorizer.hasRole(role, other.address)).to.be.false;
+            expect(await authorizer.canPerform(role, grantee.address, WHERE)).to.be.false;
+            expect(await authorizer.canPerform(role, other.address, WHERE)).to.be.false;
           }
         });
       });
@@ -154,8 +157,8 @@ describe('Authorizer', () => {
           await authorizer.revokeRolesFromMany(ROLES, [grantee.address, other.address]);
 
           for (const role of ROLES) {
-            expect(await authorizer.hasRole(role, grantee.address)).to.be.false;
-            expect(await authorizer.hasRole(role, other.address)).to.be.false;
+            expect(await authorizer.canPerform(role, grantee.address, WHERE)).to.be.false;
+            expect(await authorizer.canPerform(role, other.address, WHERE)).to.be.false;
           }
         });
       });

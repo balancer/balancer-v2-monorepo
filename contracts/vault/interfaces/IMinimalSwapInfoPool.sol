@@ -21,8 +21,8 @@ import "./IBasePool.sol";
  * @dev Pool contracts with the MinimalSwapInfo or TwoToken specialization settings should implement this interface.
  *
  * This is called by the Vault when a user calls `IVault.swap` or `IVault.batchSwap` to swap with this Pool.
- * Returns the number of tokens the Pool will grant to the user in case of a swap given in, or that the user will grant
- * to the pool in case of a swap given out, as part of the swap.
+ * Returns the number of tokens the Pool will grant to the user in a 'given in' swap, or that the user will grant
+ * to the pool in a 'given out' swap.
  *
  * This can often be implemented by a `view` function, since many pricing algorithms don't need to track state
  * changes in swaps. However, contracts implementing this in non-view functions should check that the caller is

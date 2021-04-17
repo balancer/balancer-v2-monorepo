@@ -11,7 +11,7 @@ import * as expectEvent from '../helpers/expectEvent';
 
 import { bn } from '../../lib/helpers/numbers';
 import { MONTH } from '../../lib/helpers/time';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 import { deploy } from '../../lib/helpers/deploy';
 import { forceSendEth } from '../helpers/eth';
 import { expectBalanceChange } from '../helpers/tokenBalance';
@@ -306,14 +306,14 @@ describe('Vault - user balance', () => {
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        sharedBeforeEach('grant role to relayer', async () => {
-          const role = roleId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRole(role, relayer.address);
+        sharedBeforeEach('grant permission to relayer', async () => {
+          const action = await actionId(vault, 'manageUserBalance');
+          await authorizer.connect(admin).grantRole(action, relayer.address);
         });
 
         context('when the relayer is allowed to deposit by the user', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           itHandlesDepositsProperly(initialBalance, true);
@@ -369,7 +369,7 @@ describe('Vault - user balance', () => {
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           it('reverts', async () => {
@@ -389,7 +389,7 @@ describe('Vault - user balance', () => {
 
         context('when the relayer is not allowed by the user', () => {
           sharedBeforeEach('disallow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, false);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
           });
 
           it('reverts', async () => {
@@ -647,14 +647,14 @@ describe('Vault - user balance', () => {
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        sharedBeforeEach('grant role to relayer', async () => {
-          const role = roleId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRole(role, relayer.address);
+        sharedBeforeEach('grant permission to relayer', async () => {
+          const action = await actionId(vault, 'manageUserBalance');
+          await authorizer.connect(admin).grantRole(action, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           itHandlesWithdrawalsProperly(depositedAmount, depositedAmount);
@@ -680,7 +680,7 @@ describe('Vault - user balance', () => {
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           it('reverts', async () => {
@@ -700,7 +700,7 @@ describe('Vault - user balance', () => {
 
         context('when the relayer is not allowed by the user', () => {
           sharedBeforeEach('disallow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, false);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
           });
 
           it('reverts', async () => {
@@ -960,14 +960,14 @@ describe('Vault - user balance', () => {
       depositInitialBalances(transferredAmounts);
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        sharedBeforeEach('grant role to relayer', async () => {
-          const role = roleId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRole(role, relayer.address);
+        sharedBeforeEach('grant permission to relayer', async () => {
+          const action = await actionId(vault, 'manageUserBalance');
+          await authorizer.connect(admin).grantRole(action, relayer.address);
         });
 
         context('when the relayer is allowed by the user', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           itHandlesTransfersProperly(transferredAmounts, transferredAmounts);
@@ -993,7 +993,7 @@ describe('Vault - user balance', () => {
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           it('reverts', async () => {
@@ -1013,7 +1013,7 @@ describe('Vault - user balance', () => {
 
         context('when the relayer is not allowed by the user', () => {
           sharedBeforeEach('disallow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, false);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
           });
 
           it('reverts', async () => {
@@ -1069,7 +1069,7 @@ describe('Vault - user balance', () => {
         expect(currentRecipientBalance[0]).to.be.equal(previousRecipientBalance[0]);
       });
 
-      it('emits an event', async () => {
+      it(`${amount.gt(0) ? 'emits' : 'does not emit'} an event`, async () => {
         const receipt = await (
           await vault.manageUserBalance([
             { kind, asset: tokens.DAI.address, amount: amount, sender: sender.address, recipient: recipient.address },
@@ -1078,12 +1078,16 @@ describe('Vault - user balance', () => {
 
         expectEvent.notEmitted(receipt, 'InternalBalanceChanged');
 
-        expectEvent.inReceipt(receipt, 'ExternalBalanceTransfer', {
-          sender: sender.address,
-          recipient: recipient.address,
-          token: tokens.DAI.address,
-          amount,
-        });
+        if (amount.gt(0)) {
+          expectEvent.inReceipt(receipt, 'ExternalBalanceTransfer', {
+            sender: sender.address,
+            recipient: recipient.address,
+            token: tokens.DAI.address,
+            amount,
+          });
+        } else {
+          expectEvent.notEmitted(receipt, 'ExternalBalanceTransfer');
+        }
       });
     };
 
@@ -1164,14 +1168,14 @@ describe('Vault - user balance', () => {
       });
 
       context('when the relayer is whitelisted by the authorizer', () => {
-        sharedBeforeEach('grant role to relayer', async () => {
-          const role = roleId(vault, 'manageUserBalance');
-          await authorizer.connect(admin).grantRole(role, relayer.address);
+        sharedBeforeEach('grant permission to relayer', async () => {
+          const action = await actionId(vault, 'manageUserBalance');
+          await authorizer.connect(admin).grantRole(action, relayer.address);
         });
 
         context('when the relayer is allowed to transfer by the user', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           itHandlesExternalTransfersProperly(balance);
@@ -1197,7 +1201,7 @@ describe('Vault - user balance', () => {
       context('when the relayer is not whitelisted by the authorizer', () => {
         context('when the relayer is allowed by the user', () => {
           sharedBeforeEach('allow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, true);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
           });
 
           it('reverts', async () => {
@@ -1217,7 +1221,7 @@ describe('Vault - user balance', () => {
 
         context('when the relayer is not allowed by the user', () => {
           sharedBeforeEach('disallow relayer', async () => {
-            await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, false);
+            await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, false);
           });
 
           it('reverts', async () => {
@@ -1263,13 +1267,13 @@ describe('Vault - user balance', () => {
     });
 
     sharedBeforeEach('allow relayer', async () => {
-      const role = roleId(vault, 'manageUserBalance');
-      await authorizer.connect(admin).grantRole(role, relayer.address);
-      await vault.connect(sender).changeRelayerAllowance(sender.address, relayer.address, true);
-      await vault.connect(recipient).changeRelayerAllowance(recipient.address, relayer.address, true);
+      const action = await actionId(vault, 'manageUserBalance');
+      await authorizer.connect(admin).grantRole(action, relayer.address);
+      await vault.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+      await vault.connect(recipient).setRelayerApproval(recipient.address, relayer.address, true);
     });
 
-    context('when there is no emergency', () => {
+    context('when unpaused', () => {
       context('when all the senders allowed the relayer', () => {
         context('when all ops add up', () => {
           it('succeeds', async () => {
@@ -1336,7 +1340,7 @@ describe('Vault - user balance', () => {
       });
     });
 
-    context('when there is an emergency', () => {
+    context('when paused', () => {
       sharedBeforeEach('deposit some internal balances', async () => {
         const ops = [
           op(OP_KIND.DEPOSIT_INTERNAL, tokens.MKR, 1, sender, sender),
@@ -1347,13 +1351,13 @@ describe('Vault - user balance', () => {
 
         await vault.connect(relayer).manageUserBalance(ops);
 
-        await vault.connect(otherRecipient).changeRelayerAllowance(otherRecipient.address, relayer.address, true);
+        await vault.connect(otherRecipient).setRelayerApproval(otherRecipient.address, relayer.address, true);
       });
 
-      sharedBeforeEach('activate emergency period', async () => {
-        const role = roleId(vault, 'setEmergencyPeriod');
-        await authorizer.connect(admin).grantRole(role, admin.address);
-        await vault.connect(admin).setEmergencyPeriod(true);
+      sharedBeforeEach('pause', async () => {
+        const action = await actionId(vault, 'setPaused');
+        await authorizer.connect(admin).grantRole(action, admin.address);
+        await vault.connect(admin).setPaused(true);
       });
 
       context('when only withdrawing internal balance', () => {
@@ -1393,7 +1397,7 @@ describe('Vault - user balance', () => {
             op(OP_KIND.WITHDRAW_INTERNAL, tokens.MKR, 1, otherRecipient, recipient),
           ];
 
-          await expect(vault.connect(relayer).manageUserBalance(ops)).to.be.revertedWith('EMERGENCY_PERIOD_ON');
+          await expect(vault.connect(relayer).manageUserBalance(ops)).to.be.revertedWith('PAUSED');
         });
       });
     });

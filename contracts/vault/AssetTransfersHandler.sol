@@ -15,10 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/math/Math.sol";
 import "../lib/helpers/BalancerErrors.sol";
+import "../lib/openzeppelin/IERC20.sol";
 import "../lib/helpers/AssetHelpers.sol";
 import "../lib/openzeppelin/SafeERC20.sol";
 import "../lib/openzeppelin/Address.sol";
@@ -121,7 +120,7 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
      * if the caller sent less ETH than `amountUsed`.
      *
-     * Because the caller might not now exactly how much ETH a Vault action will require, they may send extra.
+     * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
      * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
      * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
      * returned ETH.
@@ -140,8 +139,8 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * caller.
      *
      * Any ETH sent to the Vault outside of the WETH unwrapping mechanism would be forever locked inside the Vault, so
-     * we prevent that from happening. Other mechanisms used to send ETH to the Vault (such as selfdestruct, or have it
-     * be the recipient of the block mining reward) will result in locked funds, but are not otherwise a security or
+     * we prevent that from happening. Other mechanisms used to send ETH to the Vault (such as selfdestruct, or being
+     * the recipient of a block mining reward) will result in locked funds, but are not otherwise a security or
      * soundness issue. This check only exists as an attempt to prevent user error.
      */
     receive() external payable {
@@ -149,8 +148,8 @@ abstract contract AssetTransfersHandler is AssetHelpers {
     }
 
     // This contract uses virtual internal functions instead of inheriting from the modules that implement them (in
-    // this case UserBalance) in order to decouple it from the rest of the system and enable standalone
-    // testing by implementing these with mocks.
+    // this case UserBalance) in order to decouple it from the rest of the system and enable standalone testing by
+    // implementing these with mocks.
 
     function _increaseInternalBalance(
         address account,

@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "../lib/math/FixedPoint.sol";
+import "../lib/openzeppelin/IERC20.sol";
+
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IGeneralPool.sol";
 import "../vault/interfaces/IMinimalSwapInfoPool.sol";
@@ -54,8 +54,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address sender,
         address recipient,
         uint256[] currentBalances,
-        uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
         bytes userData
     );
 
@@ -64,8 +64,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address sender,
         address recipient,
         uint256[] currentBalances,
-        uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
         bytes userData
     );
 
@@ -74,8 +74,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts) {
         emit OnJoinPoolCalled(
@@ -83,8 +83,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             sender,
             recipient,
             currentBalances,
-            latestBlockNumberUsed,
-            protocolSwapFee,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
             userData
         );
 
@@ -96,8 +96,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         address sender,
         address recipient,
         uint256[] memory currentBalances,
-        uint256 latestBlockNumberUsed,
-        uint256 protocolSwapFee,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) {
         emit OnExitPoolCalled(
@@ -105,8 +105,8 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             sender,
             recipient,
             currentBalances,
-            latestBlockNumberUsed,
-            protocolSwapFee,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
             userData
         );
 
@@ -127,9 +127,10 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256,
         uint256
     ) external view override returns (uint256 amount) {
-        return swapRequest.kind == IVault.SwapKind.GIVEN_IN
-            ? swapRequest.amount.mul(_multiplier)
-            : swapRequest.amount.div(_multiplier);
+        return
+            swapRequest.kind == IVault.SwapKind.GIVEN_IN
+                ? swapRequest.amount.mulDown(_multiplier)
+                : swapRequest.amount.divDown(_multiplier);
     }
 
     // IMinimalSwapInfoPool
@@ -138,12 +139,10 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         uint256,
         uint256
     ) external view override returns (uint256) {
-        return swapRequest.kind == IVault.SwapKind.GIVEN_IN
-            ? swapRequest.amount.mul(_multiplier)
-            : swapRequest.amount.div(_multiplier);
+        return
+            swapRequest.kind == IVault.SwapKind.GIVEN_IN
+                ? swapRequest.amount.mulDown(_multiplier)
+                : swapRequest.amount.divDown(_multiplier);
     }
 
-    function getRate() external pure override returns (uint256) {
-        return FixedPoint.ONE;
-    }
 }

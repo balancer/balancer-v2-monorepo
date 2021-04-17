@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../openzeppelin/IERC20.sol";
 
 import "../../vault/interfaces/IAsset.sol";
 import "../../vault/interfaces/IWETH.sol";
@@ -55,11 +55,12 @@ abstract contract AssetHelpers {
     /**
      * @dev Same as `_translateToIERC20(IAsset)`, but for an entire array.
      */
-    function _translateToIERC20(IAsset[] memory assets) internal view returns (IERC20[] memory tokens) {
-        tokens = new IERC20[](assets.length);
+    function _translateToIERC20(IAsset[] memory assets) internal view returns (IERC20[] memory) {
+        IERC20[] memory tokens = new IERC20[](assets.length);
         for (uint256 i = 0; i < assets.length; ++i) {
             tokens[i] = _translateToIERC20(assets[i]);
         }
+        return tokens;
     }
 
     /**

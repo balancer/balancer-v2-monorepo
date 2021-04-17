@@ -17,12 +17,13 @@ pragma experimental ABIEncoderV2;
 
 import "../../vault/interfaces/IVault.sol";
 
-import "../BasePoolFactory.sol";
+import "../factories/BasePoolFactory.sol";
+import "../factories/FactoryWidePauseWindow.sol";
 
 import "./WeightedPool.sol";
 
-contract WeightedPoolFactory is BasePoolFactory {
-    constructor(IVault _vault) BasePoolFactory(_vault) {
+contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+    constructor(IVault vault) BasePoolFactory(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -34,20 +35,22 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory weights,
-        uint256 swapFee,
-        uint256 emergencyPeriod,
-        uint256 emergencyPeriodCheckExtension
+        uint256 swapFeePercentage,
+        address owner
     ) external returns (address) {
+        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
+
         address pool = address(
             new WeightedPool(
-                vault,
+                getVault(),
                 name,
                 symbol,
                 tokens,
                 weights,
-                swapFee,
-                emergencyPeriod,
-                emergencyPeriodCheckExtension
+                swapFeePercentage,
+                pauseWindowDuration,
+                bufferPeriodDuration,
+                owner
             )
         );
         _register(pool);

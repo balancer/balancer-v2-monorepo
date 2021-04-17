@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { RunSuperFunction, HardhatRuntimeEnvironment } from 'hardhat/types';
 
-const DIRECTORIES = ['abi', 'artifacts'];
+const DIRECTORIES = ['artifacts'];
 const FUNCTIONS = ['queryBatchSwap', 'queryExit', 'queryJoin'];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
