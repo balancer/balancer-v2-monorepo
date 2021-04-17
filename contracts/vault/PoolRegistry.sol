@@ -20,6 +20,10 @@ import "../lib/openzeppelin/ReentrancyGuard.sol";
 
 import "./VaultAuthorization.sol";
 
+/**
+ * @dev Maintains the Pool ID data structure, implements Pool ID creation and registration, and defines useful modifiers
+ * and helper functions for ensuring correct behavior when working with Pools.
+ */
 abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
     // Each pool is represented by their unique Pool ID. We use `bytes32` for them, for lack of a way to define new
     // types.
@@ -68,7 +72,7 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
         returns (bytes32)
     {
         // Each Pool is assigned a unique ID based on an incrementing nonce. This assumes there will never be more than
-        // 2**80 Pools and the nonce will not overflow.
+        // 2**80 Pools, and the nonce will not overflow.
 
         bytes32 poolId = _toPoolId(msg.sender, specialization, uint80(_nextPoolNonce));
 
@@ -81,12 +85,21 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
         return poolId;
     }
 
+    function getPool(bytes32 poolId)
+        external
+        view
+        override
+        withRegisteredPool(poolId)
+        returns (address, PoolSpecialization)
+    {
+        return (_getPoolAddress(poolId), _getPoolSpecialization(poolId));
+    }
+
     /**
      * @dev Creates a Pool ID.
      *
-     * These are deterministically created by packing into the ID the Pool's contract address and its specialization
-     * setting. This saves gas by making this data easily retrievable with no storage accesses whenever a Pool ID is
-     * received.
+     * These are deterministically created by packing the Pool's contract address and its specialization setting into
+     * the ID. This saves gas by making this data easily retrievable from a Pool ID with no storage accesses.
      *
      * Since a single contract can register multiple Pools, a unique nonce must be provided to ensure Pool IDs are
      * unique.
@@ -118,8 +131,8 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
      * Due to how Pool IDs are created, this is done with no storage accesses and costs little gas.
      */
     function _getPoolAddress(bytes32 poolId) internal pure returns (address) {
-        // 12 byte logical shift left to remove the nonce and specialization setting. We don't need to mask as the
-        // logical shift already sets the upper bits to zero.
+        // 12 byte logical shift left to remove the nonce and specialization setting. We don't need to mask,
+        // since the logical shift already sets the upper bits to zero.
         return address(uint256(poolId) >> (12 * 8));
     }
 

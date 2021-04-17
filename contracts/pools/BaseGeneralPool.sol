@@ -104,6 +104,17 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         return _addSwapFeeAmount(amountIn);
     }
 
+    /*
+     * @dev Called when a swap with the Pool occurs, where the amount of tokens entering the Pool is known.
+     *
+     * Returns the amount of tokens that will be taken from the Pool in return.
+     *
+     * All amounts inside `swapRequest` and `balances` are upscaled. The swap fee has already been deducted from
+     * `swapRequest.amount`.
+     *
+     * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
+     * Vault.
+     */
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
         uint256[] memory balances,
@@ -111,6 +122,16 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexOut
     ) internal view virtual returns (uint256);
 
+    /*
+     * @dev Called when a swap with the Pool occurs, where the amount of tokens exiting the Pool is known.
+     *
+     * Returns the amount of tokens that will be granted to the Pool in return.
+     *
+     * All amounts inside `swapRequest` and `balances` are upscaled.
+     *
+     * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
+     * and returning it to the Vault.
+     */
     function _onSwapGivenOut(
         SwapRequest memory swapRequest,
         uint256[] memory balances,

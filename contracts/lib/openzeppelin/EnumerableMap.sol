@@ -14,7 +14,7 @@ pragma solidity ^0.7.0;
 // We're using non-standard casing for the unchecked functions to differentiate them, so we need to turn off that rule
 // solhint-disable func-name-mixedcase
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IERC20.sol";
 
 import "../helpers/BalancerErrors.sol";
 

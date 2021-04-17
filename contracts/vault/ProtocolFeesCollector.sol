@@ -15,8 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import "../lib/openzeppelin/IERC20.sol";
 import "../lib/helpers/InputHelpers.sol";
 import "../lib/helpers/Authentication.sol";
 import "../lib/openzeppelin/ReentrancyGuard.sol";
@@ -29,9 +28,9 @@ import "./interfaces/IAuthorizer.sol";
  * @dev This an auxiliary contract to the Vault, deployed by it during construction. It offloads some of the tasks the
  * Vault performs to reduce its overall bytecode size.
  *
- * The current values for all protocol fee percentages are stored here, and any protocol fees charged in the form of
- * tokens are sent to this contract, where they may be withdrawn by authorized entities. All authorization tasks are
- * delegated to the Vault's own authorizer.
+ * The current values for all protocol fee percentages are stored here, and any tokens charged as protocol fees are
+ * sent to this contract, where they may be withdrawn by authorized entities. All authorization tasks are delegated
+ * to the Vault's own authorizer.
  */
 contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     using SafeERC20 for IERC20;

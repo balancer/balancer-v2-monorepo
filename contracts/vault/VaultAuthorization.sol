@@ -25,6 +25,10 @@ import "../lib/helpers/SignaturesValidator.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";
 
+/**
+ * Manages the Authorizer account, which can perform permissioned actions through governance. Also manages governance
+ * approval of Relayers
+ */
 abstract contract VaultAuthorization is
     IVault,
     ReentrancyGuard,
@@ -112,7 +116,7 @@ abstract contract VaultAuthorization is
     }
 
     /**
-     * @dev Reverts unless `user` has allowed the caller as a relayer.
+     * @dev Reverts unless `user` has approved the caller as a relayer.
      */
     function _authenticateCallerFor(address user) internal view {
         _require(_hasApprovedRelayer(user, msg.sender), Errors.USER_DOESNT_ALLOW_RELAYER);
