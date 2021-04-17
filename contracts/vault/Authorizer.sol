@@ -33,12 +33,12 @@ contract Authorizer is AccessControl, IAuthorizer {
     }
 
     function canPerform(
-        bytes32 action,
+        bytes32 actionId,
         address account,
         address
     ) public view override returns (bool) {
         // This Authorizer ignores the 'where' field completely.
-        return AccessControl.hasRole(action, account);
+        return AccessControl.hasRole(actionId, account);
     }
 
     /**

@@ -312,7 +312,7 @@ describe('Vault - asset manager', function () {
 
             context('when paused', () => {
               sharedBeforeEach('pause', async () => {
-                const action = actionId(vault, 'setPaused');
+                const action = await actionId(vault, 'setPaused');
                 await authorizer.connect(admin).grantRole(action, admin.address);
                 await vault.connect(admin).setPaused(true);
               });
@@ -437,7 +437,7 @@ describe('Vault - asset manager', function () {
 
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
-                  const action = actionId(vault, 'setPaused');
+                  const action = await actionId(vault, 'setPaused');
                   await authorizer.connect(admin).grantRole(action, admin.address);
                   await vault.connect(admin).setPaused(true);
                 });
@@ -597,7 +597,7 @@ describe('Vault - asset manager', function () {
 
               context('when paused', () => {
                 sharedBeforeEach('pause', async () => {
-                  const action = actionId(vault, 'setPaused');
+                  const action = await actionId(vault, 'setPaused');
                   await authorizer.connect(admin).grantRole(action, admin.address);
                   await vault.connect(admin).setPaused(true);
                 });
