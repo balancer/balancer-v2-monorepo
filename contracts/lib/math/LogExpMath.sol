@@ -30,7 +30,7 @@ import "../helpers/BalancerErrors.sol";
  */
 library LogExpMath {
     // All fixed point multiplications and divisions are inlined. This means we need to divide by ONE when multiplying
-    // two numbers, and multiply by it when dividing them.
+    // two numbers, and multiply by ONE when dividing them.
 
     // All arguments and return values are 18 decimal fixed point numbers.
     int256 constant ONE_18 = 1e18;
@@ -42,7 +42,7 @@ library LogExpMath {
 
     // The domain of natural exponentiation is bound by the word size and number of decimals used.
     //
-    // Because internally the result will be stored as using 20 decimals, the largest possible result is
+    // Because internally the result will be stored using 20 decimals, the largest possible result is
     // (2^255 - 1) / 10^20, which makes the largest exponent ln((2^255 - 1) / 10^20) = 130.700829182905140221.
     // The smallest possible result is 10^(-18), which makes largest negative argument
     // ln(10^(-18)) = -41.446531673892822312.
@@ -51,7 +51,7 @@ library LogExpMath {
     int256 constant MIN_NATURAL_EXPONENT = -41e18;
 
     // Bounds for ln_36's argument. Both ln(0.9) and ln(1.1) can be represented with 36 decimal places in a fixed point
-    // 256 integer.
+    // 256 bit integer.
     int256 constant LN_36_LOWER_BOUND = ONE_18 - 1e17;
     int256 constant LN_36_UPPER_BOUND = ONE_18 + 1e17;
 
@@ -100,7 +100,7 @@ library LogExpMath {
             return 0;
         }
 
-        // Instead of computing x^y directly, we instead rely on properties of logarithm and exponentiation to arrive at
+        // Instead of computing x^y directly, we instead rely on the properties of logarithms and exponentiation to arrive at
         // that result. In particular, exp(ln(x)) = x, and ln(x^y) = y * ln(x). This means x^y = exp(y * ln(x)).
 
         // The ln function takes a signed value, so we need to make sure x fits in the signed 256 bit range.
@@ -142,7 +142,7 @@ library LogExpMath {
             return ((ONE_18 * ONE_18) / exp(-x));
         }
 
-        // First, we use the fact that e^(x+y) = e^x * e^y to decompose x in a sum of powers of two, which we call x_n,
+        // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
         // where x_n == 2^(7 - n), and e^x_n = a_n has been precomputed. We choose the first x_n, x0, to equal 2^7
         // because all larger powers are larger than MAX_NATURAL_EXPONENT, and therefore not present in the
         // decomposition.
@@ -224,7 +224,7 @@ library LogExpMath {
         seriesSum += term;
 
         // Each term (x^n / n!) equals the previous one times x, divided by n. Since x is a fixed point number,
-        // multiplying by it requires dividing by ONE_20, but dividing by the non-fixed point n values doesn't.
+        // multiplying by it requires dividing by ONE_20, but dividing by the non-fixed point n values does not.
 
         term = ((term * x) / ONE_20) / 2;
         seriesSum += term;
@@ -264,7 +264,7 @@ library LogExpMath {
         // We now have the first a_n (with no decimals), and the product of all other a_n present, and the Taylor
         // approximation of the exponention of the remainder (both with 20 decimals). All that remains is to multiply
         // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
-        // and then drop two digits to return a 18 decimal value.
+        // and then drop two digits to return an 18 decimal value.
 
         return (((product * seriesSum) / ONE_20) * firstAN) / 100;
     }
@@ -366,7 +366,7 @@ library LogExpMath {
         }
 
         // a is now a small number (smaller than a_11, which roughly equals 1.06). This means we can use a Taylor series
-        // that converges rapidly for values of a close to one - the same one used in ln_36.
+        // that converges rapidly for values of `a` close to one - the same one used in ln_36.
         // Let z = (a - 1) / (a + 1).
         // ln(a) = 2 * (z + z^3 / 3 + z^5 / 5 + z^7 / 7 + ... + z^(2 * n + 1) / (2 * n + 1))
 
@@ -440,7 +440,7 @@ library LogExpMath {
      */
     function ln_36(int256 x) private pure returns (int256) {
         // Since ln(1) = 0, a value of x close to one will yield a very small result, which makes using 36 digits
-        // worhtwhile.
+        // worthwhile.
 
         // First, we transform x to a 36 digit fixed point value.
         x *= ONE_18;
