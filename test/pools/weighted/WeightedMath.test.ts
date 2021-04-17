@@ -218,7 +218,7 @@ describe('WeightedMath', function () {
         const currentInvariant = calculateInvariant(balances, normalizedWeights);
         const protocolSwapFeePercentage = fp(0.1);
 
-        const result = await mock.calculateDueTokenprotocolSwapFeePercentageAmount(
+        const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
           balances[tokenIndex],
           normalizedWeights[tokenIndex],
           lastInvariant,
@@ -251,7 +251,7 @@ describe('WeightedMath', function () {
           const lastInvariant = currentInvariant.div(2);
           const cappedLastInvariant = currentInvariant.mul(fp(0.7)).div(fp(1));
 
-          const result = await mock.calculateDueTokenprotocolSwapFeePercentageAmount(
+          const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             lastInvariant,
@@ -282,7 +282,7 @@ describe('WeightedMath', function () {
         const currentInvariant = calculateInvariant(balances, normalizedWeights);
         const protocolSwapFeePercentage = fp(0.1);
 
-        const result = await mock.calculateDueTokenprotocolSwapFeePercentageAmount(
+        const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
           balances[tokenIndex],
           normalizedWeights[tokenIndex],
           lastInvariant,

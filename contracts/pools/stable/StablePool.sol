@@ -397,7 +397,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         }
 
         // Set the fee amount to pay in the selected token
-        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFeePercentageAmount(
+        dueProtocolFeeAmounts[chosenTokenIndex] = StableMath._calcDueTokenProtocolSwapFeeAmount(
             _amplificationParameter,
             balances,
             previousInvariant,
