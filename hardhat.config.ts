@@ -2,7 +2,6 @@ import 'dotenv/config';
 import 'solidity-coverage';
 import '@tenderly/hardhat-tenderly';
 import 'hardhat-deploy';
-import 'hardhat-abi-exporter';
 import 'hardhat-local-networks-config-plugin';
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
@@ -133,20 +132,6 @@ export default {
         },
       },
     },
-  },
-  abiExporter: {
-    only: [
-      'Vault',
-      'WeightedPool',
-      'StablePool',
-      'WeightedPoolFactory',
-      'StablePoolFactory',
-      'BalancerPoolToken',
-      'BasePoolFactory',
-      'ERC20',
-      'BalancerHelpers',
-    ],
-    flat: true,
   },
   tenderly: {
     username: 'balancer',
