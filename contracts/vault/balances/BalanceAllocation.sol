@@ -141,8 +141,11 @@ library BalanceAllocation {
         uint256 _managed,
         uint256 _blockNumber
     ) internal pure returns (bytes32) {
-        uint256 balance = _cash + _managed;
-        _require(balance >= _cash && balance < 2**112, Errors.BALANCE_TOTAL_OVERFLOW);
+        uint256 _total = _cash + _managed;
+
+        // Since both 'cash' and 'managed' are positive integers, by checking that their sum ('total') fits in 112 bits
+        // we are also indirectly checking thay both 'cash' and 'managed' themselves fit in 112 bits.
+        _require(_total >= _cash && _total < 2**112, Errors.BALANCE_TOTAL_OVERFLOW);
 
         // We assume the block fits in 32 bits - this is expected to hold for at least a few decades.
         return _pack(_cash, _managed, _blockNumber);
