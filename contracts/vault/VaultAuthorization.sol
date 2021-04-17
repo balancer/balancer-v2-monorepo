@@ -28,7 +28,7 @@ import "./interfaces/IAuthorizer.sol";
 /**
  * @dev Manages access control of Vault permissioned functions by relying on the Authorizer and signature validation.
  *
- * Additionally, handles relayer access and approval.
+ * Additionally handles relayer access and approval.
  */
 abstract contract VaultAuthorization is
     IVault,
@@ -63,8 +63,8 @@ abstract contract VaultAuthorization is
     /**
      * @dev Reverts unless `user` is the caller, or the caller is approved by the Authorizer to call this function (that
      * is, it is a relayer for that function), and either:
-     *  a) `user` either approved the caller as a relayer (via `setRelayerApproval`), or
-     *  b) a valid signature from them was appended at the end of calldata.
+     *  a) `user` approved the caller as a relayer (via `setRelayerApproval`), or
+     *  b) a valid signature from them was appended to the calldata.
      *
      * Should only be applied to external functions.
      */
@@ -105,16 +105,16 @@ abstract contract VaultAuthorization is
     /**
      * @dev Reverts unless `user` is the caller, or the caller is approved by the Authorizer to call the entry point
      * function (that is, it is a relayer for that function) and either:
-     *  a) `user` either approved the caller as a relayer (via `setRelayerApproval`), or
-     *  b) a valid signature from them was appended at the end of calldata.
+     *  a) `user` approved the caller as a relayer (via `setRelayerApproval`), or
+     *  b) a valid signature from them was appended to the calldata.
      */
     function _authenticateFor(address user) internal {
         if (msg.sender != user) {
-            // In this context, 'permission to call a function' is known as 'being a relayer for a function'.
+            // In this context, 'permission to call a function' means 'being a relayer for a function'.
             _authenticateCaller();
 
             // Being a relayer is not sufficient: `user` must have also approved the caller either via
-            // `setRelayerApproval`, or by providing a signature appended at the end of calldata.
+            // `setRelayerApproval`, or by providing a signature appended to the calldata.
             if (!_hasApprovedRelayer(user, msg.sender)) {
                 _validateSignature(user, Errors.USER_DOESNT_ALLOW_RELAYER);
             }
@@ -138,7 +138,7 @@ abstract contract VaultAuthorization is
         // assembly implementation results in much denser bytecode.
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            // The function selector is located at the first 4 bytes of calldata. We first copy the first full calldata
+            // The function selector is located at the first 4 bytes of calldata. We copy the first full calldata
             // 256 word, and then perform a logical shift to the right, moving the selector to the least significant
             // 4 bytes.
             let selector := shr(224, calldataload(0))

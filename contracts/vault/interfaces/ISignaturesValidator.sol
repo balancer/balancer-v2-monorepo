@@ -24,7 +24,7 @@ interface ISignaturesValidator {
     function getDomainSeparator() external view returns (bytes32);
 
     /**
-     * @dev Returns the next nonce used to sign messages by an address.
+     * @dev Returns the next nonce used by an address to sign messages.
      */
     function getNextNonce(address user) external view returns (uint256);
 }

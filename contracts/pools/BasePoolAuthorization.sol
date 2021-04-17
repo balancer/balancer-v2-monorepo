@@ -22,9 +22,9 @@ import "./BasePool.sol";
 /**
  * @dev Base authorization layer implementation for Pools.
  *
- * The owner account can call some of the permissioned functions, access control of the rest is delegated to the
- * Authorizer. Note that this owner is immutable: more sophisticated permission schemes such as multiple ownership,
- * granular roles, etc., should be built on top of this by making the owner a smart contract.
+ * The owner account can call some of the permissioned functions - access control of the rest is delegated to the
+ * Authorizer. Note that this owner is immutable: more sophisticated permission schemes, such as multiple ownership,
+ * granular roles, etc., could be built on top of this by making the owner a smart contract.
  *
  * Access control of all other permissioned functions is delegated to an Authorizer. It is also possible to delegate
  * access control of *all* permissioned functions to the Authorizer by setting the owner the
@@ -49,10 +49,10 @@ abstract contract BasePoolAuthorization is Authentication {
 
     function _canPerform(bytes32 action, address account) internal view override returns (bool) {
         if ((getOwner() != _DELEGATE_OWNER) && _isOwnerOnlyAction(action)) {
-            // Only the owner can perform owner only actions (unless the owner is delegated).
+            // Only the owner can perform "owner only" actions, unless the owner is delegated.
             return msg.sender == getOwner();
         } else {
-            // Non owner actions are always processed via the Authorizer, as are owner only ones if delegated.
+            // Non-owner actions are always processed via the Authorizer, as "owner only" ones are when delegated.
             return _getAuthorizer().canPerform(action, account, address(this));
         }
     }

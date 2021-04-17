@@ -48,7 +48,7 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
     }
 
     /**
-     * @dev Reverts with `errorCode` unless calldata contains a valid signature for `user` appended at the end.
+     * @dev Reverts with `errorCode` unless a valid signature for `user` was appended to the calldata.
      */
     function _validateSignature(address user, uint256 errorCode) internal {
         uint256 nextNonce = _nextNonce[user]++;
@@ -70,7 +70,7 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
             return false;
         }
 
-        // All type hashes correspond to the form (bytes calldata, address sender, uint256 nonce, uint256 deadline).
+        // All type hashes have this format: (bytes calldata, address sender, uint256 nonce, uint256 deadline).
         bytes32 structHash = keccak256(abi.encode(typeHash, keccak256(_calldata()), msg.sender, nonce, deadline));
         bytes32 digest = _hashTypedDataV4(structHash);
         (uint8 v, bytes32 r, bytes32 s) = _signature();

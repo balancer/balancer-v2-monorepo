@@ -101,7 +101,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // Base Pools are expected to be deployed using factories. By using the factory address as the action
         // disambiguator, we make all Pools deployed by the same factory share action identifiers. This allows for
         // simpler management of permissions (such as being able to manage granting the 'set fee' action in any Pool
-        // created by the  same factory), while still making actions unique among different factories if the selectors
+        // created by the same factory), while still making actions unique among different factories if the selectors
         // match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
         BalancerPoolToken(name, symbol)
@@ -579,8 +579,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function _getAuthorizer() internal view override returns (IAuthorizer) {
         // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
-        // accounts can call permissioned functions, used to e.g. perform emergency pauses.
-        // If the owner is delegated then *all* permissioned functions, including `setSwapFee`, will be under Governance
+        // accounts can call permissioned functions: for example, to perform emergency pauses.
+        // If the owner is delegated, then *all* permissioned functions, including `setSwapFeePercentage`, will be under Governance
         // control.
         return getVault().getAuthorizer();
     }
