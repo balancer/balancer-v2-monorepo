@@ -46,19 +46,19 @@ abstract contract BasePoolAuthorization is Authentication {
         return _getAuthorizer();
     }
 
-    function _canPerform(bytes32 action, address account) internal view override returns (bool) {
-        if ((getOwner() != _DELEGATE_OWNER) && _isOwnerOnlyAction(action)) {
+    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
+        if ((getOwner() != _DELEGATE_OWNER) && _isOwnerOnlyAction(actionId)) {
             // Only the owner can perform "owner only" actions, unless the owner is delegated.
             return msg.sender == getOwner();
         } else {
             // Non-owner actions are always processed via the Authorizer, as "owner only" ones are when delegated.
-            return _getAuthorizer().canPerform(action, account, address(this));
+            return _getAuthorizer().canPerform(actionId, account, address(this));
         }
     }
 
-    function _isOwnerOnlyAction(bytes32 action) private view returns (bool) {
+    function _isOwnerOnlyAction(bytes32 actionId) private view returns (bool) {
         // This implementation hardcodes the setSwapFeePercentage action.
-        return action == getAction(BasePool.setSwapFeePercentage.selector);
+        return actionId == getActionId(BasePool.setSwapFeePercentage.selector);
     }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);

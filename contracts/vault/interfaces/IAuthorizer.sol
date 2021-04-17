@@ -19,7 +19,7 @@ interface IAuthorizer {
      * @dev Returns true if `account` can perform the action described by `action` in the contract `where`.
      */
     function canPerform(
-        bytes32 action,
+        bytes32 actionId,
         address account,
         address where
     ) external view returns (bool);

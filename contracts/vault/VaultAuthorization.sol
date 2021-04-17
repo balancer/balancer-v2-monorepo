@@ -128,9 +128,9 @@ abstract contract VaultAuthorization is
         return _approvedRelayers[user][relayer];
     }
 
-    function _canPerform(bytes32 action, address user) internal view override returns (bool) {
+    function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         // Access control is delegated to the Authorizer.
-        return _authorizer.canPerform(action, user, address(this));
+        return _authorizer.canPerform(actionId, user, address(this));
     }
 
     function _typeHash() internal pure override returns (bytes32 hash) {
