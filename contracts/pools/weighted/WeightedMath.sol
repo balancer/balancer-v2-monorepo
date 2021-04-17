@@ -29,16 +29,16 @@ contract WeightedMath {
     // i.e., the largest possible pool is one where all tokens have exactly the minimum weight.
     uint256 internal constant _MAX_WEIGHTED_TOKENS = 100;
 
-    // Pool limits that arise from limitations in the fixed point power function (and the imposed 100/1 maximum weight
+    // Pool limits that arise from limitations in the fixed point power function (and the imposed 1:100 maximum weight
     // ratio).
 
     // Swap limits: amounts swapped may not be larger than this percentage of total balance.
     uint256 internal constant _MAX_IN_RATIO = 0.3e18;
     uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
 
-    // Invariant growth limit: joins cannot cause the invariant to increase by more than this ratio.
+    // Invariant growth limit: non-proportional joins cannot cause the invariant to increase by more than this ratio.
     uint256 internal constant _MAX_INVARIANT_RATIO = 3e18;
-    // Invariant shrink limit: exits cannot cause the invariant to decrease by less than this ratio.
+    // Invariant shrink limit: non-proportional exits cannot cause the invariant to decrease by less than this ratio.
     uint256 internal constant _MIN_INVARIANT_RATIO = 0.7e18;
 
     // Invariant is used to collect protocol swap fees by comparing its value between two times.
