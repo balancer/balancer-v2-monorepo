@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import TokenList from '../helpers/models/tokens/TokenList';
 
 import { deploy } from '../../lib/helpers/deploy';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 import { expectBalanceChange } from '../helpers/tokenBalance';
 import { bn, divCeil, fp, FP_SCALING_FACTOR } from '../../lib/helpers/numbers';
 import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
@@ -29,8 +29,8 @@ describe('Vault - flash loans', () => {
     recipient = await deploy('MockFlashLoanRecipient', { from: other, args: [vault.address] });
     feesCollector = await ethers.getContractAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
-    const SET_FLASH_LOAN_ROLE = await roleId(feesCollector, 'setFlashLoanFeePercentage');
-    await authorizer.connect(admin).grantRole(SET_FLASH_LOAN_ROLE, feeSetter.address);
+    const action = await actionId(feesCollector, 'setFlashLoanFeePercentage');
+    await authorizer.connect(admin).grantRole(action, feeSetter.address);
 
     tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
     await tokens.mint({ to: vault, amount: bn(100e18) });

@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import * as expectEvent from '../helpers/expectEvent';
 import TokenList from '../helpers/models/tokens/TokenList';
 import { advanceTime, DAY, MONTH } from '../../lib/helpers/time';
-import { roleId } from '../../lib/helpers/roles';
+import { actionId } from '../../lib/helpers/actions';
 import { deploy } from '../../lib/helpers/deploy';
 import { GeneralPool } from '../../lib/helpers/pools';
 import { BigNumberish, fp } from '../../lib/helpers/numbers';
@@ -21,6 +21,7 @@ describe('BasePool', function () {
 
   const MIN_SWAP_FEE_PERCENTAGE = fp(0.000001);
   const MAX_SWAP_FEE_PERCENTAGE = fp(0.1);
+  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   before(async () => {
     [, admin, poolOwner, deployer, other] = await ethers.getSigners();
@@ -92,32 +93,32 @@ describe('BasePool', function () {
     });
 
     it('tracks authorizer changes in the vault', async () => {
-      const role = await roleId(vault, 'changeAuthorizer');
-      await authorizer.connect(admin).grantRole(role, admin.address);
+      const action = await actionId(vault, 'changeAuthorizer');
+      await authorizer.connect(admin).grantRole(action, admin.address);
 
       await vault.connect(admin).changeAuthorizer(other.address);
 
       expect(await pool.getAuthorizer()).to.equal(other.address);
     });
 
-    describe('role identifiers', () => {
+    describe('action identifiers', () => {
       const selector = '0x12345678';
 
       context('with same pool creator', () => {
-        it('pools share role identifiers', async () => {
+        it('pools share action identifiers', async () => {
           const pool = await deployBasePool({ tokens, from: deployer });
           const otherPool = await deployBasePool({ tokens, from: deployer });
 
-          expect(await pool.getRole(selector)).to.equal(await otherPool.getRole(selector));
+          expect(await pool.getAction(selector)).to.equal(await otherPool.getAction(selector));
         });
       });
 
       context('with different pool creators', () => {
-        it('pools have unique role identifiers', async () => {
+        it('pools have unique action identifiers', async () => {
           const pool = await deployBasePool({ tokens, from: deployer });
           const otherPool = await deployBasePool({ tokens, from: other });
 
-          expect(await pool.getRole(selector)).to.not.equal(await otherPool.getRole(selector));
+          expect(await pool.getAction(selector)).to.not.equal(await otherPool.getAction(selector));
         });
       });
     });
@@ -183,8 +184,8 @@ describe('BasePool', function () {
         });
       }
 
-      context('with no owner', () => {
-        const owner = ZERO_ADDRESS;
+      context('with a delegated owner', () => {
+        const owner = DELEGATE_OWNER;
 
         sharedBeforeEach('deploy pool', async () => {
           pool = await deployBasePool({ swapFeePercentage: fp(0.01), owner });
@@ -194,16 +195,16 @@ describe('BasePool', function () {
           sender = other;
         });
 
-        context('when the sender has the set fee role in the authorizer', () => {
+        context('when the sender has the set fee permission in the authorizer', () => {
           sharedBeforeEach('grant permission', async () => {
-            const role = await roleId(pool, 'setSwapFeePercentage');
-            await authorizer.connect(admin).grantRole(role, sender.address);
+            const action = await actionId(pool, 'setSwapFeePercentage');
+            await authorizer.connect(admin).grantRole(action, sender.address);
           });
 
           itSetsSwapFeePercentage();
         });
 
-        context('when the sender does not have the set fee role in the authorizer', () => {
+        context('when the sender does not have the set fee permission in the authorizer', () => {
           itRevertsWithUnallowedSender();
         });
       });
@@ -229,14 +230,14 @@ describe('BasePool', function () {
             sender = other;
           });
 
-          context('when the sender does not have the set fee role in the authorizer', () => {
+          context('when the sender does not have the set fee permission in the authorizer', () => {
             itRevertsWithUnallowedSender();
           });
 
-          context('when the sender has the set fee role in the authorizer', () => {
+          context('when the sender has the set fee permission in the authorizer', () => {
             sharedBeforeEach(async () => {
-              const role = await roleId(pool, 'setSwapFeePercentage');
-              await authorizer.connect(admin).grantRole(role, sender.address);
+              const action = await actionId(pool, 'setSwapFeePercentage');
+              await authorizer.connect(admin).grantRole(action, sender.address);
             });
 
             itRevertsWithUnallowedSender();
@@ -282,8 +283,8 @@ describe('BasePool', function () {
       });
     }
 
-    context('with no owner', () => {
-      const owner = ZERO_ADDRESS;
+    context('with a delegated owner', () => {
+      const owner = DELEGATE_OWNER;
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deployBasePool({
@@ -297,14 +298,14 @@ describe('BasePool', function () {
         sender = other;
       });
 
-      context('when the sender does not have the pause role in the authorizer', () => {
+      context('when the sender does not have the pause permission in the authorizer', () => {
         itRevertsWithUnallowedSender();
       });
 
-      context('when the sender has the pause role in the authorizer', () => {
+      context('when the sender has the pause permission in the authorizer', () => {
         sharedBeforeEach('grant permission', async () => {
-          const role = await roleId(pool, 'setPaused');
-          await authorizer.connect(admin).grantRole(role, sender.address);
+          const action = await actionId(pool, 'setPaused');
+          await authorizer.connect(admin).grantRole(action, sender.address);
         });
 
         itCanPause();
@@ -336,14 +337,14 @@ describe('BasePool', function () {
           sender = other;
         });
 
-        context('when the sender does not have the pause role in the authorizer', () => {
+        context('when the sender does not have the pause permission in the authorizer', () => {
           itRevertsWithUnallowedSender();
         });
 
-        context('when the sender has the pause role in the authorizer', () => {
+        context('when the sender has the pause permission in the authorizer', () => {
           sharedBeforeEach(async () => {
-            const role = await roleId(pool, 'setPaused');
-            await authorizer.connect(admin).grantRole(role, sender.address);
+            const action = await actionId(pool, 'setPaused');
+            await authorizer.connect(admin).grantRole(action, sender.address);
           });
 
           itCanPause();

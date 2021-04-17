@@ -4,6 +4,25 @@
     "inputs": [
       {
         "indexed": true,
+        "internalType": "contract IAuthorizer",
+        "name": "oldAuthorizer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract IAuthorizer",
+        "name": "newAuthorizer",
+        "type": "address"
+      }
+    ],
+    "name": "AuthorizerChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "contract IERC20",
         "name": "token",
         "type": "address"
@@ -140,6 +159,31 @@
       }
     ],
     "name": "PoolRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "relayer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "RelayerApprovalChanged",
     "type": "event"
   },
   {
@@ -841,7 +885,7 @@
         "type": "int256[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {

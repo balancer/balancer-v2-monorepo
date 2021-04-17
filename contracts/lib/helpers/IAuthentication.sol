@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 interface IAuthentication {
     /**
-     * @dev Returns the role required to call the function described by `selector`.
+     * @dev Returns the action identifier associated to the external function described by `selector`.
      */
-    function getRole(bytes4 selector) external view returns (bytes32);
+    function getAction(bytes4 selector) external view returns (bytes32);
 }

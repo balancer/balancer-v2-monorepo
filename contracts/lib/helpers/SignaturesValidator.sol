@@ -19,47 +19,45 @@ import "./BalancerErrors.sol";
 import "../openzeppelin/EIP712.sol";
 import "../../vault/interfaces/ISignaturesValidator.sol";
 
-/* solhint-disable max-line-length */
-/* solhint-disable prettier/prettier */
-/* solhint-disable var-name-mixedcase */
-/* solhint-disable private-vars-leading-underscore */
-
+/**
+ * @dev Utility for signing Solidity function calls.
+ *
+ * This contract relies on the fact that Solidity contracts can be called with extra calldata, and enables
+ * metatransaction schemes by appending an EIP712 signature of the original calldata at the end.
+ *
+ * Derived contracts must implement the `_typehash` function to map function selectors to EIP712 structs.
+ */
 abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
-    uint256 internal constant EXTRA_CALLDATA_LENGTH = 32 * 4; // deadline + [v,r,s] signature
+    // The appended data consists of a deadline, plus the [v,r,s] signature. For simplicity, we use a full 256 bit slot
+    // for each of these values, even if 'v' is typically an 8 bit value.
+    uint256 internal constant _EXTRA_CALLDATA_LENGTH = 4 * 32;
+
+    // Replay attack prevention for each user.
+    mapping(address => uint256) internal _nextNonce;
 
     constructor() EIP712("Balancer Protocol", "1") {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    mapping(address => uint256) internal _nextNonce;
+    function getDomainSeparator() external view override returns (bytes32) {
+        return _domainSeparatorV4();
+    }
 
-    /**
-     * @dev Get next nonce for an address
-     */
     function getNextNonce(address user) external view override returns (uint256) {
         return _nextNonce[user];
     }
 
     /**
-     * @dev Get EIP712 domain separator
-     */
-    function getDomainSeparator() external view override returns (bytes32) {
-        return _domainSeparatorV4();
-    }
-
-    /**
-     * @dev Validate signature and increment nonce
+     * @dev Reverts with `errorCode` unless calldata contains a valid signature for `user` appended at the end.
      */
     function _validateSignature(address user, uint256 errorCode) internal {
         uint256 nextNonce = _nextNonce[user]++;
         _require(_isSignatureValid(user, nextNonce), errorCode);
     }
 
-    /**
-     * @dev Tell whether a signature is valid
-     */
-    function _isSignatureValid(address user, uint256 nonce) internal view returns (bool) {
+    function _isSignatureValid(address user, uint256 nonce) private view returns (bool) {
         uint256 deadline = _deadline();
+
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (deadline < block.timestamp) {
@@ -67,35 +65,45 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
         }
 
         bytes32 typeHash = _typeHash();
-        // Make sure there is a type hash associated to the called method otherwise the signature is considered invalid.
         if (typeHash == bytes32(0)) {
+            // Prevent accidental signature validation for functions that don't have an associated typehash.
             return false;
         }
 
-        // All type hashes correspond to the form (bytes calldata, address sender, uint256 nonce, uint256 deadline)
+        // All type hashes correspond to the form (bytes calldata, address sender, uint256 nonce, uint256 deadline).
         bytes32 structHash = keccak256(abi.encode(typeHash, keccak256(_calldata()), msg.sender, nonce, deadline));
         bytes32 digest = _hashTypedDataV4(structHash);
         (uint8 v, bytes32 r, bytes32 s) = _signature();
 
-        // Explicitly disallow authorizations for address(0) as ecrecover returns address(0) on malformed messages
         address recoveredAddress = ecrecover(digest, v, r, s);
+
+        // ecrecover returns the zero address on recover failure, so we need to handle that explicitly.
         return recoveredAddress != address(0) && recoveredAddress == user;
     }
 
     /**
-     * @dev Tell which type hash should be used based on the call selector
+     * @dev Returns the EIP712 typehash for the current entry point function, which can be identified by its function
+     * selector (available as `msg.sig`).
+     *
+     * If 0x00, all signatures will be considered invalid.
      */
     function _typeHash() internal view virtual returns (bytes32);
 
     /**
-     * @dev Auth deadline encoded in calldata
+     * @dev Extracts the signature deadline from extra calldata.
+     *
+     * This function returns bogus data if no signature is included.
      */
     function _deadline() internal pure returns (uint256) {
+        // The deadline is the first extra argument at the end of the original calldata.
         return uint256(_decodeExtraCalldataWord(0));
     }
 
     /**
-     * @dev Signature encoded in calldata
+     * @dev Extracts the signature parameters from extra calldata.
+     *
+     * This function returns bogus data if no signature is included. This is not a security risk, as that data would not
+     * be considered a valid signature in the first place.
      */
     function _signature()
         internal
@@ -106,33 +114,37 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
             bytes32 s
         )
     {
-        // The signature is appended at the end of calldata, after the deadline, in the order v, r, s
+        // v, r and s are appended after the signature deadline, in that order.
         v = uint8(uint256(_decodeExtraCalldataWord(0x20)));
         r = _decodeExtraCalldataWord(0x40);
         s = _decodeExtraCalldataWord(0x60);
     }
 
     /**
-     * @dev Decode original calldata
+     * @dev Returns the original calldata, without the extra bytes containing the signature.
+     *
+     * This function returns bogus data if no signature is included.
      */
     function _calldata() internal pure returns (bytes memory result) {
-        result = msg.data;
-        if (result.length > EXTRA_CALLDATA_LENGTH) {
+        result = msg.data; // A calldata to memory assignment results in memory allocation and copy of contents.
+        if (result.length > _EXTRA_CALLDATA_LENGTH) {
             // solhint-disable-next-line no-inline-assembly
             assembly {
-                // Overwrite the array length with the reduced one
-                mstore(result, sub(calldatasize(), EXTRA_CALLDATA_LENGTH))
+                // We simply overwrite the array length with the reduced one.
+                mstore(result, sub(calldatasize(), _EXTRA_CALLDATA_LENGTH))
             }
         }
     }
 
     /**
-     * @dev Decode word from extra calldata
+     * @dev Returns a 256 bit word from 'extra' calldata, at some offset from the expected end of the original calldata.
+     *
+     * This function returns bogus data if no signature is included.
      */
-    function _decodeExtraCalldataWord(uint256 offset) internal pure returns (bytes32 result) {
+    function _decodeExtraCalldataWord(uint256 offset) private pure returns (bytes32 result) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            result := calldataload(add(sub(calldatasize(), EXTRA_CALLDATA_LENGTH), offset))
+            result := calldataload(add(sub(calldatasize(), _EXTRA_CALLDATA_LENGTH), offset))
         }
     }
 }

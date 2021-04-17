@@ -19,12 +19,12 @@ pragma solidity ^0.7.0;
  */
 interface ISignaturesValidator {
     /**
-     * @dev Get EIP712 domain separator
+     * @dev Returns the EIP712 domain separator.
      */
     function getDomainSeparator() external view returns (bytes32);
 
     /**
-     * @dev Get next nonce for an address
+     * @dev Returns the next nonce used to sign messages by an address.
      */
     function getNextNonce(address user) external view returns (uint256);
 }

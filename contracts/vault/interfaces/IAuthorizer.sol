@@ -14,14 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-/**
- * @dev Interface for determining whether the specified role has been granted to a given account,
- * based on OpenZeppelin's AccessControl. If `where` is non-zero, implementations can use it to
- * further restrict the scope.
- */
 interface IAuthorizer {
-    function hasRoleIn(
-        bytes32 role,
+    /**
+     * @dev Returns true if `account` can perform the action described by `action` in the contract `where`.
+     */
+    function canPerform(
+        bytes32 action,
         address account,
         address where
     ) external view returns (bool);

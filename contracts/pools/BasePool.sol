@@ -98,10 +98,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 bufferPeriodDuration,
         address owner
     )
-        // Base Pools are expected to be deployed using factories. By using the factory address as the role
-        // disambiguator, we make all Pools deployed by the same factory share role identifiers. This allows for simpler
-        // management of permissions (such as being able to grant the 'set fee' role in any Pool created by the same
-        // factory), while making roles unique among different factories, preventing accidental errors.
+        // Base Pools are expected to be deployed using factories. By using the factory address as the action
+        // disambiguator, we make all Pools deployed by the same factory share action identifiers. This allows for
+        // simpler management of permissions (such as being able to manage granting the 'set fee' action in any Pool
+        // created by the  same factory), while still making actions unique among different factories if the selectors
+        // match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
         BalancerPoolToken(name, symbol)
         BasePoolAuthorization(owner)
@@ -298,7 +299,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes memory userData
     ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
-        // The `return` opcode is executed directly inside `_queryAction`, so we don't return nothing here
+
         _queryAction(
             poolId,
             sender,
@@ -310,6 +311,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             _onJoinPool,
             _downscaleUpArray
         );
+
+        // The `return` opcode is executed directly inside `_queryAction`, so execution never reaches this statement,
+        // and we don't need to return anything here - it just silences compiler warnings.
+        return (bptOut, amountsIn);
     }
 
     /**
@@ -332,7 +337,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes memory userData
     ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
-        // The `return` opcode is executed directly inside `_queryAction`, so we don't return nothing here
+
+        // The `return` opcode is executed directly inside `_queryAction`, so we don't return nothing here.
         _queryAction(
             poolId,
             sender,
@@ -344,6 +350,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             _onExitPool,
             _downscaleDownArray
         );
+
+        // The `return` opcode is executed directly inside `_queryAction`, so execution never reaches this statement,
+        // and we don't need to return anything here - it just silences compiler warnings.
+        return (bptIn, amountsOut);
     }
 
     // Internal hooks to be overridden by derived contracts - all token amounts (except BPT) in these interfaces are
@@ -568,10 +578,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     function _getAuthorizer() internal view override returns (IAuthorizer) {
-        // Role management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which accounts
-        // can call permissioned functions, used to e.g. set swap fee percentages.
-        // If there is a non-zero Pool `owner`, some of these functions will only be callable by the owner instead of
-        // relying on the Authorizer for them.
+        // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
+        // accounts can call permissioned functions, used to e.g. perform emergency pauses.
+        // If the owner is delegated then *all* permissioned functions, including `setSwapFee`, will be under Governance
+        // control.
         return getVault().getAuthorizer();
     }
 
