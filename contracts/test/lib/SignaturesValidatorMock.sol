@@ -12,6 +12,10 @@ contract SignaturesValidatorMock is SignaturesValidator {
     event Authenticated(address user, address sender);
     event CalldataDecoded(bytes data, uint256 deadline, uint8 v, bytes32 r, bytes32 s);
 
+    constructor() SignaturesValidator("Balancer V2 Vault") {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
     function decodeCalldata() external {
         _decodeCalldata();
     }

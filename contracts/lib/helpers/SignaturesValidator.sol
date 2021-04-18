@@ -35,7 +35,7 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
     // Replay attack prevention for each user.
     mapping(address => uint256) internal _nextNonce;
 
-    constructor() EIP712("Balancer Protocol", "1") {
+    constructor(string memory name) EIP712(name, "1") {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -84,6 +84,9 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
     /**
      * @dev Returns the EIP712 type hash for the current entry point function, which can be identified by its function
      * selector (available as `msg.sig`).
+     *
+     * The typehash must conform to the following format:
+     *  <name>(bytes calldata, address sender, uint256 nonce, uint256 deadline)
      *
      * If 0x00, all signatures will be considered invalid.
      */

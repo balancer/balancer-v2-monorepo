@@ -1,23 +1,24 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '../../lib/helpers/deploy';
 import { actionId } from '../../lib/helpers/actions';
 import { MONTH } from '../../lib/helpers/time';
-import { ZERO_ADDRESS } from '../../lib/helpers/constants';
+import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '../../lib/helpers/constants';
 import * as expectEvent from '../helpers/expectEvent';
+import { encodeCalldataAuthorization, signSetRelayerApprovalAuthorization } from '../helpers/signatures';
 
 describe('VaultAuthorization', function () {
   let authorizer: Contract, vault: Contract;
-  let admin: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, user: SignerWithAddress, other: SignerWithAddress;
   let relayer: SignerWithAddress;
 
   const WHERE = ZERO_ADDRESS;
 
   before('setup signers', async () => {
-    [, admin, other, relayer] = await ethers.getSigners();
+    [, admin, user, other, relayer] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy authorizer', async () => {
@@ -91,56 +92,148 @@ describe('VaultAuthorization', function () {
     });
   });
 
-  describe('change relayer allowance', () => {
+  describe('set relayer approval', () => {
     sharedBeforeEach('deploy vault', async () => {
       vault = await deployVault(authorizer.address);
     });
 
+    let sender: SignerWithAddress;
+
     context('when the sender is the user', () => {
-      const itChangesTheRelayerAllowance = (approved: boolean) => {
-        it('changes the allowance', async () => {
-          await vault.connect(other).setRelayerApproval(other.address, relayer.address, approved);
-
-          expect(await vault.hasApprovedRelayer(other.address, relayer.address)).to.eq(approved);
-        });
-
-        it('should emit an event when changing relayer allowance', async () => {
-          const tx = await vault.connect(other).setRelayerApproval(other.address, relayer.address, approved);
-
-          expectEvent.inReceipt(await tx.wait(), 'RelayerApprovalChanged', {
-            relayer: relayer.address,
-            sender: other.address,
-            approved,
-          });
-        });
-      };
-
-      context('when the relayer was not allowed', () => {
-        sharedBeforeEach('disallow relayer', async () => {
-          await vault.connect(other).setRelayerApproval(other.address, relayer.address, false);
-        });
-
-        itChangesTheRelayerAllowance(true);
-        itChangesTheRelayerAllowance(false);
+      beforeEach('set sender', () => {
+        sender = user;
       });
 
-      context('when the relayer was allowed', () => {
-        sharedBeforeEach('allow relayer', async () => {
-          await vault.connect(other).setRelayerApproval(other.address, relayer.address, true);
-        });
-
-        itChangesTheRelayerAllowance(true);
-        itChangesTheRelayerAllowance(false);
-      });
+      itApprovesAndDisapprovesRelayer();
     });
 
     context('when the sender is not the user', () => {
-      it('reverts', async () => {
-        await expect(
-          vault.connect(relayer).setRelayerApproval(other.address, relayer.address, true)
-        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      beforeEach('set sender', () => {
+        sender = other;
+      });
+
+      context('when the sender is allowed by the authorizer', () => {
+        sharedBeforeEach('grant permission to sender', async () => {
+          const action = await actionId(vault, 'setRelayerApproval');
+          await authorizer.connect(admin).grantRole(action, sender.address);
+        });
+
+        context('when the sender is approved by the user', () => {
+          sharedBeforeEach('approve sender', async () => {
+            await vault.connect(user).setRelayerApproval(user.address, sender.address, true);
+          });
+
+          itApprovesAndDisapprovesRelayer();
+        });
+
+        context('when the sender is not approved by the user', () => {
+          sharedBeforeEach('disapprove sender', async () => {
+            await vault.connect(user).setRelayerApproval(user.address, sender.address, false);
+          });
+
+          context('when the sender is allowed by signature', () => {
+            const signature = true;
+            itApprovesAndDisapprovesRelayer(signature);
+          });
+
+          context('with no signature', () => {
+            it('reverts', async () => {
+              await expect(
+                vault.connect(sender).setRelayerApproval(user.address, relayer.address, true)
+              ).to.be.revertedWith('USER_DOESNT_ALLOW_RELAYER');
+            });
+          });
+        });
+      });
+
+      context('when the sender is not allowed by the authorizer', () => {
+        sharedBeforeEach('revoke permission for sender', async () => {
+          const action = await actionId(vault, 'setRelayerApproval');
+          await authorizer.connect(admin).revokeRole(action, sender.address);
+        });
+
+        context('when the sender is approved by the user', () => {
+          sharedBeforeEach('approve sender', async () => {
+            await vault.connect(user).setRelayerApproval(user.address, sender.address, true);
+          });
+
+          it('reverts', async () => {
+            await expect(
+              vault.connect(sender).setRelayerApproval(user.address, relayer.address, true)
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        });
+
+        context('when the sender is not approved by the user', () => {
+          sharedBeforeEach('disapprove sender', async () => {
+            await vault.connect(user).setRelayerApproval(user.address, sender.address, false);
+          });
+
+          it('reverts', async () => {
+            await expect(
+              vault.connect(sender).setRelayerApproval(user.address, relayer.address, true)
+            ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+        });
       });
     });
+
+    function itApprovesAndDisapprovesRelayer(withSignature?: boolean) {
+      context('when the relayer was not approved', () => {
+        sharedBeforeEach('disapprove relayer', async () => {
+          await vault.connect(user).setRelayerApproval(user.address, relayer.address, false);
+        });
+
+        itSetsTheRelayerApproval(true, withSignature);
+        itSetsTheRelayerApproval(false, withSignature);
+      });
+
+      context('when the relayer was approved', () => {
+        sharedBeforeEach('approve relayer', async () => {
+          await vault.connect(user).setRelayerApproval(user.address, relayer.address, true);
+        });
+
+        itSetsTheRelayerApproval(true, withSignature);
+        itSetsTheRelayerApproval(false, withSignature);
+      });
+
+      function itSetsTheRelayerApproval(approved: boolean, withSignature?: boolean) {
+        it(`${approved ? 'sets' : 'resets'} the approval`, async () => {
+          await setApproval();
+          expect(await vault.hasApprovedRelayer(user.address, relayer.address)).to.equal(approved);
+        });
+
+        it(`emits an event when ${approved ? 'setting' : 'resetting'} relayer approval`, async () => {
+          const receipt = await (await setApproval()).wait();
+
+          expectEvent.inIndirectReceipt(receipt, vault.interface, 'RelayerApprovalChanged', {
+            relayer: relayer.address,
+            sender: user.address,
+            approved,
+          });
+        });
+
+        async function setApproval(): Promise<ContractTransaction> {
+          let calldata = vault.interface.encodeFunctionData('setRelayerApproval', [
+            user.address,
+            relayer.address,
+            approved,
+          ]);
+
+          if (withSignature) {
+            const signature = await signSetRelayerApprovalAuthorization(vault, user, sender, calldata);
+            calldata = encodeCalldataAuthorization(calldata, MAX_UINT256, signature);
+          }
+
+          // Hardcoding a gas limit prevents (slow) gas estimation
+          return sender.sendTransaction({
+            to: vault.address,
+            data: calldata,
+            gasLimit: MAX_GAS_LIMIT,
+          });
+        }
+      }
+    }
   });
 
   describe('temporarily pausable', () => {
