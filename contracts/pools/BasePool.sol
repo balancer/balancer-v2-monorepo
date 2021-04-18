@@ -100,9 +100,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     )
         // Base Pools are expected to be deployed using factories. By using the factory address as the action
         // disambiguator, we make all Pools deployed by the same factory share action identifiers. This allows for
-        // simpler management of permissions (such as being able to manage granting the 'set fee' action in any Pool
-        // created by the same factory), while still making actions unique among different factories if the selectors
-        // match, preventing accidental errors.
+        // simpler management of permissions (such as being able to manage granting the 'set fee percentage' action in
+        // any Pool created by the same factory), while still making actions unique among different factories if the
+        // selectors match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
         BalancerPoolToken(name, symbol)
         BasePoolAuthorization(owner)
@@ -270,7 +270,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         _burnPoolTokens(sender, bptAmountIn);
 
-        // Both amountsOut and dueProtocolFees are amounts exiting the Pool, so we round down.
+        // Both amountsOut and dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
         _downscaleDownArray(amountsOut, scalingFactors);
         _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
 

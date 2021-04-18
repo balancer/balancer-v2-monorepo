@@ -497,7 +497,7 @@ describe('Vault - join pool', () => {
             poolId,
             liquidityProvider: lp.address,
             deltas: joinAmounts,
-            protocolFees: dueProtocolFeeAmounts,
+            protocolFeeAmounts: dueProtocolFeeAmounts,
           });
         });
 

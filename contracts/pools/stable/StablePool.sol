@@ -257,7 +257,7 @@ contract StablePool is BaseGeneralPool, StableMath {
         )
     {
         if (_isNotPaused()) {
-            // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
+            // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
             // spending gas calculating fee amounts during each individual swap
             dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(balances, _lastInvariant, protocolSwapFeePercentage);
@@ -268,7 +268,7 @@ contract StablePool is BaseGeneralPool, StableMath {
                 balances[i] = balances[i].sub(dueProtocolFeeAmounts[i]);
             }
         } else {
-            // To avoid extra calculations, protocol fees are not charged when the contract is paused.
+            // To avoid extra calculations, swap protocol fee amounts are not charged when the contract is paused.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 

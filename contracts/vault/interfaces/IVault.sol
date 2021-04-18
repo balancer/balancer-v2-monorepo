@@ -435,7 +435,7 @@ interface IVault is ISignaturesValidator {
         address indexed liquidityProvider,
         IERC20[] tokens,
         int256[] deltas,
-        uint256[] protocolFees
+        uint256[] protocolFeeAmounts
     );
 
     enum PoolBalanceChangeKind { JOIN, EXIT }

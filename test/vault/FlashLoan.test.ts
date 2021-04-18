@@ -155,7 +155,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [bn(1e18)], '0x10')
-      ).to.be.revertedWith('INSUFFICIENT_COLLECTED_FEES');
+      ).to.be.revertedWith('INSUFFICIENT_FLASH_LOAN_FEES');
     });
 
     it('reverts if the borrower reenters the Vault', async () => {

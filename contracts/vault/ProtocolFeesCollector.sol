@@ -51,8 +51,8 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     // The flash loan fee is charged whenever a flash loan occurs, as a percentage of the tokens lent.
     uint256 private _flashLoanFeePercentage;
 
-    event SwapFeeChanged(uint256 newSwapFeePercentage);
-    event FlashLoanFeeChanged(uint256 newFlashLoanFeePercentage);
+    event SwapFeePercentageChanged(uint256 newSwapFeePercentage);
+    event FlashLoanFeePercentageChanged(uint256 newFlashLoanFeePercentage);
 
     constructor(IVault _vault)
         // The ProtocolFeesCollector is a singleton, so it simply uses its own address to disambiguate action
@@ -77,15 +77,18 @@ contract ProtocolFeesCollector is Authentication, ReentrancyGuard {
     }
 
     function setSwapFeePercentage(uint256 newSwapFeePercentage) external authenticate {
-        _require(newSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, Errors.SWAP_FEE_TOO_HIGH);
+        _require(newSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, Errors.SWAP_FEE_PERCENTAGE_TOO_HIGH);
         _swapFeePercentage = newSwapFeePercentage;
-        emit SwapFeeChanged(newSwapFeePercentage);
+        emit SwapFeePercentageChanged(newSwapFeePercentage);
     }
 
     function setFlashLoanFeePercentage(uint256 newFlashLoanFeePercentage) external authenticate {
-        _require(newFlashLoanFeePercentage <= _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE, Errors.FLASH_LOAN_FEE_TOO_HIGH);
+        _require(
+            newFlashLoanFeePercentage <= _MAX_PROTOCOL_FLASH_LOAN_FEE_PERCENTAGE,
+            Errors.FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH
+        );
         _flashLoanFeePercentage = newFlashLoanFeePercentage;
-        emit FlashLoanFeeChanged(newFlashLoanFeePercentage);
+        emit FlashLoanFeePercentageChanged(newFlashLoanFeePercentage);
     }
 
     function getSwapFeePercentage() external view returns (uint256) {
