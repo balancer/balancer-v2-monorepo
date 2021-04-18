@@ -40,7 +40,7 @@ describe('WeightedPoolFactory', function () {
       await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, ZERO_ADDRESS)
     ).wait();
 
-    const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
+    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return ethers.getContractAt('WeightedPool', event.args.pool);
   }
 

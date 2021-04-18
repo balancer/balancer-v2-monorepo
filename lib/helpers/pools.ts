@@ -28,9 +28,9 @@ export async function deployPoolFromFactory(
     await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)
   ).wait();
 
-  const event = receipt.events?.find((e) => e.event == 'PoolRegistered');
+  const event = receipt.events?.find((e) => e.event == 'PoolCreated');
   if (event == undefined) {
-    throw new Error('Could not find PoolRegistered event');
+    throw new Error('Could not find PoolCreated event');
   }
 
   return ethers.getContractAt(poolName, event.args?.pool);

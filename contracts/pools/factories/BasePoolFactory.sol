@@ -29,7 +29,7 @@ abstract contract BasePoolFactory {
     IVault private immutable _vault;
     mapping(address => bool) private _isPoolFromFactory;
 
-    event PoolRegistered(address indexed pool);
+    event PoolCreated(address indexed pool);
 
     constructor(IVault vault) {
         _vault = vault;
@@ -50,10 +50,12 @@ abstract contract BasePoolFactory {
     }
 
     /**
-     * @dev Registers a new created pool. Emits a `PoolRegistered` event.
+     * @dev Registers a new created pool.
+     *
+     * Emits a `PoolCreated` event.
      */
     function _register(address pool) internal {
         _isPoolFromFactory[pool] = true;
-        emit PoolRegistered(pool);
+        emit PoolCreated(pool);
     }
 }

@@ -27,7 +27,7 @@ describe('BasePoolFactory', function () {
 
   it('creates a pool', async () => {
     const receipt = await (await factory.create()).wait();
-    expectEvent.inReceipt(receipt, 'PoolRegistered');
+    expectEvent.inReceipt(receipt, 'PoolCreated');
   });
 
   context('with a created pool', () => {
@@ -35,7 +35,7 @@ describe('BasePoolFactory', function () {
 
     sharedBeforeEach('deploy pool', async () => {
       const receipt = await (await factory.create()).wait();
-      const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
       pool = event.args.pool;
     });
