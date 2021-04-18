@@ -396,8 +396,8 @@ interface IVault is ISignaturesValidator {
      *
      * `assets` must have the same length and order as the array returned by `getPoolTokens`. This prevents issues when
      * interacting with Pools that register and deregister tokens frequently. If receiving ETH however, the array must
-     * be sorted *before* replacing the WETH address with the ETH sentinel value (the zero address), which means the final
-     * `assets` array might not be sorted. Pools with no registered tokens cannot be exited.
+     * be sorted *before* replacing the WETH address with the ETH sentinel value (the zero address), which means the
+     * final `assets` array might not be sorted. Pools with no registered tokens cannot be exited.
      *
      * If `toInternalBalance` is true, the tokens will be deposited to `recipient`'s Internal Balance. Otherwise,
      * an ERC20 transfer will be performed. Note that ETH cannot be deposited to Internal Balance: attempting to
