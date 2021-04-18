@@ -22,7 +22,7 @@ import "../lib/helpers/InputHelpers.sol";
  * @dev Basic Authorizer implementation, based on OpenZeppelin's Access Control.
  *
  * Users are allowed to perform actions if they have the role with the same identifier. In this sense, roles are not
- * being truly used as such, since they each map to a single action.
+ * being truly used as such, since they each map to a single action identifier.
  *
  * This temporary implementation is expected to be replaced soon after launch by a more sophisticated one, able to
  * manage permissions across multiple contracts and to natively handle timelocks.

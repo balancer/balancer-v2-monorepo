@@ -282,7 +282,7 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
      * @dev Returns the total balance for `poolId`'s `expectedTokens`.
      *
      * `expectedTokens` must exactly equal the token array returned by `getPoolTokens`: both arrays must have the same
-     * length, elements and order.
+     * length, elements and order. Additionally, the Pool must have at least one registered token.
      */
     function _validateTokensAndGetBalances(bytes32 poolId, IERC20[] memory expectedTokens)
         private

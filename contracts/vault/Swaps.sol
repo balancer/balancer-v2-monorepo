@@ -268,7 +268,7 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
 
     /**
      * @dev Performs a swap according to the parameters specified in `request`, calling the Pool's contract hook and
-     * updating the Pool balance.
+     * updating the Pool's balance.
      *
      * Returns the amount of tokens going into or out of the Vault as a result of this swap, depending on the swap kind.
      */
