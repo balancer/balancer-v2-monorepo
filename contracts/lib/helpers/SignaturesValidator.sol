@@ -15,15 +15,14 @@
 pragma solidity ^0.7.0;
 
 import "./BalancerErrors.sol";
-
+import "./ISignaturesValidator.sol";
 import "../openzeppelin/EIP712.sol";
-import "../../vault/interfaces/ISignaturesValidator.sol";
 
 /**
  * @dev Utility for signing Solidity function calls.
  *
  * This contract relies on the fact that Solidity contracts can be called with extra calldata, and enables
- * metatransaction schemes by appending an EIP712 signature of the original calldata at the end.
+ * meta-transaction schemes by appending an EIP712 signature of the original calldata at the end.
  *
  * Derived contracts must implement the `_typeHash` function to map function selectors to EIP712 structs.
  */
