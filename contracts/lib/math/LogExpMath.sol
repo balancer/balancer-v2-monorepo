@@ -284,7 +284,7 @@ library LogExpMath {
      * @dev Natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
      */
     function ln(int256 a) internal pure returns (int256) {
-        // The real natural logarithm is not defined for negative numbers.
+        // The real natural logarithm is not defined for negative numbers or zero.
         _require(a > 0, Errors.OUT_OF_BOUNDS);
 
         if (a < ONE_18) {

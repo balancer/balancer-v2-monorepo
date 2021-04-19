@@ -363,7 +363,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
         uint256[] memory normalizedWeights = _normalizedWeights();
 
         if (_isNotPaused()) {
-            // Due protocol swap fees are computed by measuring the growth of the invariant between the previous
+            // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
             // spending gas calculating the fees on each individual swap.
             uint256 invariantBeforeExit = WeightedMath._calculateInvariant(normalizedWeights, balances);
@@ -378,8 +378,8 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             // Update current balances by subtracting the protocol fee amounts
             _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
         } else {
-            // If the contract is paused, protocol fees are not charged to avoid extra calculations and reduce the
-            // potential for errors.
+            // If the contract is paused, swap protocol fee amounts are not charged to avoid extra calculations and
+            // reduce the potential for errors.
             dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
 

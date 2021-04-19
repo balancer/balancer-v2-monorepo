@@ -139,9 +139,10 @@ abstract contract AssetTransfersHandler is AssetHelpers {
      * caller.
      *
      * Any ETH sent to the Vault outside of the WETH unwrapping mechanism would be forever locked inside the Vault, so
-     * we prevent that from happening. Other mechanisms used to send ETH to the Vault (such as selfdestruct, or being
-     * the recipient of a block mining reward) will result in locked funds, but are not otherwise a security or
-     * soundness issue. This check only exists as an attempt to prevent user error.
+     * we prevent that from happening. Other mechanisms used to send ETH to the Vault (such as being the recipient of an
+     * ETH swap, Pool exit or withdrawal, contract selfdestruction, or receiving the block mining reward) will result in
+     * locked funds, but are not otherwise a security or soundness issue. This check only exists as an attempt to
+     * prevent user error.
      */
     receive() external payable {
         _require(msg.sender == address(_WETH()), Errors.ETH_TRANSFER);
