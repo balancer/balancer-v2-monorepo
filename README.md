@@ -32,7 +32,7 @@ Please report any security issues you find to security@balancer.finance.
 
 ## Licensing
 
-Most of the source code is licensed under the GNU General Public License Version 3 (GPL v3), see [`LICENSE`](./LICENSE).
+Most of the source code is licensed under the GNU General Public License Version 3 (GPL v3): see [`LICENSE`](./LICENSE).
 
 ### Exceptions
 
