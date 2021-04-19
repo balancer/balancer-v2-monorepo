@@ -52,26 +52,23 @@ describe('VaultAuthorization', function () {
       let action: string;
 
       sharedBeforeEach('grant permission', async () => {
-        action = await actionId(vault, 'changeAuthorizer');
+        action = await actionId(vault, 'setAuthorizer');
         await authorizer.connect(admin).grantRole(action, admin.address);
       });
 
       it('can change the authorizer to another address', async () => {
-        await vault.connect(admin).changeAuthorizer(other.address);
+        await vault.connect(admin).setAuthorizer(other.address);
 
         expect(await vault.getAuthorizer()).to.equal(other.address);
       });
 
       it('emits an event when authorizer changed', async () => {
-        const receipt = await (await vault.connect(admin).changeAuthorizer(other.address)).wait();
-        expectEvent.inReceipt(receipt, 'AuthorizerChanged', {
-          oldAuthorizer: authorizer.address,
-          newAuthorizer: other.address,
-        });
+        const receipt = await (await vault.connect(admin).setAuthorizer(other.address)).wait();
+        expectEvent.inReceipt(receipt, 'AuthorizerSet', { newAuthorizer: other.address });
       });
 
       it('can change the authorizer to the zero address', async () => {
-        await vault.connect(admin).changeAuthorizer(ZERO_ADDRESS);
+        await vault.connect(admin).setAuthorizer(ZERO_ADDRESS);
 
         expect(await vault.getAuthorizer()).to.equal(ZERO_ADDRESS);
       });
@@ -81,13 +78,13 @@ describe('VaultAuthorization', function () {
 
         expect(await authorizer.canPerform(action, admin.address, WHERE)).to.be.false;
 
-        await expect(vault.connect(admin).changeAuthorizer(other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(vault.connect(admin).setAuthorizer(other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
     context('when the sender does not have the permission to do it', () => {
       it('reverts', async () => {
-        await expect(vault.connect(other).changeAuthorizer(other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(vault.connect(other).setAuthorizer(other.address)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });

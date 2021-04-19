@@ -78,11 +78,15 @@ abstract contract VaultAuthorization is
         Authentication(bytes32(uint256(address(this))))
         SignaturesValidator("Balancer V2 Vault")
     {
-        _authorizer = authorizer;
+        setAuthorizer(authorizer);
     }
 
-    function changeAuthorizer(IAuthorizer newAuthorizer) external override nonReentrant authenticate {
-        emit AuthorizerChanged(_authorizer, newAuthorizer);
+    function setAuthorizer(IAuthorizer newAuthorizer) external override nonReentrant authenticate {
+        _setAuthorizer(newAuthorizer);
+    }
+
+    function _setAuthorizer(IAuthorizer newAuthorizer) private {
+        emit AuthorizerSet(newAuthorizer);
         _authorizer = newAuthorizer;
     }
 

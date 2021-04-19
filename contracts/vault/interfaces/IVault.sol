@@ -59,11 +59,11 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Sets a new Authorizer for the Vault. The caller must be allowed by the current Authorizer to do this.
      *
-     * Emits an `AuthorizerChanged` event.
+     * Emits an `AuthorizerSet` event.
      */
-    function changeAuthorizer(IAuthorizer newAuthorizer) external;
+    function setAuthorizer(IAuthorizer newAuthorizer) external;
 
-    event AuthorizerChanged(IAuthorizer indexed oldAuthorizer, IAuthorizer indexed newAuthorizer);
+    event AuthorizerSet(IAuthorizer indexed newAuthorizer);
 
     // Relayers
     //
