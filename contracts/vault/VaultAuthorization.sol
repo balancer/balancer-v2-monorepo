@@ -40,22 +40,22 @@ abstract contract VaultAuthorization is
     // Ideally, we'd store the type hashes as immutable state variables to avoid computing the hash at runtime, but
     // unfortunately immutable variables cannot be used in assembly, so we just keep the precomputed hashes instead.
 
-    // _JOIN_TYPE_HASH = keccak256("JoinAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32 private constant _JOIN_TYPE_HASH = 0x8378a8c1df05a9f1a8c03f56ac5deaa79a89d08a18ee66900300eeccbbffab60;
+    // _JOIN_TYPE_HASH = keccak256("JoinPool(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 private constant _JOIN_TYPE_HASH = 0x3f7b71252bd19113ff48c19c6e004a9bcfcca320a0d74d58e85877cbd7dcae58;
 
-    // _EXIT_TYPE_HASH = keccak256("ExitAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32 private constant _EXIT_TYPE_HASH = 0x0725e3eb280becc5e8a12353eebf7eea0f300734e37d6ea26a0618f0e33b7c2c;
+    // _EXIT_TYPE_HASH = keccak256("ExitPool(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 private constant _EXIT_TYPE_HASH = 0x8bbc57f66ea936902f50a71ce12b92c43f3c5340bb40c27c4e90ab84eeae3353;
 
-    // _SWAP_TYPE_HASH = keccak256("SwapAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32 private constant _SWAP_TYPE_HASH = 0xccccf29320e8013475285e723e882da98bb8fe6d57df3ef56f4450c8a0b87279;
+    // _SWAP_TYPE_HASH = keccak256("Swap(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 private constant _SWAP_TYPE_HASH = 0xe192dcbc143b1e244ad73b813fd3c097b832ad260a157340b4e5e5beda067abe;
 
-    // _BATCH_SWAP_TYPE_HASH = keccak256("BatchSwapAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
-    bytes32 private constant _BATCH_SWAP_TYPE_HASH = 0x19798cf6a20b933b5582bab474b88a347f49600d7885bea767cebdf93e67e25b;
+    // _BATCH_SWAP_TYPE_HASH = keccak256("BatchSwap(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    bytes32 private constant _BATCH_SWAP_TYPE_HASH = 0x9bfc43a4d98313c6766986ffd7c916c7481566d9f224c6819af0a53388aced3a;
 
-    // _CHANGE_RELAYER_TYPE_HASH =
-    //     keccak256("ChangeRelayerAuth(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
+    // _SET_RELAYER_TYPE_HASH =
+    //     keccak256("SetRelayerApproval(bytes calldata,address sender,uint256 nonce,uint256 deadline)");
     bytes32
-        private constant _CHANGE_RELAYER_TYPE_HASH = 0xa287a6d125737644e801d3f7878ec24503dc3f766efac5bdc0fe4932726c75f9;
+        private constant _SET_RELAYER_TYPE_HASH = 0xa3f865aa351e51cfeb40f5178d1564bb629fe9030b83caf6361d1baaf5b90b5a;
 
     IAuthorizer private _authorizer;
     mapping(address => mapping(address => bool)) private _approvedRelayers;
@@ -76,6 +76,7 @@ abstract contract VaultAuthorization is
     constructor(IAuthorizer authorizer)
         // The Vault is a singleton, so it simply uses its own address to disambiguate action identifiers.
         Authentication(bytes32(uint256(address(this))))
+        SignaturesValidator("Balancer V2 Vault")
     {
         _authorizer = authorizer;
     }
@@ -158,8 +159,8 @@ abstract contract VaultAuthorization is
                 case 0x945bcec9 {
                     hash := _BATCH_SWAP_TYPE_HASH
                 }
-                case 0x2fd87446 {
-                    hash := _CHANGE_RELAYER_TYPE_HASH
+                case 0xfa6e671d {
+                    hash := _SET_RELAYER_TYPE_HASH
                 }
                 default {
                     hash := 0x0000000000000000000000000000000000000000000000000000000000000000

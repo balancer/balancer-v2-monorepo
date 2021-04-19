@@ -26,7 +26,7 @@ export async function signJoinAuthorization(
   nonce?: BigNumberish,
   deadline?: BigNumberish
 ): Promise<string> {
-  return signAuthorizationFor('JoinAuth', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+  return signAuthorizationFor('JoinPool', validator, user, allowedSender, allowedCalldata, nonce, deadline);
 }
 
 export async function signExitAuthorization(
@@ -37,7 +37,7 @@ export async function signExitAuthorization(
   nonce?: BigNumberish,
   deadline?: BigNumberish
 ): Promise<string> {
-  return signAuthorizationFor('ExitAuth', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+  return signAuthorizationFor('ExitPool', validator, user, allowedSender, allowedCalldata, nonce, deadline);
 }
 
 export async function signSwapAuthorization(
@@ -48,7 +48,7 @@ export async function signSwapAuthorization(
   nonce?: BigNumberish,
   deadline?: BigNumberish
 ): Promise<string> {
-  return signAuthorizationFor('SwapAuth', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+  return signAuthorizationFor('Swap', validator, user, allowedSender, allowedCalldata, nonce, deadline);
 }
 
 export async function signBatchSwapAuthorization(
@@ -59,7 +59,18 @@ export async function signBatchSwapAuthorization(
   nonce?: BigNumberish,
   deadline?: BigNumberish
 ): Promise<string> {
-  return signAuthorizationFor('BatchSwapAuth', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+  return signAuthorizationFor('BatchSwap', validator, user, allowedSender, allowedCalldata, nonce, deadline);
+}
+
+export async function signSetRelayerApprovalAuthorization(
+  validator: Contract,
+  user: SignerWithAddress,
+  allowedSender: SignerWithAddress,
+  allowedCalldata: string,
+  nonce?: BigNumberish,
+  deadline?: BigNumberish
+): Promise<string> {
+  return signAuthorizationFor('SetRelayerApproval', validator, user, allowedSender, allowedCalldata, nonce, deadline);
 }
 
 export async function signAuthorization(
@@ -83,10 +94,10 @@ export async function signAuthorizationFor(
   deadline?: BigNumberish
 ): Promise<string> {
   if (!deadline) deadline = MAX_DEADLINE;
-  if (!nonce) nonce = (await validator.getNextNonce(user)) as BigNumberish;
+  if (!nonce) nonce = (await validator.getNextNonce(user.address)) as BigNumberish;
 
   const domain = {
-    name: 'Balancer Protocol',
+    name: 'Balancer V2 Vault',
     version: '1',
     chainId: await network.provider.send('eth_chainId'),
     verifyingContract: validator.address,
