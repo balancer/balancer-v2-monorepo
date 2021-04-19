@@ -86,7 +86,7 @@ abstract contract VaultAuthorization is
     }
 
     function _setAuthorizer(IAuthorizer newAuthorizer) private {
-        emit AuthorizerSet(newAuthorizer);
+        emit AuthorizerChanged(newAuthorizer);
         _authorizer = newAuthorizer;
     }
 
