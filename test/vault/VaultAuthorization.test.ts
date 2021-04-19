@@ -64,7 +64,7 @@ describe('VaultAuthorization', function () {
 
       it('emits an event when authorizer changed', async () => {
         const receipt = await (await vault.connect(admin).setAuthorizer(other.address)).wait();
-        expectEvent.inReceipt(receipt, 'AuthorizerSet', { newAuthorizer: other.address });
+        expectEvent.inReceipt(receipt, 'AuthorizerChanged', { newAuthorizer: other.address });
       });
 
       it('can change the authorizer to the zero address', async () => {
