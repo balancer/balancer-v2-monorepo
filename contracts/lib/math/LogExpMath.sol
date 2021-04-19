@@ -139,7 +139,7 @@ library LogExpMath {
     }
 
     /**
-     * @dev Natural exponentiaton (e^x) with signed 18 decimal fixed point exponent.
+     * @dev Natural exponentiation (e^x) with signed 18 decimal fixed point exponent.
      *
      * Reverts if `x` is smaller than MIN_NATURAL_EXPONENT, or larger than `MAX_NATURAL_EXPONENT`.
      */
@@ -186,7 +186,7 @@ library LogExpMath {
         x *= 100;
 
         // `product` is the accumulated product of all a_n (except a0 and a1), which starts at 20 decimal fixed point
-        // one. Recall that fixed point multiplication requires dviding by ONE_20.
+        // one. Recall that fixed point multiplication requires dividing by ONE_20.
         int256 product = ONE_20;
 
         if (x >= x2) {
@@ -273,7 +273,7 @@ library LogExpMath {
         // 12 Taylor terms are sufficient for 18 decimal precision.
 
         // We now have the first a_n (with no decimals), and the product of all other a_n present, and the Taylor
-        // approximation of the exponention of the remainder (both with 20 decimals). All that remains is to multiply
+        // approximation of the exponentiation of the remainder (both with 20 decimals). All that remains is to multiply
         // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
         // and then drop two digits to return an 18 decimal value.
 
