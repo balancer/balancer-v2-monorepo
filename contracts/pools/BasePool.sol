@@ -85,7 +85,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor6;
     uint256 internal immutable _scalingFactor7;
 
-    event SwapFeeChanged(uint256 swapFeePercentage);
+    event SwapFeePercentageChanged(uint256 swapFeePercentage);
 
     constructor(
         IVault vault,
@@ -178,7 +178,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         _swapFeePercentage = swapFeePercentage;
-        emit SwapFeeChanged(swapFeePercentage);
+        emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     // Caller must be approved by the Vault's Authorizer
