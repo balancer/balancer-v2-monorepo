@@ -234,7 +234,7 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             }
 
             uint256 feeAmount = dueProtocolFeeAmounts[i];
-            _payFee(_translateToIERC20(asset), feeAmount);
+            _payFeeAmount(_translateToIERC20(asset), feeAmount);
 
             // Compute the new Pool balances. Note that the fee amount might be larger than `amountIn`,
             // resulting in an overall decrease of the Pool's balance for a token.
@@ -271,7 +271,7 @@ abstract contract PoolBalances is Fees, ReentrancyGuard, PoolTokens, UserBalance
             _sendAsset(asset, amountOut, recipient, change.useInternalBalance);
 
             uint256 feeAmount = dueProtocolFeeAmounts[i];
-            _payFee(_translateToIERC20(asset), feeAmount);
+            _payFeeAmount(_translateToIERC20(asset), feeAmount);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit (potentially by 0).
             finalBalances[i] = balances[i].decreaseCash(amountOut.add(feeAmount));

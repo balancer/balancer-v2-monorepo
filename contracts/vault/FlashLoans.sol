@@ -77,7 +77,7 @@ abstract contract FlashLoans is Fees, ReentrancyGuard, TemporarilyPausable {
             uint256 receivedFeeAmount = postLoanBalance - preLoanBalance;
             _require(receivedFeeAmount >= feeAmounts[i], Errors.INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT);
 
-            _payFee(token, receivedFeeAmount);
+            _payFeeAmount(token, receivedFeeAmount);
             emit FlashLoan(recipient, token, amounts[i], receivedFeeAmount);
         }
     }
