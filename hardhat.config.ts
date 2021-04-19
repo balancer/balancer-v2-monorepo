@@ -121,7 +121,7 @@ export default {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 1800,
+            runs: 1500,
           },
         },
       },

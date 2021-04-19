@@ -59,7 +59,7 @@ abstract contract Fees is IVault {
         return FixedPoint.mulUp(amount, percentage);
     }
 
-    function _payFee(IERC20 token, uint256 amount) internal {
+    function _payFeeAmount(IERC20 token, uint256 amount) internal {
         if (amount > 0) {
             token.safeTransfer(address(getProtocolFeesCollector()), amount);
         }
