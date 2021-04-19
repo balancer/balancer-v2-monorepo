@@ -81,7 +81,8 @@ abstract contract PoolRegistry is ReentrancyGuard, VaultAuthorization {
 
         _nextPoolNonce += 1;
 
-        emit PoolRegistered(poolId);
+        // Note that msg.sender is the pool's contract
+        emit PoolRegistered(poolId, msg.sender, specialization);
         return poolId;
     }
 

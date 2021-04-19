@@ -224,7 +224,7 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Emitted when a Pool is registered by calling `registerPool`.
      */
-    event PoolRegistered(bytes32 poolId);
+    event PoolRegistered(bytes32 indexed poolId, address indexed poolAddress, PoolSpecialization specialization);
 
     /**
      * @dev Returns a Pool's contract address and specialization setting.

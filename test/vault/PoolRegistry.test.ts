@@ -38,9 +38,12 @@ describe('Vault - pool registry', () => {
     it('any account can create pools', async () => {
       const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
 
-      const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
-      const poolId = event.args.poolId;
+      const event = expectEvent.inReceipt(receipt, 'PoolRegistered', {
+        poolAddress: other.address,
+        specialization: GeneralPool,
+      });
 
+      const poolId = event.args.poolId;
       expect(poolId).to.not.be.undefined;
     });
 
@@ -74,9 +77,12 @@ describe('Vault - pool registry', () => {
     it('gets a new id', async () => {
       const receipt = await (await vault.connect(other).registerPool(GeneralPool)).wait();
 
-      const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
-      const otherPoolId = event.args.poolId;
+      const event = expectEvent.inReceipt(receipt, 'PoolRegistered', {
+        poolAddress: other.address,
+        specialization: GeneralPool,
+      });
 
+      const otherPoolId = event.args.poolId;
       expect(poolId).to.not.equal(otherPoolId);
     });
   });
