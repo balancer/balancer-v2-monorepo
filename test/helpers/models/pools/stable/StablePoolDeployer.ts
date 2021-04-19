@@ -64,7 +64,7 @@ export default {
       TypesConverter.toAddress(owner)
     );
     const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'PoolRegistered');
+    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return ethers.getContractAt('StablePool', event.args.pool);
   },
 };
