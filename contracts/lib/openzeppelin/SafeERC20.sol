@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MIT
 
+// Based on the ReentrancyGuard library from OpenZeppelin Contracts, altered to reduce gas costs.
+// The `safeTransfer` and `safeTransferFrom` functions assume that `token` is a contract (an account with code), and
+// work differently from the OpenZeppelin version if it is not.
+
 pragma solidity ^0.7.0;
 
 import "../helpers/BalancerErrors.sol";

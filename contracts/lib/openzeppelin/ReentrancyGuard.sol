@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 
+// Based on the ReentrancyGuard library from OpenZeppelin Contracts, altered to reduce bytecode size.
+// Modifier code is inlined by the compiler, which causes its code to appear multiple times in the codebase. By using
+// private functions, we achieve the same end result with slightly higher runtime gas costs but reduced bytecode size.
+
 pragma solidity ^0.7.0;
 
 import "../helpers/BalancerErrors.sol";
-
-// Based on the ReentrancyGuard library from OpenZeppelin contracts, altered to reduce bytecode size.
-// Modifier code is inlined by the compiler, which causes its code to appear multiple times in the codebase. By using
-// private functions, we achieve the same end result with slightly higher runtime gas costs but reduced bytecode size.
 
 /**
  * @dev Contract module that helps prevent reentrant calls to a function.
