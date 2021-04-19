@@ -63,6 +63,9 @@ interface IVault is ISignaturesValidator {
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
 
+    /**
+     * @dev Emitted when a new authorizer is set by `setAuthorizer`.
+     */
     event AuthorizerSet(IAuthorizer indexed newAuthorizer);
 
     // Relayers
@@ -95,6 +98,9 @@ interface IVault is ISignaturesValidator {
         bool approved
     ) external;
 
+    /**
+     * @dev Emitted every time a relayer is approved or disapproved by `setRelayerApproval`.
+     */
     event RelayerApprovalChanged(address indexed relayer, address indexed sender, bool approved);
 
     // Internal Balance
@@ -662,6 +668,9 @@ interface IVault is ISignaturesValidator {
         bytes memory userData
     ) external;
 
+    /**
+     * @dev Emitted for each individual flash loan performed by `flashLoan`.
+     */
     event FlashLoan(IFlashLoanRecipient indexed recipient, IERC20 indexed token, uint256 amount, uint256 feeAmount);
 
     // Asset Management
