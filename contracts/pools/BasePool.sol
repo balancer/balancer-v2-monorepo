@@ -85,7 +85,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor6;
     uint256 internal immutable _scalingFactor7;
 
-    event SwapFeeChanged(uint256 swapFeePercentage);
+    event SwapFeePercentageChanged(uint256 swapFeePercentage);
 
     constructor(
         IVault vault,
@@ -118,8 +118,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         // order of token-specific parameters (such as token weights) will not change.
         InputHelpers.ensureArrayIsSorted(tokens);
 
-        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
+        _setSwapFeePercentage(swapFeePercentage);
 
         bytes32 poolId = vault.registerPool(specialization);
 
@@ -127,14 +126,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         vault.registerTokens(poolId, tokens, new address[](tokens.length));
 
         // Set immutable state variables - these cannot be read from during construction
-
         _vault = vault;
         _poolId = poolId;
-        _swapFeePercentage = swapFeePercentage;
         _totalTokens = tokens.length;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-
         _token0 = tokens.length > 0 ? tokens[0] : IERC20(0);
         _token1 = tokens.length > 1 ? tokens[1] : IERC20(0);
         _token2 = tokens.length > 2 ? tokens[2] : IERC20(0);
@@ -174,11 +170,15 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     // Caller must be approved by the Vault's Authorizer
     function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
+        _setSwapFeePercentage(swapFeePercentage);
+    }
+
+    function _setSwapFeePercentage(uint256 swapFeePercentage) private {
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         _swapFeePercentage = swapFeePercentage;
-        emit SwapFeeChanged(swapFeePercentage);
+        emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     // Caller must be approved by the Vault's Authorizer

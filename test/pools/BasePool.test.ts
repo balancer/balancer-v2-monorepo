@@ -151,7 +151,7 @@ describe('BasePool', function () {
           it('emits an event', async () => {
             const receipt = await (await pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage)).wait();
 
-            expectEvent.inReceipt(receipt, 'SwapFeeChanged', { swapFeePercentage: newSwapFeePercentage });
+            expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage: newSwapFeePercentage });
           });
         });
 
