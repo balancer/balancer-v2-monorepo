@@ -1,10 +1,11 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import TokenList from '../helpers/models/tokens/TokenList';
 
+import * as expectEvent from '../helpers/expectEvent';
 import { deploy } from '../../lib/helpers/deploy';
 import { actionId } from '../../lib/helpers/actions';
 import { expectBalanceChange } from '../helpers/tokenBalance';
@@ -54,7 +55,15 @@ describe('Vault - flash loans', () => {
     });
 
     it('all balance can be loaned', async () => {
-      await vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [bn(100e18)], '0x10');
+      const tx = await vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [bn(100e18)], '0x10');
+      const receipt = await tx.wait();
+
+      expectEvent.inReceipt(receipt, 'FlashLoan', {
+        recipient: recipient.address,
+        token: tokens.DAI.address,
+        amount: bn(100e18),
+        feeAmount: 0,
+      });
     });
 
     it('reverts if the loan is larger than available balance', async () => {
@@ -137,13 +146,20 @@ describe('Vault - flash loans', () => {
       // The recipient pays one extra token
       const feeAmount = bn(1e18).mul(feePercentage).div(FP_SCALING_FACTOR).add(1);
 
-      await expectBalanceChange(
+      const tx: ContractTransaction = await expectBalanceChange(
         () => vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
         tokens,
         { account: feesCollector, changes: { DAI: feeAmount } }
       );
 
       expect(await feesCollector.getCollectedFeeAmounts([tokens.DAI.address])).to.deep.equal([feeAmount]);
+
+      expectEvent.inReceipt(await tx.wait(), 'FlashLoan', {
+        recipient: recipient.address,
+        token: tokens.DAI.address,
+        amount: bn(1e18),
+        feeAmount,
+      });
     });
 
     it('all balance can be loaned', async () => {
@@ -155,7 +171,7 @@ describe('Vault - flash loans', () => {
 
       await expect(
         vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [bn(1e18)], '0x10')
-      ).to.be.revertedWith('INSUFFICIENT_FLASH_LOAN_FEES');
+      ).to.be.revertedWith('INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT');
     });
 
     it('reverts if the borrower reenters the Vault', async () => {

@@ -652,6 +652,8 @@ interface IVault is ISignaturesValidator {
      *
      * The 'userData' field is ignored by the Vault, and forwarded as-is to `recipient` as part of the
      * `receiveFlashLoan` call.
+     *
+     * Emits `FlashLoan` events.
      */
     function flashLoan(
         IFlashLoanRecipient recipient,
@@ -659,6 +661,8 @@ interface IVault is ISignaturesValidator {
         uint256[] memory amounts,
         bytes memory userData
     ) external;
+
+    event FlashLoan(IFlashLoanRecipient indexed recipient, IERC20 indexed token, uint256 amount, uint256 feeAmount);
 
     // Asset Management
     //
