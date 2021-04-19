@@ -262,7 +262,7 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Emitted when a Pool registers tokens by calling `registerTokens`.
      */
-    event TokensRegistered(bytes32 poolId, IERC20[] tokens, address[] assetManagers);
+    event TokensRegistered(bytes32 indexed poolId, IERC20[] tokens, address[] assetManagers);
 
     /**
      * @dev Deregisters `tokens` for the `poolId` Pool. Must be called by the Pool's contract.
@@ -280,7 +280,7 @@ interface IVault is ISignaturesValidator {
     /**
      * @dev Emitted when a Pool deregisters tokens by calling `deregisterTokens`.
      */
-    event TokensDeregistered(bytes32 poolId, IERC20[] tokens);
+    event TokensDeregistered(bytes32 indexed poolId, IERC20[] tokens);
 
     /**
      * @dev Returns detailed information for a Pool's registered token.
