@@ -16,11 +16,11 @@ Active development occurs in this repository, which means some contracts in it m
 ### Directories
 
 - `contracts`: source code for all smart contracts in the system.
-  - `vault` stores the code for the `Vault` contract, which is split across a number of files to ease development.
+  - `vault` stores the `Vault` contract, which is split across many files for separation of concerns and clarity.
   - `pools` keeps the code for the different Pool types and related contracts, such as factories.
   - `test` holds contracts that are only used for testing purposes, often with lax access control patterns and other unsafe properties.
 - `test`: unit tests for each smart contract, using [ethers](https://docs.ethers.io/v5/) and [waffle chai matchers](https://ethereum-waffle.readthedocs.io/en/latest/matchers.html). The `helpers` subdirectory holds utilities used to simplify writing assertions, deploying test contracts, etc., with the overall goal of making tests more ergonomic and less verbose.
-- `lib`: miscelaneous files used for deployment, gas benchmarking, testing and so on.
+- `lib`: miscellaneous files used for deployment, gas benchmarking, testing and so on.
 
 This repository will soon be migrated into a monorepo, making the different contracts, interfaces and libraries easier to use by third parties. Stay tuned!
 
@@ -36,5 +36,6 @@ Most of the source code is licensed under the GNU General Public License Version
 
 ### Exceptions
 
-- All files under `contracts/lib/openzeppelin`, are based on the [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) library, and as such licensed under the MIT License.
+- All files under `contracts/lib/openzeppelin`, are based on the [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) library, and as such are licensed under the MIT License: see [LICENSE](
+./contracts/lib/openzeppelin/LICENSE).
 - All files under `lib` and `test` are unlicensed.
