@@ -1,31 +1,41 @@
+<img width="128px" src="https://balancer-labs.github.io/pebbles/images/pebbles-pad.256w.png" alt="balancer pebbles logo"/>
+
+# Balancer V2
+
 [![CI Status](https://github.com/balancer-labs/balancer-core-v2/workflows/CI/badge.svg)](https://github.com/balancer-labs/balancer-core-v2/actions)
+[![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-# balancer-core-v2
+This repository contains Balancer Protocol V2's core smart contract, the [`Vault`](./contracts/vault/Vault.sol), along with auxiliary contracts such as the [`WeightedPoolFactory`](./contracts/pools/weighted/WeightedPoolFactory.sol).
 
-Prototypes for the v2 architecture
+For a high-level introduction to Balancer V2, see [Introducing Balancer V2: Generalized AMMs](https://medium.com/balancer-protocol/balancer-v2-generalizing-amms-16343c4563ff).
 
-## Requirements
+## Structure
 
-- [Node.js](https://nodejs.org/en) ^12
-- [Yarn](https://classic.yarnpkg.com/lang/en)
+Active development occurs in this repository, which means some contracts in it may not be production-ready. Proceed with proper care.
 
-## Installation
-
-Run `yarn` to download all dependencies.
-
-## Usage
-
-All common tasks are implemented as scripts in the `package.json`, and can be run by passing them as arguments to `yarn`.
-
-`yarn compile` and `yarn test` are the two main Solidity workflow tasks, and both have watch modes variants (`yarn test:watch`). Note that `yarn test` does not compile files: if running tests and changing Solidity source code at the same time, it is recommended to run both commands in watch mode in two separate terminals (tests will run automatically on recompilation).
-
-Gas measurements of common tasks can be obtained by running `yarn benchmark`.
-
-## Directories
+### Directories
 
 - `contracts`: source code for all smart contracts in the system.
-  - `vault` stores the code for the `Vault` contract, which is split across a number of files to ease development.
+  - `vault` stores the `Vault` contract, which is split across many files for separation of concerns and clarity.
   - `pools` keeps the code for the different Pool types and related contracts, such as factories.
-  - `test` holds contracts that are only used for testing purposes, often with lax access control patterns and other 'unsafe' properties.
+  - `test` holds contracts that are only used for testing purposes, often with lax access control patterns and other unsafe properties.
 - `test`: unit tests for each smart contract, using [ethers](https://docs.ethers.io/v5/) and [waffle chai matchers](https://ethereum-waffle.readthedocs.io/en/latest/matchers.html). The `helpers` subdirectory holds utilities used to simplify writing assertions, deploying test contracts, etc., with the overall goal of making tests more ergonomic and less verbose.
-- `scripts`: these execute tasks unrelated to testing, such as gas benchmarking, deployment, etc. The `helpers` subdirectory contains specialized utilities for our project to e.g. make deployment easier - some of these are also used in the tests.
+- `lib`: miscellaneous files used for deployment, gas benchmarking, testing and so on.
+
+This repository will soon be migrated into a monorepo, making the different contracts, interfaces and libraries easier to use by third parties. Stay tuned!
+
+## Security
+
+Multiple independent reviews and audits were performed by [Certora](https://www.certora.com/), [OpenZeppelin](https://openzeppelin.com/) and [Trail of Bits](https://www.trailofbits.com/). The latest reports from these engagements are located in the `audits` directory.
+
+Please report any security issues you find to security@balancer.finance.
+
+## Licensing
+
+Most of the source code is licensed under the GNU General Public License Version 3 (GPL v3): see [`LICENSE`](./LICENSE).
+
+### Exceptions
+
+- All files under `contracts/lib/openzeppelin`, are based on the [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) library, and as such are licensed under the MIT License: see [LICENSE](
+./contracts/lib/openzeppelin/LICENSE).
+- All files under `lib` and `test` are unlicensed.

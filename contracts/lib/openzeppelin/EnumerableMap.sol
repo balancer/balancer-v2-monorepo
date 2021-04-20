@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.0;
-
-// Based on the EnumerableMap library from OpenZeppelin contracts, altered to include the following:
+// Based on the EnumerableMap library from OpenZeppelin Contracts, altered to include the following:
 //  * a map from IERC20 to bytes32
 //  * entries are stored in mappings instead of arrays, reducing implicit storage reads for out-of-bounds checks
 //  * unchecked_at and unchecked_valueAt, which allow for more gas efficient data reads in some scenarios
@@ -11,8 +9,7 @@ pragma solidity ^0.7.0;
 // Additionally, the base private functions that work on bytes32 were removed and replaced with a native implementation
 // for IERC20 keys, to reduce bytecode size and runtime costs.
 
-// We're using non-standard casing for the unchecked functions to differentiate them, so we need to turn off that rule
-// solhint-disable func-name-mixedcase
+pragma solidity ^0.7.0;
 
 import "./IERC20.sol";
 
