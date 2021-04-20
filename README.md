@@ -36,6 +36,6 @@ Most of the source code is licensed under the GNU General Public License Version
 
 ### Exceptions
 
-- All files under `contracts/lib/openzeppelin`, are based on the [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) library, and as such are licensed under the MIT License: see [LICENSE](
-./contracts/lib/openzeppelin/LICENSE).
-- All files under `lib` and `test` are unlicensed.
+- All files under `contracts/lib/openzeppelin`, are based on the [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) library, and as such are licensed under the MIT License: see [LICENSE](./contracts/lib/openzeppelin/LICENSE).
+- `contracts/lib/math/LogExpMath.sol` is licensed under the MIT License.
+- All other files under `lib` and `test` are unlicensed.
