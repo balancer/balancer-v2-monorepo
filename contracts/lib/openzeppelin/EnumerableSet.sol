@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.0;
-
-import "../helpers/BalancerErrors.sol";
-
-// Based on the EnumerableSet library from OpenZeppelin contracts, altered to remove the base private functions that
+// Based on the EnumerableSet library from OpenZeppelin Contracts, altered to remove the base private functions that
 // work on bytes32, replacing them with a native implementation for address values, to reduce bytecode size and runtime
 // costs.
 // The `unchecked_at` function was also added, which allows for more gas efficient data reads in some scenarios.
+
+pragma solidity ^0.7.0;
+
+import "../helpers/BalancerErrors.sol";
 
 /**
  * @dev Library for managing
