@@ -1,4 +1,4 @@
-<img width="128px" src="https://balancer-labs.github.io/pebbles/images/pebbles-pad.256w.png" alt="balancer pebbles logo"/>
+# <img src="logo.svg" alt="Balancer" height="128px">
 
 # Balancer V2
 
