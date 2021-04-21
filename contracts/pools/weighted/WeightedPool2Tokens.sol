@@ -196,11 +196,12 @@ contract WeightedPool2Tokens is
 
     // Swap Hooks
 
+    // TODO: DO NOT FORGET TO TAG THIS FN WITH `onlyVault(request.poolId)`
     function onSwap(
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) external virtual override onlyVault(request.poolId) whenNotPaused returns (uint256) {
+    ) external view virtual override whenNotPaused returns (uint256) {
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
@@ -787,7 +788,7 @@ contract WeightedPool2Tokens is
         uint256[] memory balances,
         uint256[] memory amountsIn,
         uint256[] memory normalizedWeights
-    ) private view returns (uint256) {
+    ) private pure returns (uint256) {
         _mutateAmounts(balances, amountsIn, FixedPoint.add);
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
@@ -796,7 +797,7 @@ contract WeightedPool2Tokens is
         uint256[] memory balances,
         uint256[] memory amountsOut,
         uint256[] memory normalizedWeights
-    ) private view returns (uint256) {
+    ) private pure returns (uint256) {
         _mutateAmounts(balances, amountsOut, FixedPoint.sub);
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
@@ -863,7 +864,9 @@ contract WeightedPool2Tokens is
      * Pool.
      */
     function _scalingFactor(IERC20 token) internal view returns (uint256) {
-        return token == _token0 ? _scalingFactor0 : _scalingFactor1;
+        if (token == _token0) return _scalingFactor0;
+        if (token == _token1) return _scalingFactor1;
+        _revert(Errors.INVALID_TOKEN);
     }
 
     /**

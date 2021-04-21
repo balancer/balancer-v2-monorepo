@@ -41,7 +41,7 @@ export default {
   },
 
   toWeightedPoolDeployment(params: RawWeightedPoolDeployment): WeightedPoolDeployment {
-    let { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner } = params;
+    let { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, twoTokens } = params;
     if (!tokens) tokens = new TokenList();
     if (!weights) weights = Array(tokens.length).fill(fp(1));
     weights = toNormalizedWeights(weights.map(bn));
@@ -49,7 +49,8 @@ export default {
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!owner) owner = ZERO_ADDRESS;
-    return { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner };
+    if (!twoTokens) twoTokens = false;
+    return { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, twoTokens };
   },
 
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
