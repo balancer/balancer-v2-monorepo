@@ -126,7 +126,7 @@ contract WeightedPool2Tokens is
 
         _normalizedWeight0 = normalizedWeight0;
         _normalizedWeight1 = normalizedWeight1;
-        _maxWeightTokenIndex = normalizedWeight0 > normalizedWeight1 ? 0 : 1;
+        _maxWeightTokenIndex = normalizedWeight0 >= normalizedWeight1 ? 0 : 1;
     }
 
     // Getters / Setters
@@ -173,7 +173,9 @@ contract WeightedPool2Tokens is
     }
 
     function _normalizedWeight(IERC20 token) internal view virtual returns (uint256) {
-        return token == _token0 ? _normalizedWeight0 : _normalizedWeight1;
+        if (token == _token0) return _normalizedWeight0;
+        if (token == _token1) return _normalizedWeight1;
+        _revert(Errors.INVALID_TOKEN);
     }
 
     function getLastInvariant() external view returns (uint256) {
@@ -893,9 +895,8 @@ contract WeightedPool2Tokens is
      * the `amounts` array.
      */
     function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        for (uint256 i = 0; i < 2; ++i) {
-            amounts[i] = Math.mul(amounts[i], scalingFactors[i]);
-        }
+        amounts[0] = Math.mul(amounts[0], scalingFactors[0]);
+        amounts[1] = Math.mul(amounts[1], scalingFactors[1]);
     }
 
     /**
