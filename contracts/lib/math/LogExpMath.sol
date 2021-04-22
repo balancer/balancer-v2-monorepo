@@ -117,7 +117,7 @@ library LogExpMath {
 
         int256 logx_times_y;
         if (LN_36_LOWER_BOUND < x_int256 && x_int256 < LN_36_UPPER_BOUND) {
-            int256 ln_36_x = ln_36(x_int256);
+            int256 ln_36_x = _ln_36(x_int256);
 
             // ln_36_x has 36 decimal places, so multiplying by y_int256 isn't as straightforward, since we can't just
             // bring y_int256 to 36 decimal places, as it might overflow. Instead, we perform two 18 decimal
@@ -125,7 +125,7 @@ library LogExpMath {
             // (downscaled) last 18 decimals.
             logx_times_y = ((ln_36_x / ONE_18) * y_int256 + ((ln_36_x % ONE_18) * y_int256) / ONE_18);
         } else {
-            logx_times_y = ln(x_int256) * y_int256;
+            logx_times_y = _ln(x_int256) * y_int256;
         }
         logx_times_y /= ONE_18;
 
@@ -281,17 +281,54 @@ library LogExpMath {
     }
 
     /**
+     * @dev Logarithm (log(arg, base), with signed 18 decimal fixed point base and argument argument.
+     */
+    function log(int256 arg, int256 base) internal pure returns (int256) {
+        // This performs a simple base change: log(arg, base) = ln(arg) / ln(base).
+
+        // Both logBase and logArg are computed as 36 decimal fixed point numbers, either by using ln_36, or by
+        // upscaling.
+
+        int256 logBase;
+        if (LN_36_LOWER_BOUND < base && base < LN_36_UPPER_BOUND) {
+            logBase = _ln_36(base);
+        } else {
+            logBase = _ln(base) * ONE_18;
+        }
+
+        int256 logArg;
+        if (LN_36_LOWER_BOUND < arg && arg < LN_36_UPPER_BOUND) {
+            logArg = _ln_36(arg);
+        } else {
+            logArg = _ln(arg) * ONE_18;
+        }
+
+        // When dividing, we multiply by ONE_18 to arrive at a result with 18 decimal places
+        return (logArg * ONE_18) / logBase;
+    }
+
+    /**
      * @dev Natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
      */
     function ln(int256 a) internal pure returns (int256) {
         // The real natural logarithm is not defined for negative numbers or zero.
         _require(a > 0, Errors.OUT_OF_BOUNDS);
+        if (LN_36_LOWER_BOUND < a && a < LN_36_UPPER_BOUND) {
+            return _ln_36(a) / ONE_18;
+        } else {
+            return _ln(a);
+        }
+    }
 
+    /**
+     * @dev Intrnal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
+     */
+    function _ln(int256 a) private pure returns (int256) {
         if (a < ONE_18) {
             // Since ln(a^k) = k * ln(a), we can compute ln(a) as ln(a) = ln((1/a)^(-1)) = - ln((1/a)). If a is less
             // than one, 1/a will be greater than one, and this if statement will not be entered in the recursive call.
             // Fixed point division requires multiplying by ONE_18.
-            return (-ln((ONE_18 * ONE_18) / a));
+            return (-_ln((ONE_18 * ONE_18) / a));
         }
 
         // First, we use the fact that ln^(a * b) = ln(a) + ln(b) to decompose ln(a) into a sum of powers of two, which
@@ -421,39 +458,12 @@ library LogExpMath {
     }
 
     /**
-     * @dev Logarithm (log(arg, base), with signed 18 decimal fixed point base and argument argument.
-     */
-    function log(int256 arg, int256 base) internal pure returns (int256) {
-        // This performs a simple base change: log(arg, base) = ln(arg) / ln(base).
-
-        // Both logBase and logArg are computed as 36 decimal fixed point numbers, either by using ln_36, or by
-        // upscaling.
-
-        int256 logBase;
-        if (LN_36_LOWER_BOUND < base && base < LN_36_UPPER_BOUND) {
-            logBase = ln_36(base);
-        } else {
-            logBase = ln(base) * ONE_18;
-        }
-
-        int256 logArg;
-        if (LN_36_LOWER_BOUND < arg && arg < LN_36_UPPER_BOUND) {
-            logArg = ln_36(arg);
-        } else {
-            logArg = ln(arg) * ONE_18;
-        }
-
-        // When dividing, we multiply by ONE_18 to arrive at a result with 18 decimal places
-        return (logArg * ONE_18) / logBase;
-    }
-
-    /**
-     * @dev High precision (36 decimal places) natural logarithm (ln(x)) with signed 18 decimal fixed point argument,
+     * @dev Intrnal high precision (36 decimal places) natural logarithm (ln(x)) with signed 18 decimal fixed point argument,
      * for x close to one.
      *
      * Should only be used if x is between LN_36_LOWER_BOUND and LN_36_UPPER_BOUND.
      */
-    function ln_36(int256 x) private pure returns (int256) {
+    function _ln_36(int256 x) private pure returns (int256) {
         // Since ln(1) = 0, a value of x close to one will yield a very small result, which makes using 36 digits
         // worthwhile.
 
