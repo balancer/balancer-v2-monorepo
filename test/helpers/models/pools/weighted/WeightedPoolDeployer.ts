@@ -26,20 +26,37 @@ export default {
 
   async _deployStandalone(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
     const { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
-    return deploy('WeightedPool', {
-      args: [
-        vault.address,
-        NAME,
-        SYMBOL,
-        tokens.addresses,
-        weights,
-        swapFeePercentage,
-        pauseWindowDuration,
-        bufferPeriodDuration,
-        TypesConverter.toAddress(owner),
-      ],
-      from,
-    });
+    return tokens.length === 2 && params.twoTokens
+      ? deploy('WeightedPool2Tokens', {
+          args: [
+            vault.address,
+            NAME,
+            SYMBOL,
+            tokens.addresses[0],
+            tokens.addresses[1],
+            weights[0],
+            weights[1],
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            TypesConverter.toAddress(owner),
+          ],
+          from,
+        })
+      : deploy('WeightedPool', {
+          args: [
+            vault.address,
+            NAME,
+            SYMBOL,
+            tokens.addresses,
+            weights,
+            swapFeePercentage,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            TypesConverter.toAddress(owner),
+          ],
+          from,
+        });
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
