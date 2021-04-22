@@ -28,7 +28,7 @@ contract WeightedOracleMath {
     using FixedPoint for uint256;
     using SignedFixedPoint for int256;
 
-    int256 internal constant _INVARIANT_COMPRESSION_FACTOR = 1e14;
+    int256 internal constant _INVARIANT_COMPRESSION_FACTOR = 1e15;
     int256 internal constant _PRICE_COMPRESSION_FACTOR = 1e14;
 
     function _calculatelInvariantLn(
