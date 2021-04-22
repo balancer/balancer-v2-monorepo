@@ -20,56 +20,54 @@ import "../../lib/math/Math.sol";
 import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/openzeppelin/SafeCast.sol";
 
+/* solhint-disable private-vars-leading-underscore */
+
 contract WeightedOracleMath {
     using SafeCast for uint256;
     using SafeCast for int256;
     using FixedPoint for uint256;
+    using SignedFixedPoint for int256;
 
-    function _calculateInvariantAndLn(
+    int256 internal constant _INVARIANT_COMPRESSION_FACTOR = 1e14;
+    int256 internal constant _PRICE_COMPRESSION_FACTOR = 1e14;
+
+    function _calculatelInvariantLn(
         uint256 normalizedWeightA,
         uint256 balanceA,
         uint256 normalizedWeightB,
         uint256 balanceB
-    ) internal pure returns (uint256 invariant, int256 invariantLn) {
-        uint256 term1 = balanceA.powDown(normalizedWeightA);
-        uint256 term2 = balanceB.powDown(normalizedWeightB);
+    ) internal pure returns (int256 invariantLn) {
+        //We can cast weights and balances to int256 becuase they are always lower than the max int256.
+        int256 term1 = int256(normalizedWeightA).mul(SignedFixedPoint.ln(int256(balanceA)));
+        int256 term2 = int256(normalizedWeightB).mul(SignedFixedPoint.ln(int256(balanceB)));
 
-        invariant = term1.mulDown(term2);
-
-        _require(invariant > 0, Errors.ZERO_INVARIANT);
-
-        invariantLn = SignedFixedPoint.ln(invariant.toInt256());
+        invariantLn = term1.add(term2) / _INVARIANT_COMPRESSION_FACTOR;
     }
 
-    function _calculateSpotPriceAndLn(
+    function _calculateSpotPriceLn(
         uint256 normalizedWeightA,
         uint256 balanceA,
         uint256 normalizedWeightB,
         uint256 balanceB
-    ) internal pure returns (uint256 spotPrice, int256 spotPriceLn) {
-        //Rounding down spot price
-        spotPrice = balanceA.divDown(normalizedWeightA).divDown(balanceB.divUp(normalizedWeightB));
+    ) internal pure returns (int256 spotPriceLn) {
+        //Rounding direction does not matter because we are compressing the log result at the end.
+        uint256 spotPrice = balanceA.divDown(normalizedWeightA).divDown(balanceB.divUp(normalizedWeightB));
 
-        spotPriceLn = SignedFixedPoint.ln(spotPrice.toInt256());
+        spotPriceLn = SignedFixedPoint.ln(spotPrice.toInt256()) / _PRICE_COMPRESSION_FACTOR;
     }
 
-    function _calculateBPTPriceChangeFactorAndLn(
-        uint256 normalizedWeightA,
-        uint256 balanceA,
-        uint256 normalizedWeightB,
-        uint256 balanceB,
-        uint256 prevSpotPriceAB,
-        uint256 prevBptPriceFactor
-    ) internal pure returns (uint256 bptPriceFactor, int256 bptPriceFactorLn) {
-        //Rounding down overall
+    function _calculateBPTPriceLn(
+        uint256 normalizedWeight,
+        uint256 balance,
+        int256 bptTotalSupplyLn
+    ) internal pure returns (int256 bptPriceLn) {
+        //Rounding direction does not matter because we are compressing the log result at the end.
+        int256 totalBptLn = SignedFixedPoint.ln(balance.divDown(normalizedWeight).toInt256());
 
-        uint256 currentSpotPrice = balanceA.divDown(normalizedWeightA).divDown(balanceB.divUp(normalizedWeightB));
+        bptPriceLn = totalBptLn / _INVARIANT_COMPRESSION_FACTOR - bptTotalSupplyLn;
+    }
 
-        uint256 base = currentSpotPrice.divDown(prevSpotPriceAB);
-        uint256 exponent = balanceB.divDown(balanceB.add(balanceA));
-
-        bptPriceFactor = base.powDown(exponent).mulDown(prevBptPriceFactor);
-
-        bptPriceFactorLn = SignedFixedPoint.ln(bptPriceFactor.toInt256());
+    function _calculateBptTotalSupplyLn(uint256 bptTotalSupply) internal pure returns (int256 bptTotalSupplyLn) {
+        bptTotalSupplyLn = SignedFixedPoint.ln(bptTotalSupply.toInt256()) / _INVARIANT_COMPRESSION_FACTOR;
     }
 }
