@@ -24,7 +24,6 @@ contract WeightedOracleMath {
     using SafeCast for uint256;
     using SafeCast for int256;
     using FixedPoint for uint256;
-    using SignedFixedPoint for int256;
 
     function _calculateInvariantAndLn(
         uint256 normalizedWeightA,
@@ -32,12 +31,14 @@ contract WeightedOracleMath {
         uint256 normalizedWeightB,
         uint256 balanceB
     ) internal pure returns (uint256 invariant, int256 invariantLn) {
-        int256 term1 = normalizedWeightA.toInt256().mul(SignedFixedPoint.ln(balanceA.toInt256()));
-        int256 term2 = normalizedWeightB.toInt256().mul(SignedFixedPoint.ln(balanceB.toInt256()));
+        uint256 term1 = balanceA.powDown(normalizedWeightA);
+        uint256 term2 = balanceB.powDown(normalizedWeightB);
 
-        invariantLn = term1.add(term2);
+        invariant = term1.mulDown(term2);
 
-        invariant = SignedFixedPoint.exp(invariantLn).toUint256();
+        _require(invariant > 0, Errors.ZERO_INVARIANT);
+
+        invariantLn = SignedFixedPoint.ln(invariant.toInt256());
     }
 
     function _calculateSpotPriceAndLn(
