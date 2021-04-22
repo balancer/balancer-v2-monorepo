@@ -17,6 +17,7 @@ export type RawWeightedPoolDeployment = {
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   fromFactory?: boolean;
+  twoTokens?: boolean;
 };
 
 export type WeightedPoolDeployment = {
@@ -25,6 +26,7 @@ export type WeightedPoolDeployment = {
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
+  twoTokens: boolean;
   owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;

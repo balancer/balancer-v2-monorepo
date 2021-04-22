@@ -36,8 +36,12 @@ describe('WeightedPool', function () {
     });
   });
 
-  context('for a 2 token pool', () => {
-    itBehavesAsWeightedPool(2);
+  context('for a 2 token pool (vanilla)', () => {
+    itBehavesAsWeightedPool(2, false);
+  });
+
+  context('for a 2 token pool (custom)', () => {
+    itBehavesAsWeightedPool(2, true);
   });
 
   context('for a 3 token pool', () => {
@@ -54,15 +58,16 @@ describe('WeightedPool', function () {
     });
   });
 
-  function itBehavesAsWeightedPool(numberOfTokens: number) {
+  function itBehavesAsWeightedPool(numberOfTokens: number, useCustomTwoTokenPool = false) {
     let pool: WeightedPool, tokens: TokenList;
 
+    const twoTokens = useCustomTwoTokenPool;
     const ZEROS = Array(numberOfTokens).fill(bn(0));
     const weights: BigNumberish[] = WEIGHTS.slice(0, numberOfTokens);
     const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
     async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
-      params = Object.assign({}, { tokens, weights, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE }, params);
+      params = Object.assign({}, { tokens, weights, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, twoTokens }, params);
       pool = await WeightedPool.create(params);
     }
 
@@ -130,11 +135,13 @@ describe('WeightedPool', function () {
       });
 
       context('when the creation fails', () => {
-        it('reverts if the number of tokens and weights do not match', async () => {
-          const badWeights = weights.slice(1);
+        if (!twoTokens) {
+          it('reverts if the number of tokens and weights do not match', async () => {
+            const badWeights = weights.slice(1);
 
-          await expect(deployPool({ weights: badWeights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-        });
+            await expect(deployPool({ weights: badWeights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+        }
 
         it('reverts if there are repeated tokens', async () => {
           const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
