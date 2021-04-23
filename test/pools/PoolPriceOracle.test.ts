@@ -133,7 +133,7 @@ describe('PoolPriceOracle', () => {
     const newLogInvariant = 300;
 
     const itProcessDataPricesCorrectly = (useLastInvariant: boolean) => {
-      const itUpdatesTheExistingSample = (index: number, elapsed: number, newSample = false) => {
+      const itUpdatesTheExistingSample = (index: number, elapsed: number) => {
         it('updates the existing sample', async () => {
           const previousSample = await oracle.getSample(index);
 
@@ -142,10 +142,9 @@ describe('PoolPriceOracle', () => {
             ? await oracle.processPriceDataWithLastInvariant(elapsed, index, newLogPairPrice, newLogBptPrice)
             : await oracle.processPriceData(elapsed, index, newLogPairPrice, newLogBptPrice, newLogInvariant);
 
-          const expectedIndex = newSample ? (index + 1) % MAX_BUFFER_SIZE : index;
-          expectEvent.inReceipt(await tx.wait(), 'PriceDataProcessed', { newSample, sampleIndex: expectedIndex });
+          expectEvent.inReceipt(await tx.wait(), 'PriceDataProcessed', { newSample: false, sampleIndex: index });
+          const updatedSample = await oracle.getSample(index);
 
-          const updatedSample = await oracle.getSample(expectedIndex);
           expect(updatedSample.timestamp).to.be.equal(await currentTimestamp());
           const actualElapsed = updatedSample.timestamp.sub(previousSample.timestamp);
 
@@ -192,7 +191,7 @@ describe('PoolPriceOracle', () => {
             ? await oracle.processPriceDataWithLastInvariant(elapsed, index, newLogPairPrice, newLogBptPrice)
             : await oracle.processPriceData(elapsed, index, newLogPairPrice, newLogBptPrice, newLogInvariant);
 
-          const expectedIndex = index + 1;
+          const expectedIndex = (index + 1) % MAX_BUFFER_SIZE;
           expectEvent.inReceipt(await tx.wait(), 'PriceDataProcessed', { newSample: true, sampleIndex: expectedIndex });
 
           const newSample = await oracle.getSample(expectedIndex);
@@ -250,7 +249,7 @@ describe('PoolPriceOracle', () => {
           });
         });
 
-        context('when the next sample does not complete the buffer', () => {
+        context('when the next sample completes the buffer', () => {
           const index = MAX_BUFFER_SIZE - 1;
 
           sharedBeforeEach('create a sample', async () => {
@@ -269,8 +268,8 @@ describe('PoolPriceOracle', () => {
             itUpdatesTheExistingSample(index, MINUTE);
           });
 
-          context('when the current timestamp is greater than the initial timestamp by 2048 minutes', () => {
-            itUpdatesTheExistingSample(index, MINUTE * 3, true);
+          context('when the current timestamp is greater than the initial timestamp by more than 2 minutes', () => {
+            itCreatesAnotherSample(index, MINUTE * 3);
           });
         });
       });
