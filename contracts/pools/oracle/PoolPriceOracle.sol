@@ -31,21 +31,17 @@ contract PoolPriceOracle {
     // Each sample in the buffer will accumulate information for up-to 2 minutes
     uint256 private constant _MAX_SAMPLE_DURATION = 2 minutes;
 
+    // We use a mapping to simulate an array: the buffer won't grow or shrink, and since we will always use valid indexes
+    // using a mapping saves gas by skipping the bounds checks.
     mapping(uint256 => bytes32) internal _samples;
 
     /**
-     * @dev Process a price information based on the current index and the initial timestamp of the current sample.
-     * Every time this function is call a sample in the buffer will be updated. The sample to update will be determined
-     * based on the elapsed time from the initial timestamp of the current sample that was given. In case this diff is
-     * larger than a constant duration, in this case 2 minutes, the updated price information will be written to next
-     * sample in the buffer.
+     * @dev Processes new price and invariant data, updating the current sample or creating a new one.
+     * 
+     * Receives the new logarithms of values to store: `logPairPrice`, `logBptPrice` and `logInvariant`, as well the index of 
+     * the current sample, and the timestamp of its creation.
      *
-     * @param logPairPrice The logarithmic value of the new reported pair price
-     * @param logBptPrice The logarithmic value of the new reported BPT price
-     * @param logInvariant The logarithmic value of the new reported invariant
-     *
-     * @return newSample Tells whether a new sample was created
-     * @return sampleIndex The index of the sample where the updated information was written
+     * The return value of `newSample` is true if a new sample was created, in which case `sampleIndex` is its index.
      */
     function _processPriceData(
         uint256 currentSampleInitialTimestamp,
@@ -67,7 +63,8 @@ contract PoolPriceOracle {
     }
 
     /**
-     * @dev Same as `_processPriceData` but re-using the last log invariant stored in the current sample.
+     * @dev Same as `_processPriceData` but re-using the last log invariant stored in the current sample, which doesn't
+     * change (significantly) in swaps.
      */
     function _processPriceData(
         uint256 currentSampleInitialTimestamp,
@@ -88,7 +85,7 @@ contract PoolPriceOracle {
     }
 
     /**
-     * @dev Private function that actually process a price information for a sample.
+     * @dev Private function that actually processes new price information for a sample.
      */
     function _processPriceData(
         bytes32 currentSample,
