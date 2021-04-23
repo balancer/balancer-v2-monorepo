@@ -138,14 +138,15 @@ library Samples {
         int256 _accLogInvariant,
         uint256 _timestamp
     ) internal pure returns (bytes32) {
-        return bytes32(
-            uint256(_logPairPrice << 234) +
-            uint256(_accLogPairPrice << 180) +
-            uint256(_logBptPrice << 160) +
-            uint256(_accLogBptPrice << 106) +
-            uint256(_logInvariant << 86) +
-            uint256(_accLogInvariant << 32) +
-            _timestamp
-        );
+        return
+            bytes32(
+                uint256(_logPairPrice << 234) +
+                    uint256(_accLogPairPrice << 180) +
+                    uint256(_logBptPrice << 160) +
+                    uint256(_accLogBptPrice << 106) +
+                    uint256(_logInvariant << 86) +
+                    uint256(_accLogInvariant << 32) +
+                    _timestamp
+            );
     }
 }
