@@ -19,21 +19,21 @@ pragma solidity ^0.7.0;
  * It basically handles the updates, encoding, and decoding of samples.
  *
  * Each sample holds 7 pieces of information:
- *  1. Last log pair price: The logarithmic value of the last pair price reported to the oracle.
+ *  1. Log pair price: The logarithmic value of the sample's pair price reported to the oracle.
  *  2. Acc log pair price: The sum of all the log pair prices reported to the oracle multiplied by the elapsed time
  *     since the previous value accumulated in the sample.
- *  3. Last log BPT price: The logarithmic value of the last BPT price reported to the oracle.
+ *  3. Log BPT price: The logarithmic value of the sample's BPT price reported to the oracle.
  *  4. Acc log BPT price: The sum of all the log BPT prices reported to the oracle multiplied by the elapsed time
  *     since the previous value accumulated in the sample.
- *  5. Last log invariant: The logarithmic value of the last invariant reported to the oracle.
+ *  5. Log invariant: The logarithmic value of the sample's invariant reported to the oracle.
  *  6. Acc log invariant: The sum of all the log invariants reported to the oracle multiplied by the elapsed time
  *     since the previous value accumulated in the sample.
  *  7. Timestamp: The latest time when the sample was updated
  *
- * All samples are stored in a single word, represented by a bytes32, following the next structure:
+ * All samples are stored in a single word, represented by a bytes32, with the following structure:
  *
- * [ last log pair | acc log pair | last log bpt | acc log bpt | last log inv | acc log inv |  timestamp ]
- * [     int20     |     int54    |     int20    |     int54   |     int20    |    int54    |    uint32  ]
+ * [ log pair price | acc log pair price | log bpt price | acc log bpt price |  log inv  | acc log inv |  timestamp ]
+ * [     int20      |        int54       |     int20     |       int54       |   int20   |    int54    |    uint32  ]
  *
  * Note we are only using the least-significant 254 bytes of a word: we ignore the most-significant 2 bytes.
  */
@@ -49,9 +49,10 @@ library Samples {
      * @dev Updates a sample, accumulating the new reported information based on the elapsed time since the previous
      * sample update and setting the current timestamp.
      *
-     * IMPORTANT! This function does not perform any arithmetic checks. It assumes the caller will never report a value
-     * that will make the accumulators to overflow. Additionally, it also assumes the current timestamp reported will be
-     * always in the future, meaning it cannot be lower than the timestamp already stored in the sample to be updated.
+     * IMPORTANT: This function does not perform any arithmetic checks. It assumes the caller will never report a value
+     * that doesn't fit, or that will cause accumulators to overflow. Additionally, it also assumes the current
+     * timestamp reported will be always in the future, meaning it cannot be lower than the timestamp already stored
+     * in the sample to be updated.
      */
     function update(
         bytes32 sample,
@@ -78,9 +79,9 @@ library Samples {
     }
 
     /**
-     * @dev Returns the logarithm of a sample's instant pair price.
+     * @dev Returns the logarithm of a sample's pair price.
      */
-    function lastLogPairPrice(bytes32 sample) internal pure returns (int256) {
+    function logPairPrice(bytes32 sample) internal pure returns (int256) {
         return _decodeInt20(sample, 234); // 234 = 54 + 20 + 54 + 20 + 54 + 32
     }
 
@@ -92,28 +93,28 @@ library Samples {
     }
 
     /**
-     * @dev Tells the last log BPT price encoded in a sample
+     * @dev Returns the logarithm of a sample's BPT price.
      */
-    function lastLogBptPrice(bytes32 sample) internal pure returns (int256) {
-        return _decodeInt20(sample, 160);  // 160 = 54 + 20 + 54 + 32
+    function logBptPrice(bytes32 sample) internal pure returns (int256) {
+        return _decodeInt20(sample, 160); // 160 = 54 + 20 + 54 + 32
     }
 
     /**
-     * @dev Tells the accumulated log BPT price encoded in a sample
+     * @dev Returns a sample's time-weighted accumulated BPT price logarithm.
      */
     function accLogBptPrice(bytes32 sample) internal pure returns (int256) {
         return _decodeInt54(sample, 106); // 106 = 20 + 54 + 32
     }
 
     /**
-     * @dev Tells the last log invariant encoded in a sample
+     * @dev Returns the logarithm of a sample's invariant
      */
-    function lastLogInvariant(bytes32 sample) internal pure returns (int256) {
+    function logInvariant(bytes32 sample) internal pure returns (int256) {
         return _decodeInt20(sample, 86); // 86 = 54 + 32
     }
 
     /**
-     * @dev Tells the accumulated log invariant encoded in a sample
+     * @dev Returns a sample's time-weighted accumulated invariant logarithm.
      */
     function accLogInvariant(bytes32 sample) internal pure returns (int256) {
         return _decodeInt54(sample, 32);
@@ -130,21 +131,21 @@ library Samples {
      * @dev Packs together the different pieces of information to construct a sample, represented using a bytes32.
      */
     function pack(
-        int256 _lastLogPairPrice,
+        int256 _logPairPrice,
         int256 _accLogPairPrice,
-        int256 _lastLogBptPrice,
+        int256 _logBptPrice,
         int256 _accLogBptPrice,
-        int256 _lastLogInvariant,
+        int256 _logInvariant,
         int256 _accLogInvariant,
         uint256 _timestamp
     ) internal pure returns (bytes32) {
         return
             bytes32(
-                (uint256(_lastLogPairPrice & _MASK_20) << 234) +
+                (uint256(_logPairPrice & _MASK_20) << 234) +
                     (uint256(_accLogPairPrice & _MASK_54) << 180) +
-                    (uint256(_lastLogBptPrice & _MASK_20) << 160) +
+                    (uint256(_logBptPrice & _MASK_20) << 160) +
                     (uint256(_accLogBptPrice & _MASK_54) << 106) +
-                    (uint256(_lastLogInvariant & _MASK_20) << 86) +
+                    (uint256(_logInvariant & _MASK_20) << 86) +
                     (uint256(_accLogInvariant & _MASK_54) << 32) +
                     (uint256(_timestamp & _MASK_32))
             );

@@ -22,11 +22,11 @@ contract PoolPriceOracleMock is PoolPriceOracle {
     using Samples for bytes32;
 
     struct Sample {
-        int256 lastLogPairPrice;
+        int256 logPairPrice;
         int256 accLogPairPrice;
-        int256 lastLogBptPrice;
+        int256 logBptPrice;
         int256 accLogBptPrice;
-        int256 lastLogInvariant;
+        int256 logInvariant;
         int256 accLogInvariant;
         uint256 timestamp;
     }
@@ -53,11 +53,11 @@ contract PoolPriceOracleMock is PoolPriceOracle {
 
     function pack(Sample memory sample) public pure returns (bytes32) {
         return Samples.pack(
-            sample.lastLogPairPrice,
+            sample.logPairPrice,
             sample.accLogPairPrice,
-            sample.lastLogBptPrice,
+            sample.logBptPrice,
             sample.accLogBptPrice,
-            sample.lastLogInvariant,
+            sample.logInvariant,
             sample.accLogInvariant,
             sample.timestamp
         );
@@ -65,11 +65,11 @@ contract PoolPriceOracleMock is PoolPriceOracle {
 
     function unpack(bytes32 sample) public pure returns (Sample memory) {
         return Sample({
-            lastLogPairPrice: sample.lastLogPairPrice(),
+            logPairPrice: sample.logPairPrice(),
             accLogPairPrice: sample.accLogPairPrice(),
-            lastLogBptPrice: sample.lastLogBptPrice(),
+            logBptPrice: sample.logBptPrice(),
             accLogBptPrice: sample.accLogBptPrice(),
-            lastLogInvariant: sample.lastLogInvariant(),
+            logInvariant: sample.logInvariant(),
             accLogInvariant: sample.accLogInvariant(),
             timestamp: sample.timestamp()
         });

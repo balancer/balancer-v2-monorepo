@@ -31,15 +31,15 @@ contract PoolPriceOracle {
     // Each sample in the buffer will accumulate information for up-to 2 minutes
     uint256 private constant _MAX_SAMPLE_DURATION = 2 minutes;
 
-    // We use a mapping to simulate an array: the buffer won't grow or shrink, and since we will always use valid indexes
-    // using a mapping saves gas by skipping the bounds checks.
+    // We use a mapping to simulate an array: the buffer won't grow or shrink, and since we will always use valid
+    // indexes using a mapping saves gas by skipping the bounds checks.
     mapping(uint256 => bytes32) internal _samples;
 
     /**
      * @dev Processes new price and invariant data, updating the current sample or creating a new one.
-     * 
-     * Receives the new logarithms of values to store: `logPairPrice`, `logBptPrice` and `logInvariant`, as well the index of 
-     * the current sample, and the timestamp of its creation.
+     *
+     * Receives the new logarithms of values to store: `logPairPrice`, `logBptPrice` and `logInvariant`, as well the
+     * index of the current sample, and the timestamp of its creation.
      *
      * The return value of `newSample` is true if a new sample was created, in which case `sampleIndex` is its index.
      */
@@ -63,8 +63,8 @@ contract PoolPriceOracle {
     }
 
     /**
-     * @dev Same as `_processPriceData` but re-using the last log invariant stored in the current sample, which doesn't
-     * change (significantly) in swaps.
+     * @dev Same as `_processPriceData` but re-using the sample's log invariant stored in the current sample, which
+     * doesn't change (significantly) in swaps.
      */
     function _processPriceData(
         uint256 currentSampleInitialTimestamp,
@@ -80,7 +80,7 @@ contract PoolPriceOracle {
                 currentIndex,
                 logPairPrice,
                 logBptPrice,
-                currentSample.lastLogInvariant()
+                currentSample.logInvariant()
             );
     }
 
@@ -96,9 +96,15 @@ contract PoolPriceOracle {
         int256 logInvariant
     ) private returns (bool newSample, uint256 sampleIndex) {
         // solhint-disable not-rely-on-time
+        // Update the current sample with the newly received data.
         bytes32 sample = currentSample.update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
+
+        // We create a new sample if more than _MAX_SAMPLE_DURATION seconds have elapsed since the creation of the
+        // current one. In other words, no sample accumulates data over a period larger than _MAX_SAMPLE_DURATION.
         newSample = block.timestamp - currentSampleInitialTimestamp >= _MAX_SAMPLE_DURATION;
         sampleIndex = newSample ? ((currentIndex + 1) % _BUFFER_SIZE) : currentIndex;
+
+        // Store the updated or new sample.
         _samples[sampleIndex] = sample;
     }
 }

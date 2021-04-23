@@ -18,30 +18,30 @@ describe('PoolPriceOracle', () => {
 
   describe('packing', () => {
     const assertPacking = async (
-      lastLogPairPrice: BigNumberish,
+      logPairPrice: BigNumberish,
       accLogPairPrice: BigNumberish,
-      lastLogBptPrice: BigNumberish,
+      logBptPrice: BigNumberish,
       accLogBptPrice: BigNumberish,
-      lastLogInvariant: BigNumberish,
+      logInvariant: BigNumberish,
       accLogInvariant: BigNumberish,
       timestamp: BigNumberish
     ) => {
       const packedSample = await oracle.pack({
-        lastLogPairPrice,
+        logPairPrice,
         accLogPairPrice,
-        lastLogBptPrice,
+        logBptPrice,
         accLogBptPrice,
-        lastLogInvariant,
+        logInvariant,
         accLogInvariant,
         timestamp,
       });
 
       const sample = await oracle.unpack(packedSample);
-      expect(sample.lastLogPairPrice).to.be.equal(lastLogPairPrice);
+      expect(sample.logPairPrice).to.be.equal(logPairPrice);
       expect(sample.accLogPairPrice).to.be.equal(accLogPairPrice);
-      expect(sample.lastLogBptPrice).to.be.equal(lastLogBptPrice);
+      expect(sample.logBptPrice).to.be.equal(logBptPrice);
       expect(sample.accLogBptPrice).to.be.equal(accLogBptPrice);
-      expect(sample.lastLogInvariant).to.be.equal(lastLogInvariant);
+      expect(sample.logInvariant).to.be.equal(logInvariant);
       expect(sample.accLogInvariant).to.be.equal(accLogInvariant);
       expect(sample.timestamp).to.be.equal(timestamp);
     };
@@ -87,32 +87,32 @@ describe('PoolPriceOracle', () => {
   describe('update', () => {
     const assertUpdate = async (
       sample: string,
-      lastLogPairPrice: BigNumberish,
-      lastLogBptPrice: BigNumberish,
-      lastLogInv: BigNumberish,
+      logPairPrice: BigNumberish,
+      logBptPrice: BigNumberish,
+      logInv: BigNumberish,
       elapsed: BigNumberish
     ) => {
       const prevSample = await oracle.unpack(sample);
       const timestamp = prevSample.timestamp.add(elapsed);
 
-      const newSample = await oracle.update(sample, lastLogPairPrice, lastLogBptPrice, lastLogInv, timestamp);
+      const newSample = await oracle.update(sample, logPairPrice, logBptPrice, logInv, timestamp);
 
-      expect(newSample.lastLogPairPrice).to.be.equal(lastLogPairPrice);
-      expect(newSample.accLogPairPrice).to.be.equal(prevSample.accLogPairPrice.add(bn(lastLogPairPrice).mul(elapsed)));
-      expect(newSample.lastLogBptPrice).to.be.equal(lastLogBptPrice);
-      expect(newSample.accLogBptPrice).to.be.equal(prevSample.accLogBptPrice.add(bn(lastLogBptPrice).mul(elapsed)));
-      expect(newSample.lastLogInvariant).to.be.equal(lastLogInv);
-      expect(newSample.accLogInvariant).to.be.equal(prevSample.accLogInvariant.add(bn(lastLogInv).mul(elapsed)));
+      expect(newSample.logPairPrice).to.be.equal(logPairPrice);
+      expect(newSample.accLogPairPrice).to.be.equal(prevSample.accLogPairPrice.add(bn(logPairPrice).mul(elapsed)));
+      expect(newSample.logBptPrice).to.be.equal(logBptPrice);
+      expect(newSample.accLogBptPrice).to.be.equal(prevSample.accLogBptPrice.add(bn(logBptPrice).mul(elapsed)));
+      expect(newSample.logInvariant).to.be.equal(logInv);
+      expect(newSample.accLogInvariant).to.be.equal(prevSample.accLogInvariant.add(bn(logInv).mul(elapsed)));
       expect(newSample.timestamp).to.be.equal(timestamp);
     };
 
     it('updates the sample correctly', async () => {
       const sample = await oracle.pack({
-        lastLogPairPrice: 1,
+        logPairPrice: 1,
         accLogPairPrice: 10,
-        lastLogBptPrice: 2,
+        logBptPrice: 2,
         accLogBptPrice: 20,
-        lastLogInvariant: 3,
+        logInvariant: 3,
         accLogInvariant: 30,
         timestamp: 400,
       });
@@ -148,18 +148,18 @@ describe('PoolPriceOracle', () => {
           expect(updatedSample.timestamp).to.be.equal(await currentTimestamp());
           const actualElapsed = updatedSample.timestamp.sub(previousSample.timestamp);
 
-          expect(updatedSample.lastLogPairPrice).to.be.equal(newLogPairPrice);
+          expect(updatedSample.logPairPrice).to.be.equal(newLogPairPrice);
           const expectedAccLogPairPrice = previousSample.accLogPairPrice.add(bn(newLogPairPrice).mul(actualElapsed));
           expect(updatedSample.accLogPairPrice).to.be.equal(expectedAccLogPairPrice);
 
-          expect(updatedSample.lastLogBptPrice).to.be.equal(newLogBptPrice);
+          expect(updatedSample.logBptPrice).to.be.equal(newLogBptPrice);
           const expectedAccLogBptPrice = previousSample.accLogBptPrice.add(bn(newLogBptPrice).mul(actualElapsed));
           expect(updatedSample.accLogBptPrice).to.be.equal(expectedAccLogBptPrice);
 
-          const lastLogInvariant = useLastInvariant ? previousSample.lastLogInvariant : newLogInvariant;
-          expect(updatedSample.lastLogInvariant).to.be.equal(lastLogInvariant);
+          const logInvariant = useLastInvariant ? previousSample.logInvariant : newLogInvariant;
+          expect(updatedSample.logInvariant).to.be.equal(logInvariant);
 
-          const expectedAccLogInvariant = previousSample.accLogInvariant.add(bn(lastLogInvariant).mul(actualElapsed));
+          const expectedAccLogInvariant = previousSample.accLogInvariant.add(bn(logInvariant).mul(actualElapsed));
           expect(updatedSample.accLogInvariant).to.be.equal(expectedAccLogInvariant);
         });
       };
@@ -174,11 +174,11 @@ describe('PoolPriceOracle', () => {
             : await oracle.processPriceData(elapsed, index, newLogPairPrice, newLogBptPrice, newLogInvariant);
 
           const sameSample = await oracle.getSample(index);
-          expect(sameSample.lastLogPairPrice).to.be.equal(previousSample.lastLogPairPrice);
+          expect(sameSample.logPairPrice).to.be.equal(previousSample.logPairPrice);
           expect(sameSample.accLogPairPrice).to.be.equal(previousSample.accLogPairPrice);
-          expect(sameSample.lastLogBptPrice).to.be.equal(previousSample.lastLogBptPrice);
+          expect(sameSample.logBptPrice).to.be.equal(previousSample.logBptPrice);
           expect(sameSample.accLogBptPrice).to.be.equal(previousSample.accLogBptPrice);
-          expect(sameSample.lastLogInvariant).to.be.equal(previousSample.lastLogInvariant);
+          expect(sameSample.logInvariant).to.be.equal(previousSample.logInvariant);
           expect(sameSample.accLogInvariant).to.be.equal(previousSample.accLogInvariant);
           expect(sameSample.timestamp).to.be.equal(previousSample.timestamp);
         });
@@ -198,18 +198,18 @@ describe('PoolPriceOracle', () => {
           expect(newSample.timestamp).to.be.equal(await currentTimestamp());
           const actualElapsed = newSample.timestamp.sub(previousSample.timestamp);
 
-          expect(newSample.lastLogPairPrice).to.be.equal(newLogPairPrice);
+          expect(newSample.logPairPrice).to.be.equal(newLogPairPrice);
           const expectedAccLogPairPrice = previousSample.accLogPairPrice.add(bn(newLogPairPrice).mul(actualElapsed));
           expect(newSample.accLogPairPrice).to.be.equal(expectedAccLogPairPrice);
 
-          expect(newSample.lastLogBptPrice).to.be.equal(newLogBptPrice);
+          expect(newSample.logBptPrice).to.be.equal(newLogBptPrice);
           const expectedAccLogBptPrice = previousSample.accLogBptPrice.add(bn(newLogBptPrice).mul(actualElapsed));
           expect(newSample.accLogBptPrice).to.be.equal(expectedAccLogBptPrice);
 
-          const lastLogInvariant = useLastInvariant ? previousSample.lastLogInvariant : newLogInvariant;
-          expect(newSample.lastLogInvariant).to.be.equal(lastLogInvariant);
+          const logInvariant = useLastInvariant ? previousSample.logInvariant : newLogInvariant;
+          expect(newSample.logInvariant).to.be.equal(logInvariant);
 
-          const expectedAccLogInvariant = previousSample.accLogInvariant.add(bn(lastLogInvariant).mul(actualElapsed));
+          const expectedAccLogInvariant = previousSample.accLogInvariant.add(bn(logInvariant).mul(actualElapsed));
           expect(newSample.accLogInvariant).to.be.equal(expectedAccLogInvariant);
         });
       };
@@ -226,11 +226,11 @@ describe('PoolPriceOracle', () => {
 
           sharedBeforeEach('create a sample', async () => {
             await oracle.mockSample(index, {
-              lastLogPairPrice: 1,
+              logPairPrice: 1,
               accLogPairPrice: 10,
-              lastLogBptPrice: 2,
+              logBptPrice: 2,
               accLogBptPrice: 20,
-              lastLogInvariant: 3,
+              logInvariant: 3,
               accLogInvariant: 30,
               timestamp: await currentTimestamp(),
             });
@@ -254,11 +254,11 @@ describe('PoolPriceOracle', () => {
 
           sharedBeforeEach('create a sample', async () => {
             await oracle.mockSample(index, {
-              lastLogPairPrice: 1,
+              logPairPrice: 1,
               accLogPairPrice: 10,
-              lastLogBptPrice: 2,
+              logBptPrice: 2,
               accLogBptPrice: 20,
-              lastLogInvariant: 3,
+              logInvariant: 3,
               accLogInvariant: 30,
               timestamp: await currentTimestamp(),
             });
