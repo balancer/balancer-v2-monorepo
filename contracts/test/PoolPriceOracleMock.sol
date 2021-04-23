@@ -88,4 +88,17 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         (newSample, sampleIndex) = _processPriceData(currentSampleInitialTimestamp, currentIndex, logPairPrice, logBptPrice, logInvariant);
         emit PriceDataProcessed(newSample, sampleIndex);
     }
+
+    function processPriceDataWithLastInvariant(
+        uint256 elapsed,
+        uint256 currentIndex,
+        int256 logPairPrice,
+        int256 logBptPrice
+    )
+        public returns (bool newSample, uint256 sampleIndex)
+    {
+        uint256 currentSampleInitialTimestamp = block.timestamp - elapsed;
+        (newSample, sampleIndex) = _processPriceData(currentSampleInitialTimestamp, currentIndex, logPairPrice, logBptPrice);
+        emit PriceDataProcessed(newSample, sampleIndex);
+    }
 }

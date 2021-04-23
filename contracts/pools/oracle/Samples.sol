@@ -51,7 +51,7 @@ library Samples {
      *
      * IMPORTANT! This function does not perform any arithmetic checks. It assumes the caller will never report a value
      * that will make the accumulators to overflow. Additionally, it also assumes the current timestamp reported will be
-     * always in the future, meaning an cannot be lower than the timestamp already stored in the sample to be updated.
+     * always in the future, meaning it cannot be lower than the timestamp already stored in the sample to be updated.
      */
     function update(
         bytes32 sample,
@@ -60,6 +60,7 @@ library Samples {
         int256 logInvariant,
         uint256 currentTimestamp
     ) internal pure returns (bytes32) {
+        // We assume the current timestamp fits in an int32 which will hold until year 2038
         int256 elapsed = int256(currentTimestamp - timestamp(sample));
         int256 newAccLogPairPrice = accLogPairPrice(sample) + logPairPrice * elapsed;
         int256 newAccLogBptPrice = accLogBptPrice(sample) + logBptPrice * elapsed;

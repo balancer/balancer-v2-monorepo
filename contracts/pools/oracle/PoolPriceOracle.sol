@@ -54,8 +54,52 @@ contract PoolPriceOracle {
         int256 logBptPrice,
         int256 logInvariant
     ) internal returns (bool newSample, uint256 sampleIndex) {
+        bytes32 currentSample = _samples[currentIndex];
+        return
+            _processPriceData(
+                currentSample,
+                currentSampleInitialTimestamp,
+                currentIndex,
+                logPairPrice,
+                logBptPrice,
+                logInvariant
+            );
+    }
+
+    /**
+     * @dev Same as `_processPriceData` but re-using the last log invariant stored in the current sample.
+     */
+    function _processPriceData(
+        uint256 currentSampleInitialTimestamp,
+        uint256 currentIndex,
+        int256 logPairPrice,
+        int256 logBptPrice
+    ) internal returns (bool newSample, uint256 sampleIndex) {
+        bytes32 currentSample = _samples[currentIndex];
+        return
+            _processPriceData(
+                currentSample,
+                currentSampleInitialTimestamp,
+                currentIndex,
+                logPairPrice,
+                logBptPrice,
+                currentSample.lastLogInvariant()
+            );
+    }
+
+    /**
+     * @dev Private function that actually process a price information for a sample.
+     */
+    function _processPriceData(
+        bytes32 currentSample,
+        uint256 currentSampleInitialTimestamp,
+        uint256 currentIndex,
+        int256 logPairPrice,
+        int256 logBptPrice,
+        int256 logInvariant
+    ) private returns (bool newSample, uint256 sampleIndex) {
         // solhint-disable not-rely-on-time
-        bytes32 sample = _samples[currentIndex].update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
+        bytes32 sample = currentSample.update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
         newSample = block.timestamp - currentSampleInitialTimestamp >= _MAX_SAMPLE_DURATION;
         sampleIndex = newSample ? ((currentIndex + 1) % _BUFFER_SIZE) : currentIndex;
         _samples[sampleIndex] = sample;
