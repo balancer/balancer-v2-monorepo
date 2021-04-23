@@ -230,7 +230,7 @@ export default class StablePool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.callStatic.onSwap(
+    return this.instance.onSwap(
       {
         kind: SWAP_GIVEN.IN,
         poolId: this.poolId,
@@ -252,7 +252,7 @@ export default class StablePool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.callStatic.onSwap(
+    return this.instance.onSwap(
       {
         kind: SWAP_GIVEN.OUT,
         poolId: this.poolId,
@@ -315,7 +315,7 @@ export default class StablePool {
   }
 
   async queryJoin(params: JoinExitStablePool): Promise<JoinQueryResult> {
-    const fn = this.instance.callStatic.queryJoin;
+    const fn = this.instance.queryJoin;
     return (await this._executeQuery(params, fn)) as JoinQueryResult;
   }
 
@@ -341,7 +341,7 @@ export default class StablePool {
   }
 
   async queryExit(params: JoinExitStablePool): Promise<ExitQueryResult> {
-    const fn = this.instance.callStatic.queryExit;
+    const fn = this.instance.queryExit;
     return (await this._executeQuery(params, fn)) as ExitQueryResult;
   }
 
