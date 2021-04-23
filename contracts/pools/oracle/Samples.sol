@@ -35,9 +35,8 @@ import "../../lib/helpers/WordCodec.sol";
  * All samples are stored in a single word, represented by a bytes32, with the following structure:
  *
  * [ log pair price | acc log pair price | log bpt price | acc log bpt price |  log inv  | acc log inv |  timestamp ]
- * [     int20      |        int54       |     int20     |       int54       |   int20   |    int54    |    uint32  ]
+ * [     int22      |        int53       |     int22     |       int53       |   int22   |    int53    |    uint31  ]
  *
- * Note we are only using the least-significant 254 bytes of a word: we ignore the most-significant 2 bytes.
  */
 library Samples {
     using WordCodec for int256;
@@ -55,23 +54,23 @@ library Samples {
      */
     function update(
         bytes32 sample,
-        int256 logPairPrice,
-        int256 logBptPrice,
-        int256 logInvariant,
+        int256 _logPairPrice,
+        int256 _logBptPrice,
+        int256 _logInvariant,
         uint256 currentTimestamp
     ) internal pure returns (bytes32) {
-        // We assume the current timestamp fits in an int32 which will hold until year 2038
+        // We assume the current timestamp fits in an int31 which will hold until year 2038
         int256 elapsed = int256(currentTimestamp - timestamp(sample));
-        int256 newAccLogPairPrice = accLogPairPrice(sample) + logPairPrice * elapsed;
-        int256 newAccLogBptPrice = accLogBptPrice(sample) + logBptPrice * elapsed;
-        int256 newAccLogInvariant = accLogInvariant(sample) + logInvariant * elapsed;
+        int256 newAccLogPairPrice = accLogPairPrice(sample) + _logPairPrice * elapsed;
+        int256 newAccLogBptPrice = accLogBptPrice(sample) + _logBptPrice * elapsed;
+        int256 newAccLogInvariant = accLogInvariant(sample) + _logInvariant * elapsed;
         return
             pack(
-                logPairPrice,
+                _logPairPrice,
                 newAccLogPairPrice,
-                logBptPrice,
+                _logBptPrice,
                 newAccLogBptPrice,
-                logInvariant,
+                _logInvariant,
                 newAccLogInvariant,
                 currentTimestamp
             );
@@ -81,49 +80,49 @@ library Samples {
      * @dev Returns the logarithm of a sample's pair price.
      */
     function logPairPrice(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt20(234); // 234 = 54 + 20 + 54 + 20 + 54 + 32
+        return sample.decodeInt22(234); // 234 = 53 + 22 + 53 + 22 + 53 + 31
     }
 
     /**
      * @dev Returns a sample's time-weighted accumulated pair price logarithm.
      */
     function accLogPairPrice(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt54(180); // 180 = 20 + 54 + 20 + 54 + 32
+        return sample.decodeInt53(181); // 181 = 22 + 53 + 22 + 53 + 31
     }
 
     /**
      * @dev Returns the logarithm of a sample's BPT price.
      */
     function logBptPrice(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt20(160); // 160 = 54 + 20 + 54 + 32
+        return sample.decodeInt22(159); // 159 = 53 + 22 + 53 + 31
     }
 
     /**
      * @dev Returns a sample's time-weighted accumulated BPT price logarithm.
      */
     function accLogBptPrice(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt54(106); // 106 = 20 + 54 + 32
+        return sample.decodeInt53(106); // 106 = 22 + 53 + 31
     }
 
     /**
      * @dev Returns the logarithm of a sample's invariant
      */
     function logInvariant(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt20(86); // 86 = 54 + 32
+        return sample.decodeInt22(84); // 84 = 53 + 31
     }
 
     /**
      * @dev Returns a sample's time-weighted accumulated invariant logarithm.
      */
     function accLogInvariant(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt54(32);
+        return sample.decodeInt53(31);
     }
 
     /**
      * @dev Tells the timestamp encoded in a sample
      */
     function timestamp(bytes32 sample) internal pure returns (uint256) {
-        return sample.decodeUint32(0);
+        return sample.decodeUint31(0);
     }
 
     /**
@@ -139,14 +138,12 @@ library Samples {
         uint256 _timestamp
     ) internal pure returns (bytes32) {
         return
-            bytes32(
-                uint256(_logPairPrice << 234) +
-                    uint256(_accLogPairPrice << 180) +
-                    uint256(_logBptPrice << 160) +
-                    uint256(_accLogBptPrice << 106) +
-                    uint256(_logInvariant << 86) +
-                    uint256(_accLogInvariant << 32) +
-                    _timestamp
-            );
+            _logPairPrice.encodeInt22(234) |
+            _accLogPairPrice.encodeInt53(181) |
+            _logBptPrice.encodeInt22(159) |
+            _accLogBptPrice.encodeInt53(106) |
+            _logInvariant.encodeInt22(84) |
+            _accLogInvariant.encodeInt53(31) |
+            _timestamp.encodeUint31(0);
     }
 }

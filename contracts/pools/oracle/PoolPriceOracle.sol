@@ -49,59 +49,14 @@ contract PoolPriceOracle {
         int256 logPairPrice,
         int256 logBptPrice,
         int256 logInvariant
-    ) internal returns (bool newSample, uint256 sampleIndex) {
-        bytes32 currentSample = _samples[currentIndex];
-        return
-            _processPriceData(
-                currentSample,
-                currentSampleInitialTimestamp,
-                currentIndex,
-                logPairPrice,
-                logBptPrice,
-                logInvariant
-            );
-    }
-
-    /**
-     * @dev Same as `_processPriceData` but re-using the sample's log invariant stored in the current sample, which
-     * doesn't change (significantly) in swaps.
-     */
-    function _processPriceData(
-        uint256 currentSampleInitialTimestamp,
-        uint256 currentIndex,
-        int256 logPairPrice,
-        int256 logBptPrice
-    ) internal returns (bool newSample, uint256 sampleIndex) {
-        bytes32 currentSample = _samples[currentIndex];
-        return
-            _processPriceData(
-                currentSample,
-                currentSampleInitialTimestamp,
-                currentIndex,
-                logPairPrice,
-                logBptPrice,
-                currentSample.logInvariant()
-            );
-    }
-
-    /**
-     * @dev Private function that actually processes new price information for a sample.
-     */
-    function _processPriceData(
-        bytes32 currentSample,
-        uint256 currentSampleInitialTimestamp,
-        uint256 currentIndex,
-        int256 logPairPrice,
-        int256 logBptPrice,
-        int256 logInvariant
-    ) private returns (bool newSample, uint256 sampleIndex) {
+    ) internal returns (uint256 sampleIndex) {
         // solhint-disable not-rely-on-time
-        // Update the current sample with the newly received data.
-        bytes32 sample = currentSample.update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
+        // Read current sample and update it with the newly received data.
+        bytes32 sample = _samples[currentIndex].update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
 
         // We create a new sample if more than _MAX_SAMPLE_DURATION seconds have elapsed since the creation of the
         // current one. In other words, no sample accumulates data over a period larger than _MAX_SAMPLE_DURATION.
-        newSample = block.timestamp - currentSampleInitialTimestamp >= _MAX_SAMPLE_DURATION;
+        bool newSample = block.timestamp - currentSampleInitialTimestamp >= _MAX_SAMPLE_DURATION;
         sampleIndex = newSample ? ((currentIndex + 1) % _BUFFER_SIZE) : currentIndex;
 
         // Store the updated or new sample.
