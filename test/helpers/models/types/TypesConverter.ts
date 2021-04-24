@@ -50,6 +50,7 @@ export default {
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!owner) owner = ZERO_ADDRESS;
     if (!twoTokens) twoTokens = false;
+    else if (tokens.length !== 2) throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
     return { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, twoTokens };
   },
 

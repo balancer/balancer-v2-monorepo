@@ -26,7 +26,7 @@ export default {
 
   async _deployStandalone(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
     const { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
-    return tokens.length === 2 && params.twoTokens
+    return params.twoTokens
       ? deploy('WeightedPool2Tokens', {
           args: [
             vault.address,
@@ -61,7 +61,8 @@ export default {
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
     const { tokens, weights, swapFeePercentage, owner, from } = params;
-    const factory = await deploy('WeightedPoolFactory', { args: [vault.address], from });
+    const factoryName = params.twoTokens ? 'WeightedPool2TokensFactory' : 'WeightedPoolFactory';
+    const factory = await deploy(factoryName, { args: [vault.address], from });
     const tx = await factory.create(
       NAME,
       SYMBOL,

@@ -146,7 +146,8 @@ describe('WeightedPool', function () {
         it('reverts if there are repeated tokens', async () => {
           const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
 
-          await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith('UNSORTED_ARRAY');
+          const error = twoTokens ? 'TOKEN_ALREADY_REGISTERED' : 'UNSORTED_ARRAY';
+          await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith(error);
         });
 
         it('reverts if the swap fee is too high', async () => {
