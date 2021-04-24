@@ -279,7 +279,7 @@ export default class WeightedPool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.onSwap(
+    return this.instance.callStatic.onSwap(
       {
         kind: SWAP_GIVEN.IN,
         poolId: this.poolId,
@@ -300,7 +300,7 @@ export default class WeightedPool {
     const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
-    return this.instance.onSwap(
+    return this.instance.callStatic.onSwap(
       {
         kind: SWAP_GIVEN.OUT,
         poolId: this.poolId,

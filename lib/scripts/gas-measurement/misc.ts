@@ -76,10 +76,10 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   let pool: Contract;
   let joinUserData: string;
 
-  if (poolName == 'WeightedPool') {
+  if (poolName == 'WeightedPool' || poolName == 'WeightedPool2Tokens') {
     const weights = toNormalizedWeights(symbols.map(() => fp(1))); // Equal weights for all tokens
 
-    pool = await deployPoolFromFactory(vault, 'WeightedPool', {
+    pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
       parameters: [tokenAddresses, weights, swapFeePercentage],
     });
@@ -88,7 +88,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   } else if (poolName == 'StablePool') {
     const amplificationParameter = bn(50e18);
 
-    pool = await deployPoolFromFactory(vault, 'StablePool', {
+    pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
       parameters: [tokenAddresses, amplificationParameter, swapFeePercentage],
     });
@@ -116,7 +116,9 @@ export async function getWeightedPool(
   size: number,
   offset?: number
 ): Promise<string> {
-  return deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool');
+  return size === 2
+    ? deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool2Tokens')
+    : deployPool(vault, pickTokens(tokens, size, offset), 'WeightedPool');
 }
 
 export async function getStablePool(

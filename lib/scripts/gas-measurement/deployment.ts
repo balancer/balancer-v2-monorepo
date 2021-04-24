@@ -14,6 +14,8 @@ async function main() {
 
   await measureDeployment('WeightedPoolFactory', [vault.address]);
 
+  await measureDeployment('WeightedPool2TokensFactory', [vault.address]);
+
   await measureDeployment('StablePoolFactory', [vault.address]);
 }
 
