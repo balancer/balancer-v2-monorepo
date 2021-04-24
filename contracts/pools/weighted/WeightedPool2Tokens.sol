@@ -46,19 +46,28 @@ contract WeightedPool2Tokens is
     // 1e18 corresponds to 1.0, or a 100% fee
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10%
+    // The swap fee is internally stored using 64 bits, which is enough to represent _MAX_SWAP_FEE_PERCENTAGE.
 
     uint256 private _lastInvariant;
 
-    // This arbitrary bytes32 slot is used to store different pieces of information used in swaps, joins, and exits.
-    // Due to gas-efficiency reasons, since the required precision for each of these is not an issue, we can pack
-    // them together in a single slot to reduce the number of SLOADs and SSTOREs. It follows this structure:
+    // This storage slot holds seemingly unrelated pieces of information: they are all kept together to reduce the
+    // number of storage reads. In particular, we not only store configuration values (such as the swap fee percentage),
+    // but also cache reduced-precision versions of the total BPT supply and invariant, which lets us not access nor
+    // compute this values when producing oracle updates during a swap.
+    // Data is packed according to the following format:
     //
     // [ swap fee pct | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
     // [    uint64    |      bool      |    uint10    |              uint31             |    int22   |     int22     ]
     //
     // Note that are not using the most-significant 106 bits.
-    //
     bytes32 internal _miscData;
+
+    uint256 _MISC_LOG_INVARIANT_OFFSET = 0;
+    uint256 _MISC_LOG_TOTAL_SUPPLY_OFFSET = 22;
+    uint256 _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET = 44;
+    uint256 _MISC_ORACLE_INDEX_OFFSET = 75;
+    uint256 _MISC_ORACLE_ENABLED_OFFSET = 85;
+    uint256 _MISC_SWAP_FEE_PERCENTAGE_OFFSET = 86;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -160,7 +169,7 @@ contract WeightedPool2Tokens is
     }
 
     function _getSwapFeePercentage() internal view returns (uint256) {
-        return _miscData.decodeUint64(83); // 20 + 20 + 32 + 10 + 1
+        return _miscData.decodeUint64(_MISC_SWAP_FEE_PERCENTAGE_OFFSET);
     }
 
     // Caller must be approved by the Vault's Authorizer
@@ -172,16 +181,16 @@ contract WeightedPool2Tokens is
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _miscData = _miscData.storeUint64(swapFeePercentage, 83);
+        _miscData = _miscData.storeUint64(swapFeePercentage, _MISC_SWAP_FEE_PERCENTAGE_OFFSET);
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     function _isOracleEnabled() private view returns (bool) {
-        return _miscData.decodeBool(82);
+        return _miscData.decodeBool(_MISC_ORACLE_ENABLED_OFFSET);
     }
 
     function _setOracleEnabled(bool enabled) private {
-        _miscData = _miscData.storeBoolean(true, 82);
+        _miscData = _miscData.storeBoolean(true, _MISC_ORACLE_ENABLED_OFFSET);
         emit OracleEnabledChanged(enabled);
     }
 
@@ -731,10 +740,13 @@ contract WeightedPool2Tokens is
     function _updateOracle(uint256 lastChangeBlock) internal {
         if (_isOracleEnabled() && block.number > lastChangeBlock) {
             bytes32 miscData = _miscData;
-            int256 logInvariant = miscData.decodeInt22(0);
-            int256 logTotalSupply = miscData.decodeInt22(22);
-            uint256 oracleCurrentIndex = miscData.decodeUint10(42);
-            uint256 oracleCurrentSampleInitialTimestamp = miscData.decodeUint31(52);
+            int256 logInvariant = miscData.decodeInt22(_MISC_LOG_INVARIANT_OFFSET);
+            int256 logTotalSupply = miscData.decodeInt22(_MISC_LOG_TOTAL_SUPPLY_OFFSET);
+            uint256 oracleCurrentIndex = miscData.decodeUint10(_MISC_ORACLE_INDEX_OFFSET);
+            uint256 oracleCurrentSampleInitialTimestamp = miscData.decodeUint31(
+                _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET
+            );
+
             uint256 oracleUpdatedIndex = _processPriceData(
                 oracleCurrentSampleInitialTimestamp,
                 oracleCurrentIndex,
@@ -745,7 +757,10 @@ contract WeightedPool2Tokens is
 
             if (oracleCurrentIndex != oracleUpdatedIndex) {
                 // solhint-disable not-rely-on-time
-                _miscData = miscData.storeUint10(oracleUpdatedIndex, 42).storeUint31(block.timestamp, 52);
+                _miscData = miscData.storeUint10(oracleUpdatedIndex, _MISC_ORACLE_INDEX_OFFSET).storeUint31(
+                    block.timestamp,
+                    _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET
+                );
             }
         }
     }
@@ -754,7 +769,10 @@ contract WeightedPool2Tokens is
         // TODO: store logarithmic values
         int256 logInvariant = int256(_lastInvariant);
         int256 logTotalSupply = int256(totalSupply());
-        _miscData = _miscData.storeInt22(logInvariant, 0).storeInt22(logTotalSupply, 22);
+        _miscData = _miscData.storeInt22(logInvariant, _MISC_LOG_INVARIANT_OFFSET).storeInt22(
+            logTotalSupply,
+            _MISC_LOG_TOTAL_SUPPLY_OFFSET
+        );
     }
 
     // Query functions
