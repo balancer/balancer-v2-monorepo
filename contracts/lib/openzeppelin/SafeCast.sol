@@ -31,16 +31,4 @@ library SafeCast {
         _require(value < 2**255, Errors.SAFE_CAST_VALUE_CANT_FIT_INT256);
         return int256(value);
     }
-
-    /**
-     * @dev Converts a signed int256 into an unsigned uint256.
-     *
-     * Requirements:
-     *
-     * - input must be greater than or equal to 0.
-     */
-    function toUint256(int256 value) internal pure returns (uint256) {
-        _require(value >= 0, Errors.SAFE_CAST_VALUE_CANNOT_BE_NEGATIVE);
-        return uint256(value);
-    }
 }

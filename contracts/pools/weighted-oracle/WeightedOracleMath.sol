@@ -16,18 +16,13 @@ pragma solidity ^0.7.0;
 
 import "../../lib/math//LogExpMath.sol";
 import "../../lib/math/FixedPoint.sol";
-import "../../lib/math/SignedFixedPoint.sol";
 import "../../lib/math/Math.sol";
 import "../../lib/helpers/InputHelpers.sol";
-import "../../lib/openzeppelin/SafeCast.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 
 contract WeightedOracleMath {
-    using SafeCast for uint256;
-    using SafeCast for int256;
     using FixedPoint for uint256;
-    using SignedFixedPoint for int256;
 
     int256 internal constant _COMPRESSION_FACTOR = 1e14;
 
