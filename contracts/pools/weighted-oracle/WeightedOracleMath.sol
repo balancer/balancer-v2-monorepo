@@ -14,6 +14,7 @@
 
 pragma solidity ^0.7.0;
 
+import "../../lib/math//LogExpMath.sol";
 import "../../lib/math/FixedPoint.sol";
 import "../../lib/math/SignedFixedPoint.sol";
 import "../../lib/math/Math.sol";
@@ -28,46 +29,51 @@ contract WeightedOracleMath {
     using FixedPoint for uint256;
     using SignedFixedPoint for int256;
 
-    int256 internal constant _INVARIANT_COMPRESSION_FACTOR = 1e15;
-    int256 internal constant _PRICE_COMPRESSION_FACTOR = 1e14;
+    int256 internal constant _COMPRESSION_FACTOR = 1e14;
 
-    function _calculatelInvariantLn(
+    /**
+     * @dev Converts `value` to logarithmic space, dropping most of the decimal places to arrive at a value that, when
+     * passed to `_fromLogSpace`, will have a maximum relative error of 0.1%.
+     */
+    function _toLogSpace(uint256 value) internal pure returns (int256) {
+        return LogExpMath.ln(int256(value)) / _COMPRESSION_FACTOR;
+    }
+
+    /**
+     * @dev Restores `value` from logarithmic space.
+     */
+    function _fromLogSpace(int256 value) internal pure returns (uint256) {
+        return uint256(LogExpMath.exp(value * _COMPRESSION_FACTOR));
+    }
+
+    function _calcLnSpotPrice(
         uint256 normalizedWeightA,
         uint256 balanceA,
         uint256 normalizedWeightB,
         uint256 balanceB
-    ) internal pure returns (int256 invariantLn) {
-        //We can cast weights and balances to int256 becuase they are always lower than the max int256.
-        int256 term1 = int256(normalizedWeightA).mul(SignedFixedPoint.ln(int256(balanceA)));
-        int256 term2 = int256(normalizedWeightB).mul(SignedFixedPoint.ln(int256(balanceB)));
-
-        invariantLn = term1.add(term2) / _INVARIANT_COMPRESSION_FACTOR;
+    ) internal pure returns (int256) {
+        // Max balances are 2^112 and min weights are 0.01, so balance / weight can always be computed.
+        // Rounding direction is irrelevant as we're about to introduce much larger error when converting to log space:
+        // we use divDown because it uses less gas.
+        uint256 spotPrice = balanceA.divDown(normalizedWeightA).divDown(balanceB.divDown(normalizedWeightB));
+        return _toLogSpace(spotPrice);
     }
 
-    function _calculateSpotPriceLn(
-        uint256 normalizedWeightA,
-        uint256 balanceA,
-        uint256 normalizedWeightB,
-        uint256 balanceB
-    ) internal pure returns (int256 spotPriceLn) {
-        //Rounding direction does not matter because we are compressing the log result at the end.
-        uint256 spotPrice = balanceA.divDown(normalizedWeightA).divDown(balanceB.divUp(normalizedWeightB));
-
-        spotPriceLn = SignedFixedPoint.ln(spotPrice.toInt256()) / _PRICE_COMPRESSION_FACTOR;
-    }
-
-    function _calculateBPTPriceLn(
+    function _calcLnBPTPrice(
         uint256 normalizedWeight,
         uint256 balance,
         int256 bptTotalSupplyLn
-    ) internal pure returns (int256 bptPriceLn) {
-        //Rounding direction does not matter because we are compressing the log result at the end.
-        int256 totalBptLn = SignedFixedPoint.ln(balance.divDown(normalizedWeight).toInt256());
+    ) internal pure returns (int256) {
+        // BPT price = (balance / weight) / total supply
+        // Since we already have ln(total supply) and want to compute ln(BPT price), we perform the computation in log
+        // space directly: ln(BPT price) = ln(balance / weight) - ln(total supply)
 
-        bptPriceLn = totalBptLn / _INVARIANT_COMPRESSION_FACTOR - bptTotalSupplyLn;
-    }
+        // Rounding direction is irrelevant as we're about to introduce much larger error when converting to log space:
+        // we use divDown because it uses less gas.
+        int256 lnBalanceOverWeight = _toLogSpace(balance.divDown(normalizedWeight));
 
-    function _calculateBptTotalSupplyLn(uint256 bptTotalSupply) internal pure returns (int256 bptTotalSupplyLn) {
-        bptTotalSupplyLn = SignedFixedPoint.ln(bptTotalSupply.toInt256()) / _INVARIANT_COMPRESSION_FACTOR;
+        // Because we're subtracting two values in log space, this value has larger error (+-0.0002 instead of
+        // +-0.0001), which translatess in a final larger relative error of around 0.2%.
+        return lnBalanceOverWeight - bptTotalSupplyLn;
     }
 }
