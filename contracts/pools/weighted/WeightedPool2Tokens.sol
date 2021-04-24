@@ -62,12 +62,12 @@ contract WeightedPool2Tokens is
     // Note that are not using the most-significant 106 bits.
     bytes32 internal _miscData;
 
-    uint256 _MISC_LOG_INVARIANT_OFFSET = 0;
-    uint256 _MISC_LOG_TOTAL_SUPPLY_OFFSET = 22;
-    uint256 _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET = 44;
-    uint256 _MISC_ORACLE_INDEX_OFFSET = 75;
-    uint256 _MISC_ORACLE_ENABLED_OFFSET = 85;
-    uint256 _MISC_SWAP_FEE_PERCENTAGE_OFFSET = 86;
+    uint256 internal constant _MISC_LOG_INVARIANT_OFFSET = 0;
+    uint256 internal constant _MISC_LOG_TOTAL_SUPPLY_OFFSET = 22;
+    uint256 internal constant _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET = 44;
+    uint256 internal constant _MISC_ORACLE_INDEX_OFFSET = 75;
+    uint256 internal constant _MISC_ORACLE_ENABLED_OFFSET = 85;
+    uint256 internal constant _MISC_SWAP_FEE_PERCENTAGE_OFFSET = 86;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
