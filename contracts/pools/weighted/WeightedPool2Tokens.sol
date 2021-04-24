@@ -329,6 +329,8 @@ contract WeightedPool2Tokens is
         whenNotPaused
         returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFeeAmounts)
     {
+        // All joins, including initializations, are disabled while the contract is paused.
+
         uint256[] memory scalingFactors = _scalingFactors();
 
         uint256 bptAmountOut;
@@ -396,9 +398,6 @@ contract WeightedPool2Tokens is
         address,
         bytes memory userData
     ) private returns (uint256, uint256[] memory) {
-        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
-        // initialization in this case.
-
         WeightedPool.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPool.JoinKind.INIT, Errors.UNINITIALIZED);
 
@@ -452,8 +451,6 @@ contract WeightedPool2Tokens is
             uint256[] memory
         )
     {
-        // All joins are disabled while the contract is paused.
-
         uint256[] memory normalizedWeights = _normalizedWeights();
 
         // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
