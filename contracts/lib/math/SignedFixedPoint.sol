@@ -25,10 +25,8 @@ library SignedFixedPoint {
     int256 private constant _INT256_MIN = -2**255;
 
     /**
-     * @dev Returns the addition of two signed integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `+` operator.
+     * @dev Returns the fixed point addition of two signed integers, reverting on overflow.
+     * It assumes both `a` and `b` are fixed point numbers.
      *
      * Requirements:
      *
@@ -42,10 +40,8 @@ library SignedFixedPoint {
     }
 
     /**
-     * @dev Returns the multiplication of two signed integers, reverting on
-     * overflow.
-     *
-     * Counterpart to Solidity's `*` operator.
+     * @dev Returns the fixed point multiplication of two signed integers, reverting on overflow.
+     * It assumes both `a` and `b` are fixed point numbers.
      *
      * Requirements:
      *
