@@ -30,19 +30,7 @@ contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock {
         int256 logInvariant;
     }
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20 token0,
-        IERC20 token1,
-        uint256 normalizedWeight0,
-        uint256 normalizedWeight1,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    ) WeightedPool2Tokens(vault, name, symbol, token0, token1, normalizedWeight0, normalizedWeight1, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner) {}
+    constructor(NewPoolParams memory params) WeightedPool2Tokens(params) {}
 
     function miscData() external view returns (MiscData memory) {
         return MiscData({
@@ -53,6 +41,10 @@ contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock {
             logTotalSupply: _miscData.decodeInt22(_MISC_LOG_TOTAL_SUPPLY_OFFSET),
             logInvariant: _miscData.decodeInt22(_MISC_LOG_INVARIANT_OFFSET)
         });
+    }
+
+    function mockOracleDisabled() external {
+        _miscData = _miscData.storeBoolean(false, _MISC_ORACLE_ENABLED_OFFSET);
     }
 
     function mockMiscData(MiscData memory _data) external {

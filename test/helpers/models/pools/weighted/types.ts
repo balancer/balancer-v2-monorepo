@@ -13,6 +13,7 @@ export type RawWeightedPoolDeployment = {
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
+  oracleEnabled?: boolean;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -27,6 +28,7 @@ export type WeightedPoolDeployment = {
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
   twoTokens: boolean;
+  oracleEnabled: boolean;
   owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
