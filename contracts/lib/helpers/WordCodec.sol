@@ -26,7 +26,7 @@ library WordCodec {
     int256 private constant _MAX_INT_53 = 2**(52) - 1;
 
     /**
-     * @dev Encodes a boolean shifted a number of least-significant bits into a word.
+     * @dev Inserts a boolean value shifted by an offset into a 256-bit word, replacing the old value.
      */
     function storeBoolean(
         bytes32 data,
@@ -38,7 +38,7 @@ library WordCodec {
     }
 
     /**
-     * @dev Encodes a 10-bits unsigned integer shifted a number of least-significant bits into a word.
+     * @dev Inserts a 10-bits unsigned integer shifted by an offset into a 256-bit word, replacing the old value.
      */
     function storeUint10(
         bytes32 data,
@@ -50,7 +50,7 @@ library WordCodec {
     }
 
     /**
-     * @dev Encodes a 31-bits unsigned integer shifted a number of least-significant bits into a word.
+     * @dev Inserts a 31-bits unsigned integer shifted by an offset into a 256-bit word, replacing the old value.
      */
     function storeUint31(
         bytes32 data,
@@ -62,7 +62,7 @@ library WordCodec {
     }
 
     /**
-     * @dev Encodes a 64-bits unsigned integer shifted a number of least-significant bits into a word.
+     * @dev Inserts a 64-bits unsigned integer shifted by an offset into a 256-bit word, replacing the old value.
      */
     function storeUint64(
         bytes32 data,
@@ -74,7 +74,7 @@ library WordCodec {
     }
 
     /**
-     * @dev Encodes a 22-bits unsigned integer shifted a number of least-significant bits into a word.
+     * @dev Inserts a 22-bits unsigned integer shifted by an offset into a 256-bit word, replacing the old value.
      */
     function storeInt22(
         bytes32 data,
@@ -86,56 +86,56 @@ library WordCodec {
     }
 
     /**
-     * @dev Encodes a 31-bits unsigned integer shifted an offset into a word
+     * @dev Encodes a 31-bits unsigned integer shifted by an offset into a 256-bit word.
      */
     function encodeUint31(uint256 value, uint256 offset) internal pure returns (bytes32) {
         return bytes32(value << offset);
     }
 
     /**
-     * @dev Encodes a 22-bits signed integer shifted an offset into a word
+     * @dev Encodes a 22-bits signed integer shifted by an offset into a 256-bit word.
      */
     function encodeInt22(int256 value, uint256 offset) internal pure returns (bytes32) {
         return bytes32((value & _MASK_22) << offset);
     }
 
     /**
-     * @dev Encodes a 53-bits signed integer shifted an offset into a word
+     * @dev Encodes a 53-bits signed integer shifted by an offset into a 256-bit word.
      */
     function encodeInt53(int256 value, uint256 offset) internal pure returns (bytes32) {
         return bytes32((value & _MASK_53) << offset);
     }
 
     /**
-     * @dev Decodes a boolean from a word discarding a number of least-significant bits.
+     * @dev Decodes a boolean shifted by an offset from a 256-bit word.
      */
-    function decodeBool(bytes32 data, uint256 discard) internal pure returns (bool) {
-        return (uint256(data >> discard) & _MASK_1) == 1;
+    function decodeBool(bytes32 data, uint256 offset) internal pure returns (bool) {
+        return (uint256(data >> offset) & _MASK_1) == 1;
     }
 
     /**
-     * @dev Decodes a 10-bits unsigned integer from a word discarding a number of least-significant bits.
+     * @dev Decodes a 10-bits unsigned integer shifted by an offset from a 256-bit word.
      */
-    function decodeUint10(bytes32 data, uint256 discard) internal pure returns (uint256) {
-        return uint256(data >> discard) & _MASK_10;
+    function decodeUint10(bytes32 data, uint256 offset) internal pure returns (uint256) {
+        return uint256(data >> offset) & _MASK_10;
     }
 
     /**
-     * @dev Decodes a 31-bits unsigned integer from a word discarding a number of least-significant bits.
+     * @dev Decodes a 31-bits unsigned integer shifted by an offset from a 256-bit word.
      */
     function decodeUint31(bytes32 data, uint256 offset) internal pure returns (uint256) {
         return uint256(data >> offset) & _MASK_31;
     }
 
     /**
-     * @dev Decodes a 64-bits unsigned integer from a word discarding a number of least-significant bits.
+     * @dev Decodes a 64-bits unsigned integer shifted by an offset from a 256-bit word.
      */
-    function decodeUint64(bytes32 data, uint256 discard) internal pure returns (uint256) {
-        return uint256(data >> discard) & _MASK_64;
+    function decodeUint64(bytes32 data, uint256 offset) internal pure returns (uint256) {
+        return uint256(data >> offset) & _MASK_64;
     }
 
     /**
-     * @dev Decodes a 22-bits signed integer from a word discarding a number of least-significant bits.
+     * @dev Decodes a 22-bits signed integer shifted by an offset from a 256-bit word.
      */
     function decodeInt22(bytes32 data, uint256 offset) internal pure returns (int256) {
         int256 value = int256(data >> offset) & _MASK_22;
@@ -146,7 +146,7 @@ library WordCodec {
     }
 
     /**
-     * @dev Decodes a 53-bits signed integer from a word discarding a number of least-significant bits.
+     * @dev Decodes a 53-bits signed integer shifted by an offset from a 256-bit word.
      */
     function decodeInt53(bytes32 data, uint256 offset) internal pure returns (int256) {
         int256 value = int256(data >> offset) & _MASK_53;
