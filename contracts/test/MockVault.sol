@@ -19,8 +19,10 @@ import "../lib/openzeppelin/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
+import "../vault/interfaces/IPoolSwapStructs.sol";
+import "../vault/interfaces/IMinimalSwapInfoPool.sol";
 
-contract MockVault {
+contract MockVault is IPoolSwapStructs {
     struct Pool {
         IERC20[] tokens;
         mapping(IERC20 => uint256) balances;
@@ -28,6 +30,8 @@ contract MockVault {
 
     IAuthorizer private _authorizer;
     mapping(bytes32 => Pool) private pools;
+
+    event Swap(bytes32 indexed poolId, IERC20 indexed tokenIn, IERC20 indexed tokenOut, uint256 amount);
 
     event PoolBalanceChanged(
         bytes32 indexed poolId,
@@ -69,6 +73,11 @@ contract MockVault {
         for (uint256 i = 0; i < tokens.length; i++) {
             pool.tokens.push(tokens[i]);
         }
+    }
+
+    function callMinimalPoolSwap(address pool, SwapRequest memory request, uint256 balanceTokenIn, uint256 balanceTokenOut) external {
+        uint256 amount = IMinimalSwapInfoPool(pool).onSwap(request, balanceTokenIn, balanceTokenOut);
+        emit Swap(request.poolId, request.tokenIn, request.tokenOut, amount);
     }
 
     function callJoinPool(

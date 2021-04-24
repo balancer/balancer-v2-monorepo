@@ -38,6 +38,7 @@ import {
   calcInGivenOut,
   calculateMaxOneTokenSwapFeeAmount,
 } from '../../../math/weighted';
+import { Swap } from '../../vault/types';
 
 const SWAP_GIVEN = { IN: 0, OUT: 1 };
 const MAX_IN_RATIO = fp(0.3);
@@ -276,45 +277,18 @@ export default class WeightedPool {
   }
 
   async swapGivenIn(params: SwapWeightedPool): Promise<BigNumber> {
-    const currentBalances = await this.getBalances();
-    const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
-
-    return this.instance.callStatic.onSwap(
-      {
-        kind: SWAP_GIVEN.IN,
-        poolId: this.poolId,
-        from: params.from ?? ZERO_ADDRESS,
-        to: params.recipient ?? ZERO_ADDRESS,
-        tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
-        tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
-        lastChangeBlock: params.lastChangeBlock ?? 0,
-        userData: params.data ?? '0x',
-        amount: params.amount,
-      },
-      currentBalances[tokenIn] || bn(0),
-      currentBalances[tokenOut] || bn(0)
-    );
+    return this.swap(await this._buildSwapParams(SWAP_GIVEN.IN, params));
   }
 
   async swapGivenOut(params: SwapWeightedPool): Promise<BigNumber> {
-    const currentBalances = await this.getBalances();
-    const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
+    return this.swap(await this._buildSwapParams(SWAP_GIVEN.OUT, params));
+  }
 
-    return this.instance.callStatic.onSwap(
-      {
-        kind: SWAP_GIVEN.OUT,
-        poolId: this.poolId,
-        from: params.from ?? ZERO_ADDRESS,
-        to: params.recipient ?? ZERO_ADDRESS,
-        tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
-        tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
-        lastChangeBlock: params.lastChangeBlock ?? 0,
-        userData: params.data ?? '0x',
-        amount: params.amount,
-      },
-      currentBalances[tokenIn] || bn(0),
-      currentBalances[tokenOut] || bn(0)
-    );
+  async swap(params: Swap): Promise<BigNumber> {
+    const tx = await this.vault.minimalSwap(params);
+    const receipt = await (await tx).wait();
+    const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
+    return amount;
   }
 
   async init(params: InitWeightedPool): Promise<JoinResult> {
@@ -428,6 +402,25 @@ export default class WeightedPool {
     );
   }
 
+  private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<Swap> {
+    const currentBalances = await this.getBalances();
+    const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
+    return {
+      kind,
+      poolAddress: this.address,
+      poolId: this.poolId,
+      from: params.from,
+      to: params.recipient ?? ZERO_ADDRESS,
+      tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
+      tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
+      balanceTokenIn: currentBalances[tokenIn] || bn(0),
+      balanceTokenOut: currentBalances[tokenOut] || bn(0),
+      lastChangeBlock: params.lastChangeBlock ?? 0,
+      data: params.data ?? '0x',
+      amount: params.amount,
+    };
+  }
+
   private _buildInitParams(params: InitWeightedPool): JoinExitWeightedPool {
     const { initialBalances: balances } = params;
     const amountsIn = Array.isArray(balances) ? balances : Array(this.tokens.length).fill(balances);
@@ -450,6 +443,7 @@ export default class WeightedPool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinWeightedPool({
@@ -464,6 +458,7 @@ export default class WeightedPool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeJoinWeightedPool({
@@ -480,6 +475,7 @@ export default class WeightedPool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({
@@ -494,6 +490,7 @@ export default class WeightedPool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({
@@ -508,6 +505,7 @@ export default class WeightedPool {
     return {
       from: params.from,
       recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: encodeExitWeightedPool({

@@ -63,6 +63,7 @@ export type JoinGivenInWeightedPool = {
   minimumBptOut?: BigNumberish;
   from?: SignerWithAddress;
   recipient?: Account;
+  lastChangeBlock?: BigNumberish;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
 };
@@ -72,6 +73,7 @@ export type JoinGivenOutWeightedPool = {
   bptOut: BigNumberish;
   from?: SignerWithAddress;
   recipient?: Account;
+  lastChangeBlock?: BigNumberish;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
 };
@@ -81,6 +83,7 @@ export type ExitGivenOutWeightedPool = {
   maximumBptIn?: BigNumberish;
   recipient?: Account;
   from?: SignerWithAddress;
+  lastChangeBlock?: BigNumberish;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
 };
@@ -90,6 +93,7 @@ export type SingleExitGivenInWeightedPool = {
   token: number | Token;
   recipient?: Account;
   from?: SignerWithAddress;
+  lastChangeBlock?: BigNumberish;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
 };
@@ -98,6 +102,7 @@ export type MultiExitGivenInWeightedPool = {
   bptIn: BigNumberish;
   recipient?: Account;
   from?: SignerWithAddress;
+  lastChangeBlock?: BigNumberish;
   currentBalances?: BigNumberish[];
   protocolFeePercentage?: BigNumberish;
 };
