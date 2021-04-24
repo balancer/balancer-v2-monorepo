@@ -10,7 +10,7 @@ export const MinimalSwapInfoPool = 1;
 export const TwoTokenPool = 2;
 
 export type PoolSpecializationSetting = typeof MinimalSwapInfoPool | typeof GeneralPool | typeof TwoTokenPool;
-export type PoolName = 'WeightedPool' | 'StablePool';
+export type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool';
 
 export async function deployPoolFromFactory(
   vault: Contract,
