@@ -82,7 +82,8 @@ library WordCodec {
         uint256 offset
     ) internal pure returns (bytes32) {
         bytes32 cleanedData = bytes32(uint256(data) & uint256(~(_MASK_22 << offset)));
-        return cleanedData | bytes32(value << offset);
+        // Integer values need masking to remove the upper bits of negative values.
+        return cleanedData | bytes32((value & _MASK_22) << offset);
     }
 
     /**
@@ -96,6 +97,7 @@ library WordCodec {
      * @dev Encodes a 22-bits signed integer shifted by an offset into a 256-bit word.
      */
     function encodeInt22(int256 value, uint256 offset) internal pure returns (bytes32) {
+        // Integer values need masking to remove the upper bits of negative values.
         return bytes32((value & _MASK_22) << offset);
     }
 
@@ -103,6 +105,7 @@ library WordCodec {
      * @dev Encodes a 53-bits signed integer shifted by an offset into a 256-bit word.
      */
     function encodeInt53(int256 value, uint256 offset) internal pure returns (bytes32) {
+        // Integer values need masking to remove the upper bits of negative values.
         return bytes32((value & _MASK_53) << offset);
     }
 
