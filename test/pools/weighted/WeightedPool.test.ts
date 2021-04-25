@@ -7,9 +7,11 @@ import { actionId } from '../../../lib/helpers/actions';
 import { BigNumberish, bn, fp, pct } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import { advanceTime, currentTimestamp, lastBlockNumber, MINUTE } from '../../../lib/helpers/time';
+import { calculateBPTPrice, calculateInvariant, calculateSpotPrice } from '../../helpers/math/weighted';
 
 import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
+import { expectEqualWithError } from '../../helpers/relativeError';
 import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/types';
 
 describe('WeightedPool', function () {
@@ -46,7 +48,7 @@ describe('WeightedPool', function () {
   context('for a 2 token pool (custom)', () => {
     itBehavesAsWeightedPool(2, true);
 
-    describe('oracle', () => {
+    describe.only('oracle', () => {
       let pool: WeightedPool, tokens: TokenList;
 
       const weights = WEIGHTS.slice(0, 2);
@@ -81,6 +83,41 @@ describe('WeightedPool', function () {
           const currentMiscData = await pool.instance.miscData();
           expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
           expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(await currentTimestamp());
+        });
+
+        context('with updated oracle', () => {
+          let previousBalances: BigNumber[], previousTotalSupply: BigNumber, weights: BigNumber[], newSample: any;
+
+          sharedBeforeEach(async () => {
+            previousBalances = await pool.getBalances();
+            previousTotalSupply = await pool.instance.totalSupply();
+            weights = await pool.getNormalizedWeights();
+
+            await advanceTime(MINUTE * 10); // force index update
+            await action(await calcLastChangeBlock(lastChangeBlockOffset));
+
+            newSample = await pool.instance.getSample((await pool.instance.miscData()).oracleIndex);
+          });
+
+          it('stores the pre-action spot price', async () => {
+            const expectedSpotPrice = bn(
+              calculateSpotPrice(previousBalances[0], weights[0], previousBalances[1], weights[1]).toFixed(0)
+            );
+
+            expectEqualWithError(await pool.instance.fromLowResLog(newSample.logPairPrice), expectedSpotPrice, 0.0001);
+          });
+
+          it('stores the pre-action BPT price', async () => {
+            const expectedBPTPrice = bn(
+              calculateBPTPrice(previousBalances[0], weights[0], previousTotalSupply).toFixed(0)
+            );
+            expectEqualWithError(await pool.instance.fromLowResLog(newSample.logBptPrice), expectedBPTPrice, 0.0001);
+          });
+
+          it('stores the pre-action invariant', async () => {
+            const expectedInvariant = calculateInvariant(previousBalances, weights);
+            expectEqualWithError(await pool.instance.fromLowResLog(newSample.logInvariant), expectedInvariant, 0.0001);
+          });
         });
       };
 

@@ -753,6 +753,15 @@ contract WeightedPool2Tokens is
                 _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET
             );
 
+            int256 logSpotPrice = WeightedOracleMath._calcLogSpotPrice(
+                _normalizedWeight0,
+                balanceToken0,
+                _normalizedWeight1,
+                balanceToken1
+            );
+
+            int256 logBPTPrice = WeightedOracleMath._calcLogBPTPrice(_normalizedWeight0, balanceToken0, logTotalSupply);
+
             uint256 oracleUpdatedIndex = _processPriceData(
                 oracleCurrentSampleInitialTimestamp,
                 oracleCurrentIndex,
