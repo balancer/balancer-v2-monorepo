@@ -213,3 +213,7 @@ export function calculateSpotPrice(
   const denominator = fromFp(fpBalanceB).div(fromFp(fpWeightB));
   return toFp(numerator.div(denominator));
 }
+
+export function calculateBPTPrice(fpBalance: BigNumberish, fpWeight: BigNumberish, totalSupply: BigNumberish): Decimal {
+  return toFp(fromFp(fpBalance).div(fromFp(fpWeight)).div(fromFp(totalSupply)));
+}
