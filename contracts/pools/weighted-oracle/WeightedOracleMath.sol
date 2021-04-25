@@ -14,60 +14,85 @@
 
 pragma solidity ^0.7.0;
 
+import "../../lib/math//LogExpMath.sol";
 import "../../lib/math/FixedPoint.sol";
-import "../../lib/math/SignedFixedPoint.sol";
 import "../../lib/math/Math.sol";
 import "../../lib/helpers/InputHelpers.sol";
-import "../../lib/openzeppelin/SafeCast.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 
 contract WeightedOracleMath {
-    using SafeCast for uint256;
-    using SafeCast for int256;
     using FixedPoint for uint256;
-    using SignedFixedPoint for int256;
 
-    int256 internal constant _INVARIANT_COMPRESSION_FACTOR = 1e15;
-    int256 internal constant _PRICE_COMPRESSION_FACTOR = 1e14;
+    int256 private constant _LOG_COMPRESSION_FACTOR = 1e14;
+    int256 private constant _HALF_LOG_COMPRESSION_FACTOR = 0.5e14;
 
-    function _calculatelInvariantLn(
+    /**
+     * @dev Calculates the logarithm of the spot price of token B in token A.
+     *
+     * The return value is a 4 decimal fixed-point number: use `_fromLowResLog` to recover the original value.
+     */
+    function _calcLogSpotPrice(
         uint256 normalizedWeightA,
         uint256 balanceA,
         uint256 normalizedWeightB,
         uint256 balanceB
-    ) internal pure returns (int256 invariantLn) {
-        //We can cast weights and balances to int256 becuase they are always lower than the max int256.
-        int256 term1 = int256(normalizedWeightA).mul(SignedFixedPoint.ln(int256(balanceA)));
-        int256 term2 = int256(normalizedWeightB).mul(SignedFixedPoint.ln(int256(balanceB)));
-
-        invariantLn = term1.add(term2) / _INVARIANT_COMPRESSION_FACTOR;
+    ) internal pure returns (int256) {
+        // Max balances are 2^112 and min weights are 0.01, so balance / weight can always be computed.
+        // The rounding direction is irrelevant as we're about to introduce a much larger error when converting to log
+        // space: we use `divDown` because it uses less gas.
+        uint256 spotPrice = balanceA.divDown(normalizedWeightA).divDown(balanceB.divDown(normalizedWeightB));
+        return _toLowResLog(spotPrice);
     }
 
-    function _calculateSpotPriceLn(
-        uint256 normalizedWeightA,
-        uint256 balanceA,
-        uint256 normalizedWeightB,
-        uint256 balanceB
-    ) internal pure returns (int256 spotPriceLn) {
-        //Rounding direction does not matter because we are compressing the log result at the end.
-        uint256 spotPrice = balanceA.divDown(normalizedWeightA).divDown(balanceB.divUp(normalizedWeightB));
-
-        spotPriceLn = SignedFixedPoint.ln(spotPrice.toInt256()) / _PRICE_COMPRESSION_FACTOR;
-    }
-
-    function _calculateBPTPriceLn(
+    /**
+     * @dev Calculates the price of BPT in a token. `logBptTotalSupply` should be the result of calling `_toLowResLog`
+     * with the current BPT supply.
+     *
+     * The return value is a 4 decimal fixed-point number: use `_fromLowResLog` to recover the original value.
+     */
+    function _calcLogBPTPrice(
         uint256 normalizedWeight,
         uint256 balance,
-        int256 bptTotalSupplyLn
-    ) internal pure returns (int256 bptPriceLn) {
-        //Rounding direction does not matter because we are compressing the log result at the end.
-        int256 totalBptLn = SignedFixedPoint.ln(balance.divDown(normalizedWeight).toInt256());
+        int256 logBptTotalSupply
+    ) internal pure returns (int256) {
+        // BPT price = (balance / weight) / total supply
+        // Since we already have ln(total supply) and want to compute ln(BPT price), we perform the computation in log
+        // space directly: ln(BPT price) = ln(balance / weight) - ln(total supply)
 
-        bptPriceLn = totalBptLn / _INVARIANT_COMPRESSION_FACTOR - bptTotalSupplyLn;
+        // The rounding direction is irrelevant as we're about to introduce a much larger error when converting to log
+        // space: we use `divDown` because it uses less gas.
+        int256 logBalanceOverWeight = _toLowResLog(balance.divDown(normalizedWeight));
+
+        // Because we're subtracting two values in log space, this value has larger error (+-0.0001 instead of
+        // +-0.00005), which results in a final larger relative error of around 0.1%.
+        return logBalanceOverWeight - logBptTotalSupply;
     }
 
-    function _calculateBptTotalSupplyLn(uint256 bptTotalSupply) internal pure returns (int256 bptTotalSupplyLn) {
-        bptTotalSupplyLn = SignedFixedPoint.ln(bptTotalSupply.toInt256()) / _INVARIANT_COMPRESSION_FACTOR;
+    /**
+     * @dev Returns the natural logarithm of `value`, dropping most of the decimal places to arrive at a value that,
+     * when passed to `_fromLowResLog`, will have a maximum relative error of ~0.05% compared to `value`.
+     *
+     * Values returned from this function should not be mixed with other fixed-point values (as they have different
+     * number of digits), but can be added or subtracted. Use `_fromLowResLog` to undo this process and return to an
+     * 18 decimal places fixed point value.
+     *
+     * Because so much precision is lost, the logarithmic values can be stored using much fewer bits than the original
+     * value required.
+     */
+    function _toLowResLog(uint256 value) internal pure returns (int256) {
+        int256 ln = LogExpMath.ln(int256(value));
+
+        // Rounding division for signed numerator
+        return
+            (ln > 0 ? ln + _HALF_LOG_COMPRESSION_FACTOR : ln - _HALF_LOG_COMPRESSION_FACTOR) / _LOG_COMPRESSION_FACTOR;
+    }
+
+    /**
+     * @dev Restores `value` from logarithmic space. `value` is expected to be the result of a call to `_toLowResLog`,
+     * any other function that returns 4 decimals fixed point logarithms, or the sum of such values.
+     */
+    function _fromLowResLog(int256 value) internal pure returns (uint256) {
+        return uint256(LogExpMath.exp(value * _LOG_COMPRESSION_FACTOR));
     }
 }

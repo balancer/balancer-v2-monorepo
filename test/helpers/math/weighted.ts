@@ -202,3 +202,18 @@ export function calculateMaxOneTokenSwapFeeAmount(
 
   return toFp(maxAccruedFees);
 }
+
+export function calculateSpotPrice(
+  fpBalanceA: BigNumberish,
+  fpWeightA: BigNumberish,
+  fpBalanceB: BigNumberish,
+  fpWeightB: BigNumberish
+): Decimal {
+  const numerator = fromFp(fpBalanceA).div(fromFp(fpWeightA));
+  const denominator = fromFp(fpBalanceB).div(fromFp(fpWeightB));
+  return toFp(numerator.div(denominator));
+}
+
+export function calculateBPTPrice(fpBalance: BigNumberish, fpWeight: BigNumberish, totalSupply: BigNumberish): Decimal {
+  return toFp(fromFp(fpBalance).div(fromFp(fpWeight)).div(fromFp(totalSupply)));
+}
