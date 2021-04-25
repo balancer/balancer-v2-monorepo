@@ -24,38 +24,8 @@ import "../../lib/helpers/InputHelpers.sol";
 contract WeightedOracleMath {
     using FixedPoint for uint256;
 
-    int256 private constant _COMPRESSION_FACTOR = 1e14;
-    int256 private constant _HALF_COMPRESSION_FACTOR = 0.5e14;
-
-    /**
-     * @dev Returns the natural logarithm of `value`, dropping most of the decimal places to arrive at a value that,
-     * when passed to `_fromLowResLog`, will have a maximum relative error of ~0.05% compared to `value`.
-     *
-     * Values returned from this function should not be mixed with other fixed-point values (as they have different
-     * number of digits), but can be added or subtracted. Use `_fromLowResLog` to undo this process and return to an
-     * 18 decimal places fixed point value.
-     *
-     * Because so much precision is lost, the logarithmic values can be stored using much fewer bits than the original
-     * value required.
-     */
-    function _toLowResLog(uint256 value) internal pure returns (int256) {
-        int256 ln = LogExpMath.ln(int256(value));
-
-        // Rounding division for signed numerator
-        if (ln > 0) {
-            return (ln + _HALF_COMPRESSION_FACTOR) / _COMPRESSION_FACTOR;
-        } else {
-            return (ln - _HALF_COMPRESSION_FACTOR) / _COMPRESSION_FACTOR;
-        }
-    }
-
-    /**
-     * @dev Restores `value` from logarithmic space. `value` is expected to be the result of a call to `_toLowResLog`,
-     * any other function that returns 4 decimals fixed point logarithms, or the sum of such values.
-     */
-    function _fromLowResLog(int256 value) internal pure returns (uint256) {
-        return uint256(LogExpMath.exp(value * _COMPRESSION_FACTOR));
-    }
+    int256 private constant _LOG_COMPRESSION_FACTOR = 1e14;
+    int256 private constant _HALF_LOG_COMPRESSION_FACTOR = 0.5e14;
 
     /**
      * @dev Calculates the logarithm of the spot price of token B in token A.
@@ -69,8 +39,8 @@ contract WeightedOracleMath {
         uint256 balanceB
     ) internal pure returns (int256) {
         // Max balances are 2^112 and min weights are 0.01, so balance / weight can always be computed.
-        // Rounding direction is irrelevant as we're about to introduce much larger error when converting to log space:
-        // we use divDown because it uses less gas.
+        // The rounding direction is irrelevant as we're about to introduce a much larger error when converting to log
+        // space: we use `divDown` because it uses less gas.
         uint256 spotPrice = balanceA.divDown(normalizedWeightA).divDown(balanceB.divDown(normalizedWeightB));
         return _toLowResLog(spotPrice);
     }
@@ -90,12 +60,39 @@ contract WeightedOracleMath {
         // Since we already have ln(total supply) and want to compute ln(BPT price), we perform the computation in log
         // space directly: ln(BPT price) = ln(balance / weight) - ln(total supply)
 
-        // Rounding direction is irrelevant as we're about to introduce much larger error when converting to log space:
-        // we use divDown because it uses less gas.
+        // The rounding direction is irrelevant as we're about to introduce a much larger error when converting to log
+        // space: we use `divDown` because it uses less gas.
         int256 logBalanceOverWeight = _toLowResLog(balance.divDown(normalizedWeight));
 
         // Because we're subtracting two values in log space, this value has larger error (+-0.0001 instead of
-        // +-0.00005), which translatess in a final larger relative error of around 0.1%.
+        // +-0.00005), which results in a final larger relative error of around 0.1%.
         return logBalanceOverWeight - logBptTotalSupply;
+    }
+
+    /**
+     * @dev Returns the natural logarithm of `value`, dropping most of the decimal places to arrive at a value that,
+     * when passed to `_fromLowResLog`, will have a maximum relative error of ~0.05% compared to `value`.
+     *
+     * Values returned from this function should not be mixed with other fixed-point values (as they have different
+     * number of digits), but can be added or subtracted. Use `_fromLowResLog` to undo this process and return to an
+     * 18 decimal places fixed point value.
+     *
+     * Because so much precision is lost, the logarithmic values can be stored using much fewer bits than the original
+     * value required.
+     */
+    function _toLowResLog(uint256 value) internal pure returns (int256) {
+        int256 ln = LogExpMath.ln(int256(value));
+
+        // Rounding division for signed numerator
+        return
+            (ln > 0 ? ln + _HALF_LOG_COMPRESSION_FACTOR : ln - _HALF_LOG_COMPRESSION_FACTOR) / _LOG_COMPRESSION_FACTOR;
+    }
+
+    /**
+     * @dev Restores `value` from logarithmic space. `value` is expected to be the result of a call to `_toLowResLog`,
+     * any other function that returns 4 decimals fixed point logarithms, or the sum of such values.
+     */
+    function _fromLowResLog(int256 value) internal pure returns (uint256) {
+        return uint256(LogExpMath.exp(value * _LOG_COMPRESSION_FACTOR));
     }
 }
