@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../pools/weighted-oracle/WeightedOracleMath.sol";
+import "../pools/weighted/WeightedOracleMath.sol";
 
 contract MockWeightedOracleMath is WeightedOracleMath {
     function toLowResLog(uint256 value) external pure returns (int256) {

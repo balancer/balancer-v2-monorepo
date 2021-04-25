@@ -7,9 +7,11 @@ import { actionId } from '../../../lib/helpers/actions';
 import { BigNumberish, bn, fp, pct } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import { advanceTime, currentTimestamp, lastBlockNumber, MINUTE } from '../../../lib/helpers/time';
+import { calculateBPTPrice, calculateInvariant, calculateSpotPrice } from '../../helpers/math/weighted';
 
 import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
+import { expectEqualWithError } from '../../helpers/relativeError';
 import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/types';
 
 describe('WeightedPool', function () {
@@ -47,6 +49,8 @@ describe('WeightedPool', function () {
     itBehavesAsWeightedPool(2, true);
 
     describe('oracle', () => {
+      const MAX_RELATIVE_ERROR = 0.00005;
+
       let pool: WeightedPool, tokens: TokenList;
 
       const weights = WEIGHTS.slice(0, 2);
@@ -82,6 +86,48 @@ describe('WeightedPool', function () {
           expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
           expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(await currentTimestamp());
         });
+
+        context('with updated oracle', () => {
+          let previousBalances: BigNumber[], previousTotalSupply: BigNumber, weights: BigNumber[], newSample: any;
+
+          sharedBeforeEach(async () => {
+            previousBalances = await pool.getBalances();
+            previousTotalSupply = await pool.instance.totalSupply();
+            weights = await pool.getNormalizedWeights();
+
+            await advanceTime(MINUTE * 10); // force index update
+            await action(await calcLastChangeBlock(lastChangeBlockOffset));
+
+            newSample = await pool.instance.getSample((await pool.instance.miscData()).oracleIndex);
+          });
+
+          it('stores the pre-action spot price', async () => {
+            const expectedSpotPrice = calculateSpotPrice(previousBalances, weights);
+            expectEqualWithError(
+              await pool.instance.fromLowResLog(newSample.logPairPrice),
+              expectedSpotPrice,
+              MAX_RELATIVE_ERROR
+            );
+          });
+
+          it('stores the pre-action BPT price', async () => {
+            const expectedBPTPrice = calculateBPTPrice(previousBalances[0], weights[0], previousTotalSupply);
+            expectEqualWithError(
+              await pool.instance.fromLowResLog(newSample.logBptPrice),
+              expectedBPTPrice,
+              MAX_RELATIVE_ERROR * 2 // The BPT price has twice as much error
+            );
+          });
+
+          it('stores the pre-action invariant', async () => {
+            const expectedInvariant = calculateInvariant(previousBalances, weights);
+            expectEqualWithError(
+              await pool.instance.fromLowResLog(newSample.logInvariant),
+              expectedInvariant,
+              MAX_RELATIVE_ERROR
+            );
+          });
+        });
       };
 
       const itDoesNotUpdateTheOracleData = (action: PoolHook, lastChangeBlockOffset = 0) => {
@@ -97,14 +143,22 @@ describe('WeightedPool', function () {
       };
 
       const itCachesTheLogInvariantAndSupply = (action: PoolHook, lastChangeBlockOffset = 0) => {
-        it('caches the log invariant and supply', async () => {
-          const previousMiscData = await pool.instance.miscData();
-
+        it('caches the log of the last invariant', async () => {
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
           const currentMiscData = await pool.instance.miscData();
-          expect(currentMiscData.logInvariant).not.to.equal(previousMiscData.logInvariant);
-          expect(currentMiscData.logTotalSupply).not.to.equal(previousMiscData.logTotalSupply);
+          const actualInvariant = await pool.instance.fromLowResLog(currentMiscData.logInvariant);
+          const expectedInvariant = await pool.instance.getLastInvariant();
+          expectEqualWithError(actualInvariant, expectedInvariant, MAX_RELATIVE_ERROR);
+        });
+
+        it('caches the total supply', async () => {
+          await action(await calcLastChangeBlock(lastChangeBlockOffset));
+
+          const currentMiscData = await pool.instance.miscData();
+          const actualTotalSupply = await pool.instance.fromLowResLog(currentMiscData.logTotalSupply);
+          const expectedTotalSupply = await pool.instance.totalSupply();
+          expectEqualWithError(actualTotalSupply, expectedTotalSupply, MAX_RELATIVE_ERROR);
         });
       };
 
@@ -297,6 +351,8 @@ describe('WeightedPool', function () {
           await pool.vault.grantRole(action, admin);
         });
 
+        initializePool();
+
         context('when it starts enabled', () => {
           it('is enabled', async () => {
             expect(await pool.instance.isOracleEnabled()).to.be.true;
@@ -313,8 +369,6 @@ describe('WeightedPool', function () {
           sharedBeforeEach('mock pool disable oracle', async () => {
             await pool.instance.mockOracleDisabled();
           });
-
-          initializePool();
 
           it('is disabled and can be enabled', async () => {
             expect(await pool.instance.isOracleEnabled()).to.be.false;
