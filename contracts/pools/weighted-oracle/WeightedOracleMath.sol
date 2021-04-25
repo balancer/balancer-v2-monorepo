@@ -40,6 +40,8 @@ contract WeightedOracleMath {
      */
     function _toLowResLog(uint256 value) internal pure returns (int256) {
         int256 ln = LogExpMath.ln(int256(value));
+
+        // Rounding division for signed numerator
         if (ln > 0) {
             return (ln + _HALF_COMPRESSION_FACTOR) / _COMPRESSION_FACTOR;
         } else {
@@ -55,7 +57,7 @@ contract WeightedOracleMath {
         return uint256(LogExpMath.exp(value * _COMPRESSION_FACTOR));
     }
 
-    function _calcLnSpotPrice(
+    function _calcLogSpotPrice(
         uint256 normalizedWeightA,
         uint256 balanceA,
         uint256 normalizedWeightB,
@@ -68,10 +70,10 @@ contract WeightedOracleMath {
         return _toLowResLog(spotPrice);
     }
 
-    function _calcLnBPTPrice(
+    function _calcLogBPTPrice(
         uint256 normalizedWeight,
         uint256 balance,
-        int256 bptTotalSupplyLn
+        int256 logBptTotalSupply
     ) internal pure returns (int256) {
         // BPT price = (balance / weight) / total supply
         // Since we already have ln(total supply) and want to compute ln(BPT price), we perform the computation in log
@@ -79,10 +81,10 @@ contract WeightedOracleMath {
 
         // Rounding direction is irrelevant as we're about to introduce much larger error when converting to log space:
         // we use divDown because it uses less gas.
-        int256 lnBalanceOverWeight = _toLowResLog(balance.divDown(normalizedWeight));
+        int256 logBalanceOverWeight = _toLowResLog(balance.divDown(normalizedWeight));
 
         // Because we're subtracting two values in log space, this value has larger error (+-0.0001 instead of
         // +-0.00005), which translatess in a final larger relative error of around 0.1%.
-        return lnBalanceOverWeight - bptTotalSupplyLn;
+        return logBalanceOverWeight - logBptTotalSupply;
     }
 }

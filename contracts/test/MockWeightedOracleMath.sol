@@ -25,20 +25,20 @@ contract MockWeightedOracleMath is WeightedOracleMath {
         return WeightedOracleMath._fromLowResLog(value);
     }
 
-    function calcLnSpotPrice(
+    function calcLogSpotPrice(
         uint256 normalizedWeightA,
         uint256 balanceA,
         uint256 normalizedWeightB,
         uint256 balanceB
     ) external pure returns (int256) {
-        return WeightedOracleMath._calcLnSpotPrice(normalizedWeightA, balanceA, normalizedWeightB, balanceB);
+        return WeightedOracleMath._calcLogSpotPrice(normalizedWeightA, balanceA, normalizedWeightB, balanceB);
     }
 
-    function calcLnBPTPrice(
+    function calcLogBPTPrice(
         uint256 normalizedWeight,
         uint256 balance,
         int256 bptTotalSupplyLn
     ) external pure returns (int256) {
-        return WeightedOracleMath._calcLnBPTPrice(normalizedWeight, balance, bptTotalSupplyLn);
+        return WeightedOracleMath._calcLogBPTPrice(normalizedWeight, balance, bptTotalSupplyLn);
     }
 }
