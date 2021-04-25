@@ -48,7 +48,7 @@ describe('WeightedPool', function () {
   context('for a 2 token pool (custom)', () => {
     itBehavesAsWeightedPool(2, true);
 
-    describe.only('oracle', () => {
+    describe('oracle', () => {
       let pool: WeightedPool, tokens: TokenList;
 
       const weights = WEIGHTS.slice(0, 2);
@@ -100,17 +100,12 @@ describe('WeightedPool', function () {
           });
 
           it('stores the pre-action spot price', async () => {
-            const expectedSpotPrice = bn(
-              calculateSpotPrice(previousBalances[0], weights[0], previousBalances[1], weights[1]).toFixed(0)
-            );
-
+            const expectedSpotPrice = calculateSpotPrice(previousBalances, weights);
             expectEqualWithError(await pool.instance.fromLowResLog(newSample.logPairPrice), expectedSpotPrice, 0.0001);
           });
 
           it('stores the pre-action BPT price', async () => {
-            const expectedBPTPrice = bn(
-              calculateBPTPrice(previousBalances[0], weights[0], previousTotalSupply).toFixed(0)
-            );
+            const expectedBPTPrice = calculateBPTPrice(previousBalances[0], weights[0], previousTotalSupply);
             expectEqualWithError(await pool.instance.fromLowResLog(newSample.logBptPrice), expectedBPTPrice, 0.0001);
           });
 

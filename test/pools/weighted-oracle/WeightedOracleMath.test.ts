@@ -57,7 +57,7 @@ describe('WeighteOracledMath', function () {
                   await mock.calcLogSpotPrice(normWeights[0], balanceA, normWeights[1], balanceB)
                 );
 
-                const expected = bn(calculateSpotPrice(balanceA, normWeights[0], balanceB, normWeights[1]).toFixed(0));
+                const expected = calculateSpotPrice([balanceA, balanceB], normWeights);
                 expectEqualWithError(actual, expected, MAX_RELATIVE_ERROR);
               }
             }
@@ -130,7 +130,7 @@ describe('WeighteOracledMath', function () {
                 const logBPTSupply = await mock.toLowResLog(bptSupply);
                 const actual = await mock.fromLowResLog(await mock.calcLogBPTPrice(normWeight, balance, logBPTSupply));
 
-                const expected = bn(calculateBPTPrice(balance, normWeight, bptSupply).toFixed(0));
+                const expected = calculateBPTPrice(balance, normWeight, bptSupply);
 
                 // BPT supply calculation has twice as much error as the others because it sums errors
                 expectEqualWithError(actual, expected, MAX_RELATIVE_ERROR * 2);
