@@ -27,7 +27,7 @@ export default {
   async _deployStandalone(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
     const { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
     return params.twoTokens
-      ? deploy('WeightedPool2Tokens', {
+      ? deploy('WeightedPool2TokensMock', {
           args: [
             vault.address,
             NAME,
@@ -73,6 +73,7 @@ export default {
     );
     const receipt = await tx.wait();
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return ethers.getContractAt('WeightedPool', event.args.pool);
+    const contractName = params.twoTokens ? 'WeightedPool2Tokens' : 'WeightedPool';
+    return ethers.getContractAt(contractName, event.args.pool);
   },
 };

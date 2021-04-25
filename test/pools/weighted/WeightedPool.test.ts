@@ -9,6 +9,7 @@ import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/types';
+import { advanceTime, currentTimestamp, lastBlockNumber, MINUTE } from '../../../lib/helpers/time';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
@@ -42,6 +43,188 @@ describe('WeightedPool', function () {
 
   context('for a 2 token pool (custom)', () => {
     itBehavesAsWeightedPool(2, true);
+
+    describe('oracle', () => {
+      let pool: WeightedPool, tokens: TokenList;
+
+      const weights = WEIGHTS.slice(0, 2);
+      const initialBalances = INITIAL_BALANCES.slice(0, 2);
+
+      type PoolHook = (lastChangeBlock: number) => Promise<unknown>;
+
+      sharedBeforeEach('deploy pool', async () => {
+        tokens = allTokens.subset(2);
+        const params = { twoTokens: true, tokens, weights, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE };
+        pool = await WeightedPool.create(params);
+      });
+
+      const initializePool = () => {
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ initialBalances, recipient: lp });
+        });
+      };
+
+      const calcLastChangeBlock = async (offset: number): Promise<number> => {
+        const nextBlockNumber = (await lastBlockNumber()) + 1;
+        return nextBlockNumber - offset;
+      };
+
+      const itUpdatesTheOracleData = (action: PoolHook, lastChangeBlockOffset = 0) => {
+        it('updates the oracle data', async () => {
+          const previousData = await pool.instance.miscData();
+
+          await advanceTime(MINUTE * 10); // force index update
+          await action(await calcLastChangeBlock(lastChangeBlockOffset));
+
+          const currentMiscData = await pool.instance.miscData();
+          expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
+          expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(await currentTimestamp());
+        });
+      };
+
+      const itDoesNotUpdateTheOracleData = (action: PoolHook, lastChangeBlockOffset = 0) => {
+        it('does not update the oracle data', async () => {
+          const previousMiscData = await pool.instance.miscData();
+
+          await action(await calcLastChangeBlock(lastChangeBlockOffset));
+
+          const currentMiscData = await pool.instance.miscData();
+          expect(currentMiscData.oracleIndex).to.equal(previousMiscData.oracleIndex);
+          expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(previousMiscData.oracleSampleInitialTimestamp);
+        });
+      };
+
+      const itCachesTheLogInvariantAndSupply = (action: PoolHook, lastChangeBlockOffset = 0) => {
+        it('caches the log invariant and supply', async () => {
+          const previousMiscData = await pool.instance.miscData();
+
+          await action(await calcLastChangeBlock(lastChangeBlockOffset));
+
+          // TODO: calc log diffs
+          const currentMiscData = await pool.instance.miscData();
+          expect(currentMiscData.logInvariant).not.to.equal(previousMiscData.logInvariant);
+          expect(currentMiscData.logTotalSupply).not.to.equal(previousMiscData.logTotalSupply);
+        });
+      };
+
+      const itDoesNotCacheTheLogInvariantAndSupply = (action: PoolHook, lastChangeBlockOffset = 0) => {
+        it('does not cache the log invariant and supply', async () => {
+          const previousMiscData = await pool.instance.miscData();
+
+          await action(await calcLastChangeBlock(lastChangeBlockOffset));
+
+          const currentMiscData = await pool.instance.miscData();
+          expect(currentMiscData.logInvariant).to.equal(previousMiscData.logInvariant);
+          expect(currentMiscData.logTotalSupply).to.equal(previousMiscData.logTotalSupply);
+        });
+      };
+
+      describe('initialize', () => {
+        const action = () => pool.init({ initialBalances });
+
+        itDoesNotUpdateTheOracleData(action);
+        itCachesTheLogInvariantAndSupply(action);
+      });
+
+      describe('join', () => {
+        const action = (lastChangeBlock: number) => pool.joinGivenIn({ amountsIn: fp(1), lastChangeBlock });
+
+        initializePool();
+
+        context('when the latest change block is an old block', () => {
+          const lastChangeBlockOffset = 1;
+
+          itUpdatesTheOracleData(action, lastChangeBlockOffset);
+          itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+        });
+
+        context('when the latest change block is the current block', () => {
+          const lastChangeBlockOffset = 0;
+
+          itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+          itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+        });
+      });
+
+      describe('exit', () => {
+        const action = async (lastChangeBlock: number) => {
+          const balance = await pool.balanceOf(lp);
+          await pool.multiExitGivenIn({ bptIn: balance.div(2), lastChangeBlock, from: lp });
+        };
+
+        initializePool();
+
+        context('when the pool is paused', () => {
+          sharedBeforeEach('pause pool', async () => {
+            await pool.pause();
+          });
+
+          context('when the latest change block is an old block', () => {
+            const lastChangeBlockOffset = 1;
+
+            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          });
+
+          context('when the latest change block is the current block', () => {
+            const lastChangeBlockOffset = 0;
+
+            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          });
+        });
+
+        context('when the pool is not paused', () => {
+          context('when the latest change block is an old block', () => {
+            const lastChangeBlockOffset = 1;
+
+            itUpdatesTheOracleData(action, lastChangeBlockOffset);
+            itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          });
+
+          context('when the latest change block is the current block', () => {
+            const lastChangeBlockOffset = 0;
+
+            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+            itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          });
+        });
+      });
+
+      describe('swaps', () => {
+        const amount = fp(0.01);
+
+        initializePool();
+
+        const itUpdatesOracleOnSwapCorrectly = (action: PoolHook) => {
+          context('when the latest change block is an old block', () => {
+            const lastChangeBlockOffset = 1;
+
+            itUpdatesTheOracleData(action, lastChangeBlockOffset);
+            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          });
+
+          context('when the latest change block is the current block', () => {
+            const lastChangeBlockOffset = 0;
+
+            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          });
+        };
+
+        context('given in', () => {
+          const action = (lastChangeBlock: number) => pool.swapGivenIn({ in: 0, out: 1, amount, lastChangeBlock });
+
+          itUpdatesOracleOnSwapCorrectly(action);
+        });
+
+        context('given out', () => {
+          const action = (lastChangeBlock: number) => pool.swapGivenOut({ in: 1, out: 0, amount, lastChangeBlock });
+
+          itUpdatesOracleOnSwapCorrectly(action);
+        });
+      });
+    });
   });
 
   context('for a 3 token pool', () => {
@@ -508,7 +691,7 @@ describe('WeightedPool', function () {
       });
     });
 
-    describe('swaps', () => {
+    describe('onSwap', () => {
       sharedBeforeEach('deploy and join pool', async () => {
         await deployPool();
         await pool.init({ initialBalances });
