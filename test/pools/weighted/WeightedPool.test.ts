@@ -351,6 +351,8 @@ describe('WeightedPool', function () {
           await pool.vault.grantRole(action, admin);
         });
 
+        initializePool();
+
         context('when it starts enabled', () => {
           it('is enabled', async () => {
             expect(await pool.instance.isOracleEnabled()).to.be.true;
@@ -367,8 +369,6 @@ describe('WeightedPool', function () {
           sharedBeforeEach('mock pool disable oracle', async () => {
             await pool.instance.mockOracleDisabled();
           });
-
-          initializePool();
 
           it('is disabled and can be enabled', async () => {
             expect(await pool.instance.isOracleEnabled()).to.be.false;

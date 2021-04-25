@@ -767,13 +767,13 @@ contract WeightedPool2Tokens is
             );
 
             int256 logSpotPrice = WeightedOracleMath._calcLogSpotPrice(
-                balanceToken0,
                 _normalizedWeight0,
-                balanceToken1,
-                _normalizedWeight1
+                balanceToken0,
+                _normalizedWeight1,
+                balanceToken1
             );
 
-            int256 logBPTPrice = WeightedOracleMath._calcLogBPTPrice(balanceToken0, _normalizedWeight0, logTotalSupply);
+            int256 logBPTPrice = WeightedOracleMath._calcLogBPTPrice(_normalizedWeight0, balanceToken0, logTotalSupply);
 
             uint256 oracleUpdatedIndex = _processPriceData(
                 oracleCurrentSampleInitialTimestamp,
