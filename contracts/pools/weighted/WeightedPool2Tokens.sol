@@ -570,7 +570,7 @@ contract WeightedPool2Tokens is
         _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
 
         // Update cached total supply and invariant using the results after the exit that will be used for future
-        // oracle updates, only if the pool was not paused.
+        // oracle updates, only if the pool was not paused (to minimize code paths taken while paused).
         if (_isNotPaused()) {
             _cacheInvariantAndSupply();
         }
