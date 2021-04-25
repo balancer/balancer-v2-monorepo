@@ -49,6 +49,8 @@ describe('WeightedPool', function () {
     itBehavesAsWeightedPool(2, true);
 
     describe('oracle', () => {
+      const MAX_RELATIVE_ERROR = 0.00005;
+
       let pool: WeightedPool, tokens: TokenList;
 
       const weights = WEIGHTS.slice(0, 2);
@@ -101,17 +103,29 @@ describe('WeightedPool', function () {
 
           it('stores the pre-action spot price', async () => {
             const expectedSpotPrice = calculateSpotPrice(previousBalances, weights);
-            expectEqualWithError(await pool.instance.fromLowResLog(newSample.logPairPrice), expectedSpotPrice, 0.0001);
+            expectEqualWithError(
+              await pool.instance.fromLowResLog(newSample.logPairPrice),
+              expectedSpotPrice,
+              MAX_RELATIVE_ERROR
+            );
           });
 
           it('stores the pre-action BPT price', async () => {
             const expectedBPTPrice = calculateBPTPrice(previousBalances[0], weights[0], previousTotalSupply);
-            expectEqualWithError(await pool.instance.fromLowResLog(newSample.logBptPrice), expectedBPTPrice, 0.0001);
+            expectEqualWithError(
+              await pool.instance.fromLowResLog(newSample.logBptPrice),
+              expectedBPTPrice,
+              MAX_RELATIVE_ERROR * 2 // The BPT price has twice as much error
+            );
           });
 
           it('stores the pre-action invariant', async () => {
             const expectedInvariant = calculateInvariant(previousBalances, weights);
-            expectEqualWithError(await pool.instance.fromLowResLog(newSample.logInvariant), expectedInvariant, 0.0001);
+            expectEqualWithError(
+              await pool.instance.fromLowResLog(newSample.logInvariant),
+              expectedInvariant,
+              MAX_RELATIVE_ERROR
+            );
           });
         });
       };
@@ -129,14 +143,22 @@ describe('WeightedPool', function () {
       };
 
       const itCachesTheLogInvariantAndSupply = (action: PoolHook, lastChangeBlockOffset = 0) => {
-        it('caches the log invariant and supply', async () => {
-          const previousMiscData = await pool.instance.miscData();
-
+        it('caches the log of the last invariant', async () => {
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
           const currentMiscData = await pool.instance.miscData();
-          expect(currentMiscData.logInvariant).not.to.equal(previousMiscData.logInvariant);
-          expect(currentMiscData.logTotalSupply).not.to.equal(previousMiscData.logTotalSupply);
+          const actualInvariant = await pool.instance.fromLowResLog(currentMiscData.logInvariant);
+          const expectedInvariant = await pool.instance.getLastInvariant();
+          expectEqualWithError(actualInvariant, expectedInvariant, MAX_RELATIVE_ERROR);
+        });
+
+        it('caches the total supply', async () => {
+          await action(await calcLastChangeBlock(lastChangeBlockOffset));
+
+          const currentMiscData = await pool.instance.miscData();
+          const actualTotalSupply = await pool.instance.fromLowResLog(currentMiscData.logTotalSupply);
+          const expectedTotalSupply = await pool.instance.totalSupply();
+          expectEqualWithError(actualTotalSupply, expectedTotalSupply, MAX_RELATIVE_ERROR);
         });
       };
 

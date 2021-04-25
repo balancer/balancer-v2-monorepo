@@ -31,11 +31,7 @@ contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock, Mo
         int256 logInvariant;
     }
 
-    constructor(NewPoolParams memory params
-    )
-        WeightedPool2Tokens(
-            params)
-    {}
+    constructor(NewPoolParams memory params) WeightedPool2Tokens(params) {}
 
     function miscData() external view returns (MiscData memory) {
         return MiscData({
