@@ -51,12 +51,17 @@ contract WeightedOracleMath {
 
     /**
      * @dev Restores `value` from logarithmic space. `value` is expected to be the result of a call to `_toLowResLog`,
-     * or the sum of such values.
+     * any other function that returns 4 decimals fixed point logarithms, or the sum of such values.
      */
     function _fromLowResLog(int256 value) internal pure returns (uint256) {
         return uint256(LogExpMath.exp(value * _COMPRESSION_FACTOR));
     }
 
+    /**
+     * @dev Calculates the logarithm of the spot price of token B in token A.
+     *
+     * The return value is a 4 decimal fixed-point number: use `_fromLowResLog` to recover the original value.
+     */
     function _calcLogSpotPrice(
         uint256 normalizedWeightA,
         uint256 balanceA,
@@ -70,6 +75,12 @@ contract WeightedOracleMath {
         return _toLowResLog(spotPrice);
     }
 
+    /**
+     * @dev Calculates the price of BPT in a token. `logBptTotalSupply` should be the result of calling `_toLowResLog`
+     * with the current BPT supply.
+     *
+     * The return value is a 4 decimal fixed-point number: use `_fromLowResLog` to recover the original value.
+     */
     function _calcLogBPTPrice(
         uint256 normalizedWeight,
         uint256 balance,
