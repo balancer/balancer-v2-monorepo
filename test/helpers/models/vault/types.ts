@@ -1,5 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { Account } from '../types/types';
 import { BigNumberish } from '../../../../lib/helpers/numbers';
 
 export type RawVaultDeployment = {
@@ -15,6 +16,21 @@ export type VaultDeployment = {
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
   admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+};
+
+export type Swap = {
+  kind: number;
+  poolAddress: string;
+  poolId: string;
+  to: Account;
+  tokenIn: string;
+  tokenOut: string;
+  lastChangeBlock: BigNumberish;
+  data: string;
+  amount: BigNumberish;
+  balanceTokenIn: BigNumberish;
+  balanceTokenOut: BigNumberish;
   from?: SignerWithAddress;
 };
 

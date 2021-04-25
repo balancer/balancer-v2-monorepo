@@ -7,10 +7,10 @@ import TokenList from '../tokens/TokenList';
 import VaultDeployer from './VaultDeployer';
 import TypesConverter from '../types/TypesConverter';
 import { actionId } from '../../../../lib/helpers/actions';
-import { MAX_UINT256 } from '../../../../lib/helpers/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '../../../../lib/helpers/constants';
 import { BigNumberish } from '../../../../lib/helpers/numbers';
 import { Account, NAry, TxParams } from '../types/types';
-import { ExitPool, JoinPool, RawVaultDeployment } from './types';
+import { ExitPool, JoinPool, RawVaultDeployment, Swap } from './types';
 
 export default class Vault {
   mocked: boolean;
@@ -50,6 +50,25 @@ export default class Vault {
     token: Token
   ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.instance.getPoolTokenInfo(poolId, token.address);
+  }
+
+  async minimalSwap(params: Swap): Promise<ContractTransaction> {
+    return this.instance.callMinimalPoolSwap(
+      params.poolAddress,
+      {
+        kind: params.kind,
+        poolId: params.poolId,
+        from: params.from ?? ZERO_ADDRESS,
+        to: params.to,
+        tokenIn: params.tokenIn,
+        tokenOut: params.tokenOut,
+        lastChangeBlock: params.lastChangeBlock,
+        userData: params.data,
+        amount: params.amount,
+      },
+      params.balanceTokenIn,
+      params.balanceTokenOut
+    );
   }
 
   async joinPool(params: JoinPool): Promise<ContractTransaction> {

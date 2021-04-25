@@ -236,12 +236,11 @@ contract WeightedPool2Tokens is
 
     // Swap Hooks
 
-    // TODO: DO NOT FORGET TO TAG THIS FN WITH `onlyVault(request.poolId)`
     function onSwap(
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) external virtual override whenNotPaused returns (uint256) {
+    ) external virtual override whenNotPaused onlyVault(request.poolId) returns (uint256) {
         // Update price oracle before executing swaps
         _updateOracle(request.lastChangeBlock);
 
@@ -571,8 +570,10 @@ contract WeightedPool2Tokens is
         _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
 
         // Update cached total supply and invariant using the results after the exit that will be used for future
-        // oracle updates.
-        _cacheInvariantAndSupply();
+        // oracle updates, only if the pool was not paused (to minimize code paths taken while paused).
+        if (_isNotPaused()) {
+            _cacheInvariantAndSupply();
+        }
 
         return (amountsOut, dueProtocolFeeAmounts);
     }
