@@ -36,26 +36,28 @@ contract WeightedPool2TokensFactory is BasePoolFactory, FactoryWidePauseWindow {
         IERC20[] memory tokens,
         uint256[] memory weights,
         uint256 swapFeePercentage,
+        bool oracleEnabled,
         address owner
     ) external returns (address) {
         // TODO: Do not use arrays in the interface for tokens and weights
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        address pool = address(
-            new WeightedPool2Tokens(
-                getVault(),
-                name,
-                symbol,
-                tokens[0],
-                tokens[1],
-                weights[0],
-                weights[1],
-                swapFeePercentage,
-                pauseWindowDuration,
-                bufferPeriodDuration,
-                owner
-            )
-        );
+        WeightedPool2Tokens.NewPoolParams memory params = WeightedPool2Tokens.NewPoolParams({
+            vault: getVault(),
+            name: name,
+            symbol: symbol,
+            token0: tokens[0],
+            token1: tokens[1],
+            normalizedWeight0: weights[0],
+            normalizedWeight1: weights[1],
+            swapFeePercentage: swapFeePercentage,
+            pauseWindowDuration: pauseWindowDuration,
+            bufferPeriodDuration: bufferPeriodDuration,
+            oracleEnabled: oracleEnabled,
+            owner: owner
+        });
+
+        address pool = address(new WeightedPool2Tokens(params));
         _register(pool);
         return pool;
     }

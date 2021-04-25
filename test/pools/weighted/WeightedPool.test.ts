@@ -3,24 +3,26 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { actionId } from '../../../lib/helpers/actions';
 import { BigNumberish, bn, fp, pct } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
+import { advanceTime, currentTimestamp, lastBlockNumber, MINUTE } from '../../../lib/helpers/time';
 
 import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/types';
-import { advanceTime, currentTimestamp, lastBlockNumber, MINUTE } from '../../../lib/helpers/time';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
-  let trader: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
+  let trader: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
+  let other: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
   before('setup signers', async () => {
-    [, lp, trader, recipient, other] = await ethers.getSigners();
+    [, lp, trader, recipient, other, owner, admin] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -54,7 +56,7 @@ describe('WeightedPool', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         tokens = allTokens.subset(2);
-        const params = { twoTokens: true, tokens, weights, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE };
+        const params = { twoTokens: true, tokens, weights, owner };
         pool = await WeightedPool.create(params);
       });
 
@@ -100,7 +102,6 @@ describe('WeightedPool', function () {
 
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
-          // TODO: calc log diffs
           const currentMiscData = await pool.instance.miscData();
           expect(currentMiscData.logInvariant).not.to.equal(previousMiscData.logInvariant);
           expect(currentMiscData.logTotalSupply).not.to.equal(previousMiscData.logTotalSupply);
@@ -119,11 +120,26 @@ describe('WeightedPool', function () {
         });
       };
 
+      const itDoesNotDoAnythingWhenDisabled = (action: PoolHook, lastChangeBlockOffset = 0) => {
+        sharedBeforeEach('mock oracle disabled', async () => {
+          await pool.instance.mockOracleDisabled();
+        });
+
+        itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+        itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+      };
+
       describe('initialize', () => {
         const action = () => pool.init({ initialBalances });
 
-        itDoesNotUpdateTheOracleData(action);
-        itCachesTheLogInvariantAndSupply(action);
+        context('when the oracle is enabled', () => {
+          itDoesNotUpdateTheOracleData(action);
+          itCachesTheLogInvariantAndSupply(action);
+        });
+
+        context('when the oracle is disabled', () => {
+          itDoesNotDoAnythingWhenDisabled(action);
+        });
       });
 
       describe('join', () => {
@@ -134,15 +150,27 @@ describe('WeightedPool', function () {
         context('when the latest change block is an old block', () => {
           const lastChangeBlockOffset = 1;
 
-          itUpdatesTheOracleData(action, lastChangeBlockOffset);
-          itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          context('when the oracle is enabled', () => {
+            itUpdatesTheOracleData(action, lastChangeBlockOffset);
+            itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          });
+
+          context('when the oracle is disabled', () => {
+            itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
+          });
         });
 
         context('when the latest change block is the current block', () => {
           const lastChangeBlockOffset = 0;
 
-          itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
-          itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          context('when the oracle is enabled', () => {
+            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+            itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+          });
+
+          context('when the oracle is disabled', () => {
+            itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
+          });
         });
       });
 
@@ -162,15 +190,27 @@ describe('WeightedPool', function () {
           context('when the latest change block is an old block', () => {
             const lastChangeBlockOffset = 1;
 
-            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
-            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            context('when the oracle is enabled', () => {
+              itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+              itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            });
+
+            context('when the oracle is disabled', () => {
+              itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
+            });
           });
 
           context('when the latest change block is the current block', () => {
             const lastChangeBlockOffset = 0;
 
-            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
-            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            context('when the oracle is enabled', () => {
+              itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+              itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            });
+
+            context('when the oracle is disabled', () => {
+              itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
+            });
           });
         });
 
@@ -178,15 +218,27 @@ describe('WeightedPool', function () {
           context('when the latest change block is an old block', () => {
             const lastChangeBlockOffset = 1;
 
-            itUpdatesTheOracleData(action, lastChangeBlockOffset);
-            itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            context('when the oracle is enabled', () => {
+              itUpdatesTheOracleData(action, lastChangeBlockOffset);
+              itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            });
+
+            context('when the oracle is disabled', () => {
+              itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
+            });
           });
 
           context('when the latest change block is the current block', () => {
             const lastChangeBlockOffset = 0;
 
-            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
-            itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            context('when the oracle is enabled', () => {
+              itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+              itCachesTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            });
+
+            context('when the oracle is disabled', () => {
+              itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
+            });
           });
         });
       });
@@ -200,15 +252,27 @@ describe('WeightedPool', function () {
           context('when the latest change block is an old block', () => {
             const lastChangeBlockOffset = 1;
 
-            itUpdatesTheOracleData(action, lastChangeBlockOffset);
-            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            context('when the oracle is enabled', () => {
+              itUpdatesTheOracleData(action, lastChangeBlockOffset);
+              itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            });
+
+            context('when the oracle is disabled', () => {
+              itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
+            });
           });
 
           context('when the latest change block is the current block', () => {
             const lastChangeBlockOffset = 0;
 
-            itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
-            itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            context('when the oracle is enabled', () => {
+              itDoesNotUpdateTheOracleData(action, lastChangeBlockOffset);
+              itDoesNotCacheTheLogInvariantAndSupply(action, lastChangeBlockOffset);
+            });
+
+            context('when the oracle is disabled', () => {
+              itDoesNotDoAnythingWhenDisabled(action, lastChangeBlockOffset);
+            });
           });
         };
 
@@ -224,6 +288,52 @@ describe('WeightedPool', function () {
           itUpdatesOracleOnSwapCorrectly(action);
         });
       });
+
+      describe('oracle setting', () => {
+        const action = () => pool.instance.connect(admin).enableOracle();
+
+        sharedBeforeEach('grant role to admin', async () => {
+          const action = await actionId(pool.instance, 'enableOracle');
+          await pool.vault.grantRole(action, admin);
+        });
+
+        context('when it starts enabled', () => {
+          it('is enabled', async () => {
+            expect(await pool.instance.isOracleEnabled()).to.be.true;
+          });
+
+          it('does not fail when trying to enable again', async () => {
+            await expect(pool.instance.connect(admin).enableOracle()).not.to.be.reverted;
+          });
+
+          itDoesNotCacheTheLogInvariantAndSupply(action);
+        });
+
+        context('when it starts disabled', () => {
+          sharedBeforeEach('mock pool disable oracle', async () => {
+            await pool.instance.mockOracleDisabled();
+          });
+
+          initializePool();
+
+          it('is disabled and can be enabled', async () => {
+            expect(await pool.instance.isOracleEnabled()).to.be.false;
+
+            await action();
+
+            expect(await pool.instance.isOracleEnabled()).to.be.true;
+          });
+
+          it('can only be updated by the admin', async () => {
+            await expect(pool.instance.connect(other).enableOracle()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            await expect(pool.instance.connect(owner).enableOracle()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          });
+
+          itCachesTheLogInvariantAndSupply(action);
+        });
+      });
+
+      // TODO: add misc data encoding tests
     });
   });
 

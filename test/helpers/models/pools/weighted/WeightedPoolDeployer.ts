@@ -25,21 +25,33 @@ export default {
   },
 
   async _deployStandalone(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner, from } = params;
+    const {
+      tokens,
+      weights,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      oracleEnabled,
+      owner,
+      from,
+    } = params;
     return params.twoTokens
       ? deploy('WeightedPool2TokensMock', {
           args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses[0],
-            tokens.addresses[1],
-            weights[0],
-            weights[1],
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            TypesConverter.toAddress(owner),
+            {
+              vault: vault.address,
+              name: NAME,
+              symbol: SYMBOL,
+              token0: tokens.addresses[0],
+              token1: tokens.addresses[1],
+              normalizedWeight0: weights[0],
+              normalizedWeight1: weights[1],
+              swapFeePercentage: swapFeePercentage,
+              pauseWindowDuration: pauseWindowDuration,
+              bufferPeriodDuration: bufferPeriodDuration,
+              oracleEnabled: oracleEnabled,
+              owner: TypesConverter.toAddress(owner),
+            },
           ],
           from,
         })
@@ -60,20 +72,35 @@ export default {
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, weights, swapFeePercentage, owner, from } = params;
-    const factoryName = params.twoTokens ? 'WeightedPool2TokensFactory' : 'WeightedPoolFactory';
-    const factory = await deploy(factoryName, { args: [vault.address], from });
-    const tx = await factory.create(
-      NAME,
-      SYMBOL,
-      tokens.addresses,
-      weights,
-      swapFeePercentage,
-      TypesConverter.toAddress(owner)
-    );
-    const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    const contractName = params.twoTokens ? 'WeightedPool2Tokens' : 'WeightedPool';
-    return ethers.getContractAt(contractName, event.args.pool);
+    const { tokens, weights, swapFeePercentage, oracleEnabled, owner, from } = params;
+
+    if (params.twoTokens) {
+      const factory = await deploy('WeightedPool2TokensFactory', { args: [vault.address], from });
+      const tx = await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        weights,
+        swapFeePercentage,
+        oracleEnabled,
+        TypesConverter.toAddress(owner)
+      );
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      return ethers.getContractAt('WeightedPool2Tokens', event.args.pool);
+    } else {
+      const factory = await deploy('WeightedPoolFactory', { args: [vault.address], from });
+      const tx = await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        weights,
+        swapFeePercentage,
+        TypesConverter.toAddress(owner)
+      );
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      return ethers.getContractAt('WeightedPool', event.args.pool);
+    }
   },
 };

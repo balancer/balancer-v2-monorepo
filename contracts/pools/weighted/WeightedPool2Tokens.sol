@@ -97,61 +97,64 @@ contract WeightedPool2Tokens is
         _;
     }
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20 token0,
-        IERC20 token1,
-        uint256 normalizedWeight0,
-        uint256 normalizedWeight1,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    )
+    struct NewPoolParams {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20 token0;
+        IERC20 token1;
+        uint256 normalizedWeight0;
+        uint256 normalizedWeight1;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        bool oracleEnabled;
+        address owner;
+    }
+
+    constructor(NewPoolParams memory params)
         // Base Pools are expected to be deployed using factories. By using the factory address as the action
         // disambiguator, we make all Pools deployed by the same factory share action identifiers. This allows for
         // simpler management of permissions (such as being able to manage granting the 'set fee percentage' action in
         // any Pool created by the same factory), while still making action identifiers unique among different factories
         // if the selectors match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
-        BalancerPoolToken(name, symbol)
-        BasePoolAuthorization(owner)
-        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
+        BalancerPoolToken(params.name, params.symbol)
+        BasePoolAuthorization(params.owner)
+        TemporarilyPausable(params.pauseWindowDuration, params.bufferPeriodDuration)
     {
-        _setOracleEnabled(true);
-        _setSwapFeePercentage(swapFeePercentage);
+        _setOracleEnabled(params.oracleEnabled);
+        _setSwapFeePercentage(params.swapFeePercentage);
 
-        bytes32 poolId = vault.registerPool(IVault.PoolSpecialization.TWO_TOKEN);
+        bytes32 poolId = params.vault.registerPool(IVault.PoolSpecialization.TWO_TOKEN);
 
         // Pass in zero addresses for Asset Managers
         IERC20[] memory tokens = new IERC20[](2);
-        tokens[0] = token0;
-        tokens[1] = token1;
-        vault.registerTokens(poolId, tokens, new address[](2));
+        tokens[0] = params.token0;
+        tokens[1] = params.token1;
+        params.vault.registerTokens(poolId, tokens, new address[](2));
 
         // Set immutable state variables - these cannot be read from during construction
-        _vault = vault;
+        _vault = params.vault;
         _poolId = poolId;
 
-        _token0 = token0;
-        _token1 = token1;
+        _token0 = params.token0;
+        _token1 = params.token1;
 
-        _scalingFactor0 = _computeScalingFactor(token0);
-        _scalingFactor1 = _computeScalingFactor(token1);
+        _scalingFactor0 = _computeScalingFactor(params.token0);
+        _scalingFactor1 = _computeScalingFactor(params.token1);
 
         // Ensure each normalized weight is above them minimum and find the token index of the maximum weight
-        _require(normalizedWeight0 >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
-        _require(normalizedWeight1 >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+        _require(params.normalizedWeight0 >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
+        _require(params.normalizedWeight1 >= _MIN_WEIGHT, Errors.MIN_WEIGHT);
 
         // Ensure that the normalized weights sum to ONE
-        uint256 normalizedSum = normalizedWeight0.add(normalizedWeight1);
+        uint256 normalizedSum = params.normalizedWeight0.add(params.normalizedWeight1);
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _normalizedWeight0 = normalizedWeight0;
-        _normalizedWeight1 = normalizedWeight1;
-        _maxWeightTokenIndex = normalizedWeight0 >= normalizedWeight1 ? 0 : 1;
+        _normalizedWeight0 = params.normalizedWeight0;
+        _normalizedWeight1 = params.normalizedWeight1;
+        _maxWeightTokenIndex = params.normalizedWeight0 >= params.normalizedWeight1 ? 0 : 1;
     }
 
     // Getters / Setters
@@ -185,13 +188,18 @@ contract WeightedPool2Tokens is
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
-    function _isOracleEnabled() private view returns (bool) {
-        return _miscData.decodeBool(_MISC_ORACLE_ENABLED_OFFSET);
+    function enableOracle() external whenNotPaused authenticate {
+        _setOracleEnabled(true);
+        _cacheInvariantAndSupply();
     }
 
     function _setOracleEnabled(bool enabled) private {
         _miscData = _miscData.storeBoolean(true, _MISC_ORACLE_ENABLED_OFFSET);
         emit OracleEnabledChanged(enabled);
+    }
+
+    function isOracleEnabled() public view returns (bool) {
+        return _miscData.decodeBool(_MISC_ORACLE_ENABLED_OFFSET);
     }
 
     // Caller must be approved by the Vault's Authorizer
@@ -736,7 +744,7 @@ contract WeightedPool2Tokens is
     // Oracle functions
 
     function _updateOracle(uint256 lastChangeBlock) internal {
-        if (_isOracleEnabled() && block.number > lastChangeBlock) {
+        if (isOracleEnabled() && block.number > lastChangeBlock) {
             bytes32 miscData = _miscData;
             int256 logInvariant = miscData.decodeInt22(_MISC_LOG_INVARIANT_OFFSET);
             int256 logTotalSupply = miscData.decodeInt22(_MISC_LOG_TOTAL_SUPPLY_OFFSET);
@@ -764,13 +772,15 @@ contract WeightedPool2Tokens is
     }
 
     function _cacheInvariantAndSupply() internal {
-        // TODO: store logarithmic values
-        int256 logInvariant = int256(_lastInvariant);
-        int256 logTotalSupply = int256(totalSupply());
-        _miscData = _miscData.storeInt22(logInvariant, _MISC_LOG_INVARIANT_OFFSET).storeInt22(
-            logTotalSupply,
-            _MISC_LOG_TOTAL_SUPPLY_OFFSET
-        );
+        if (isOracleEnabled()) {
+            // TODO: store logarithmic values
+            int256 logInvariant = int256(_lastInvariant);
+            int256 logTotalSupply = int256(totalSupply());
+            _miscData = _miscData.storeInt22(logInvariant, _MISC_LOG_INVARIANT_OFFSET).storeInt22(
+                logTotalSupply,
+                _MISC_LOG_TOTAL_SUPPLY_OFFSET
+            );
+        }
     }
 
     // Query functions

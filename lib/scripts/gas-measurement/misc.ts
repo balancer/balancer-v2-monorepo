@@ -79,9 +79,10 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
   if (poolName == 'WeightedPool' || poolName == 'WeightedPool2Tokens') {
     const weights = toNormalizedWeights(symbols.map(() => fp(1))); // Equal weights for all tokens
 
+    const commonParams = [tokenAddresses, weights, swapFeePercentage];
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
-      parameters: [tokenAddresses, weights, swapFeePercentage],
+      parameters: poolName == 'WeightedPool2Tokens' ? [...commonParams, true] : [...commonParams],
     });
 
     joinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
