@@ -73,20 +73,34 @@ export default {
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
     const { tokens, weights, swapFeePercentage, oracleEnabled, owner, from } = params;
-    const factoryName = params.twoTokens ? 'WeightedPool2TokensFactory' : 'WeightedPoolFactory';
-    const factory = await deploy(factoryName, { args: [vault.address], from });
-    const tx = await factory.create(
-      NAME,
-      SYMBOL,
-      tokens.addresses,
-      weights,
-      swapFeePercentage,
-      oracleEnabled,
-      TypesConverter.toAddress(owner)
-    );
-    const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    const contractName = params.twoTokens ? 'WeightedPool2Tokens' : 'WeightedPool';
-    return ethers.getContractAt(contractName, event.args.pool);
+
+    if (params.twoTokens) {
+      const factory = await deploy('WeightedPool2TokensFactory', { args: [vault.address], from });
+      const tx = await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        weights,
+        swapFeePercentage,
+        oracleEnabled,
+        TypesConverter.toAddress(owner)
+      );
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      return ethers.getContractAt('WeightedPool2Tokens', event.args.pool);
+    } else {
+      const factory = await deploy('WeightedPoolFactory', { args: [vault.address], from });
+      const tx = await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        weights,
+        swapFeePercentage,
+        TypesConverter.toAddress(owner)
+      );
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+      return ethers.getContractAt('WeightedPool', event.args.pool);
+    }
   },
 };
