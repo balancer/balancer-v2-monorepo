@@ -22,6 +22,7 @@ import "../../lib/helpers/TemporarilyPausable.sol";
 import "../../lib/openzeppelin/ERC20.sol";
 
 import "./WeightedMath.sol";
+import "./WeightedOracleMath.sol";
 import "./WeightedPoolUserDataHelpers.sol";
 import "../BalancerPoolToken.sol";
 import "../BasePoolAuthorization.sol";
@@ -34,7 +35,8 @@ contract WeightedPool2Tokens is
     BalancerPoolToken,
     TemporarilyPausable,
     PoolPriceOracle,
-    WeightedMath
+    WeightedMath,
+    WeightedOracleMath
 {
     using WordCodec for bytes32;
     using WordCodec for uint256;
@@ -249,29 +251,30 @@ contract WeightedPool2Tokens is
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) external virtual override whenNotPaused onlyVault(request.poolId) returns (uint256) {
-        // Update price oracle before executing swaps
-        _updateOracle(request.lastChangeBlock);
-
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
+        // All token amounts are upscaled.
+        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
+        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+
+        // Update price oracle with the pre-swap balances
+        bool tokenInIsToken0 = request.tokenIn == _token0;
+        _updateOracle(
+            request.lastChangeBlock,
+            tokenInIsToken0 ? balanceTokenIn : balanceTokenOut,
+            tokenInIsToken0 ? balanceTokenOut : balanceTokenIn
+        );
+
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            request.amount = _subtractSwapFeeAmount(request.amount);
-
-            // All token amounts are upscaled.
-            balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-            balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
-            request.amount = _upscale(request.amount, scalingFactorTokenIn);
+            request.amount = _upscale(_subtractSwapFeeAmount(request.amount), scalingFactorTokenIn);
 
             uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
 
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactorTokenOut);
         } else {
-            // All token amounts are upscaled.
-            balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-            balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
             uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut);
@@ -357,10 +360,11 @@ contract WeightedPool2Tokens is
             // There are not due protocol fee amounts during initialization
             dueProtocolFeeAmounts = new uint256[](2);
         } else {
-            // Update price oracle before executing joins
-            _updateOracle(lastChangeBlock);
-
             _upscaleArray(balances, scalingFactors);
+
+            // Update price oracle with the pre-join balances
+            _updateOracle(lastChangeBlock, balances[0], balances[1]);
+
             (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = _onJoinPool(
                 poolId,
                 sender,
@@ -625,8 +629,8 @@ contract WeightedPool2Tokens is
         uint256[] memory normalizedWeights = _normalizedWeights();
 
         if (_isNotPaused()) {
-            // Update price oracle only if the pool is not paused before executing exits
-            _updateOracle(lastChangeBlock);
+            // Update price oracle with the pre-exit balances
+            _updateOracle(lastChangeBlock, balances[0], balances[1]);
 
             // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
@@ -743,7 +747,16 @@ contract WeightedPool2Tokens is
 
     // Oracle functions
 
-    function _updateOracle(uint256 lastChangeBlock) internal {
+    /**
+     * @dev Updates the Price Oracle based on the Pool's current state (balances, BPT supply and invariant). Must be
+     * called on *all* state-changing functions with the balances *before* the state change happens, and with
+     * `lastChangeBlock` as the number of the block in which any of the balances last changed.
+     */
+    function _updateOracle(
+        uint256 lastChangeBlock,
+        uint256 balanceToken0,
+        uint256 balanceToken1
+    ) internal {
         if (isOracleEnabled() && block.number > lastChangeBlock) {
             bytes32 miscData = _miscData;
             int256 logInvariant = miscData.decodeInt22(_MISC_LOG_INVARIANT_OFFSET);
@@ -753,11 +766,20 @@ contract WeightedPool2Tokens is
                 _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET
             );
 
+            int256 logSpotPrice = WeightedOracleMath._calcLogSpotPrice(
+                _normalizedWeight0,
+                balanceToken0,
+                _normalizedWeight1,
+                balanceToken1
+            );
+
+            int256 logBPTPrice = WeightedOracleMath._calcLogBPTPrice(_normalizedWeight0, balanceToken0, logTotalSupply);
+
             uint256 oracleUpdatedIndex = _processPriceData(
                 oracleCurrentSampleInitialTimestamp,
                 oracleCurrentIndex,
-                int256(-1), // log pair price
-                int256(-2), // log BPT price using `logTotalSupply`
+                logSpotPrice,
+                logBPTPrice,
                 logInvariant
             );
 
@@ -771,11 +793,20 @@ contract WeightedPool2Tokens is
         }
     }
 
+    /**
+     * @dev Stores the logarithm of the invariant and BPT total supply, to be later used in each oracle update. Because
+     * it is stored in _miscData, which is read in all operations (including swaps), this saves gas by not requiring to
+     * compute or read these values when updating the oracle.
+     *
+     * This function must be called by all actions that update the invariant and BPT supply (joins and exits). Swaps
+     * also alter the invariant due to collected swap fees, but this growth is considered negligible and not accounted
+     * for.
+     */
     function _cacheInvariantAndSupply() internal {
         if (isOracleEnabled()) {
-            // TODO: store logarithmic values
-            int256 logInvariant = int256(_lastInvariant);
-            int256 logTotalSupply = int256(totalSupply());
+            int256 logInvariant = WeightedOracleMath._toLowResLog(_lastInvariant);
+            int256 logTotalSupply = WeightedOracleMath._toLowResLog(totalSupply());
+
             _miscData = _miscData.storeInt22(logInvariant, _MISC_LOG_INVARIANT_OFFSET).storeInt22(
                 logTotalSupply,
                 _MISC_LOG_TOTAL_SUPPLY_OFFSET
