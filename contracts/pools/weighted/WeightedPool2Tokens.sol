@@ -188,8 +188,9 @@ contract WeightedPool2Tokens is
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
-    function enableOracle() external authenticate {
+    function enableOracle() external whenNotPaused authenticate {
         _setOracleEnabled(true);
+        _cacheInvariantAndSupply();
     }
 
     function _setOracleEnabled(bool enabled) private {
@@ -204,11 +205,6 @@ contract WeightedPool2Tokens is
     // Caller must be approved by the Vault's Authorizer
     function setPaused(bool paused) external authenticate {
         _setPaused(paused);
-    }
-
-    function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
-        // This implementation adds support for the enableOracle action identifier.
-        return super._isOwnerOnlyAction(actionId) || actionId == getActionId(WeightedPool2Tokens.enableOracle.selector);
     }
 
     function getNormalizedWeights() external view returns (uint256[] memory) {
