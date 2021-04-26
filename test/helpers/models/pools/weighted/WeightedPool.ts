@@ -151,7 +151,7 @@ export default class WeightedPool {
   }
 
   async getMiscData(): Promise<MiscData> {
-    return this.instance.miscData();
+    return this.instance.getMiscData();
   }
 
   async getSample(oracleIndex?: BigNumberish): Promise<Sample> {
