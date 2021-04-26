@@ -76,15 +76,17 @@ describe('WeightedPool', function () {
       };
 
       const itUpdatesTheOracleData = (action: PoolHook, lastChangeBlockOffset = 0) => {
-        it('updates the oracle data', async () => {
-          const previousData = await pool.instance.miscData();
+        context('without updated oracle', () => {
+          it('updates the oracle data', async () => {
+            const previousData = await pool.instance.miscData();
 
-          await advanceTime(MINUTE * 10); // force index update
-          await action(await calcLastChangeBlock(lastChangeBlockOffset));
+            await advanceTime(MINUTE * 10); // force index update
+            await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
-          const currentMiscData = await pool.instance.miscData();
-          expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
-          expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(await currentTimestamp());
+            const currentMiscData = await pool.instance.miscData();
+            expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
+            expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(await currentTimestamp());
+          });
         });
 
         context('with updated oracle', () => {
