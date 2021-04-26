@@ -3,6 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { TokenList } from '../../helpers/tokens';
 import { fp } from '../../helpers/numbers';
+import { advanceTime, MINUTE } from '../../helpers/time';
 import { MAX_INT256, MAX_UINT256 } from '../../helpers/constants';
 import { FundManagement, getTokensSwaps, SWAP_KIND } from '../../helpers/trading';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
@@ -21,8 +22,8 @@ async function main() {
 
   console.log(`\n# Weighted Pools with 2 tokens`);
 
-  await singlePair(() => getWeightedPool(vault, tokens, 2), false);
-  await singlePair(() => getWeightedPool(vault, tokens, 2), true);
+  await singlePair(() => getWeightedPool(vault, tokens, 2), false, true);
+  await singlePair(() => getWeightedPool(vault, tokens, 2), true, true);
 
   console.log(`\n# Weighted Pools with 4 tokens`);
 
@@ -40,7 +41,7 @@ async function main() {
   await singlePair(() => getStablePool(vault, tokens, 4), true);
 }
 
-async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: boolean) {
+async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: boolean, measureOracle = false) {
   console.log(`\n## ${useInternalBalance ? 'Using Internal Balance' : 'Sending and receiving tokens'}`);
 
   const funds: FundManagement = {
@@ -61,8 +62,8 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
 
   for (let poolAmount = 1; poolAmount <= MAX_POOLS; ++poolAmount) {
     if (poolAmount == 1) {
-      const receipt = await (
-        await vault.connect(trader).swap(
+      const swap = () =>
+        vault.connect(trader).swap(
           {
             kind: 0,
             poolId: poolIds[0],
@@ -74,10 +75,21 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
           funds,
           0,
           MAX_UINT256
-        )
-      ).wait();
+        );
 
-      console.log(`${poolAmount} pools: ${printGas(receipt.gasUsed)} (simple swap)`);
+      const first = await (await swap()).wait();
+
+      if (measureOracle) {
+        const second = await (await swap()).wait();
+        console.log(`${poolAmount} pools:`);
+        console.log(`  - buffer update: ${printGas(first.gasUsed)} (single swap)`);
+        console.log(`  - buffer re-use: ${printGas(second.gasUsed)} (single swap)`);
+      } else {
+        console.log(`${poolAmount} pools: ${printGas(first.gasUsed)} (simple swap)`);
+      }
+
+      // advance time to force batch swap use another oracle sample
+      await advanceTime(MINUTE * 5);
     }
 
     const [tokenAddresses, swaps] = getTokensSwaps(
@@ -87,8 +99,8 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
       })
     );
 
-    const receipt = await (
-      await vault
+    const batchSwap = () =>
+      vault
         .connect(trader)
         .batchSwap(
           SWAP_KIND.GIVEN_IN,
@@ -97,12 +109,18 @@ async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: 
           funds,
           Array(tokenAddresses.length).fill(MAX_INT256),
           MAX_UINT256
-        )
-    ).wait();
+        );
 
-    console.log(
-      `${poolAmount} pools: ${printGas(receipt.gasUsed)} (${printGas(receipt.gasUsed / poolAmount)} per pool)`
-    );
+    const first = await (await batchSwap()).wait();
+
+    if (measureOracle) {
+      const second = await (await batchSwap()).wait();
+      console.log(`${poolAmount} pools:`);
+      console.log(`  - buffer update: ${printGas(first.gasUsed)} (${printGas(first.gasUsed / poolAmount)} per pool)`);
+      console.log(`  - buffer re-use: ${printGas(second.gasUsed)} (${printGas(second.gasUsed / poolAmount)} per pool)`);
+    } else {
+      console.log(`${poolAmount} pools: ${printGas(first.gasUsed)} (${printGas(first.gasUsed / poolAmount)} per pool)`);
+    }
   }
 }
 

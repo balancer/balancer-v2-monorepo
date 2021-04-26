@@ -20,7 +20,7 @@ async function main() {
 }
 
 async function measureDeployment(name: string, args: Array<unknown>): Promise<Contract> {
-  console.log(`# ${name}`);
+  console.log(`\n# ${name}`);
 
   const contract = await deploy(name, { args });
 
