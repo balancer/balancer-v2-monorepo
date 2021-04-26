@@ -16,13 +16,13 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../../lib/math/FixedPoint.sol";
-import "../../lib/helpers/WordCodec.sol";
 import "../../lib/helpers/InputHelpers.sol";
 import "../../lib/helpers/TemporarilyPausable.sol";
 import "../../lib/openzeppelin/ERC20.sol";
 
 import "./WeightedMath.sol";
 import "./WeightedOracleMath.sol";
+import "./WeightedPool2TokensMiscData.sol";
 import "./WeightedPoolUserDataHelpers.sol";
 import "../BalancerPoolToken.sol";
 import "../BasePoolAuthorization.sol";
@@ -35,11 +35,10 @@ contract WeightedPool2Tokens is
     BalancerPoolToken,
     TemporarilyPausable,
     PoolPriceOracle,
+    WeightedPool2TokensMiscData,
     WeightedMath,
     WeightedOracleMath
 {
-    using WordCodec for bytes32;
-    using WordCodec for uint256;
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
 
@@ -51,25 +50,6 @@ contract WeightedPool2Tokens is
     // The swap fee is internally stored using 64 bits, which is enough to represent _MAX_SWAP_FEE_PERCENTAGE.
 
     uint256 private _lastInvariant;
-
-    // This storage slot holds seemingly unrelated pieces of information: they are all kept together to reduce the
-    // number of storage reads. In particular, we not only store configuration values (such as the swap fee percentage),
-    // but also cache reduced-precision versions of the total BPT supply and invariant, which lets us not access nor
-    // compute this values when producing oracle updates during a swap.
-    // Data is packed according to the following format:
-    //
-    // [ swap fee pct | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
-    // [    uint64    |      bool      |    uint10    |              uint31             |    int22   |     int22     ]
-    //
-    // Note that are not using the most-significant 106 bits.
-    bytes32 internal _miscData;
-
-    uint256 internal constant _MISC_LOG_INVARIANT_OFFSET = 0;
-    uint256 internal constant _MISC_LOG_TOTAL_SUPPLY_OFFSET = 22;
-    uint256 internal constant _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET = 44;
-    uint256 internal constant _MISC_ORACLE_INDEX_OFFSET = 75;
-    uint256 internal constant _MISC_ORACLE_ENABLED_OFFSET = 85;
-    uint256 internal constant _MISC_SWAP_FEE_PERCENTAGE_OFFSET = 86;
 
     IVault private immutable _vault;
     bytes32 private immutable _poolId;
@@ -174,7 +154,7 @@ contract WeightedPool2Tokens is
     }
 
     function _getSwapFeePercentage() internal view returns (uint256) {
-        return _miscData.decodeUint64(_MISC_SWAP_FEE_PERCENTAGE_OFFSET);
+        return _getMiscData().swapFeePercentage;
     }
 
     // Caller must be approved by the Vault's Authorizer
@@ -186,22 +166,26 @@ contract WeightedPool2Tokens is
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _miscData = _miscData.storeUint64(swapFeePercentage, _MISC_SWAP_FEE_PERCENTAGE_OFFSET);
+        MiscData memory miscData = _getMiscData();
+        miscData.swapFeePercentage = swapFeePercentage;
+        _setMiscData(miscData);
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     function enableOracle() external whenNotPaused authenticate {
         _setOracleEnabled(true);
-        _cacheInvariantAndSupply();
+        _cacheInvariantAndSupply(_getMiscData());
     }
 
     function _setOracleEnabled(bool enabled) private {
-        _miscData = _miscData.storeBoolean(true, _MISC_ORACLE_ENABLED_OFFSET);
+        MiscData memory miscData = _getMiscData();
+        miscData.oracleEnabled = true;
+        _setMiscData(miscData);
         emit OracleEnabledChanged(enabled);
     }
 
     function isOracleEnabled() public view returns (bool) {
-        return _miscData.decodeBool(_MISC_ORACLE_ENABLED_OFFSET);
+        return _getMiscData().oracleEnabled;
     }
 
     // Caller must be approved by the Vault's Authorizer
@@ -261,6 +245,7 @@ contract WeightedPool2Tokens is
         // Update price oracle with the pre-swap balances
         bool tokenInIsToken0 = request.tokenIn == _token0;
         _updateOracle(
+            _getMiscData(),
             request.lastChangeBlock,
             tokenInIsToken0 ? balanceTokenIn : balanceTokenOut,
             tokenInIsToken0 ? balanceTokenOut : balanceTokenIn
@@ -342,6 +327,7 @@ contract WeightedPool2Tokens is
         // All joins, including initializations, are disabled while the contract is paused.
 
         uint256[] memory scalingFactors = _scalingFactors();
+        MiscData memory miscData = _getMiscData();
 
         uint256 bptAmountOut;
         if (totalSupply() == 0) {
@@ -363,7 +349,7 @@ contract WeightedPool2Tokens is
             _upscaleArray(balances, scalingFactors);
 
             // Update price oracle with the pre-join balances
-            _updateOracle(lastChangeBlock, balances[0], balances[1]);
+            _updateOracle(miscData, lastChangeBlock, balances[0], balances[1]);
 
             (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = _onJoinPool(
                 poolId,
@@ -387,7 +373,7 @@ contract WeightedPool2Tokens is
 
         // Update cached total supply and invariant using the results after the join that will be used for future
         // oracle updates.
-        _cacheInvariantAndSupply();
+        _cacheInvariantAndSupply(miscData);
     }
 
     /**
@@ -584,7 +570,7 @@ contract WeightedPool2Tokens is
         // Update cached total supply and invariant using the results after the exit that will be used for future
         // oracle updates, only if the pool was not paused (to minimize code paths taken while paused).
         if (_isNotPaused()) {
-            _cacheInvariantAndSupply();
+            _cacheInvariantAndSupply(_getMiscData());
         }
 
         return (amountsOut, dueProtocolFeeAmounts);
@@ -630,7 +616,7 @@ contract WeightedPool2Tokens is
 
         if (_isNotPaused()) {
             // Update price oracle with the pre-exit balances
-            _updateOracle(lastChangeBlock, balances[0], balances[1]);
+            _updateOracle(_getMiscData(), lastChangeBlock, balances[0], balances[1]);
 
             // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
@@ -753,19 +739,12 @@ contract WeightedPool2Tokens is
      * `lastChangeBlock` as the number of the block in which any of the balances last changed.
      */
     function _updateOracle(
+        MiscData memory miscData,
         uint256 lastChangeBlock,
         uint256 balanceToken0,
         uint256 balanceToken1
     ) internal {
-        if (isOracleEnabled() && block.number > lastChangeBlock) {
-            bytes32 miscData = _miscData;
-            int256 logInvariant = miscData.decodeInt22(_MISC_LOG_INVARIANT_OFFSET);
-            int256 logTotalSupply = miscData.decodeInt22(_MISC_LOG_TOTAL_SUPPLY_OFFSET);
-            uint256 oracleCurrentIndex = miscData.decodeUint10(_MISC_ORACLE_INDEX_OFFSET);
-            uint256 oracleCurrentSampleInitialTimestamp = miscData.decodeUint31(
-                _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET
-            );
-
+        if (miscData.oracleEnabled && block.number > lastChangeBlock) {
             int256 logSpotPrice = WeightedOracleMath._calcLogSpotPrice(
                 _normalizedWeight0,
                 balanceToken0,
@@ -773,44 +752,45 @@ contract WeightedPool2Tokens is
                 balanceToken1
             );
 
-            int256 logBPTPrice = WeightedOracleMath._calcLogBPTPrice(_normalizedWeight0, balanceToken0, logTotalSupply);
+            int256 logBPTPrice = WeightedOracleMath._calcLogBPTPrice(
+                _normalizedWeight0,
+                balanceToken0,
+                miscData.logTotalSupply
+            );
 
+            uint256 oracleCurrentIndex = miscData.oracleIndex;
+            uint256 oracleCurrentSampleInitialTimestamp = miscData.oracleSampleInitialTimestamp;
             uint256 oracleUpdatedIndex = _processPriceData(
                 oracleCurrentSampleInitialTimestamp,
                 oracleCurrentIndex,
                 logSpotPrice,
                 logBPTPrice,
-                logInvariant
+                miscData.logInvariant
             );
 
             if (oracleCurrentIndex != oracleUpdatedIndex) {
                 // solhint-disable not-rely-on-time
-                _miscData = miscData.storeUint10(oracleUpdatedIndex, _MISC_ORACLE_INDEX_OFFSET).storeUint31(
-                    block.timestamp,
-                    _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET
-                );
+                miscData.oracleIndex = oracleUpdatedIndex;
+                miscData.oracleSampleInitialTimestamp = block.timestamp;
+                _setMiscData(miscData);
             }
         }
     }
 
     /**
      * @dev Stores the logarithm of the invariant and BPT total supply, to be later used in each oracle update. Because
-     * it is stored in _miscData, which is read in all operations (including swaps), this saves gas by not requiring to
+     * it is stored in miscData, which is read in all operations (including swaps), this saves gas by not requiring to
      * compute or read these values when updating the oracle.
      *
      * This function must be called by all actions that update the invariant and BPT supply (joins and exits). Swaps
      * also alter the invariant due to collected swap fees, but this growth is considered negligible and not accounted
      * for.
      */
-    function _cacheInvariantAndSupply() internal {
-        if (isOracleEnabled()) {
-            int256 logInvariant = WeightedOracleMath._toLowResLog(_lastInvariant);
-            int256 logTotalSupply = WeightedOracleMath._toLowResLog(totalSupply());
-
-            _miscData = _miscData.storeInt22(logInvariant, _MISC_LOG_INVARIANT_OFFSET).storeInt22(
-                logTotalSupply,
-                _MISC_LOG_TOTAL_SUPPLY_OFFSET
-            );
+    function _cacheInvariantAndSupply(MiscData memory miscData) internal {
+        if (miscData.oracleEnabled) {
+            miscData.logInvariant = WeightedOracleMath._toLowResLog(_lastInvariant);
+            miscData.logTotalSupply = WeightedOracleMath._toLowResLog(totalSupply());
+            _setMiscData(miscData);
         }
     }
 

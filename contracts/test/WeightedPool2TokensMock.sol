@@ -20,42 +20,15 @@ import "./MockWeightedOracleMath.sol";
 import "../pools/weighted/WeightedPool2Tokens.sol";
 
 contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock, MockWeightedOracleMath {
-    using WordCodec for bytes32;
-
-    struct MiscData {
-        uint256 swapFeePercentage;
-        bool oracleEnabled;
-        uint256 oracleIndex;
-        uint256 oracleSampleInitialTimestamp;
-        int256 logTotalSupply;
-        int256 logInvariant;
-    }
-
     constructor(NewPoolParams memory params) WeightedPool2Tokens(params) {}
 
     function miscData() external view returns (MiscData memory) {
-        return MiscData({
-            swapFeePercentage: _miscData.decodeUint64(_MISC_SWAP_FEE_PERCENTAGE_OFFSET),
-            oracleEnabled: _miscData.decodeBool(_MISC_ORACLE_ENABLED_OFFSET),
-            oracleIndex: _miscData.decodeUint10(_MISC_ORACLE_INDEX_OFFSET),
-            oracleSampleInitialTimestamp: _miscData.decodeUint31(_MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET),
-            logTotalSupply: _miscData.decodeInt22(_MISC_LOG_TOTAL_SUPPLY_OFFSET),
-            logInvariant: _miscData.decodeInt22(_MISC_LOG_INVARIANT_OFFSET)
-        });
+        return _getMiscData();
     }
 
     function mockOracleDisabled() external {
-        _miscData = _miscData.storeBoolean(false, _MISC_ORACLE_ENABLED_OFFSET);
-    }
-
-    function mockMiscData(MiscData memory _data) external {
-        bytes32 data = bytes32(0);
-        data = data.storeUint64(_data.swapFeePercentage, _MISC_SWAP_FEE_PERCENTAGE_OFFSET);
-        data = data.storeBoolean(_data.oracleEnabled, _MISC_ORACLE_ENABLED_OFFSET);
-        data = data.storeUint10(_data.oracleIndex, _MISC_ORACLE_INDEX_OFFSET);
-        data = data.storeUint31(_data.oracleSampleInitialTimestamp, _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET);
-        data = data.storeInt22(_data.logTotalSupply, _MISC_LOG_TOTAL_SUPPLY_OFFSET);
-        data = data.storeInt22(_data.logInvariant, _MISC_LOG_INVARIANT_OFFSET);
-        _miscData = data;
+        MiscData memory data = _getMiscData();
+        data.oracleEnabled = false;
+        _setMiscData(data);
     }
 }
