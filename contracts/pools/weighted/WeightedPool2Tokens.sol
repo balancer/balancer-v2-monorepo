@@ -241,12 +241,10 @@ contract WeightedPool2Tokens is
         // Update price oracle with the pre-swap balances
         MiscData memory miscData = _getMiscData();
         bool tokenInIsToken0 = request.tokenIn == _token0;
-        _updateOracle(
-            miscData,
-            request.lastChangeBlock,
-            tokenInIsToken0 ? balanceTokenIn : balanceTokenOut,
-            tokenInIsToken0 ? balanceTokenOut : balanceTokenIn
-        );
+        uint256 balanceToken0 = tokenInIsToken0 ? balanceTokenIn : balanceTokenOut;
+        uint256 balanceToken1 = tokenInIsToken0 ? balanceTokenOut : balanceTokenIn;
+        _updateOracle(miscData, request.lastChangeBlock, balanceToken0, balanceToken1);
+        _setMiscData(miscData);
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
@@ -748,6 +746,9 @@ contract WeightedPool2Tokens is
      * @dev Updates the Price Oracle based on the Pool's current state (balances, BPT supply and invariant). Must be
      * called on *all* state-changing functions with the balances *before* the state change happens, and with
      * `lastChangeBlock` as the number of the block in which any of the balances last changed.
+     *
+     * It also updates the given `miscData` accordingly with the latest oracle update. Although, it doesn't persist it
+     * to storage due to gas-optimization reasons. The user must do that after calling this function if desired.
      */
     function _updateOracle(
         MiscData memory miscData,
@@ -779,11 +780,12 @@ contract WeightedPool2Tokens is
                 miscData.logInvariant
             );
 
+            // Note that we are not persisting the oracle cached information here, the user must call `_setMiscData`
+            // after calling this function to make that happen
             if (oracleCurrentIndex != oracleUpdatedIndex) {
                 // solhint-disable not-rely-on-time
                 miscData.oracleIndex = oracleUpdatedIndex;
                 miscData.oracleSampleInitialTimestamp = block.timestamp;
-                _setMiscData(miscData);
             }
         }
     }
