@@ -170,7 +170,11 @@ contract WeightedPool2Tokens is
 
     function enableOracle() external whenNotPaused authenticate {
         _setOracleEnabled(true);
-        _cacheInvariantAndSupply(_getMiscData());
+
+        // Cache log invariant and supply only if the pool was initialized
+        if (totalSupply() > 0) {
+            _cacheInvariantAndSupply(_getMiscData());
+        }
     }
 
     function _setOracleEnabled(bool enabled) private {
