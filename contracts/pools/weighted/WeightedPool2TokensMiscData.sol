@@ -55,14 +55,16 @@ contract WeightedPool2TokensMiscData {
     bytes32 private _miscData;
 
     function _getMiscData() internal view returns (MiscData memory) {
+        bytes32 miscData = _miscData;
+
         return
             MiscData({
-                swapFeePercentage: _miscData.decodeUint64(_MISC_SWAP_FEE_PERCENTAGE_OFFSET),
-                oracleEnabled: _miscData.decodeBool(_MISC_ORACLE_ENABLED_OFFSET),
-                oracleIndex: _miscData.decodeUint10(_MISC_ORACLE_INDEX_OFFSET),
-                oracleSampleInitialTimestamp: _miscData.decodeUint31(_MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET),
-                logTotalSupply: _miscData.decodeInt22(_MISC_LOG_TOTAL_SUPPLY_OFFSET),
-                logInvariant: _miscData.decodeInt22(_MISC_LOG_INVARIANT_OFFSET)
+                swapFeePercentage: miscData.decodeUint64(_MISC_SWAP_FEE_PERCENTAGE_OFFSET),
+                oracleEnabled: miscData.decodeBool(_MISC_ORACLE_ENABLED_OFFSET),
+                oracleIndex: miscData.decodeUint10(_MISC_ORACLE_INDEX_OFFSET),
+                oracleSampleInitialTimestamp: miscData.decodeUint31(_MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET),
+                logTotalSupply: miscData.decodeInt22(_MISC_LOG_TOTAL_SUPPLY_OFFSET),
+                logInvariant: miscData.decodeInt22(_MISC_LOG_INVARIANT_OFFSET)
             });
     }
 
