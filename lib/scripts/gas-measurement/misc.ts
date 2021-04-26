@@ -12,6 +12,7 @@ import { encodeJoinWeightedPool } from '../../helpers/weightedPoolEncoding';
 import { bn } from '../../helpers/numbers';
 import { deployPoolFromFactory, PoolName } from '../../helpers/pools';
 import { deploySortedTokens, mintTokens, TokenList } from '../../helpers/tokens';
+import { advanceTime, MONTH } from '../../helpers/time';
 
 export const tokenSymbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG', 'HHH'];
 
@@ -107,6 +108,9 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
     fromInternalBalance: false,
     userData: joinUserData,
   });
+
+  // Force test to skip pause window
+  await advanceTime(MONTH * 5);
 
   return poolId;
 }
