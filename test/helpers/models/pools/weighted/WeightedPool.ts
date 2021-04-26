@@ -11,7 +11,7 @@ import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import WeightedPoolDeployer from './WeightedPoolDeployer';
-import { Account } from '../../types/types';
+import { Account, TxParams } from '../../types/types';
 import {
   JoinExitWeightedPool,
   InitWeightedPool,
@@ -27,6 +27,8 @@ import {
   ExitQueryResult,
   JoinQueryResult,
   PoolQueryResult,
+  MiscData,
+  Sample,
 } from './types';
 import {
   calculateInvariant,
@@ -37,6 +39,8 @@ import {
   calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
   calculateMaxOneTokenSwapFeeAmount,
+  calculateSpotPrice,
+  calculateBPTPrice,
 } from '../../../math/weighted';
 import { Swap } from '../../vault/types';
 
@@ -142,6 +146,19 @@ export default class WeightedPool {
     return currentBalances[tokenIndex].mul(MAX_OUT_RATIO).div(fp(1));
   }
 
+  async isOracleEnabled(): Promise<boolean> {
+    return this.instance.isOracleEnabled();
+  }
+
+  async getMiscData(): Promise<MiscData> {
+    return this.instance.miscData();
+  }
+
+  async getSample(oracleIndex?: BigNumberish): Promise<Sample> {
+    if (!oracleIndex) oracleIndex = (await this.getMiscData()).oracleIndex;
+    return this.instance.getSample(oracleIndex);
+  }
+
   async getSwapFeePercentage(): Promise<BigNumber> {
     return this.instance.getSwapFeePercentage();
   }
@@ -163,6 +180,21 @@ export default class WeightedPool {
     token: Token
   ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.vault.getPoolTokenInfo(this.poolId, token);
+  }
+
+  async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
+    if (!currentBalances) currentBalances = await this.getBalances();
+    return calculateSpotPrice(currentBalances, this.weights);
+  }
+
+  async estimateBptPrice(
+    tokenIndex: number,
+    currentBalance?: BigNumberish,
+    currentSupply?: BigNumberish
+  ): Promise<BigNumber> {
+    if (!currentBalance) currentBalance = (await this.getBalances())[tokenIndex];
+    if (!currentSupply) currentSupply = await this.totalSupply();
+    return calculateBPTPrice(currentBalance, this.weights[tokenIndex], currentSupply);
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
@@ -519,5 +551,10 @@ export default class WeightedPool {
     const action = await actionId(this.instance, 'setPaused');
     await this.vault.grantRole(action);
     await this.instance.setPaused(true);
+  }
+
+  async enableOracle(txParams: TxParams): Promise<void> {
+    const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
+    await pool.enableOracle();
   }
 }
