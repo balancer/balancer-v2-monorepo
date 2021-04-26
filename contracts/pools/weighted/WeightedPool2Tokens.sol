@@ -179,7 +179,7 @@ contract WeightedPool2Tokens is
 
     function _setOracleEnabled(bool enabled) private {
         MiscData memory miscData = _getMiscData();
-        miscData.oracleEnabled = true;
+        miscData.oracleEnabled = enabled;
         _setMiscData(miscData);
         emit OracleEnabledChanged(enabled);
     }
