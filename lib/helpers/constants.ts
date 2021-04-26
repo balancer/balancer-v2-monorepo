@@ -4,8 +4,10 @@ import { maxUint, maxInt, minInt } from './numbers';
 
 export const MAX_UINT256: BigNumber = maxUint(256);
 export const MAX_UINT112: BigNumber = maxUint(112);
+export const MAX_UINT10: BigNumber = maxUint(10);
 export const MAX_UINT31: BigNumber = maxUint(31);
 export const MAX_UINT32: BigNumber = maxUint(32);
+export const MAX_UINT64: BigNumber = maxUint(64);
 
 export const MIN_INT22: BigNumber = minInt(22);
 export const MAX_INT22: BigNumber = maxInt(22);

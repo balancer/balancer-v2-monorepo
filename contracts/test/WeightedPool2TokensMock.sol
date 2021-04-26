@@ -22,8 +22,8 @@ import "../pools/weighted/WeightedPool2Tokens.sol";
 contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock, MockWeightedOracleMath {
     constructor(NewPoolParams memory params) WeightedPool2Tokens(params) {}
 
-    function miscData() external view returns (MiscData memory) {
-        return _getMiscData();
+    function setMiscData(MiscData memory data) external {
+        return _setMiscData(data);
     }
 
     function mockOracleDisabled() external {
