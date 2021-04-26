@@ -243,8 +243,10 @@ contract WeightedPool2Tokens is
         bool tokenInIsToken0 = request.tokenIn == _token0;
         uint256 balanceToken0 = tokenInIsToken0 ? balanceTokenIn : balanceTokenOut;
         uint256 balanceToken1 = tokenInIsToken0 ? balanceTokenOut : balanceTokenIn;
-        _updateOracle(miscData, request.lastChangeBlock, balanceToken0, balanceToken1);
-        _setMiscData(miscData);
+        bool updated = _updateOracle(miscData, request.lastChangeBlock, balanceToken0, balanceToken1);
+        if (updated) {
+            _setMiscData(miscData);
+        }
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
@@ -755,7 +757,7 @@ contract WeightedPool2Tokens is
         uint256 lastChangeBlock,
         uint256 balanceToken0,
         uint256 balanceToken1
-    ) internal {
+    ) internal returns (bool) {
         if (miscData.oracleEnabled && block.number > lastChangeBlock) {
             int256 logSpotPrice = WeightedOracleMath._calcLogSpotPrice(
                 _normalizedWeight0,
@@ -786,8 +788,10 @@ contract WeightedPool2Tokens is
                 // solhint-disable not-rely-on-time
                 miscData.oracleIndex = oracleUpdatedIndex;
                 miscData.oracleSampleInitialTimestamp = block.timestamp;
+                return true;
             }
         }
+        return false;
     }
 
     /**
