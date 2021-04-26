@@ -150,10 +150,6 @@ contract WeightedPool2Tokens is
     }
 
     function getSwapFeePercentage() external view returns (uint256) {
-        return _getSwapFeePercentage();
-    }
-
-    function _getSwapFeePercentage() internal view returns (uint256) {
         return _getMiscData().swapFeePercentage;
     }
 
@@ -184,7 +180,7 @@ contract WeightedPool2Tokens is
         emit OracleEnabledChanged(enabled);
     }
 
-    function isOracleEnabled() public view returns (bool) {
+    function isOracleEnabled() external view returns (bool) {
         return _getMiscData().oracleEnabled;
     }
 
@@ -243,9 +239,10 @@ contract WeightedPool2Tokens is
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
 
         // Update price oracle with the pre-swap balances
+        MiscData memory miscData = _getMiscData();
         bool tokenInIsToken0 = request.tokenIn == _token0;
         _updateOracle(
-            _getMiscData(),
+            miscData,
             request.lastChangeBlock,
             tokenInIsToken0 ? balanceTokenIn : balanceTokenOut,
             tokenInIsToken0 ? balanceTokenOut : balanceTokenIn
@@ -253,7 +250,9 @@ contract WeightedPool2Tokens is
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            request.amount = _upscale(_subtractSwapFeeAmount(request.amount), scalingFactorTokenIn);
+            // This is amount - fee amount, so we round up (favoring a higher fee amount).
+            uint256 feeAmount = request.amount.mulUp(miscData.swapFeePercentage);
+            request.amount = _upscale(request.amount.sub(feeAmount), scalingFactorTokenIn);
 
             uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
 
@@ -268,7 +267,8 @@ contract WeightedPool2Tokens is
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            return _addSwapFeeAmount(amountIn);
+            // This is amount + fee amount, so we round up (favoring a higher fee amount).
+            return amountIn.divUp(miscData.swapFeePercentage.complement());
         }
     }
 
@@ -358,7 +358,8 @@ contract WeightedPool2Tokens is
                 balances,
                 lastChangeBlock,
                 protocolSwapFeePercentage,
-                userData
+                userData,
+                miscData
             );
 
             // Note we no longer use `balances` after calling `_onJoinPool`, which may mutate it.
@@ -439,7 +440,8 @@ contract WeightedPool2Tokens is
         uint256[] memory balances,
         uint256,
         uint256 protocolSwapFeePercentage,
-        bytes memory userData
+        bytes memory userData,
+        MiscData memory miscData
     )
         private
         returns (
@@ -465,7 +467,7 @@ contract WeightedPool2Tokens is
 
         // Update current balances by subtracting the protocol fee amounts
         _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
-        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, normalizedWeights, userData);
+        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, normalizedWeights, userData, miscData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
         // protocol swap fee amounts due in future joins and exits.
@@ -477,14 +479,15 @@ contract WeightedPool2Tokens is
     function _doJoin(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData
+        bytes memory userData,
+        MiscData memory miscData
     ) private view returns (uint256, uint256[] memory) {
         WeightedPool.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData);
+            return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData, miscData);
         } else if (kind == WeightedPool.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
+            return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData, miscData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -493,7 +496,8 @@ contract WeightedPool2Tokens is
     function _joinExactTokensInForBPTOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData
+        bytes memory userData,
+        MiscData memory miscData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, 2);
@@ -505,7 +509,7 @@ contract WeightedPool2Tokens is
             normalizedWeights,
             amountsIn,
             totalSupply(),
-            _getSwapFeePercentage()
+            miscData.swapFeePercentage
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -516,7 +520,8 @@ contract WeightedPool2Tokens is
     function _joinTokenInForExactBPTOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData
+        bytes memory userData,
+        MiscData memory miscData
     ) private view returns (uint256, uint256[] memory) {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
@@ -529,7 +534,7 @@ contract WeightedPool2Tokens is
             normalizedWeights[tokenIndex],
             bptAmountOut,
             totalSupply(),
-            _getSwapFeePercentage()
+            miscData.swapFeePercentage
         );
 
         return (bptAmountOut, amountsIn);
@@ -549,6 +554,7 @@ contract WeightedPool2Tokens is
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
+        MiscData memory miscData = _getMiscData();
         (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(
             poolId,
             sender,
@@ -556,7 +562,8 @@ contract WeightedPool2Tokens is
             balances,
             lastChangeBlock,
             protocolSwapFeePercentage,
-            userData
+            userData,
+            miscData
         );
 
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
@@ -570,7 +577,7 @@ contract WeightedPool2Tokens is
         // Update cached total supply and invariant using the results after the exit that will be used for future
         // oracle updates, only if the pool was not paused (to minimize code paths taken while paused).
         if (_isNotPaused()) {
-            _cacheInvariantAndSupply(_getMiscData());
+            _cacheInvariantAndSupply(miscData);
         }
 
         return (amountsOut, dueProtocolFeeAmounts);
@@ -600,7 +607,8 @@ contract WeightedPool2Tokens is
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
-        bytes memory userData
+        bytes memory userData,
+        MiscData memory miscData
     )
         private
         returns (
@@ -616,7 +624,7 @@ contract WeightedPool2Tokens is
 
         if (_isNotPaused()) {
             // Update price oracle with the pre-exit balances
-            _updateOracle(_getMiscData(), lastChangeBlock, balances[0], balances[1]);
+            _updateOracle(miscData, lastChangeBlock, balances[0], balances[1]);
 
             // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
@@ -638,7 +646,7 @@ contract WeightedPool2Tokens is
             dueProtocolFeeAmounts = new uint256[](2);
         }
 
-        (bptAmountIn, amountsOut) = _doExit(balances, normalizedWeights, userData);
+        (bptAmountIn, amountsOut) = _doExit(balances, normalizedWeights, userData, miscData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
         // protocol swap fees due in future joins and exits.
@@ -650,24 +658,26 @@ contract WeightedPool2Tokens is
     function _doExit(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData
+        bytes memory userData,
+        MiscData memory miscData
     ) private view returns (uint256, uint256[] memory) {
         WeightedPool.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
+            return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData, miscData);
         } else if (kind == WeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
         } else {
             // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
-            return _exitBPTInForExactTokensOut(balances, normalizedWeights, userData);
+            return _exitBPTInForExactTokensOut(balances, normalizedWeights, userData, miscData);
         }
     }
 
     function _exitExactBPTInForTokenOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData
+        bytes memory userData,
+        MiscData memory miscData
     ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
@@ -685,7 +695,7 @@ contract WeightedPool2Tokens is
             normalizedWeights[tokenIndex],
             bptAmountIn,
             totalSupply(),
-            _getSwapFeePercentage()
+            miscData.swapFeePercentage
         );
 
         return (bptAmountIn, amountsOut);
@@ -711,7 +721,8 @@ contract WeightedPool2Tokens is
     function _exitBPTInForExactTokensOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData
+        bytes memory userData,
+        MiscData memory miscData
     ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
@@ -724,7 +735,7 @@ contract WeightedPool2Tokens is
             normalizedWeights,
             amountsOut,
             totalSupply(),
-            _getSwapFeePercentage()
+            miscData.swapFeePercentage
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
@@ -825,6 +836,7 @@ contract WeightedPool2Tokens is
             lastChangeBlock,
             protocolSwapFeePercentage,
             userData,
+            _getMiscData(),
             _onJoinPool,
             _downscaleUpArray
         );
@@ -863,6 +875,7 @@ contract WeightedPool2Tokens is
             lastChangeBlock,
             protocolSwapFeePercentage,
             userData,
+            _getMiscData(),
             _onExitPool,
             _downscaleDownArray
         );
@@ -945,25 +958,6 @@ contract WeightedPool2Tokens is
     function getRate() public view returns (uint256) {
         // The initial BPT supply is equal to the invariant times the number of tokens.
         return Math.mul(getInvariant(), 2).divDown(totalSupply());
-    }
-
-    // Internal functions
-
-    /**
-     * @dev Adds swap fee amount to `amount`, returning a higher value.
-     */
-    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
-        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(_getSwapFeePercentage().complement());
-    }
-
-    /**
-     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
-     */
-    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
-        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(_getSwapFeePercentage());
-        return amount.sub(feeAmount);
     }
 
     // Scaling
@@ -1069,7 +1063,8 @@ contract WeightedPool2Tokens is
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData,
-        function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
+        MiscData memory miscData,
+        function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory, MiscData memory)
             internal
             returns (uint256, uint256[] memory, uint256[] memory) _action,
         function(uint256[] memory, uint256[] memory) internal view _downscaleArray
@@ -1152,7 +1147,8 @@ contract WeightedPool2Tokens is
                 balances,
                 lastChangeBlock,
                 protocolSwapFeePercentage,
-                userData
+                userData,
+                miscData
             );
 
             _downscaleArray(tokenAmounts, scalingFactors);

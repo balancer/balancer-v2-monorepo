@@ -17,6 +17,21 @@ pragma experimental ABIEncoderV2;
 
 import "../../lib/helpers/WordCodec.sol";
 
+/**
+ * @dev This module provides an interface to store seemingly unrelated pieces of information, in particular used by
+ * Weighted Pools of 2 tokens with a price oracle.
+
+ * These pieces of information are all kept together into one single storage slot to reduce the number of storage reads.
+ * In particular, we not only store configuration values (such as the swap fee percentage), but also cache
+ * reduced-precision versions of the total BPT supply and invariant, which lets us not access nor compute this values
+ * when producing oracle updates during a swap.
+ * Data is packed according to the following format:
+ *
+ * [ swap fee pct | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
+ * [    uint64    |      bool      |    uint10    |              uint31             |    int22   |     int22     ]
+ *
+ * Note that are not using the most-significant 106 bits.
+ */
 contract WeightedPool2TokensMiscData {
     using WordCodec for bytes32;
     using WordCodec for uint256;
@@ -37,16 +52,6 @@ contract WeightedPool2TokensMiscData {
         int256 logInvariant;
     }
 
-    // This storage slot holds seemingly unrelated pieces of information: they are all kept together to reduce the
-    // number of storage reads. In particular, we not only store configuration values (such as the swap fee percentage),
-    // but also cache reduced-precision versions of the total BPT supply and invariant, which lets us not access nor
-    // compute this values when producing oracle updates during a swap.
-    // Data is packed according to the following format:
-    //
-    // [ swap fee pct | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
-    // [    uint64    |      bool      |    uint10    |              uint31             |    int22   |     int22     ]
-    //
-    // Note that are not using the most-significant 106 bits.
     bytes32 private _miscData;
 
     function _getMiscData() internal view returns (MiscData memory) {
