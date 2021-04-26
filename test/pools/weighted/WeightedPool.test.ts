@@ -353,8 +353,6 @@ describe('WeightedPool', function () {
           await pool.vault.grantRole(action, admin);
         });
 
-        initializePool();
-
         context('when it starts enabled', () => {
           it('is enabled', async () => {
             expect(await pool.instance.isOracleEnabled()).to.be.true;
@@ -372,20 +370,28 @@ describe('WeightedPool', function () {
             await pool.instance.mockOracleDisabled();
           });
 
-          it('is disabled and can be enabled', async () => {
-            expect(await pool.instance.isOracleEnabled()).to.be.false;
-
-            await action();
-
-            expect(await pool.instance.isOracleEnabled()).to.be.true;
+          context('when the pool was not initialized', async () => {
+            itDoesNotCacheTheLogInvariantAndSupply(action);
           });
 
-          it('can only be updated by the admin', async () => {
-            await expect(pool.instance.connect(other).enableOracle()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-            await expect(pool.instance.connect(owner).enableOracle()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-          });
+          context('when the pool was initialized', async () => {
+            initializePool();
 
-          itCachesTheLogInvariantAndSupply(action);
+            it('is disabled and can be enabled', async () => {
+              expect(await pool.instance.isOracleEnabled()).to.be.false;
+
+              await action();
+
+              expect(await pool.instance.isOracleEnabled()).to.be.true;
+            });
+
+            it('can only be updated by the admin', async () => {
+              await expect(pool.instance.connect(other).enableOracle()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+              await expect(pool.instance.connect(owner).enableOracle()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+            });
+
+            itCachesTheLogInvariantAndSupply(action);
+          });
         });
       });
 
