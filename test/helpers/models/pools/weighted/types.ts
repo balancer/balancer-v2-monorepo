@@ -129,4 +129,23 @@ export type ExitQueryResult = {
   amountsOut: BigNumber[];
 };
 
+export type MiscData = {
+  swapFeePercentage: BigNumber;
+  oracleEnabled: boolean;
+  oracleIndex: BigNumber;
+  oracleSampleInitialTimestamp: BigNumber;
+  logTotalSupply: BigNumber;
+  logInvariant: BigNumber;
+};
+
+export type Sample = {
+  logPairPrice: BigNumber;
+  accLogPairPrice: BigNumber;
+  logBptPrice: BigNumber;
+  accLogBptPrice: BigNumber;
+  logInvariant: BigNumber;
+  accLogInvariant: BigNumber;
+  timestamp: BigNumber;
+};
+
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;

@@ -7,12 +7,11 @@ import { actionId } from '../../../lib/helpers/actions';
 import { BigNumberish, bn, fp, pct } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
 import { advanceTime, currentTimestamp, lastBlockNumber, MINUTE } from '../../../lib/helpers/time';
-import { calculateBPTPrice, calculateInvariant, calculateSpotPrice } from '../../helpers/math/weighted';
 
 import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
 import { expectEqualWithError } from '../../helpers/relativeError';
-import { RawWeightedPoolDeployment } from '../../helpers/models/pools/weighted/types';
+import { RawWeightedPoolDeployment, Sample } from '../../helpers/models/pools/weighted/types';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
@@ -78,33 +77,32 @@ describe('WeightedPool', function () {
       const itUpdatesTheOracleData = (action: PoolHook, lastChangeBlockOffset = 0) => {
         context('without updated oracle', () => {
           it('updates the oracle data', async () => {
-            const previousData = await pool.instance.miscData();
+            const previousData = await pool.getMiscData();
 
             await advanceTime(MINUTE * 10); // force index update
             await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
-            const currentMiscData = await pool.instance.miscData();
+            const currentMiscData = await pool.getMiscData();
             expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
             expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(await currentTimestamp());
           });
         });
 
         context('with updated oracle', () => {
-          let previousBalances: BigNumber[], previousTotalSupply: BigNumber, weights: BigNumber[], newSample: any;
+          let previousBalances: BigNumber[], previousTotalSupply: BigNumber, newSample: Sample;
 
           sharedBeforeEach(async () => {
             previousBalances = await pool.getBalances();
-            previousTotalSupply = await pool.instance.totalSupply();
-            weights = await pool.getNormalizedWeights();
+            previousTotalSupply = await pool.totalSupply();
 
             await advanceTime(MINUTE * 10); // force index update
             await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
-            newSample = await pool.instance.getSample((await pool.instance.miscData()).oracleIndex);
+            newSample = await pool.getSample();
           });
 
           it('stores the pre-action spot price', async () => {
-            const expectedSpotPrice = calculateSpotPrice(previousBalances, weights);
+            const expectedSpotPrice = await pool.estimateSpotPrice(previousBalances);
             expectEqualWithError(
               await pool.instance.fromLowResLog(newSample.logPairPrice),
               expectedSpotPrice,
@@ -113,7 +111,7 @@ describe('WeightedPool', function () {
           });
 
           it('stores the pre-action BPT price', async () => {
-            const expectedBPTPrice = calculateBPTPrice(previousBalances[0], weights[0], previousTotalSupply);
+            const expectedBPTPrice = await pool.estimateBptPrice(0, previousBalances[0], previousTotalSupply);
             expectEqualWithError(
               await pool.instance.fromLowResLog(newSample.logBptPrice),
               expectedBPTPrice,
@@ -122,7 +120,7 @@ describe('WeightedPool', function () {
           });
 
           it('stores the pre-action invariant', async () => {
-            const expectedInvariant = calculateInvariant(previousBalances, weights);
+            const expectedInvariant = await pool.estimateInvariant(previousBalances);
             expectEqualWithError(
               await pool.instance.fromLowResLog(newSample.logInvariant),
               expectedInvariant,
@@ -134,11 +132,11 @@ describe('WeightedPool', function () {
 
       const itDoesNotUpdateTheOracleData = (action: PoolHook, lastChangeBlockOffset = 0) => {
         it('does not update the oracle data', async () => {
-          const previousMiscData = await pool.instance.miscData();
+          const previousMiscData = await pool.getMiscData();
 
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
-          const currentMiscData = await pool.instance.miscData();
+          const currentMiscData = await pool.getMiscData();
           expect(currentMiscData.oracleIndex).to.equal(previousMiscData.oracleIndex);
           expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(previousMiscData.oracleSampleInitialTimestamp);
         });
@@ -148,29 +146,29 @@ describe('WeightedPool', function () {
         it('caches the log of the last invariant', async () => {
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
-          const currentMiscData = await pool.instance.miscData();
+          const currentMiscData = await pool.getMiscData();
           const actualInvariant = await pool.instance.fromLowResLog(currentMiscData.logInvariant);
-          const expectedInvariant = await pool.instance.getLastInvariant();
+          const expectedInvariant = await pool.getLastInvariant();
           expectEqualWithError(actualInvariant, expectedInvariant, MAX_RELATIVE_ERROR);
         });
 
         it('caches the total supply', async () => {
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
-          const currentMiscData = await pool.instance.miscData();
+          const currentMiscData = await pool.getMiscData();
           const actualTotalSupply = await pool.instance.fromLowResLog(currentMiscData.logTotalSupply);
-          const expectedTotalSupply = await pool.instance.totalSupply();
+          const expectedTotalSupply = await pool.totalSupply();
           expectEqualWithError(actualTotalSupply, expectedTotalSupply, MAX_RELATIVE_ERROR);
         });
       };
 
       const itDoesNotCacheTheLogInvariantAndSupply = (action: PoolHook, lastChangeBlockOffset = 0) => {
         it('does not cache the log invariant and supply', async () => {
-          const previousMiscData = await pool.instance.miscData();
+          const previousMiscData = await pool.getMiscData();
 
           await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
-          const currentMiscData = await pool.instance.miscData();
+          const currentMiscData = await pool.getMiscData();
           expect(currentMiscData.logInvariant).to.equal(previousMiscData.logInvariant);
           expect(currentMiscData.logTotalSupply).to.equal(previousMiscData.logTotalSupply);
         });
@@ -346,7 +344,7 @@ describe('WeightedPool', function () {
       });
 
       describe('oracle setting', () => {
-        const action = () => pool.instance.connect(admin).enableOracle();
+        const action = () => pool.enableOracle({ from: admin });
 
         sharedBeforeEach('grant role to admin', async () => {
           const action = await actionId(pool.instance, 'enableOracle');
@@ -355,11 +353,11 @@ describe('WeightedPool', function () {
 
         context('when it starts enabled', () => {
           it('is enabled', async () => {
-            expect(await pool.instance.isOracleEnabled()).to.be.true;
+            expect(await pool.isOracleEnabled()).to.be.true;
           });
 
           it('does not fail when trying to enable again', async () => {
-            await expect(pool.instance.connect(admin).enableOracle()).not.to.be.reverted;
+            await expect(pool.enableOracle({ from: admin })).not.to.be.reverted;
           });
 
           itDoesNotCacheTheLogInvariantAndSupply(action);
@@ -378,16 +376,16 @@ describe('WeightedPool', function () {
             initializePool();
 
             it('is disabled and can be enabled', async () => {
-              expect(await pool.instance.isOracleEnabled()).to.be.false;
+              expect(await pool.isOracleEnabled()).to.be.false;
 
               await action();
 
-              expect(await pool.instance.isOracleEnabled()).to.be.true;
+              expect(await pool.isOracleEnabled()).to.be.true;
             });
 
             it('can only be updated by the admin', async () => {
-              await expect(pool.instance.connect(other).enableOracle()).to.be.revertedWith('SENDER_NOT_ALLOWED');
-              await expect(pool.instance.connect(owner).enableOracle()).to.be.revertedWith('SENDER_NOT_ALLOWED');
+              await expect(pool.enableOracle({ from: other })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+              await expect(pool.enableOracle({ from: owner })).to.be.revertedWith('SENDER_NOT_ALLOWED');
             });
 
             itCachesTheLogInvariantAndSupply(action);
