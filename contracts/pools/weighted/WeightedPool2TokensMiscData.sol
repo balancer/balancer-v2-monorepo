@@ -54,6 +54,10 @@ contract WeightedPool2TokensMiscData {
 
     bytes32 private _miscData;
 
+    function getMiscData() external view returns (MiscData memory) {
+        return _getMiscData();
+    }
+
     function _getMiscData() internal view returns (MiscData memory) {
         bytes32 miscData = _miscData;
 

@@ -12,6 +12,7 @@ import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
 import { expectEqualWithError } from '../../helpers/relativeError';
 import { RawWeightedPoolDeployment, Sample } from '../../helpers/models/pools/weighted/types';
+import { MAX_INT22, MAX_UINT10, MAX_UINT31, MAX_UINT64, MIN_INT22 } from '../../../lib/helpers/constants';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
@@ -45,29 +46,29 @@ describe('WeightedPool', function () {
   });
 
   context('for a 2 token pool (custom)', () => {
+    let pool: WeightedPool, tokens: TokenList;
+
+    const weights = WEIGHTS.slice(0, 2);
+    const initialBalances = INITIAL_BALANCES.slice(0, 2);
+
     itBehavesAsWeightedPool(2, true);
+
+    sharedBeforeEach('deploy pool', async () => {
+      tokens = allTokens.subset(2);
+      const params = { twoTokens: true, tokens, weights, owner };
+      pool = await WeightedPool.create(params);
+    });
+
+    const initializePool = () => {
+      sharedBeforeEach('initialize pool', async () => {
+        await pool.init({ initialBalances, recipient: lp });
+      });
+    };
 
     describe('oracle', () => {
       const MAX_RELATIVE_ERROR = 0.00005;
 
-      let pool: WeightedPool, tokens: TokenList;
-
-      const weights = WEIGHTS.slice(0, 2);
-      const initialBalances = INITIAL_BALANCES.slice(0, 2);
-
       type PoolHook = (lastChangeBlock: number) => Promise<unknown>;
-
-      sharedBeforeEach('deploy pool', async () => {
-        tokens = allTokens.subset(2);
-        const params = { twoTokens: true, tokens, weights, owner };
-        pool = await WeightedPool.create(params);
-      });
-
-      const initializePool = () => {
-        sharedBeforeEach('initialize pool', async () => {
-          await pool.init({ initialBalances, recipient: lp });
-        });
-      };
 
       const calcLastChangeBlock = async (offset: number): Promise<number> => {
         const nextBlockNumber = (await lastBlockNumber()) + 1;
@@ -392,8 +393,67 @@ describe('WeightedPool', function () {
           });
         });
       });
+    });
 
-      // TODO: add misc data encoding tests
+    describe('misc data', () => {
+      initializePool();
+
+      const assertPacking = async (
+        swapFeePercentage: BigNumberish,
+        oracleEnabled: boolean,
+        oracleIndex: BigNumberish,
+        oracleSampleInitialTimestamp: BigNumberish,
+        logInvariant: BigNumberish,
+        logTotalSupply: BigNumberish
+      ) => {
+        await pool.instance.setMiscData({
+          swapFeePercentage,
+          oracleEnabled,
+          oracleIndex,
+          oracleSampleInitialTimestamp,
+          logInvariant,
+          logTotalSupply,
+        });
+
+        const miscData = await pool.getMiscData();
+        expect(miscData.swapFeePercentage).to.be.equal(swapFeePercentage);
+        expect(miscData.oracleEnabled).to.be.equal(oracleEnabled);
+        expect(miscData.oracleIndex).to.be.equal(oracleIndex);
+        expect(miscData.oracleSampleInitialTimestamp).to.be.equal(oracleSampleInitialTimestamp);
+        expect(miscData.logInvariant).to.be.equal(logInvariant);
+        expect(miscData.logTotalSupply).to.be.equal(logTotalSupply);
+      };
+
+      it('packs samples correctly', async () => {
+        await assertPacking(100, true, 5, 50, 2, 3);
+        await assertPacking(100, false, 5, 50, -2, -3);
+        await assertPacking(MAX_UINT64, true, 0, 0, 0, 0);
+        await assertPacking(0, false, 0, 0, 0, 0);
+        await assertPacking(0, true, MAX_UINT10, 0, 0, 0);
+        await assertPacking(0, false, 0, MAX_UINT31, 0, 0);
+        await assertPacking(0, true, 0, 0, MAX_INT22, 0);
+        await assertPacking(0, false, 0, 0, MIN_INT22, 0);
+        await assertPacking(0, true, 0, 0, 0, MIN_INT22);
+        await assertPacking(0, false, 0, 0, 0, MAX_INT22);
+        await assertPacking(MAX_UINT64, true, MAX_UINT10, MAX_UINT31, MIN_INT22, MIN_INT22);
+        await assertPacking(MAX_UINT64, false, MAX_UINT10, MAX_UINT31, MAX_INT22, MAX_INT22);
+        await assertPacking(
+          MAX_UINT64.div(2),
+          true,
+          MAX_UINT10.div(2),
+          MAX_UINT31.div(2),
+          MIN_INT22.div(2),
+          MIN_INT22.div(2)
+        );
+        await assertPacking(
+          MAX_UINT64.div(2),
+          false,
+          MAX_UINT10.div(2),
+          MAX_UINT31.div(2),
+          MAX_INT22.div(2),
+          MAX_INT22.div(2)
+        );
+      });
     });
   });
 
