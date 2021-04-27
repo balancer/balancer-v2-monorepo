@@ -37,6 +37,12 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         _samples[index] = pack(sample);
     }
 
+    function mockSamples(uint256[] memory indexes, Sample[] memory samples) public {
+        for (uint256 i = 0; i < indexes.length; i++) {
+            _samples[indexes[i]] = pack(samples[i]);
+        }
+    }
+
     function getSample(uint256 index) public view returns (Sample memory) {
         return unpack(_samples[index]);
     }
@@ -87,5 +93,10 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         uint256 currentSampleInitialTimestamp = block.timestamp - elapsed;
         uint256 sampleIndex = _processPriceData(currentSampleInitialTimestamp, currentIndex, logPairPrice, logBptPrice, logInvariant);
         emit PriceDataProcessed(sampleIndex != currentIndex, sampleIndex);
+    }
+
+    function findNearestSample(uint256 date, uint256 offset) external view returns (Sample memory prev, Sample memory next) {
+        (bytes32 a, bytes32 b) = _findNearestSample(date, offset);
+        return (unpack(a), unpack(b));
     }
 }
