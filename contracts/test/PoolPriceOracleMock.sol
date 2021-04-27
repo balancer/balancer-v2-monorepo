@@ -118,7 +118,11 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         }
     }
 
-    function getPastAccLogPairPrice(uint256 currentIndex, uint256 timestamp) external view returns (int256) {
-        return _getPastAccLogPairPrice(currentIndex, block.timestamp - timestamp);
+    function getPastAccumulator(
+        Samples.Variable variable,
+        uint256 currentIndex,
+        uint256 timestamp
+    ) external view returns (int256) {
+        return _getPastAccumulator(variable, currentIndex, block.timestamp - timestamp);
     }
 }

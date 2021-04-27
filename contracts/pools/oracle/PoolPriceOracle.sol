@@ -64,14 +64,7 @@ contract PoolPriceOracle {
     }
 
     /**
-     * @dev Returns the log pair price of a sample at a specific index of the buffer
-     */
-    function _getLogPairPrice(uint256 index) internal view returns (int256) {
-        return _sample(index).logPairPrice();
-    }
-
-    /**
-     * @dev Tells the accumulated value of a specific variable `_seconds` ago.
+     * @dev Tells the accumulated value of a specific variable `ago` ago.
      * It assumes `currentIndex` is the index of the latest sample in the buffer.
      *
      * In case the target timestamp does not reach the timestamp of the latest sample, it answers using the accumulated
@@ -83,10 +76,14 @@ contract PoolPriceOracle {
      * If these requirements are met, it performs a binary search to use the accumulated value of the nearest sample
      * to the target timestamp.
      */
-    function _getPastAccLogPairPrice(uint256 currentIndex, uint256 _seconds) internal view returns (int256) {
+    function _getPastAccumulator(
+        Samples.Variable variable,
+        uint256 currentIndex,
+        uint256 ago
+    ) internal view returns (int256) {
         // Make sure the given number of seconds refers to a reasonable date.
-        _require(block.timestamp >= _seconds, Errors.ORACLE_INVALID_SECONDS_QUERY);
-        uint256 lookUpTime = block.timestamp - _seconds;
+        _require(block.timestamp >= ago, Errors.ORACLE_INVALID_SECONDS_QUERY);
+        uint256 lookUpTime = block.timestamp - ago;
 
         // In case there is no timestamp stored in the current index, it means the buffer has not been initialized yet,
         // meaning there is no information available to answer the query.
@@ -98,30 +95,32 @@ contract PoolPriceOracle {
             // In case the desired date is ahead the latest sample, we compute the corresponding accumulated value
             // that applies for that period of time.
             uint256 elapsed = lookUpTime - latestTimestamp;
-            return sample.accLogPairPrice() + (sample.logPairPrice() * int256(elapsed));
+            return sample.accumulator(variable) + (sample.instant(variable) * int256(elapsed));
         } else {
             // The oldest sample is always the following sample in the circular buffer to the latest sample.
             uint256 oldestIndex = currentIndex.next();
             bytes32 oldestSample = _sample(oldestIndex);
-            uint256 oldestTimestamp = oldestSample.timestamp();
+            {
+                uint256 oldestTimestamp = oldestSample.timestamp();
 
-            // Check the buffer is fully initialized and that the target is not older than the oldest timestamp.
-            _require(oldestTimestamp > 0, Errors.ORACLE_NOT_INITIALIZED);
-            _require(oldestTimestamp <= lookUpTime, Errors.ORACLE_QUERY_TOO_OLD);
+                // Check the buffer is fully initialized and that the target is not older than the oldest timestamp.
+                _require(oldestTimestamp > 0, Errors.ORACLE_NOT_INITIALIZED);
+                _require(oldestTimestamp <= lookUpTime, Errors.ORACLE_QUERY_TOO_OLD);
+            }
 
             // Perform binary search to find nearest samples to the desired timestamp.
             (bytes32 prev, bytes32 next) = _findNearestSample(lookUpTime, oldestIndex);
             uint256 samplesTimeDiff = next.timestamp() - prev.timestamp();
             if (samplesTimeDiff == 0) {
                 // It matched exactly one of the samples in the buffer.
-                return prev.accLogPairPrice();
+                return prev.accumulator(variable);
             } else {
                 // Estimate the accumulated value based on the elapsed time from the previous sample to the one
                 // required. We know there will be at least one since we already check the target timestamp is not
                 // older than the oldest sample.
                 uint256 elapsed = lookUpTime - prev.timestamp();
-                int256 samplesAccDiff = next.accLogPairPrice() - prev.accLogPairPrice();
-                return prev.accLogPairPrice() + ((samplesAccDiff * int256(elapsed)) / int256(samplesTimeDiff));
+                int256 samplesAccDiff = next.accumulator(variable) - prev.accumulator(variable);
+                return prev.accumulator(variable) + ((samplesAccDiff * int256(elapsed)) / int256(samplesTimeDiff));
             }
         }
     }
