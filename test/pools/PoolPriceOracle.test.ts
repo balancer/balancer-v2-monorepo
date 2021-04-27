@@ -263,4 +263,260 @@ describe('PoolPriceOracle', () => {
       });
     });
   });
+
+  describe('findNearestSample', () => {
+    const ZEROS = Array(MAX_BUFFER_SIZE).fill(0);
+
+    function itHandlesSearchesProperly(offset: number) {
+      sharedBeforeEach('mock samples', async () => {
+        const indexes = ZEROS.map((_, i) => i);
+        const values = ZEROS.map((_, i) => timestampAt(i));
+
+        // Assert mocked buffer was created as expected
+        for (let i = 0; i < MAX_BUFFER_SIZE; i++) {
+          expect(values[indexAt(i)]).to.equal(i * 10 + 1);
+        }
+
+        const defaults = { accLogPairPrice: 0, logBptPrice: 0, accLogBptPrice: 0, logInvariant: 0, accLogInvariant: 0 };
+        for (let from = 0, to = from + 100; from < MAX_BUFFER_SIZE; from += 100, to = from + 100) {
+          const samples = values.slice(from, to).map((x) => ({ ...defaults, logPairPrice: x, timestamp: x }));
+          await oracle.mockSamples(indexes.slice(from, to), samples);
+        }
+      });
+
+      const timestampAt = (i: number): number => {
+        // The offset will always have the oldest value, the previous slot to the offset will be always the latest value
+        return ((i + MAX_BUFFER_SIZE - offset) % MAX_BUFFER_SIZE) * 10 + 1;
+      };
+
+      const indexAt = (i: number): number => {
+        // Computes the corresponding index for the given offset
+        return (offset + i) % MAX_BUFFER_SIZE;
+      };
+
+      it('can find every exact value', async () => {
+        const dates = ZEROS.map((i) => timestampAt(indexAt(i)));
+        const intermediates = await oracle.findNearestSamplesTimestamp(dates, offset);
+
+        for (let i = 0; i < dates.length; i++) {
+          const expectedDate = dates[i];
+          const error = `Failed for [i: ${i}, index: ${indexAt(i)}, date: ${expectedDate}]`;
+
+          const { prev, next } = intermediates[i];
+          expect(prev.toNumber()).to.equal(expectedDate, error);
+          expect(next.toNumber()).to.equal(expectedDate, error);
+        }
+      });
+
+      it('can find intermediate values', async () => {
+        const delta = 7;
+
+        // The latest sample will end up in an edge case where it's next value is the oldest one
+        const dates = ZEROS.map((i) => timestampAt(indexAt(i)) + delta).slice(0, -1);
+        const intermediates = await oracle.findNearestSamplesTimestamp(dates, offset);
+
+        for (let i = 0; i < dates.length; i++) {
+          const expectedDate = dates[i] - delta;
+          const error = `Failed for [i: ${i}, index: ${indexAt(i)}, date: ${expectedDate}]`;
+
+          const { prev, next } = intermediates[i];
+          expect(prev.toNumber()).to.equal(expectedDate, error);
+          expect(next.toNumber()).to.equal(expectedDate + 10, error);
+        }
+      });
+    }
+
+    context('without offset', () => {
+      const offset = 0;
+
+      itHandlesSearchesProperly(offset);
+    });
+
+    context('with a small offset', () => {
+      const offset = 15;
+
+      itHandlesSearchesProperly(offset);
+    });
+
+    context('with a large offset', () => {
+      const offset = MAX_BUFFER_SIZE / 2;
+
+      itHandlesSearchesProperly(offset);
+    });
+
+    context('with the highest offset', () => {
+      const offset = MAX_BUFFER_SIZE - 1;
+
+      itHandlesSearchesProperly(offset);
+    });
+  });
+
+  describe('getPastAccLogPairPrice', () => {
+    const ZEROS = Array(MAX_BUFFER_SIZE).fill(0);
+
+    context('without offset', () => {
+      const offset = 0;
+
+      itEstimatesPastAccumulatorCorrectly(offset);
+    });
+
+    context('with a small offset', () => {
+      const offset = 15;
+
+      itEstimatesPastAccumulatorCorrectly(offset);
+    });
+
+    context('with a large offset', () => {
+      const offset = MAX_BUFFER_SIZE / 2;
+
+      itEstimatesPastAccumulatorCorrectly(offset);
+    });
+
+    context('with the highest offset', () => {
+      const offset = MAX_BUFFER_SIZE - 1;
+
+      itEstimatesPastAccumulatorCorrectly(offset);
+    });
+
+    function itEstimatesPastAccumulatorCorrectly(offset: number) {
+      const currentIndex = (offset - 1 + MAX_BUFFER_SIZE) % MAX_BUFFER_SIZE;
+
+      sharedBeforeEach('mock samples', async () => {
+        const indexes = ZEROS.map((_, i) => i);
+        const values = ZEROS.map((_, i) => ({
+          timestamp: timestampAt(i),
+          price: priceAt(i),
+          accumulator: accumAt(i),
+        }));
+
+        // Assert mocked buffer was created as expected
+        for (let i = 0; i < MAX_BUFFER_SIZE; i++) {
+          expect(values[indexAt(i)].timestamp).to.equal(i * 10 + 1);
+        }
+
+        const defaults = {
+          logPairPrice: 0,
+          accLogPairPrice: 0,
+          logBptPrice: 0,
+          accLogBptPrice: 0,
+          logInvariant: 0,
+          accLogInvariant: 0,
+        };
+
+        for (let from = 0, to = from + 100; from < MAX_BUFFER_SIZE; from += 100, to = from + 100) {
+          const samples = values.slice(from, to).map((x) => ({
+            ...defaults,
+            logPairPrice: x.price,
+            accLogPairPrice: x.accumulator,
+            timestamp: x.timestamp,
+          }));
+          await oracle.mockSamples(indexes.slice(from, to), samples);
+        }
+      });
+
+      const timestampAt = (i: number): number => {
+        // The offset will always have the oldest value, the previous slot to the offset will be always the latest value
+        return ((i + MAX_BUFFER_SIZE - offset) % MAX_BUFFER_SIZE) * 10 + 1;
+      };
+
+      const priceAt = (i: number): number => {
+        // The offset will always have the oldest value, the previous slot to the offset will be always the latest value
+        return ((i + MAX_BUFFER_SIZE - offset) % MAX_BUFFER_SIZE) * 13 + 7;
+      };
+
+      const accumAt = (i: number): number => {
+        // The offset will always have the oldest value, the previous slot to the offset will be always the latest value
+        return ((i + MAX_BUFFER_SIZE - offset) % MAX_BUFFER_SIZE) * 20 + 5;
+      };
+
+      const indexAt = (i: number): number => {
+        // Computes the corresponding index for the given offset
+        return (offset + i) % MAX_BUFFER_SIZE;
+      };
+
+      function itFindsLatestAndFutureAccumulators() {
+        it('can find the latest accumulator', async () => {
+          const accum = await oracle.getPastAccLogPairPrice(currentIndex, timestampAt(currentIndex));
+          expect(accum).to.equal(accumAt(currentIndex));
+        });
+
+        it('extrapolates future accumulators', async () => {
+          const elapsed = 3;
+          const futureTimestamp = timestampAt(currentIndex) + elapsed;
+
+          const accum = await oracle.getPastAccLogPairPrice(currentIndex, futureTimestamp);
+          expect(accum).to.equal(accumAt(currentIndex) + priceAt(currentIndex) * elapsed);
+        });
+      }
+
+      it('finds past accumulators', async () => {
+        const pastIndex = indexAt(MAX_BUFFER_SIZE / 2);
+        const pastTimestamp = timestampAt(pastIndex);
+
+        const accum = await oracle.getPastAccLogPairPrice(currentIndex, pastTimestamp);
+        expect(accum).to.equal(accumAt(pastIndex));
+      });
+
+      it('interpolates between past accumulators', async () => {
+        const timeDelta = 5;
+
+        const previousIndex = indexAt(MAX_BUFFER_SIZE / 2);
+        const nextIndex = (previousIndex + 1) % MAX_BUFFER_SIZE;
+
+        const pastTimestamp = timestampAt(previousIndex) + timeDelta;
+        expect(pastTimestamp).to.be.lt(timestampAt(nextIndex));
+
+        const slope =
+          (accumAt(nextIndex) - accumAt(previousIndex)) / (timestampAt(nextIndex) - timestampAt(previousIndex));
+
+        const expectedAccum = accumAt(previousIndex) + timeDelta * slope;
+        const actualAccum = await oracle.getPastAccLogPairPrice(currentIndex, pastTimestamp);
+        expect(actualAccum).to.equal(expectedAccum);
+      });
+
+      it('finds last accumulator', async () => {
+        const oldestIndex = indexAt(0);
+        const oldestTimestamp = timestampAt(oldestIndex);
+
+        const accum = await oracle.getPastAccLogPairPrice(currentIndex, oldestTimestamp);
+        expect(accum).to.equal(accumAt(oldestIndex));
+      });
+
+      it('reverts with too old timestamp', async () => {
+        const tooOldTimestamp = timestampAt(indexAt(0)) - 1;
+
+        await expect(oracle.getPastAccLogPairPrice(currentIndex, tooOldTimestamp)).to.be.revertedWith(
+          'ORACLE_QUERY_TOO_OLD'
+        );
+      });
+
+      context('with incomplete buffer', () => {
+        sharedBeforeEach(async () => {
+          await oracle.mockSample(indexAt(0), {
+            logPairPrice: 0,
+            accLogPairPrice: 0,
+            logBptPrice: 0,
+            accLogBptPrice: 0,
+            logInvariant: 0,
+            accLogInvariant: 0,
+            timestamp: 0,
+          });
+        });
+
+        context('when querying latest and future timestamps', () => {
+          itFindsLatestAndFutureAccumulators();
+        });
+
+        context('when querying past timestamps', () => {
+          it('reverts', async () => {
+            const pastTimestamp = timestampAt(currentIndex) - 1;
+
+            await expect(oracle.getPastAccLogPairPrice(currentIndex, pastTimestamp)).to.be.revertedWith(
+              'ORACLE_NOT_INITIALIZED'
+            );
+          });
+        });
+      });
+    }
+  });
 });

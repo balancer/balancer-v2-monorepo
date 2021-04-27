@@ -125,6 +125,9 @@ library Errors {
     uint256 internal constant INVALID_TOKEN = 309;
     uint256 internal constant UNHANDLED_JOIN_KIND = 310;
     uint256 internal constant ZERO_INVARIANT = 311;
+    uint256 internal constant ORACLE_INVALID_SECONDS_QUERY = 312;
+    uint256 internal constant ORACLE_NOT_INITIALIZED = 313;
+    uint256 internal constant ORACLE_QUERY_TOO_OLD = 314;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

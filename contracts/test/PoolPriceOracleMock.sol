@@ -37,6 +37,12 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         _samples[index] = pack(sample);
     }
 
+    function mockSamples(uint256[] memory indexes, Sample[] memory samples) public {
+        for (uint256 i = 0; i < indexes.length; i++) {
+            _samples[indexes[i]] = pack(samples[i]);
+        }
+    }
+
     function getSample(uint256 index) public view returns (Sample memory) {
         return unpack(_samples[index]);
     }
@@ -52,27 +58,29 @@ contract PoolPriceOracleMock is PoolPriceOracle {
     }
 
     function pack(Sample memory sample) public pure returns (bytes32) {
-        return Samples.pack(
-            sample.logPairPrice,
-            sample.accLogPairPrice,
-            sample.logBptPrice,
-            sample.accLogBptPrice,
-            sample.logInvariant,
-            sample.accLogInvariant,
-            sample.timestamp
-        );
+        return
+            Samples.pack(
+                sample.logPairPrice,
+                sample.accLogPairPrice,
+                sample.logBptPrice,
+                sample.accLogBptPrice,
+                sample.logInvariant,
+                sample.accLogInvariant,
+                sample.timestamp
+            );
     }
 
     function unpack(bytes32 sample) public pure returns (Sample memory) {
-        return Sample({
-            logPairPrice: sample.logPairPrice(),
-            accLogPairPrice: sample.accLogPairPrice(),
-            logBptPrice: sample.logBptPrice(),
-            accLogBptPrice: sample.accLogBptPrice(),
-            logInvariant: sample.logInvariant(),
-            accLogInvariant: sample.accLogInvariant(),
-            timestamp: sample.timestamp()
-        });
+        return
+            Sample({
+                logPairPrice: sample.logPairPrice(),
+                accLogPairPrice: sample.accLogPairPrice(),
+                logBptPrice: sample.logBptPrice(),
+                accLogBptPrice: sample.accLogBptPrice(),
+                logInvariant: sample.logInvariant(),
+                accLogInvariant: sample.accLogInvariant(),
+                timestamp: sample.timestamp()
+            });
     }
 
     function processPriceData(
@@ -81,11 +89,36 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         int256 logPairPrice,
         int256 logBptPrice,
         int256 logInvariant
-    )
-        public
-    {
+    ) public {
         uint256 currentSampleInitialTimestamp = block.timestamp - elapsed;
-        uint256 sampleIndex = _processPriceData(currentSampleInitialTimestamp, currentIndex, logPairPrice, logBptPrice, logInvariant);
+        uint256 sampleIndex = _processPriceData(
+            currentSampleInitialTimestamp,
+            currentIndex,
+            logPairPrice,
+            logBptPrice,
+            logInvariant
+        );
         emit PriceDataProcessed(sampleIndex != currentIndex, sampleIndex);
+    }
+
+    struct BinarySearchResult {
+        uint256 prev;
+        uint256 next;
+    }
+
+    function findNearestSamplesTimestamp(uint256[] memory dates, uint256 offset)
+        external
+        view
+        returns (BinarySearchResult[] memory results)
+    {
+        results = new BinarySearchResult[](dates.length);
+        for (uint256 i = 0; i < dates.length; i++) {
+            (bytes32 prev, bytes32 next) = _findNearestSample(dates[i], offset);
+            results[i] = BinarySearchResult({ prev: prev.timestamp(), next: next.timestamp() });
+        }
+    }
+
+    function getPastAccLogPairPrice(uint256 currentIndex, uint256 timestamp) external view returns (int256) {
+        return _getPastAccLogPairPrice(currentIndex, block.timestamp - timestamp);
     }
 }
