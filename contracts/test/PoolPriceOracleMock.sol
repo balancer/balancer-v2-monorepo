@@ -95,8 +95,16 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         emit PriceDataProcessed(sampleIndex != currentIndex, sampleIndex);
     }
 
-    function findNearestSample(uint256 date, uint256 offset) external view returns (Sample memory prev, Sample memory next) {
-        (bytes32 a, bytes32 b) = _findNearestSample(date, offset);
-        return (unpack(a), unpack(b));
+    struct BinarySearchResult {
+        uint256 prev;
+        uint256 next;
+    }
+
+    function findNearestSamplesTimestamp(uint256[] memory dates, uint256 offset) external view returns (BinarySearchResult[] memory results) {
+        results = new BinarySearchResult[](dates.length);
+        for (uint256 i = 0; i < dates.length; i++) {
+            (bytes32 prev, bytes32 next) = _findNearestSample(dates[i], offset);
+            results[i] = BinarySearchResult({ prev: prev.timestamp(), next: next.timestamp() });
+        }
     }
 }

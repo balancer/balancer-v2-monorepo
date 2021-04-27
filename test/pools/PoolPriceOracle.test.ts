@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 import * as expectEvent from '../helpers/expectEvent';
 import { deploy } from '../../lib/helpers/deploy';
 import { BigNumberish, bn } from '../../lib/helpers/numbers';
-import { advanceTime, currentTimestamp, MINUTE } from '../../lib/helpers/time';
+import { advanceTime, currentTimestamp, MINUTE, MONTH } from '../../lib/helpers/time';
 import { MAX_UINT31, MIN_INT22, MAX_INT22, MIN_INT53, MAX_INT53 } from '../../lib/helpers/constants';
 
 describe('PoolPriceOracle', () => {
@@ -262,5 +262,96 @@ describe('PoolPriceOracle', () => {
         });
       });
     });
+  });
+
+  describe('findNearestSample', () => {
+    const ZEROS = Array(MAX_BUFFER_SIZE).fill(0);
+
+    function itHandlesSearchesProperly(offset: number) {
+      sharedBeforeEach('mock samples', async () => {
+        const indexes = ZEROS.map((_, i) => i);
+        const values = ZEROS.map((_, i) => timestampAt(i));
+
+        // Assert mocked buffer was created as expected
+        for (let i = 0; i < MAX_BUFFER_SIZE; i++) {
+          expect(values[indexAt(i)]).to.equal(i * 10);
+        }
+
+        const defaults = { accLogPairPrice: 0, logBptPrice: 0, accLogBptPrice: 0, logInvariant: 0, accLogInvariant: 0 };
+        for (let from = 0, to = from + 100; from < MAX_BUFFER_SIZE; from += 100, to = from + 100) {
+          const samples = values.slice(from, to).map((x) => ({ ...defaults, logPairPrice: x, timestamp: x }));
+          await oracle.mockSamples(indexes.slice(from, to), samples);
+        }
+      });
+
+      const timestampAt = (i: number): number => {
+        // The offset will always have the oldest value, the previous slot to the offset will be always the latest value
+        return ((i + MAX_BUFFER_SIZE - offset) % MAX_BUFFER_SIZE) * 10;
+      };
+
+      const indexAt = (i: number): number => {
+        // Computes the corresponding index for the given offset
+        return (offset + i) % MAX_BUFFER_SIZE;
+      };
+
+      it('can find every exact value', async () => {
+        const dates = ZEROS.map((i) => timestampAt(indexAt(i)));
+        const intermediates = await oracle.findNearestSamplesTimestamp(dates, offset);
+
+        for (let i = 0; i < dates.length; i++) {
+          const expectedDate = dates[i];
+          const error = `Failed for [i: ${i}, index: ${indexAt(i)}, date: ${expectedDate}]`;
+
+          const { prev, next } = intermediates[i];
+          expect(prev.toNumber()).to.equal(expectedDate, error);
+          expect(next.toNumber()).to.equal(expectedDate, error);
+        }
+      });
+
+      it('can find intermediate values', async () => {
+        const delta = 7;
+
+        // The latest sample will end up in an edge case where it's next value is the oldest one
+        const dates = ZEROS.map((i) => timestampAt(indexAt(i)) + delta).slice(0, -1);
+        const intermediates = await oracle.findNearestSamplesTimestamp(dates, offset);
+
+        for (let i = 0; i < dates.length; i++) {
+          const expectedDate = dates[i] - delta;
+          const error = `Failed for [i: ${i}, index: ${indexAt(i)}, date: ${expectedDate}]`;
+
+          const { prev, next } = intermediates[i];
+          expect(prev.toNumber()).to.equal(expectedDate, error);
+          expect(next.toNumber()).to.equal(expectedDate + 10, error);
+        }
+      });
+    }
+
+    context('without offset', () => {
+      const offset = 0;
+
+      itHandlesSearchesProperly(offset);
+    });
+
+    context('with a small offset', () => {
+      const offset = 15;
+
+      itHandlesSearchesProperly(offset);
+    });
+
+    context('with a large offset', () => {
+      const offset = MAX_BUFFER_SIZE / 2;
+
+      itHandlesSearchesProperly(offset);
+    });
+
+    context('with the highest offset', () => {
+      const offset = MAX_BUFFER_SIZE - 1;
+
+      itHandlesSearchesProperly(offset);
+    });
+  });
+
+  describe('getPastAccLogPairPrice', () => {
+    // TODO: implement
   });
 });

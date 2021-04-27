@@ -748,6 +748,39 @@ contract WeightedPool2Tokens is
 
     // Oracle functions
 
+    function getAvgPairPrices(uint256[] memory windowLengths) external view returns (uint256[] memory prices) {
+        uint256 oracleIndex = _getMiscData().oracleIndex;
+        int256 currentAccLogPairPrice = _getPastAccLogPairPrice(oracleIndex, 0);
+
+        prices = new uint256[](windowLengths.length);
+        for (uint256 i = 0; i < windowLengths.length; i++) {
+            uint256 windowLength = windowLengths[i];
+            prices[i] = windowLength == 0
+                ? WeightedOracleMath._fromLowResLog(_getLogPairPrice(oracleIndex))
+                : _getAvgPairPrice(oracleIndex, currentAccLogPairPrice, windowLength);
+        }
+    }
+
+    function getAvgPairPrice(uint256 windowLength) external view returns (uint256) {
+        uint256 oracleIndex = _getMiscData().oracleIndex;
+        if (windowLength == 0) {
+            return WeightedOracleMath._fromLowResLog(_getLogPairPrice(oracleIndex));
+        } else {
+            int256 currentAccLogPairPrice = _getPastAccLogPairPrice(oracleIndex, 0);
+            return _getAvgPairPrice(oracleIndex, currentAccLogPairPrice, windowLength);
+        }
+    }
+
+    function _getAvgPairPrice(
+        uint256 oracleIndex,
+        int256 currentAccLogPairPrice,
+        uint256 windowLength
+    ) internal view returns (uint256) {
+        int256 past = _getPastAccLogPairPrice(oracleIndex, windowLength);
+        int256 avg = (currentAccLogPairPrice - past) / int256(windowLength);
+        return WeightedOracleMath._fromLowResLog(avg);
+    }
+
     /**
      * @dev Updates the Price Oracle based on the Pool's current state (balances, BPT supply and invariant). Must be
      * called on *all* state-changing functions with the balances *before* the state change happens, and with
