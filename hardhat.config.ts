@@ -42,6 +42,7 @@ export default {
     hardhat: {
       chainId: CHAIN_IDS.hardhat,
       saveDeployments: true,
+      allowUnlimitedContractSize: true,
     },
     dockerParity: {
       gas: 10000000,
@@ -157,7 +158,7 @@ export default {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 800,
+            runs: 200,
           },
         },
       },
