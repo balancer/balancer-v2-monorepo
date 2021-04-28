@@ -184,6 +184,8 @@ contract PoolPriceOracle {
             uint256 timestamp
         )
     {
+        _require(index < Buffer.SIZE, Errors.INVALID_ORACLE_INDEX);
+
         bytes32 sample = _getSample(index);
         logPairPrice = sample.logPairPrice();
         accLogPairPrice = sample.accLogPairPrice();
