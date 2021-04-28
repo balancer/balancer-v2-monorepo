@@ -171,6 +171,10 @@ contract WeightedPool2Tokens is
         swapFeePercentage = miscData.swapFeePercentage();
     }
 
+    function getSwapFeePercentage() public view returns (uint256) {
+        return _miscData.swapFeePercentage();
+    }
+
     // Caller must be approved by the Vault's Authorizer
     function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
@@ -182,10 +186,6 @@ contract WeightedPool2Tokens is
 
         _miscData = _miscData.setSwapFeePercentage(swapFeePercentage);
         emit SwapFeePercentageChanged(swapFeePercentage);
-    }
-
-    function _getSwapFeePercentage() internal view returns (uint256) {
-        return _miscData.swapFeePercentage();
     }
 
     function enableOracle() external whenNotPaused authenticate {
@@ -269,7 +269,7 @@ contract WeightedPool2Tokens is
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
             // This is amount - fee amount, so we round up (favoring a higher fee amount).
-            uint256 feeAmount = request.amount.mulUp(_getSwapFeePercentage());
+            uint256 feeAmount = request.amount.mulUp(getSwapFeePercentage());
             request.amount = _upscale(request.amount.sub(feeAmount), scalingFactorTokenIn);
 
             uint256 amountOut = _onSwapGivenIn(
@@ -298,7 +298,7 @@ contract WeightedPool2Tokens is
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
             // This is amount + fee amount, so we round up (favoring a higher fee amount).
-            return amountIn.divUp(_getSwapFeePercentage().complement());
+            return amountIn.divUp(getSwapFeePercentage().complement());
         }
     }
 
@@ -535,7 +535,7 @@ contract WeightedPool2Tokens is
             normalizedWeights,
             amountsIn,
             totalSupply(),
-            _getSwapFeePercentage()
+            getSwapFeePercentage()
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -559,7 +559,7 @@ contract WeightedPool2Tokens is
             normalizedWeights[tokenIndex],
             bptAmountOut,
             totalSupply(),
-            _getSwapFeePercentage()
+            getSwapFeePercentage()
         );
 
         return (bptAmountOut, amountsIn);
@@ -715,7 +715,7 @@ contract WeightedPool2Tokens is
             normalizedWeights[tokenIndex],
             bptAmountIn,
             totalSupply(),
-            _getSwapFeePercentage()
+            getSwapFeePercentage()
         );
 
         return (bptAmountIn, amountsOut);
@@ -754,7 +754,7 @@ contract WeightedPool2Tokens is
             normalizedWeights,
             amountsOut,
             totalSupply(),
-            _getSwapFeePercentage()
+            getSwapFeePercentage()
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
