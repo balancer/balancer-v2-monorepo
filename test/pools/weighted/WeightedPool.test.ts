@@ -99,7 +99,7 @@ describe('WeightedPool', function () {
             await advanceTime(MINUTE * 10); // force index update
             await action(await calcLastChangeBlock(lastChangeBlockOffset));
 
-            newSample = await pool.getSample();
+            newSample = await pool.getOracleSample();
           });
 
           it('stores the pre-action spot price', async () => {

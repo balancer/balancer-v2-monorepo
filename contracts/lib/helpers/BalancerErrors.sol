@@ -128,6 +128,7 @@ library Errors {
     uint256 internal constant ORACLE_INVALID_SECONDS_QUERY = 312;
     uint256 internal constant ORACLE_NOT_INITIALIZED = 313;
     uint256 internal constant ORACLE_QUERY_TOO_OLD = 314;
+    uint256 internal constant ORACLE_INVALID_INDEX = 315;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

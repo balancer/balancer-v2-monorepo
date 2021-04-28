@@ -170,4 +170,29 @@ contract PoolPriceOracle {
     function _getSample(uint256 index) internal view returns (bytes32) {
         return _samples[index];
     }
+
+    function _unpackSample(uint256 index)
+        internal
+        view
+        returns (
+            int256 logPairPrice,
+            int256 accLogPairPrice,
+            int256 logBptPrice,
+            int256 accLogBptPrice,
+            int256 logInvariant,
+            int256 accLogInvariant,
+            uint256 timestamp
+        )
+    {
+        _require(index < Buffer.SIZE, Errors.INVALID_ORACLE_INDEX);
+
+        bytes32 sample = _getSample(index);
+        logPairPrice = sample.logPairPrice();
+        accLogPairPrice = sample.accLogPairPrice();
+        logBptPrice = sample.logBptPrice();
+        accLogBptPrice = sample.accLogBptPrice();
+        logInvariant = sample.logInvariant();
+        accLogInvariant = sample.accLogInvariant();
+        timestamp = sample.timestamp();
+    }
 }

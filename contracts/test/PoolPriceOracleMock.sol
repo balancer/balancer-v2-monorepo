@@ -69,8 +69,20 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         }
     }
 
-    function getSample(uint256 index) public view returns (Sample memory) {
-        return decode(_getSample(index));
+    function getSample(uint256 index)
+        public
+        view
+        returns (
+            int256 logPairPrice,
+            int256 accLogPairPrice,
+            int256 logBptPrice,
+            int256 accLogBptPrice,
+            int256 logInvariant,
+            int256 accLogInvariant,
+            uint256 timestamp
+        )
+    {
+        return _unpackSample(index);
     }
 
     function update(
