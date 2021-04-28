@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "../../lib/helpers/WordCodec.sol";
-import "../IPoolPriceOracle.sol";
+import "../IPriceOracle.sol";
 
 /**
  * @dev This library provides functions to help manipulating samples for Pool Price Oracles. It handles updates,
@@ -92,13 +92,13 @@ library Samples {
     /**
      * @dev Returns the instant value stored in `sample` for `variable`.
      */
-    function instant(bytes32 sample, IPoolPriceOracle.Variable variable) internal pure returns (int256) {
-        if (variable == IPoolPriceOracle.Variable.PAIR_PRICE) {
+    function instant(bytes32 sample, IPriceOracle.Variable variable) internal pure returns (int256) {
+        if (variable == IPriceOracle.Variable.PAIR_PRICE) {
             return _instLogPairPrice(sample);
-        } else if (variable == IPoolPriceOracle.Variable.BPT_PRICE) {
+        } else if (variable == IPriceOracle.Variable.BPT_PRICE) {
             return _instLogBptPrice(sample);
         } else {
-            // variable == IPoolPriceOracle.Variable.INVARIANT
+            // variable == IPriceOracle.Variable.INVARIANT
             return _instLogInvariant(sample);
         }
     }
@@ -106,13 +106,13 @@ library Samples {
     /**
      * @dev Returns the accumulator value stored in `sample` for `variable`.
      */
-    function accumulator(bytes32 sample, IPoolPriceOracle.Variable variable) internal pure returns (int256) {
-        if (variable == IPoolPriceOracle.Variable.PAIR_PRICE) {
+    function accumulator(bytes32 sample, IPriceOracle.Variable variable) internal pure returns (int256) {
+        if (variable == IPriceOracle.Variable.PAIR_PRICE) {
             return _accLogPairPrice(sample);
-        } else if (variable == IPoolPriceOracle.Variable.BPT_PRICE) {
+        } else if (variable == IPriceOracle.Variable.BPT_PRICE) {
             return _accLogBptPrice(sample);
         } else {
-            // variable == IPoolPriceOracle.Variable.INVARIANT
+            // variable == IPriceOracle.Variable.INVARIANT
             return _accLogInvariant(sample);
         }
     }
@@ -186,5 +186,30 @@ library Samples {
             instLogInvariant.encodeInt22(_INST_LOG_INVARIANT_OFFSET) |
             accLogInvariant.encodeInt53(_ACC_LOG_INVARIANT_OFFSET) |
             _timestamp.encodeUint31(_TIMESTAMP_OFFSET);
+    }
+
+    /**
+     * @dev Unpacks a sample into its components.
+     */
+    function unpack(bytes32 sample)
+        internal
+        pure
+        returns (
+            int256 logPairPrice,
+            int256 accLogPairPrice,
+            int256 logBptPrice,
+            int256 accLogBptPrice,
+            int256 logInvariant,
+            int256 accLogInvariant,
+            uint256 _timestamp
+        )
+    {
+        logPairPrice = _instLogPairPrice(sample);
+        accLogPairPrice = _accLogPairPrice(sample);
+        logBptPrice = _instLogBptPrice(sample);
+        accLogBptPrice = _accLogBptPrice(sample);
+        logInvariant = _instLogInvariant(sample);
+        accLogInvariant = _accLogInvariant(sample);
+        _timestamp = timestamp(sample);
     }
 }

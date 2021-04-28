@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../pools/oracle/Samples.sol";
 import "../pools/oracle/PoolPriceOracle.sol";
-import "../pools/IPoolPriceOracle.sol";
+import "../pools/IPriceOracle.sol";
 
 contract PoolPriceOracleMock is PoolPriceOracle {
     using Samples for bytes32;
@@ -50,12 +50,12 @@ contract PoolPriceOracleMock is PoolPriceOracle {
     function decode(bytes32 sample) public pure returns (Sample memory) {
         return
             Sample({
-                logPairPrice: sample.instant(IPoolPriceOracle.Variable.PAIR_PRICE),
-                accLogPairPrice: sample.accumulator(IPoolPriceOracle.Variable.PAIR_PRICE),
-                logBptPrice: sample.instant(IPoolPriceOracle.Variable.BPT_PRICE),
-                accLogBptPrice: sample.accumulator(IPoolPriceOracle.Variable.BPT_PRICE),
-                logInvariant: sample.instant(IPoolPriceOracle.Variable.INVARIANT),
-                accLogInvariant: sample.accumulator(IPoolPriceOracle.Variable.INVARIANT),
+                logPairPrice: sample.instant(IPriceOracle.Variable.PAIR_PRICE),
+                accLogPairPrice: sample.accumulator(IPriceOracle.Variable.PAIR_PRICE),
+                logBptPrice: sample.instant(IPriceOracle.Variable.BPT_PRICE),
+                accLogBptPrice: sample.accumulator(IPriceOracle.Variable.BPT_PRICE),
+                logInvariant: sample.instant(IPriceOracle.Variable.INVARIANT),
+                accLogInvariant: sample.accumulator(IPriceOracle.Variable.INVARIANT),
                 timestamp: sample.timestamp()
             });
     }
@@ -68,10 +68,6 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         for (uint256 i = 0; i < indexes.length; i++) {
             mockSample(indexes[i], samples[i]);
         }
-    }
-
-    function getSample(uint256 index) public view returns (Sample memory) {
-        return decode(_getSample(index));
     }
 
     function update(
@@ -120,7 +116,7 @@ contract PoolPriceOracleMock is PoolPriceOracle {
     }
 
     function getPastAccumulator(
-        IPoolPriceOracle.Variable variable,
+        IPriceOracle.Variable variable,
         uint256 currentIndex,
         uint256 timestamp
     ) external view returns (int256) {

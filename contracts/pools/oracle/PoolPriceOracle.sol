@@ -18,7 +18,8 @@ import "./Buffer.sol";
 import "./Samples.sol";
 import "../../lib/helpers/BalancerErrors.sol";
 
-import "../IPoolPriceOracle.sol";
+import "./IWeightedPoolPriceOracle.sol";
+import "../IPriceOracle.sol";
 
 /**
  * @dev This module allows Pools to access historical pricing information.
@@ -31,7 +32,7 @@ import "../IPoolPriceOracle.sol";
  * Usage of this module requires the caller to keep track of two variables: the latest circular buffer index, and the
  * timestamp when the index last changed.
  */
-contract PoolPriceOracle {
+contract PoolPriceOracle is IWeightedPoolPriceOracle {
     using Buffer for uint256;
     using Samples for bytes32;
 
@@ -43,6 +44,30 @@ contract PoolPriceOracle {
     // We use a mapping to simulate an array: the buffer won't grow or shrink, and since we will always use valid
     // indexes using a mapping saves gas by skipping the bounds checks.
     mapping(uint256 => bytes32) internal _samples;
+
+    function getSample(uint256 index)
+        external
+        view
+        override
+        returns (
+            int256 logPairPrice,
+            int256 accLogPairPrice,
+            int256 logBptPrice,
+            int256 accLogBptPrice,
+            int256 logInvariant,
+            int256 accLogInvariant,
+            uint256 timestamp
+        )
+    {
+        _require(index < Buffer.SIZE, Errors.ORACLE_INVALID_INDEX);
+
+        bytes32 sample = _getSample(index);
+        return sample.unpack();
+    }
+
+    function getTotalSamples() external pure override returns (uint256) {
+        return Buffer.SIZE;
+    }
 
     /**
      * @dev Processes new price and invariant data, updating the latest sample or creating a new one.
@@ -92,7 +117,7 @@ contract PoolPriceOracle {
      * values. This process is guaranteed to complete performing at most 10 storage reads.
      */
     function _getPastAccumulator(
-        IPoolPriceOracle.Variable variable,
+        IPriceOracle.Variable variable,
         uint256 latestIndex,
         uint256 ago
     ) internal view returns (int256) {

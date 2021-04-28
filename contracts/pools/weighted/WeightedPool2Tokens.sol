@@ -27,13 +27,14 @@ import "./WeightedPoolUserDataHelpers.sol";
 import "../BalancerPoolToken.sol";
 import "../BasePoolAuthorization.sol";
 import "../oracle/PoolPriceOracle.sol";
+import "../oracle/Buffer.sol";
 
 import "../../vault/interfaces/IMinimalSwapInfoPool.sol";
-import "../IPoolPriceOracle.sol";
+import "../IPriceOracle.sol";
 
 contract WeightedPool2Tokens is
     IMinimalSwapInfoPool,
-    IPoolPriceOracle,
+    IPriceOracle,
     BasePoolAuthorization,
     BalancerPoolToken,
     TemporarilyPausable,
@@ -765,6 +766,10 @@ contract WeightedPool2Tokens is
     }
 
     // Oracle functions
+
+    function getLargestSafeQueryWindow() external pure override returns (uint256) {
+        return 34 hours;
+    }
 
     function getPastAccumulators(OracleAccumulatorQuery[] memory queries)
         external
