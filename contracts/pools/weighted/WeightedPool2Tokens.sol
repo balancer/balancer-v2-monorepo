@@ -192,6 +192,12 @@ contract WeightedPool2Tokens is
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
+    /**
+     * @dev Balancer Governance can always enable the Oracle, even if it was originally not enabled. This allows for
+     * Pools that unexpectedly drive much more volume and liquidity than expected to serve as Price Oracles.
+     *
+     * Note that the Oracle can only be enabled - it can never be disabled.
+     */
     function enableOracle() external whenNotPaused authenticate {
         _setOracleEnabled(true);
 
