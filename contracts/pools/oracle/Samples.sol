@@ -43,6 +43,8 @@ library Samples {
     using WordCodec for uint256;
     using WordCodec for bytes32;
 
+    enum Variable { PAIR_PRICE, BPT_PRICE, INVARIANT }
+
     /**
      * @dev Updates a sample, accumulating the new reported information based on the elapsed time since the previous
      * sample update and setting the current timestamp.
@@ -74,6 +76,28 @@ library Samples {
                 newAccLogInvariant,
                 currentTimestamp
             );
+    }
+
+    function instant(bytes32 sample, Variable variable) internal pure returns (int256) {
+        if (variable == Variable.PAIR_PRICE) {
+            return logPairPrice(sample);
+        } else if (variable == Variable.BPT_PRICE) {
+            return logBptPrice(sample);
+        } else {
+            // variable == Variable.INVARIANT
+            return logInvariant(sample);
+        }
+    }
+
+    function accumulator(bytes32 sample, Variable variable) internal pure returns (int256) {
+        if (variable == Variable.PAIR_PRICE) {
+            return accLogPairPrice(sample);
+        } else if (variable == Variable.BPT_PRICE) {
+            return accLogBptPrice(sample);
+        } else {
+            // variable == Variable.INVARIANT
+            return accLogInvariant(sample);
+        }
     }
 
     /**
