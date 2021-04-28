@@ -20,15 +20,36 @@ import "./MockWeightedOracleMath.sol";
 import "../pools/weighted/WeightedPool2Tokens.sol";
 
 contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock, MockWeightedOracleMath {
-    constructor(NewPoolParams memory params) WeightedPool2Tokens(params) {}
+    using WeightedPool2TokensMiscData for bytes32;
 
-    function setMiscData(MiscData memory data) external {
-        return _setMiscData(data);
+    struct MiscData {
+        int256 logInvariant;
+        int256 logTotalSupply;
+        uint256 oracleSampleInitialTimestamp;
+        uint256 oracleIndex;
+        bool oracleEnabled;
+        uint256 swapFeePercentage;
     }
 
+    constructor(NewPoolParams memory params) WeightedPool2Tokens(params) {}
+
     function mockOracleDisabled() external {
-        MiscData memory data = _getMiscData();
-        data.oracleEnabled = false;
-        _setMiscData(data);
+        _setOracleEnabled(false);
+    }
+
+    function mockMiscData(MiscData memory miscData) external {
+        _miscData = encode(miscData);
+    }
+
+    /**
+     * @dev Encodes a misc data object into a bytes32
+     */
+    function encode(MiscData memory _data) private pure returns (bytes32 data) {
+        data = data.setSwapFeePercentage(_data.swapFeePercentage);
+        data = data.setOracleEnabled(_data.oracleEnabled);
+        data = data.setOracleIndex(_data.oracleIndex);
+        data = data.setOracleSampleInitialTimestamp(_data.oracleSampleInitialTimestamp);
+        data = data.setLogTotalSupply(_data.logTotalSupply);
+        data = data.setLogInvariant(_data.logInvariant);
     }
 }

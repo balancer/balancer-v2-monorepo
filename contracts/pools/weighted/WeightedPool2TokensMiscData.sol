@@ -32,54 +32,98 @@ import "../../lib/helpers/WordCodec.sol";
  *
  * Note that are not using the most-significant 106 bits.
  */
-contract WeightedPool2TokensMiscData {
+library WeightedPool2TokensMiscData {
     using WordCodec for bytes32;
     using WordCodec for uint256;
 
-    uint256 internal constant _MISC_LOG_INVARIANT_OFFSET = 0;
-    uint256 internal constant _MISC_LOG_TOTAL_SUPPLY_OFFSET = 22;
-    uint256 internal constant _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET = 44;
-    uint256 internal constant _MISC_ORACLE_INDEX_OFFSET = 75;
-    uint256 internal constant _MISC_ORACLE_ENABLED_OFFSET = 85;
-    uint256 internal constant _MISC_SWAP_FEE_PERCENTAGE_OFFSET = 86;
+    uint256 internal constant _LOG_INVARIANT_OFFSET = 0;
+    uint256 internal constant _LOG_TOTAL_SUPPLY_OFFSET = 22;
+    uint256 internal constant _ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET = 44;
+    uint256 internal constant _ORACLE_INDEX_OFFSET = 75;
+    uint256 internal constant _ORACLE_ENABLED_OFFSET = 85;
+    uint256 internal constant _SWAP_FEE_PERCENTAGE_OFFSET = 86;
 
-    struct MiscData {
-        uint256 swapFeePercentage;
-        bool oracleEnabled;
-        uint256 oracleIndex;
-        uint256 oracleSampleInitialTimestamp;
-        int256 logTotalSupply;
-        int256 logInvariant;
+    /**
+     * @dev Returns the logarithm of the invariant
+     */
+    function logInvariant(bytes32 data) internal pure returns (int256) {
+        return data.decodeInt22(_LOG_INVARIANT_OFFSET);
     }
 
-    bytes32 private _miscData;
-
-    function getMiscData() external view returns (MiscData memory) {
-        return _getMiscData();
+    /**
+     * @dev Returns the logarithm of the total supply
+     */
+    function logTotalSupply(bytes32 data) internal pure returns (int256) {
+        return data.decodeInt22(_LOG_TOTAL_SUPPLY_OFFSET);
     }
 
-    function _getMiscData() internal view returns (MiscData memory) {
-        bytes32 miscData = _miscData;
-
-        return
-            MiscData({
-                swapFeePercentage: miscData.decodeUint64(_MISC_SWAP_FEE_PERCENTAGE_OFFSET),
-                oracleEnabled: miscData.decodeBool(_MISC_ORACLE_ENABLED_OFFSET),
-                oracleIndex: miscData.decodeUint10(_MISC_ORACLE_INDEX_OFFSET),
-                oracleSampleInitialTimestamp: miscData.decodeUint31(_MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET),
-                logTotalSupply: miscData.decodeInt22(_MISC_LOG_TOTAL_SUPPLY_OFFSET),
-                logInvariant: miscData.decodeInt22(_MISC_LOG_INVARIANT_OFFSET)
-            });
+    /**
+     * @dev Returns the initial timestamp of the oracle's current sample
+     */
+    function oracleSampleInitialTimestamp(bytes32 data) internal pure returns (uint256) {
+        return data.decodeUint31(_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET);
     }
 
-    function _setMiscData(MiscData memory _data) internal {
-        bytes32 data = bytes32(0);
-        data = data.storeUint64(_data.swapFeePercentage, _MISC_SWAP_FEE_PERCENTAGE_OFFSET);
-        data = data.storeBoolean(_data.oracleEnabled, _MISC_ORACLE_ENABLED_OFFSET);
-        data = data.storeUint10(_data.oracleIndex, _MISC_ORACLE_INDEX_OFFSET);
-        data = data.storeUint31(_data.oracleSampleInitialTimestamp, _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET);
-        data = data.storeInt22(_data.logTotalSupply, _MISC_LOG_TOTAL_SUPPLY_OFFSET);
-        data = data.storeInt22(_data.logInvariant, _MISC_LOG_INVARIANT_OFFSET);
-        _miscData = data;
+    /**
+     * @dev Returns the index of the oracle's current sample
+     */
+    function oracleIndex(bytes32 data) internal pure returns (uint256) {
+        return data.decodeUint10(_ORACLE_INDEX_OFFSET);
+    }
+
+    /**
+     * @dev Returns the oracle enable config
+     */
+    function oracleEnabled(bytes32 data) internal pure returns (bool) {
+        return data.decodeBool(_ORACLE_ENABLED_OFFSET);
+    }
+
+    /**
+     * @dev Returns swap fee percentage
+     */
+    function swapFeePercentage(bytes32 data) internal pure returns (uint256) {
+        return data.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
+    }
+
+    /**
+     * @dev Sets the logarithm of the invariant in a given bytes32 word
+     */
+    function setLogInvariant(bytes32 data, int256 _logInvariant) internal pure returns (bytes32) {
+        return data.storeInt22(_logInvariant, _LOG_INVARIANT_OFFSET);
+    }
+
+    /**
+     * @dev Sets the logarithm of the total supply in a given bytes32 word
+     */
+    function setLogTotalSupply(bytes32 data, int256 _logTotalSupply) internal pure returns (bytes32) {
+        return data.storeInt22(_logTotalSupply, _LOG_TOTAL_SUPPLY_OFFSET);
+    }
+
+    /**
+     * @dev Sets the initial timestamp of the oracle's current sample in a given bytes32 word
+     */
+    function setOracleSampleInitialTimestamp(bytes32 data, uint256 _initialTimestamp) internal pure returns (bytes32) {
+        return data.storeUint31(_initialTimestamp, _ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET);
+    }
+
+    /**
+     * @dev Sets the index of the oracle's current sample in a given bytes32 word
+     */
+    function setOracleIndex(bytes32 data, uint256 _oracleIndex) internal pure returns (bytes32) {
+        return data.storeUint10(_oracleIndex, _ORACLE_INDEX_OFFSET);
+    }
+
+    /**
+     * @dev Sets the oracle enable config a given bytes32 word
+     */
+    function setOracleEnabled(bytes32 data, bool _oracleEnabled) internal pure returns (bytes32) {
+        return data.storeBoolean(_oracleEnabled, _ORACLE_ENABLED_OFFSET);
+    }
+
+    /**
+     * @dev Sets the swap fee percentage in a given bytes32 word
+     */
+    function setSwapFeePercentage(bytes32 data, uint256 _swapFeePercentage) internal pure returns (bytes32) {
+        return data.storeUint64(_swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
     }
 }

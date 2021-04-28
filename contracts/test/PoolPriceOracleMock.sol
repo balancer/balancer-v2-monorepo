@@ -33,31 +33,7 @@ contract PoolPriceOracleMock is PoolPriceOracle {
 
     event PriceDataProcessed(bool newSample, uint256 sampleIndex);
 
-    function mockSample(uint256 index, Sample memory sample) public {
-        _samples[index] = pack(sample);
-    }
-
-    function mockSamples(uint256[] memory indexes, Sample[] memory samples) public {
-        for (uint256 i = 0; i < indexes.length; i++) {
-            _samples[indexes[i]] = pack(samples[i]);
-        }
-    }
-
-    function getSample(uint256 index) public view returns (Sample memory) {
-        return unpack(_samples[index]);
-    }
-
-    function update(
-        bytes32 sample,
-        int256 logPairPrice,
-        int256 logBptPrice,
-        int256 logInvariant,
-        uint256 timestamp
-    ) public pure returns (Sample memory) {
-        return unpack(sample.update(logPairPrice, logBptPrice, logInvariant, timestamp));
-    }
-
-    function pack(Sample memory sample) public pure returns (bytes32) {
+    function encode(Sample memory sample) public pure returns (bytes32) {
         return
             Samples.pack(
                 sample.logPairPrice,
@@ -70,7 +46,7 @@ contract PoolPriceOracleMock is PoolPriceOracle {
             );
     }
 
-    function unpack(bytes32 sample) public pure returns (Sample memory) {
+    function decode(bytes32 sample) public pure returns (Sample memory) {
         return
             Sample({
                 logPairPrice: sample.logPairPrice(),
@@ -81,6 +57,30 @@ contract PoolPriceOracleMock is PoolPriceOracle {
                 accLogInvariant: sample.accLogInvariant(),
                 timestamp: sample.timestamp()
             });
+    }
+
+    function mockSample(uint256 index, Sample memory sample) public {
+        _samples[index] = encode(sample);
+    }
+
+    function mockSamples(uint256[] memory indexes, Sample[] memory samples) public {
+        for (uint256 i = 0; i < indexes.length; i++) {
+            _samples[indexes[i]] = encode(samples[i]);
+        }
+    }
+
+    function getSample(uint256 index) public view returns (Sample memory) {
+        return decode(_samples[index]);
+    }
+
+    function update(
+        bytes32 sample,
+        int256 logPairPrice,
+        int256 logBptPrice,
+        int256 logInvariant,
+        uint256 timestamp
+    ) public pure returns (Sample memory) {
+        return decode(sample.update(logPairPrice, logBptPrice, logInvariant, timestamp));
     }
 
     function processPriceData(

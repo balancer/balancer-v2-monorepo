@@ -147,11 +147,19 @@ export default class WeightedPool {
   }
 
   async isOracleEnabled(): Promise<boolean> {
-    return this.instance.isOracleEnabled();
+    return (await this.getMiscData()).oracleEnabled;
   }
 
   async getMiscData(): Promise<MiscData> {
-    return this.instance.getMiscData();
+    const result = await this.instance.getMiscData();
+    return {
+      logInvariant: result[0],
+      logTotalSupply: result[1],
+      oracleSampleInitialTimestamp: result[2],
+      oracleIndex: result[3],
+      oracleEnabled: result[4],
+      swapFeePercentage: result[5],
+    };
   }
 
   async getSample(oracleIndex?: BigNumberish): Promise<Sample> {
@@ -160,7 +168,7 @@ export default class WeightedPool {
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
-    return this.instance.getSwapFeePercentage();
+    return (await this.getMiscData()).swapFeePercentage;
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
