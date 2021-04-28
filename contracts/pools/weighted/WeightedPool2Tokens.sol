@@ -763,6 +763,22 @@ contract WeightedPool2Tokens is
 
     // Oracle functions
 
+    function getOracleSample(uint256 index)
+        external
+        view
+        returns (
+            int256 logPairPrice,
+            int256 accLogPairPrice,
+            int256 logBptPrice,
+            int256 accLogBptPrice,
+            int256 logInvariant,
+            int256 accLogInvariant,
+            uint256 timestamp
+        )
+    {
+        return _unpackSample(index);
+    }
+
     struct OracleAccumulatorQuery {
         Samples.Variable variable;
         uint256 ago;
