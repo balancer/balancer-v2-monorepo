@@ -16,15 +16,13 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 /**
- * @dev Pool contracts with the MinimalSwapInfo or TwoToken specialization settings should implement this interface.
+ * @dev Interface for querying historical data from a Pool that can be used as a Price Oracle.
  *
- * This is called by the Vault when a user calls `IVault.swap` or `IVault.batchSwap` to swap with this Pool.
- * Returns the number of tokens the Pool will grant to the user in a 'given in' swap, or that the user will grant
- * to the pool in a 'given out' swap.
+ * This lets third parties retrieve average prices of tokens held by a Pool over a given period of time, as well as the
+ * price of the Pool shared token (BPT) and invariant. Since the invariant is a sensible measure of Pool liquidity, it
+ * can be used to compare two different price sources, and choose the most liquid one.
  *
- * This can often be implemented by a `view` function, since many pricing algorithms don't need to track state
- * changes in swaps. However, contracts implementing this in non-view functions should check that the caller is
- * indeed the Vault.
+ * All queries are guaranteed to not fail as long as no data
  */
 interface IPoolPriceOracle {
     enum Variable { PAIR_PRICE, BPT_PRICE, INVARIANT }
