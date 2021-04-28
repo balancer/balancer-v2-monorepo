@@ -57,6 +57,7 @@ export default class WeightedPool {
   weights: BigNumberish[];
   swapFeePercentage: BigNumberish;
   vault: Vault;
+  twoTokens: boolean;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -68,7 +69,8 @@ export default class WeightedPool {
     vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
-    swapFeePercentage: BigNumberish
+    swapFeePercentage: BigNumberish,
+    twoTokens: boolean
   ) {
     this.instance = instance;
     this.poolId = poolId;
@@ -76,6 +78,7 @@ export default class WeightedPool {
     this.tokens = tokens;
     this.weights = weights;
     this.swapFeePercentage = swapFeePercentage;
+    this.twoTokens = twoTokens;
   }
 
   get address(): string {
@@ -147,19 +150,13 @@ export default class WeightedPool {
   }
 
   async isOracleEnabled(): Promise<boolean> {
+    if (!this.twoTokens) throw Error('Cannot query misc data for non-2-tokens weighted pool');
     return (await this.getMiscData()).oracleEnabled;
   }
 
   async getMiscData(): Promise<MiscData> {
-    const result = await this.instance.getMiscData();
-    return {
-      logInvariant: result[0],
-      logTotalSupply: result[1],
-      oracleSampleInitialTimestamp: result[2],
-      oracleIndex: result[3],
-      oracleEnabled: result[4],
-      swapFeePercentage: result[5],
-    };
+    if (!this.twoTokens) throw Error('Cannot query misc data for non-2-tokens weighted pool');
+    return this.instance.getMiscData();
   }
 
   async getSample(oracleIndex?: BigNumberish): Promise<Sample> {
@@ -168,7 +165,7 @@ export default class WeightedPool {
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
-    return (await this.getMiscData()).swapFeePercentage;
+    return this.twoTokens ? (await this.getMiscData()).swapFeePercentage : this.instance.getSwapFeePercentage();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {

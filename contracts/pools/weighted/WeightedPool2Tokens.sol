@@ -851,8 +851,8 @@ contract WeightedPool2Tokens is
     function _cacheInvariantAndSupply() internal {
         bytes32 miscData = _miscData;
         if (miscData.oracleEnabled()) {
-            miscData.setLogInvariant(WeightedOracleMath._toLowResLog(_lastInvariant));
-            miscData.setLogTotalSupply(WeightedOracleMath._toLowResLog(totalSupply()));
+            miscData = miscData.setLogInvariant(WeightedOracleMath._toLowResLog(_lastInvariant));
+            miscData = miscData.setLogTotalSupply(WeightedOracleMath._toLowResLog(totalSupply()));
             _miscData = miscData;
         }
     }

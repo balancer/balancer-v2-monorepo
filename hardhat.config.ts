@@ -39,7 +39,7 @@ export default {
   networks: {
     hardhat: {
       chainId: CHAIN_IDS.hardhat,
-      saveDeployments: true
+      saveDeployments: true,
     },
     dockerParity: {
       gas: 10000000,
