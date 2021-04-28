@@ -52,7 +52,7 @@ contract PoolPriceOracle {
     ) internal returns (uint256 sampleIndex) {
         // solhint-disable not-rely-on-time
         // Read current sample and update it with the newly received data.
-        bytes32 sample = _sample(currentIndex).update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
+        bytes32 sample = _getSample(currentIndex).update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
 
         // We create a new sample if more than _MAX_SAMPLE_DURATION seconds have elapsed since the creation of the
         // current one. In other words, no sample accumulates data over a period larger than _MAX_SAMPLE_DURATION.
@@ -87,7 +87,7 @@ contract PoolPriceOracle {
 
         // In case there is no timestamp stored in the current index, it means the buffer has not been initialized yet,
         // meaning there is no information available to answer the query.
-        bytes32 sample = _sample(currentIndex);
+        bytes32 sample = _getSample(currentIndex);
         uint256 latestTimestamp = sample.timestamp();
         _require(latestTimestamp > 0, Errors.ORACLE_NOT_INITIALIZED);
 
@@ -99,7 +99,7 @@ contract PoolPriceOracle {
         } else {
             // The oldest sample is always the following sample in the circular buffer to the latest sample.
             uint256 oldestIndex = currentIndex.next();
-            bytes32 oldestSample = _sample(oldestIndex);
+            bytes32 oldestSample = _getSample(oldestIndex);
             {
                 uint256 oldestTimestamp = oldestSample.timestamp();
 
@@ -142,7 +142,7 @@ contract PoolPriceOracle {
             // Compute mid index taking the floor
             uint256 midWithoutOffset = (high + low) / 2;
             mid = midWithoutOffset.add(offset);
-            sample = _sample(mid);
+            sample = _getSample(mid);
             sampleTimestamp = sample.timestamp();
 
             if (sampleTimestamp < lookUpDate) {
@@ -161,13 +161,13 @@ contract PoolPriceOracle {
         }
 
         // In case we reach here, it means we didn't find exactly the sample we where looking for.
-        return sampleTimestamp < lookUpDate ? (sample, _sample(mid.next())) : (_sample(mid.prev()), sample);
+        return sampleTimestamp < lookUpDate ? (sample, _getSample(mid.next())) : (_getSample(mid.prev()), sample);
     }
 
     /**
      * @dev Tells the sample at a given index in the buffer
      */
-    function _sample(uint256 index) internal view returns (bytes32) {
+    function _getSample(uint256 index) internal view returns (bytes32) {
         return _samples[index];
     }
 }
