@@ -133,7 +133,7 @@ export type MiscData = {
   swapFeePercentage: BigNumber;
   oracleEnabled: boolean;
   oracleIndex: BigNumber;
-  oracleSampleInitialTimestamp: BigNumber;
+  oracleSampleCreationTimestamp: BigNumber;
   logTotalSupply: BigNumber;
   logInvariant: BigNumber;
 };

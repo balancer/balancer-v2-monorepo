@@ -159,7 +159,7 @@ contract WeightedPool2Tokens is
         returns (
             int256 logInvariant,
             int256 logTotalSupply,
-            uint256 oracleSampleInitialTimestamp,
+            uint256 oracleSampleCreationTimestamp,
             uint256 oracleIndex,
             bool oracleEnabled,
             uint256 swapFeePercentage
@@ -168,7 +168,7 @@ contract WeightedPool2Tokens is
         bytes32 miscData = _miscData;
         logInvariant = miscData.logInvariant();
         logTotalSupply = miscData.logTotalSupply();
-        oracleSampleInitialTimestamp = miscData.oracleSampleInitialTimestamp();
+        oracleSampleCreationTimestamp = miscData.oracleSampleCreationTimestamp();
         oracleIndex = miscData.oracleIndex();
         oracleEnabled = miscData.oracleEnabled();
         swapFeePercentage = miscData.swapFeePercentage();
@@ -830,7 +830,7 @@ contract WeightedPool2Tokens is
             );
 
             uint256 oracleCurrentIndex = miscData.oracleIndex();
-            uint256 oracleCurrentSampleInitialTimestamp = miscData.oracleSampleInitialTimestamp();
+            uint256 oracleCurrentSampleInitialTimestamp = miscData.oracleSampleCreationTimestamp();
             uint256 oracleUpdatedIndex = _processPriceData(
                 oracleCurrentSampleInitialTimestamp,
                 oracleCurrentIndex,
@@ -842,7 +842,7 @@ contract WeightedPool2Tokens is
             if (oracleCurrentIndex != oracleUpdatedIndex) {
                 // solhint-disable not-rely-on-time
                 miscData = miscData.setOracleIndex(oracleUpdatedIndex);
-                miscData = miscData.setOracleSampleInitialTimestamp(block.timestamp);
+                miscData = miscData.setOracleSampleCreationTimestamp(block.timestamp);
                 _miscData = miscData;
             }
         }
