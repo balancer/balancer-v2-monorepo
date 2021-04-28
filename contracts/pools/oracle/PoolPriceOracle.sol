@@ -167,7 +167,7 @@ contract PoolPriceOracle {
     /**
      * @dev Tells the sample at a given index in the buffer
      */
-    function _sample(uint256 index) private view returns (bytes32) {
+    function _sample(uint256 index) internal view returns (bytes32) {
         return _samples[index];
     }
 }

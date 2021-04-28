@@ -43,7 +43,37 @@ library Samples {
     using WordCodec for uint256;
     using WordCodec for bytes32;
 
+    uint256 internal constant _TIMESTAMP_OFFSET = 0;
+    uint256 internal constant _ACC_LOG_INVARIANT_OFFSET = 31;
+    uint256 internal constant _LOG_INVARIANT_OFFSET = 84;
+    uint256 internal constant _ACC_LOG_BPT_PRICE_OFFSET = 106;
+    uint256 internal constant _LOG_BPT_PRICE_OFFSET = 159;
+    uint256 internal constant _ACC_LOG_PAIR_PRICE_OFFSET = 181;
+    uint256 internal constant _LOG_PAIR_PRICE_OFFSET = 234;
+
     enum Variable { PAIR_PRICE, BPT_PRICE, INVARIANT }
+
+    function instant(bytes32 sample, Variable variable) internal pure returns (int256) {
+        if (variable == Variable.PAIR_PRICE) {
+            return logPairPrice(sample);
+        } else if (variable == Variable.BPT_PRICE) {
+            return logBptPrice(sample);
+        } else {
+            // variable == Variable.INVARIANT
+            return logInvariant(sample);
+        }
+    }
+
+    function accumulator(bytes32 sample, Variable variable) internal pure returns (int256) {
+        if (variable == Variable.PAIR_PRICE) {
+            return accLogPairPrice(sample);
+        } else if (variable == Variable.BPT_PRICE) {
+            return accLogBptPrice(sample);
+        } else {
+            // variable == Variable.INVARIANT
+            return accLogInvariant(sample);
+        }
+    }
 
     /**
      * @dev Updates a sample, accumulating the new reported information based on the elapsed time since the previous
@@ -78,75 +108,53 @@ library Samples {
             );
     }
 
-    function instant(bytes32 sample, Variable variable) internal pure returns (int256) {
-        if (variable == Variable.PAIR_PRICE) {
-            return logPairPrice(sample);
-        } else if (variable == Variable.BPT_PRICE) {
-            return logBptPrice(sample);
-        } else {
-            // variable == Variable.INVARIANT
-            return logInvariant(sample);
-        }
-    }
-
-    function accumulator(bytes32 sample, Variable variable) internal pure returns (int256) {
-        if (variable == Variable.PAIR_PRICE) {
-            return accLogPairPrice(sample);
-        } else if (variable == Variable.BPT_PRICE) {
-            return accLogBptPrice(sample);
-        } else {
-            // variable == Variable.INVARIANT
-            return accLogInvariant(sample);
-        }
-    }
-
     /**
      * @dev Returns the logarithm of a sample's pair price.
      */
     function logPairPrice(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt22(234); // 234 = 53 + 22 + 53 + 22 + 53 + 31
+        return sample.decodeInt22(_LOG_PAIR_PRICE_OFFSET);
     }
 
     /**
      * @dev Returns a sample's time-weighted accumulated pair price logarithm.
      */
     function accLogPairPrice(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt53(181); // 181 = 22 + 53 + 22 + 53 + 31
+        return sample.decodeInt53(_ACC_LOG_PAIR_PRICE_OFFSET);
     }
 
     /**
      * @dev Returns the logarithm of a sample's BPT price.
      */
     function logBptPrice(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt22(159); // 159 = 53 + 22 + 53 + 31
+        return sample.decodeInt22(_LOG_BPT_PRICE_OFFSET);
     }
 
     /**
      * @dev Returns a sample's time-weighted accumulated BPT price logarithm.
      */
     function accLogBptPrice(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt53(106); // 106 = 22 + 53 + 31
+        return sample.decodeInt53(_ACC_LOG_BPT_PRICE_OFFSET);
     }
 
     /**
      * @dev Returns the logarithm of a sample's invariant
      */
     function logInvariant(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt22(84); // 84 = 53 + 31
+        return sample.decodeInt22(_LOG_INVARIANT_OFFSET);
     }
 
     /**
      * @dev Returns a sample's time-weighted accumulated invariant logarithm.
      */
     function accLogInvariant(bytes32 sample) internal pure returns (int256) {
-        return sample.decodeInt53(31);
+        return sample.decodeInt53(_ACC_LOG_INVARIANT_OFFSET);
     }
 
     /**
-     * @dev Tells the timestamp encoded in a sample
+     * @dev Returns the timestamp encoded in a sample
      */
     function timestamp(bytes32 sample) internal pure returns (uint256) {
-        return sample.decodeUint31(0);
+        return sample.decodeUint31(_TIMESTAMP_OFFSET);
     }
 
     /**
@@ -162,12 +170,12 @@ library Samples {
         uint256 _timestamp
     ) internal pure returns (bytes32) {
         return
-            _logPairPrice.encodeInt22(234) |
-            _accLogPairPrice.encodeInt53(181) |
-            _logBptPrice.encodeInt22(159) |
-            _accLogBptPrice.encodeInt53(106) |
-            _logInvariant.encodeInt22(84) |
-            _accLogInvariant.encodeInt53(31) |
-            _timestamp.encodeUint31(0);
+            _logPairPrice.encodeInt22(_LOG_PAIR_PRICE_OFFSET) |
+            _accLogPairPrice.encodeInt53(_ACC_LOG_PAIR_PRICE_OFFSET) |
+            _logBptPrice.encodeInt22(_LOG_BPT_PRICE_OFFSET) |
+            _accLogBptPrice.encodeInt53(_ACC_LOG_BPT_PRICE_OFFSET) |
+            _logInvariant.encodeInt22(_LOG_INVARIANT_OFFSET) |
+            _accLogInvariant.encodeInt53(_ACC_LOG_INVARIANT_OFFSET) |
+            _timestamp.encodeUint31(_TIMESTAMP_OFFSET);
     }
 }

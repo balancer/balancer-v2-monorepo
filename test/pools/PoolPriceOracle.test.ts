@@ -26,7 +26,7 @@ describe('PoolPriceOracle', () => {
       accLogInvariant: BigNumberish,
       timestamp: BigNumberish
     ) => {
-      const packedSample = await oracle.pack({
+      const packedSample = await oracle.encode({
         logPairPrice,
         accLogPairPrice,
         logBptPrice,
@@ -36,7 +36,7 @@ describe('PoolPriceOracle', () => {
         timestamp,
       });
 
-      const sample = await oracle.unpack(packedSample);
+      const sample = await oracle.decode(packedSample);
       expect(sample.logPairPrice).to.be.equal(logPairPrice);
       expect(sample.accLogPairPrice).to.be.equal(accLogPairPrice);
       expect(sample.logBptPrice).to.be.equal(logBptPrice);
@@ -92,7 +92,7 @@ describe('PoolPriceOracle', () => {
       logInv: BigNumberish,
       elapsed: BigNumberish
     ) => {
-      const prevSample = await oracle.unpack(sample);
+      const prevSample = await oracle.decode(sample);
       const timestamp = prevSample.timestamp.add(elapsed);
 
       const newSample = await oracle.update(sample, logPairPrice, logBptPrice, logInv, timestamp);
@@ -107,7 +107,7 @@ describe('PoolPriceOracle', () => {
     };
 
     it('updates the sample correctly', async () => {
-      const sample = await oracle.pack({
+      const sample = await oracle.encode({
         logPairPrice: 1,
         accLogPairPrice: 10,
         logBptPrice: 2,

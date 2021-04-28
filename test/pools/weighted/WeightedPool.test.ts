@@ -406,7 +406,7 @@ describe('WeightedPool', function () {
         logInvariant: BigNumberish,
         logTotalSupply: BigNumberish
       ) => {
-        await pool.instance.setMiscData({
+        await pool.instance.mockMiscData({
           swapFeePercentage,
           oracleEnabled,
           oracleIndex,
