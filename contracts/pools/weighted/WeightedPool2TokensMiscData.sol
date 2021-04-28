@@ -23,7 +23,7 @@ import "../../lib/helpers/WordCodec.sol";
  *
  * These pieces of information are all kept together in a single storage slot to reduce the number of storage reads. In
  * particular, we not only store configuration values (such as the swap fee percentage), but also cache
- * reduced-precision versions of the total BPT supply and invariant, which lets us not access nor compute this values
+ * reduced-precision versions of the total BPT supply and invariant, which lets us not access nor compute these values
  * when producing oracle updates during a swap.
  *
  * Data is stored with the following structure:
@@ -31,7 +31,7 @@ import "../../lib/helpers/WordCodec.sol";
  * [ swap fee pct | oracle enabled | oracle index | oracle sample initial timestamp | log supply | log invariant ]
  * [    uint64    |      bool      |    uint10    |              uint31             |    int22   |     int22     ]
  *
- * Note that are not using the most-significant 106 bits.
+ * Note that we are not using the most-significant 106 bits.
  */
 library WeightedPool2TokensMiscData {
     using WordCodec for bytes32;

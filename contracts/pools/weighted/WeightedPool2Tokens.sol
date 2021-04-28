@@ -382,7 +382,7 @@ contract WeightedPool2Tokens is
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn);
 
-            // There are not due protocol fee amounts during initialization
+            // There are no due protocol fee amounts during initialization
             dueProtocolFeeAmounts = new uint256[](2);
         } else {
             _upscaleArray(balances);
@@ -1040,8 +1040,8 @@ contract WeightedPool2Tokens is
     }
 
     /**
-     * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
+     * @dev Same as `_upscale`, but for an entire array (of two elements). This function does not return anything, but
+     * instead *mutates* the `amounts` array.
      */
     function _upscaleArray(uint256[] memory amounts) internal view {
         amounts[0] = Math.mul(amounts[0], _scalingFactor(true));
@@ -1057,8 +1057,8 @@ contract WeightedPool2Tokens is
     }
 
     /**
-     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
+     * @dev Same as `_downscaleDown`, but for an entire array (of two elements). This function does not return anything,
+     * but instead *mutates* the `amounts` array.
      */
     function _downscaleDownArray(uint256[] memory amounts) internal view {
         amounts[0] = Math.divDown(amounts[0], _scalingFactor(true));
@@ -1074,8 +1074,8 @@ contract WeightedPool2Tokens is
     }
 
     /**
-     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
+     * @dev Same as `_downscaleUp`, but for an entire array (of two elements). This function does not return anything,
+     * but instead *mutates* the `amounts` array.
      */
     function _downscaleUpArray(uint256[] memory amounts) internal view {
         amounts[0] = Math.divUp(amounts[0], _scalingFactor(true));
@@ -1204,7 +1204,7 @@ contract WeightedPool2Tokens is
                 start := sub(start, 0x04)
 
                 // When copying from `tokenAmounts` into returndata, we copy the additional 68 bytes to also return
-                // the `bptAmount`, the array 's length, and the error signature.
+                // the `bptAmount`, the array length, and the error signature.
                 revert(start, add(size, 68))
             }
         }
