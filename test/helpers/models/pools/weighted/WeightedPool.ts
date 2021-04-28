@@ -165,7 +165,7 @@ export default class WeightedPool {
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
-    return this.twoTokens ? (await this.getMiscData()).swapFeePercentage : this.instance.getSwapFeePercentage();
+    return this.instance.getSwapFeePercentage();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
