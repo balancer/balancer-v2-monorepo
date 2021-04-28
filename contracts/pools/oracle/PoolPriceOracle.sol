@@ -18,6 +18,8 @@ import "./Buffer.sol";
 import "./Samples.sol";
 import "../../lib/helpers/BalancerErrors.sol";
 
+import "../IPoolPriceOracle.sol";
+
 /**
  * @dev This module provides a simple interface to allow pools to give access to historic pricing information.
  * In particular it works with a circular buffer of 1024 slots (samples) guaranteeing that each of these samples
@@ -77,7 +79,7 @@ contract PoolPriceOracle {
      * to the target timestamp.
      */
     function _getPastAccumulator(
-        Samples.Variable variable,
+        IPoolPriceOracle.Variable variable,
         uint256 currentIndex,
         uint256 ago
     ) internal view returns (int256) {

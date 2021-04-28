@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../pools/oracle/Samples.sol";
 import "../pools/oracle/PoolPriceOracle.sol";
+import "../pools/IPoolPriceOracle.sol";
 
 contract PoolPriceOracleMock is PoolPriceOracle {
     using Samples for bytes32;
@@ -73,12 +74,12 @@ contract PoolPriceOracleMock is PoolPriceOracle {
     function unpack(bytes32 sample) public pure returns (Sample memory) {
         return
             Sample({
-                logPairPrice: sample.logPairPrice(),
-                accLogPairPrice: sample.accLogPairPrice(),
-                logBptPrice: sample.logBptPrice(),
-                accLogBptPrice: sample.accLogBptPrice(),
-                logInvariant: sample.logInvariant(),
-                accLogInvariant: sample.accLogInvariant(),
+                logPairPrice: sample.instant(IPoolPriceOracle.Variable.PAIR_PRICE),
+                accLogPairPrice: sample.accumulator(IPoolPriceOracle.Variable.PAIR_PRICE),
+                logBptPrice: sample.instant(IPoolPriceOracle.Variable.BPT_PRICE),
+                accLogBptPrice: sample.accumulator(IPoolPriceOracle.Variable.BPT_PRICE),
+                logInvariant: sample.instant(IPoolPriceOracle.Variable.INVARIANT),
+                accLogInvariant: sample.accumulator(IPoolPriceOracle.Variable.INVARIANT),
                 timestamp: sample.timestamp()
             });
     }
@@ -119,7 +120,7 @@ contract PoolPriceOracleMock is PoolPriceOracle {
     }
 
     function getPastAccumulator(
-        Samples.Variable variable,
+        IPoolPriceOracle.Variable variable,
         uint256 currentIndex,
         uint256 timestamp
     ) external view returns (int256) {

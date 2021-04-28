@@ -27,10 +27,13 @@ import "./WeightedPoolUserDataHelpers.sol";
 import "../BalancerPoolToken.sol";
 import "../BasePoolAuthorization.sol";
 import "../oracle/PoolPriceOracle.sol";
+
 import "../../vault/interfaces/IMinimalSwapInfoPool.sol";
+import "../IPoolPriceOracle.sol";
 
 contract WeightedPool2Tokens is
     IMinimalSwapInfoPool,
+    IPoolPriceOracle,
     BasePoolAuthorization,
     BalancerPoolToken,
     TemporarilyPausable,
@@ -748,14 +751,10 @@ contract WeightedPool2Tokens is
 
     // Oracle functions
 
-    struct OracleAccumulatorQuery {
-        Samples.Variable variable;
-        uint256 ago;
-    }
-
     function getPastAccumulators(OracleAccumulatorQuery[] memory queries)
         external
         view
+        override
         returns (int256[] memory results)
     {
         results = new int256[](queries.length);
@@ -769,15 +768,10 @@ contract WeightedPool2Tokens is
         }
     }
 
-    struct OracleAverageQuery {
-        Samples.Variable variable;
-        uint256 secs;
-        uint256 ago;
-    }
-
     function getTimeWeightedAverage(OracleAverageQuery[] memory queries)
         external
         view
+        override
         returns (uint256[] memory results)
     {
         results = new uint256[](queries.length);
