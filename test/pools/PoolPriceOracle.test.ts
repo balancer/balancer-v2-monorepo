@@ -7,7 +7,7 @@ import { BigNumberish, bn } from '../../lib/helpers/numbers';
 import { advanceTime, currentTimestamp, MINUTE } from '../../lib/helpers/time';
 import { MAX_UINT31, MIN_INT22, MAX_INT22, MIN_INT53, MAX_INT53 } from '../../lib/helpers/constants';
 
-describe.only('PoolPriceOracle', () => {
+describe('PoolPriceOracle', () => {
   let oracle: Contract;
 
   const MAX_BUFFER_SIZE = 1024;
