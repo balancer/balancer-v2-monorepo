@@ -958,13 +958,19 @@ describe('WeightedPool', function () {
           await expect(pool.swapGivenIn({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_IN_RATIO');
         });
 
-        it('reverts if token in is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
+        if (!twoTokens) {
+          it('reverts if token in is not in the pool', async () => {
+            await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith(
+              'INVALID_TOKEN'
+            );
+          });
 
-        it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
+          it('reverts if token out is not in the pool', async () => {
+            await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith(
+              'INVALID_TOKEN'
+            );
+          });
+        }
 
         it('reverts if paused', async () => {
           await pool.pause();
@@ -998,13 +1004,19 @@ describe('WeightedPool', function () {
           await expect(pool.swapGivenOut({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_OUT_RATIO');
         });
 
-        it('reverts if token in is not in the pool when given out', async () => {
-          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
+        if (!twoTokens) {
+          it('reverts if token in is not in the pool when given out', async () => {
+            await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith(
+              'INVALID_TOKEN'
+            );
+          });
 
-        it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
+          it('reverts if token out is not in the pool', async () => {
+            await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith(
+              'INVALID_TOKEN'
+            );
+          });
+        }
 
         it('reverts if paused', async () => {
           await pool.pause();
