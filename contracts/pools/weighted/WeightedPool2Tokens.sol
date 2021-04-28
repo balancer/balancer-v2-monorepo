@@ -748,37 +748,51 @@ contract WeightedPool2Tokens is
 
     // Oracle functions
 
-    function getAvgPairPrices(uint256[] memory windowLengths) external view returns (uint256[] memory prices) {
-        uint256 oracleIndex = _getMiscData().oracleIndex;
-        int256 currentAccLogPairPrice = _getPastAccLogPairPrice(oracleIndex, 0);
+    struct OracleAccumulatorQuery {
+        Samples.Variable variable;
+        uint256 ago;
+    }
 
-        prices = new uint256[](windowLengths.length);
-        for (uint256 i = 0; i < windowLengths.length; i++) {
-            uint256 windowLength = windowLengths[i];
-            prices[i] = windowLength == 0
-                ? WeightedOracleMath._fromLowResLog(_getLogPairPrice(oracleIndex))
-                : _getAvgPairPrice(oracleIndex, currentAccLogPairPrice, windowLength);
+    function getPastAccumulators(OracleAccumulatorQuery[] memory queries)
+        external
+        view
+        returns (int256[] memory results)
+    {
+        results = new int256[](queries.length);
+
+        uint256 oracleIndex = _getMiscData().oracleIndex;
+
+        OracleAccumulatorQuery memory query;
+        for (uint256 i = 0; i < queries.length; ++i) {
+            query = queries[i];
+            results[i] = _getPastAccumulator(query.variable, oracleIndex, query.ago);
         }
     }
 
-    function getAvgPairPrice(uint256 windowLength) external view returns (uint256) {
-        uint256 oracleIndex = _getMiscData().oracleIndex;
-        if (windowLength == 0) {
-            return WeightedOracleMath._fromLowResLog(_getLogPairPrice(oracleIndex));
-        } else {
-            int256 currentAccLogPairPrice = _getPastAccLogPairPrice(oracleIndex, 0);
-            return _getAvgPairPrice(oracleIndex, currentAccLogPairPrice, windowLength);
-        }
+    struct OracleAverageQuery {
+        Samples.Variable variable;
+        uint256 secs;
+        uint256 ago;
     }
 
-    function _getAvgPairPrice(
-        uint256 oracleIndex,
-        int256 currentAccLogPairPrice,
-        uint256 windowLength
-    ) internal view returns (uint256) {
-        int256 past = _getPastAccLogPairPrice(oracleIndex, windowLength);
-        int256 avg = (currentAccLogPairPrice - past) / int256(windowLength);
-        return WeightedOracleMath._fromLowResLog(avg);
+    function getTimeWeightedAverage(OracleAverageQuery[] memory queries)
+        external
+        view
+        returns (uint256[] memory results)
+    {
+        results = new uint256[](queries.length);
+
+        uint256 oracleIndex = _getMiscData().oracleIndex;
+
+        OracleAverageQuery memory query;
+        for (uint256 i = 0; i < queries.length; ++i) {
+            query = queries[i];
+
+            int256 beginAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago + query.secs);
+            int256 endAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago);
+
+            results[i] = _fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
+        }
     }
 
     /**
