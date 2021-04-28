@@ -344,7 +344,7 @@ describe('WeightedPool', function () {
         });
       });
 
-      describe.only('oracle setting', () => {
+      describe('oracle setting', () => {
         const action = () => pool.enableOracle({ from: admin });
 
         sharedBeforeEach('grant role to admin', async () => {
