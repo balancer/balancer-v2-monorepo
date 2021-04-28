@@ -74,12 +74,12 @@ contract WeightedPool2TokensMiscData {
 
     function _setMiscData(MiscData memory _data) internal {
         bytes32 data = bytes32(0);
-        data = data.storeUint64(_data.swapFeePercentage, _MISC_SWAP_FEE_PERCENTAGE_OFFSET);
+        data = data.insertUint64(_data.swapFeePercentage, _MISC_SWAP_FEE_PERCENTAGE_OFFSET);
         data = data.storeBoolean(_data.oracleEnabled, _MISC_ORACLE_ENABLED_OFFSET);
-        data = data.storeUint10(_data.oracleIndex, _MISC_ORACLE_INDEX_OFFSET);
-        data = data.storeUint31(_data.oracleSampleInitialTimestamp, _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET);
-        data = data.storeInt22(_data.logTotalSupply, _MISC_LOG_TOTAL_SUPPLY_OFFSET);
-        data = data.storeInt22(_data.logInvariant, _MISC_LOG_INVARIANT_OFFSET);
+        data = data.insertUint10(_data.oracleIndex, _MISC_ORACLE_INDEX_OFFSET);
+        data = data.insertUint31(_data.oracleSampleInitialTimestamp, _MISC_ORACLE_SAMPLE_INITIAL_TIMESTAMP_OFFSET);
+        data = data.insertInt22(_data.logTotalSupply, _MISC_LOG_TOTAL_SUPPLY_OFFSET);
+        data = data.insertInt22(_data.logInvariant, _MISC_LOG_INVARIANT_OFFSET);
         _miscData = data;
     }
 }
