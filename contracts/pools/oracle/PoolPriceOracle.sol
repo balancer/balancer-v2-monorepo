@@ -215,7 +215,7 @@ contract PoolPriceOracle {
      * Using this function instead of accessing storage directly results in denser bytecode (since the storage slot is
      * only computed here).
      */
-    function _sample(uint256 index) private view returns (bytes32) {
+    function _sample(uint256 index) internal view returns (bytes32) {
         return _samples[index];
     }
 }

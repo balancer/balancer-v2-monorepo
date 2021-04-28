@@ -46,6 +46,14 @@ library Samples {
     using WordCodec for uint256;
     using WordCodec for bytes32;
 
+    uint256 internal constant _TIMESTAMP_OFFSET = 0;
+    uint256 internal constant _ACC_LOG_INVARIANT_OFFSET = 31;
+    uint256 internal constant _INST_LOG_INVARIANT_OFFSET = 84;
+    uint256 internal constant _ACC_LOG_BPT_PRICE_OFFSET = 106;
+    uint256 internal constant _INST_LOG_BPT_PRICE_OFFSET = 159;
+    uint256 internal constant _ACC_LOG_PAIR_PRICE_OFFSET = 181;
+    uint256 internal constant _INST_LOG_PAIR_PRICE_OFFSET = 234;
+
     /**
      * @dev Updates a sample, accumulating the new data based on the elapsed time since the previous update. Returns the
      * updated sample.
@@ -113,49 +121,49 @@ library Samples {
      * @dev Returns `sample`'s timestamp.
      */
     function timestamp(bytes32 sample) internal pure returns (uint256) {
-        return sample.decodeUint31(0);
+        return sample.decodeUint31(_TIMESTAMP_OFFSET);
     }
 
     /**
      * @dev Returns `sample`'s instant value for the logarithm of the pair price.
      */
     function _instLogPairPrice(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt22(234); // 234 = 53 + 22 + 53 + 22 + 53 + 31
+        return sample.decodeInt22(_INST_LOG_PAIR_PRICE_OFFSET);
     }
 
     /**
      * @dev Returns `sample`'s accumulator of the the logarithm of the pair price.
      */
     function _accLogPairPrice(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt53(181); // 181 = 22 + 53 + 22 + 53 + 31
+        return sample.decodeInt53(_ACC_LOG_PAIR_PRICE_OFFSET);
     }
 
     /**
      * @dev Returns `sample`'s instant value for the logarithm of the BPT price.
      */
     function _instLogBptPrice(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt22(159); // 159 = 53 + 22 + 53 + 31
+        return sample.decodeInt22(_INST_LOG_BPT_PRICE_OFFSET);
     }
 
     /**
      * @dev Returns `sample`'s accumulator of the the logarithm of the BPT price.
      */
     function _accLogBptPrice(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt53(106); // 106 = 22 + 53 + 31
+        return sample.decodeInt53(_ACC_LOG_BPT_PRICE_OFFSET);
     }
 
     /**
      * @dev Returns `sample`'s instant value for the logarithm of the invariant.
      */
     function _instLogInvariant(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt22(84); // 84 = 53 + 31
+        return sample.decodeInt22(_INST_LOG_INVARIANT_OFFSET);
     }
 
     /**
      * @dev Returns `sample`'s accumulator of the the logarithm of the invariant.
      */
     function _accLogInvariant(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt53(31);
+        return sample.decodeInt53(_ACC_LOG_INVARIANT_OFFSET);
     }
 
     /**
@@ -171,12 +179,12 @@ library Samples {
         uint256 _timestamp
     ) internal pure returns (bytes32) {
         return
-            instLogPairPrice.encodeInt22(234) |
-            accLogPairPrice.encodeInt53(181) |
-            instLogBptPrice.encodeInt22(159) |
-            accLogBptPrice.encodeInt53(106) |
-            instLogInvariant.encodeInt22(84) |
-            accLogInvariant.encodeInt53(31) |
-            _timestamp.encodeUint31(0);
+            instLogPairPrice.encodeInt22(_INST_LOG_PAIR_PRICE_OFFSET) |
+            accLogPairPrice.encodeInt53(_ACC_LOG_PAIR_PRICE_OFFSET) |
+            instLogBptPrice.encodeInt22(_INST_LOG_BPT_PRICE_OFFSET) |
+            accLogBptPrice.encodeInt53(_ACC_LOG_BPT_PRICE_OFFSET) |
+            instLogInvariant.encodeInt22(_INST_LOG_INVARIANT_OFFSET) |
+            accLogInvariant.encodeInt53(_ACC_LOG_INVARIANT_OFFSET) |
+            _timestamp.encodeUint31(_TIMESTAMP_OFFSET);
     }
 }

@@ -38,12 +38,12 @@ contract WeightedPool2Tokens is
     BalancerPoolToken,
     TemporarilyPausable,
     PoolPriceOracle,
-    WeightedPool2TokensMiscData,
     WeightedMath,
     WeightedOracleMath
 {
     using FixedPoint for uint256;
     using WeightedPoolUserDataHelpers for bytes;
+    using WeightedPool2TokensMiscData for bytes32;
 
     uint256 private constant _MINIMUM_BPT = 1e6;
 
@@ -52,6 +52,7 @@ contract WeightedPool2Tokens is
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10%
     // The swap fee is internally stored using 64 bits, which is enough to represent _MAX_SWAP_FEE_PERCENTAGE.
 
+    bytes32 internal _miscData;
     uint256 private _lastInvariant;
 
     IVault private immutable _vault;
@@ -152,8 +153,25 @@ contract WeightedPool2Tokens is
         return _poolId;
     }
 
-    function getSwapFeePercentage() external view returns (uint256) {
-        return _getMiscData().swapFeePercentage;
+    function getMiscData()
+        external
+        view
+        returns (
+            int256 logInvariant,
+            int256 logTotalSupply,
+            uint256 oracleSampleInitialTimestamp,
+            uint256 oracleIndex,
+            bool oracleEnabled,
+            uint256 swapFeePercentage
+        )
+    {
+        bytes32 miscData = _miscData;
+        logInvariant = miscData.logInvariant();
+        logTotalSupply = miscData.logTotalSupply();
+        oracleSampleInitialTimestamp = miscData.oracleSampleInitialTimestamp();
+        oracleIndex = miscData.oracleIndex();
+        oracleEnabled = miscData.oracleEnabled();
+        swapFeePercentage = miscData.swapFeePercentage();
     }
 
     // Caller must be approved by the Vault's Authorizer
@@ -165,10 +183,12 @@ contract WeightedPool2Tokens is
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        MiscData memory miscData = _getMiscData();
-        miscData.swapFeePercentage = swapFeePercentage;
-        _setMiscData(miscData);
+        _miscData = _miscData.setSwapFeePercentage(swapFeePercentage);
         emit SwapFeePercentageChanged(swapFeePercentage);
+    }
+
+    function _getSwapFeePercentage() internal view returns (uint256) {
+        return _miscData.swapFeePercentage();
     }
 
     function enableOracle() external whenNotPaused authenticate {
@@ -176,19 +196,13 @@ contract WeightedPool2Tokens is
 
         // Cache log invariant and supply only if the pool was initialized
         if (totalSupply() > 0) {
-            _cacheInvariantAndSupply(_getMiscData());
+            _cacheInvariantAndSupply();
         }
     }
 
-    function _setOracleEnabled(bool enabled) private {
-        MiscData memory miscData = _getMiscData();
-        miscData.oracleEnabled = enabled;
-        _setMiscData(miscData);
+    function _setOracleEnabled(bool enabled) internal {
+        _miscData = _miscData.setOracleEnabled(enabled);
         emit OracleEnabledChanged(enabled);
-    }
-
-    function isOracleEnabled() external view returns (bool) {
-        return _getMiscData().oracleEnabled;
     }
 
     // Caller must be approved by the Vault's Authorizer
@@ -246,10 +260,8 @@ contract WeightedPool2Tokens is
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
 
         // Update price oracle with the pre-swap balances
-        MiscData memory miscData = _getMiscData();
         bool tokenInIsToken0 = request.tokenIn == _token0;
         _updateOracle(
-            miscData,
             request.lastChangeBlock,
             tokenInIsToken0 ? balanceTokenIn : balanceTokenOut,
             tokenInIsToken0 ? balanceTokenOut : balanceTokenIn
@@ -258,7 +270,7 @@ contract WeightedPool2Tokens is
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
             // This is amount - fee amount, so we round up (favoring a higher fee amount).
-            uint256 feeAmount = request.amount.mulUp(miscData.swapFeePercentage);
+            uint256 feeAmount = request.amount.mulUp(_getSwapFeePercentage());
             request.amount = _upscale(request.amount.sub(feeAmount), scalingFactorTokenIn);
 
             uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
@@ -275,7 +287,7 @@ contract WeightedPool2Tokens is
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
             // This is amount + fee amount, so we round up (favoring a higher fee amount).
-            return amountIn.divUp(miscData.swapFeePercentage.complement());
+            return amountIn.divUp(_getSwapFeePercentage().complement());
         }
     }
 
@@ -334,7 +346,6 @@ contract WeightedPool2Tokens is
         // All joins, including initializations, are disabled while the contract is paused.
 
         uint256[] memory scalingFactors = _scalingFactors();
-        MiscData memory miscData = _getMiscData();
 
         uint256 bptAmountOut;
         if (totalSupply() == 0) {
@@ -356,7 +367,7 @@ contract WeightedPool2Tokens is
             _upscaleArray(balances, scalingFactors);
 
             // Update price oracle with the pre-join balances
-            _updateOracle(miscData, lastChangeBlock, balances[0], balances[1]);
+            _updateOracle(lastChangeBlock, balances[0], balances[1]);
 
             (bptAmountOut, amountsIn, dueProtocolFeeAmounts) = _onJoinPool(
                 poolId,
@@ -365,8 +376,7 @@ contract WeightedPool2Tokens is
                 balances,
                 lastChangeBlock,
                 protocolSwapFeePercentage,
-                userData,
-                miscData
+                userData
             );
 
             // Note we no longer use `balances` after calling `_onJoinPool`, which may mutate it.
@@ -381,7 +391,7 @@ contract WeightedPool2Tokens is
 
         // Update cached total supply and invariant using the results after the join that will be used for future
         // oracle updates.
-        _cacheInvariantAndSupply(miscData);
+        _cacheInvariantAndSupply();
     }
 
     /**
@@ -447,8 +457,7 @@ contract WeightedPool2Tokens is
         uint256[] memory balances,
         uint256,
         uint256 protocolSwapFeePercentage,
-        bytes memory userData,
-        MiscData memory miscData
+        bytes memory userData
     )
         private
         returns (
@@ -474,7 +483,7 @@ contract WeightedPool2Tokens is
 
         // Update current balances by subtracting the protocol fee amounts
         _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
-        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, normalizedWeights, userData, miscData);
+        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(balances, normalizedWeights, userData);
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
         // protocol swap fee amounts due in future joins and exits.
@@ -486,15 +495,14 @@ contract WeightedPool2Tokens is
     function _doJoin(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData,
-        MiscData memory miscData
+        bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         WeightedPool.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPool.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData, miscData);
+            return _joinExactTokensInForBPTOut(balances, normalizedWeights, userData);
         } else if (kind == WeightedPool.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData, miscData);
+            return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -503,8 +511,7 @@ contract WeightedPool2Tokens is
     function _joinExactTokensInForBPTOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData,
-        MiscData memory miscData
+        bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, 2);
@@ -516,7 +523,7 @@ contract WeightedPool2Tokens is
             normalizedWeights,
             amountsIn,
             totalSupply(),
-            miscData.swapFeePercentage
+            _getSwapFeePercentage()
         );
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
@@ -527,8 +534,7 @@ contract WeightedPool2Tokens is
     function _joinTokenInForExactBPTOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData,
-        MiscData memory miscData
+        bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
@@ -541,7 +547,7 @@ contract WeightedPool2Tokens is
             normalizedWeights[tokenIndex],
             bptAmountOut,
             totalSupply(),
-            miscData.swapFeePercentage
+            _getSwapFeePercentage()
         );
 
         return (bptAmountOut, amountsIn);
@@ -561,7 +567,6 @@ contract WeightedPool2Tokens is
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
-        MiscData memory miscData = _getMiscData();
         (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(
             poolId,
             sender,
@@ -569,8 +574,7 @@ contract WeightedPool2Tokens is
             balances,
             lastChangeBlock,
             protocolSwapFeePercentage,
-            userData,
-            miscData
+            userData
         );
 
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
@@ -584,7 +588,7 @@ contract WeightedPool2Tokens is
         // Update cached total supply and invariant using the results after the exit that will be used for future
         // oracle updates, only if the pool was not paused (to minimize code paths taken while paused).
         if (_isNotPaused()) {
-            _cacheInvariantAndSupply(miscData);
+            _cacheInvariantAndSupply();
         }
 
         return (amountsOut, dueProtocolFeeAmounts);
@@ -614,8 +618,7 @@ contract WeightedPool2Tokens is
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
-        bytes memory userData,
-        MiscData memory miscData
+        bytes memory userData
     )
         private
         returns (
@@ -631,7 +634,7 @@ contract WeightedPool2Tokens is
 
         if (_isNotPaused()) {
             // Update price oracle with the pre-exit balances
-            _updateOracle(miscData, lastChangeBlock, balances[0], balances[1]);
+            _updateOracle(lastChangeBlock, balances[0], balances[1]);
 
             // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
             // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
@@ -653,7 +656,7 @@ contract WeightedPool2Tokens is
             dueProtocolFeeAmounts = new uint256[](2);
         }
 
-        (bptAmountIn, amountsOut) = _doExit(balances, normalizedWeights, userData, miscData);
+        (bptAmountIn, amountsOut) = _doExit(balances, normalizedWeights, userData);
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
         // protocol swap fees due in future joins and exits.
@@ -665,26 +668,24 @@ contract WeightedPool2Tokens is
     function _doExit(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData,
-        MiscData memory miscData
+        bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         WeightedPool.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPool.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData, miscData);
+            return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
         } else if (kind == WeightedPool.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(balances, userData);
         } else {
             // ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT
-            return _exitBPTInForExactTokensOut(balances, normalizedWeights, userData, miscData);
+            return _exitBPTInForExactTokensOut(balances, normalizedWeights, userData);
         }
     }
 
     function _exitExactBPTInForTokenOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData,
-        MiscData memory miscData
+        bytes memory userData
     ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
@@ -702,7 +703,7 @@ contract WeightedPool2Tokens is
             normalizedWeights[tokenIndex],
             bptAmountIn,
             totalSupply(),
-            miscData.swapFeePercentage
+            _getSwapFeePercentage()
         );
 
         return (bptAmountIn, amountsOut);
@@ -728,8 +729,7 @@ contract WeightedPool2Tokens is
     function _exitBPTInForExactTokensOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
-        bytes memory userData,
-        MiscData memory miscData
+        bytes memory userData
     ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
@@ -742,7 +742,7 @@ contract WeightedPool2Tokens is
             normalizedWeights,
             amountsOut,
             totalSupply(),
-            miscData.swapFeePercentage
+            _getSwapFeePercentage()
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
@@ -759,7 +759,7 @@ contract WeightedPool2Tokens is
     {
         results = new int256[](queries.length);
 
-        uint256 oracleIndex = _getMiscData().oracleIndex;
+        uint256 oracleIndex = _miscData.oracleIndex();
 
         OracleAccumulatorQuery memory query;
         for (uint256 i = 0; i < queries.length; ++i) {
@@ -776,7 +776,7 @@ contract WeightedPool2Tokens is
     {
         results = new uint256[](queries.length);
 
-        uint256 oracleIndex = _getMiscData().oracleIndex;
+        uint256 oracleIndex = _miscData.oracleIndex();
 
         OracleAverageQuery memory query;
         for (uint256 i = 0; i < queries.length; ++i) {
@@ -795,12 +795,12 @@ contract WeightedPool2Tokens is
      * `lastChangeBlock` as the number of the block in which any of the balances last changed.
      */
     function _updateOracle(
-        MiscData memory miscData,
         uint256 lastChangeBlock,
         uint256 balanceToken0,
         uint256 balanceToken1
     ) internal {
-        if (miscData.oracleEnabled && block.number > lastChangeBlock) {
+        bytes32 miscData = _miscData;
+        if (miscData.oracleEnabled() && block.number > lastChangeBlock) {
             int256 logSpotPrice = WeightedOracleMath._calcLogSpotPrice(
                 _normalizedWeight0,
                 balanceToken0,
@@ -811,24 +811,24 @@ contract WeightedPool2Tokens is
             int256 logBPTPrice = WeightedOracleMath._calcLogBPTPrice(
                 _normalizedWeight0,
                 balanceToken0,
-                miscData.logTotalSupply
+                miscData.logTotalSupply()
             );
 
-            uint256 oracleCurrentIndex = miscData.oracleIndex;
-            uint256 oracleCurrentSampleInitialTimestamp = miscData.oracleSampleInitialTimestamp;
+            uint256 oracleCurrentIndex = miscData.oracleIndex();
+            uint256 oracleCurrentSampleInitialTimestamp = miscData.oracleSampleInitialTimestamp();
             uint256 oracleUpdatedIndex = _processPriceData(
                 oracleCurrentSampleInitialTimestamp,
                 oracleCurrentIndex,
                 logSpotPrice,
                 logBPTPrice,
-                miscData.logInvariant
+                miscData.logInvariant()
             );
 
             if (oracleCurrentIndex != oracleUpdatedIndex) {
                 // solhint-disable not-rely-on-time
-                miscData.oracleIndex = oracleUpdatedIndex;
-                miscData.oracleSampleInitialTimestamp = block.timestamp;
-                _setMiscData(miscData);
+                miscData = miscData.setOracleIndex(oracleUpdatedIndex);
+                miscData = miscData.setOracleSampleInitialTimestamp(block.timestamp);
+                _miscData = miscData;
             }
         }
     }
@@ -842,11 +842,12 @@ contract WeightedPool2Tokens is
      * also alter the invariant due to collected swap fees, but this growth is considered negligible and not accounted
      * for.
      */
-    function _cacheInvariantAndSupply(MiscData memory miscData) internal {
-        if (miscData.oracleEnabled) {
-            miscData.logInvariant = WeightedOracleMath._toLowResLog(_lastInvariant);
-            miscData.logTotalSupply = WeightedOracleMath._toLowResLog(totalSupply());
-            _setMiscData(miscData);
+    function _cacheInvariantAndSupply() internal {
+        bytes32 miscData = _miscData;
+        if (miscData.oracleEnabled()) {
+            miscData = miscData.setLogInvariant(WeightedOracleMath._toLowResLog(_lastInvariant));
+            miscData = miscData.setLogTotalSupply(WeightedOracleMath._toLowResLog(totalSupply()));
+            _miscData = miscData;
         }
     }
 
@@ -881,7 +882,6 @@ contract WeightedPool2Tokens is
             lastChangeBlock,
             protocolSwapFeePercentage,
             userData,
-            _getMiscData(),
             _onJoinPool,
             _downscaleUpArray
         );
@@ -920,7 +920,6 @@ contract WeightedPool2Tokens is
             lastChangeBlock,
             protocolSwapFeePercentage,
             userData,
-            _getMiscData(),
             _onExitPool,
             _downscaleDownArray
         );
@@ -1108,8 +1107,7 @@ contract WeightedPool2Tokens is
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData,
-        MiscData memory miscData,
-        function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory, MiscData memory)
+        function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
             internal
             returns (uint256, uint256[] memory, uint256[] memory) _action,
         function(uint256[] memory, uint256[] memory) internal view _downscaleArray
@@ -1192,8 +1190,7 @@ contract WeightedPool2Tokens is
                 balances,
                 lastChangeBlock,
                 protocolSwapFeePercentage,
-                userData,
-                miscData
+                userData
             );
 
             _downscaleArray(tokenAmounts, scalingFactors);
