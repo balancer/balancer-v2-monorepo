@@ -39,7 +39,7 @@ import "../IPoolPriceOracle.sol";
  * MSB                                                                                LSB
  *
  * Assuming the timestamp doesn't overflow (which holds until the year 2038), the largest elapsed time is 2^31, which
- * means the largest possible accumulator value is 2^21 * 2^31, which can be represented using 53 bits.
+ * means the largest possible accumulator value is 2^21 * 2^31, which can be represented using a signed 53 bit integer.
  */
 library Samples {
     using WordCodec for int256;
