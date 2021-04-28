@@ -66,12 +66,12 @@ contract PoolPriceOracleMock is PoolPriceOracle {
 
     function mockSamples(uint256[] memory indexes, Sample[] memory samples) public {
         for (uint256 i = 0; i < indexes.length; i++) {
-            _samples[indexes[i]] = encode(samples[i]);
+            mockSample(indexes[i], samples[i]);
         }
     }
 
     function getSample(uint256 index) public view returns (Sample memory) {
-        return decode(_samples[index]);
+        return decode(_getSample(index));
     }
 
     function update(

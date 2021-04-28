@@ -216,15 +216,13 @@ contract WeightedPool2Tokens is
 
     function _normalizedWeights() internal view virtual returns (uint256[] memory) {
         uint256[] memory normalizedWeights = new uint256[](2);
-        normalizedWeights[0] = _normalizedWeight0;
-        normalizedWeights[1] = _normalizedWeight1;
+        normalizedWeights[0] = _normalizedWeights(true);
+        normalizedWeights[1] = _normalizedWeights(false);
         return normalizedWeights;
     }
 
-    function _normalizedWeight(IERC20 token) internal view virtual returns (uint256) {
-        if (token == _token0) return _normalizedWeight0;
-        if (token == _token1) return _normalizedWeight1;
-        _revert(Errors.INVALID_TOKEN);
+    function _normalizedWeights(bool token0) internal view virtual returns (uint256) {
+        return token0 ? _normalizedWeight0 : _normalizedWeight1;
     }
 
     function getLastInvariant() external view returns (uint256) {
@@ -239,7 +237,7 @@ contract WeightedPool2Tokens is
 
         // Since the Pool hooks always work with upscaled balances, we manually
         // upscale here for consistency
-        _upscaleArray(balances, _scalingFactors());
+        _upscaleArray(balances);
 
         uint256[] memory normalizedWeights = _normalizedWeights();
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
@@ -252,15 +250,19 @@ contract WeightedPool2Tokens is
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) external virtual override whenNotPaused onlyVault(request.poolId) returns (uint256) {
-        uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
-        uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
+        bool tokenInIsToken0 = request.tokenIn == _token0;
+
+        uint256 scalingFactorTokenIn = _scalingFactor(tokenInIsToken0);
+        uint256 scalingFactorTokenOut = _scalingFactor(!tokenInIsToken0);
+
+        uint256 normalizedWeightIn = _normalizedWeights(tokenInIsToken0);
+        uint256 normalizedWeightOut = _normalizedWeights(!tokenInIsToken0);
 
         // All token amounts are upscaled.
         balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
 
         // Update price oracle with the pre-swap balances
-        bool tokenInIsToken0 = request.tokenIn == _token0;
         _updateOracle(
             request.lastChangeBlock,
             tokenInIsToken0 ? balanceTokenIn : balanceTokenOut,
@@ -273,14 +275,26 @@ contract WeightedPool2Tokens is
             uint256 feeAmount = request.amount.mulUp(_getSwapFeePercentage());
             request.amount = _upscale(request.amount.sub(feeAmount), scalingFactorTokenIn);
 
-            uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
+            uint256 amountOut = _onSwapGivenIn(
+                request,
+                balanceTokenIn,
+                balanceTokenOut,
+                normalizedWeightIn,
+                normalizedWeightOut
+            );
 
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactorTokenOut);
         } else {
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut);
+            uint256 amountIn = _onSwapGivenOut(
+                request,
+                balanceTokenIn,
+                balanceTokenOut,
+                normalizedWeightIn,
+                normalizedWeightOut
+            );
 
             // amountIn tokens are entering the Pool, so we round up.
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
@@ -294,16 +308,17 @@ contract WeightedPool2Tokens is
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) private view returns (uint256) {
+        uint256 currentBalanceTokenOut,
+        uint256 normalizedWeightIn,
+        uint256 normalizedWeightOut
+    ) private pure returns (uint256) {
         // Swaps are disabled while the contract is paused.
-
         return
             WeightedMath._calcOutGivenIn(
                 currentBalanceTokenIn,
-                _normalizedWeight(swapRequest.tokenIn),
+                normalizedWeightIn,
                 currentBalanceTokenOut,
-                _normalizedWeight(swapRequest.tokenOut),
+                normalizedWeightOut,
                 swapRequest.amount
             );
     }
@@ -311,16 +326,17 @@ contract WeightedPool2Tokens is
     function _onSwapGivenOut(
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) private view returns (uint256) {
+        uint256 currentBalanceTokenOut,
+        uint256 normalizedWeightIn,
+        uint256 normalizedWeightOut
+    ) private pure returns (uint256) {
         // Swaps are disabled while the contract is paused.
-
         return
             WeightedMath._calcInGivenOut(
                 currentBalanceTokenIn,
-                _normalizedWeight(swapRequest.tokenIn),
+                normalizedWeightIn,
                 currentBalanceTokenOut,
-                _normalizedWeight(swapRequest.tokenOut),
+                normalizedWeightOut,
                 swapRequest.amount
             );
     }
@@ -345,8 +361,6 @@ contract WeightedPool2Tokens is
     {
         // All joins, including initializations, are disabled while the contract is paused.
 
-        uint256[] memory scalingFactors = _scalingFactors();
-
         uint256 bptAmountOut;
         if (totalSupply() == 0) {
             (bptAmountOut, amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
@@ -359,12 +373,12 @@ contract WeightedPool2Tokens is
             _mintPoolTokens(recipient, bptAmountOut - _MINIMUM_BPT);
 
             // amountsIn are amounts entering the Pool, so we round up.
-            _downscaleUpArray(amountsIn, scalingFactors);
+            _downscaleUpArray(amountsIn);
 
             // There are not due protocol fee amounts during initialization
             dueProtocolFeeAmounts = new uint256[](2);
         } else {
-            _upscaleArray(balances, scalingFactors);
+            _upscaleArray(balances);
 
             // Update price oracle with the pre-join balances
             _updateOracle(lastChangeBlock, balances[0], balances[1]);
@@ -384,9 +398,9 @@ contract WeightedPool2Tokens is
             _mintPoolTokens(recipient, bptAmountOut);
 
             // amountsIn are amounts entering the Pool, so we round up.
-            _downscaleUpArray(amountsIn, scalingFactors);
+            _downscaleUpArray(amountsIn);
             // dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
-            _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
+            _downscaleDownArray(dueProtocolFeeAmounts);
         }
 
         // Update cached total supply and invariant using the results after the join that will be used for future
@@ -418,7 +432,7 @@ contract WeightedPool2Tokens is
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, 2);
-        _upscaleArray(amountsIn, _scalingFactors());
+        _upscaleArray(amountsIn);
 
         uint256[] memory normalizedWeights = _normalizedWeights();
 
@@ -487,7 +501,8 @@ contract WeightedPool2Tokens is
 
         // Update the invariant with the balances the Pool will have after the join, in order to compute the
         // protocol swap fee amounts due in future joins and exits.
-        _lastInvariant = _invariantAfterJoin(balances, amountsIn, normalizedWeights);
+        _mutateAmounts(balances, amountsIn, FixedPoint.add);
+        _lastInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
 
         return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
     }
@@ -516,7 +531,7 @@ contract WeightedPool2Tokens is
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, 2);
 
-        _upscaleArray(amountsIn, _scalingFactors());
+        _upscaleArray(amountsIn);
 
         uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
             balances,
@@ -564,8 +579,7 @@ contract WeightedPool2Tokens is
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory scalingFactors = _scalingFactors();
-        _upscaleArray(balances, scalingFactors);
+        _upscaleArray(balances);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(
             poolId,
@@ -582,8 +596,8 @@ contract WeightedPool2Tokens is
         _burnPoolTokens(sender, bptAmountIn);
 
         // Both amountsOut and dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
-        _downscaleDownArray(amountsOut, scalingFactors);
-        _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
+        _downscaleDownArray(amountsOut);
+        _downscaleDownArray(dueProtocolFeeAmounts);
 
         // Update cached total supply and invariant using the results after the exit that will be used for future
         // oracle updates, only if the pool was not paused (to minimize code paths taken while paused).
@@ -660,7 +674,8 @@ contract WeightedPool2Tokens is
 
         // Update the invariant with the balances the Pool will have after the exit, in order to compute the
         // protocol swap fees due in future joins and exits.
-        _lastInvariant = _invariantAfterExit(balances, amountsOut, normalizedWeights);
+        _mutateAmounts(balances, amountsOut, FixedPoint.sub);
+        _lastInvariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
 
         return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
     }
@@ -735,7 +750,7 @@ contract WeightedPool2Tokens is
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, 2);
-        _upscaleArray(amountsOut, _scalingFactors());
+        _upscaleArray(amountsOut);
 
         uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
             balances,
@@ -960,28 +975,6 @@ contract WeightedPool2Tokens is
     }
 
     /**
-     * @dev Returns the value of the invariant given `balances`, assuming they are increased by `amountsIn`. All
-     * amounts are expected to be upscaled.
-     */
-    function _invariantAfterJoin(
-        uint256[] memory balances,
-        uint256[] memory amountsIn,
-        uint256[] memory normalizedWeights
-    ) private pure returns (uint256) {
-        _mutateAmounts(balances, amountsIn, FixedPoint.add);
-        return WeightedMath._calculateInvariant(normalizedWeights, balances);
-    }
-
-    function _invariantAfterExit(
-        uint256[] memory balances,
-        uint256[] memory amountsOut,
-        uint256[] memory normalizedWeights
-    ) private pure returns (uint256) {
-        _mutateAmounts(balances, amountsOut, FixedPoint.sub);
-        return WeightedMath._calculateInvariant(normalizedWeights, balances);
-    }
-
-    /**
      * @dev Mutates `amounts` by applying `mutation` with each entry in `arguments`.
      *
      * Equivalent to `amounts = amounts.map(mutation)`.
@@ -1023,21 +1016,8 @@ contract WeightedPool2Tokens is
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
      * Pool.
      */
-    function _scalingFactor(IERC20 token) internal view returns (uint256) {
-        if (token == _token0) return _scalingFactor0;
-        if (token == _token1) return _scalingFactor1;
-        _revert(Errors.INVALID_TOKEN);
-    }
-
-    /**
-     * @dev Returns all the scaling factors in the same order as the registered tokens. The Vault will always
-     * pass balances in this order when calling any of the Pool hooks
-     */
-    function _scalingFactors() internal view returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](2);
-        scalingFactors[0] = _scalingFactor0;
-        scalingFactors[1] = _scalingFactor1;
-        return scalingFactors;
+    function _scalingFactor(bool token0) internal view returns (uint256) {
+        return token0 ? _scalingFactor0 : _scalingFactor1;
     }
 
     /**
@@ -1052,9 +1032,9 @@ contract WeightedPool2Tokens is
      * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
      * the `amounts` array.
      */
-    function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        amounts[0] = Math.mul(amounts[0], scalingFactors[0]);
-        amounts[1] = Math.mul(amounts[1], scalingFactors[1]);
+    function _upscaleArray(uint256[] memory amounts) internal view {
+        amounts[0] = Math.mul(amounts[0], _scalingFactor(true));
+        amounts[1] = Math.mul(amounts[1], _scalingFactor(false));
     }
 
     /**
@@ -1069,9 +1049,9 @@ contract WeightedPool2Tokens is
      * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
-    function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        amounts[0] = Math.divDown(amounts[0], scalingFactors[0]);
-        amounts[1] = Math.divDown(amounts[1], scalingFactors[1]);
+    function _downscaleDownArray(uint256[] memory amounts) internal view {
+        amounts[0] = Math.divDown(amounts[0], _scalingFactor(true));
+        amounts[1] = Math.divDown(amounts[1], _scalingFactor(false));
     }
 
     /**
@@ -1086,9 +1066,9 @@ contract WeightedPool2Tokens is
      * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
-    function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        amounts[0] = Math.divUp(amounts[0], scalingFactors[0]);
-        amounts[1] = Math.divUp(amounts[1], scalingFactors[1]);
+    function _downscaleUpArray(uint256[] memory amounts) internal view {
+        amounts[0] = Math.divUp(amounts[0], _scalingFactor(true));
+        amounts[1] = Math.divUp(amounts[1], _scalingFactor(false));
     }
 
     function _getAuthorizer() internal view override returns (IAuthorizer) {
@@ -1110,7 +1090,7 @@ contract WeightedPool2Tokens is
         function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
             internal
             returns (uint256, uint256[] memory, uint256[] memory) _action,
-        function(uint256[] memory, uint256[] memory) internal view _downscaleArray
+        function(uint256[] memory) internal view _downscaleArray
     ) private {
         // This uses the same technique used by the Vault in queryBatchSwap. Refer to that function for a detailed
         // explanation.
@@ -1180,8 +1160,7 @@ contract WeightedPool2Tokens is
                     }
             }
         } else {
-            uint256[] memory scalingFactors = _scalingFactors();
-            _upscaleArray(balances, scalingFactors);
+            _upscaleArray(balances);
 
             (uint256 bptAmount, uint256[] memory tokenAmounts, ) = _action(
                 poolId,
@@ -1193,7 +1172,7 @@ contract WeightedPool2Tokens is
                 userData
             );
 
-            _downscaleArray(tokenAmounts, scalingFactors);
+            _downscaleArray(tokenAmounts);
 
             // solhint-disable-next-line no-inline-assembly
             assembly {

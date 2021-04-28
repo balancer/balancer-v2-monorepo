@@ -61,7 +61,7 @@ contract PoolPriceOracle {
         int256 logInvariant
     ) internal returns (uint256) {
         // Read latest sample, and compute the next one by updating it with the newly received data.
-        bytes32 sample = _sample(latestIndex).update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
+        bytes32 sample = _getSample(latestIndex).update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
 
         // We create a new sample if more than _MAX_SAMPLE_DURATION seconds have elapsed since the creation of the
         // latest one. In other words, no sample accumulates data over a period larger than _MAX_SAMPLE_DURATION.
@@ -100,7 +100,7 @@ contract PoolPriceOracle {
         _require(block.timestamp >= ago, Errors.ORACLE_INVALID_SECONDS_QUERY);
         uint256 lookUpTime = block.timestamp - ago;
 
-        bytes32 latestSample = _sample(latestIndex);
+        bytes32 latestSample = _getSample(latestIndex);
         uint256 latestTimestamp = latestSample.timestamp();
 
         // The latest sample only has a non-zero timestamp if no data was ever processed and stored in the buffer.
@@ -122,7 +122,7 @@ contract PoolPriceOracle {
             uint256 oldestIndex = latestIndex.next();
             {
                 // Local scope used to prevent stack-too-deep errors.
-                bytes32 oldestSample = _sample(oldestIndex);
+                bytes32 oldestSample = _getSample(oldestIndex);
                 uint256 oldestTimestamp = oldestSample.timestamp();
 
                 // For simplicity's sake, we only perform past queries if the buffer has been fully initialized. This
@@ -186,7 +186,7 @@ contract PoolPriceOracle {
 
             // Recall that the buffer is not actually sorted: we need to apply the offset to access it in a sorted way.
             mid = midWithoutOffset.add(offset);
-            sample = _sample(mid);
+            sample = _getSample(mid);
             sampleTimestamp = sample.timestamp();
 
             if (sampleTimestamp < lookUpDate) {
@@ -206,7 +206,7 @@ contract PoolPriceOracle {
         }
 
         // In case we reach here, it means we didn't find exactly the sample we where looking for.
-        return sampleTimestamp < lookUpDate ? (sample, _sample(mid.next())) : (_sample(mid.prev()), sample);
+        return sampleTimestamp < lookUpDate ? (sample, _getSample(mid.next())) : (_getSample(mid.prev()), sample);
     }
 
     /**
@@ -215,7 +215,7 @@ contract PoolPriceOracle {
      * Using this function instead of accessing storage directly results in denser bytecode (since the storage slot is
      * only computed here).
      */
-    function _sample(uint256 index) internal view returns (bytes32) {
+    function _getSample(uint256 index) internal view returns (bytes32) {
         return _samples[index];
     }
 }
