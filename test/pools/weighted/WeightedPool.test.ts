@@ -446,6 +446,26 @@ describe('WeightedPool', function () {
       const itAnswersQueriesCorrectly = (ascendingAccumulators: boolean) => {
         mockSamples(ascendingAccumulators);
 
+        describe('getLatest', () => {
+          it('returns the latest pair price', async () => {
+            const actual = await pool.instance.getLatest(VARIABLES.PAIR_PRICE);
+            const expected = fp(decimal(samples[LATEST].logPairPrice).div(1e4).exp());
+            expect(actual).to.be.equal(expected);
+          });
+
+          it('returns the latest BPT price', async () => {
+            const actual = await pool.instance.getLatest(VARIABLES.BPT_PRICE);
+            const expected = fp(decimal(samples[LATEST].logBptPrice).div(1e4).exp());
+            expect(actual).to.be.equal(expected);
+          });
+
+          it('returns the latest pair price', async () => {
+            const actual = await pool.instance.getLatest(VARIABLES.INVARIANT);
+            const expected = fp(decimal(samples[LATEST].logInvariant).div(1e4).exp());
+            expect(actual).to.be.equal(expected);
+          });
+        });
+
         describe('getPastAccumulators', () => {
           const queries = [
             { variable: VARIABLES.PAIR_PRICE, ago: ago(LATEST) },
