@@ -457,7 +457,7 @@ describe('WeightedPool', function () {
             expect(results.length).to.be.equal(3);
 
             expect(results[0]).to.be.equal(samples[LATEST].accLogPairPrice);
-            expect(results[1]).to.be.equal(samples[0].accLogBptPrice);
+            expect(results[1]).to.be.equal(samples[OLDEST].accLogBptPrice);
             expect(results[2]).to.be.equal(samples[MID].accLogInvariant);
           });
         });
