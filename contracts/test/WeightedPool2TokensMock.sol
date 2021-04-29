@@ -37,6 +37,10 @@ contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock, Mo
         _setOracleEnabled(false);
     }
 
+    function mockOracleIndex(uint256 index) external {
+        _miscData = _miscData.setOracleIndex(index);
+    }
+
     function mockMiscData(MiscData memory miscData) external {
         _miscData = encode(miscData);
     }
