@@ -24,9 +24,9 @@ import "../IPriceOracle.sol";
 /**
  * @dev This module allows Pools to access historical pricing information.
  *
- * It uses a 1024 long circular buffer to store past data, where the data whitin each sample is the result of
+ * It uses a 1024 long circular buffer to store past data, where the data within each sample is the result of
  * accumulating live data for no more than two minutes. Therefore, assuming the worst case scenario where new data is
- * updated in every single block block, the oldest samples in the buffer (and therefore largest queriable period) will
+ * updated in every single block block, the oldest samples in the buffer (and therefore largest queryable period) will
  * be slightly over 34 hours old.
  *
  * Usage of this module requires the caller to keep track of two variables: the latest circular buffer index, and the
@@ -199,7 +199,7 @@ contract PoolPriceOracle is IWeightedPoolPriceOracle {
      * timestamp of the latest sample.
      */
     function _findNearestSample(uint256 lookUpDate, uint256 offset) internal view returns (bytes32 prev, bytes32 next) {
-        // We're going to perform a binary seach in the circular buffer, which requires for it to be sorted. To achieve
+        // We're going to perform a binary search in the circular buffer, which requires for it to be sorted. To achieve
         // this, we offset all buffer accesses by `offset`, making the first element the oldest one.
 
         // Auxiliary variables in a typical binary search: we will look at some value `mid` between `low` and `high`,
@@ -230,7 +230,7 @@ contract PoolPriceOracle is IWeightedPoolPriceOracle {
             } else if (sampleTimestamp > lookUpDate) {
                 // If the mid sample is above the look up date, then decrease the high index to start from there.
 
-                // We can skip checked arithmetic: it is imposible for `high` to ever be 0, as a scenario wher `low`
+                // We can skip checked arithmetic: it is impossible for `high` to ever be 0, as a scenario where `low`
                 // equals 0 and `high` equals 1 would result in `low` increasing to 1 if the previous `if` clause.
                 high = midWithoutOffset - 1;
             } else {
