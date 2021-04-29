@@ -100,6 +100,13 @@ contract PoolPriceOracle is IWeightedPoolPriceOracle {
     }
 
     /**
+     * @dev Returns the instant value for `variable` in the sample pointed to by `index`.
+     */
+    function _getInstantValue(IPriceOracle.Variable variable, uint256 index) internal view returns (int256) {
+        return _getSample(index).instant(variable);
+    }
+
+    /**
      * @dev Returns the value of the accumulator for `variable` `ago` seconds ago. `latestIndex` must be the index of
      * the latest sample in the buffer.
      *

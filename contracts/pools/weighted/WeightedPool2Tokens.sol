@@ -777,21 +777,9 @@ contract WeightedPool2Tokens is
         return 34 hours;
     }
 
-    function getPastAccumulators(OracleAccumulatorQuery[] memory queries)
-        external
-        view
-        override
-        returns (int256[] memory results)
-    {
-        results = new int256[](queries.length);
-
-        uint256 oracleIndex = _miscData.oracleIndex();
-
-        OracleAccumulatorQuery memory query;
-        for (uint256 i = 0; i < queries.length; ++i) {
-            query = queries[i];
-            results[i] = _getPastAccumulator(query.variable, oracleIndex, query.ago);
-        }
+    function getLatest(Variable variable) external view override returns (uint256) {
+        int256 instantValue = _getInstantValue(variable, _miscData.oracleIndex());
+        return _fromLowResLog(instantValue);
     }
 
     function getTimeWeightedAverage(OracleAverageQuery[] memory queries)
@@ -807,10 +795,28 @@ contract WeightedPool2Tokens is
         OracleAverageQuery memory query;
         for (uint256 i = 0; i < queries.length; ++i) {
             query = queries[i];
+            _require(query.secs != 0, Errors.ORACLE_BAD_SECS);
 
             int256 beginAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago + query.secs);
             int256 endAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago);
             results[i] = _fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
+        }
+    }
+
+    function getPastAccumulators(OracleAccumulatorQuery[] memory queries)
+        external
+        view
+        override
+        returns (int256[] memory results)
+    {
+        results = new int256[](queries.length);
+
+        uint256 oracleIndex = _miscData.oracleIndex();
+
+        OracleAccumulatorQuery memory query;
+        for (uint256 i = 0; i < queries.length; ++i) {
+            query = queries[i];
+            results[i] = _getPastAccumulator(query.variable, oracleIndex, query.ago);
         }
     }
 

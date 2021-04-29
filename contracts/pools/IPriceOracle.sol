@@ -50,6 +50,11 @@ interface IPriceOracle {
         returns (uint256[] memory results);
 
     /**
+     * @dev Returns latest sample of `variable`. Prices are represented as 18 decimal fixed point values.
+     */
+    function getLatest(Variable variable) external view returns (uint256);
+
+    /**
      * @dev Information for a Time Weighted Average query.
      *
      * Each query computes the average over a window of duration `secs` seconds that ended `ago` seconds ago. For
