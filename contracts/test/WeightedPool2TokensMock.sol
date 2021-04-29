@@ -25,7 +25,7 @@ contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock, Mo
     struct MiscData {
         int256 logInvariant;
         int256 logTotalSupply;
-        uint256 oracleSampleInitialTimestamp;
+        uint256 oracleSampleCreationTimestamp;
         uint256 oracleIndex;
         bool oracleEnabled;
         uint256 swapFeePercentage;
@@ -48,7 +48,7 @@ contract WeightedPool2TokensMock is WeightedPool2Tokens, PoolPriceOracleMock, Mo
         data = data.setSwapFeePercentage(_data.swapFeePercentage);
         data = data.setOracleEnabled(_data.oracleEnabled);
         data = data.setOracleIndex(_data.oracleIndex);
-        data = data.setOracleSampleInitialTimestamp(_data.oracleSampleInitialTimestamp);
+        data = data.setOracleSampleCreationTimestamp(_data.oracleSampleCreationTimestamp);
         data = data.setLogTotalSupply(_data.logTotalSupply);
         data = data.setLogInvariant(_data.logInvariant);
     }

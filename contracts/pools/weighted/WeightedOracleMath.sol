@@ -38,10 +38,12 @@ contract WeightedOracleMath {
         uint256 normalizedWeightB,
         uint256 balanceB
     ) internal pure returns (int256) {
-        // Max balances are 2^112 and min weights are 0.01, so balance / weight can always be computed.
+        // Max balances are 2^112 and min weights are 0.01, so the division never overflows.
+
         // The rounding direction is irrelevant as we're about to introduce a much larger error when converting to log
-        // space: we use `divDown` because it uses less gas.
-        uint256 spotPrice = balanceA.divDown(normalizedWeightA).divDown(balanceB.divDown(normalizedWeightB));
+        // space. We use `divUp` as it prevents the result from being zero, which would make the logarithm revert. A
+        // result of zero is therefore only possible with zero balances, which are prevented via other means.
+        uint256 spotPrice = balanceA.divUp(normalizedWeightA).divUp(balanceB.divUp(normalizedWeightB));
         return _toLowResLog(spotPrice);
     }
 
@@ -61,10 +63,11 @@ contract WeightedOracleMath {
         // space directly: ln(BPT price) = ln(balance / weight) - ln(total supply)
 
         // The rounding direction is irrelevant as we're about to introduce a much larger error when converting to log
-        // space: we use `divDown` because it uses less gas.
-        int256 logBalanceOverWeight = _toLowResLog(balance.divDown(normalizedWeight));
+        // space. We use `divUp` as it prevents the result from being zero, which would make the logarithm revert. A
+        // result of zero is therefore only possible with zero balances, which are prevented via other means.
+        int256 logBalanceOverWeight = _toLowResLog(balance.divUp(normalizedWeight));
 
-        // Because we're subtracting two values in log space, this value has larger error (+-0.0001 instead of
+        // Because we're subtracting two values in log space, this value has a larger error (+-0.0001 instead of
         // +-0.00005), which results in a final larger relative error of around 0.1%.
         return logBalanceOverWeight - logBptTotalSupply;
     }
@@ -73,7 +76,7 @@ contract WeightedOracleMath {
      * @dev Returns the natural logarithm of `value`, dropping most of the decimal places to arrive at a value that,
      * when passed to `_fromLowResLog`, will have a maximum relative error of ~0.05% compared to `value`.
      *
-     * Values returned from this function should not be mixed with other fixed-point values (as they have different
+     * Values returned from this function should not be mixed with other fixed-point values (as they have a different
      * number of digits), but can be added or subtracted. Use `_fromLowResLog` to undo this process and return to an
      * 18 decimal places fixed point value.
      *

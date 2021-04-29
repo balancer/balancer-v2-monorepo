@@ -234,9 +234,8 @@ contract WeightedMath {
 
         uint256 invariantRatio = FixedPoint.ONE;
         for (uint256 i = 0; i < balances.length; i++) {
-            // Swap fees are typically charged on 'token in', but there is no 'token in' here,
-            // o we apply it to 'token out'.
-            // This results in slightly larger price impact.
+            // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
+            // 'token out'. This results in slightly larger price impact.
 
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {

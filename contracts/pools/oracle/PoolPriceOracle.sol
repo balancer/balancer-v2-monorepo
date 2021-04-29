@@ -18,162 +18,37 @@ import "./Buffer.sol";
 import "./Samples.sol";
 import "../../lib/helpers/BalancerErrors.sol";
 
+import "./IWeightedPoolPriceOracle.sol";
+import "../IPriceOracle.sol";
+
 /**
- * @dev This module provides a simple interface to allow pools to give access to historic pricing information.
- * In particular it works with a circular buffer of 1024 slots (samples) guaranteeing that each of these samples
- * will not accumulate information for more than 2 consecutive minutes. Therefore, assuming the worst case where a
- * sample is updated on each block, the largest period that will be covered by the buffer is ≈ 34 hours.
+ * @dev This module allows Pools to access historical pricing information.
+ *
+ * It uses a 1024 long circular buffer to store past data, where the data whitin each sample is the result of
+ * accumulating live data for no more than two minutes. Therefore, assuming the worst case scenario where new data is
+ * updated in every single block block, the oldest samples in the buffer (and therefore largest queriable period) will
+ * be slightly over 34 hours old.
+ *
+ * Usage of this module requires the caller to keep track of two variables: the latest circular buffer index, and the
+ * timestamp when the index last changed.
  */
-contract PoolPriceOracle {
+contract PoolPriceOracle is IWeightedPoolPriceOracle {
     using Buffer for uint256;
     using Samples for bytes32;
 
-    // Each sample in the buffer will accumulate information for up-to 2 minutes
+    // Each sample in the buffer accumulates information for up to 2 minutes. This is simply to reduce the size of the
+    // buffer: small time deviations will not have any significant effect.
+    // solhint-disable not-rely-on-time
     uint256 private constant _MAX_SAMPLE_DURATION = 2 minutes;
 
     // We use a mapping to simulate an array: the buffer won't grow or shrink, and since we will always use valid
     // indexes using a mapping saves gas by skipping the bounds checks.
     mapping(uint256 => bytes32) internal _samples;
 
-    /**
-     * @dev Processes new price and invariant data, updating the current sample or creating a new one.
-     *
-     * Receives the new logarithms of values to store: `logPairPrice`, `logBptPrice` and `logInvariant`, as well the
-     * index of the current sample, and the timestamp of its creation.
-     *
-     * The return value of `newSample` is true if a new sample was created, in which case `sampleIndex` is its index.
-     */
-    function _processPriceData(
-        uint256 currentSampleInitialTimestamp,
-        uint256 currentIndex,
-        int256 logPairPrice,
-        int256 logBptPrice,
-        int256 logInvariant
-    ) internal returns (uint256 sampleIndex) {
-        // solhint-disable not-rely-on-time
-        // Read current sample and update it with the newly received data.
-        bytes32 sample = _getSample(currentIndex).update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
-
-        // We create a new sample if more than _MAX_SAMPLE_DURATION seconds have elapsed since the creation of the
-        // current one. In other words, no sample accumulates data over a period larger than _MAX_SAMPLE_DURATION.
-        bool newSample = block.timestamp - currentSampleInitialTimestamp >= _MAX_SAMPLE_DURATION;
-        sampleIndex = newSample ? currentIndex.next() : currentIndex;
-
-        // Store the updated or new sample.
-        _samples[sampleIndex] = sample;
-    }
-
-    /**
-     * @dev Tells the accumulated value of a specific variable `ago` ago.
-     * It assumes `currentIndex` is the index of the latest sample in the buffer.
-     *
-     * In case the target timestamp does not reach the timestamp of the latest sample, it answers using the accumulated
-     * value of the latest sample.
-     *
-     * In case the target timestamp is older than the timestamp of the latest sample, there are a few requirements:
-     *  - The oldest timestamp cannot be zero, meaning the buffer must be fully initialized, otherwise it reverts.
-     *  - It cannot be older than the oldest timestamp, in that case it reverts.
-     * If these requirements are met, it performs a binary search to use the accumulated value of the nearest sample
-     * to the target timestamp.
-     */
-    function _getPastAccumulator(
-        Samples.Variable variable,
-        uint256 currentIndex,
-        uint256 ago
-    ) internal view returns (int256) {
-        // Make sure the given number of seconds refers to a reasonable date.
-        _require(block.timestamp >= ago, Errors.ORACLE_INVALID_SECONDS_QUERY);
-        uint256 lookUpTime = block.timestamp - ago;
-
-        // In case there is no timestamp stored in the current index, it means the buffer has not been initialized yet,
-        // meaning there is no information available to answer the query.
-        bytes32 sample = _getSample(currentIndex);
-        uint256 latestTimestamp = sample.timestamp();
-        _require(latestTimestamp > 0, Errors.ORACLE_NOT_INITIALIZED);
-
-        if (latestTimestamp <= lookUpTime) {
-            // In case the desired date is ahead the latest sample, we compute the corresponding accumulated value
-            // that applies for that period of time.
-            uint256 elapsed = lookUpTime - latestTimestamp;
-            return sample.accumulator(variable) + (sample.instant(variable) * int256(elapsed));
-        } else {
-            // The oldest sample is always the following sample in the circular buffer to the latest sample.
-            uint256 oldestIndex = currentIndex.next();
-            bytes32 oldestSample = _getSample(oldestIndex);
-            {
-                uint256 oldestTimestamp = oldestSample.timestamp();
-
-                // Check the buffer is fully initialized and that the target is not older than the oldest timestamp.
-                _require(oldestTimestamp > 0, Errors.ORACLE_NOT_INITIALIZED);
-                _require(oldestTimestamp <= lookUpTime, Errors.ORACLE_QUERY_TOO_OLD);
-            }
-
-            // Perform binary search to find nearest samples to the desired timestamp.
-            (bytes32 prev, bytes32 next) = _findNearestSample(lookUpTime, oldestIndex);
-            uint256 samplesTimeDiff = next.timestamp() - prev.timestamp();
-            if (samplesTimeDiff == 0) {
-                // It matched exactly one of the samples in the buffer.
-                return prev.accumulator(variable);
-            } else {
-                // Estimate the accumulated value based on the elapsed time from the previous sample to the one
-                // required. We know there will be at least one since we already check the target timestamp is not
-                // older than the oldest sample.
-                uint256 elapsed = lookUpTime - prev.timestamp();
-                int256 samplesAccDiff = next.accumulator(variable) - prev.accumulator(variable);
-                return prev.accumulator(variable) + ((samplesAccDiff * int256(elapsed)) / int256(samplesTimeDiff));
-            }
-        }
-    }
-
-    /**
-     * @dev Finds the nearest sample based on a target date using a binary search.
-     * Since the samples buffer is not sorted and this is mandatory to for this type of search, the user is required
-     * to tell an `offset`, which is the index in the buffer with the oldest sample.
-     */
-    function _findNearestSample(uint256 lookUpDate, uint256 offset) internal view returns (bytes32 prev, bytes32 next) {
-        uint256 mid;
-        bytes32 sample;
-        uint256 sampleTimestamp;
-
-        uint256 low = 0;
-        uint256 high = Buffer.SIZE - 1;
-
-        while (low <= high) {
-            // Compute mid index taking the floor
-            uint256 midWithoutOffset = (high + low) / 2;
-            mid = midWithoutOffset.add(offset);
-            sample = _getSample(mid);
-            sampleTimestamp = sample.timestamp();
-
-            if (sampleTimestamp < lookUpDate) {
-                // If the mid sample is bellow the look up date, then increase the low index to start from there
-                low = midWithoutOffset + 1;
-            } else if (sampleTimestamp > lookUpDate) {
-                // If the mid sample is above the look up date, then decrease the high index to start from there
-                // No need for SafeMath as by definition high > low >= 0, meaning high >= 1, therefore mid >= 1
-                // Once high hits 0, the while condition won't be met exiting the loop
-                high = midWithoutOffset - 1;
-            } else {
-                // sampleTimestamp == lookUpDate
-                // Return sample if it match exactly the date we were looking for
-                return (sample, sample);
-            }
-        }
-
-        // In case we reach here, it means we didn't find exactly the sample we where looking for.
-        return sampleTimestamp < lookUpDate ? (sample, _getSample(mid.next())) : (_getSample(mid.prev()), sample);
-    }
-
-    /**
-     * @dev Tells the sample at a given index in the buffer
-     */
-    function _getSample(uint256 index) internal view returns (bytes32) {
-        return _samples[index];
-    }
-
-    function _unpackSample(uint256 index)
-        internal
+    function getSample(uint256 index)
+        external
         view
+        override
         returns (
             int256 logPairPrice,
             int256 accLogPairPrice,
@@ -184,15 +59,188 @@ contract PoolPriceOracle {
             uint256 timestamp
         )
     {
-        _require(index < Buffer.SIZE, Errors.INVALID_ORACLE_INDEX);
+        _require(index < Buffer.SIZE, Errors.ORACLE_INVALID_INDEX);
 
         bytes32 sample = _getSample(index);
-        logPairPrice = sample.logPairPrice();
-        accLogPairPrice = sample.accLogPairPrice();
-        logBptPrice = sample.logBptPrice();
-        accLogBptPrice = sample.accLogBptPrice();
-        logInvariant = sample.logInvariant();
-        accLogInvariant = sample.accLogInvariant();
-        timestamp = sample.timestamp();
+        return sample.unpack();
+    }
+
+    function getTotalSamples() external pure override returns (uint256) {
+        return Buffer.SIZE;
+    }
+
+    /**
+     * @dev Processes new price and invariant data, updating the latest sample or creating a new one.
+     *
+     * Receives the new logarithms of values to store: `logPairPrice`, `logBptPrice` and `logInvariant`, as well the
+     * index of the latest sample and the timestamp of its creation.
+     *
+     * Returns the index of the latest sample. If different from `latestIndex`, the caller should also store the
+     * timestamp, and pass it on future calls to this function.
+     */
+    function _processPriceData(
+        uint256 latestSampleCreationTimestamp,
+        uint256 latestIndex,
+        int256 logPairPrice,
+        int256 logBptPrice,
+        int256 logInvariant
+    ) internal returns (uint256) {
+        // Read latest sample, and compute the next one by updating it with the newly received data.
+        bytes32 sample = _getSample(latestIndex).update(logPairPrice, logBptPrice, logInvariant, block.timestamp);
+
+        // We create a new sample if more than _MAX_SAMPLE_DURATION seconds have elapsed since the creation of the
+        // latest one. In other words, no sample accumulates data over a period larger than _MAX_SAMPLE_DURATION.
+        bool newSample = block.timestamp - latestSampleCreationTimestamp >= _MAX_SAMPLE_DURATION;
+        latestIndex = newSample ? latestIndex.next() : latestIndex;
+
+        // Store the updated or new sample.
+        _samples[latestIndex] = sample;
+
+        return latestIndex;
+    }
+
+    /**
+     * @dev Returns the value of the accumulator for `variable` `ago` seconds ago. `latestIndex` must be the index of
+     * the latest sample in the buffer.
+     *
+     * Reverts under the following conditions:
+     *  - if the buffer is empty.
+     *  - if querying past information and the buffer has not been fully initialized.
+     *  - if querying older information than available in the buffer. Note that a full buffer guarantees queries for the
+     *    past 34 hours will not revert.
+     *
+     * If requesting information for a timestamp later than the latest one, it is extrapolated using the latest
+     * available data.
+     *
+     * When no exact information is available for the requested past timestamp (as usually happens, since at most one
+     * timestamp is stored every two minutes), it is estimated by performing linear interpolation using the closest
+     * values. This process is guaranteed to complete performing at most 10 storage reads.
+     */
+    function _getPastAccumulator(
+        IPriceOracle.Variable variable,
+        uint256 latestIndex,
+        uint256 ago
+    ) internal view returns (int256) {
+        // `ago` must not be before the epoch.
+        _require(block.timestamp >= ago, Errors.ORACLE_INVALID_SECONDS_QUERY);
+        uint256 lookUpTime = block.timestamp - ago;
+
+        bytes32 latestSample = _getSample(latestIndex);
+        uint256 latestTimestamp = latestSample.timestamp();
+
+        // The latest sample only has a non-zero timestamp if no data was ever processed and stored in the buffer.
+        _require(latestTimestamp > 0, Errors.ORACLE_NOT_INITIALIZED);
+
+        if (latestTimestamp <= lookUpTime) {
+            // The accumulator at times ahead the latest one are computed by extrapolating the latest data. This is
+            // equivalent to the instant value not changing between the last timestamp and the look up time.
+
+            // We can use unchecked arithmetic since the accumulator can be represented in 53 bits, timestamps in 31
+            // bits, and the instant value in 22 bits.
+            uint256 elapsed = lookUpTime - latestTimestamp;
+            return latestSample.accumulator(variable) + (latestSample.instant(variable) * int256(elapsed));
+        } else {
+            // The look up time is before the latest sample, but we need to make sure that it is not before the oldest
+            // sample as well.
+
+            // Since we use a circular buffer, the oldest sample is simply the next one.
+            uint256 oldestIndex = latestIndex.next();
+            {
+                // Local scope used to prevent stack-too-deep errors.
+                bytes32 oldestSample = _getSample(oldestIndex);
+                uint256 oldestTimestamp = oldestSample.timestamp();
+
+                // For simplicity's sake, we only perform past queries if the buffer has been fully initialized. This
+                // means the oldest sample must have a non-zero timestamp.
+                _require(oldestTimestamp > 0, Errors.ORACLE_NOT_INITIALIZED);
+                // The only remaining condition to check is for the look up time to be between the oldest and latest
+                // timestamps.
+                _require(oldestTimestamp <= lookUpTime, Errors.ORACLE_QUERY_TOO_OLD);
+            }
+
+            // Perform binary search to find nearest samples to the desired timestamp.
+            (bytes32 prev, bytes32 next) = _findNearestSample(lookUpTime, oldestIndex);
+
+            // `next`'s timestamp is guaranteed to be larger than `prev`'s, so we can skip checked arithmetic.
+            uint256 samplesTimeDiff = next.timestamp() - prev.timestamp();
+
+            if (samplesTimeDiff > 0) {
+                // We estimate the accumulator at the requested look up time by interpolating linearly between the
+                // previous and next accumulators.
+
+                // We can use unchecked arithmetic since the accumulators can be represented in 53 bits, and timestamps
+                // in 31 bits.
+                int256 samplesAccDiff = next.accumulator(variable) - prev.accumulator(variable);
+                uint256 elapsed = lookUpTime - prev.timestamp();
+                return prev.accumulator(variable) + ((samplesAccDiff * int256(elapsed)) / int256(samplesTimeDiff));
+            } else {
+                // Rarely, one of the samples will the the exact requested look up time, which is indicated by `prev`
+                // and `next` being the same. In this case, we simply return the accumulator at that point in time.
+                return prev.accumulator(variable);
+            }
+        }
+    }
+
+    /**
+     * @dev Finds the two samples with timestamps before and after `lookUpDate`. If one of the samples matches exactly,
+     * both `prev` and `next` will be it. `offset` is the index of the oldest sample in the buffer.
+     *
+     * Assumes `lookUpDate` is greater or equal than the timestamp of the oldest sample, and less or equal than the
+     * timestamp of the latest sample.
+     */
+    function _findNearestSample(uint256 lookUpDate, uint256 offset) internal view returns (bytes32 prev, bytes32 next) {
+        // We're going to perform a binary seach in the circular buffer, which requires for it to be sorted. To achieve
+        // this, we offset all buffer accesses by `offset`, making the first element the oldest one.
+
+        // Auxiliary variables in a typical binary search: we will look at some value `mid` between `low` and `high`,
+        // periodically increasing `low` or decreasing `high` until we either find a match or determine the element is
+        // not in the array.
+        uint256 low = 0;
+        uint256 high = Buffer.SIZE - 1;
+        uint256 mid;
+
+        // If the search fails and no sample has a timestamp of `lookUpDate` (as is the most common scenario), `sample`
+        // will be either the sample with the largest timestamp smaller than `lookUpDate`, or the one with the smallest
+        // timestamp larger than `lookUpDate`.
+        bytes32 sample;
+        uint256 sampleTimestamp;
+
+        while (low <= high) {
+            // Mid is the floor of the average.
+            uint256 midWithoutOffset = (high + low) / 2;
+
+            // Recall that the buffer is not actually sorted: we need to apply the offset to access it in a sorted way.
+            mid = midWithoutOffset.add(offset);
+            sample = _getSample(mid);
+            sampleTimestamp = sample.timestamp();
+
+            if (sampleTimestamp < lookUpDate) {
+                // If the mid sample is bellow the look up date, then increase the low index to start from there.
+                low = midWithoutOffset + 1;
+            } else if (sampleTimestamp > lookUpDate) {
+                // If the mid sample is above the look up date, then decrease the high index to start from there.
+
+                // We can skip checked arithmetic: it is imposible for `high` to ever be 0, as a scenario wher `low`
+                // equals 0 and `high` equals 1 would result in `low` increasing to 1 if the previous `if` clause.
+                high = midWithoutOffset - 1;
+            } else {
+                // sampleTimestamp == lookUpDate
+                // If we have an exact match, return the sample as both `prev` and `next`.
+                return (sample, sample);
+            }
+        }
+
+        // In case we reach here, it means we didn't find exactly the sample we where looking for.
+        return sampleTimestamp < lookUpDate ? (sample, _getSample(mid.next())) : (_getSample(mid.prev()), sample);
+    }
+
+    /**
+     * @dev Returns the sample that corresponds to a given `index`.
+     *
+     * Using this function instead of accessing storage directly results in denser bytecode (since the storage slot is
+     * only computed here).
+     */
+    function _getSample(uint256 index) internal view returns (bytes32) {
+        return _samples[index];
     }
 }

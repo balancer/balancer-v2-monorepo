@@ -27,10 +27,14 @@ import "./WeightedPoolUserDataHelpers.sol";
 import "../BalancerPoolToken.sol";
 import "../BasePoolAuthorization.sol";
 import "../oracle/PoolPriceOracle.sol";
+import "../oracle/Buffer.sol";
+
 import "../../vault/interfaces/IMinimalSwapInfoPool.sol";
+import "../IPriceOracle.sol";
 
 contract WeightedPool2Tokens is
     IMinimalSwapInfoPool,
+    IPriceOracle,
     BasePoolAuthorization,
     BalancerPoolToken,
     TemporarilyPausable,
@@ -156,7 +160,7 @@ contract WeightedPool2Tokens is
         returns (
             int256 logInvariant,
             int256 logTotalSupply,
-            uint256 oracleSampleInitialTimestamp,
+            uint256 oracleSampleCreationTimestamp,
             uint256 oracleIndex,
             bool oracleEnabled,
             uint256 swapFeePercentage
@@ -165,7 +169,7 @@ contract WeightedPool2Tokens is
         bytes32 miscData = _miscData;
         logInvariant = miscData.logInvariant();
         logTotalSupply = miscData.logTotalSupply();
-        oracleSampleInitialTimestamp = miscData.oracleSampleInitialTimestamp();
+        oracleSampleCreationTimestamp = miscData.oracleSampleCreationTimestamp();
         oracleIndex = miscData.oracleIndex();
         oracleEnabled = miscData.oracleEnabled();
         swapFeePercentage = miscData.swapFeePercentage();
@@ -188,6 +192,12 @@ contract WeightedPool2Tokens is
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
+    /**
+     * @dev Balancer Governance can always enable the Oracle, even if it was originally not enabled. This allows for
+     * Pools that unexpectedly drive much more volume and liquidity than expected to serve as Price Oracles.
+     *
+     * Note that the Oracle can only be enabled - it can never be disabled.
+     */
     function enableOracle() external whenNotPaused authenticate {
         _setOracleEnabled(true);
 
@@ -372,7 +382,7 @@ contract WeightedPool2Tokens is
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn);
 
-            // There are not due protocol fee amounts during initialization
+            // There are no due protocol fee amounts during initialization
             dueProtocolFeeAmounts = new uint256[](2);
         } else {
             _upscaleArray(balances);
@@ -763,30 +773,14 @@ contract WeightedPool2Tokens is
 
     // Oracle functions
 
-    function getOracleSample(uint256 index)
-        external
-        view
-        returns (
-            int256 logPairPrice,
-            int256 accLogPairPrice,
-            int256 logBptPrice,
-            int256 accLogBptPrice,
-            int256 logInvariant,
-            int256 accLogInvariant,
-            uint256 timestamp
-        )
-    {
-        return _unpackSample(index);
-    }
-
-    struct OracleAccumulatorQuery {
-        Samples.Variable variable;
-        uint256 ago;
+    function getLargestSafeQueryWindow() external pure override returns (uint256) {
+        return 34 hours;
     }
 
     function getPastAccumulators(OracleAccumulatorQuery[] memory queries)
         external
         view
+        override
         returns (int256[] memory results)
     {
         results = new int256[](queries.length);
@@ -800,15 +794,10 @@ contract WeightedPool2Tokens is
         }
     }
 
-    struct OracleAverageQuery {
-        Samples.Variable variable;
-        uint256 secs;
-        uint256 ago;
-    }
-
     function getTimeWeightedAverage(OracleAverageQuery[] memory queries)
         external
         view
+        override
         returns (uint256[] memory results)
     {
         results = new uint256[](queries.length);
@@ -852,7 +841,7 @@ contract WeightedPool2Tokens is
             );
 
             uint256 oracleCurrentIndex = miscData.oracleIndex();
-            uint256 oracleCurrentSampleInitialTimestamp = miscData.oracleSampleInitialTimestamp();
+            uint256 oracleCurrentSampleInitialTimestamp = miscData.oracleSampleCreationTimestamp();
             uint256 oracleUpdatedIndex = _processPriceData(
                 oracleCurrentSampleInitialTimestamp,
                 oracleCurrentIndex,
@@ -864,7 +853,7 @@ contract WeightedPool2Tokens is
             if (oracleCurrentIndex != oracleUpdatedIndex) {
                 // solhint-disable not-rely-on-time
                 miscData = miscData.setOracleIndex(oracleUpdatedIndex);
-                miscData = miscData.setOracleSampleInitialTimestamp(block.timestamp);
+                miscData = miscData.setOracleSampleCreationTimestamp(block.timestamp);
                 _miscData = miscData;
             }
         }
@@ -1051,8 +1040,8 @@ contract WeightedPool2Tokens is
     }
 
     /**
-     * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
+     * @dev Same as `_upscale`, but for an entire array (of two elements). This function does not return anything, but
+     * instead *mutates* the `amounts` array.
      */
     function _upscaleArray(uint256[] memory amounts) internal view {
         amounts[0] = Math.mul(amounts[0], _scalingFactor(true));
@@ -1068,8 +1057,8 @@ contract WeightedPool2Tokens is
     }
 
     /**
-     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
+     * @dev Same as `_downscaleDown`, but for an entire array (of two elements). This function does not return anything,
+     * but instead *mutates* the `amounts` array.
      */
     function _downscaleDownArray(uint256[] memory amounts) internal view {
         amounts[0] = Math.divDown(amounts[0], _scalingFactor(true));
@@ -1085,8 +1074,8 @@ contract WeightedPool2Tokens is
     }
 
     /**
-     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
+     * @dev Same as `_downscaleUp`, but for an entire array (of two elements). This function does not return anything,
+     * but instead *mutates* the `amounts` array.
      */
     function _downscaleUpArray(uint256[] memory amounts) internal view {
         amounts[0] = Math.divUp(amounts[0], _scalingFactor(true));
@@ -1215,7 +1204,7 @@ contract WeightedPool2Tokens is
                 start := sub(start, 0x04)
 
                 // When copying from `tokenAmounts` into returndata, we copy the additional 68 bytes to also return
-                // the `bptAmount`, the array 's length, and the error signature.
+                // the `bptAmount`, the array length, and the error signature.
                 revert(start, add(size, 68))
             }
         }
