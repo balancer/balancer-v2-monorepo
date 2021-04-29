@@ -22,7 +22,7 @@ pragma experimental ABIEncoderV2;
  * price of the Pool share token (BPT) and invariant. Since the invariant is a sensible measure of Pool liquidity, it
  * can be used to compare two different price sources, and choose the most liquid one.
  *
- * Once the oracle is fully initialized, all queries are guaranteed to succeed fail as long as they require no data that
+ * Once the oracle is fully initialized, all queries are guaranteed to succeed as long as they require no data that
  * is not older than the largest safe query window.
  */
 interface IPriceOracle {

@@ -132,7 +132,7 @@ library Samples {
     }
 
     /**
-     * @dev Returns `sample`'s accumulator of the the logarithm of the pair price.
+     * @dev Returns `sample`'s accumulator of the logarithm of the pair price.
      */
     function _accLogPairPrice(bytes32 sample) private pure returns (int256) {
         return sample.decodeInt53(_ACC_LOG_PAIR_PRICE_OFFSET);
@@ -146,7 +146,7 @@ library Samples {
     }
 
     /**
-     * @dev Returns `sample`'s accumulator of the the logarithm of the BPT price.
+     * @dev Returns `sample`'s accumulator of the logarithm of the BPT price.
      */
     function _accLogBptPrice(bytes32 sample) private pure returns (int256) {
         return sample.decodeInt53(_ACC_LOG_BPT_PRICE_OFFSET);
@@ -160,7 +160,7 @@ library Samples {
     }
 
     /**
-     * @dev Returns `sample`'s accumulator of the the logarithm of the invariant.
+     * @dev Returns `sample`'s accumulator of the logarithm of the invariant.
      */
     function _accLogInvariant(bytes32 sample) private pure returns (int256) {
         return sample.decodeInt53(_ACC_LOG_INVARIANT_OFFSET);

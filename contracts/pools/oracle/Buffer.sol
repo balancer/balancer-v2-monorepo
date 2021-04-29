@@ -20,14 +20,14 @@ library Buffer {
     uint256 internal constant SIZE = 1024;
 
     /**
-     * @dev Returns the index of the first element before the one pointed by `index`.
+     * @dev Returns the index of the element before the one pointed by `index`.
      */
     function prev(uint256 index) internal pure returns (uint256) {
         return sub(index, 1);
     }
 
     /**
-     * @dev Returns the index of the first element after the one pointed by `index`.
+     * @dev Returns the index of the element after the one pointed by `index`.
      */
     function next(uint256 index) internal pure returns (uint256) {
         return add(index, 1);

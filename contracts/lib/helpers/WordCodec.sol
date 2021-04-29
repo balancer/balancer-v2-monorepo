@@ -18,8 +18,8 @@ pragma solidity ^0.7.0;
  * @dev Library for encoding and decoding values stored inside a 256 bit word. Typically used to pack multiple values in
  * a single storage slot, saving gas by performing less storage accesses.
  *
- * Each value is defined by its size and least significant bit in the word, also known as offset. For example, two 128
- * bit values may be encoded in a word by assigning one an offset of 0, and the other an offset of 128.
+ * Each value is defined by its size and the least significant bit in the word, also known as offset. For example, two
+ * 128 bit values may be encoded in a word by assigning one an offset of 0, and the other an offset of 128.
  */
 library WordCodec {
     // Masks are values with the least significant N bits set. They can be used to extract an encoded value from a word,
