@@ -810,7 +810,6 @@ contract WeightedPool2Tokens is
 
             int256 beginAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago + query.secs);
             int256 endAccumulator = _getPastAccumulator(query.variable, oracleIndex, query.ago);
-
             results[i] = _fromLowResLog((endAccumulator - beginAccumulator) / int256(query.secs));
         }
     }
