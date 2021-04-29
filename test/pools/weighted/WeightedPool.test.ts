@@ -85,7 +85,7 @@ describe('WeightedPool', function () {
 
             const currentMiscData = await pool.getMiscData();
             expect(currentMiscData.oracleIndex).to.equal(previousData.oracleIndex.add(1));
-            expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(await currentTimestamp());
+            expect(currentMiscData.oracleSampleCreationTimestamp).to.equal(await currentTimestamp());
           });
         });
 
@@ -139,7 +139,9 @@ describe('WeightedPool', function () {
 
           const currentMiscData = await pool.getMiscData();
           expect(currentMiscData.oracleIndex).to.equal(previousMiscData.oracleIndex);
-          expect(currentMiscData.oracleSampleInitialTimestamp).to.equal(previousMiscData.oracleSampleInitialTimestamp);
+          expect(currentMiscData.oracleSampleCreationTimestamp).to.equal(
+            previousMiscData.oracleSampleCreationTimestamp
+          );
         });
       };
 
@@ -402,7 +404,7 @@ describe('WeightedPool', function () {
         swapFeePercentage: BigNumberish,
         oracleEnabled: boolean,
         oracleIndex: BigNumberish,
-        oracleSampleInitialTimestamp: BigNumberish,
+        oracleSampleCreationTimestamp: BigNumberish,
         logInvariant: BigNumberish,
         logTotalSupply: BigNumberish
       ) => {
@@ -410,7 +412,7 @@ describe('WeightedPool', function () {
           swapFeePercentage,
           oracleEnabled,
           oracleIndex,
-          oracleSampleInitialTimestamp,
+          oracleSampleCreationTimestamp,
           logInvariant,
           logTotalSupply,
         });
@@ -419,7 +421,7 @@ describe('WeightedPool', function () {
         expect(miscData.swapFeePercentage).to.be.equal(swapFeePercentage);
         expect(miscData.oracleEnabled).to.be.equal(oracleEnabled);
         expect(miscData.oracleIndex).to.be.equal(oracleIndex);
-        expect(miscData.oracleSampleInitialTimestamp).to.be.equal(oracleSampleInitialTimestamp);
+        expect(miscData.oracleSampleCreationTimestamp).to.be.equal(oracleSampleCreationTimestamp);
         expect(miscData.logInvariant).to.be.equal(logInvariant);
         expect(miscData.logTotalSupply).to.be.equal(logTotalSupply);
       };

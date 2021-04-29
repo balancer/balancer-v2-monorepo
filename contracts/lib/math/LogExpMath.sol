@@ -281,7 +281,7 @@ library LogExpMath {
     }
 
     /**
-     * @dev Logarithm (log(arg, base), with signed 18 decimal fixed point base and argument argument.
+     * @dev Logarithm (log(arg, base), with signed 18 decimal fixed point base and argument.
      */
     function log(int256 arg, int256 base) internal pure returns (int256) {
         // This performs a simple base change: log(arg, base) = ln(arg) / ln(base).
@@ -321,7 +321,7 @@ library LogExpMath {
     }
 
     /**
-     * @dev Intrnal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
+     * @dev Internal natural logarithm (ln(a)) with signed 18 decimal fixed point argument.
      */
     function _ln(int256 a) private pure returns (int256) {
         if (a < ONE_18) {

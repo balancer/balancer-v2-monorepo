@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../pools/oracle/Samples.sol";
 import "../pools/oracle/PoolPriceOracle.sol";
+import "../pools/IPriceOracle.sol";
 
 contract PoolPriceOracleMock is PoolPriceOracle {
     using Samples for bytes32;
@@ -49,12 +50,12 @@ contract PoolPriceOracleMock is PoolPriceOracle {
     function decode(bytes32 sample) public pure returns (Sample memory) {
         return
             Sample({
-                logPairPrice: sample.logPairPrice(),
-                accLogPairPrice: sample.accLogPairPrice(),
-                logBptPrice: sample.logBptPrice(),
-                accLogBptPrice: sample.accLogBptPrice(),
-                logInvariant: sample.logInvariant(),
-                accLogInvariant: sample.accLogInvariant(),
+                logPairPrice: sample.instant(IPriceOracle.Variable.PAIR_PRICE),
+                accLogPairPrice: sample.accumulator(IPriceOracle.Variable.PAIR_PRICE),
+                logBptPrice: sample.instant(IPriceOracle.Variable.BPT_PRICE),
+                accLogBptPrice: sample.accumulator(IPriceOracle.Variable.BPT_PRICE),
+                logInvariant: sample.instant(IPriceOracle.Variable.INVARIANT),
+                accLogInvariant: sample.accumulator(IPriceOracle.Variable.INVARIANT),
                 timestamp: sample.timestamp()
             });
     }
@@ -67,22 +68,6 @@ contract PoolPriceOracleMock is PoolPriceOracle {
         for (uint256 i = 0; i < indexes.length; i++) {
             mockSample(indexes[i], samples[i]);
         }
-    }
-
-    function getSample(uint256 index)
-        public
-        view
-        returns (
-            int256 logPairPrice,
-            int256 accLogPairPrice,
-            int256 logBptPrice,
-            int256 accLogBptPrice,
-            int256 logInvariant,
-            int256 accLogInvariant,
-            uint256 timestamp
-        )
-    {
-        return _unpackSample(index);
     }
 
     function update(
@@ -131,7 +116,7 @@ contract PoolPriceOracleMock is PoolPriceOracle {
     }
 
     function getPastAccumulator(
-        Samples.Variable variable,
+        IPriceOracle.Variable variable,
         uint256 currentIndex,
         uint256 timestamp
     ) external view returns (int256) {
