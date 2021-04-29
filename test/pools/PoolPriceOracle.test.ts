@@ -264,7 +264,7 @@ describe('PoolPriceOracle', () => {
     });
   });
 
-  describe('queries with samples', () => {
+  describe('queries', () => {
     const ZEROS = Array(MAX_BUFFER_SIZE).fill(0);
 
     const PAIR_PRICE = 0;
@@ -408,53 +408,55 @@ describe('PoolPriceOracle', () => {
             });
           }
 
-          itFindsLatestAndFutureAccumulators();
+          context('with a complete buffer', () => {
+            itFindsLatestAndFutureAccumulators();
 
-          it('finds past accumulators', async () => {
-            const pastIndex = indexAt(MAX_BUFFER_SIZE / 2);
-            const pastTimestamp = timestampAt(pastIndex);
+            it('finds past accumulators', async () => {
+              const pastIndex = indexAt(MAX_BUFFER_SIZE / 2);
+              const pastTimestamp = timestampAt(pastIndex);
 
-            const actual = await oracle.getPastAccumulator(variable, currentIndex, pastTimestamp);
-            const expected = accumAt(pastIndex) + variable;
-            expect(actual).to.equal(expected);
-          });
+              const actual = await oracle.getPastAccumulator(variable, currentIndex, pastTimestamp);
+              const expected = accumAt(pastIndex) + variable;
+              expect(actual).to.equal(expected);
+            });
 
-          it('interpolates between past accumulators', async () => {
-            const timeDelta = 5;
+            it('interpolates between past accumulators', async () => {
+              const timeDelta = 5;
 
-            const previousIndex = indexAt(MAX_BUFFER_SIZE / 2);
-            const nextIndex = (previousIndex + 1) % MAX_BUFFER_SIZE;
+              const previousIndex = indexAt(MAX_BUFFER_SIZE / 2);
+              const nextIndex = (previousIndex + 1) % MAX_BUFFER_SIZE;
 
-            const pastTimestamp = timestampAt(previousIndex) + timeDelta;
-            expect(pastTimestamp).to.be.lt(timestampAt(nextIndex));
+              const pastTimestamp = timestampAt(previousIndex) + timeDelta;
+              expect(pastTimestamp).to.be.lt(timestampAt(nextIndex));
 
-            const slope =
-              (accumAt(nextIndex) - accumAt(previousIndex)) / (timestampAt(nextIndex) - timestampAt(previousIndex));
+              const slope =
+                (accumAt(nextIndex) - accumAt(previousIndex)) / (timestampAt(nextIndex) - timestampAt(previousIndex));
 
-            const actual = await oracle.getPastAccumulator(variable, currentIndex, pastTimestamp);
-            const expected = accumAt(previousIndex) + variable + timeDelta * slope;
-            expect(actual).to.equal(expected);
-          });
+              const actual = await oracle.getPastAccumulator(variable, currentIndex, pastTimestamp);
+              const expected = accumAt(previousIndex) + variable + timeDelta * slope;
+              expect(actual).to.equal(expected);
+            });
 
-          it('finds last accumulator', async () => {
-            const oldestIndex = indexAt(0);
-            const oldestTimestamp = timestampAt(oldestIndex);
+            it('finds last accumulator', async () => {
+              const oldestIndex = indexAt(0);
+              const oldestTimestamp = timestampAt(oldestIndex);
 
-            const actual = await oracle.getPastAccumulator(variable, currentIndex, oldestTimestamp);
-            const expected = accumAt(oldestIndex) + variable;
-            expect(actual).to.equal(expected);
-          });
+              const actual = await oracle.getPastAccumulator(variable, currentIndex, oldestTimestamp);
+              const expected = accumAt(oldestIndex) + variable;
+              expect(actual).to.equal(expected);
+            });
 
-          it('reverts with too old timestamp', async () => {
-            const tooOldTimestamp = timestampAt(indexAt(0)) - 1;
+            it('reverts with too old timestamp', async () => {
+              const tooOldTimestamp = timestampAt(indexAt(0)) - 1;
 
-            await expect(oracle.getPastAccumulator(variable, currentIndex, tooOldTimestamp)).to.be.revertedWith(
-              'ORACLE_QUERY_TOO_OLD'
-            );
+              await expect(oracle.getPastAccumulator(variable, currentIndex, tooOldTimestamp)).to.be.revertedWith(
+                'ORACLE_QUERY_TOO_OLD'
+              );
+            });
           });
 
           context('with incomplete buffer', () => {
-            sharedBeforeEach(async () => {
+            sharedBeforeEach('remove sample', async () => {
               await oracle.mockSample(indexAt(0), {
                 logPairPrice: 0,
                 accLogPairPrice: 0,

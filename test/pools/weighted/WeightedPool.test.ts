@@ -4,15 +4,20 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { actionId } from '../../../lib/helpers/actions';
-import { BigNumberish, bn, fp, pct } from '../../../lib/helpers/numbers';
 import { MinimalSwapInfoPool, TwoTokenPool } from '../../../lib/helpers/pools';
-import { advanceTime, currentTimestamp, lastBlockNumber, MINUTE } from '../../../lib/helpers/time';
+import { BigNumberish, bn, decimal, fp, pct } from '../../../lib/helpers/numbers';
+import { MAX_INT22, MAX_UINT10, MAX_UINT31, MAX_UINT64, MIN_INT22 } from '../../../lib/helpers/constants';
+import {
+  MINUTE,
+  advanceTime,
+  currentTimestamp,
+  lastBlockNumber,
+  setNextBlockTimestamp,
+} from '../../../lib/helpers/time';
 
 import TokenList from '../../helpers/models/tokens/TokenList';
 import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
-import { expectEqualWithError } from '../../helpers/relativeError';
 import { RawWeightedPoolDeployment, Sample } from '../../helpers/models/pools/weighted/types';
-import { MAX_INT22, MAX_UINT10, MAX_UINT31, MAX_UINT64, MIN_INT22 } from '../../../lib/helpers/constants';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
@@ -104,29 +109,24 @@ describe('WeightedPool', function () {
 
           it('stores the pre-action spot price', async () => {
             const expectedSpotPrice = await pool.estimateSpotPrice(previousBalances);
-            expectEqualWithError(
-              await pool.instance.fromLowResLog(newSample.logPairPrice),
-              expectedSpotPrice,
-              MAX_RELATIVE_ERROR
-            );
+            const actual = await pool.instance.fromLowResLog(newSample.logPairPrice);
+
+            expect(actual).to.equalWithError(expectedSpotPrice, MAX_RELATIVE_ERROR);
           });
 
           it('stores the pre-action BPT price', async () => {
             const expectedBPTPrice = await pool.estimateBptPrice(0, previousBalances[0], previousTotalSupply);
-            expectEqualWithError(
-              await pool.instance.fromLowResLog(newSample.logBptPrice),
-              expectedBPTPrice,
-              MAX_RELATIVE_ERROR * 2 // The BPT price has twice as much error
-            );
+            const actual = await pool.instance.fromLowResLog(newSample.logBptPrice);
+
+            // The BPT price has twice as much error
+            expect(actual).to.equalWithError(expectedBPTPrice, MAX_RELATIVE_ERROR * 2);
           });
 
           it('stores the pre-action invariant', async () => {
             const expectedInvariant = await pool.estimateInvariant(previousBalances);
-            expectEqualWithError(
-              await pool.instance.fromLowResLog(newSample.logInvariant),
-              expectedInvariant,
-              MAX_RELATIVE_ERROR
-            );
+            const actual = await pool.instance.fromLowResLog(newSample.logInvariant);
+
+            expect(actual).to.equalWithError(expectedInvariant, MAX_RELATIVE_ERROR);
           });
         });
       };
@@ -150,7 +150,7 @@ describe('WeightedPool', function () {
           const currentMiscData = await pool.getMiscData();
           const actualInvariant = await pool.instance.fromLowResLog(currentMiscData.logInvariant);
           const expectedInvariant = await pool.getLastInvariant();
-          expectEqualWithError(actualInvariant, expectedInvariant, MAX_RELATIVE_ERROR);
+          expect(actualInvariant).to.be.equalWithError(expectedInvariant, MAX_RELATIVE_ERROR);
         });
 
         it('caches the total supply', async () => {
@@ -159,7 +159,7 @@ describe('WeightedPool', function () {
           const currentMiscData = await pool.getMiscData();
           const actualTotalSupply = await pool.instance.fromLowResLog(currentMiscData.logTotalSupply);
           const expectedTotalSupply = await pool.totalSupply();
-          expectEqualWithError(actualTotalSupply, expectedTotalSupply, MAX_RELATIVE_ERROR);
+          expect(actualTotalSupply).to.equalWithError(expectedTotalSupply, MAX_RELATIVE_ERROR);
         });
       };
 
@@ -344,7 +344,7 @@ describe('WeightedPool', function () {
         });
       });
 
-      describe('oracle setting', () => {
+      describe('setting', () => {
         const action = () => pool.enableOracle({ from: admin });
 
         sharedBeforeEach('grant role to admin', async () => {
@@ -392,6 +392,108 @@ describe('WeightedPool', function () {
             itCachesTheLogInvariantAndSupply(action);
           });
         });
+      });
+    });
+
+    describe('queries', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let samples: any[];
+
+      const MAX_BUFFER_SIZE = 1024;
+      const OLDEST = 0;
+      const MID = MAX_BUFFER_SIZE / 2;
+      const LATEST = MAX_BUFFER_SIZE - 1;
+
+      const ago = (index: number) => (LATEST - index) * 2 * MINUTE;
+
+      const VARIABLES = {
+        PAIR_PRICE: 0,
+        BPT_PRICE: 1,
+        INVARIANT: 2,
+      };
+
+      const mockSamples = (ascending: boolean) => {
+        sharedBeforeEach('mock samples', async () => {
+          const now = await currentTimestamp();
+          const ZEROS = Array(MAX_BUFFER_SIZE).fill(0);
+          const indexes = ZEROS.map((_, i) => i);
+
+          samples = ZEROS.map((_, i) => ({
+            timestamp: now.add(i * 2 * MINUTE),
+            instant: (ascending ? i : MAX_BUFFER_SIZE - i) * 5,
+            accumulator: (ascending ? i : MAX_BUFFER_SIZE - i) * 100,
+          })).map((x) => ({
+            logPairPrice: x.instant + VARIABLES.PAIR_PRICE,
+            logBptPrice: x.instant + VARIABLES.BPT_PRICE,
+            logInvariant: x.instant + VARIABLES.INVARIANT,
+            accLogPairPrice: x.accumulator + VARIABLES.PAIR_PRICE,
+            accLogBptPrice: x.accumulator + VARIABLES.BPT_PRICE,
+            accLogInvariant: x.accumulator + VARIABLES.INVARIANT,
+            timestamp: x.timestamp,
+          }));
+
+          for (let from = 0, to = from + 100; from < MAX_BUFFER_SIZE; from += 100, to = from + 100) {
+            await pool.instance.mockSamples(indexes.slice(from, to), samples.slice(from, to));
+          }
+
+          await pool.instance.mockOracleIndex(LATEST);
+          await setNextBlockTimestamp(samples[LATEST].timestamp);
+        });
+      };
+
+      const itAnswersQueriesCorrectly = (ascendingAccumulators: boolean) => {
+        mockSamples(ascendingAccumulators);
+
+        describe('getPastAccumulators', () => {
+          const queries = [
+            { variable: VARIABLES.PAIR_PRICE, ago: ago(LATEST) },
+            { variable: VARIABLES.BPT_PRICE, ago: ago(OLDEST) },
+            { variable: VARIABLES.INVARIANT, ago: ago(MID) },
+          ];
+
+          it('returns the expected values', async () => {
+            const results = await pool.instance.getPastAccumulators(queries);
+
+            expect(results.length).to.be.equal(3);
+
+            expect(results[0]).to.be.equal(samples[LATEST].accLogPairPrice);
+            expect(results[1]).to.be.equal(samples[0].accLogBptPrice);
+            expect(results[2]).to.be.equal(samples[MID].accLogInvariant);
+          });
+        });
+
+        describe('getTimeWeightedAverage', () => {
+          const secs = 2 * MINUTE;
+
+          const queries = [
+            { variable: VARIABLES.PAIR_PRICE, secs, ago: ago(LATEST) },
+            { variable: VARIABLES.BPT_PRICE, secs, ago: ago(OLDEST + 1) },
+            { variable: VARIABLES.INVARIANT, secs, ago: ago(MID) },
+          ];
+
+          const assertAverage = (actual: BigNumber, diff: number) => {
+            const expectedAverage = fp(decimal(diff).div(secs).div(1e4).exp());
+            expect(actual).to.be.equalWithError(expectedAverage, 0.0001);
+          };
+
+          it('returns the expected values', async () => {
+            const results = await pool.instance.getTimeWeightedAverage(queries);
+
+            expect(results.length).to.be.equal(3);
+
+            assertAverage(results[0], samples[LATEST].accLogPairPrice - samples[LATEST - 1].accLogPairPrice);
+            assertAverage(results[1], samples[OLDEST + 1].accLogBptPrice - samples[OLDEST].accLogBptPrice);
+            assertAverage(results[2], samples[MID].accLogInvariant - samples[MID - 1].accLogInvariant);
+          });
+        });
+      };
+
+      context('with positive values', () => {
+        itAnswersQueriesCorrectly(true);
+      });
+
+      context('with negative values', () => {
+        itAnswersQueriesCorrectly(false);
       });
     });
 
