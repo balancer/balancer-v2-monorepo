@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 14
       - name: Install
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
       - name: Lint
         run: yarn lint
 
@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: 14
       - name: Install
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
       - name: Build
         run: yarn build
 
@@ -43,7 +43,7 @@ jobs:
         with:
           node-version: 14
       - name: Install
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
       - name: Test
         run: yarn workspace @balancer-labs/v2-core test
 
@@ -56,7 +56,7 @@ jobs:
         with:
           node-version: 14
       - name: Install
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
       - name: Benchmark
         run: yarn workspace @balancer-labs/v2-core test
 
@@ -69,7 +69,7 @@ jobs:
         with:
           node-version: 14
       - name: Install
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
       - name: Hardhat Deploy
         run: yarn compile && yarn deploy:hardhat
 
