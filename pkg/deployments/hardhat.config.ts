@@ -98,7 +98,7 @@ export default {
   // Hardhat deploy config
   paths: {
     deploy: 'migrations',
-    deployments: 'artifacts',
+    deployments: 'output',
   },
   external: {
     contracts: [
