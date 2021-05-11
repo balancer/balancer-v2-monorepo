@@ -70,8 +70,10 @@ jobs:
           node-version: 14
       - name: Install
         run: yarn --immutable
+      - name: Compile
+        run: yarn workspace @balancer-labs/v2-core compile
       - name: Hardhat Deploy
-        run: yarn compile && yarn deploy:hardhat
+        run: yarn workspace @balancer-labs/v2-deployments deploy:hardhat
 
 env:
   CI: true
