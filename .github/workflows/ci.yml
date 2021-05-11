@@ -58,7 +58,7 @@ jobs:
       - name: Install
         run: yarn --immutable
       - name: Benchmark
-        run: yarn workspace @balancer-labs/v2-core test
+        run: yarn workspace @balancer-labs/v2-core benchmark
 
   local-deploy:
     runs-on: ubuntu-latest
