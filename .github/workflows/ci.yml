@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - dev
   pull_request:
     branches: "*"
 
@@ -22,7 +21,20 @@ jobs:
       - name: Lint
         run: yarn lint
 
-  test:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install
+        run: yarn --frozen-lockfile
+      - name: Build
+        run: yarn build
+
+  test-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -33,9 +45,9 @@ jobs:
       - name: Install
         run: yarn --frozen-lockfile
       - name: Test
-        run: yarn test
+        run: yarn workspace @balancer-labs/v2-core test
 
-  coverage:
+  benchmark-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -45,13 +57,10 @@ jobs:
           node-version: 14
       - name: Install
         run: yarn --frozen-lockfile
-      - name: Coverage
-        run: yarn compile && yarn coverage
-        continue-on-error: true
-      - name: codecov
-        uses: codecov/codecov-action@v1
+      - name: Benchmark
+        run: yarn workspace @balancer-labs/v2-core test
 
-  deploy:
+  local-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -63,32 +72,6 @@ jobs:
         run: yarn --frozen-lockfile
       - name: Hardhat Deploy
         run: yarn compile && yarn deploy:hardhat
-
-  prepack:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 14
-      - name: Install
-        run: yarn --frozen-lockfile
-      - name: Test Prepack
-        run: yarn prepack
-
-  benchmark:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 14
-      - name: Install
-        run: yarn --frozen-lockfile
-      - name: Benchmark
-        run: yarn benchmark
 
 env:
   CI: true

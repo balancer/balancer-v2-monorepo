@@ -1,12 +1,15 @@
 {
-  "name": "@balancer-labs/balancer-core-v2",
-  "version": "0.1.0",
-  "description": "Core contracts of the balancer v2 system",
+  "name": "@balancer-labs/v2-monorepo",
+  "private": true,
+  "description": "Balancer v2 Monorepo",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-core-v2#readme",
   "repository": "git@github.com:balancer-labs/balancer-core-v2.git",
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-core-v2/issues"
+  },
+  "engines": {
+    "node": ">=12.10"
   },
   "contributors": [
     "Daniel Fernandez <daniel@balancer.finance>",
@@ -19,85 +22,11 @@
     "Nicolás Venturo <nico@balancer.finance>"
   ],
   "scripts": {
-    "measure-gas-deployment": "hardhat run lib/scripts/gas-measurement/deployment.ts",
-    "measure-gas-single-pair": "hardhat run lib/scripts/gas-measurement/singlePair.ts",
-    "measure-gas-multihop": "hardhat run lib/scripts/gas-measurement/multihop.ts",
-    "measure-gas-join-exit": "hardhat run lib/scripts/gas-measurement/joinExit.ts",
-    "benchmark": "yarn measure-gas-deployment && yarn measure-gas-single-pair && yarn measure-gas-multihop && yarn measure-gas-join-exit",
-    "compile": "hardhat compile",
-    "compile:watch": "nodemon --ext sol --exec yarn compile",
-    "deploy:hardhat": "hardhat --network hardhat deploy",
-    "deploy:local": "hardhat --network localhost deploy",
-    "deploy:docker": "hardhat --network dockerParity deploy",
-    "deploy:rinkeby": "hardhat --network rinkeby deploy",
-    "deploy:kovan": "hardhat --network kovan deploy",
-    "deploy:ropsten": "hardhat --network ropsten deploy",
-    "deploy:goerli": "hardhat --network goerli deploy",
-    "node:hardhat": "hardhat node",
-    "prepack": "tsc && yarn compile",
-    "seed:local": "hardhat --network localhost seed",
-    "seed:docker": "hardhat --network dockerParity seed",
-    "seed:kovan": "hardhat --network kovan seed",
-    "seed:ropsten": "hardhat --network ropsten seed",
-    "seed:rinkeby": "hardhat --network rinkeby seed",
-    "seed:goerli": "hardhat --network goerli seed",
-    "seed:hardhat": "hardhat --network hardhat seed",
-    "redeploy:docker": "yarn hardhat clean && yarn deploy:docker --reset && yarn seed:docker",
-    "export": "hardhat export --export-all deployments/addresses.json",
-    "lint": "yarn lint:solidity && yarn lint:typescript",
-    "lint:solidity": "solhint 'contracts/**/*.sol'",
-    "lint:typescript": "eslint . --ext .ts",
-    "test": "yarn compile && rm -rf artifacts/build-info && mocha --extension ts --require hardhat/register --require test/setup --recursive",
-    "test:fast": "yarn compile && rm -rf artifacts/build-info && mocha --extension ts --require hardhat/register --require test/setup --recursive --parallel --exit",
-    "test:watch": "nodemon --ext js,ts --watch test --watch lib --exec 'clear && yarn test --no-compile'",
-    "coverage": "hardhat coverage --solcoverjs ./.solcover.ts"
+    "build": "yarn workspaces foreach --verbose run build",
+    "lint": "yarn workspaces foreach --verbose run lint"
   },
-  "dependencies": {
-    "@openzeppelin/contracts": "3.3.0-solc-0.7",
-    "decimal.js": "^10.2.1",
-    "ethers": "^5.0.18"
-  },
-  "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.0.1",
-    "@nomiclabs/hardhat-waffle": "^2.0.0",
-    "@openzeppelin/contracts": "3.3.0-solc-0.7",
-    "@tenderly/hardhat-tenderly": "1.1.0-beta.5",
-    "@types/chai": "^4.2.12",
-    "@types/lodash": "^4.14.161",
-    "@types/mocha": "^8.0.3",
-    "@types/node": "^14.6.0",
-    "@typescript-eslint/eslint-plugin": "^4.1.1",
-    "@typescript-eslint/parser": "^4.1.1",
-    "chai": "^4.2.0",
-    "dotenv": "^8.2.0",
-    "eslint": "^7.9.0",
-    "eslint-plugin-mocha-no-only": "^1.1.1",
-    "eslint-plugin-prettier": "^3.1.4",
-    "ethereum-waffle": "^3.0.2",
-    "hardhat": "^2.2.0",
-    "hardhat-deploy": "^0.7.0-beta.32",
-    "hardhat-local-networks-config-plugin": "0.0.5",
-    "lodash.frompairs": "^4.0.1",
-    "lodash.pick": "^4.4.0",
-    "lodash.range": "^3.2.0",
-    "lodash.times": "^4.3.2",
-    "lodash.zip": "^4.2.0",
-    "mocha": "^8.2.1",
-    "nodemon": "^2.0.4",
-    "prettier": "^2.1.2",
-    "prettier-plugin-solidity": "v1.0.0-alpha.59",
-    "solhint": "^3.2.0",
-    "solhint-plugin-prettier": "^0.0.4",
-    "solidity-coverage": "^0.7.12",
-    "ts-node": "^8.10.2",
-    "typescript": "^4.0.2"
-  },
-  "files": [
-    "artifacts",
-    "dist"
-  ],
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "restricted"
-  }
+  "workspaces": [
+    "pkg/*",
+    "pvt/*"
+  ]
 }
