@@ -22,7 +22,6 @@ jobs:
         with:
           path: "**/node_modules"
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: yarn-v1-
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
@@ -43,7 +42,6 @@ jobs:
         with:
           path: "**/node_modules"
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: yarn-v1-
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
@@ -64,7 +62,6 @@ jobs:
         with:
           path: "**/node_modules"
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: yarn-v1-
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
@@ -85,7 +82,6 @@ jobs:
         with:
           path: "**/node_modules"
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: yarn-v1-
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
@@ -106,7 +102,6 @@ jobs:
         with:
           path: "**/node_modules"
           key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: yarn-v1-
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
