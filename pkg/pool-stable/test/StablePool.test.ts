@@ -3,8 +3,8 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
@@ -15,7 +15,7 @@ describe('StablePool', function () {
   let trader: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const AMPLIFICATION_PARAMETER = fp(200);
+  const AMPLIFICATION_PARAMETER = bn(200);
   const INITIAL_BALANCES = [fp(1), fp(0.9), fp(0.8), fp(1.1)];
 
   before('setup signers', async () => {
@@ -144,13 +144,13 @@ describe('StablePool', function () {
         });
 
         it('reverts if amplification coefficient is too high', async () => {
-          const highAmp = bn(6000).mul(bn(1e18));
+          const highAmp = bn(6000);
 
           await expect(deployPool({ amplificationParameter: highAmp })).to.be.revertedWith('MAX_AMP');
         });
 
         it('reverts if amplification coefficient is too low', async () => {
-          const lowAmp = bn(10);
+          const lowAmp = bn(0);
 
           await expect(deployPool({ amplificationParameter: lowAmp })).to.be.revertedWith('MIN_AMP');
         });

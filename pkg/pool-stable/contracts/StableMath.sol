@@ -26,8 +26,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 contract StableMath {
     using FixedPoint for uint256;
 
-    uint256 internal constant _MIN_AMP = 1e18;
-    uint256 internal constant _MAX_AMP = 5000 * (1e18);
+    uint256 internal constant _MIN_AMP = 1;
+    uint256 internal constant _MAX_AMP = 5000;
 
     uint256 internal constant _MAX_STABLE_TOKENS = 5;
 

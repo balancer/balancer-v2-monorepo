@@ -91,7 +91,7 @@ export async function deployPool(vault: Contract, tokens: TokenList, poolName: P
 
     joinUserData = encodeJoinWeightedPool({ kind: 'Init', amountsIn: tokenAddresses.map(() => initialPoolBalance) });
   } else if (poolName == 'StablePool') {
-    const amplificationParameter = bn(50e18);
+    const amplificationParameter = bn(50);
 
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,

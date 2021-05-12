@@ -86,7 +86,7 @@ export default {
       owner,
     } = params;
     if (!tokens) tokens = new TokenList();
-    if (!amplificationParameter) amplificationParameter = bn(200 * 1e18);
+    if (!amplificationParameter) amplificationParameter = bn(200);
     if (!swapFeePercentage) swapFeePercentage = bn(0);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;

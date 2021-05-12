@@ -3,7 +3,7 @@ import { BigNumber } from 'ethers';
 
 import { BigNumberish, decimal, bn, fp, fromFp, toFp } from '../../../numbers';
 
-export function calculateInvariant(fpRawBalances: BigNumberish[], fpAmplificationParameter: BigNumberish): BigNumber {
+export function calculateInvariant(fpRawBalances: BigNumberish[], amplificationParameter: BigNumberish): BigNumber {
   const totalCoins = fpRawBalances.length;
   const sum = fpRawBalances.reduce((a, b) => a.add(b.toString()), decimal(0));
 
@@ -13,7 +13,7 @@ export function calculateInvariant(fpRawBalances: BigNumberish[], fpAmplificatio
 
   let inv = sum;
   let prevInv = decimal(0);
-  const ampTimesTotal = decimal(fpAmplificationParameter).mul(totalCoins);
+  const ampTimesTotal = decimal(amplificationParameter).mul(totalCoins);
 
   for (let i = 0; i < 255; i++) {
     let P_D = decimal(totalCoins).mul(fpRawBalances[0].toString());
@@ -43,32 +43,23 @@ export function calculateInvariant(fpRawBalances: BigNumberish[], fpAmplificatio
 
 export function calculateAnalyticalInvariantForTwoTokens(
   fpRawBalances: BigNumberish[],
-  fpAmplificationParameter: BigNumberish
+  amplificationParameter: BigNumberish
 ): BigNumber {
   if (fpRawBalances.length !== 2) {
     throw 'Analytical invariant is solved only for 2 balances';
   }
 
-  const n = decimal(fpRawBalances.length);
+  const sum = fpRawBalances.reduce((a: Decimal, b: BigNumberish) => a.add(fromFp(b)), decimal(0));
+  const prod = fpRawBalances.reduce((a: Decimal, b: BigNumberish) => a.mul(fromFp(b)), decimal(1));
 
-  //Sum
-  const sum = fpRawBalances.reduce((a: Decimal, b: BigNumberish) => a.add(b.toString()), decimal(0));
-
-  //Mul
-  const prod = fpRawBalances.reduce((a: Decimal, b: BigNumberish) => a.mul(b.toString()), decimal(1));
+  // The amplification parameter equals to: A n^(n-1), where A is the amplification coefficient
+  const amplificationCoefficient = decimal(amplificationParameter).div(2);
 
   //Q
-  const q = decimal(fpAmplificationParameter)
-    .mul(-1)
-    .mul(n.pow(n.mul(2)))
-    .mul(sum)
-    .mul(prod);
+  const q = amplificationCoefficient.mul(-16).mul(sum).mul(prod);
 
   //P
-  const p = decimal(fpAmplificationParameter)
-    .minus(decimal(1).div(n.pow(n)))
-    .mul(n.pow(n.mul(2)))
-    .mul(prod);
+  const p = amplificationCoefficient.minus(decimal(1).div(4)).mul(16).mul(prod);
 
   //C
   const c = q
@@ -79,26 +70,25 @@ export function calculateAnalyticalInvariantForTwoTokens(
     .minus(q.div(2))
     .pow(1 / 3);
 
-  //Invariant
   const invariant = c.minus(p.div(c.mul(3)));
-  return bn(invariant);
+  return fp(invariant);
 }
 
 export function calcOutGivenIn(
   fpBalances: BigNumberish[],
-  fpAmplificationParameter: BigNumberish,
+  amplificationParameter: BigNumberish,
   tokenIndexIn: number,
   tokenIndexOut: number,
   fpTokenAmountIn: BigNumberish
 ): Decimal {
-  const invariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
+  const invariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
   const balances = fpBalances.map(fromFp);
   balances[tokenIndexIn] = balances[tokenIndexIn].add(fromFp(fpTokenAmountIn));
 
   const finalBalanceOut = _getTokenBalanceGivenInvariantAndAllOtherBalances(
     balances,
-    fromFp(fpAmplificationParameter),
+    decimal(amplificationParameter),
     invariant,
     tokenIndexOut
   );
@@ -108,19 +98,19 @@ export function calcOutGivenIn(
 
 export function calcInGivenOut(
   fpBalances: BigNumberish[],
-  fpAmplificationParameter: BigNumberish,
+  amplificationParameter: BigNumberish,
   tokenIndexIn: number,
   tokenIndexOut: number,
   fpTokenAmountOut: BigNumberish
 ): Decimal {
-  const invariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
+  const invariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
   const balances = fpBalances.map(fromFp);
   balances[tokenIndexOut] = balances[tokenIndexOut].sub(fromFp(fpTokenAmountOut));
 
   const finalBalanceIn = _getTokenBalanceGivenInvariantAndAllOtherBalances(
     balances,
-    fromFp(fpAmplificationParameter),
+    decimal(amplificationParameter),
     invariant,
     tokenIndexIn
   );
@@ -130,13 +120,13 @@ export function calcInGivenOut(
 
 export function calcBptOutGivenExactTokensIn(
   fpBalances: BigNumberish[],
-  fpAmplificationParameter: BigNumberish,
+  amplificationParameter: BigNumberish,
   fpAmountsIn: BigNumberish[],
   fpBptTotalSupply: BigNumberish,
   fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
-  const currentInvariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
+  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
   const balances = fpBalances.map(fromFp);
   const amountsIn = fpAmountsIn.map(fromFp);
@@ -178,7 +168,7 @@ export function calcBptOutGivenExactTokensIn(
   }
 
   // get new invariant taking into account swap fees
-  const newInvariant = fromFp(calculateInvariant(balances.map(fp), fpAmplificationParameter));
+  const newInvariant = fromFp(calculateInvariant(balances.map(fp), amplificationParameter));
 
   // return amountBPTOut
   return fp(fromFp(fpBptTotalSupply).mul(newInvariant.div(currentInvariant).sub(1)));
@@ -187,13 +177,13 @@ export function calcBptOutGivenExactTokensIn(
 export function calcTokenInGivenExactBptOut(
   tokenIndex: number,
   fpBalances: BigNumberish[],
-  fpAmplificationParameter: BigNumberish,
+  amplificationParameter: BigNumberish,
   fpBptAmountOut: BigNumberish,
   fpBptTotalSupply: BigNumberish,
   fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
-  const currentInvariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
+  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
   const balances = fpBalances.map(fromFp);
 
@@ -210,7 +200,7 @@ export function calcTokenInGivenExactBptOut(
   // get amountInAfterFee
   const newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(
     balances,
-    fromFp(fpAmplificationParameter),
+    decimal(amplificationParameter),
     newInvariant,
     tokenIndex
   );
@@ -227,13 +217,13 @@ export function calcTokenInGivenExactBptOut(
 
 export function calcBptInGivenExactTokensOut(
   fpBalances: BigNumber[],
-  fpAmplificationParameter: BigNumberish,
+  amplificationParameter: BigNumberish,
   fpAmountsOut: BigNumber[],
   fpBptTotalSupply: BigNumber,
   fpSwapFeePercentage: BigNumber
 ): BigNumber {
   // Get current invariant
-  const currentInvariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
+  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
   const balances = fpBalances.map(fromFp);
   const amountsOut = fpAmountsOut.map(fromFp);
@@ -272,7 +262,7 @@ export function calcBptInGivenExactTokensOut(
   }
 
   // get new invariant taking into account swap fees
-  const newInvariant = fromFp(calculateInvariant(balances.map(fp), fpAmplificationParameter));
+  const newInvariant = fromFp(calculateInvariant(balances.map(fp), amplificationParameter));
 
   // return amountBPTIn
   return fp(fromFp(fpBptTotalSupply).mul(new Decimal(1).sub(newInvariant.div(currentInvariant))));
@@ -281,13 +271,13 @@ export function calcBptInGivenExactTokensOut(
 export function calcTokenOutGivenExactBptIn(
   tokenIndex: number,
   fpBalances: BigNumberish[],
-  fpAmplificationParameter: BigNumberish,
+  amplificationParameter: BigNumberish,
   fpBptAmountIn: BigNumberish,
   fpBptTotalSupply: BigNumberish,
   fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
-  const currentInvariant = fromFp(calculateInvariant(fpBalances, fpAmplificationParameter));
+  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
 
   const balances = fpBalances.map(fromFp);
 
@@ -304,7 +294,7 @@ export function calcTokenOutGivenExactBptIn(
   // get amountOutBeforeFee
   const newBalanceTokenIndex = _getTokenBalanceGivenInvariantAndAllOtherBalances(
     balances,
-    fromFp(fpAmplificationParameter),
+    decimal(amplificationParameter),
     newInvariant,
     tokenIndex
   );
@@ -332,7 +322,7 @@ export function calcTokensOutGivenExactBptIn(
 
 export function calculateOneTokenSwapFeeAmount(
   fpBalances: BigNumberish[],
-  fpAmplificationParameter: BigNumberish,
+  amplificationParameter: BigNumberish,
   lastInvariant: BigNumberish,
   tokenIndex: number
 ): Decimal {
@@ -340,7 +330,7 @@ export function calculateOneTokenSwapFeeAmount(
 
   const finalBalanceFeeToken = _getTokenBalanceGivenInvariantAndAllOtherBalances(
     balances,
-    fromFp(fpAmplificationParameter),
+    decimal(amplificationParameter),
     fromFp(lastInvariant),
     tokenIndex
   );
