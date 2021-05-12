@@ -1,0 +1,30 @@
+{
+  "name": "@balancer-labs/v2-helpers",
+  "description": "Internal helpers",
+  "private": true,
+  "version": "1.0.0",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "lint": "yarn lint:typescript",
+    "lint:typescript": "eslint . --ext .ts"
+  },
+  "dependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@types/lodash": "^4.14.161",
+    "@types/node": "^14.6.0",
+    "decimal.js": "^10.2.1",
+    "ethers": "^5.0.18",
+    "hardhat": "^2.2.0",
+    "lodash.frompairs": "^4.0.1",
+    "prettier": "^2.1.2",
+    "ts-node": "^8.10.2",
+    "typescript": "^4.0.2"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.1.1",
+    "@typescript-eslint/parser": "^4.1.1",
+    "eslint": "^7.9.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "prettier": "^2.1.2"
+  }
+}

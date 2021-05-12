@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - dev
   pull_request:
     branches: "*"
 
@@ -17,12 +16,19 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: 14
+      - name: Cache
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: "**/node_modules"
+          key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
+        if: steps.cache.outputs.cache-hit != 'true'
       - name: Lint
         run: yarn lint
 
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -30,12 +36,39 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: 14
+      - name: Cache
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: "**/node_modules"
+          key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Build
+        run: yarn build
+
+  test-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Cache
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: "**/node_modules"
+          key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
+      - name: Install
+        run: yarn --immutable
+        if: steps.cache.outputs.cache-hit != 'true'
       - name: Test
-        run: yarn test
+        run: yarn workspace @balancer-labs/v2-core test
 
-  coverage:
+  benchmark-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -43,52 +76,39 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: 14
-      - name: Install
-        run: yarn --frozen-lockfile
-      - name: Coverage
-        run: yarn compile && yarn coverage
-        continue-on-error: true
-      - name: codecov
-        uses: codecov/codecov-action@v1
-
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install node
-        uses: actions/setup-node@v1
+      - name: Cache
+        uses: actions/cache@v2
+        id: cache
         with:
-          node-version: 14
+          path: "**/node_modules"
+          key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
       - name: Install
-        run: yarn --frozen-lockfile
-      - name: Hardhat Deploy
-        run: yarn compile && yarn deploy:hardhat
-
-  prepack:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 14
-      - name: Install
-        run: yarn --frozen-lockfile
-      - name: Test Prepack
-        run: yarn prepack
-
-  benchmark:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 14
-      - name: Install
-        run: yarn --frozen-lockfile
+        run: yarn --immutable
+        if: steps.cache.outputs.cache-hit != 'true'
       - name: Benchmark
-        run: yarn benchmark
+        run: yarn workspace @balancer-labs/v2-core benchmark
+
+  local-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Cache
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: "**/node_modules"
+          key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
+      - name: Install
+        run: yarn --immutable
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile
+        run: yarn workspace @balancer-labs/v2-core compile
+      - name: Hardhat Deploy
+        run: yarn workspace @balancer-labs/v2-deployments deploy:hardhat
 
 env:
   CI: true
