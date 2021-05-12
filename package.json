@@ -23,7 +23,8 @@
   ],
   "scripts": {
     "build": "yarn workspaces foreach --verbose run build",
-    "lint": "yarn workspaces foreach --verbose run lint"
+    "lint": "yarn workspaces foreach --verbose run lint",
+    "test": "yarn workspaces foreach --parallel --verbose run test"
   },
   "workspaces": [
     "pkg/*",
