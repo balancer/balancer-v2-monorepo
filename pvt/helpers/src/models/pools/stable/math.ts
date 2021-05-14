@@ -5,7 +5,9 @@ import { BigNumberish, decimal, bn, fp, fromFp, toFp } from '../../../numbers';
 
 export function calculateInvariant(fpRawBalances: BigNumberish[], amplificationParameter: BigNumberish): BigNumber {
   const totalCoins = fpRawBalances.length;
-  const sum = fpRawBalances.reduce((a, b) => a.add(b.toString()), decimal(0));
+  const balances = fpRawBalances.map(fromFp);
+
+  const sum = balances.reduce((a, b) => a.add(b), decimal(0));
 
   if (sum.isZero()) {
     return bn(0);
@@ -16,9 +18,9 @@ export function calculateInvariant(fpRawBalances: BigNumberish[], amplificationP
   const ampTimesTotal = decimal(amplificationParameter).mul(totalCoins);
 
   for (let i = 0; i < 255; i++) {
-    let P_D = decimal(totalCoins).mul(fpRawBalances[0].toString());
+    let P_D = balances[0].mul(totalCoins);
     for (let j = 1; j < totalCoins; j++) {
-      P_D = P_D.mul(fpRawBalances[j].toString()).mul(totalCoins).div(inv);
+      P_D = P_D.mul(balances[j]).mul(totalCoins).div(inv);
     }
 
     prevInv = inv;
@@ -27,8 +29,8 @@ export function calculateInvariant(fpRawBalances: BigNumberish[], amplificationP
       .mul(inv)
       .add(ampTimesTotal.mul(sum).mul(P_D))
       .div(decimal(totalCoins).add(1).mul(inv).add(ampTimesTotal.sub(1).mul(P_D)));
-    // Equality with the precision of 1
 
+    // Equality with the precision of 1
     if (inv > prevInv) {
       if (inv.sub(prevInv).lte(1)) {
         break;
@@ -38,7 +40,7 @@ export function calculateInvariant(fpRawBalances: BigNumberish[], amplificationP
     }
   }
 
-  return bn(inv);
+  return fp(inv);
 }
 
 export function calculateAnalyticalInvariantForTwoTokens(
@@ -344,39 +346,32 @@ function _getTokenBalanceGivenInvariantAndAllOtherBalances(
   invariant: Decimal,
   tokenIndex: number
 ): Decimal {
-  //Rounds result up overall
+  let sum = decimal(0);
+  let mul = decimal(1);
+  const numTokens = balances.length;
 
-  const ampTimesTotal = amplificationParameter.mul(balances.length);
-  let sum = balances[0];
-  let P_D = new Decimal(balances.length).mul(balances[0]);
-  for (let j = 1; j < balances.length; j++) {
-    P_D = P_D.mul(balances[j]).mul(balances.length).div(invariant);
-    sum = sum.add(balances[j]);
-  }
-  sum = sum.sub(balances[tokenIndex]);
-
-  let c = invariant.mul(invariant).div(ampTimesTotal.mul(P_D));
-  //We remove the balance from c by multiplying it
-  c = c.mul(balances[tokenIndex]);
-
-  const b = sum.add(invariant.div(ampTimesTotal));
-
-  //We iterate to find the balance
-  let prevTokenBalance = new Decimal(0);
-  //We apply first iteration outside the loop with the invariant as the starting approximation value.
-  let tokenBalance: Decimal = invariant.mul(invariant).add(c).div(invariant.add(b));
-
-  for (let i = 0; i < 255; i++) {
-    prevTokenBalance = tokenBalance;
-    tokenBalance = tokenBalance.mul(tokenBalance).add(c).div(tokenBalance.mul(2).add(b).sub(invariant));
-
-    if (tokenBalance > prevTokenBalance) {
-      if (tokenBalance.sub(prevTokenBalance).lessThanOrEqualTo(1e-18)) {
-        break;
-      }
-    } else if (prevTokenBalance.sub(tokenBalance).lessThanOrEqualTo(1e-18)) {
-      break;
+  for (let i = 0; i < numTokens; i++) {
+    if (i != tokenIndex) {
+      sum = sum.add(balances[i]);
+      mul = mul.mul(balances[i]);
     }
   }
-  return tokenBalance;
+
+  // const a = 1;
+  const b = invariant.div(amplificationParameter.mul(numTokens)).add(sum).sub(invariant);
+  const c = invariant
+    .pow(numTokens + 1)
+    .mul(-1)
+    .div(
+      amplificationParameter.mul(
+        decimal(numTokens)
+          .pow(numTokens + 1)
+          .mul(mul)
+      )
+    );
+
+  return b
+    .mul(-1)
+    .add(b.pow(2).sub(c.mul(4)).squareRoot())
+    .div(2);
 }
