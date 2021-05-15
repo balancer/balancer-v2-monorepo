@@ -15,8 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../lib/math/FixedPoint.sol";
-import "../lib/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IGeneralPool.sol";
@@ -144,5 +144,4 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
                 ? swapRequest.amount.mulDown(_multiplier)
                 : swapRequest.amount.divDown(_multiplier);
     }
-
 }

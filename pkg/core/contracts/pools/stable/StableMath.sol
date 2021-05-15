@@ -14,8 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "../../lib/math/Math.sol";
-import "../../lib/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 // This is a contract to emulate file-level functions. Convert to a library
 // after the migration to solc v0.7.1.

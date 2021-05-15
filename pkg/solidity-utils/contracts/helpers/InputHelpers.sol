@@ -18,8 +18,6 @@ import "../openzeppelin/IERC20.sol";
 
 import "./BalancerErrors.sol";
 
-import "../../vault/interfaces/IAsset.sol";
-
 library InputHelpers {
     function ensureInputLengthMatch(uint256 a, uint256 b) internal pure {
         _require(a == b, Errors.INPUT_LENGTH_MISMATCH);
@@ -31,15 +29,6 @@ library InputHelpers {
         uint256 c
     ) internal pure {
         _require(a == b && b == c, Errors.INPUT_LENGTH_MISMATCH);
-    }
-
-    function ensureArrayIsSorted(IAsset[] memory array) internal pure {
-        address[] memory addressArray;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            addressArray := array
-        }
-        ensureArrayIsSorted(addressArray);
     }
 
     function ensureArrayIsSorted(IERC20[] memory array) internal pure {

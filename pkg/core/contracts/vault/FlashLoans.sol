@@ -19,10 +19,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../lib/helpers/BalancerErrors.sol";
-import "../lib/openzeppelin/IERC20.sol";
-import "../lib/openzeppelin/ReentrancyGuard.sol";
-import "../lib/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./Fees.sol";
 import "./interfaces/IFlashLoanRecipient.sol";
