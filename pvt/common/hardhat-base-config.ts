@@ -1,5 +1,3 @@
-import './setupTests';
-
 type ContractSettings = Record<
   string,
   {
