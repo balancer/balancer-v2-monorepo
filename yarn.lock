@@ -99,6 +99,7 @@ __metadata:
   resolution: "@balancer-labs/v2-deployments@workspace:pkg/deployments"
   dependencies:
     "@balancer-labs/v2-common": "workspace:*"
+    "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.1
     "@tenderly/hardhat-tenderly": 1.1.0-beta.5
     "@types/lodash": ^4.14.161
