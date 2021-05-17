@@ -3,14 +3,14 @@ import { expect } from 'chai';
 import { Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import TokenList from '../helpers/models/tokens/TokenList';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
-import * as expectEvent from '../helpers/expectEvent';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
-import { actionId } from '@balancer-labs/v2-helpers/src/actions';
-import { expectBalanceChange } from '../helpers/tokenBalance';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { bn, divCeil, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
+import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('Vault - flash loans', () => {

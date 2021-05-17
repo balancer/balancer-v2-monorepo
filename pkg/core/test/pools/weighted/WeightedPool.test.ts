@@ -3,8 +3,8 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { actionId } from '@balancer-labs/v2-helpers/src/actions';
-import { MinimalSwapInfoPool, TwoTokenPool } from '@balancer-labs/v2-helpers/src/pools';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { MinimalSwapInfoPool, TwoTokenPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { BigNumberish, bn, decimal, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_INT22, MAX_UINT10, MAX_UINT31, MAX_UINT64, MIN_INT22 } from '@balancer-labs/v2-helpers/src/constants';
 import {
@@ -15,9 +15,9 @@ import {
   setNextBlockTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
 
-import TokenList from '../../helpers/models/tokens/TokenList';
-import WeightedPool from '../../helpers/models/pools/weighted/WeightedPool';
-import { RawWeightedPoolDeployment, Sample } from '../../helpers/models/pools/weighted/types';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import { RawWeightedPoolDeployment, Sample } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;

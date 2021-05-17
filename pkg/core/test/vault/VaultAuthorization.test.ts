@@ -4,11 +4,14 @@ import { Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
-import { actionId } from '@balancer-labs/v2-helpers/src/actions';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import * as expectEvent from '../helpers/expectEvent';
-import { encodeCalldataAuthorization, signSetRelayerApprovalAuthorization } from '../helpers/signatures';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import {
+  encodeCalldataAuthorization,
+  signSetRelayerApprovalAuthorization,
+} from '@balancer-labs/v2-helpers/src/models/misc/signatures';
 
 describe('VaultAuthorization', function () {
   let authorizer: Contract, vault: Contract;

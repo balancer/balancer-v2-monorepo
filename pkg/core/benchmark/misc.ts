@@ -1,16 +1,15 @@
 import { pick } from 'lodash';
 import { ethers } from 'hardhat';
-import { BigNumber, Contract } from 'ethers';
+import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/weights';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { encodeJoinStablePool } from '@balancer-labs/v2-helpers/src/stablePoolEncoding';
-import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/weightedPoolEncoding';
+import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { deployPoolFromFactory, PoolName } from '@balancer-labs/v2-helpers/src/pools';
 import { deploySortedTokens, mintTokens, TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
@@ -159,4 +158,30 @@ export function printGas(gas: number | BigNumber): string {
   }
 
   return `${(gas / 1000).toFixed(1)}k`;
+}
+
+type PoolName = 'WeightedPool' | 'WeightedPool2Tokens' | 'StablePool';
+
+async function deployPoolFromFactory(
+  vault: Contract,
+  poolName: PoolName,
+  args: { from: SignerWithAddress; parameters: Array<unknown> }
+): Promise<Contract> {
+  const factory = await deploy(`${poolName}Factory`, { args: [vault.address] });
+  // We could reuse this factory if we saved it across pool deployments
+
+  const name = 'Balancer Pool Token';
+  const symbol = 'BPT';
+  const owner = ZERO_ADDRESS;
+
+  const receipt: ContractReceipt = await (
+    await factory.connect(args.from).create(name, symbol, ...args.parameters, owner)
+  ).wait();
+
+  const event = receipt.events?.find((e) => e.event == 'PoolCreated');
+  if (event == undefined) {
+    throw new Error('Could not find PoolCreated event');
+  }
+
+  return ethers.getContractAt(poolName, event.args?.pool);
 }

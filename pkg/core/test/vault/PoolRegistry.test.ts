@@ -3,9 +3,9 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import TokenList from '../helpers/models/tokens/TokenList';
-import * as expectEvent from '../helpers/expectEvent';
-import { encodeExit, encodeJoin } from '../helpers/mockPool';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { encodeExit, encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
@@ -15,8 +15,8 @@ import {
   MinimalSwapInfoPool,
   GeneralPool,
   TwoTokenPool,
-} from '@balancer-labs/v2-helpers/src/pools';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
+} from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 
 describe('Vault - pool registry', () => {

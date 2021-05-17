@@ -9,6 +9,7 @@
     "lint:typescript": "eslint . --ext .ts"
   },
   "dependencies": {
+    "@balancer-labs/v2-helpers": "workspace:*",
     "typescript": "^4.0.2"
   },
   "devDependencies": {

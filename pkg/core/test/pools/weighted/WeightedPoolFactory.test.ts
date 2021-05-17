@@ -4,13 +4,13 @@ import { BigNumber, Contract } from 'ethers';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
-import * as expectEvent from '../../helpers/expectEvent';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 
-import Vault from '../../helpers/models/vault/Vault';
-import TokenList from '../../helpers/models/tokens/TokenList';
-import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/weights';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';
 
 describe('WeightedPoolFactory', function () {
   let tokens: TokenList;

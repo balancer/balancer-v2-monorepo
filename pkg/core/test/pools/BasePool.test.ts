@@ -3,16 +3,16 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '../helpers/expectEvent';
-import TokenList from '../helpers/models/tokens/TokenList';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
-import { actionId } from '@balancer-labs/v2-helpers/src/actions';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
-import { GeneralPool } from '@balancer-labs/v2-helpers/src/pools';
+import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { Account } from '../helpers/models/types/types';
-import TypesConverter from '../helpers/models/types/TypesConverter';
+import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
+import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;

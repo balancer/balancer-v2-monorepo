@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import * as expectEvent from '../helpers/expectEvent';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MINUTE } from '@balancer-labs/v2-helpers/src/time';

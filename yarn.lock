@@ -45,6 +45,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-common@workspace:pvt/common"
   dependencies:
+    "@balancer-labs/v2-helpers": "workspace:*"
     "@typescript-eslint/eslint-plugin": ^4.1.1
     "@typescript-eslint/parser": ^4.1.1
     eslint: ^7.9.0

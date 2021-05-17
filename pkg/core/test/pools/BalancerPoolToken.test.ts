@@ -3,11 +3,11 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '../helpers/expectEvent';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { MAX_DEADLINE, signPermit } from '../helpers/signatures';
+import { MAX_DEADLINE, signPermit } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 
 describe('BalancerPoolToken', () => {

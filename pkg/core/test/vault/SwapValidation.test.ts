@@ -3,18 +3,18 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '../helpers/expectEvent';
-import { encodeJoin } from '../helpers/mockPool';
-import TokenList from '../helpers/models/tokens/TokenList';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
-import { GeneralPool } from '@balancer-labs/v2-helpers/src/pools';
-import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/trading';
+import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { actionId } from '@balancer-labs/v2-helpers/src/actions';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('Vault - swap validation', () => {
   let authorizer: Contract, vault: Contract;

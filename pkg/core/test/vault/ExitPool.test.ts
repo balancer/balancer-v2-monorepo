@@ -4,25 +4,28 @@ import { expect } from 'chai';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import Token from '../helpers/models/tokens/Token';
-import TokenList from '../helpers/models/tokens/TokenList';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
-import * as expectEvent from '../helpers/expectEvent';
-import { encodeExit } from '../helpers/mockPool';
-import { expectBalanceChange } from '../helpers/tokenBalance';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { encodeExit } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
-import { actionId } from '@balancer-labs/v2-helpers/src/actions';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { encodeCalldataAuthorization, signExitAuthorization } from '../helpers/signatures';
+import {
+  encodeCalldataAuthorization,
+  signExitAuthorization,
+} from '@balancer-labs/v2-helpers/src/models/misc/signatures';
 import {
   GeneralPool,
   MinimalSwapInfoPool,
   PoolSpecializationSetting,
   TwoTokenPool,
-} from '@balancer-labs/v2-helpers/src/pools';
+} from '@balancer-labs/v2-helpers/src/models/vault/pools';
 
 describe('Vault - exit pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;

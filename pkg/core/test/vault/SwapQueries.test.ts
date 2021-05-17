@@ -3,14 +3,14 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { encodeJoin } from '../helpers/mockPool';
+import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
 import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
-import { MinimalSwapInfoPool } from '@balancer-labs/v2-helpers/src/pools';
-import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/trading';
+import { MinimalSwapInfoPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import TokenList from '../helpers/models/tokens/TokenList';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 describe('Vault - swap queries', () => {
   let vault: Contract, funds: FundManagement;

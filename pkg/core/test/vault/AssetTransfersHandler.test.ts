@@ -2,13 +2,13 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import TokenList, { ETH_TOKEN_ADDRESS } from '../helpers/models/tokens/TokenList';
+import TokenList, { ETH_TOKEN_ADDRESS } from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
-import { expectBalanceChange } from '../helpers/tokenBalance';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { bn, min } from '@balancer-labs/v2-helpers/src/numbers';
 import { expect } from 'chai';
-import Token from '../helpers/models/tokens/Token';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { forceSendEth } from '../helpers/eth';
 
 describe('Vault - asset transfers handler', function () {
