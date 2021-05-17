@@ -5,9 +5,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
-import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/weights';
+import { toNormalizedWeights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/misc';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { encodeJoinStablePool } from '@balancer-labs/v2-helpers/src/stablePoolEncoding';
+import { encodeJoinStablePool } from '@balancer-labs/v2-helpers/src/models/pools/stable/encoding';
 import { encodeJoinWeightedPool } from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploySortedTokens, mintTokens, TokenList } from '@balancer-labs/v2-helpers/src/tokens';

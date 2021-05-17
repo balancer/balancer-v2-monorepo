@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { MAX_INT256, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { FundManagement, getTokensSwaps, SWAP_KIND } from '@balancer-labs/v2-helpers/src/trading';
+import { FundManagement, getTokensSwaps, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import { getWeightedPool, getStablePool, printGas, setupEnvironment, tokenSymbols } from './misc';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
