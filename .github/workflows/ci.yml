@@ -48,7 +48,7 @@ jobs:
       - name: Build
         run: yarn build
 
-  test-utils:
+  test-solidity-utils:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -66,7 +66,7 @@ jobs:
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Test
-        run: yarn workspace @balancer-labs/v2-utils test
+        run: yarn workspace @balancer-labs/v2-solidity-utils test
 
   test-core:
     runs-on: ubuntu-latest
