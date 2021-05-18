@@ -25,6 +25,8 @@ jobs:
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile
+        run: yarn build
       - name: Lint
         run: yarn lint
 
@@ -45,6 +47,8 @@ jobs:
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile
+        run: yarn build
       - name: Build
         run: yarn build
 
@@ -65,6 +69,8 @@ jobs:
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile
+        run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-solidity-utils test
 
@@ -85,6 +91,8 @@ jobs:
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile
+        run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-vault test
 
@@ -105,6 +113,8 @@ jobs:
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile
+        run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-core test
 
@@ -125,6 +135,8 @@ jobs:
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile
+        run: yarn build
       - name: Benchmark
         run: yarn workspace @balancer-labs/v2-core benchmark
 
@@ -145,6 +157,8 @@ jobs:
       - name: Install
         run: yarn --immutable
         if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile
+        run: yarn build
       - name: Compile
         run: yarn build
       - name: Hardhat Deploy
