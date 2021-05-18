@@ -9,9 +9,9 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import { bn, min } from '@balancer-labs/v2-helpers/src/numbers';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import { forceSendEth } from '../helpers/eth';
+import { forceSendEth } from './helpers/eth';
 
-describe('Vault - asset transfers handler', function () {
+describe('AssetTransfersHandler', function () {
   let handler: Contract;
   let sender: SignerWithAddress, recipient: SignerWithAddress, other: SignerWithAddress;
   let tokens: TokenList;

@@ -29,7 +29,7 @@ import "../BasePoolAuthorization.sol";
 import "../oracle/PoolPriceOracle.sol";
 import "../oracle/Buffer.sol";
 
-import "../../vault/interfaces/IMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
 import "../IPriceOracle.sol";
 
 contract WeightedPool2Tokens is

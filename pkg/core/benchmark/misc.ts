@@ -24,9 +24,9 @@ export async function setupEnvironment(): Promise<{
 
   const weth = await deploy('WETH', { args: [admin.address] });
 
-  const authorizer = await deploy('Authorizer', { args: [admin.address] });
+  const authorizer = await deploy('@balancer-labs/v2-vault/Authorizer', { args: [admin.address] });
 
-  const vault = await deploy('Vault', { args: [authorizer.address, weth.address, 0, 0] });
+  const vault = await deploy('@balancer-labs/v2-vault/Vault', { args: [authorizer.address, weth.address, 0, 0] });
 
   const tokens = await deploySortedTokens(tokenSymbols, Array(tokenSymbols.length).fill(18));
 

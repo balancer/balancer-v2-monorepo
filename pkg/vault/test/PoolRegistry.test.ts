@@ -19,7 +19,7 @@ import {
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
 
-describe('Vault - pool registry', () => {
+describe('PoolRegistry', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let allTokens: TokenList;

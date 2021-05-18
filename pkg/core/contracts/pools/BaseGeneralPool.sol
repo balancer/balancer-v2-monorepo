@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./BasePool.sol";
-import "../vault/interfaces/IGeneralPool.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 
 /**
  * @dev Extension of `BasePool`, adding a handler for `IGeneralPool.onSwap`.

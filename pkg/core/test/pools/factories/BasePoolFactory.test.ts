@@ -17,7 +17,7 @@ describe('BasePoolFactory', function () {
   });
 
   sharedBeforeEach(async () => {
-    vault = await deploy('Vault', { args: [ZERO_ADDRESS, ZERO_ADDRESS, 0, 0] });
+    vault = await deploy('@balancer-labs/v2-vault/Vault', { args: [ZERO_ADDRESS, ZERO_ADDRESS, 0, 0] });
     factory = await deploy('MockPoolFactory', { args: [vault.address] });
   });
 

@@ -11,7 +11,7 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
-describe('Vault - protocol fees', () => {
+describe('Fees', () => {
   let admin: SignerWithAddress, user: SignerWithAddress, feeCollector: SignerWithAddress, other: SignerWithAddress;
 
   let vault: Vault;

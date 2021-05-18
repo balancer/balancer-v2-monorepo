@@ -8,9 +8,9 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 async function main() {
   const [, admin] = await ethers.getSigners();
 
-  const authorizer = await deploy('Authorizer', { args: [admin.address] });
+  const authorizer = await deploy('@balancer-labs/v2-vault/Authorizer', { args: [admin.address] });
 
-  const vault = await measureDeployment('Vault', [authorizer.address, ZERO_ADDRESS, 0, 0]);
+  const vault = await measureDeployment('@balancer-labs/v2-vault/Vault', [authorizer.address, ZERO_ADDRESS, 0, 0]);
 
   await measureDeployment('WeightedPoolFactory', [vault.address]);
 

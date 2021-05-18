@@ -12,7 +12,7 @@ import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/m
 import { MAX_UINT112, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
-describe('Vault - swap queries', () => {
+describe('Swap Queries', () => {
   let vault: Contract, funds: FundManagement;
   let tokens: TokenList;
   let lp: SignerWithAddress;

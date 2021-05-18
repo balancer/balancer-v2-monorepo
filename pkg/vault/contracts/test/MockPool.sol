@@ -18,9 +18,9 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
+import "../interfaces/IVault.sol";
+import "../interfaces/IGeneralPool.sol";
+import "../interfaces/IMinimalSwapInfoPool.sol";
 
 contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
     using FixedPoint for uint256;

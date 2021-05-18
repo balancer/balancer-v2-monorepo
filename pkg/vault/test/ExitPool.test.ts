@@ -27,7 +27,7 @@ import {
   TwoTokenPool,
 } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 
-describe('Vault - exit pool', () => {
+describe('Exit Pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
   let recipient: SignerWithAddress, relayer: SignerWithAddress;
   let authorizer: Contract, vault: Contract, feesCollector: Contract;

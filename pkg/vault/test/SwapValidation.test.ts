@@ -16,7 +16,7 @@ import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/m
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describe('Vault - swap validation', () => {
+describe('Swap Validation', () => {
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
   let admin: SignerWithAddress, lp: SignerWithAddress, trader: SignerWithAddress, other: SignerWithAddress;
