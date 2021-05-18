@@ -4,15 +4,15 @@ import { Dictionary } from 'lodash';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import TokenList, { ETH_TOKEN_ADDRESS } from '../helpers/models/tokens/TokenList';
-import { actionId } from '@balancer-labs/v2-helpers/src/actions';
-import { encodeJoin } from '../helpers/mockPool';
-import * as expectEvent from '../helpers/expectEvent';
-import { Comparison, expectBalanceChange } from '../helpers/tokenBalance';
+import TokenList, { ETH_TOKEN_ADDRESS } from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { Comparison, expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/trading';
+import { FundManagement, Swap, SWAP_KIND } from '@balancer-labs/v2-helpers/src/models/vault/swaps';
 import {
   MAX_GAS_LIMIT,
   MAX_INT256,
@@ -26,8 +26,12 @@ import {
   MinimalSwapInfoPool,
   PoolSpecializationSetting,
   TwoTokenPool,
-} from '@balancer-labs/v2-helpers/src/pools';
-import { encodeCalldataAuthorization, signBatchSwapAuthorization, signSwapAuthorization } from '../helpers/signatures';
+} from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import {
+  encodeCalldataAuthorization,
+  signBatchSwapAuthorization,
+  signSwapAuthorization,
+} from '@balancer-labs/v2-helpers/src/models/misc/signatures';
 
 type SingleSwap = {
   kind: number;

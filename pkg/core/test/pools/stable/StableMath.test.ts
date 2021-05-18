@@ -5,8 +5,8 @@ import {
   calcInGivenOut,
   calcOutGivenIn,
   calculateOneTokenSwapFeeAmount,
-} from '../../helpers/math/stable';
-import { expectEqualWithError } from '../../helpers/relativeError';
+} from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
+import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { bn, decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { Contract } from 'ethers';
 

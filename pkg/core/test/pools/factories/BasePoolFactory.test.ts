@@ -1,6 +1,6 @@
 import { Contract } from 'ethers';
 
-import * as expectEvent from '../../helpers/expectEvent';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expect } from 'chai';

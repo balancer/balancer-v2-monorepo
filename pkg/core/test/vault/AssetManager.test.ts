@@ -3,10 +3,10 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import Token from '../helpers/models/tokens/Token';
-import TokenList from '../helpers/models/tokens/TokenList';
-import { expectBalanceChange } from '../helpers/tokenBalance';
-import { encodeExit, encodeJoin } from '../helpers/mockPool';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { encodeExit, encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
@@ -16,10 +16,10 @@ import {
   MinimalSwapInfoPool,
   PoolSpecializationSetting,
   TwoTokenPool,
-} from '@balancer-labs/v2-helpers/src/pools';
-import * as expectEvent from '../helpers/expectEvent';
+} from '@balancer-labs/v2-helpers/src/models/vault/pools';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
-import { actionId } from '@balancer-labs/v2-helpers/src/actions';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 const OP_KIND = { WITHDRAW: 0, DEPOSIT: 1, UPDATE: 2 };
 

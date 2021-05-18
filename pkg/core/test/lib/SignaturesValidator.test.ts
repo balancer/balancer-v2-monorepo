@@ -3,12 +3,12 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '../helpers/expectEvent';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { MAX_GAS_LIMIT, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import { encodeCalldataAuthorization, signAuthorization } from '../helpers/signatures';
+import { encodeCalldataAuthorization, signAuthorization } from '@balancer-labs/v2-helpers/src/models/misc/signatures';
 
 describe('SignaturesValidator', () => {
   let validator: Contract;

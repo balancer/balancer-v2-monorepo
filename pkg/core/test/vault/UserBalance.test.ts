@@ -4,17 +4,17 @@ import { Dictionary } from 'lodash';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import Token from '../helpers/models/tokens/Token';
-import TokensDeployer from '../helpers/models/tokens/TokensDeployer';
-import TokenList, { ETH_TOKEN_ADDRESS } from '../helpers/models/tokens/TokenList';
-import * as expectEvent from '../helpers/expectEvent';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
+import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
+import TokenList, { ETH_TOKEN_ADDRESS } from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
-import { actionId } from '@balancer-labs/v2-helpers/src/actions';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
 import { forceSendEth } from '../helpers/eth';
-import { expectBalanceChange } from '../helpers/tokenBalance';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 const OP_KIND = {
   DEPOSIT_INTERNAL: 0,

@@ -7,8 +7,11 @@ import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { TokenList } from '@balancer-labs/v2-helpers/src/tokens';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { printGas, setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
-import { encodeJoinStablePool, encodeExitStablePool } from '@balancer-labs/v2-helpers/src/stablePoolEncoding';
-import { encodeJoinWeightedPool, encodeExitWeightedPool } from '@balancer-labs/v2-helpers/src/weightedPoolEncoding';
+import { encodeJoinStablePool, encodeExitStablePool } from '@balancer-labs/v2-helpers/src/models/pools/stable/encoding';
+import {
+  encodeJoinWeightedPool,
+  encodeExitWeightedPool,
+} from '@balancer-labs/v2-helpers/src/models/pools/weighted/encoding';
 
 // setup environment
 const BPTAmount = bn(5e18);

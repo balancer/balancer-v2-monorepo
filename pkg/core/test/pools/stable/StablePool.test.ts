@@ -4,11 +4,11 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { GeneralPool } from '@balancer-labs/v2-helpers/src/pools';
+import { GeneralPool } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 
-import TokenList from '../../helpers/models/tokens/TokenList';
-import StablePool from '../../helpers/models/pools/stable/StablePool';
-import { RawStablePoolDeployment } from '../../helpers/models/pools/stable/types';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
+import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 
 describe('StablePool', function () {
   let allTokens: TokenList;
