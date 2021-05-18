@@ -15,8 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../lib/helpers/BalancerErrors.sol";
-import "../lib/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import "./AssetManagers.sol";
 import "./PoolRegistry.sol";

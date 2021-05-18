@@ -37,6 +37,7 @@
   "devDependencies": {
     "@balancer-labs/v2-common": "workspace:*",
     "@balancer-labs/v2-helpers": "workspace:*",
+    "@balancer-labs/v2-solidity-utils": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@types/chai": "^4.2.12",

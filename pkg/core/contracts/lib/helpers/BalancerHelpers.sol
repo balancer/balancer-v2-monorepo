@@ -15,15 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../math/Math.sol";
-import "../math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "./InputHelpers.sol";
-import "./AssetHelpers.sol";
-import "./BalancerErrors.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 import "../../pools/BasePool.sol";
 import "../../vault/ProtocolFeesCollector.sol";
+import "../../vault/AssetHelpers.sol";
 import "../../vault/interfaces/IWETH.sol";
 import "../../vault/interfaces/IVault.sol";
 import "../../vault/balances/BalanceAllocation.sol";

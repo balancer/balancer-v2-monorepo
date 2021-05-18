@@ -15,8 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../../lib/math/FixedPoint.sol";
-import "../../lib/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "../BaseMinimalSwapInfoPool.sol";
 

@@ -15,11 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../lib/openzeppelin/IERC20.sol";
-import "../lib/helpers/InputHelpers.sol";
-import "../lib/helpers/Authentication.sol";
-import "../lib/openzeppelin/ReentrancyGuard.sol";
-import "../lib/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IAuthorizer.sol";

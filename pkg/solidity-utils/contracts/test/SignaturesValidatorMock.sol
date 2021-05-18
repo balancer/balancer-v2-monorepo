@@ -2,7 +2,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../../lib/helpers/SignaturesValidator.sol";
+import "../helpers/SignaturesValidator.sol";
 
 contract SignaturesValidatorMock is SignaturesValidator {
     bytes32 internal immutable AUTH_TYPE_HASH = keccak256(

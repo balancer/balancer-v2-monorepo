@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../../lib/math/FixedPoint.sol";
-import "../../lib/math/Math.sol";
-import "../../lib/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 /* solhint-disable private-vars-leading-underscore */
 

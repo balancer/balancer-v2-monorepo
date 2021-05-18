@@ -15,10 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../lib/math/FixedPoint.sol";
-import "../lib/helpers/InputHelpers.sol";
-import "../lib/helpers/TemporarilyPausable.sol";
-import "../lib/openzeppelin/ERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";

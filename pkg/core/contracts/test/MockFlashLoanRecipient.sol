@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../lib/math/Math.sol";
-import "../lib/openzeppelin/IERC20.sol";
-import "../lib/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../vault/interfaces/IFlashLoanRecipient.sol";
 import "../vault/interfaces/IVault.sol";

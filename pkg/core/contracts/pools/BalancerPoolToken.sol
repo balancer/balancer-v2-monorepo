@@ -14,10 +14,10 @@
 
 pragma solidity ^0.7.0;
 
-import "../lib/math/Math.sol";
-import "../lib/openzeppelin/IERC20.sol";
-import "../lib/openzeppelin/IERC20Permit.sol";
-import "../lib/openzeppelin/EIP712.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20Permit.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EIP712.sol";
 
 /**
  * @title Highly opinionated token implementation

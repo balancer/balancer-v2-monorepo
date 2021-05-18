@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../lib/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 
 import "../vault/interfaces/IVault.sol";
 import "../vault/interfaces/IBasePool.sol";
@@ -75,7 +75,12 @@ contract MockVault is IPoolSwapStructs {
         }
     }
 
-    function callMinimalPoolSwap(address pool, SwapRequest memory request, uint256 balanceTokenIn, uint256 balanceTokenOut) external {
+    function callMinimalPoolSwap(
+        address pool,
+        SwapRequest memory request,
+        uint256 balanceTokenIn,
+        uint256 balanceTokenOut
+    ) external {
         uint256 amount = IMinimalSwapInfoPool(pool).onSwap(request, balanceTokenIn, balanceTokenOut);
         emit Swap(request.poolId, request.tokenIn, request.tokenOut, amount);
     }

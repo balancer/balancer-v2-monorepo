@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import "./Buffer.sol";
 import "./Samples.sol";
-import "../../lib/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
 import "./IWeightedPoolPriceOracle.sol";
 import "../IPriceOracle.sol";

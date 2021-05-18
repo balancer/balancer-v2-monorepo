@@ -15,8 +15,8 @@
 pragma solidity ^0.7.0;
 
 import "./interfaces/IAuthorizer.sol";
-import "../lib/openzeppelin/AccessControl.sol";
-import "../lib/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 /**
  * @dev Basic Authorizer implementation, based on OpenZeppelin's Access Control.

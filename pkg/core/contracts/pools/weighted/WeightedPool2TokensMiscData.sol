@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../../lib/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 /**
  * @dev This module provides an interface to store seemingly unrelated pieces of information, in particular used by

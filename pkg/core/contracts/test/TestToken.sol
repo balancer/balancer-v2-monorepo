@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../lib/openzeppelin/ERC20.sol";
-import "../lib/openzeppelin/ERC20Burnable.sol";
-import "../lib/openzeppelin/AccessControl.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20Burnable.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
 
 contract TestToken is AccessControl, ERC20, ERC20Burnable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
