@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-
 import { zip } from 'lodash';
 
 export function shouldBehaveLikeMap(
