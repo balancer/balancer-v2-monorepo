@@ -16,11 +16,10 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/AccessControl.sol";
+import "./IWETH.sol";
+import "../openzeppelin/AccessControl.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IWETH.sol";
-
-contract WETH is AccessControl, IWETH {
+contract TestWETH is AccessControl, IWETH {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     string public name = "Wrapped Ether";

@@ -22,7 +22,7 @@ export async function setupEnvironment(): Promise<{
 }> {
   const { admin, creator, trader } = await getSigners();
 
-  const weth = await deploy('WETH', { args: [admin.address] });
+  const weth = await deploy('@balancer-labs/v2-solidity-utils/misc/TestWETH', { args: [admin.address] });
 
   const authorizer = await deploy('@balancer-labs/v2-vault/Authorizer', { args: [admin.address] });
 
