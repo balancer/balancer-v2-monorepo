@@ -50,6 +50,7 @@ contract StablePool is BaseGeneralPool, StableMath {
             name,
             symbol,
             tokens,
+            new address[](tokens.length),
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,

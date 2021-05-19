@@ -57,8 +57,10 @@ abstract contract BasePoolAuthorization is Authentication {
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) private view returns (bool) {
-        // This implementation hardcodes the setSwapFeePercentage action identifier.
-        return actionId == getActionId(BasePool.setSwapFeePercentage.selector);
+        // This implementation hardcodes the setSwapFeePercentage and setTargetManagedPercentage action identifier.
+        return
+            (actionId == getActionId(BasePool.setSwapFeePercentage.selector)) ||
+            (actionId == getActionId(BasePool.setTargetManagedPercentage.selector));
     }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);
