@@ -15,7 +15,11 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 
 describe('BasePool', function () {
-  let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress,
+    poolOwner: SignerWithAddress,
+    deployer: SignerWithAddress,
+    assetManager: SignerWithAddress,
+    other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
@@ -24,7 +28,7 @@ describe('BasePool', function () {
   const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   before(async () => {
-    [, admin, poolOwner, deployer, other] = await ethers.getSigners();
+    [, admin, poolOwner, deployer, assetManager, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach(async () => {
@@ -36,6 +40,7 @@ describe('BasePool', function () {
   function deployBasePool(
     params: {
       tokens?: TokenList | string[];
+      assetManagers?: string[];
       swapFeePercentage?: BigNumberish;
       pauseWindowDuration?: number;
       bufferPeriodDuration?: number;
@@ -43,8 +48,16 @@ describe('BasePool', function () {
       from?: SignerWithAddress;
     } = {}
   ): Promise<Contract> {
-    let { tokens: poolTokens, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration, owner } = params;
+    let {
+      tokens: poolTokens,
+      assetManagers,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner,
+    } = params;
     if (!poolTokens) poolTokens = tokens;
+    if (!assetManagers) assetManagers = Array(poolTokens.length).fill(ZERO_ADDRESS);
     if (!swapFeePercentage) swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
@@ -58,6 +71,7 @@ describe('BasePool', function () {
         'Balancer Pool Token',
         'BPT',
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
+        assetManagers,
         swapFeePercentage,
         pauseWindowDuration,
         bufferPeriodDuration,
@@ -67,13 +81,30 @@ describe('BasePool', function () {
   }
 
   describe('deployment', () => {
+    let assetManagers: string[];
+
+    beforeEach(() => {
+      assetManagers = [assetManager.address, ...Array(tokens.length - 1).fill(ZERO_ADDRESS)];
+    });
+
     it('registers a pool in the vault', async () => {
-      const pool = await deployBasePool({ tokens });
+      const pool = await deployBasePool({
+        tokens,
+        assetManagers,
+      });
       const poolId = await pool.getPoolId();
 
       const [poolAddress, poolSpecialization] = await vault.getPool(poolId);
       expect(poolAddress).to.equal(pool.address);
       expect(poolSpecialization).to.equal(GeneralPool);
+
+      const { tokens: poolTokens } = await vault.getPoolTokens(poolId);
+      expect(poolTokens).to.have.same.members(tokens.addresses);
+
+      poolTokens.forEach(async (token: string, i: number) => {
+        const { assetManager } = await vault.getPoolTokenInfo(poolId, token);
+        expect(assetManager).to.equal(assetManagers[i]);
+      });
     });
 
     it('reverts if the tokens are not sorted', async () => {
@@ -245,6 +276,14 @@ describe('BasePool', function () {
         });
       });
     });
+  });
+
+  describe.skip('asset manager pool config', () => {
+    // TODO: add tests for
+    //  - asset manager call
+    //  - unamanged tokens
+    //  - events
+    //  - authorization (owner, delegated owner)
   });
 
   describe('set paused', () => {

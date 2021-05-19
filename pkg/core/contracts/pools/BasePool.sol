@@ -20,10 +20,13 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
-import "./BalancerPoolToken.sol";
-import "./BasePoolAuthorization.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
+
+import "./BalancerPoolToken.sol";
+import "./BasePoolAuthorization.sol";
+
+import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
 
 // This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
 // reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus a total
@@ -86,6 +89,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor7;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
+    event TargetManagerPoolConfigChanged(IERC20 indexed token, IAssetManager.PoolConfig target);
 
     constructor(
         IVault vault,
@@ -93,6 +97,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
+        address[] memory assetManagers,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
@@ -122,32 +127,32 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
         bytes32 poolId = vault.registerPool(specialization);
 
-        // Pass in zero addresses for Asset Managers
-        vault.registerTokens(poolId, tokens, new address[](tokens.length));
+        vault.registerTokens(poolId, tokens, assetManagers);
 
         // Set immutable state variables - these cannot be read from during construction
+        uint256 totalTokens = tokens.length;
         _vault = vault;
         _poolId = poolId;
-        _totalTokens = tokens.length;
+        _totalTokens = totalTokens;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _token0 = tokens.length > 0 ? tokens[0] : IERC20(0);
-        _token1 = tokens.length > 1 ? tokens[1] : IERC20(0);
-        _token2 = tokens.length > 2 ? tokens[2] : IERC20(0);
-        _token3 = tokens.length > 3 ? tokens[3] : IERC20(0);
-        _token4 = tokens.length > 4 ? tokens[4] : IERC20(0);
-        _token5 = tokens.length > 5 ? tokens[5] : IERC20(0);
-        _token6 = tokens.length > 6 ? tokens[6] : IERC20(0);
-        _token7 = tokens.length > 7 ? tokens[7] : IERC20(0);
+        _token0 = totalTokens > 0 ? tokens[0] : IERC20(0);
+        _token1 = totalTokens > 1 ? tokens[1] : IERC20(0);
+        _token2 = totalTokens > 2 ? tokens[2] : IERC20(0);
+        _token3 = totalTokens > 3 ? tokens[3] : IERC20(0);
+        _token4 = totalTokens > 4 ? tokens[4] : IERC20(0);
+        _token5 = totalTokens > 5 ? tokens[5] : IERC20(0);
+        _token6 = totalTokens > 6 ? tokens[6] : IERC20(0);
+        _token7 = totalTokens > 7 ? tokens[7] : IERC20(0);
 
-        _scalingFactor0 = tokens.length > 0 ? _computeScalingFactor(tokens[0]) : 0;
-        _scalingFactor1 = tokens.length > 1 ? _computeScalingFactor(tokens[1]) : 0;
-        _scalingFactor2 = tokens.length > 2 ? _computeScalingFactor(tokens[2]) : 0;
-        _scalingFactor3 = tokens.length > 3 ? _computeScalingFactor(tokens[3]) : 0;
-        _scalingFactor4 = tokens.length > 4 ? _computeScalingFactor(tokens[4]) : 0;
-        _scalingFactor5 = tokens.length > 5 ? _computeScalingFactor(tokens[5]) : 0;
-        _scalingFactor6 = tokens.length > 6 ? _computeScalingFactor(tokens[6]) : 0;
-        _scalingFactor7 = tokens.length > 7 ? _computeScalingFactor(tokens[7]) : 0;
+        _scalingFactor0 = totalTokens > 0 ? _computeScalingFactor(tokens[0]) : 0;
+        _scalingFactor1 = totalTokens > 1 ? _computeScalingFactor(tokens[1]) : 0;
+        _scalingFactor2 = totalTokens > 2 ? _computeScalingFactor(tokens[2]) : 0;
+        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
+        _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(tokens[4]) : 0;
+        _scalingFactor5 = totalTokens > 5 ? _computeScalingFactor(tokens[5]) : 0;
+        _scalingFactor6 = totalTokens > 6 ? _computeScalingFactor(tokens[6]) : 0;
+        _scalingFactor7 = totalTokens > 7 ? _computeScalingFactor(tokens[7]) : 0;
     }
 
     // Getters / Setters
@@ -168,7 +173,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _swapFeePercentage;
     }
 
-    // Caller must be approved by the Vault's Authorizer
     function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
@@ -181,7 +185,23 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
-    // Caller must be approved by the Vault's Authorizer
+    function setAssetManagerPoolConfig(IERC20 token, IAssetManager.PoolConfig memory poolConfig)
+        external
+        virtual
+        authenticate
+        whenNotPaused
+    {
+        _setAssetManagerPoolConfig(token, poolConfig);
+    }
+
+    function _setAssetManagerPoolConfig(IERC20 token, IAssetManager.PoolConfig memory poolConfig) private {
+        bytes32 poolId = getPoolId();
+        (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, token);
+
+        IAssetManager(assetManager).setPoolConfig(poolId, poolConfig);
+        emit TargetManagerPoolConfigChanged(token, poolConfig);
+    }
+
     function setPaused(bool paused) external authenticate {
         _setPaused(paused);
     }

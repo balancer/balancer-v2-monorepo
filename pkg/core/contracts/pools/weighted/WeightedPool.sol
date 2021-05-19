@@ -65,6 +65,7 @@ contract WeightedPool is BaseMinimalSwapInfoPool, WeightedMath {
             name,
             symbol,
             tokens,
+            new address[](tokens.length),
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
