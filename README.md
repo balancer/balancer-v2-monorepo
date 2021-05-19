@@ -28,7 +28,7 @@ This repository will soon be migrated into a monorepo, making the different cont
 
 Multiple independent reviews and audits were performed by [Certora](https://www.certora.com/), [OpenZeppelin](https://openzeppelin.com/) and [Trail of Bits](https://www.trailofbits.com/). The latest reports from these engagements are located in the `audits` directory.
 
-Bug bounties apply to most of the smart contracts hosted in this repository: head to [Balancer V2 Bug Bounties](https://docs-v2.balancer.finance/core-concepts-1/security/bug-bounties) to learn more.
+Bug bounties apply to most of the smart contracts hosted in this repository: head to [Balancer V2 Bug Bounties](https://docs.balancer.fi/core-concepts/security/bug-bounties) to learn more.
 
 ## Licensing
 
