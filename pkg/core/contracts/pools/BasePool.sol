@@ -26,7 +26,7 @@ import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 
-import "./IAssetManager.sol";
+import "@balancer-labs/v2-asset-manager-utils/contracts/IAssetManager.sol";
 
 // This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
 // reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus a total
@@ -89,7 +89,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 internal immutable _scalingFactor7;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
-    event TargetManagedPercentageChanged(IERC20 indexed token, uint256 target);
+    event TargetManagerPoolConfigChanged(IERC20 indexed token, IAssetManager.PoolConfig target);
 
     constructor(
         IVault vault,
@@ -185,16 +185,21 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
-    function setTargetManagedPercentage(IERC20 token, uint256 target) external virtual authenticate whenNotPaused {
-        _setTargetManagedPercentage(token, target);
+    function setAssetManagerPoolConfig(IERC20 token, IAssetManager.PoolConfig memory poolConfig)
+        external
+        virtual
+        authenticate
+        whenNotPaused
+    {
+        _setAssetManagerPoolConfig(token, poolConfig);
     }
 
-    function _setTargetManagedPercentage(IERC20 token, uint256 target) private {
+    function _setAssetManagerPoolConfig(IERC20 token, IAssetManager.PoolConfig memory poolConfig) private {
         bytes32 poolId = getPoolId();
         (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, token);
 
-        IAssetManager(assetManager).setTargetManagedPercentage(poolId, target);
-        emit TargetManagedPercentageChanged(token, target);
+        IAssetManager(assetManager).setPoolConfig(poolId, poolConfig);
+        emit TargetManagerPoolConfigChanged(token, poolConfig);
     }
 
     function setPaused(bool paused) external authenticate {

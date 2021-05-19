@@ -278,7 +278,7 @@ describe('BasePool', function () {
     });
   });
 
-  describe.skip('target managed percentage', () => {
+  describe.skip('asset manager pool config', () => {
     // TODO: add tests for
     //  - asset manager call
     //  - unamanged tokens

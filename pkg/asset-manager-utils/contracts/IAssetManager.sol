@@ -13,7 +13,14 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 interface IAssetManager {
-    function setTargetManagedPercentage(bytes32 poolId, uint256 target) external;
+    struct PoolConfig {
+        uint64 targetPercentage;
+        uint64 criticalPercentage;
+        uint64 feePercentage;
+    }
+
+    function setPoolConfig(bytes32 poolId, PoolConfig calldata config) external;
 }

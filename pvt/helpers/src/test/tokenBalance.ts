@@ -11,7 +11,19 @@ import Token from '../models/tokens/Token';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 type Account = string | SignerWithAddress | Contract;
-type CompareFunction = 'equal' | 'eq' | 'above' | 'gt' | 'gte' | 'below' | 'lt' | 'lte' | 'least' | 'most' | 'near';
+type CompareFunction =
+  | 'equal'
+  | 'eq'
+  | 'above'
+  | 'gt'
+  | 'gte'
+  | 'below'
+  | 'lt'
+  | 'lte'
+  | 'least'
+  | 'most'
+  | 'near'
+  | 'very-near';
 export type Comparison = [CompareFunction, BigNumberish];
 
 interface BalanceChange {
@@ -119,8 +131,13 @@ export async function expectBalanceChange(
         const value = bn(Array.isArray(change) ? change[1] : change);
 
         if (compare == 'near') {
-          expect(delta).to.be.at.least(value.sub(value.div(10)));
-          expect(delta).to.be.at.most(value.add(value.div(10)));
+          const epsilon = value.abs().div(10);
+          expect(delta).to.be.at.least(value.sub(epsilon));
+          expect(delta).to.be.at.most(value.add(epsilon));
+        } else if (compare == 'very-near') {
+          const epsilon = value.abs().div(100000);
+          expect(delta).to.be.at.least(value.sub(epsilon));
+          expect(delta).to.be.at.most(value.add(epsilon));
         } else {
           const errorMessage = `Expected ${delta} ${symbol} to be ${compare} ${value} ${symbol}`;
           expect(delta, errorMessage).to[compare](value.toString());
