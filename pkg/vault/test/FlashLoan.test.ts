@@ -13,7 +13,7 @@ import { bn, divCeil, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/sr
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describe('Vault - flash loans', () => {
+describe('Flash Loans', () => {
   let admin: SignerWithAddress, minter: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract, recipient: Contract, feesCollector: Contract;
   let tokens: TokenList;

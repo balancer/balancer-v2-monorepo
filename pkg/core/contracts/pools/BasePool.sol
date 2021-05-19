@@ -22,8 +22,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
-import "../vault/interfaces/IVault.sol";
-import "../vault/interfaces/IBasePool.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-vault/contracts/interfaces/IBasePool.sol";
 
 // This contract relies on tons of immutable state variables to perform efficient lookup, without resorting to storage
 // reads. Because immutable arrays are not supported, we instead declare a fixed set of state variables plus a total

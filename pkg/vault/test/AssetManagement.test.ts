@@ -23,7 +23,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 const OP_KIND = { WITHDRAW: 0, DEPOSIT: 1, UPDATE: 2 };
 
-describe('Vault - asset manager', function () {
+describe('Asset Management', function () {
   let authorizer: Contract, vault: Contract;
   let admin: SignerWithAddress,
     lp: SignerWithAddress,

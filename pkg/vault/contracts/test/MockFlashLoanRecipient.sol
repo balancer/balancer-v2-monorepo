@@ -18,8 +18,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-import "../vault/interfaces/IFlashLoanRecipient.sol";
-import "../vault/interfaces/IVault.sol";
+import "../interfaces/IFlashLoanRecipient.sol";
+import "../interfaces/IVault.sol";
 
 import "./TestToken.sol";
 

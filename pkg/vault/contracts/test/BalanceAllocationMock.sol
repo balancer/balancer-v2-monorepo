@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../vault/balances/BalanceAllocation.sol";
+import "../balances/BalanceAllocation.sol";
 
 contract BalanceAllocationMock {
     using BalanceAllocation for bytes32;

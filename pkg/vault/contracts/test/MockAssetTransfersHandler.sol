@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-import "../vault/AssetTransfersHandler.sol";
+import "../AssetTransfersHandler.sol";
 
 contract MockAssetTransfersHandler is AssetTransfersHandler {
     using Math for uint256;

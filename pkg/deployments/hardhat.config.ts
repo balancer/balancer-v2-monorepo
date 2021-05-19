@@ -7,6 +7,23 @@ import '@nomiclabs/hardhat-ethers';
 import { hardhatBaseConfig } from '@balancer-labs/v2-common';
 import { name } from './package.json';
 
+import { task } from 'hardhat/config';
+import { TASK_DEPLOY } from 'hardhat-deploy';
+import { exec } from 'child_process';
+
+task(TASK_DEPLOY).setAction(async (_, hre, runSuper) => {
+  // Hardhat deploy doesn't support loading artifacts from multiple locations, so we manually copy them here. However,
+  // Hardhat compilation deletes old artifacts, so we need to do this _after_ compiling local contracts. The solution is
+  // to manually compile, then copy, then deploy with the --no-compile flag set.
+  await hre.run('compile');
+
+  exec(
+    'mkdir --parents artifacts && cp --recursive --target-directory artifacts ../vault/artifacts/* ../core/artifacts/* '
+  );
+
+  return runSuper({ noCompile: true });
+});
+
 const CHAIN_IDS = {
   hardhat: 31337,
   kovan: 42,
@@ -103,7 +120,7 @@ export default {
   external: {
     contracts: [
       {
-        artifacts: '../../node_modules/@balancer-labs/v2-core/artifacts',
+        artifacts: 'artifacts',
       },
     ],
   },

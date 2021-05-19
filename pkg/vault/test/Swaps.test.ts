@@ -59,7 +59,7 @@ type SwapInput = {
   signature?: boolean | string;
 };
 
-describe('Vault - swaps', () => {
+describe('Swaps', () => {
   let vault: Contract, authorizer: Contract, funds: FundManagement;
   let tokens: TokenList;
   let mainPoolId: string, secondaryPoolId: string;

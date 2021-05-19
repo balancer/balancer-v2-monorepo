@@ -27,7 +27,7 @@ import {
   TwoTokenPool,
 } from '@balancer-labs/v2-helpers/src/models/vault/pools';
 
-describe('Vault - join pool', () => {
+describe('Join Pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress, relayer: SignerWithAddress;
   let authorizer: Contract, vault: Contract, feesCollector: Contract;
   let allTokens: TokenList;

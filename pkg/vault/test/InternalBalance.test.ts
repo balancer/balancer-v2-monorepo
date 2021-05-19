@@ -13,7 +13,7 @@ import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/deploy';
-import { forceSendEth } from '../helpers/eth';
+import { forceSendEth } from './helpers/eth';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 const OP_KIND = {
@@ -23,7 +23,7 @@ const OP_KIND = {
   TRANSFER_EXTERNAL: 3,
 };
 
-describe('Vault - user balance', () => {
+describe('Internal Balance', () => {
   let admin: SignerWithAddress, sender: SignerWithAddress, recipient: SignerWithAddress;
   let relayer: SignerWithAddress, otherRecipient: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
