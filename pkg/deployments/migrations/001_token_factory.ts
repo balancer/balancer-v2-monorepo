@@ -12,7 +12,7 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
     log: true,
   });
 
-  await deploy('WETH', {
+  await deploy('TestWETH', {
     from: deployer,
     args: [deployer],
     log: true,
