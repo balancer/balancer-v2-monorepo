@@ -2,27 +2,9 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { Dictionary, fromPairs } from 'lodash';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ZERO_ADDRESS } from './constants';
 import { deploy } from './deploy';
 
 export type TokenList = Dictionary<Contract>;
-
-// Deploys multiple tokens and returns a symbol -> token dictionary, which can be used in other helpers
-export async function deployTokens(
-  symbols: Array<string>,
-  decimals: Array<number>,
-  from?: SignerWithAddress
-): Promise<TokenList> {
-  const tokenSymbols: TokenList = {};
-  for (let i = 0; i < symbols.length; i++) {
-    if (symbols[i] === 'WETH') {
-      tokenSymbols[symbols[i]] = await deploy('WETH9', { from, args: [from ? from.address : ZERO_ADDRESS] });
-    } else {
-      tokenSymbols[symbols[i]] = await deployToken(symbols[i], decimals[i], from);
-    }
-  }
-  return tokenSymbols;
-}
 
 export async function deploySortedTokens(
   symbols: Array<string>,
@@ -41,7 +23,10 @@ export async function deploySortedTokens(
 export async function deployToken(symbol: string, decimals?: number, from?: SignerWithAddress): Promise<Contract> {
   const [defaultDeployer] = await ethers.getSigners();
   const deployer = from || defaultDeployer;
-  return deploy('TestToken', { from: deployer, args: [deployer.address, symbol, symbol, decimals] });
+  return deploy('@balancer-labs/v2-solidity-utils/misc/TestToken', {
+    from: deployer,
+    args: [deployer.address, symbol, symbol, decimals],
+  });
 }
 
 export async function mintTokens(

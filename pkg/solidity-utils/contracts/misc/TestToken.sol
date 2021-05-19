@@ -14,14 +14,26 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "../openzeppelin/ERC20.sol";
+import "../openzeppelin/ERC20Burnable.sol";
+import "../openzeppelin/AccessControl.sol";
 
-/**
- * @dev Interface for the WETH token contract used internally for wrapping and unwrapping, to support
- * sending and receiving ETH in joins, swaps, and internal balance deposits and withdrawals.
- */
-interface IWETH is IERC20 {
-    function deposit() external payable;
+contract TestToken is AccessControl, ERC20, ERC20Burnable {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    function withdraw(uint256 amount) external;
+    constructor(
+        address admin,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) ERC20(name, symbol) {
+        _setupDecimals(decimals);
+        _setupRole(DEFAULT_ADMIN_ROLE, admin);
+        _setupRole(MINTER_ROLE, admin);
+    }
+
+    function mint(address recipient, uint256 amount) external {
+        require(hasRole(MINTER_ROLE, msg.sender), "NOT_MINTER");
+        _mint(recipient, amount);
+    }
 }

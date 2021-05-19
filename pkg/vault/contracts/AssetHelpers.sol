@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
 
 import "./interfaces/IAsset.sol";
-import "./interfaces/IWETH.sol";
 
 abstract contract AssetHelpers {
     // solhint-disable-next-line var-name-mixedcase

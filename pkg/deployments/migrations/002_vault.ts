@@ -14,7 +14,7 @@ export default async function (hre: HardhatRuntimeEnvironment): Promise<void> {
   if (chainId == '1') {
     WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
   } else {
-    WETH = await (await deployments.get('WETH')).address;
+    WETH = await (await deployments.get('TestWETH')).address;
   }
 
   const vault = await deploy('Vault', {

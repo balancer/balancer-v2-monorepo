@@ -17,8 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Create2.sol";
-
-import "@balancer-labs/v2-core/contracts/test/TestToken.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/misc/TestToken.sol";
 
 contract TokenFactory {
     using Address for address;

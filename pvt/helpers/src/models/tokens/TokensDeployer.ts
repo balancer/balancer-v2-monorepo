@@ -23,9 +23,15 @@ class TokensDeployer {
 
     let instance;
     if (symbol !== 'WETH') {
-      instance = await deploy('TestToken', { from: sender, args: [sender.address, 'Token', 'TKN', decimals] });
+      instance = await deploy('@balancer-labs/v2-solidity-utils/misc/TestToken', {
+        from: sender,
+        args: [sender.address, 'Token', 'TKN', decimals],
+      });
     } else {
-      instance = await deploy('WETH', { from: sender, args: [sender.address] });
+      instance = await deploy('@balancer-labs/v2-solidity-utils/misc/TestWETH', {
+        from: sender,
+        args: [sender.address],
+      });
     }
 
     return new Token(name, symbol, decimals, instance);

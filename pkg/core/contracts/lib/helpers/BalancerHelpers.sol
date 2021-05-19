@@ -21,9 +21,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/misc/IWETH.sol";
+
 import "@balancer-labs/v2-vault/contracts/ProtocolFeesCollector.sol";
 import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IWETH.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 import "@balancer-labs/v2-vault/contracts/balances/BalanceAllocation.sol";
 
