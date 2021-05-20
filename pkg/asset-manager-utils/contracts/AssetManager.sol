@@ -189,9 +189,16 @@ abstract contract AssetManager is IAssetManager {
         uint256 rebalancerFee = _rebalance(poolId);
 
         if (rebalancerFee > 0) {
-            // Pull funds from the vault
-            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
+            // Pull funds from the vault and update balance to reflect that the fee is no longer part of managed funds
+            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
             ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, token, rebalancerFee);
+            ops[1] = IVault.PoolBalanceOp(
+                IVault.PoolBalanceOpKind.UPDATE,
+                poolId,
+                token,
+                _poolManaged(poolId, readAUM()).sub(rebalancerFee)
+            );
+
             vault.managePoolBalance(ops);
 
             // Send fee to rebalancer
@@ -214,10 +221,15 @@ abstract contract AssetManager is IAssetManager {
         uint256 rebalancerFee = _rebalance(poolId);
 
         if (rebalancerFee > 0) {
-            // Pull funds from the vault
-            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](1);
+            // Pull funds from the vault and update balance to reflect that the fee is no longer part of managed funds
+            IVault.PoolBalanceOp[] memory ops = new IVault.PoolBalanceOp[](2);
             ops[0] = IVault.PoolBalanceOp(IVault.PoolBalanceOpKind.WITHDRAW, poolId, token, rebalancerFee);
-            vault.managePoolBalance(ops);
+            ops[1] = IVault.PoolBalanceOp(
+                IVault.PoolBalanceOpKind.UPDATE,
+                poolId,
+                token,
+                _poolManaged(poolId, readAUM()).sub(rebalancerFee)
+            );
 
             require(funds.sender == address(this), "Asset Manager must be sender");
             require(!funds.fromInternalBalance, "Can't use Asset Manager's internal balance");
